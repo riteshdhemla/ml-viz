@@ -55,3 +55,30 @@ Slider:
 ```
 
 See `src/content/courses/neural-networks/01-what-is-a-neuron.mdx` as a reference.
+
+---
+
+## Also create the companion notebook
+
+Create `notebooks/[course-slug]/[NN]-[kebab-title].ipynb` with the **same slug** as the MDX file.
+The "Open in Colab" button is auto-wired — no frontmatter needed.
+
+**Notebook structure:**
+1. Markdown cell: `# [Lesson Title]` + link back to lesson URL + one-line description
+2. Code cell: `import numpy as np; import matplotlib.pyplot as plt` + dark plot style
+3. Alternating markdown cells (concept/equation in LaTeX) + code cells (clean Python implementation)
+4. At least one visualization using matplotlib
+5. Final cell: a mini exercise the user can modify (change a parameter and re-run)
+
+**Matplotlib dark style to use at the top:**
+```python
+plt.rcParams['figure.facecolor'] = '#0f1117'
+plt.rcParams['axes.facecolor'] = '#1a1d27'
+plt.rcParams['text.color'] = 'white'
+plt.rcParams['axes.labelcolor'] = '#94a3b8'
+plt.rcParams['xtick.color'] = '#94a3b8'
+plt.rcParams['ytick.color'] = '#94a3b8'
+plt.rcParams['axes.edgecolor'] = '#2e3347'
+```
+
+See `notebooks/neural-networks/01-what-is-a-neuron.ipynb` as a reference.
