@@ -1,0 +1,129 @@
+---
+title: "The Transformer Architecture"
+description: "Assembling attention into full blocks — residuals, layer norm, FFN, and the encoder/decoder families."
+order: 3
+type: concept
+estimatedMinutes: 24
+---
+
+# The Transformer Architecture
+
+Self-attention and multi-head attention are the engine. Now we build the whole car. A **Transformer block** wraps attention with a feed-forward network, residual connections, and layer normalization — then stacks dozens of these blocks. Understanding the block, and the encoder/decoder/decoder-only families, explains every model from BERT to GPT to T5.
+
+## The Transformer block
+
+Each block has **two sub-layers**, each wrapped in a residual connection and a layer norm:
+
+1. **Multi-head self-attention** — tokens exchange information.
+2. **Position-wise feed-forward network (FFN)** — each token is independently transformed.
+
+$$\mathbf{z} = \text{LayerNorm}\big(\mathbf{x} + \text{MultiHead}(\mathbf{x})\big)$$
+$$\mathbf{y} = \text{LayerNorm}\big(\mathbf{z} + \text{FFN}(\mathbf{z})\big)$$
+
+```
+   x ──┬─────────────▶(+)──▶ LayerNorm ──┬───────────▶(+)──▶ LayerNorm ──▶ y
+       │               ▲                 │             ▲
+       └─▶ Multi-Head ─┘                 └─▶  FFN  ────┘
+            Attention
+        (tokens mix here)            (each token alone)
+```
+
+### The feed-forward network
+
+A simple two-layer MLP applied to **each position independently**, usually expanding the dimension 4× then projecting back:
+
+$$\text{FFN}(\mathbf{x}) = W_2\,\text{ReLU}(W_1\mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2$$
+
+With $d_{\text{model}} = 512$, the hidden layer is typically $d_{ff} = 2048$. Attention mixes information *between* tokens; the FFN does the heavy *per-token* computation. The FFN holds the majority of a Transformer's parameters.
+
+<Callout type="tip" title="Two jobs, alternating">
+  A block alternates between **communication** (attention — tokens look at each other) and **computation** (FFN — each token thinks on its own). Stacking many blocks lets information mix, get processed, mix again — building progressively richer representations.
+</Callout>
+
+## Residuals and layer norm: why they matter
+
+- **Residual connections** ($\mathbf{x} + \text{sublayer}(\mathbf{x})$) give gradients a direct path to early layers, making it possible to train networks dozens of layers deep — the same trick that made ResNets work.
+- **Layer normalization** stabilizes the scale of activations across the feature dimension, which keeps very deep stacks trainable.
+
+<Callout type="info" title="Pre-LN vs Post-LN">
+  The original paper put LayerNorm *after* the residual add (Post-LN). Modern models (GPT-2 onward) use **Pre-LN** — normalize *before* the sub-layer: $\mathbf{x} + \text{Attn}(\text{LN}(\mathbf{x}))$. Pre-LN trains more stably and needs less learning-rate warmup, so it's now the default.
+</Callout>
+
+## Three families
+
+How you mask attention and stack blocks defines the model's purpose:
+
+| Family | Attention | Sees | Good at | Examples |
+|--------|-----------|------|---------|----------|
+| **Encoder-only** | Bidirectional | Whole input at once | Understanding / classification | BERT, RoBERTa |
+| **Decoder-only** | Causal (masked) | Only past tokens | Generation | GPT, LLaMA, Claude |
+| **Encoder–decoder** | Both | Input + generated output | Seq2seq (translation) | T5, original Transformer |
+
+### Encoder–decoder and cross-attention
+
+The original Transformer translates with two stacks. The **encoder** reads the source sentence bidirectionally. The **decoder** generates the target one token at a time, using a third attention flavor — **cross-attention** — where queries come from the decoder but keys/values come from the *encoder's* output. That's how the decoder "looks at" the source while writing the translation.
+
+```python
+import torch
+import torch.nn as nn
+
+# A full encoder block in a few lines
+encoder_layer = nn.TransformerEncoderLayer(
+    d_model=512, nhead=8, dim_feedforward=2048,
+    norm_first=True, batch_first=True,           # norm_first=True → Pre-LN
+)
+encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+
+x = torch.randn(2, 20, 512)                      # (batch, seq, d_model)
+out = encoder(x)
+print(out.shape)                                 # (2, 20, 512)
+```
+
+## End-to-end data flow (decoder-only / GPT)
+
+1. **Tokenize** text into integer IDs.
+2. **Embed** each ID into a $d_{\text{model}}$ vector; **add positional encoding**.
+3. Pass through $N$ Transformer blocks (with **causal** self-attention).
+4. Final **LayerNorm**, then a linear projection to vocabulary size.
+5. **Softmax** → probability of the next token. Sample, append, repeat.
+
+```python
+import torch.nn as nn
+
+class TinyGPT(nn.Module):
+    def __init__(self, vocab, d_model=256, n_heads=4, n_layers=4, max_len=128):
+        super().__init__()
+        self.tok = nn.Embedding(vocab, d_model)
+        self.pos = nn.Embedding(max_len, d_model)
+        layer = nn.TransformerEncoderLayer(d_model, n_heads, 4 * d_model,
+                                           norm_first=True, batch_first=True)
+        self.blocks = nn.TransformerEncoder(layer, n_layers)
+        self.ln = nn.LayerNorm(d_model)
+        self.head = nn.Linear(d_model, vocab)
+
+    def forward(self, idx):
+        T = idx.size(1)
+        pos = torch.arange(T, device=idx.device)
+        x = self.tok(idx) + self.pos(pos)
+        mask = nn.Transformer.generate_square_subsequent_mask(T).to(idx.device)
+        x = self.blocks(x, mask=mask)             # causal mask → autoregressive
+        return self.head(self.ln(x))              # logits over vocab
+```
+
+## Scale is the story
+
+Transformers improved largely by getting **bigger** — more layers, wider dimensions, more data. Empirically, loss falls as a smooth power law in parameters, data, and compute (the **scaling laws**). GPT-3 (175B params) and beyond are "just" this same block, stacked very high and trained on enormous corpora.
+
+<Callout type="warning" title="Quadratic cost is the ceiling">
+  Self-attention is $O(n^2)$ in sequence length. Doubling context quadruples attention compute and memory. Extending context length (FlashAttention, sparse/linear attention, RoPE scaling) is one of the most active areas in the field.
+</Callout>
+
+## Common mistakes
+
+1. **Wrong mask for the family** — encoders use no causal mask; decoders require one. Mixing them up either leaks the future or cripples understanding.
+2. **Dropping the residual or LayerNorm** — deep stacks become untrainable without them.
+3. **Assuming bigger always wins** — scale needs proportional *data*; an under-fed huge model overfits.
+
+<Exercise id="transformer-ffn" />
+<Exercise id="transformer-residual" />
+<Exercise id="transformer-families" />

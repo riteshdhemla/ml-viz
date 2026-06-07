@@ -1,0 +1,110 @@
+---
+title: "Bayesian Networks"
+description: "Directed graphs that factorize a joint distribution — and the conditional independencies they encode."
+order: 1
+type: concept
+estimatedMinutes: 24
+---
+
+# Bayesian Networks
+
+A joint distribution over $n$ binary variables has $2^n - 1$ free numbers — hopeless to store or learn for even modest $n$. A **Bayesian Network** tames this by exploiting **conditional independence**: it represents the joint as a directed acyclic graph (DAG) where each variable depends only on its **parents**. This factorization can shrink an exponential table to a handful of small ones.
+
+**Real-world examples:** Medical diagnosis (symptoms ← diseases), spam filtering, fault diagnosis in engineering, gene regulatory networks, Microsoft's original paperclip assistant.
+
+## The factorization
+
+A Bayesian Network over variables $X_1, \dots, X_n$ defines:
+
+$$P(X_1, \dots, X_n) = \prod_{i=1}^{n} P(X_i \mid \text{Parents}(X_i))$$
+
+Each node carries a **Conditional Probability Table (CPT)** giving its distribution *given its parents*. Nodes with no parents store a simple prior.
+
+<Callout type="tip" title="Intuition">
+  An arrow $A \to B$ means "$A$ directly influences $B$." The graph is a story of *what causes what*. Instead of one giant joint table, you tell the story locally: each variable only needs to know about its direct causes (parents). The graph structure *is* a set of independence assumptions.
+</Callout>
+
+### Worked example — the classic Sprinkler network
+
+Variables: Cloudy $C$, Sprinkler $S$, Rain $R$, Wet grass $W$. Structure: $C \to S$, $C \to R$, $S \to W$, $R \to W$.
+
+The joint factorizes as:
+
+$$P(C, S, R, W) = P(C)\,P(S \mid C)\,P(R \mid C)\,P(W \mid S, R)$$
+
+Counting parameters: full joint = $2^4 - 1 = 15$ numbers. Factorized: $P(C)$ needs 1, $P(S|C)$ needs 2, $P(R|C)$ needs 2, $P(W|S,R)$ needs 4 — **9 total**. The savings explode as networks grow.
+
+```python
+# pip install pgmpy
+from pgmpy.models import DiscreteBayesianNetwork
+from pgmpy.factors.discrete import TabularCPD
+from pgmpy.inference import VariableElimination
+
+model = DiscreteBayesianNetwork([('C','S'), ('C','R'), ('S','W'), ('R','W')])
+
+cpd_c = TabularCPD('C', 2, [[0.5], [0.5]])
+cpd_s = TabularCPD('S', 2, [[0.5, 0.9],     # P(S=0 | C)
+                            [0.5, 0.1]],     # P(S=1 | C)
+                   evidence=['C'], evidence_card=[2])
+cpd_r = TabularCPD('R', 2, [[0.8, 0.2],
+                            [0.2, 0.8]],
+                   evidence=['C'], evidence_card=[2])
+cpd_w = TabularCPD('W', 2,
+                   [[1.0, 0.1, 0.1, 0.01],   # P(W=0 | S,R)
+                    [0.0, 0.9, 0.9, 0.99]],  # P(W=1 | S,R)
+                   evidence=['S','R'], evidence_card=[2, 2])
+
+model.add_cpds(cpd_c, cpd_s, cpd_r, cpd_w)
+assert model.check_model()
+
+infer = VariableElimination(model)
+print(infer.query(['R'], evidence={'W': 1}))   # P(Rain | grass wet)
+```
+
+## Conditional independence and d-separation
+
+The graph's arrows imply which variables are independent given others. Reading this off the graph uses three building-block patterns:
+
+| Pattern | Shape | Independence |
+|---------|-------|--------------|
+| **Chain** | $A \to B \to C$ | $A \perp C \mid B$ (knowing $B$ blocks the path) |
+| **Fork** | $A \leftarrow B \to C$ | $A \perp C \mid B$ (common cause $B$ blocks) |
+| **Collider** | $A \to B \leftarrow C$ | $A \perp C$, but **dependent** given $B$! |
+
+The collider is the surprising one. Two independent causes become *dependent* once you observe their common effect — this is **explaining away**.
+
+<Callout type="info" title="Explaining away">
+  Grass is wet ($W$). That raises the chance of *both* rain and sprinkler. But if you then learn it rained, the sprinkler becomes *less* likely — rain already explains the wet grass. Observing the collider's effect couples its causes.
+</Callout>
+
+**d-separation** generalizes these rules: variables $X$ and $Y$ are independent given evidence $Z$ if *every* path between them is "blocked" by $Z$ (blocked at chains/forks in $Z$, or at colliders **not** in $Z$ and with no observed descendant).
+
+## Inference: asking questions
+
+Given a network, we ask queries like $P(\text{Disease} \mid \text{Symptoms})$. Approaches:
+
+- **Exact** — *variable elimination* (sum out non-query variables in a smart order) or the *junction tree* algorithm. Exact but exponential in the graph's "treewidth."
+- **Approximate** — sampling (likelihood weighting, Gibbs / MCMC) when exact is intractable.
+
+## Why DAGs? The acyclic rule
+
+The graph **must** be acyclic — no directed cycles. A cycle ($A\to B\to A$) would make "$A$ causes $B$ causes $A$," which has no consistent factorization as a product of conditionals. Acyclicity guarantees a valid topological ordering and a well-defined joint.
+
+## Learning a Bayesian Network
+
+1. **Parameters** (CPTs), structure known — count frequencies (MLE) or add a prior (Bayesian/Dirichlet smoothing).
+2. **Structure** — search over DAGs scoring fit vs complexity (BIC), or constraint-based tests of conditional independence. NP-hard in general.
+
+<Callout type="warning" title="Correlation, causation, and arrows">
+  An arrow is often *drawn* as causal, but a Bayesian Network learned from observational data only captures **associations**. The same joint can be factorized by several different DAGs (a "Markov equivalence class"). Claiming causal direction needs interventions or extra assumptions — that's the realm of causal inference.
+</Callout>
+
+## Common mistakes
+
+1. **Drawing a cycle** — the graph must be a DAG.
+2. **Misreading colliders** — assuming $A \perp C$ still holds *after* observing their common effect. It doesn't (explaining away).
+3. **Over-connecting** — adding arrows "just in case" defeats the purpose; the savings come from *sparsity*.
+
+<Exercise id="bn-factorization" />
+<Exercise id="bn-parameters" />
+<Exercise id="bn-explaining-away" />

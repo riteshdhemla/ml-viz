@@ -1,0 +1,120 @@
+---
+title: "Deep Q-Networks"
+description: "Scaling Q-learning with neural networks — and the two tricks (replay, target net) that made it stable."
+order: 3
+type: concept
+estimatedMinutes: 22
+---
+
+# Deep Q-Networks
+
+Tabular Q-learning dies when the state space is huge — you cannot tabulate every Atari screen. A **Deep Q-Network (DQN)** replaces the Q-table with a neural network $Q(s, a; \theta)$ that *generalizes* across states. DeepMind's 2015 DQN learned to play 49 Atari games from raw pixels at human level using one architecture — the result that launched modern deep RL.
+
+**Real-world examples:** Atari from pixels, game AI, robotics control, resource scheduling, the foundation for Rainbow, Double/Dueling DQN, and beyond.
+
+## From table to function approximator
+
+Instead of storing $Q(s,a)$ in a grid, a network takes the state $s$ as input and outputs a Q-value for **every** action at once:
+
+$$Q(s, \cdot; \theta) : \mathbb{R}^{|s|} \to \mathbb{R}^{|A|}$$
+
+For Atari, $s$ is a stack of 4 game frames, the network is a CNN, and the output is one Q-value per joystick action. Now nearby states share parameters, so the agent generalizes to screens it has never seen — impossible with a table.
+
+<Callout type="tip" title="Intuition">
+  A table memorizes; a network *generalizes*. Two slightly different game screens produce similar features and similar Q-values automatically — the network interpolates. That's the only way to handle state spaces too large to ever visit fully.
+</Callout>
+
+## Training as regression
+
+We turn the Q-learning update into a supervised loss. The target is the same Bellman backup; we minimize the squared TD error:
+
+$$\mathcal{L}(\theta) = \mathbb{E}\Big[\big(\underbrace{r + \gamma \max_{a'} Q(s', a'; \theta^-)}_{\text{target } y} - Q(s, a; \theta)\big)^2\Big]$$
+
+and update $\theta$ by gradient descent. But done naively this is **unstable** — for two deep reasons, each with a fix.
+
+## Problem 1: correlated data → Experience Replay
+
+Consecutive transitions in an episode are highly correlated, and SGD assumes i.i.d. samples. DQN stores transitions $(s, a, r, s')$ in a **replay buffer** and trains on **random minibatches** drawn from it.
+
+```python
+from collections import deque
+import random
+
+replay = deque(maxlen=100_000)
+replay.append((s, a, r, s2, done))          # store every step
+batch = random.sample(replay, 32)           # train on a random, decorrelated batch
+```
+
+Benefits: breaks temporal correlation, and **reuses** each experience many times (sample-efficient).
+
+## Problem 2: a moving target → Target Network
+
+In the loss, the target $y$ depends on the *same* parameters $\theta$ we're updating — chasing a target that moves every step causes oscillation or divergence. DQN keeps a **separate, frozen** copy $\theta^-$ for computing targets, synced to $\theta$ only every $N$ steps:
+
+$$y = r + \gamma \max_{a'} Q(s', a';\, \theta^-) \qquad \theta^- \leftarrow \theta \text{ every } N \text{ steps}$$
+
+<Callout type="info" title="The two pillars of DQN">
+  **Experience replay** decorrelates the data; the **target network** stabilizes the regression target. Remove either and DQN typically diverges. These two tricks are the whole reason deep Q-learning works.
+</Callout>
+
+## The full loop
+
+1. Observe $s$, pick $a$ via $\varepsilon$-greedy on $Q(s,\cdot;\theta)$.
+2. Execute $a$; store $(s, a, r, s', \text{done})$ in the replay buffer.
+3. Sample a random minibatch; compute targets with the **target net** $\theta^-$.
+4. Gradient-descent step on the squared TD error w.r.t. $\theta$.
+5. Every $N$ steps, copy $\theta \to \theta^-$. Decay $\varepsilon$.
+
+```python
+import torch, torch.nn as nn
+
+class QNet(nn.Module):
+    def __init__(self, obs_dim, n_actions):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_dim, 128), nn.ReLU(),
+            nn.Linear(128, 128), nn.ReLU(),
+            nn.Linear(128, n_actions),       # one Q-value per action
+        )
+    def forward(self, x): return self.net(x)
+
+def train_step(q, q_target, batch, optim, gamma=0.99):
+    s, a, r, s2, done = batch                 # tensors
+    q_sa = q(s).gather(1, a.unsqueeze(1)).squeeze(1)
+    with torch.no_grad():                      # target net: no gradient
+        target = r + gamma * q_target(s2).max(1).values * (1 - done)
+    loss = nn.functional.mse_loss(q_sa, target)
+    optim.zero_grad(); loss.backward(); optim.step()
+    return loss.item()
+```
+
+## Double DQN — fixing overestimation
+
+The $\max$ in the target systematically **overestimates** Q-values (it's a max over noisy estimates). **Double DQN** decouples action *selection* from *evaluation*: pick the best next action with the online net $\theta$, but read its value from the target net $\theta^-$:
+
+$$y = r + \gamma\, Q\big(s',\ \arg\max_{a'} Q(s', a'; \theta);\ \theta^-\big)$$
+
+A one-line change that noticeably improves stability and final performance.
+
+## The DQN family
+
+| Variant | Adds | Benefit |
+|---------|------|---------|
+| **Double DQN** | Decoupled selection/evaluation | Less overestimation |
+| **Dueling DQN** | Separate value & advantage streams | Better with many similar-value actions |
+| **Prioritized Replay** | Sample high-error transitions more | Faster learning |
+| **Rainbow** | Combines six improvements | State-of-the-art on Atari |
+
+<Callout type="warning" title="DQN is for discrete actions">
+  The $\max_a$ over outputs requires a **finite, discrete** action set. For continuous actions (robot joint torques) you can't enumerate the max — use policy-gradient / actor-critic methods (next lesson) instead.
+</Callout>
+
+## Common mistakes
+
+1. **No target network** — training the network against its own moving output usually diverges.
+2. **Replay buffer too small** — recent-only data stays correlated; use a large buffer (10⁴–10⁶).
+3. **Forgetting the terminal mask** — at episode end there's no future value; multiply the bootstrap term by $(1-\text{done})$.
+
+<Exercise id="dqn-replay-buffer" />
+<Exercise id="dqn-target-network" />
+<Exercise id="dqn-double" />

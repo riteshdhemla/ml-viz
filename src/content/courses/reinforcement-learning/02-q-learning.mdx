@@ -1,0 +1,118 @@
+---
+title: "Q-Learning"
+description: "Learning optimal action-values from experience alone — temporal difference, off-policy updates, and exploration."
+order: 2
+type: concept
+estimatedMinutes: 24
+---
+
+# Q-Learning
+
+Value iteration needs the full model $P, R$. But agents in the real world don't get a rulebook — they learn by *doing*. **Q-Learning** is the landmark model-free algorithm: it learns the optimal action-value function $Q^*$ from raw experience, with no model of the environment, and provably converges to the optimum.
+
+**Real-world examples:** Game agents, robot navigation, traffic-light control, simple trading bots, the conceptual core of the DQN that cracked Atari.
+
+## Temporal Difference learning
+
+The trick is to turn the Bellman equation into a **learning rule**. After taking action $a$ in state $s$ and observing reward $r$ and next state $s'$, we have a *sample* of the Bellman backup. We nudge our current estimate $Q(s,a)$ toward this sample:
+
+$$Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\underbrace{r + \gamma \max_{a'} Q(s', a')}_{\text{TD target}} - \underbrace{Q(s,a)}_{\text{old estimate}}\Big]$$
+
+The bracket is the **TD error** — the gap between what we predicted and the bootstrapped target. $\alpha$ is the learning rate.
+
+<Callout type="tip" title="Intuition">
+  You guessed a state was worth 10. You act, collect a reward, and land somewhere your *own table* says is worth 15 (discounted). Your guess was too low — bump it up. **Temporal difference** learning means correcting each prediction using the very next prediction, without waiting for the final outcome. You learn during the episode, not just at the end.
+</Callout>
+
+## Why "off-policy"?
+
+Notice the update uses $\max_{a'} Q(s', a')$ — the value of the **best** next action — regardless of which action the agent *actually* takes next. This makes Q-learning **off-policy**: it learns the optimal policy $\pi^*$ while *behaving* with a different, exploratory policy.
+
+| | On-policy (SARSA) | Off-policy (Q-learning) |
+|---|-------------------|-------------------------|
+| Target uses | $Q(s', a')$ — action actually taken | $\max_{a'} Q(s', a')$ — best action |
+| Learns | Value of the behavior policy | Value of the optimal policy |
+| Behavior | More conservative near risk | Learns optimum even while exploring |
+
+## The exploration–exploitation dilemma
+
+To learn good values the agent must **explore** (try unknown actions) yet to score well it must **exploit** (take known-good actions). The standard balance is **$\varepsilon$-greedy**: with probability $\varepsilon$ act randomly, otherwise act greedily.
+
+$$a = \begin{cases} \text{random action} & \text{with prob } \varepsilon \\ \arg\max_a Q(s,a) & \text{with prob } 1-\varepsilon \end{cases}$$
+
+Typically $\varepsilon$ starts high (~1.0, explore a lot) and **decays** toward a small floor (~0.01) as the agent gains confidence.
+
+<Callout type="info" title="Explore early, exploit late">
+  At the start the Q-table is garbage, so exploiting it is pointless — explore widely. As estimates sharpen, shift toward exploitation. Decaying $\varepsilon$ over training implements exactly this schedule.
+</Callout>
+
+## The algorithm
+
+1. Initialize $Q(s,a)$ arbitrarily (e.g. zeros).
+2. For each episode, from the start state, repeat until terminal:
+   - Choose $a$ from $s$ using $\varepsilon$-greedy.
+   - Take $a$; observe $r$, $s'$.
+   - Update $Q(s,a) \leftarrow Q(s,a) + \alpha[r + \gamma \max_{a'} Q(s',a') - Q(s,a)]$.
+   - $s \leftarrow s'$.
+3. Decay $\varepsilon$.
+
+### Worked example — one update
+
+$\alpha = 0.1$, $\gamma = 0.9$. Current $Q(s,a) = 5$. Agent takes $a$, gets $r = 2$, lands in $s'$ where $\max_{a'} Q(s', a') = 10$.
+
+TD target $= 2 + 0.9 \cdot 10 = 11$. TD error $= 11 - 5 = 6$. New $Q(s,a) = 5 + 0.1 \cdot 6 = 5.6$.
+
+```python
+import numpy as np
+import gymnasium as gym
+
+env = gym.make("FrozenLake-v1", is_slippery=False)
+Q = np.zeros((env.observation_space.n, env.action_space.n))
+
+alpha, gamma, episodes = 0.8, 0.95, 2000
+epsilon, eps_min, eps_decay = 1.0, 0.01, 0.999
+
+for ep in range(episodes):
+    s, _ = env.reset()
+    done = False
+    while not done:
+        # ε-greedy action selection
+        if np.random.rand() < epsilon:
+            a = env.action_space.sample()
+        else:
+            a = int(np.argmax(Q[s]))
+
+        s2, r, term, trunc, _ = env.step(a)
+        done = term or trunc
+
+        # Q-learning update (off-policy: uses max over next actions)
+        Q[s, a] += alpha * (r + gamma * np.max(Q[s2]) - Q[s, a])
+        s = s2
+
+    epsilon = max(eps_min, epsilon * eps_decay)
+
+print("Learned Q-table:\n", np.round(Q, 2))
+print("Greedy policy:", np.argmax(Q, axis=1))
+```
+
+## Convergence guarantee
+
+Q-learning **provably converges** to $Q^*$ for any finite MDP, provided every state–action pair is visited infinitely often and the learning rate satisfies the Robbins–Monro conditions ($\sum \alpha = \infty$, $\sum \alpha^2 < \infty$). In practice a small constant or slowly decayed $\alpha$ works fine.
+
+## The wall: big state spaces
+
+The Q-table has one entry per $(s, a)$. That's fine for a 16-cell grid, hopeless for chess ($10^{47}$ states) or Atari (every screen of pixels). A table can't generalize to states it hasn't seen. The fix — replace the table with a neural network that *approximates* $Q$ — is the **Deep Q-Network**, the next lesson.
+
+<Callout type="warning" title="Tabular Q-learning doesn't scale">
+  Tabular Q-learning needs to visit (nearly) every state. Beyond a few thousand states it becomes infeasible — both to store and to explore. Function approximation is mandatory for real problems.
+</Callout>
+
+## Common mistakes
+
+1. **No exploration** — pure greedy from a zero-initialized table gets stuck; always use $\varepsilon$-greedy (or optimistic init).
+2. **Learning rate too high** — $\alpha$ near 1 makes $Q$ thrash on noisy rewards; use a moderate or decaying $\alpha$.
+3. **Confusing SARSA with Q-learning** — SARSA uses the *taken* next action (on-policy); Q-learning uses the *max* (off-policy). They learn different things in risky environments.
+
+<Exercise id="ql-td-update" />
+<Exercise id="ql-off-policy" />
+<Exercise id="ql-exploration" />

@@ -1,0 +1,132 @@
+---
+title: "Markov Decision Processes"
+description: "The formal language of RL — states, actions, rewards, and the Bellman equation that ties them together."
+order: 1
+type: concept
+estimatedMinutes: 24
+---
+
+# Markov Decision Processes
+
+Reinforcement Learning is about an **agent** learning to act in an **environment** to maximize long-term reward — no labeled examples, just trial, error, and a reward signal. The **Markov Decision Process (MDP)** is the mathematical frame that makes this precise. Master the MDP and the Bellman equation, and every RL algorithm becomes a way of solving it.
+
+**Real-world examples:** Game playing (AlphaGo, Atari), robotics, recommendation systems, autonomous driving, resource management, RLHF for tuning language models.
+
+## The five pieces
+
+An MDP is a tuple $(S, A, P, R, \gamma)$:
+
+| Symbol | Name | Meaning |
+|--------|------|---------|
+| $S$ | States | Situations the agent can be in |
+| $A$ | Actions | Choices available |
+| $P(s' \mid s, a)$ | Transition | Probability of next state |
+| $R(s, a)$ | Reward | Immediate payoff |
+| $\gamma \in [0,1)$ | Discount | How much the future matters |
+
+The loop: in state $s_t$, the agent picks action $a_t$, the environment returns reward $r_{t+1}$ and next state $s_{t+1}$. Repeat.
+
+<Callout type="tip" title="Intuition">
+  RL is learning by consequences, like training a dog. No one labels each move "correct." The agent tries actions, gets rewards (treats) or penalties, and gradually discovers a strategy that earns the most reward over time. The hard part: a reward now must be traded off against bigger rewards later.
+</Callout>
+
+## The Markov property
+
+The "Markov" in MDP means the future depends only on the **current state**, not the full history:
+
+$$P(s_{t+1} \mid s_t, a_t) = P(s_{t+1} \mid s_t, a_t, s_{t-1}, a_{t-1}, \dots)$$
+
+The state must capture everything relevant. (A chess board position is Markov; the last *move* alone is not.) This assumption is what makes the recursive Bellman equation valid.
+
+## Return and discounting
+
+The agent maximizes the **return** — cumulative discounted reward, not just the next reward:
+
+$$G_t = r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + \dots = \sum_{k=0}^{\infty} \gamma^k r_{t+k+1}$$
+
+The discount $\gamma$ does two jobs: it keeps the infinite sum finite, and it sets the agent's horizon. $\gamma \to 0$ is myopic (grab the nearest reward); $\gamma \to 1$ is far-sighted (plan for the long game).
+
+<Callout type="info" title="Why discount the future?">
+  A reward today beats the same reward in 100 steps — it's more certain and sooner usable (same logic as interest rates). With $\gamma = 0.9$, a reward 10 steps away is worth $0.9^{10} \approx 0.35$ of an immediate one. Choosing $\gamma$ is choosing how patient the agent is.
+</Callout>
+
+## Policies and value functions
+
+A **policy** $\pi(a \mid s)$ is the agent's strategy — a mapping from states to actions (possibly stochastic). The goal is the **optimal policy** $\pi^*$ that maximizes expected return.
+
+To compare policies we use **value functions**:
+
+- **State value** — expected return from state $s$ under $\pi$:
+$$V^\pi(s) = \mathbb{E}_\pi\!\left[G_t \mid s_t = s\right]$$
+- **Action value (Q)** — expected return from taking $a$ in $s$, then following $\pi$:
+$$Q^\pi(s, a) = \mathbb{E}_\pi\!\left[G_t \mid s_t = s,\, a_t = a\right]$$
+
+$Q$ is the more useful of the two for control: if you know $Q^*$, the optimal action is simply $\arg\max_a Q^*(s,a)$ — no model of the environment needed.
+
+## The Bellman equation
+
+The key insight: value is **recursive**. The value of a state = immediate reward + discounted value of where you land. For a fixed policy:
+
+$$V^\pi(s) = \sum_a \pi(a\mid s)\sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^\pi(s')\big]$$
+
+And the **Bellman optimality equation** — the one $\pi^*$ satisfies — replaces the policy average with a max:
+
+$$V^*(s) = \max_a \sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^*(s')\big]$$
+
+$$Q^*(s,a) = \sum_{s'} P(s'\mid s,a)\Big[R(s,a) + \gamma \max_{a'} Q^*(s',a')\Big]$$
+
+<Callout type="tip" title="The recursion that powers all of RL">
+  "The value of where I am equals the best immediate reward plus the discounted value of where I'll be." Every RL algorithm — value iteration, Q-learning, DQN, actor-critic — is ultimately a way of solving or approximating this Bellman equation.
+</Callout>
+
+### Worked example — value iteration
+
+When $P$ and $R$ are known, **value iteration** just applies the Bellman optimality update until $V$ stops changing:
+
+```python
+import numpy as np
+
+# Tiny MDP: 3 states, 2 actions. Known dynamics.
+P = {  # P[s][a] -> list of (prob, next_state, reward)
+    0: {0: [(1.0, 0, 0)],   1: [(1.0, 1, 0)]},
+    1: {0: [(1.0, 0, 0)],   1: [(1.0, 2, 0)]},
+    2: {0: [(1.0, 2, 1)],   1: [(1.0, 2, 1)]},   # goal state: reward 1
+}
+gamma, n_states, n_actions = 0.9, 3, 2
+V = np.zeros(n_states)
+
+for it in range(100):
+    V_new = np.zeros(n_states)
+    for s in range(n_states):
+        V_new[s] = max(
+            sum(p * (r + gamma * V[s2]) for p, s2, r in P[s][a])
+            for a in range(n_actions)
+        )
+    if np.allclose(V, V_new, atol=1e-6):
+        print(f"converged in {it} iterations"); break
+    V = V_new
+
+print("V* =", np.round(V, 3))
+policy = [int(np.argmax([sum(p*(r+gamma*V[s2]) for p,s2,r in P[s][a])
+                         for a in range(n_actions)])) for s in range(n_states)]
+print("optimal actions:", policy)
+```
+
+## Model-based vs model-free
+
+| | Known $P, R$? | Method | Examples |
+|---|---------------|--------|----------|
+| **Model-based** | Yes | Plan with Bellman directly | Value/policy iteration |
+| **Model-free** | No | Learn from sampled experience | Q-learning, DQN, policy gradient |
+
+In most real problems you **don't** know the transition dynamics — you can only act and observe. That's the model-free setting the rest of this course tackles, starting with Q-learning.
+
+## Common mistakes
+
+1. **A non-Markov state** — if the state omits relevant history, the MDP framing breaks and learning stalls. Engineer the state to be Markov (e.g. stack frames in Atari).
+2. **$\gamma = 1$ in a continuing task** — the return diverges; keep $\gamma < 1$.
+3. **Confusing reward with return** — reward is the immediate signal; return is the discounted *sum*. Agents optimize return.
+
+<Exercise id="mdp-components" />
+<Exercise id="mdp-discount" />
+<Exercise id="mdp-bellman" />

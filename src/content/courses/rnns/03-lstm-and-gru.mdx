@@ -1,0 +1,129 @@
+---
+title: "LSTM & GRU"
+description: "Gated cells that give RNNs long memory — the cell state, the three gates, and the leaner GRU."
+order: 3
+type: concept
+estimatedMinutes: 24
+---
+
+# LSTM & GRU: Gated Memory
+
+The vanishing gradient problem killed long-range learning in vanilla RNNs. The **Long Short-Term Memory (LSTM)** cell, introduced by Hochreiter & Schmidhuber in 1997, fixed it with two ideas: a separate **cell state** that acts as a gradient highway, and **gates** that learn what to remember, forget, and output.
+
+**Real-world examples:** Before Transformers took over (2017+), LSTMs powered Google Translate, Siri/Alexa speech recognition, handwriting recognition, and most time-series forecasting. They remain strong on small datasets and streaming tasks.
+
+## The key innovation: the cell state
+
+An LSTM carries **two** vectors between steps:
+
+- $\mathbf{h}_t$ — the hidden state (the output, the "working memory")
+- $\mathbf{c}_t$ — the **cell state** (the long-term memory)
+
+The cell state is updated almost entirely by **addition**, not repeated matrix multiplication:
+
+$$\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t$$
+
+That additive path is the gradient highway. Because $\partial \mathbf{c}_t / \partial \mathbf{c}_{t-1} \approx \mathbf{f}_t$ (a gate near 1, not a fixed weight matrix), gradients can flow across hundreds of steps without vanishing.
+
+<Callout type="tip" title="Intuition">
+  Think of the cell state as a conveyor belt running straight through the whole sequence. The gates are valves: the forget gate decides what falls off the belt, the input gate decides what new items get placed on it, and the output gate decides what to read off it right now. Information can ride the belt untouched for a long time.
+</Callout>
+
+## The three gates
+
+Each gate is a small sigmoid layer producing values in $(0, 1)$ — think of them as soft switches, where 0 = "block completely" and 1 = "let everything through." All three look at the previous hidden state $\mathbf{h}_{t-1}$ and the current input $\mathbf{x}_t$.
+
+**1. Forget gate** — what to erase from the cell state:
+$$\mathbf{f}_t = \sigma(W_f[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_f)$$
+
+**2. Input gate** — what new information to write:
+$$\mathbf{i}_t = \sigma(W_i[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_i)$$
+$$\tilde{\mathbf{c}}_t = \tanh(W_c[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_c) \quad\text{(candidate values)}$$
+
+**3. Output gate** — what to expose as the hidden state:
+$$\mathbf{o}_t = \sigma(W_o[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_o)$$
+
+And the state updates:
+$$\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t \qquad \mathbf{h}_t = \mathbf{o}_t \odot \tanh(\mathbf{c}_t)$$
+
+($\odot$ is element-wise multiplication; $[\cdot,\cdot]$ is concatenation.)
+
+| Gate | Question it answers | Output ≈ 0 | Output ≈ 1 |
+|------|--------------------|------------|------------|
+| Forget $\mathbf{f}_t$ | Keep old memory? | erase it | keep it |
+| Input $\mathbf{i}_t$ | Store new info? | ignore input | write it |
+| Output $\mathbf{o}_t$ | Reveal memory now? | stay silent | expose it |
+
+### Worked example — the forget gate in action
+
+Imagine a single cell tracking grammatical subject *number* (singular vs plural) while reading "The **keys** to the cabinet ...". At the word "keys" the input gate writes "plural" to the cell. As irrelevant words ("to", "the", "cabinet") stream past, the forget gate stays near 1 — **preserving** "plural" — so that many steps later the model conjugates "**are** on the table," not "is." A vanilla RNN would have forgotten the subject by then.
+
+```python
+import numpy as np
+
+def sigmoid(z): return 1 / (1 + np.exp(-z))
+
+# One LSTM step, fully spelled out
+def lstm_step(x, h, c, params):
+    z = np.concatenate([h, x])
+    f = sigmoid(params['Wf'] @ z + params['bf'])     # forget
+    i = sigmoid(params['Wi'] @ z + params['bi'])     # input
+    c_tilde = np.tanh(params['Wc'] @ z + params['bc'])  # candidate
+    o = sigmoid(params['Wo'] @ z + params['bo'])     # output
+    c = f * c + i * c_tilde                           # update cell (additive!)
+    h = o * np.tanh(c)                                # update hidden
+    return h, c
+```
+
+## Using PyTorch's LSTM
+
+```python
+import torch
+import torch.nn as nn
+
+lstm = nn.LSTM(input_size=10, hidden_size=20, num_layers=2, batch_first=True)
+x = torch.randn(4, 15, 10)                # (batch, seq_len, features)
+output, (h_n, c_n) = lstm(x)
+
+print(output.shape)   # (4, 15, 20) — hidden state per step
+print(h_n.shape)      # (2, 4, 20) — final hidden, per layer
+print(c_n.shape)      # (2, 4, 20) — final cell state, per layer
+```
+
+## GRU: the leaner cousin
+
+The **Gated Recurrent Unit (GRU)** (Cho et al., 2014) merges the cell and hidden state into one and uses just **two** gates — a **reset** gate $\mathbf{r}_t$ and an **update** gate $\mathbf{z}_t$:
+
+$$\mathbf{z}_t = \sigma(W_z[\mathbf{h}_{t-1}, \mathbf{x}_t]) \qquad \mathbf{r}_t = \sigma(W_r[\mathbf{h}_{t-1}, \mathbf{x}_t])$$
+$$\tilde{\mathbf{h}}_t = \tanh(W_h[\mathbf{r}_t \odot \mathbf{h}_{t-1}, \mathbf{x}_t])$$
+$$\mathbf{h}_t = (1 - \mathbf{z}_t)\odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t$$
+
+The update gate $\mathbf{z}_t$ does the job of the LSTM's forget *and* input gates at once: it interpolates between keeping the old state and writing the new candidate.
+
+| | LSTM | GRU |
+|---|------|-----|
+| Gates | 3 (forget, input, output) | 2 (reset, update) |
+| State vectors | 2 ($\mathbf{h}$ and $\mathbf{c}$) | 1 ($\mathbf{h}$) |
+| Parameters | More | ~25% fewer |
+| Speed | Slower | Faster |
+| Typical edge | Long, complex sequences | Smaller data, faster training |
+
+<Callout type="info" title="Which should I use?">
+  There is no universal winner — they perform comparably on most tasks. Start with a **GRU** (fewer parameters, faster, less prone to overfit on small data). Switch to **LSTM** if you have lots of data and very long dependencies. Try both and let validation loss decide.
+</Callout>
+
+## Why gates beat plain RNNs
+
+<Callout type="success" title="The gradient highway">
+  The additive cell update $\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \dots$ means the gradient flowing back through the cell state is multiplied by the forget gate (often ≈ 1), **not** by a weight matrix raised to a power. That is precisely what lets LSTMs and GRUs learn dependencies hundreds of steps long where a vanilla RNN tops out around 10–20.
+</Callout>
+
+## Common mistakes
+
+1. **Initializing the forget-gate bias to 0** — set $\mathbf{b}_f$ to **+1 or +2** so the cell defaults to *remembering* early in training. This is a well-known practical trick.
+2. **Stacking too many layers** on small data — 1–2 layers is usually enough; more overfits.
+3. **Reaching for an LSTM when attention is better** — for long documents, Transformers (next course) generally beat any RNN. LSTMs shine on small data and streaming.
+
+<Exercise id="lstm-forget-gate" />
+<Exercise id="lstm-cell-state" />
+<Exercise id="gru-vs-lstm" />

@@ -1,0 +1,119 @@
+---
+title: "Multi-Head Attention & Positional Encoding"
+description: "Many attention heads in parallel, and how a permutation-invariant model learns word order."
+order: 2
+type: concept
+estimatedMinutes: 22
+---
+
+# Multi-Head Attention & Positional Encoding
+
+A single attention head learns *one* notion of relevance. But language has many simultaneous relationships — syntax, coreference, tense, topic. **Multi-head attention** runs several attention computations in parallel so the model can attend to different things at once. And because attention has no built-in sense of order, we inject position explicitly with **positional encodings**.
+
+## One head sees one thing
+
+A single self-attention head produces one set of attention weights — one "view" of how tokens relate. Forcing every relationship through one head is limiting: the head that tracks "which adjective modifies which noun" is not the head that tracks "which pronoun refers to which subject."
+
+<Callout type="tip" title="Intuition">
+  Think of multi-head attention as a committee of specialists reading the same sentence. One head watches subject–verb agreement, another tracks pronoun references, another follows the topic. Each reports back, and the model combines their findings into a richer representation than any single reader could produce.
+</Callout>
+
+## Multi-head attention
+
+Split the model dimension $d_{\text{model}}$ across $h$ heads, each of size $d_k = d_{\text{model}}/h$. Each head has its **own** $W_Q^{(i)}, W_K^{(i)}, W_V^{(i)}$, runs scaled dot-product attention independently, then all heads are concatenated and mixed by an output matrix $W_O$:
+
+$$\text{head}_i = \text{Attention}(QW_Q^{(i)},\, KW_K^{(i)},\, VW_V^{(i)})$$
+
+$$\text{MultiHead}(Q,K,V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)\,W_O$$
+
+Note the cost is roughly the same as one full-size head: each head is $1/h$ as wide, so total compute is unchanged — you get diversity for free.
+
+### Worked example — dimensions
+
+GPT-style block: $d_{\text{model}} = 512$, $h = 8$ heads. Then each head uses $d_k = 512/8 = 64$. Eight heads each output a 64-dim vector; concatenating gives $8 \times 64 = 512$, back to $d_{\text{model}}$. $W_O$ is $512 \times 512$.
+
+```python
+import torch
+import torch.nn as nn
+
+mha = nn.MultiheadAttention(embed_dim=512, num_heads=8, batch_first=True)
+x = torch.randn(2, 10, 512)                       # (batch, seq, d_model)
+out, attn_weights = mha(x, x, x)                  # self-attention: Q=K=V=x
+
+print(out.shape)            # (2, 10, 512)
+print(attn_weights.shape)   # (2, 10, 10) — averaged over heads
+```
+
+```python
+# From scratch, to see the reshape into heads:
+def multi_head_attention(X, Wq, Wk, Wv, Wo, num_heads):
+    B, T, D = X.shape
+    d_k = D // num_heads
+    Q = (X @ Wq).view(B, T, num_heads, d_k).transpose(1, 2)   # (B, h, T, d_k)
+    K = (X @ Wk).view(B, T, num_heads, d_k).transpose(1, 2)
+    V = (X @ Wv).view(B, T, num_heads, d_k).transpose(1, 2)
+    scores = (Q @ K.transpose(-2, -1)) / d_k**0.5
+    attn = scores.softmax(dim=-1)
+    out = (attn @ V).transpose(1, 2).reshape(B, T, D)          # concat heads
+    return out @ Wo
+```
+
+<Callout type="info" title="What heads actually learn">
+  Probing trained models shows specialized heads: some attend to the previous token, some to the syntactic head of a phrase, some to rare/important words. Not every head is useful — many can be pruned after training with little accuracy loss.
+</Callout>
+
+## The order problem
+
+Self-attention is **permutation-invariant**: shuffle the input tokens and the set of outputs is just shuffled the same way — the *values* are unchanged. The formula $\text{softmax}(QK^\top/\sqrt{d_k})V$ contains no notion of position. But "dog bites man" ≠ "man bites dog." We must inject order information.
+
+## Positional encoding
+
+The original Transformer adds a fixed **sinusoidal** vector to each token embedding, where each dimension oscillates at a different frequency:
+
+$$PE_{(pos,\,2i)} = \sin\!\left(\frac{pos}{10000^{2i/d}}\right) \qquad PE_{(pos,\,2i+1)} = \cos\!\left(\frac{pos}{10000^{2i/d}}\right)$$
+
+- $pos$ — position in the sequence (0, 1, 2, …)
+- $i$ — dimension index, giving wavelengths from $2\pi$ up to $\sim\!10000\cdot 2\pi$
+
+Why sinusoids? Low frequencies encode coarse position, high frequencies encode fine position — like the hands of a clock. And because $\sin/\cos$ have addition identities, a fixed offset $k$ can be written as a linear function of the encoding at $pos$, letting the model learn **relative** positions easily. It also **extrapolates** to sequence lengths longer than seen in training.
+
+```python
+import numpy as np
+
+def positional_encoding(seq_len, d_model):
+    pos = np.arange(seq_len)[:, None]
+    i = np.arange(d_model)[None, :]
+    angle = pos / np.power(10000, (2 * (i // 2)) / d_model)
+    pe = np.zeros((seq_len, d_model))
+    pe[:, 0::2] = np.sin(angle[:, 0::2])
+    pe[:, 1::2] = np.cos(angle[:, 1::2])
+    return pe
+
+pe = positional_encoding(50, 128)
+print(pe.shape)             # (50, 128) — added directly to token embeddings
+```
+
+## Learned and rotary alternatives
+
+| Method | How | Used by |
+|--------|-----|---------|
+| **Sinusoidal** | Fixed sin/cos | Original Transformer |
+| **Learned absolute** | Trainable position embeddings | BERT, GPT-2 |
+| **RoPE (rotary)** | Rotate Q/K by position-dependent angle | LLaMA, most modern LLMs |
+| **ALiBi** | Bias attention scores by distance | Some long-context models |
+
+Modern LLMs mostly use **RoPE**, which encodes *relative* position directly inside the attention dot product and extrapolates better to long contexts.
+
+<Callout type="warning" title="Don't skip positional information">
+  Without positional encoding a Transformer is a bag-of-words — it literally cannot tell "dog bites man" from "man bites dog." This is the most common bug when implementing a Transformer from scratch.
+</Callout>
+
+## Common mistakes
+
+1. **Heads that don't divide the dimension** — $d_{\text{model}}$ must be divisible by $h$ (e.g. 512/8 = 64). Otherwise the reshape fails.
+2. **Forgetting positional encoding** — silently turns the model into a permutation-invariant bag-of-words.
+3. **Adding vs concatenating PE** — sinusoidal/learned PE is *added* to embeddings (same dimension), not concatenated.
+
+<Exercise id="multihead-dimensions" />
+<Exercise id="positional-encoding-purpose" />
+<Exercise id="attention-permutation" />

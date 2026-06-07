@@ -1101,6 +1101,599 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It uses a different loss function", isCorrect: false },
     ],
   },
+
+  // ── Recurrent Neural Networks ───────────────────────────────────
+  {
+    id: "rnn-hidden-state",
+    type: "multiple-choice",
+    question:
+      "What role does the hidden state h_t play in a recurrent neural network?",
+    hint: "Think about what gets passed from one time step to the next.",
+    explanation:
+      "The hidden state is the RNN's memory — a running summary of everything seen so far. It is passed from step to step, letting earlier inputs influence later outputs.",
+    options: [
+      { id: "a", label: "It stores the network's final prediction only", isCorrect: false },
+      { id: "b", label: "It summarizes all past inputs and is passed to the next step", isCorrect: true },
+      { id: "c", label: "It holds the learning rate for each step", isCorrect: false },
+      { id: "d", label: "It is the raw input at the current time step", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-weight-sharing",
+    type: "multiple-choice",
+    question:
+      "Why can an RNN process sequences of any length with a fixed number of parameters?",
+    hint: "Consider what is reused at every time step.",
+    explanation:
+      "The same weight matrices (W_xh, W_hh, W_hy) are applied at every time step. This parameter sharing means the parameter count is independent of sequence length, and a pattern learned at one position transfers to all positions.",
+    options: [
+      { id: "a", label: "It adds new weights for each new time step", isCorrect: false },
+      { id: "b", label: "It shares the same weights across all time steps", isCorrect: true },
+      { id: "c", label: "It pads every sequence to a fixed length", isCorrect: false },
+      { id: "d", label: "It only keeps the last input", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-sequence-types",
+    type: "multiple-choice",
+    question:
+      "Classifying the sentiment of a product review (a sequence of words) into one label is which RNN pattern?",
+    hint: "Count the inputs and outputs.",
+    explanation:
+      "Many words in, one label out — this is a many-to-one pattern. The final hidden state h_n is typically fed to a classifier.",
+    options: [
+      { id: "a", label: "one-to-many", isCorrect: false },
+      { id: "b", label: "many-to-one", isCorrect: true },
+      { id: "c", label: "many-to-many (aligned)", isCorrect: false },
+      { id: "d", label: "one-to-one", isCorrect: false },
+    ],
+  },
+  {
+    id: "bptt-gradient-product",
+    type: "multiple-choice",
+    question:
+      "In BPTT, the gradient across a gap of T−k steps is a product of T−k Jacobians. If each factor has magnitude ~0.7, what happens over 20 steps?",
+    hint: "Compute 0.7 raised to the 20th power.",
+    explanation:
+      "0.7^20 ≈ 0.0008 — the gradient shrinks to less than 0.1% of its original size. This is the vanishing gradient: distant steps receive almost no learning signal.",
+    options: [
+      { id: "a", label: "It grows large (exploding gradient)", isCorrect: false },
+      { id: "b", label: "It stays roughly constant", isCorrect: false },
+      { id: "c", label: "It shrinks to nearly zero (vanishing gradient)", isCorrect: true },
+      { id: "d", label: "It oscillates between large and small", isCorrect: false },
+    ],
+  },
+  {
+    id: "vanishing-gradient-cause",
+    type: "multiple-choice",
+    question:
+      "What is the root cause of the vanishing gradient problem in vanilla RNNs?",
+    hint: "Think about what happens when you multiply many similar matrices together.",
+    explanation:
+      "BPTT multiplies one Jacobian per time step. If the recurrent weight's effective gain is below 1, repeated multiplication shrinks the gradient exponentially with the gap length. The tanh derivative (≤ 1) makes it worse.",
+    options: [
+      { id: "a", label: "Too large a learning rate", isCorrect: false },
+      { id: "b", label: "Repeated multiplication by factors with magnitude < 1 across steps", isCorrect: true },
+      { id: "c", label: "Using too few hidden units", isCorrect: false },
+      { id: "d", label: "Not enough training data", isCorrect: false },
+    ],
+  },
+  {
+    id: "gradient-clipping-purpose",
+    type: "multiple-choice",
+    question:
+      "Gradient clipping addresses which problem in training RNNs?",
+    hint: "It rescales gradients that are too large.",
+    explanation:
+      "Clipping rescales an over-large gradient back to a safe norm, preventing exploding gradients and NaNs. It does nothing for vanishing gradients — you cannot rescale a signal that has already decayed to zero.",
+    options: [
+      { id: "a", label: "Vanishing gradients", isCorrect: false },
+      { id: "b", label: "Exploding gradients", isCorrect: true },
+      { id: "c", label: "Overfitting", isCorrect: false },
+      { id: "d", label: "Slow convergence on short sequences", isCorrect: false },
+    ],
+  },
+  {
+    id: "lstm-forget-gate",
+    type: "multiple-choice",
+    question:
+      "In an LSTM, what does a forget gate value near 1 do to the cell state?",
+    hint: "The forget gate multiplies the previous cell state.",
+    explanation:
+      "c_t = f_t ⊙ c_{t-1} + i_t ⊙ c̃_t. A forget gate near 1 preserves the previous cell state (keeps the memory); near 0 it erases it.",
+    options: [
+      { id: "a", label: "Erases the previous memory", isCorrect: false },
+      { id: "b", label: "Preserves the previous memory", isCorrect: true },
+      { id: "c", label: "Doubles the cell state", isCorrect: false },
+      { id: "d", label: "Resets the hidden state to zero", isCorrect: false },
+    ],
+  },
+  {
+    id: "lstm-cell-state",
+    type: "multiple-choice",
+    question:
+      "Why does the LSTM cell state help with the vanishing gradient problem?",
+    hint: "Look at how the cell state is updated — by addition or by matrix multiplication?",
+    explanation:
+      "The cell state is updated mainly by addition (c_t = f_t ⊙ c_{t-1} + i_t ⊙ c̃_t). Its gradient is multiplied by the forget gate (often ≈ 1), not by a weight matrix raised to a power — creating a gradient 'highway' that survives many steps.",
+    options: [
+      { id: "a", label: "It uses a larger learning rate", isCorrect: false },
+      { id: "b", label: "Its additive update gives gradients a near-constant path across steps", isCorrect: true },
+      { id: "c", label: "It removes the tanh nonlinearity", isCorrect: false },
+      { id: "d", label: "It only keeps the most recent input", isCorrect: false },
+    ],
+  },
+  {
+    id: "gru-vs-lstm",
+    type: "multiple-choice",
+    question:
+      "How does a GRU differ from an LSTM?",
+    hint: "Compare the number of gates and state vectors.",
+    explanation:
+      "A GRU merges the cell and hidden state into one and uses two gates (reset, update) instead of three. It has ~25% fewer parameters and trains faster, performing comparably on most tasks.",
+    options: [
+      { id: "a", label: "A GRU has more gates than an LSTM", isCorrect: false },
+      { id: "b", label: "A GRU uses two gates and a single state vector", isCorrect: true },
+      { id: "c", label: "A GRU has no gates at all", isCorrect: false },
+      { id: "d", label: "A GRU cannot model long-range dependencies", isCorrect: false },
+    ],
+  },
+
+  // ── Attention & Transformers ────────────────────────────────────
+  {
+    id: "attention-qkv",
+    type: "multiple-choice",
+    question:
+      "In self-attention, which vector represents 'what a token is looking for'?",
+    hint: "Query, Key, or Value?",
+    explanation:
+      "The Query asks 'what am I looking for?'. It is compared against every Key ('what do I offer?') to score relevance, and the scores weight the Values that get summed.",
+    options: [
+      { id: "a", label: "Query", isCorrect: true },
+      { id: "b", label: "Key", isCorrect: false },
+      { id: "c", label: "Value", isCorrect: false },
+      { id: "d", label: "Positional encoding", isCorrect: false },
+    ],
+  },
+  {
+    id: "attention-scale",
+    type: "multiple-choice",
+    question:
+      "Why does scaled dot-product attention divide the scores by √d_k?",
+    hint: "Think about how the variance of a dot product grows with dimension.",
+    explanation:
+      "The dot product of two d_k-dimensional vectors has variance proportional to d_k. Without scaling, large scores push softmax into saturated regions with near-zero gradients. Dividing by √d_k keeps variance ≈ 1 and softmax well-behaved.",
+    options: [
+      { id: "a", label: "To make the output sum to one", isCorrect: false },
+      { id: "b", label: "To keep score variance stable so softmax gradients don't vanish", isCorrect: true },
+      { id: "c", label: "To reduce the number of parameters", isCorrect: false },
+      { id: "d", label: "To enforce the causal mask", isCorrect: false },
+    ],
+  },
+  {
+    id: "attention-complexity",
+    type: "multiple-choice",
+    question:
+      "What is the computational complexity of self-attention in sequence length n?",
+    hint: "Every token attends to every other token.",
+    explanation:
+      "Self-attention computes an n×n matrix of scores (every token vs every token), so it is O(n²) in sequence length. This quadratic cost is the main bottleneck for long sequences.",
+    options: [
+      { id: "a", label: "O(n)", isCorrect: false },
+      { id: "b", label: "O(n log n)", isCorrect: false },
+      { id: "c", label: "O(n²)", isCorrect: true },
+      { id: "d", label: "O(1)", isCorrect: false },
+    ],
+  },
+  {
+    id: "multihead-dimensions",
+    type: "multiple-choice",
+    question:
+      "A Transformer has d_model = 512 and 8 attention heads. What is the dimension d_k of each head?",
+    hint: "Split the model dimension evenly across heads.",
+    explanation:
+      "Each head uses d_k = d_model / h = 512 / 8 = 64. The 8 heads each output 64 dims; concatenating gives 8 × 64 = 512, back to d_model.",
+    options: [
+      { id: "a", label: "512", isCorrect: false },
+      { id: "b", label: "64", isCorrect: true },
+      { id: "c", label: "8", isCorrect: false },
+      { id: "d", label: "4096", isCorrect: false },
+    ],
+  },
+  {
+    id: "positional-encoding-purpose",
+    type: "multiple-choice",
+    question:
+      "Why do Transformers need positional encoding?",
+    hint: "What happens to the attention output if you shuffle the input tokens?",
+    explanation:
+      "Self-attention is permutation-invariant — without position information it cannot tell 'dog bites man' from 'man bites dog'. Positional encoding injects order so the model can use word position.",
+    options: [
+      { id: "a", label: "To normalize the embeddings", isCorrect: false },
+      { id: "b", label: "Because attention has no built-in sense of token order", isCorrect: true },
+      { id: "c", label: "To reduce the number of heads needed", isCorrect: false },
+      { id: "d", label: "To prevent overfitting", isCorrect: false },
+    ],
+  },
+  {
+    id: "attention-permutation",
+    type: "multiple-choice",
+    question:
+      "Without positional encoding, a Transformer effectively treats the input as what?",
+    hint: "Order doesn't matter to it.",
+    explanation:
+      "Self-attention with no positional information is permutation-invariant, so the model becomes a bag-of-words — it sees which tokens are present but not their order.",
+    options: [
+      { id: "a", label: "A bag of words (order-independent)", isCorrect: true },
+      { id: "b", label: "A strict left-to-right sequence", isCorrect: false },
+      { id: "c", label: "A single averaged vector", isCorrect: false },
+      { id: "d", label: "An image", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-ffn",
+    type: "multiple-choice",
+    question:
+      "In a Transformer block, the position-wise feed-forward network (FFN) operates how?",
+    hint: "Does it mix information between tokens or process each one alone?",
+    explanation:
+      "The FFN is applied to each position independently (same weights per token), doing per-token computation. Attention mixes information between tokens; the FFN processes each token on its own.",
+    options: [
+      { id: "a", label: "It mixes information across all tokens", isCorrect: false },
+      { id: "b", label: "It transforms each token independently", isCorrect: true },
+      { id: "c", label: "It computes attention weights", isCorrect: false },
+      { id: "d", label: "It applies the causal mask", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-residual",
+    type: "multiple-choice",
+    question:
+      "Why are residual connections important in deep Transformer stacks?",
+    hint: "Think about how gradients reach early layers.",
+    explanation:
+      "Residual connections (x + sublayer(x)) give gradients a direct path to early layers, making it possible to train networks dozens of layers deep — the same trick that made ResNets work.",
+    options: [
+      { id: "a", label: "They reduce the vocabulary size", isCorrect: false },
+      { id: "b", label: "They give gradients a direct path, enabling very deep stacks", isCorrect: true },
+      { id: "c", label: "They replace the need for attention", isCorrect: false },
+      { id: "d", label: "They enforce permutation invariance", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-families",
+    type: "multiple-choice",
+    question:
+      "GPT-style language models use which Transformer family?",
+    hint: "They generate text one token at a time and must not see the future.",
+    explanation:
+      "GPT is decoder-only with causal (masked) attention — each position attends only to past tokens, which is what enables autoregressive generation. BERT is encoder-only (bidirectional); T5 is encoder-decoder.",
+    options: [
+      { id: "a", label: "Encoder-only (bidirectional)", isCorrect: false },
+      { id: "b", label: "Decoder-only (causal)", isCorrect: true },
+      { id: "c", label: "Encoder-decoder", isCorrect: false },
+      { id: "d", label: "None — GPT is not a Transformer", isCorrect: false },
+    ],
+  },
+
+  // ── Graphical Models ────────────────────────────────────────────
+  {
+    id: "bn-factorization",
+    type: "multiple-choice",
+    question:
+      "A Bayesian Network factorizes the joint distribution as a product of what?",
+    hint: "Each variable depends on a specific set of other variables.",
+    explanation:
+      "P(X₁,...,Xₙ) = ∏ P(Xᵢ | Parents(Xᵢ)). Each variable is conditioned on its parents in the DAG, which exploits conditional independence to shrink the parameter count.",
+    options: [
+      { id: "a", label: "Marginal distributions of each variable", isCorrect: false },
+      { id: "b", label: "Conditional distributions of each variable given its parents", isCorrect: true },
+      { id: "c", label: "Unnormalized potential functions", isCorrect: false },
+      { id: "d", label: "Pairwise correlations", isCorrect: false },
+    ],
+  },
+  {
+    id: "bn-parameters",
+    type: "multiple-choice",
+    question:
+      "For 4 binary variables, the full joint needs 15 parameters. Why does a Bayesian Network usually need fewer?",
+    hint: "Each CPT only depends on a node's parents, not all other variables.",
+    explanation:
+      "By conditioning each variable only on its parents (not all others), the network replaces one exponential table with several small CPTs. In the Sprinkler example this drops 15 parameters to 9 — and the savings grow with network size.",
+    options: [
+      { id: "a", label: "It ignores some variables entirely", isCorrect: false },
+      { id: "b", label: "Conditional independence lets each node store only a small CPT over its parents", isCorrect: true },
+      { id: "c", label: "It rounds probabilities to fewer digits", isCorrect: false },
+      { id: "d", label: "It uses undirected edges", isCorrect: false },
+    ],
+  },
+  {
+    id: "bn-explaining-away",
+    type: "multiple-choice",
+    question:
+      "In a collider A → B ← C, what happens to A and C once you observe their common effect B?",
+    hint: "This is the 'explaining away' phenomenon.",
+    explanation:
+      "A and C are marginally independent, but observing the common effect B makes them dependent. Learning that one cause occurred lowers the probability of the other — they 'explain away' the observed effect.",
+    options: [
+      { id: "a", label: "They become independent", isCorrect: false },
+      { id: "b", label: "They become dependent (explaining away)", isCorrect: true },
+      { id: "c", label: "Nothing changes", isCorrect: false },
+      { id: "d", label: "Both become impossible", isCorrect: false },
+    ],
+  },
+  {
+    id: "mrf-partition-function",
+    type: "multiple-choice",
+    question:
+      "What makes the partition function Z hard to compute in a Markov Random Field?",
+    hint: "Think about how many joint configurations it sums over.",
+    explanation:
+      "Z sums the product of potentials over all joint configurations — 2ⁿ of them for n binary nodes — making it exponential in general. This is why MRF learning and inference rely on approximations.",
+    options: [
+      { id: "a", label: "It requires matrix inversion", isCorrect: false },
+      { id: "b", label: "It sums over exponentially many joint configurations", isCorrect: true },
+      { id: "c", label: "It needs the graph to be directed", isCorrect: false },
+      { id: "d", label: "It depends on the learning rate", isCorrect: false },
+    ],
+  },
+  {
+    id: "mrf-vs-bn",
+    type: "multiple-choice",
+    question:
+      "When is a Markov Random Field (undirected) a more natural choice than a Bayesian Network (directed)?",
+    hint: "Think about symmetric vs causal relationships.",
+    explanation:
+      "MRFs suit symmetric, non-causal relationships — like neighboring pixels that mutually influence each other — where there is no natural arrow direction. Bayesian Networks suit causal/generative stories.",
+    options: [
+      { id: "a", label: "When relationships are symmetric with no natural causal direction", isCorrect: true },
+      { id: "b", label: "When you need a clear cause-and-effect story", isCorrect: false },
+      { id: "c", label: "When the graph must be acyclic", isCorrect: false },
+      { id: "d", label: "When there is only one variable", isCorrect: false },
+    ],
+  },
+  {
+    id: "mrf-potentials",
+    type: "multiple-choice",
+    question:
+      "How do MRF potential functions ψ differ from the conditional probability tables in a Bayesian Network?",
+    hint: "Are potentials required to be valid probabilities?",
+    explanation:
+      "Potentials are non-negative compatibility scores — they need NOT be normalized probabilities. Only the product of potentials divided by the partition function Z forms a valid distribution.",
+    options: [
+      { id: "a", label: "Potentials are always valid probabilities", isCorrect: false },
+      { id: "b", label: "Potentials are unnormalized scores; normalization comes from Z", isCorrect: true },
+      { id: "c", label: "Potentials must sum to one per node", isCorrect: false },
+      { id: "d", label: "Potentials are always negative", isCorrect: false },
+    ],
+  },
+  {
+    id: "hmm-assumptions",
+    type: "multiple-choice",
+    question:
+      "Which two assumptions define a Hidden Markov Model?",
+    hint: "One is about hidden states, one about observations.",
+    explanation:
+      "(1) Markov property: the next hidden state depends only on the current one. (2) Output independence: each observation depends only on the current hidden state.",
+    options: [
+      { id: "a", label: "States are observed; observations are hidden", isCorrect: false },
+      { id: "b", label: "Markov property on hidden states + observation depends only on current state", isCorrect: true },
+      { id: "c", label: "All states are independent and identically distributed", isCorrect: false },
+      { id: "d", label: "The graph must be undirected", isCorrect: false },
+    ],
+  },
+  {
+    id: "hmm-forward-viterbi",
+    type: "multiple-choice",
+    question:
+      "What is the key difference between the Forward algorithm and the Viterbi algorithm for HMMs?",
+    hint: "One sums over paths, the other maximizes.",
+    explanation:
+      "They are the same recursion with one operator swapped: Forward SUMS over hidden paths (total likelihood of the evidence), while Viterbi takes the MAX (the single most likely hidden path).",
+    options: [
+      { id: "a", label: "Forward maximizes, Viterbi sums", isCorrect: false },
+      { id: "b", label: "Forward sums over paths (likelihood); Viterbi maximizes (best path)", isCorrect: true },
+      { id: "c", label: "They compute exactly the same thing", isCorrect: false },
+      { id: "d", label: "Forward is for learning, Viterbi for transitions", isCorrect: false },
+    ],
+  },
+  {
+    id: "hmm-baum-welch",
+    type: "multiple-choice",
+    question:
+      "The Baum-Welch algorithm for learning HMM parameters is an instance of which general algorithm?",
+    hint: "It alternates an E-step and an M-step.",
+    explanation:
+      "Baum-Welch is an instance of Expectation-Maximization (EM). The E-step uses forward-backward to compute expected state/transition counts; the M-step re-estimates π, A, B. It converges to a local optimum.",
+    options: [
+      { id: "a", label: "Gradient descent", isCorrect: false },
+      { id: "b", label: "Expectation-Maximization (EM)", isCorrect: true },
+      { id: "c", label: "Value iteration", isCorrect: false },
+      { id: "d", label: "K-Means", isCorrect: false },
+    ],
+  },
+
+  // ── Reinforcement Learning ──────────────────────────────────────
+  {
+    id: "mdp-components",
+    type: "multiple-choice",
+    question:
+      "Which of these is NOT one of the five components of a Markov Decision Process?",
+    hint: "The five are states, actions, transitions, rewards, and discount.",
+    explanation:
+      "An MDP is (S, A, P, R, γ): states, actions, transition probabilities, reward function, and discount factor. A 'loss function' is not part of the MDP definition.",
+    options: [
+      { id: "a", label: "Transition probabilities P(s'|s,a)", isCorrect: false },
+      { id: "b", label: "Reward function R(s,a)", isCorrect: false },
+      { id: "c", label: "A loss function", isCorrect: true },
+      { id: "d", label: "Discount factor γ", isCorrect: false },
+    ],
+  },
+  {
+    id: "mdp-discount",
+    type: "multiple-choice",
+    question:
+      "With discount factor γ = 0.9, what is a reward received 10 steps in the future worth relative to an immediate one?",
+    hint: "Compute 0.9 raised to the 10th power.",
+    explanation:
+      "γ^10 = 0.9^10 ≈ 0.35. A reward 10 steps away is worth about 35% of an immediate reward. Lower γ makes the agent more myopic.",
+    options: [
+      { id: "a", label: "About 0.35×", isCorrect: true },
+      { id: "b", label: "About 0.9×", isCorrect: false },
+      { id: "c", label: "About 9×", isCorrect: false },
+      { id: "d", label: "Exactly 1× (undiscounted)", isCorrect: false },
+    ],
+  },
+  {
+    id: "mdp-bellman",
+    type: "multiple-choice",
+    question:
+      "The Bellman optimality equation expresses the value of a state as what?",
+    hint: "Immediate reward plus something about the future.",
+    explanation:
+      "V*(s) = max over actions of [immediate reward + γ × expected value of the next state]. Value is recursive: the best you can do now plus the discounted value of where you land.",
+    options: [
+      { id: "a", label: "The sum of all past rewards", isCorrect: false },
+      { id: "b", label: "Best immediate reward plus discounted value of the next state", isCorrect: true },
+      { id: "c", label: "The average reward across all states", isCorrect: false },
+      { id: "d", label: "The number of actions available", isCorrect: false },
+    ],
+  },
+  {
+    id: "ql-td-update",
+    type: "multiple-choice",
+    question:
+      "With α=0.1, γ=0.9, current Q(s,a)=5, reward r=2, and max Q(s',·)=10, what is the updated Q(s,a)?",
+    hint: "TD target = r + γ·max Q(s'); new Q = old + α·(target − old).",
+    explanation:
+      "TD target = 2 + 0.9×10 = 11. TD error = 11 − 5 = 6. New Q = 5 + 0.1×6 = 5.6.",
+    options: [
+      { id: "a", label: "5.6", isCorrect: true },
+      { id: "b", label: "11.0", isCorrect: false },
+      { id: "c", label: "6.0", isCorrect: false },
+      { id: "d", label: "5.0", isCorrect: false },
+    ],
+  },
+  {
+    id: "ql-off-policy",
+    type: "multiple-choice",
+    question:
+      "Why is Q-learning called 'off-policy'?",
+    hint: "Look at which next action the update's target uses.",
+    explanation:
+      "The update target uses max_a' Q(s',a') — the value of the BEST next action — regardless of the (possibly exploratory) action the agent actually takes. So it learns the optimal policy while behaving with a different one.",
+    options: [
+      { id: "a", label: "It never explores", isCorrect: false },
+      { id: "b", label: "Its target uses the best next action, not the one actually taken", isCorrect: true },
+      { id: "c", label: "It requires a model of the environment", isCorrect: false },
+      { id: "d", label: "It only works offline from logged data", isCorrect: false },
+    ],
+  },
+  {
+    id: "ql-exploration",
+    type: "multiple-choice",
+    question:
+      "In ε-greedy exploration, why is ε typically decayed over training?",
+    hint: "How good is the Q-table at the start vs later?",
+    explanation:
+      "Early on the Q estimates are poor, so the agent should explore widely (high ε). As estimates improve, it should increasingly exploit known-good actions (low ε). Decaying ε implements this schedule.",
+    options: [
+      { id: "a", label: "To increase exploration over time", isCorrect: false },
+      { id: "b", label: "To shift from exploration early to exploitation as estimates improve", isCorrect: true },
+      { id: "c", label: "To keep the learning rate constant", isCorrect: false },
+      { id: "d", label: "To guarantee a deterministic policy from step 1", isCorrect: false },
+    ],
+  },
+  {
+    id: "dqn-replay-buffer",
+    type: "multiple-choice",
+    question:
+      "What problem does the experience replay buffer solve in DQN?",
+    hint: "Consecutive transitions in an episode are highly similar.",
+    explanation:
+      "Consecutive transitions are highly correlated, violating the i.i.d. assumption of SGD. Sampling random minibatches from a replay buffer decorrelates the data (and reuses each experience many times).",
+    options: [
+      { id: "a", label: "It enforces the causal mask", isCorrect: false },
+      { id: "b", label: "It decorrelates training data by sampling random past transitions", isCorrect: true },
+      { id: "c", label: "It removes the need for a reward signal", isCorrect: false },
+      { id: "d", label: "It makes the action space continuous", isCorrect: false },
+    ],
+  },
+  {
+    id: "dqn-target-network",
+    type: "multiple-choice",
+    question:
+      "Why does DQN use a separate, periodically-updated target network?",
+    hint: "What would happen if the target depended on the same weights being updated each step?",
+    explanation:
+      "Without it, the regression target depends on the same θ being updated every step — a moving target that causes oscillation or divergence. A frozen copy θ⁻, synced every N steps, stabilizes training.",
+    options: [
+      { id: "a", label: "To explore more efficiently", isCorrect: false },
+      { id: "b", label: "To stop the regression target from moving every update", isCorrect: true },
+      { id: "c", label: "To handle continuous actions", isCorrect: false },
+      { id: "d", label: "To reduce the size of the network", isCorrect: false },
+    ],
+  },
+  {
+    id: "dqn-double",
+    type: "multiple-choice",
+    question:
+      "What problem does Double DQN address?",
+    hint: "Think about the max operator over noisy Q-estimates.",
+    explanation:
+      "The max in the standard target systematically overestimates Q-values (a max over noisy estimates). Double DQN decouples action selection (online net) from evaluation (target net) to reduce this overestimation bias.",
+    options: [
+      { id: "a", label: "Overestimation of Q-values from the max operator", isCorrect: true },
+      { id: "b", label: "Slow exploration", isCorrect: false },
+      { id: "c", label: "Continuous action spaces", isCorrect: false },
+      { id: "d", label: "Vanishing gradients", isCorrect: false },
+    ],
+  },
+  {
+    id: "pg-theorem",
+    type: "multiple-choice",
+    question:
+      "The policy gradient ∇J = E[∇log π(a|s) · G] adjusts action probabilities how?",
+    hint: "What is the weight on each action's log-probability?",
+    explanation:
+      "It increases the log-probability of actions weighted by the return that followed them. Actions leading to high returns get their probability pushed up; low-return actions get pushed down.",
+    options: [
+      { id: "a", label: "It increases probabilities of actions weighted by their resulting return", isCorrect: true },
+      { id: "b", label: "It sets all action probabilities equal", isCorrect: false },
+      { id: "c", label: "It always picks the greedy action", isCorrect: false },
+      { id: "d", label: "It requires a known transition model", isCorrect: false },
+    ],
+  },
+  {
+    id: "pg-baseline",
+    type: "multiple-choice",
+    question:
+      "Why subtract a baseline (e.g. the value function) from the return in policy gradient methods?",
+    hint: "Does it change the expected gradient? What about its variance?",
+    explanation:
+      "Subtracting a state-dependent baseline does not bias the gradient but greatly reduces its variance, speeding learning. Using V(s) as the baseline gives the advantage A(s,a) = G − V(s).",
+    options: [
+      { id: "a", label: "It biases the gradient toward better actions", isCorrect: false },
+      { id: "b", label: "It reduces gradient variance without adding bias", isCorrect: true },
+      { id: "c", label: "It makes the policy deterministic", isCorrect: false },
+      { id: "d", label: "It removes the need for rewards", isCorrect: false },
+    ],
+  },
+  {
+    id: "pg-actor-critic",
+    type: "multiple-choice",
+    question:
+      "In actor-critic methods, what are the roles of the actor and the critic?",
+    hint: "One chooses actions, one evaluates them.",
+    explanation:
+      "The actor is the policy π(a|s) that chooses actions; the critic estimates the value function and supplies the advantage signal that tells the actor how much better/worse than expected an action was.",
+    options: [
+      { id: "a", label: "The actor estimates values; the critic picks actions", isCorrect: false },
+      { id: "b", label: "The actor chooses actions; the critic estimates value to guide the actor", isCorrect: true },
+      { id: "c", label: "Both estimate the same value function", isCorrect: false },
+      { id: "d", label: "The critic explores while the actor stores experiences", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

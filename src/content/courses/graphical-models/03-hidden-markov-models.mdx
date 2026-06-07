@@ -1,0 +1,124 @@
+---
+title: "Hidden Markov Models"
+description: "Sequences with hidden state — the forward algorithm, Viterbi decoding, and Baum-Welch learning."
+order: 3
+type: concept
+estimatedMinutes: 26
+---
+
+# Hidden Markov Models
+
+A **Hidden Markov Model (HMM)** is a graphical model for sequences where the thing you care about is *hidden* and you only see noisy evidence of it. The weather (hidden) drives whether someone carries an umbrella (observed); the spoken phoneme (hidden) drives the audio waveform (observed). HMMs were *the* workhorse of speech recognition and bioinformatics for decades.
+
+**Real-world examples:** Speech recognition, part-of-speech tagging, gene finding, gesture recognition, financial regime detection, decoding DNA.
+
+## Two assumptions
+
+An HMM has a chain of hidden states $z_1, \dots, z_T$ and observations $x_1, \dots, x_T$, built on two Markov assumptions:
+
+1. **Markov property** — the next hidden state depends only on the current one: $P(z_t \mid z_{1:t-1}) = P(z_t \mid z_{t-1})$.
+2. **Output independence** — each observation depends only on the current hidden state: $P(x_t \mid z_{1:t}, x_{1:t-1}) = P(x_t \mid z_t)$.
+
+These give the joint:
+
+$$P(z_{1:T}, x_{1:T}) = P(z_1)\prod_{t=2}^{T} P(z_t \mid z_{t-1}) \prod_{t=1}^{T} P(x_t \mid z_t)$$
+
+## The three matrices
+
+| Symbol | Name | Meaning |
+|--------|------|---------|
+| $\boldsymbol{\pi}$ | Initial distribution | $P(z_1 = i)$ |
+| $A_{ij}$ | **Transition** matrix | $P(z_t = j \mid z_{t-1} = i)$ |
+| $B_{ik}$ | **Emission** matrix | $P(x_t = k \mid z_t = i)$ |
+
+<Callout type="tip" title="Intuition">
+  Picture a person in a windowless room (you can't see the **weather** = hidden state) who each day carries an umbrella or not (the **observation**). Rainy days transition to rainy days often ($A$), and rain makes umbrellas likely ($B$). From a week of umbrella sightings alone, you can infer the hidden weather sequence.
+</Callout>
+
+## Three classic problems
+
+Every HMM use case is one of these three, each with a dynamic-programming algorithm:
+
+| Problem | Question | Algorithm |
+|---------|----------|-----------|
+| **1. Likelihood** | $P(x_{1:T})$ — how probable is this sequence? | **Forward** |
+| **2. Decoding** | Most likely hidden path $\arg\max_z P(z_{1:T}\mid x_{1:T})$ | **Viterbi** |
+| **3. Learning** | Best $\pi, A, B$ from data | **Baum–Welch** (EM) |
+
+## Problem 1 — the Forward algorithm
+
+Naively, $P(x_{1:T}) = \sum_z P(z, x)$ sums over $K^T$ hidden paths — exponential. The **forward algorithm** does it in $O(K^2 T)$ by caching $\alpha_t(i) = P(x_{1:t}, z_t = i)$:
+
+$$\alpha_1(i) = \pi_i\, B_{i, x_1} \qquad \alpha_t(j) = B_{j, x_t}\sum_{i} \alpha_{t-1}(i)\, A_{ij}$$
+
+Then $P(x_{1:T}) = \sum_i \alpha_T(i)$. This is dynamic programming: reuse the sum over all paths ending in each state rather than re-enumerating paths.
+
+## Problem 2 — Viterbi decoding
+
+Viterbi finds the single **most likely** hidden sequence. It's the forward recursion with $\sum$ replaced by $\max$, plus back-pointers to reconstruct the path:
+
+$$\delta_t(j) = B_{j, x_t}\max_{i}\big[\delta_{t-1}(i)\, A_{ij}\big]$$
+
+<Callout type="info" title="Sum vs max">
+  Forward and Viterbi are the *same* recursion with one operator swapped. Forward **sums** over paths (total probability of the evidence); Viterbi **maximizes** over paths (the best explanation). Back-pointers in Viterbi let you trace the winning path backward at the end.
+</Callout>
+
+### Worked example — Viterbi by hand
+
+States {Rainy, Sunny}, $\pi = [0.6, 0.4]$. Transitions $A = \begin{bmatrix}0.7 & 0.3\\ 0.4 & 0.6\end{bmatrix}$. Emissions for {Walk, Shop, Clean}: Rainy $[0.1, 0.4, 0.5]$, Sunny $[0.6, 0.3, 0.1]$. Observe **Walk → Shop**.
+
+Step 1 (Walk): $\delta_1(R)=0.6\cdot 0.1=0.06$, $\delta_1(S)=0.4\cdot 0.6=0.24$.
+
+Step 2 (Shop), Rainy: $\max(0.06\cdot 0.7,\ 0.24\cdot 0.4)\cdot 0.4 = \max(0.042, 0.096)\cdot 0.4 = 0.0384$ (came from Sunny).
+Step 2, Sunny: $\max(0.06\cdot 0.3,\ 0.24\cdot 0.6)\cdot 0.3 = \max(0.018, 0.144)\cdot 0.3 = 0.0432$ (came from Sunny).
+
+Winner at $t=2$: Sunny ($0.0432$), back-pointer → Sunny. **Best path: Sunny → Sunny.**
+
+```python
+import numpy as np
+from hmmlearn import hmm   # pip install hmmlearn
+
+model = hmm.CategoricalHMM(n_components=2)
+model.startprob_ = np.array([0.6, 0.4])
+model.transmat_  = np.array([[0.7, 0.3],
+                             [0.4, 0.6]])
+model.emissionprob_ = np.array([[0.1, 0.4, 0.5],   # Rainy: Walk/Shop/Clean
+                                [0.6, 0.3, 0.1]])   # Sunny
+
+obs = np.array([[0], [1]])                          # Walk, Shop
+logprob, states = model.decode(obs, algorithm="viterbi")
+print("best hidden path:", states)                 # -> [1 1] = Sunny, Sunny
+print("log P:", round(logprob, 3))
+```
+
+## Problem 3 — Baum–Welch (learning)
+
+When you have observation sequences but *no* hidden labels, **Baum–Welch** — an instance of the EM algorithm — estimates $\pi, A, B$:
+
+- **E-step:** run forward *and* backward passes to get the expected number of times each state and transition was used (the "responsibilities").
+- **M-step:** re-estimate $\pi, A, B$ as normalized expected counts.
+- Repeat until the likelihood converges (to a local optimum).
+
+This is the same E-step/M-step loop you saw for Gaussian Mixture Models — HMMs are essentially "GMMs with a Markov chain tying the components across time."
+
+## HMM as a graphical model
+
+An HMM is just a specific Bayesian Network: a chain $z_1 \to z_2 \to \dots \to z_T$ with each $z_t \to x_t$. Everything from the Bayesian Networks lesson applies — the forward/backward passes are belief propagation specialized to a chain.
+
+<Callout type="warning" title="Underflow: work in log space">
+  Multiplying many probabilities underflows to 0 fast. Real implementations run the forward/Viterbi recursions in **log space** (sums of log-probs, `logsumexp` for the forward sum) — or rescale $\alpha_t$ at each step. `hmmlearn` does this for you.
+</Callout>
+
+## Limits and what replaced HMMs
+
+HMMs assume discrete hidden state and a strict Markov chain. For richer dependencies and continuous representations, RNNs/LSTMs and Transformers (earlier courses) largely superseded HMMs in speech and NLP — but HMMs remain valuable when data is scarce, interpretability matters, or the Markov structure is genuinely correct (e.g. bioinformatics).
+
+## Common mistakes
+
+1. **Confusing Forward with Viterbi** — Forward sums (likelihood); Viterbi maximizes (best path). Don't use one for the other's question.
+2. **Multiplying probabilities in linear space** — underflow; use logs.
+3. **Expecting a global optimum from Baum–Welch** — it's EM, so it finds a *local* optimum; use multiple random restarts.
+
+<Exercise id="hmm-assumptions" />
+<Exercise id="hmm-forward-viterbi" />
+<Exercise id="hmm-baum-welch" />
