@@ -1,0 +1,53 @@
+@import "tailwindcss";
+@import "katex/dist/katex.min.css";
+
+@theme {
+  --font-inter: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-display: "Cal Sans", "Inter", system-ui, sans-serif;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-surface text-slate-100 font-sans antialiased;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-card;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-elevated rounded-full;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-brand-400 to-accent-teal bg-clip-text text-transparent;
+  }
+
+  .card-glass {
+    @apply bg-surface-card border border-surface-border rounded-2xl;
+  }
+
+  .prose-lesson {
+    @apply prose prose-invert prose-lg max-w-none
+      prose-headings:font-display prose-headings:text-white
+      prose-p:text-slate-300 prose-p:leading-relaxed
+      prose-code:text-brand-300 prose-code:bg-surface-elevated prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+      prose-pre:bg-surface-card prose-pre:border prose-pre:border-surface-border;
+  }
+}
