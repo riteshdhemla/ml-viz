@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { MDXRemote } from "next-mdx-remote/rsc";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
 import type { LessonMeta } from "@/types/course";
 import { mdxComponents } from "@/components/mdx/mdxComponents";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
@@ -36,8 +39,16 @@ export function LessonLayout({ meta, source, prev, next }: Props) {
       {/* Content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-12">
         <article className="prose-lesson">
-          {/* @ts-expect-error — RSC async component */}
-          <MDXRemote source={source} components={mdxComponents} />
+          <MDXRemote
+            source={source}
+            components={mdxComponents}
+            options={{
+              mdxOptions: {
+                remarkPlugins: [remarkMath, remarkGfm],
+                rehypePlugins: [rehypeKatex],
+              },
+            }}
+          />
         </article>
 
         {/* Prev / Next navigation */}
