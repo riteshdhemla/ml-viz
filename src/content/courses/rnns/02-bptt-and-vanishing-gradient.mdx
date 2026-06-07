@@ -114,6 +114,19 @@ You cannot tune your way out of vanishing gradients — change the architecture 
 2. **Forgetting to `detach()`** the hidden state in truncated BPTT — backprop graph grows without bound and OOMs.
 3. **Blaming the learning rate** when the model can't learn long-range patterns — it's the architecture, not the step size.
 
+## Key takeaways
+
+- **BPTT** is backprop on the unrolled network; one weight matrix appears at every step.
+- Repeated multiplication makes gradients **vanish** (gain below 1) or **explode** (gain above 1).
+- **Gradient clipping** fixes explosions but not vanishing.
+- Vanishing needs an architectural fix — gated cells.
+
+## Related concepts
+
+- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks) — the model being trained
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — the gated cells that solve vanishing gradients
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the base optimization being extended through time
+
 <Exercise id="bptt-gradient-product" />
 <Exercise id="vanishing-gradient-cause" />
 <Exercise id="gradient-clipping-purpose" />

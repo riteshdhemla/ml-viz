@@ -225,6 +225,19 @@ X_test_pca = pca.transform(X_test)        # transform test
 2. **Using PCA before train/test split** — Fit PCA on training data only, then transform both train and test. Otherwise you leak information.
 3. **Keeping too many components** — If you keep all components, PCA does nothing. The whole point is reduction.
 
+## Key takeaways
+
+- PCA finds orthogonal directions (**eigenvectors of the covariance**) of maximum variance.
+- Projecting onto the top $k$ components reduces dimensions while keeping most variance.
+- Choose $k$ from **cumulative explained variance** (e.g. 95%) or the scree elbow.
+- **Standardize first**; PCA is linear and unsupervised, computed via **SVD**.
+
+## Related concepts
+
+- [**t-SNE & UMAP**](/courses/pca-dimensionality/02-t-sne-and-umap) — non-linear methods for visualization
+- [**K-Means Clustering**](/courses/clustering/01-k-means) — a common use: reduce, then cluster
+- [**Autoencoders**](/courses/generative-models/02-autoencoders) — the non-linear, learned generalization of PCA
+
 <Exercise id="pca-projection" />
 <Exercise id="pca-variance" />
 <Exercise id="pca-scaling" />

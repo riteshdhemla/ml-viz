@@ -141,6 +141,18 @@ X_embedded = pipeline.fit_transform(X_high_dim)
 3. **Not preprocessing** — Both methods are sensitive to feature scales. Always standardize first. For high-dimensional data, reduce with PCA first.
 4. **Running on the full dataset** — UMAP on 1M+ points is fine, but t-SNE may need subsampling.
 
+## Key takeaways
+
+- **t-SNE** and **UMAP** are non-linear methods for **visualizing** high-dim data in 2-D.
+- They preserve **local** neighborhoods; cluster sizes/distances aren't literal.
+- t-SNE's **perplexity** and UMAP's **n_neighbors** balance local vs global structure.
+- Denoise with PCA first; never feed these embeddings to a downstream model.
+
+## Related concepts
+
+- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — the linear method to run first
+- [**Hierarchical & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan) — clustering the structure these reveal
+
 <Exercise id="umap-parameters" />
 <Exercise id="tsne-perplexity" />
 <Exercise id="pca-vs-umap" />

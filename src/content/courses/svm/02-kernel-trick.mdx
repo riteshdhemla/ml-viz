@@ -154,6 +154,18 @@ print(f"Test accuracy: {grid.score(X_test, y_test):.3f}")
 2. **Not scaling features** — Kernels compute distances. Unscaled features dominate the distance metric.
 3. **Default $\gamma$ on small datasets** — Use `gamma='scale'` or `'auto'`, or tune via grid search. The formula is $\gamma = 1 / (n \cdot \text{var}(X))$.
 
+## Key takeaways
+
+- Kernels let a linear SVM learn **non-linear** boundaries via implicit feature maps.
+- **RBF** is the go-to general kernel; polynomial and linear are alternatives.
+- `C` controls margin softness; `gamma` controls RBF reach — tune them together.
+- Large `gamma`/`C` overfits; always scale features before kernel SVMs.
+
+## Related concepts
+
+- [**Maximum Margin**](/courses/svm/01-maximum-margin) — the linear SVM that kernels extend
+- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — another view of transforming feature spaces
+
 <Exercise id="kernel-computation" />
 <Exercise id="kernel-choice" />
 <Exercise id="kernel-gamma" />

@@ -165,6 +165,18 @@ criterion = nn.CrossEntropyLoss()
 2. **Fine-tuning too aggressively** — Large learning rates destroy pretrained features. Start small.
 3. **Ignoring domain mismatch** — If your images look very different from ImageNet (e.g., X-rays, aerial photos), the pretrained features may not transfer well. Consider training from scratch if you have enough data.
 
+## Key takeaways
+
+- **Transfer learning** reuses features learned on a huge dataset (ImageNet) for your task.
+- Little data → freeze the backbone, train a new head; lots → fine-tune more layers.
+- Always fine-tune with a **small learning rate** to avoid wrecking pretrained weights.
+- It slashes data needs and training time versus training from scratch.
+
+## Related concepts
+
+- [**Pooling & Architectures**](/courses/cnns/02-pooling-and-architectures) — the pretrained backbones you transfer
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — why fine-tuning needs a small learning rate
+
 <Exercise id="transfer-learning-strategy" />
 <Exercise id="transfer-lr" />
 <Exercise id="transfer-freeze" />

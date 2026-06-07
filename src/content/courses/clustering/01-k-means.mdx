@@ -143,6 +143,19 @@ kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, random_state=42)
 2. **Using K=1 or K=n** — Trivial solutions. Use the elbow method or silhouette score.
 3. **Ignoring the initialization** — Always use K-Means++ and `n_init ≥ 10`.
 
+## Key takeaways
+
+- K-Means alternates **assign to nearest centroid** and **move centroid to the mean** until stable.
+- It minimizes within-cluster variance but assumes spherical, similar-size clusters.
+- Pick $K$ with the **elbow** or **silhouette**; use **K-Means++** and `n_init>1`.
+- Always **standardize** — K-Means uses Euclidean distance.
+
+## Related concepts
+
+- [**Hierarchical & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan) — clustering without choosing K, and arbitrary shapes
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the soft, probabilistic version of K-Means
+- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — reducing dimensions before clustering
+
 <Exercise id="kmeans-iteration" />
 <Exercise id="choosing-k" />
 <Exercise id="kmeans-scaling" />
