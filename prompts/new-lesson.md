@@ -64,7 +64,7 @@ Create `notebooks/[course-slug]/[NN]-[kebab-title].ipynb` with the **same slug**
 The "Open in Colab" button is auto-wired — no frontmatter needed.
 
 **Notebook structure:**
-1. Markdown cell: `# [Lesson Title]` + link back to lesson URL + one-line description
+1. Markdown cell: `# [Lesson Title]` + `**Companion lesson:** https://ml-viz.vercel.app/courses/[course-slug]/[lesson-slug]`
 2. Code cell: `import numpy as np; import matplotlib.pyplot as plt` + dark plot style
 3. Alternating markdown cells (concept/equation in LaTeX) + code cells (clean Python implementation)
 4. At least one visualization using matplotlib

@@ -19,6 +19,7 @@ Each lesson also links to a Jupyter/Colab notebook with runnable Python code.
 | State | Zustand + `persist` | Progress in `src/lib/progress.ts` |
 | Math | KaTeX | Rendered in MDX via rehype-katex |
 | Notebooks | `.ipynb` + Colab | One notebook per lesson in `notebooks/` |
+| Hosting | Vercel | Auto-deploy on push to `main` |
 
 ---
 
@@ -59,6 +60,27 @@ notebooks/                      # Jupyter notebooks — one per lesson
 └── [course-slug]/
     └── [lesson-slug].ipynb     # Auto-linked to lessons via getNotebookUrl()
 ```
+
+---
+
+## Hosting (Vercel)
+
+The site is deployed to Vercel. Key facts:
+
+- **Production URL:** `https://ml-viz.vercel.app` (set as `NEXT_PUBLIC_SITE_URL` in Vercel dashboard)
+- **Auto-deploy:** every push to `main` triggers a rebuild
+- **Build:** `npm run build` — all MDX content is compiled statically at build time
+- **Environment variables** (set in Vercel dashboard → Settings → Environment Variables):
+
+  | Variable | Value | Notes |
+  |----------|-------|-------|
+  | `NEXT_PUBLIC_SITE_URL` | `https://ml-viz.vercel.app` | Used in lesson back-links inside notebooks |
+
+- **Colab links** point to notebooks on the `main` branch. Always merge to `main` before expecting Colab buttons to resolve in production.
+- `src/lib/content.ts` uses `fs` (server-side only) — this works fine on Vercel serverless runtime.
+- `vercel.json` is in the repo root; Vercel reads it automatically.
+
+When adding a feature that needs an environment variable, add it to both `.env.example` and the Vercel dashboard.
 
 ---
 
