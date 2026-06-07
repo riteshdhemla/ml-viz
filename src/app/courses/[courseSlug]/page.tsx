@@ -9,6 +9,9 @@ interface Props {
   params: Promise<{ courseSlug: string }>;
 }
 
+// Only render courses known at build time; unknown slugs 404.
+export const dynamicParams = false;
+
 export async function generateStaticParams() {
   return getAllCourses().map((c) => ({ courseSlug: c.slug }));
 }

@@ -7,6 +7,10 @@ interface Props {
   params: Promise<{ courseSlug: string; lessonSlug: string }>;
 }
 
+// Only render lessons known at build time. Unknown slugs 404 instead of
+// reaching the filesystem on demand — content is fully static.
+export const dynamicParams = false;
+
 export async function generateStaticParams() {
   const courses = getAllCourses();
   return courses.flatMap((course) =>
