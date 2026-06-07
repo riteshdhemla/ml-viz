@@ -1,0 +1,143 @@
+---
+title: "The Kernel Trick"
+description: "Solving non-linear problems without leaving the original feature space."
+order: 2
+type: concept
+estimatedMinutes: 22
+---
+
+# The Kernel Trick
+
+Linear SVMs can only draw straight decision boundaries. But what if the true boundary is a circle, a spiral, or something complex? The **kernel trick** solves this by implicitly mapping data to a higher-dimensional space where it becomes linearly separable — without ever computing that mapping.
+
+**Real-world examples:** Gene expression analysis, image recognition, anomaly detection in network traffic.
+
+## The problem with linear boundaries
+
+Consider data arranged in concentric circles — inner ring is class A, outer ring is class B. No straight line can separate them. But if we map to 3D using $z = x^2 + y^2$, the classes become separable by a plane.
+
+<Callout type="tip" title="Intuition">
+  Imagine looking at a chessboard from above — the black and white squares are interleaved and not linearly separable. Now tilt the board: suddenly you can draw a plane that separates them. The kernel trick does this "tilting" implicitly.
+</Callout>
+
+## What is a kernel?
+
+A kernel function computes the dot product in a higher-dimensional space **without actually going there**:
+
+$$K(\mathbf{x}_i, \mathbf{x}_j) = \phi(\mathbf{x}_i)^T \phi(\mathbf{x}_j)$$
+
+where $\phi$ is the mapping to the higher-dimensional space. The key insight: the SVM optimization only needs dot products, so we can replace them with kernel evaluations.
+
+## Common kernels
+
+### Polynomial kernel
+
+$$K(\mathbf{x}_i, \mathbf{x}_j) = (\gamma \, \mathbf{x}_i^T \mathbf{x}_j + r)^d$$
+
+Maps to a space of all monomials up to degree $d$. For $d=2$ and 2D input $(x_1, x_2)$:
+
+$$\phi(x_1, x_2) = (x_1^2, x_2^2, \sqrt{2} x_1 x_2, \sqrt{2} x_1, \sqrt{2} x_2, 1)$$
+
+### RBF (Gaussian) kernel
+
+$$K(\mathbf{x}_i, \mathbf{x}_j) = \exp\left(-\gamma \|\mathbf{x}_i - \mathbf{x}_j\|^2\right)$$
+
+Maps to an **infinite-dimensional** space. The most popular kernel — it can learn any decision boundary given enough support vectors.
+
+- $\gamma$ small: smooth boundary, more regularization
+- $\gamma$ large: complex boundary, risk of overfitting
+
+<Callout type="info" title="RBF kernel intuition">
+  Think of $\gamma$ as controlling the "reach" of each training example. Small $\gamma$: each example influences a wide region (smooth boundary). Large $\gamma$: each example only influences its immediate neighborhood (jagged boundary).
+</Callout>
+
+### Sigmoid kernel
+
+$$K(\mathbf{x}_i, \mathbf{x}_j) = \tanh(\gamma \, \mathbf{x}_i^T \mathbf{x}_j + r)$$
+
+Similar to a neural network with one hidden layer. Less commonly used.
+
+## Worked example
+
+Two classes that are not linearly separable:
+
+```python
+import numpy as np
+from sklearn.svm import SVC
+from sklearn.datasets import make_circles
+
+# Non-linearly separable data
+X, y = make_circles(n_samples=200, noise=0.1, factor=0.3, random_state=42)
+
+# Linear SVM fails
+linear_svm = SVC(kernel='linear', C=1)
+linear_svm.fit(X, y)
+print(f"Linear accuracy: {linear_svm.score(X, y):.3f}")  # ~0.5-0.6
+
+# RBF kernel succeeds
+rbf_svm = SVC(kernel='rbf', C=1, gamma='scale')
+rbf_svm.fit(X, y)
+print(f"RBF accuracy: {rbf_svm.score(X, y):.3f}")  # ~1.0
+
+print(f"Support vectors: {len(rbf_svm.support_vectors_)}")
+```
+
+## The kernel trick in the SVM objective
+
+The dual form of the SVM optimization uses only dot products:
+
+$$\max_\alpha \sum_i \alpha_i - \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j y_i y_j \, \mathbf{x}_i^T \mathbf{x}_j$$
+
+With the kernel trick, replace $\mathbf{x}_i^T \mathbf{x}_j$ with $K(\mathbf{x}_i, \mathbf{x}_j)$:
+
+$$\max_\alpha \sum_i \alpha_i - \frac{1}{2} \sum_{i,j} \alpha_i \alpha_j y_i y_j \, K(\mathbf{x}_i, \mathbf{x}_j)$$
+
+Prediction becomes:
+
+$$f(\mathbf{x}) = \text{sign}\left(\sum_{i \in SV} \alpha_i y_i \, K(\mathbf{x}_i, \mathbf{x}) + b\right)$$
+
+Only support vectors (where $\alpha_i > 0$) contribute to the prediction.
+
+## Choosing the right kernel
+
+| Kernel | When to use | Parameters |
+|--------|-------------|------------|
+| Linear | High-dimensional, many features (text) | None |
+| RBF | Default choice, non-linear, unknown structure | $\gamma$, $C$ |
+| Polynomial | Known polynomial relationship | degree $d$, $r$ |
+
+### Hyperparameter tuning
+
+```python
+from sklearn.model_selection import GridSearchCV
+
+param_grid = {
+    'C': [0.1, 1, 10, 100],
+    'gamma': [0.01, 0.1, 1, 10],
+    'kernel': ['rbf']
+}
+
+grid = GridSearchCV(SVC(), param_grid, cv=5, scoring='accuracy')
+grid.fit(X_train, y_train)
+
+print(f"Best params: {grid.best_params_}")
+print(f"Best CV accuracy: {grid.best_score_:.3f}")
+print(f"Test accuracy: {grid.score(X_test, y_test):.3f}")
+```
+
+<Callout type="warning" title="Kernel SVM scaling">
+  Kernel SVMs don't scale well — training is $O(n^2)$ to $O(n^3)$ in the number of samples. For datasets larger than ~50K samples, consider:
+  - Linear SVM (`LinearSVC` or `SGDClassifier`)
+  - Random feature approximations (Nyström, RFF)
+  - Gradient-boosted trees (XGBoost, LightGBM)
+</Callout>
+
+## Common mistakes
+
+1. **Using RBF on high-dimensional data** — In high dimensions, all points are equidistant. Use linear kernel when $d > n$ (more features than samples).
+2. **Not scaling features** — Kernels compute distances. Unscaled features dominate the distance metric.
+3. **Default $\gamma$ on small datasets** — Use `gamma='scale'` or `'auto'`, or tune via grid search. The formula is $\gamma = 1 / (n \cdot \text{var}(X))$.
+
+<Exercise id="kernel-computation" />
+<Exercise id="kernel-choice" />
+<Exercise id="kernel-gamma" />
