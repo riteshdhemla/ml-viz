@@ -20,6 +20,8 @@ export interface LessonMeta {
   order: number;
   type: "concept" | "exercise" | "quiz" | "playground";
   estimatedMinutes: number;
+  /** Override the auto-generated Colab URL. Leave unset to use the convention-based path. */
+  notebookUrl?: string;
 }
 
 export interface CourseWithLessons extends CourseMeta {
