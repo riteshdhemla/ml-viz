@@ -1,0 +1,142 @@
+---
+title: "Bagging & Random Forests"
+description: "Reducing variance by combining many unstable learners."
+order: 1
+type: concept
+estimatedMinutes: 22
+---
+
+# Bagging & Random Forests
+
+A single decision tree overfits easily — it's high-variance. **Bagging** (Bootstrap Aggregating) trains many trees on random subsets of data and averages their predictions, dramatically reducing variance.
+
+**Real-world examples:** Credit scoring, customer churn prediction, medical diagnosis, any tabular data task.
+
+## Bagging (Bootstrap Aggregating)
+
+1. Create $B$ bootstrap samples (sample with replacement, same size as original)
+2. Train a decision tree on each sample
+3. **Classification:** majority vote. **Regression:** average predictions.
+
+Each tree sees a different "view" of the data. Some points appear multiple times, others not at all (~37% are left out per tree). Averaging many diverse trees reduces variance without increasing bias.
+
+$$\hat{f}_{\text{bag}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x})$$
+
+<Callout type="tip" title="Why bagging works">
+  Individual trees are uncorrelated because they see different data. When you average uncorrelated estimates, variance drops by a factor of $B$. Even if individual trees are noisy, the average is stable. Think of it like polling — one poll is noisy, but averaging 1000 polls gives a reliable estimate.
+</Callout>
+
+### Worked example
+
+5 trees predict [cat, dog, cat, cat, dog] for a new image. Majority vote: **cat** (3 vs 2).
+
+```python
+from sklearn.ensemble import BaggingClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+bag = BaggingClassifier(
+    estimator=DecisionTreeClassifier(max_depth=None),
+    n_estimators=100,
+    max_samples=0.8,       # each tree sees 80% of data
+    max_features=1.0,      # all features
+    bootstrap=True,
+    random_state=42
+)
+bag.fit(X_train, y_train)
+print(f"Bagging accuracy: {bag.score(X_test, y_test):.3f}")
+```
+
+## Random Forests
+
+Random Forests improve on bagging by adding **feature randomization**: at each split, only consider a random subset of $m$ features.
+
+This decorrelates the trees further — they can't all rely on the same dominant feature:
+
+| Task | Default $m$ |
+|------|------------|
+| Classification | $\sqrt{d}$ |
+| Regression | $d/3$ |
+
+$$\hat{f}_{\text{RF}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x}, \theta_b)$$
+
+where $\theta_b$ are the random feature subsets for tree $b$.
+
+```python
+from sklearn.ensemble import RandomForestClassifier
+
+rf = RandomForestClassifier(
+    n_estimators=100,       # number of trees
+    max_depth=10,           # limit tree depth
+    max_features='sqrt',    # √d features per split
+    min_samples_leaf=5,     # minimum samples in leaf
+    random_state=42,
+    n_jobs=-1               # use all CPU cores
+)
+rf.fit(X_train, y_train)
+print(f"RF accuracy: {rf.score(X_test, y_test):.3f}")
+```
+
+## Feature importance
+
+Two main methods:
+
+### Mean Decrease in Impurity (MDI)
+
+Sum the impurity decrease at each split across all trees, weighted by the number of samples reaching that split.
+
+```python
+importances = rf.feature_importances_
+for i in np.argsort(importances)[::-1][:5]:
+    print(f"Feature {i}: {importances[i]:.3f}")
+```
+
+### Permutation importance (more reliable)
+
+Shuffle each feature and measure accuracy drop:
+
+```python
+from sklearn.inspection import permutation_importance
+
+result = permutation_importance(rf, X_test, y_test, n_repeats=10, random_state=42)
+for i in np.argsort(result.importances_mean)[::-1][:5]:
+    print(f"Feature {i}: {result.importances_mean[i]:.3f} ± {result.importances_std[i]:.3f}")
+```
+
+<Callout type="info" title="MDI vs Permutation importance">
+  MDI can be biased toward high-cardinality features (e.g., ID numbers). Permutation importance is more reliable but slower. Use permutation importance for final analysis, MDI for quick exploration.
+</Callout>
+
+## Out-of-Bag (OOB) evaluation
+
+Each bootstrap sample leaves out ~37% of the data. Use these **out-of-bag** samples as a built-in validation set — no cross-validation needed:
+
+```python
+rf = RandomForestClassifier(n_estimators=100, oob_score=True, random_state=42)
+rf.fit(X_train, y_train)
+print(f"OOB accuracy: {rf.oob_score_:.3f}")  # ~same as test accuracy
+```
+
+## Strengths and weaknesses
+
+| ✅ Strengths | ❌ Weaknesses |
+|-------------|--------------|
+| Robust to overfitting | Less interpretable than single tree |
+| Handles high-dimensional data | Can be slow for large datasets |
+| Parallelizable | Cannot extrapolate (interpolation only) |
+| Provides feature importance | Struggles with very sparse data |
+| Minimal hyperparameter tuning | Black-box compared to single tree |
+| Handles missing values | |
+
+<Callout type="warning" title="Random Forests are the best tabular baseline">
+  If you have structured/tabular data and don't know where to start, try Random Forests first. They require minimal tuning, are robust to overfitting, and provide feature importance. Only move to gradient boosting if you need more accuracy.
+</Callout>
+
+## Common mistakes
+
+1. **Not limiting `max_depth`** — Untuned trees can grow very deep and overfit. Start with `max_depth=10` or `max_depth=None` with `min_samples_leaf=5`.
+2. **Using too few trees** — 10 trees is not enough. Use 100-500. More trees rarely hurt (diminishing returns), but few trees give noisy estimates.
+3. **Ignoring feature scaling** — Random Forests don't need scaling! They're invariant to monotonic transformations. Don't waste time preprocessing.
+
+<Exercise id="bagging-variance" />
+<Exercise id="rf-feature-importance" />
+<Exercise id="rf-oob" />
