@@ -7,10 +7,6 @@ import { Callout } from "./Callout";
 import { CodeBlock } from "./CodeBlock";
 import { Exercise } from "@/components/exercises/Exercise";
 
-// Visualization components — uncomment to use in lessons:
-// import { NeuralNetworkViz } from "@/components/visualizations/NeuralNetwork/NeuralNetworkViz";
-// import { GradientDescentViz } from "@/components/visualizations/GradientDescent/GradientDescentViz";
-
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
   h2: (props) => <h2 className="text-2xl font-semibold text-white mt-8 mb-3" {...props} />,
@@ -20,7 +16,4 @@ export const mdxComponents: MDXComponents = {
 
   Callout,
   Exercise,
-
-  // NeuralNetworkViz,
-  // GradientDescentViz,
 };

@@ -33,12 +33,6 @@ export function HeroSection() {
           >
             Start Learning
           </Link>
-          <Link
-            href="/playground"
-            className="px-8 py-3 rounded-xl border border-surface-border hover:border-brand-500 text-slate-300 hover:text-white font-semibold transition-colors"
-          >
-            Open Playground
-          </Link>
         </div>
       </div>
     </section>

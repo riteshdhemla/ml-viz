@@ -4,10 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const NAV_LINKS = [
-  { href: "/courses", label: "Courses" },
-  { href: "/playground", label: "Playground" },
-];
+const NAV_LINKS = [{ href: "/courses", label: "Courses" }];
 
 export function SiteHeader() {
   const pathname = usePathname();
