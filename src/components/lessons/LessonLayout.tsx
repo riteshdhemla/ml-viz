@@ -4,6 +4,7 @@ import { MDXRemote } from "next-mdx-remote/rsc";
 import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
+import rehypeHighlight from "rehype-highlight";
 import type { LessonMeta } from "@/types/course";
 import { mdxComponents } from "@/components/mdx/mdxComponents";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
@@ -51,7 +52,13 @@ export function LessonLayout({ meta, source, prev, next }: Props) {
               blockJS: true,
               mdxOptions: {
                 remarkPlugins: [remarkMath, remarkGfm],
-                rehypePlugins: [rehypeKatex],
+                rehypePlugins: [
+                  rehypeKatex,
+                  // detect:false → only highlight blocks with an explicit
+                  // ```lang fence. Plain fences (ASCII diagrams, sample
+                  // output) render as-is instead of being mis-guessed.
+                  [rehypeHighlight, { detect: false, ignoreMissing: true }],
+                ],
               },
             }}
           />

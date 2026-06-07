@@ -4,6 +4,7 @@
  */
 import type { MDXComponents } from "mdx/types";
 import { Callout } from "./Callout";
+import { CodeBlock } from "./CodeBlock";
 import { Exercise } from "@/components/exercises/Exercise";
 
 // Visualization components — uncomment to use in lessons:
@@ -14,6 +15,8 @@ export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
   h2: (props) => <h2 className="text-2xl font-semibold text-white mt-8 mb-3" {...props} />,
   h3: (props) => <h3 className="text-xl font-semibold text-slate-200 mt-6 mb-2" {...props} />,
+
+  pre: CodeBlock,
 
   Callout,
   Exercise,

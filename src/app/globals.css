@@ -52,4 +52,83 @@
       prose-code:text-brand-300 prose-code:bg-surface-elevated prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
       prose-pre:bg-surface-card prose-pre:border prose-pre:border-surface-border;
   }
+
+  /* Fenced code blocks (rendered via the CodeBlock MDX component) */
+  .code-block {
+    @apply my-6 overflow-hidden rounded-xl border border-surface-border bg-surface-card;
+  }
+
+  .code-block__header {
+    @apply flex items-center justify-between border-b border-surface-border
+      bg-surface-elevated px-4 py-2;
+  }
+
+  .code-block__lang {
+    @apply font-mono text-xs font-medium uppercase tracking-wider text-slate-400;
+  }
+
+  .code-block__copy {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs
+      text-slate-400 opacity-70 transition-all
+      hover:bg-surface-card hover:text-slate-200 hover:opacity-100
+      focus:opacity-100 focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-500;
+  }
+
+  .code-block pre {
+    @apply m-0 overflow-x-auto rounded-none border-0 bg-transparent p-4
+      text-sm leading-relaxed;
+  }
+
+  .code-block pre code {
+    @apply bg-transparent p-0 text-slate-200;
+    font-family: var(--font-mono);
+  }
+}
+
+/* highlight.js token colors — tuned to the site palette (dark) */
+.hljs-comment,
+.hljs-quote {
+  @apply italic text-slate-500;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-built_in,
+.hljs-name {
+  @apply text-brand-300;
+}
+.hljs-string,
+.hljs-attr,
+.hljs-template-string,
+.hljs-addition {
+  @apply text-accent-teal;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet {
+  @apply text-accent-orange;
+}
+.hljs-title,
+.hljs-section,
+.hljs-function .hljs-title,
+.hljs-title.function_ {
+  @apply text-accent-yellow;
+}
+.hljs-params,
+.hljs-variable {
+  @apply text-slate-200;
+}
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-title.class_ {
+  @apply text-brand-200;
+}
+.hljs-meta {
+  @apply text-slate-500;
+}
+.hljs-emphasis {
+  @apply italic;
+}
+.hljs-strong {
+  @apply font-bold;
 }
