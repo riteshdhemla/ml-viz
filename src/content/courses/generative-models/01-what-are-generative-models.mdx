@@ -1,0 +1,92 @@
+---
+title: "What Are Generative Models?"
+description: "The two paradigms of machine learning — discriminative vs generative."
+order: 1
+type: concept
+estimatedMinutes: 15
+---
+
+# What Are Generative Models?
+
+Most machine learning is **discriminative**: given an input $x$, predict a label $y$. A cat-or-dog classifier learns $P(y \mid x)$.
+
+Generative models flip the goal. They learn the **distribution of the data itself** — $P(x)$ — so they can sample *new* examples that look like the originals.
+
+**Real-world examples:** Image generation (DALL-E, Midjourney), text generation (GPT), drug discovery, data augmentation, anomaly detection, image super-resolution.
+
+## Two paradigms
+
+| Approach | Learns | Example |
+|----------|--------|---------|
+| Discriminative | $P(y \mid x)$ — boundary between classes | Cat vs dog classifier |
+| Generative | $P(x)$ — what the data looks like | A model that draws new cats and dogs |
+
+<Callout type="tip" title="Intuition">
+  A discriminative model learns to tell real from fake. A generative model learns to *be the forger* — it creates data so realistic that the discriminative model can't tell the difference.
+</Callout>
+
+## Why generate data?
+
+1. **Creative AI:** Image synthesis, music composition, text generation
+2. **Data augmentation:** Generate synthetic training data for rare classes
+3. **Anomaly detection:** If a new point has low $P(x)$, it's probably anomalous
+4. **Drug discovery:** Generate novel molecular structures with desired properties
+5. **Compression:** Learn efficient representations (VAEs)
+6. **Missing data:** Fill in missing values by sampling from the learned distribution
+
+## How do they learn $P(x)$?
+
+### 1. Explicit density models
+
+Try to directly model $P(x)$ or a tractable lower bound:
+
+- **VAEs** (Variational Autoencoders) — learn an approximate posterior over a latent space
+- **Normalizing Flows** — transform a simple distribution through invertible functions
+
+### 2. Implicit density models
+
+Learn to *sample* from $P(x)$ without ever computing it directly:
+
+- **GANs** (Generative Adversarial Networks) — a generator fools a discriminator
+- **Diffusion Models** — iteratively denoise random noise into data
+
+### 3. Autoregressive models
+
+Factor the joint distribution step-by-step:
+
+$$P(x) = \prod_{i=1}^{n} P(x_i \mid x_1, \ldots, x_{i-1})$$
+
+- **RNNs / Transformers** for text generation (GPT)
+- **PixelCNN** for images
+
+```python
+# Autoregressive: predict next token given previous ones
+# GPT-style: P("cat") = P("c") · P("a"|"c") · P("t"|"ca")
+```
+
+<Callout type="info" title="The tradeoff">
+  Explicit models give you exact $P(x)$ but are often intractable. Implicit models are more flexible but only give you samples, not probabilities. Autoregressive models are exact but slow (sequential generation).
+</Callout>
+
+## The latent space idea
+
+Most generative models share a common trick: they don't generate data directly. Instead, they learn a **latent space** — a compressed, lower-dimensional representation where the structure of the data is simpler.
+
+Generate a point in latent space $\mathbf{z}$, then **decode** it into a full data point $\mathbf{x}$:
+
+$$\mathbf{z} \sim P(\mathbf{z}) \quad \xrightarrow{\text{decoder}} \quad \mathbf{x}$$
+
+The latent space captures the "essence" of the data — style, pose, identity — while the decoder fills in the details.
+
+## Quick comparison
+
+| Model | Type | Pros | Cons |
+|-------|------|------|------|
+| VAE | Explicit | Smooth latent space, stable training | Blurry outputs |
+| GAN | Implicit | Sharp, realistic outputs | Training instability, mode collapse |
+| Diffusion | Explicit | Best quality, stable training | Slow sampling |
+| Autoregressive | Explicit | Exact likelihood | Slow (sequential) |
+
+<Exercise id="gen-models-paradigms" />
+<Exercise id="gen-models-latent" />
+<Exercise id="gen-models-tradeoff" />
