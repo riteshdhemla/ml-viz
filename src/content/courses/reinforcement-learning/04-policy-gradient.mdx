@@ -1,0 +1,125 @@
+---
+title: "Policy Gradient & Actor-Critic"
+description: "Optimizing the policy directly — REINFORCE, the variance problem, and the actor-critic fix."
+order: 4
+type: concept
+estimatedMinutes: 24
+---
+
+# Policy Gradient & Actor-Critic
+
+DQN learns *values* and acts greedily on them. **Policy gradient** methods skip the middleman and optimize the policy $\pi_\theta(a\mid s)$ **directly** by gradient ascent on expected return. This unlocks continuous actions, naturally stochastic policies, and is the backbone of modern RL — PPO, the algorithm behind RLHF for language models, is a policy-gradient method.
+
+**Real-world examples:** Robotics with continuous control, AlphaGo's policy network, RLHF for ChatGPT/Claude, continuous control benchmarks (MuJoCo), game playing.
+
+## Value-based vs policy-based
+
+| | Value-based (DQN) | Policy-based (PG) |
+|---|-------------------|-------------------|
+| Learns | $Q(s,a)$, acts greedily | $\pi_\theta(a\mid s)$ directly |
+| Action space | Discrete only | Discrete **or continuous** |
+| Policy | Deterministic (+ ε) | Naturally stochastic |
+| Convergence | Can oscillate | Smoother, but high variance |
+
+<Callout type="tip" title="Intuition">
+  Value methods ask "how good is each action?" then pick the best. Policy methods ask "let me adjust my action probabilities to make good outcomes more likely." If an episode went well, push up the probability of the actions you took; if it went badly, push them down. That's the whole idea.
+</Callout>
+
+## The policy gradient theorem
+
+We want to maximize expected return $J(\theta) = \mathbb{E}_{\pi_\theta}[G]$. The remarkable result is that its gradient has a form we can estimate from samples:
+
+$$\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\Big[\nabla_\theta \log \pi_\theta(a\mid s)\; G_t\Big]$$
+
+Read it as: **increase the log-probability of actions, weighted by the return that followed them.** Good returns ($G_t$ large) pull those actions' probabilities up; bad returns push them down. No model of the environment, no value table required.
+
+## REINFORCE — the basic algorithm
+
+The simplest policy-gradient method (Williams, 1992):
+
+1. Run a full episode with the current policy $\pi_\theta$.
+2. Compute the return $G_t$ from each step to the end.
+3. Update $\theta \leftarrow \theta + \alpha \sum_t \nabla_\theta \log \pi_\theta(a_t\mid s_t)\, G_t$.
+
+```python
+import torch, torch.nn as nn
+
+policy = nn.Sequential(nn.Linear(obs_dim, 128), nn.ReLU(),
+                       nn.Linear(128, n_actions))   # logits
+
+def reinforce_update(log_probs, rewards, optim, gamma=0.99):
+    # discounted returns, computed backward
+    returns, G = [], 0
+    for r in reversed(rewards):
+        G = r + gamma * G
+        returns.insert(0, G)
+    returns = torch.tensor(returns)
+    returns = (returns - returns.mean()) / (returns.std() + 1e-8)  # baseline+norm
+
+    loss = -(torch.stack(log_probs) * returns).sum()   # ascent → minimize -J
+    optim.zero_grad(); loss.backward(); optim.step()
+    return loss.item()
+```
+
+<Callout type="info" title="Why the minus sign?">
+  Optimizers *minimize*. To do gradient *ascent* on $J$, we minimize $-J$. Hence the negative log-prob times return — maximizing return becomes minimizing its negative.
+</Callout>
+
+## The variance problem
+
+REINFORCE works but learns slowly: the return $G_t$ is a noisy Monte-Carlo estimate over a whole episode, so the gradient has **high variance**. Two standard cures:
+
+1. **Baseline subtraction** — subtract a state-dependent baseline $b(s)$ from the return. It doesn't bias the gradient but slashes variance:
+$$\nabla_\theta J = \mathbb{E}\big[\nabla_\theta \log \pi_\theta(a\mid s)\,(G_t - b(s))\big]$$
+The best baseline is the value function $V(s)$ — which gives the **advantage** $A(s,a) = G_t - V(s)$: "how much better than average was this action?"
+
+2. **Bootstrapping** — replace the full-episode return with a one-step estimate, just like TD learning.
+
+Combine both and you get **actor-critic**.
+
+## Actor-Critic
+
+Two cooperating networks:
+
+- **Actor** $\pi_\theta(a\mid s)$ — chooses actions (the policy).
+- **Critic** $V_\phi(s)$ — estimates state value, providing the baseline/advantage.
+
+The actor updates using the advantage from the critic; the critic learns $V$ by TD just like before:
+
+$$A_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t) \quad(\text{TD error = advantage estimate})$$
+$$\theta \leftarrow \theta + \alpha\,\nabla_\theta \log\pi_\theta(a_t\mid s_t)\,A_t \qquad \phi \leftarrow \phi + \beta\,A_t \nabla_\phi V_\phi(s_t)$$
+
+<Callout type="tip" title="Actor and critic, in plain terms">
+  The **actor** acts. The **critic** judges. The critic's TD error tells the actor "that action did better/worse than I expected from this state" — a low-variance learning signal that arrives every step instead of only at episode end. The actor adjusts; the critic sharpens its judgment. They improve together.
+</Callout>
+
+### Worked example — advantage sign
+
+State value estimate $V(s) = 8$. The agent takes an action, gets $r = 1$, lands in $s'$ with $V(s') = 10$, $\gamma = 0.9$.
+
+Advantage $A = 1 + 0.9\cdot 10 - 8 = 1 + 9 - 8 = +2$. Positive → the action did **better** than the critic expected → increase its probability. A negative advantage would decrease it.
+
+## Modern policy-gradient methods
+
+| Method | Idea |
+|--------|------|
+| **A2C / A3C** | Parallel actor-critic, synchronous/asynchronous |
+| **TRPO** | Limit policy change with a trust region |
+| **PPO** | Clipped objective — simple, robust, the default today |
+| **SAC / DDPG** | Off-policy actor-critic for continuous control |
+
+**PPO** (Proximal Policy Optimization) is the workhorse: it clips the policy update so each step can't move too far, giving stable training with little tuning. It's the RL algorithm used in **RLHF** to align large language models.
+
+<Callout type="warning" title="On-policy means sample-hungry">
+  Vanilla policy gradient and PPO are **on-policy** — each batch of data must come from the *current* policy, then is thrown away. That makes them more sample-expensive than off-policy DQN. The payoff is stability and continuous-action support. Use a simulator or lots of parallel actors.
+</Callout>
+
+## Common mistakes
+
+1. **No baseline** — plain REINFORCE has crippling variance; always subtract a baseline / use a critic.
+2. **Reusing old data on-policy** — policy gradient data is stale after one update (PPO's clip lets you reuse it a *few* times, not indefinitely).
+3. **Forgetting entropy regularization** — without it the policy collapses to deterministic too early and stops exploring.
+
+<Exercise id="pg-theorem" />
+<Exercise id="pg-baseline" />
+<Exercise id="pg-actor-critic" />

@@ -1,0 +1,109 @@
+---
+title: "Markov Random Fields"
+description: "Undirected graphical models — potentials, the partition function, and when symmetry beats causation."
+order: 2
+type: concept
+estimatedMinutes: 22
+---
+
+# Markov Random Fields
+
+Bayesian Networks use *directed* arrows to express causation. But some relationships are **symmetric** — neighboring pixels in an image tend to share a color, adjacent words tend to agree in tag — with no natural "cause." A **Markov Random Field (MRF)**, or undirected graphical model, captures these mutual influences with undirected edges and **potential functions**.
+
+**Real-world examples:** Image denoising and segmentation, the Ising model in physics, conditional random fields for named-entity recognition and POS tagging, social network analysis.
+
+## Undirected, factor-based
+
+An MRF factorizes the joint over **cliques** (fully-connected subsets of nodes) rather than over parent–child conditionals:
+
+$$P(X_1, \dots, X_n) = \frac{1}{Z} \prod_{c \in \mathcal{C}} \psi_c(X_c)$$
+
+- $\psi_c(X_c) \ge 0$ — a **potential function** scoring how "compatible" the values in clique $c$ are (higher = more agreeable). Unlike a CPT, it need **not** be a probability.
+- $Z = \sum_{\mathbf{x}} \prod_c \psi_c(\mathbf{x}_c)$ — the **partition function**, normalizing everything to sum to 1.
+
+<Callout type="tip" title="Intuition">
+  Potentials vote on configurations. A pairwise potential $\psi(x_i, x_j)$ that is large when $x_i = x_j$ says "these two neighbors like to agree." The joint distribution favors global configurations where many local votes are satisfied — exactly the right model for "smooth" structures like images.
+</Callout>
+
+## Directed vs undirected
+
+| | Bayesian Network | Markov Random Field |
+|---|------------------|---------------------|
+| Edges | Directed (causal) | Undirected (symmetric) |
+| Local factor | $P(X_i \mid \text{Parents})$ — normalized | $\psi_c(X_c)$ — unnormalized |
+| Normalization | Automatic (CPTs sum to 1) | Global $Z$ needed |
+| Independence test | d-separation (colliders tricky) | Simple graph separation |
+| Natural fit | Causal / generative stories | Spatial / relational symmetry |
+
+<Callout type="info" title="Cleaner independence">
+  MRF independence is refreshingly simple: $X_A \perp X_B \mid X_S$ whenever removing the nodes in $S$ disconnects $A$ from $B$ in the graph. No collider exceptions — undirected separation is just "is the path cut?"
+</Callout>
+
+## The partition function: the hard part
+
+$Z$ sums over **all** joint configurations — $2^n$ of them for $n$ binary nodes. This single quantity makes MRFs harder to work with than Bayesian Networks:
+
+- You can often evaluate *unnormalized* scores $\tilde P(\mathbf{x}) = \prod_c \psi_c$ easily.
+- But probabilities, the gradient of the log-likelihood (which needs $\nabla \log Z$), and marginals all require $Z$ or its expectations — generally intractable.
+
+This is why MRF learning leans on approximations: contrastive divergence, pseudo-likelihood, or sampling.
+
+### Worked example — a 2-node Ising-style MRF
+
+Two binary spins $X_1, X_2 \in \{-1, +1\}$ that prefer to align. Edge potential $\psi(x_1, x_2) = e^{\,\beta x_1 x_2}$ with coupling $\beta = 1$:
+
+| $x_1$ | $x_2$ | $x_1 x_2$ | $\psi = e^{x_1 x_2}$ |
+|------|------|-----------|------------------|
+| +1 | +1 | +1 | $e^{1} = 2.72$ |
+| −1 | −1 | +1 | $e^{1} = 2.72$ |
+| +1 | −1 | −1 | $e^{-1} = 0.37$ |
+| −1 | +1 | −1 | $e^{-1} = 0.37$ |
+
+$Z = 2.72 + 2.72 + 0.37 + 0.37 = 6.18$. So $P(\text{aligned}) = 2.72/6.18 = 0.44$ each, $P(\text{disagree}) = 0.37/6.18 = 0.06$ each. The model puts $0.88$ total mass on the two aligned states — exactly the "neighbors agree" prior.
+
+```python
+import numpy as np
+
+beta = 1.0
+states = [(+1,+1), (-1,-1), (+1,-1), (-1,+1)]
+psi = np.array([np.exp(beta * a * b) for a, b in states])
+Z = psi.sum()
+for (a, b), p in zip(states, psi / Z):
+    print(f"x1={a:+d}, x2={b:+d}: P = {p:.3f}")
+print("P(aligned) =", (psi[0] + psi[1]) / Z)
+```
+
+## Gibbs / Boltzmann form
+
+Potentials are usually written as exponentiated **energies**, giving the Gibbs (Boltzmann) distribution:
+
+$$P(\mathbf{x}) = \frac{1}{Z}\exp\!\big(-E(\mathbf{x})\big), \qquad E(\mathbf{x}) = \sum_c E_c(\mathbf{x}_c)$$
+
+Low energy = high probability. This connects MRFs to statistical physics (the Ising model) and to energy-based models in deep learning (Hopfield nets, Boltzmann machines).
+
+## Image denoising sketch
+
+A noisy binary image is the textbook MRF. Two kinds of potentials:
+
+- **Data term** — each pixel should stay close to its observed (noisy) value.
+- **Smoothness term** — adjacent pixels should agree.
+
+Minimizing the total energy (e.g. with graph cuts or loopy belief propagation) cleans up noise while preserving edges.
+
+## Conditional Random Fields (CRFs)
+
+A **CRF** is the discriminative cousin: it models $P(\mathbf{y} \mid \mathbf{x})$ directly (labels given inputs) instead of the full joint. By conditioning on $\mathbf{x}$, it sidesteps modeling the inputs and is the standard for sequence labeling (NER, POS) — often stacked on top of an LSTM or Transformer to enforce valid label transitions.
+
+<Callout type="warning" title="Z is why MRFs are hard">
+  Almost every MRF difficulty traces back to the partition function $Z$. Evaluating a configuration's *relative* probability is cheap; getting an *absolute* probability or a likelihood gradient is not. Plan for approximate inference from the start.
+</Callout>
+
+## Common mistakes
+
+1. **Treating potentials as probabilities** — they're unnormalized scores; only the product over cliques, divided by $Z$, is a distribution.
+2. **Ignoring $Z$'s dependence on parameters** — when learning, $Z$ changes with the potentials; you cannot treat it as constant.
+3. **Forcing direction onto symmetric relations** — if there's no causal story, an undirected MRF is the honest model.
+
+<Exercise id="mrf-partition-function" />
+<Exercise id="mrf-vs-bn" />
+<Exercise id="mrf-potentials" />
