@@ -4,6 +4,7 @@
  */
 import type { MDXComponents } from "mdx/types";
 import { Callout } from "./Callout";
+import { Exercise } from "@/components/exercises/Exercise";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -11,7 +12,9 @@ export const mdxComponents: MDXComponents = {
   h3: (props) => <h3 className="text-xl font-semibold text-slate-200 mt-6 mb-2" {...props} />,
 
   Callout,
+  Exercise,
 
-  // Exercise component added in next PR (feat/03-lesson-engine)
-  // Visualization components added in feat/04-visualizations
+  // Visualization components added in feat/04-visualizations — uncomment as you build them:
+  // NeuralNetworkViz,
+  // GradientDescentViz,
 };
