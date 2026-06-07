@@ -1,18 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import type { Exercise as ExerciseType } from "@/types/exercise";
+import { getExercise } from "@/lib/exercises";
 import { MultipleChoiceExercise } from "./MultipleChoiceExercise";
 import { SliderExercise } from "./SliderExercise";
 
 interface Props {
-  exercise: ExerciseType;
+  /** Id of an exercise defined in the registry (`src/lib/exercises.ts`). */
+  id: string;
   onComplete?: (result: "correct" | "incorrect") => void;
 }
 
-export function Exercise({ exercise, onComplete }: Props) {
+export function Exercise({ id, onComplete }: Props) {
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
+
+  const exercise = getExercise(id);
+  if (!exercise) {
+    return (
+      <div className="not-prose card-glass p-6 my-8 border-accent-rose/40 text-rose-300 text-sm">
+        Unknown exercise id: <code>{id}</code>. Add it to{" "}
+        <code>src/lib/exercises.ts</code>.
+      </div>
+    );
+  }
 
   function handleAnswer(isCorrect: boolean) {
     const r = isCorrect ? "correct" : "incorrect";

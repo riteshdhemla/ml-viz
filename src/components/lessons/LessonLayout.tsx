@@ -43,6 +43,12 @@ export function LessonLayout({ meta, source, prev, next }: Props) {
             source={source}
             components={mdxComponents}
             options={{
+              // Lesson MDX must not evaluate JS expressions: exercises are
+              // referenced by id (`<Exercise id="..." />`) and resolved from
+              // the registry in `src/lib/exercises.ts`, never passed inline.
+              // blockJS defaults to true in next-mdx-remote v6; keep it on to
+              // prevent arbitrary code execution from MDX content.
+              blockJS: true,
               mdxOptions: {
                 remarkPlugins: [remarkMath, remarkGfm],
                 rehypePlugins: [rehypeKatex],

@@ -27,5 +27,11 @@ Add a new exercise type called **[TYPE NAME]** to the ml-viz exercise system.
      <[TypeName]Exercise exercise={exercise} onAnswer={handleAnswer} locked={result !== null} />
    )}
    ```
+   (`Exercise` resolves the `id` from the registry, then dispatches on `type` —
+   the sub-component still receives a fully-typed `exercise` object.)
+
+**Authoring instances:** exercise data is defined in the registry
+`src/lib/exercises.ts` and referenced from lessons by `<Exercise id="..." />`.
+Lesson MDX never contains inline JS objects (it runs with `blockJS: true`).
 
 See `src/components/exercises/MultipleChoiceExercise.tsx` and `SliderExercise.tsx` as references.

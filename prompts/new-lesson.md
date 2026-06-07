@@ -24,37 +24,49 @@ Add a new lesson to the **[COURSE SLUG]** course in the ml-viz website.
 
 **Exercise format reference:**
 
-Multiple choice:
-```mdx
-<Exercise exercise={{
-  id: "unique-id",
-  type: "multiple-choice",
-  question: "...",
-  hint: "...",
-  explanation: "Full explanation shown after answering.",
-  options: [
-    { id: "a", label: "Option A", isCorrect: false },
-    { id: "b", label: "Option B", isCorrect: true },
-    { id: "c", label: "Option C", isCorrect: false },
-  ]
-}} />
-```
+Exercise data lives in the registry `src/lib/exercises.ts`. Lessons reference it
+by id — **never inline a JS object** (MDX runs with `blockJS: true`, which would
+strip it to `undefined` and break the build).
 
-Slider:
-```mdx
-<Exercise exercise={{
-  id: "unique-id",
-  type: "slider",
-  question: "...",
-  hint: "...",
-  explanation: "...",
-  min: 0, max: 1, step: 0.01,
-  correctRange: [0.3, 0.7],
-  unit: ""
-}} />
-```
+1. Add a typed entry to the `allExercises` array in `src/lib/exercises.ts`:
 
-See `src/content/courses/neural-networks/01-what-is-a-neuron.mdx` as a reference.
+   Multiple choice:
+   ```ts
+   {
+     id: "unique-id",
+     type: "multiple-choice",
+     question: "...",
+     hint: "...",
+     explanation: "Full explanation shown after answering.",
+     options: [
+       { id: "a", label: "Option A", isCorrect: false },
+       { id: "b", label: "Option B", isCorrect: true },
+       { id: "c", label: "Option C", isCorrect: false },
+     ],
+   }
+   ```
+
+   Slider:
+   ```ts
+   {
+     id: "unique-id",
+     type: "slider",
+     question: "...",
+     hint: "...",
+     explanation: "...",
+     min: 0, max: 1, step: 0.01,
+     correctRange: [0.3, 0.7],
+     unit: "",
+   }
+   ```
+
+2. Reference it from the lesson MDX:
+   ```mdx
+   <Exercise id="unique-id" />
+   ```
+
+See `src/content/courses/neural-networks/01-what-is-a-neuron.mdx` and
+`src/lib/exercises.ts` as references.
 
 ---
 
