@@ -142,6 +142,18 @@ The update gate $\mathbf{z}_t$ does the job of the LSTM's forget *and* input gat
 2. **Stacking too many layers** on small data — 1–2 layers is usually enough; more overfits.
 3. **Reaching for an LSTM when attention is better** — for long documents, Transformers (next course) generally beat any RNN. LSTMs shine on small data and streaming.
 
+## Key takeaways
+
+- LSTMs add a **cell state** updated by addition — a gradient highway for long memory.
+- Three **gates** (forget/input/output) learn what to keep, write, and reveal.
+- **GRU** merges them into two gates and one state — fewer parameters, similar performance.
+- Initialize the forget-gate bias positive so the cell defaults to remembering.
+
+## Related concepts
+
+- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — the problem gates were invented to solve
+- [**Self-Attention**](/courses/transformers/01-self-attention) — what largely superseded LSTMs for long sequences
+
 <Exercise id="lstm-forget-gate" />
 <Exercise id="lstm-cell-state" />
 <Exercise id="gru-vs-lstm" />

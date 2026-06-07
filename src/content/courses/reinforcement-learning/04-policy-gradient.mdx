@@ -128,6 +128,19 @@ Advantage $A = 1 + 0.9\cdot 10 - 8 = 1 + 9 - 8 = +2$. Positive → the action di
 2. **Reusing old data on-policy** — policy gradient data is stale after one update (PPO's clip lets you reuse it a *few* times, not indefinitely).
 3. **Forgetting entropy regularization** — without it the policy collapses to deterministic too early and stops exploring.
 
+## Key takeaways
+
+- Policy gradient optimizes $\pi_\theta$ directly — supporting continuous, stochastic actions.
+- It raises the log-probability of actions weighted by their **return**.
+- A **baseline/advantage** cuts variance; **actor-critic** combines policy + value nets.
+- **PPO** is the robust default and powers RLHF for language models.
+
+## Related concepts
+
+- [**Deep Q-Networks**](/courses/reinforcement-learning/03-deep-q-networks) — the value-based alternative
+- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes) — the objective being optimized
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the ascent that updates the policy
+
 <Exercise id="pg-theorem" />
 <Exercise id="pg-baseline" />
 <Exercise id="pg-actor-critic" />

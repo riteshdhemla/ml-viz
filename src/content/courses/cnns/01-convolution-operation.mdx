@@ -167,6 +167,19 @@ class ConvBlock(nn.Module):
 2. **Using too many channels early** — Start with 32 or 64 channels, not 512. The first layers detect simple features (edges, textures) that don't need many channels.
 3. **Ignoring the receptive field** — Each output pixel only "sees" a small patch of the input. Stacking layers increases the receptive field.
 
+## Key takeaways
+
+- Convolution slides a small **filter** over the input, producing feature maps.
+- **Weight sharing** + **translation equivariance** make CNNs efficient and shift-robust.
+- Output size $=\lfloor (W-F+2P)/S\rfloor + 1$; padding preserves spatial size.
+- A filter spans **all input channels**; a layer learns `C_out` of them.
+
+## Related concepts
+
+- [**Pooling & Architectures**](/courses/cnns/02-pooling-and-architectures) — stacking convolutions into real networks
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the neuron that convolution specializes
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the attention-based alternative now used for vision
+
 <Exercise id="conv-output-size" />
 <Exercise id="conv-params" />
 <Exercise id="conv-receptive-field" />

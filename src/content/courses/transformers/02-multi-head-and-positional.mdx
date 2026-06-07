@@ -120,6 +120,18 @@ Modern LLMs mostly use **RoPE**, which encodes *relative* position directly insi
 2. **Forgetting positional encoding** — silently turns the model into a permutation-invariant bag-of-words.
 3. **Adding vs concatenating PE** — sinusoidal/learned PE is *added* to embeddings (same dimension), not concatenated.
 
+## Key takeaways
+
+- **Multi-head** attention runs several attention views in parallel, then concatenates.
+- Each head uses $d_k = d_{model}/h$, so total compute matches one full-size head.
+- Self-attention is **permutation-invariant** — position must be injected.
+- **Positional encodings** (sinusoidal, learned, or RoPE) supply word order.
+
+## Related concepts
+
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the single-head mechanism this scales up
+- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — assembling these into full blocks
+
 <Exercise id="multihead-dimensions" />
 <Exercise id="positional-encoding-purpose" />
 <Exercise id="attention-permutation" />

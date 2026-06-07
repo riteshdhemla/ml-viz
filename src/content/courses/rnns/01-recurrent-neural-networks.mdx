@@ -144,6 +144,19 @@ print(h_n.shape)     # (1, 2, 4) — final hidden state only
 2. **Not detaching/truncating** the hidden state across long sequences — backprop grows unbounded in memory.
 3. **Feeding raw token IDs** instead of embeddings — RNNs expect continuous vectors, not category indices.
 
+## Key takeaways
+
+- An RNN carries a **hidden state** that summarizes the sequence seen so far.
+- **Weight sharing** across time steps handles variable-length input with fixed parameters.
+- Output wiring (one/many in/out) adapts it to tagging, classification, or seq2seq.
+- Vanilla RNNs reliably remember only ~10–20 steps.
+
+## Related concepts
+
+- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — why long-range memory is hard
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the unit unrolled through time
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the mechanism that replaced recurrence
+
 <Exercise id="rnn-hidden-state" />
 <Exercise id="rnn-weight-sharing" />
 <Exercise id="rnn-sequence-types" />

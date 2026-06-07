@@ -134,6 +134,18 @@ The cost: attention is **quadratic** in sequence length ($n^2$ scores). For very
 2. **Omitting the causal mask** in a generative model — the model "cheats" by seeing the answer, then fails at inference.
 3. **Confusing the dimensions** — attention weights are $n\times n$ (token-to-token), the output is $n\times d_v$ (same shape as input).
 
+## Key takeaways
+
+- Self-attention lets every token attend to every other in **one parallel step**.
+- **Query·Key** scores, scaled by $\sqrt{d_k}$ and softmaxed, weight the **Values**.
+- A **causal mask** enables autoregressive (GPT-style) generation.
+- Cost is **quadratic** in sequence length — the main scaling bottleneck.
+
+## Related concepts
+
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — many attention heads + injecting word order
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — the recurrent approach attention replaced
+
 <Exercise id="attention-qkv" />
 <Exercise id="attention-scale" />
 <Exercise id="attention-complexity" />

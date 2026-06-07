@@ -133,6 +133,30 @@ describe("exercise references", () => {
   });
 });
 
+describe("cross-links", () => {
+  const LINK_RE = /\]\(\/courses\/([a-z0-9-]+)\/([a-z0-9-]+)\)/g;
+
+  it("every /courses/<course>/<lesson> link resolves to an existing lesson", () => {
+    const broken: string[] = [];
+    for (const l of lessons) {
+      for (const m of l.content.matchAll(LINK_RE)) {
+        const target = path.join(COURSES_DIR, m[1], `${m[2]}.mdx`);
+        if (!fs.existsSync(target)) {
+          broken.push(`${l.courseSlug}/${l.file} -> /courses/${m[1]}/${m[2]}`);
+        }
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+
+  it("every lesson links to at least one related concept", () => {
+    const noLinks = lessons
+      .filter((l) => !l.content.includes("](/courses/"))
+      .map((l) => `${l.courseSlug}/${l.file}`);
+    expect(noLinks).toEqual([]);
+  });
+});
+
 describe("companion notebooks", () => {
   it("every lesson has a valid .ipynb (unless it overrides notebookUrl)", () => {
     for (const l of lessons) {
