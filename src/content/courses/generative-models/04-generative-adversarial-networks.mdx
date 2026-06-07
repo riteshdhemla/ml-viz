@@ -19,7 +19,9 @@ GANs learn to generate realistic data through a competitive game: a **generator*
 
 The minimax game:
 
-$$\min_G \max_D \; \mathbb{E}_{\mathbf{x} \sim P_{\text{data}}}[\log D(\mathbf{x})] + \mathbb{E}_{\mathbf{z} \sim P(\mathbf{z})}[\log(1 - D(G(\mathbf{z})))]$$
+$$
+\min_G \max_D \; \mathbb{E}_{\mathbf{x} \sim P_{\text{data}}}[\log D(\mathbf{x})] + \mathbb{E}_{\mathbf{z} \sim P(\mathbf{z})}[\log(1 - D(G(\mathbf{z})))]
+$$
 
 <Callout type="tip" title="Intuition">
   The generator is a forger creating fake paintings. The discriminator is an art expert learning to spot fakes. As the expert gets better, the forger must improve. At equilibrium, the forger produces works indistinguishable from real art.
@@ -152,7 +154,9 @@ class DCGANGenerator(nn.Module):
 
 Replaces the binary cross-entropy with **Earth Mover's distance**:
 
-$$\min_G \max_{D \in \mathcal{D}} \; \mathbb{E}_{\mathbf{x}}[D(\mathbf{x})] - \mathbb{E}_{\mathbf{z}}[D(G(\mathbf{z}))]$$
+$$
+\min_G \max_{D \in \mathcal{D}} \; \mathbb{E}_{\mathbf{x}}[D(\mathbf{x})] - \mathbb{E}_{\mathbf{z}}[D(G(\mathbf{z}))]
+$$
 
 Key benefits:
 - Meaningful loss metric (correlates with image quality)

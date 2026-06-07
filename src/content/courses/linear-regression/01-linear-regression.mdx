@@ -14,7 +14,9 @@ The simplest supervised learning task: given input features $x_1, \ldots, x_d$, 
 
 ## The model
 
-$$\hat{y} = w_0 + w_1 x_1 + w_2 x_2 + \cdots + w_d x_d = \mathbf{w}^T \mathbf{x} + w_0$$
+$$
+\hat{y} = w_0 + w_1 x_1 + w_2 x_2 + \cdots + w_d x_d = \mathbf{w}^T \mathbf{x} + w_0
+$$
 
 In matrix form: $\hat{\mathbf{y}} = X\mathbf{w}$, where $X$ includes a bias column of ones.
 
@@ -28,11 +30,15 @@ Each weight $w_j$ tells you how much $y$ changes when $x_j$ increases by one uni
 
 We find the weights that minimize the mean squared error:
 
-$$\mathcal{L}(\mathbf{w}) = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 = \frac{1}{n} \| \mathbf{y} - X\mathbf{w} \|^2$$
+$$
+\mathcal{L}(\mathbf{w}) = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 = \frac{1}{n} \| \mathbf{y} - X\mathbf{w} \|^2
+$$
 
 Taking the gradient and setting it to zero gives the **closed-form solution**:
 
-$$\mathbf{w}^* = (X^T X)^{-1} X^T \mathbf{y}$$
+$$
+\mathbf{w}^* = (X^T X)^{-1} X^T \mathbf{y}
+$$
 
 <Callout type="info" title="Why closed-form matters">
   Unlike gradient descent, OLS gives you the exact answer in one computation. No learning rate to tune, no convergence to worry about. But it requires $X^T X$ to be invertible — which fails when features are perfectly correlated or when $d > n$ (more features than samples).
@@ -42,13 +48,21 @@ $$\mathbf{w}^* = (X^T X)^{-1} X^T \mathbf{y}$$
 
 Suppose we have 3 data points: $(1, 2), (2, 3), (3, 5)$.
 
-$$X = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 2 \\ 3 \\ 5 \end{bmatrix}$$
+$$
+X = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 2 \\ 3 \\ 5 \end{bmatrix}
+$$
 
-$$X^T X = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}, \quad X^T \mathbf{y} = \begin{bmatrix} 10 \\ 23 \end{bmatrix}$$
+$$
+X^T X = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}, \quad X^T \mathbf{y} = \begin{bmatrix} 10 \\ 23 \end{bmatrix}
+$$
 
-$$(X^T X)^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}$$
+$$
+(X^T X)^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}
+$$
 
-$$\mathbf{w}^* = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 10 \\ 23 \end{bmatrix} = \begin{bmatrix} 0.33 \\ 1.5 \end{bmatrix}$$
+$$
+\mathbf{w}^* = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 10 \\ 23 \end{bmatrix} = \begin{bmatrix} 0.33 \\ 1.5 \end{bmatrix}
+$$
 
 So $\hat{y} = 0.33 + 1.5x$. For a new house with $x = 4$, the prediction is $\hat{y} = 6.33$.
 
@@ -83,11 +97,15 @@ With many features (or correlated features), $X^T X$ can be nearly singular, cau
 
 Add a penalty on the **magnitude** of the weights:
 
-$$\mathcal{L}_{\text{Ridge}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|^2$$
+$$
+\mathcal{L}_{\text{Ridge}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|^2
+$$
 
 The closed-form solution becomes:
 
-$$\mathbf{w}^* = (X^T X + \lambda I)^{-1} X^T \mathbf{y}$$
+$$
+\mathbf{w}^* = (X^T X + \lambda I)^{-1} X^T \mathbf{y}
+$$
 
 The $\lambda I$ term ensures $X^T X + \lambda I$ is always invertible and shrinks all weights toward zero.
 
@@ -109,7 +127,9 @@ print(f"Test R²: {ridge.score(X_test, y_test):.3f}")
 
 Replace the L2 penalty with an L1 penalty:
 
-$$\mathcal{L}_{\text{Lasso}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|_1$$
+$$
+\mathcal{L}_{\text{Lasso}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|_1
+$$
 
 Unlike Ridge, Lasso can set weights **exactly to zero** — performing automatic feature selection. This is because the L1 penalty creates a diamond-shaped constraint region whose corners touch the axes.
 

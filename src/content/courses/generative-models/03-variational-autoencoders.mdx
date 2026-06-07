@@ -16,11 +16,15 @@ This single change transforms the autoencoder from a compression tool into a **g
 
 Instead of encoding each input to a point $\mathbf{z}$, the encoder outputs the parameters of a **distribution**:
 
-$$q_\phi(\mathbf{z} \mid \mathbf{x}) = \mathcal{N}(\boldsymbol{\mu}_\phi(\mathbf{x}),\; \boldsymbol{\sigma}^2_\phi(\mathbf{x}) \cdot I)$$
+$$
+q_\phi(\mathbf{z} \mid \mathbf{x}) = \mathcal{N}(\boldsymbol{\mu}_\phi(\mathbf{x}),\; \boldsymbol{\sigma}^2_\phi(\mathbf{x}) \cdot I)
+$$
 
 The latent vector is then *sampled* from this distribution:
 
-$$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$$
+$$
+\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I)
+$$
 
 <Callout type="tip" title="Why a distribution, not a point?">
   By outputting a distribution, the encoder says "this input could map to *anywhere near here*." This forces nearby latent regions to decode to similar outputs, filling in the "holes" that make standard autoencoders non-generative.
@@ -30,14 +34,18 @@ $$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon
 
 The VAE loss has two terms:
 
-$$\mathcal{L} = \underbrace{\|\mathbf{x} - \hat{\mathbf{x}}\|^2}_{\text{reconstruction}} + \underbrace{D_{\text{KL}}\!\left(q_\phi(\mathbf{z}|\mathbf{x}) \;\|\; \mathcal{N}(0, I)\right)}_{\text{KL divergence}}$$
+$$
+\mathcal{L} = \underbrace{\|\mathbf{x} - \hat{\mathbf{x}}\|^2}_{\text{reconstruction}} + \underbrace{D_{\text{KL}}\!\left(q_\phi(\mathbf{z}|\mathbf{x}) \;\|\; \mathcal{N}(0, I)\right)}_{\text{KL divergence}}
+$$
 
 1. **Reconstruction loss** — keeps the decoded output close to the original
 2. **KL divergence** — pulls the encoder's distribution toward the standard Gaussian
 
 The KL divergence has a closed-form solution for two Gaussians:
 
-$$D_{\text{KL}} = -\frac{1}{2} \sum_{j=1}^{J} \left(1 + \log \sigma_j^2 - \mu_j^2 - \sigma_j^2\right)$$
+$$
+D_{\text{KL}} = -\frac{1}{2} \sum_{j=1}^{J} \left(1 + \log \sigma_j^2 - \mu_j^2 - \sigma_j^2\right)
+$$
 
 <Callout type="info" title="KL divergence intuition">
   KL divergence measures how different two distributions are. If the encoder outputs $\mathcal{N}(0, 1)$, KL = 0 (matches the prior). If it outputs $\mathcal{N}(5, 1)$, KL is large (penalized). This regularization ensures the latent space is smooth and complete.
@@ -47,7 +55,9 @@ $$D_{\text{KL}} = -\frac{1}{2} \sum_{j=1}^{J} \left(1 + \log \sigma_j^2 - \mu_j^
 
 We can't backpropagate through a random sampling operation. The **reparameterization trick** solves this by making the sampling *deterministic* except for an external noise term:
 
-$$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$$
+$$
+\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I)
+$$
 
 Now $\boldsymbol{\mu}$ and $\boldsymbol{\sigma}$ are deterministic outputs of the encoder, and $\boldsymbol{\epsilon}$ is the only random variable. Gradients flow through $\boldsymbol{\mu}$ and $\boldsymbol{\sigma}$ normally.
 
@@ -127,7 +137,9 @@ for alpha in torch.linspace(0, 1, 10):
 
 Adding a weight $\beta$ to the KL term controls the tradeoff between reconstruction quality and latent space regularization:
 
-$$\mathcal{L} = \text{reconstruction} + \beta \cdot D_{\text{KL}}$$
+$$
+\mathcal{L} = \text{reconstruction} + \beta \cdot D_{\text{KL}}
+$$
 
 - $\beta < 1$: better reconstruction, less structured latent space
 - $\beta > 1$: more disentangled representations, potentially blurrier outputs

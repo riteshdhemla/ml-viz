@@ -17,8 +17,12 @@ Each block has **two sub-layers**, each wrapped in a residual connection and a l
 1. **Multi-head self-attention** — tokens exchange information.
 2. **Position-wise feed-forward network (FFN)** — each token is independently transformed.
 
-$$\mathbf{z} = \text{LayerNorm}\big(\mathbf{x} + \text{MultiHead}(\mathbf{x})\big)$$
-$$\mathbf{y} = \text{LayerNorm}\big(\mathbf{z} + \text{FFN}(\mathbf{z})\big)$$
+$$
+\mathbf{z} = \text{LayerNorm}\big(\mathbf{x} + \text{MultiHead}(\mathbf{x})\big)
+$$
+$$
+\mathbf{y} = \text{LayerNorm}\big(\mathbf{z} + \text{FFN}(\mathbf{z})\big)
+$$
 
 ```
    x ──┬─────────────▶(+)──▶ LayerNorm ──┬───────────▶(+)──▶ LayerNorm ──▶ y
@@ -32,7 +36,9 @@ $$\mathbf{y} = \text{LayerNorm}\big(\mathbf{z} + \text{FFN}(\mathbf{z})\big)$$
 
 A simple two-layer MLP applied to **each position independently**, usually expanding the dimension 4× then projecting back:
 
-$$\text{FFN}(\mathbf{x}) = W_2\,\text{ReLU}(W_1\mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2$$
+$$
+\text{FFN}(\mathbf{x}) = W_2\,\text{ReLU}(W_1\mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2
+$$
 
 With $d_{\text{model}} = 512$, the hidden layer is typically $d_{ff} = 2048$. Attention mixes information *between* tokens; the FFN does the heavy *per-token* computation. The FFN holds the majority of a Transformer's parameters.
 

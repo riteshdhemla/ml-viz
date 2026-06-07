@@ -34,7 +34,9 @@ The loop: in state $s_t$, the agent picks action $a_t$, the environment returns 
 
 The "Markov" in MDP means the future depends only on the **current state**, not the full history:
 
-$$P(s_{t+1} \mid s_t, a_t) = P(s_{t+1} \mid s_t, a_t, s_{t-1}, a_{t-1}, \dots)$$
+$$
+P(s_{t+1} \mid s_t, a_t) = P(s_{t+1} \mid s_t, a_t, s_{t-1}, a_{t-1}, \dots)
+$$
 
 The state must capture everything relevant. (A chess board position is Markov; the last *move* alone is not.) This assumption is what makes the recursive Bellman equation valid.
 
@@ -42,7 +44,9 @@ The state must capture everything relevant. (A chess board position is Markov; t
 
 The agent maximizes the **return** — cumulative discounted reward, not just the next reward:
 
-$$G_t = r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + \dots = \sum_{k=0}^{\infty} \gamma^k r_{t+k+1}$$
+$$
+G_t = r_{t+1} + \gamma r_{t+2} + \gamma^2 r_{t+3} + \dots = \sum_{k=0}^{\infty} \gamma^k r_{t+k+1}
+$$
 
 The discount $\gamma$ does two jobs: it keeps the infinite sum finite, and it sets the agent's horizon. $\gamma \to 0$ is myopic (grab the nearest reward); $\gamma \to 1$ is far-sighted (plan for the long game).
 
@@ -57,9 +61,13 @@ A **policy** $\pi(a \mid s)$ is the agent's strategy — a mapping from states t
 To compare policies we use **value functions**:
 
 - **State value** — expected return from state $s$ under $\pi$:
-$$V^\pi(s) = \mathbb{E}_\pi\!\left[G_t \mid s_t = s\right]$$
+$$
+V^\pi(s) = \mathbb{E}_\pi\!\left[G_t \mid s_t = s\right]
+$$
 - **Action value (Q)** — expected return from taking $a$ in $s$, then following $\pi$:
-$$Q^\pi(s, a) = \mathbb{E}_\pi\!\left[G_t \mid s_t = s,\, a_t = a\right]$$
+$$
+Q^\pi(s, a) = \mathbb{E}_\pi\!\left[G_t \mid s_t = s,\, a_t = a\right]
+$$
 
 $Q$ is the more useful of the two for control: if you know $Q^*$, the optimal action is simply $\arg\max_a Q^*(s,a)$ — no model of the environment needed.
 
@@ -67,13 +75,19 @@ $Q$ is the more useful of the two for control: if you know $Q^*$, the optimal ac
 
 The key insight: value is **recursive**. The value of a state = immediate reward + discounted value of where you land. For a fixed policy:
 
-$$V^\pi(s) = \sum_a \pi(a\mid s)\sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^\pi(s')\big]$$
+$$
+V^\pi(s) = \sum_a \pi(a\mid s)\sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^\pi(s')\big]
+$$
 
 And the **Bellman optimality equation** — the one $\pi^*$ satisfies — replaces the policy average with a max:
 
-$$V^*(s) = \max_a \sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^*(s')\big]$$
+$$
+V^*(s) = \max_a \sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^*(s')\big]
+$$
 
-$$Q^*(s,a) = \sum_{s'} P(s'\mid s,a)\Big[R(s,a) + \gamma \max_{a'} Q^*(s',a')\Big]$$
+$$
+Q^*(s,a) = \sum_{s'} P(s'\mid s,a)\Big[R(s,a) + \gamma \max_{a'} Q^*(s',a')\Big]
+$$
 
 <Callout type="tip" title="The recursion that powers all of RL">
   "The value of where I am equals the best immediate reward plus the discounted value of where I'll be." Every RL algorithm — value iteration, Q-learning, DQN, actor-critic — is ultimately a way of solving or approximating this Bellman equation.

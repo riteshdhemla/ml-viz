@@ -16,7 +16,9 @@ K-Means assigns each point to exactly one cluster. **GMMs** assign soft probabil
 
 A GMM assumes data is generated from a mixture of $K$ Gaussian distributions:
 
-$$P(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$
+$$
+P(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)
+$$
 
 - $\pi_k$: mixing weight (probability of component $k$), $\sum \pi_k = 1$
 - $\boldsymbol{\mu}_k$: mean of component $k$
@@ -30,7 +32,9 @@ $$P(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x} \mid \boldsy
 
 Given a data point $\mathbf{x}_i$, the probability it came from component $k$ is:
 
-$$\gamma_{ik} = P(z_i = k \mid \mathbf{x}_i) = \frac{\pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_{j=1}^{K} \pi_j \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}$$
+$$
+\gamma_{ik} = P(z_i = k \mid \mathbf{x}_i) = \frac{\pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_{j=1}^{K} \pi_j \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}
+$$
 
 This is Bayes' theorem — the **responsibility** of component $k$ for point $i$.
 
@@ -74,7 +78,9 @@ print(gamma.round(3))
 
 Parameters $\theta = \{\pi_k, \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\}$ are found by maximizing the log-likelihood:
 
-$$\log P(X \mid \theta) = \sum_{i=1}^{n} \log \left( \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k) \right)$$
+$$
+\log P(X \mid \theta) = \sum_{i=1}^{n} \log \left( \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k) \right)
+$$
 
 Because of the log-sum, there's no closed-form solution. We use the **EM algorithm** (covered in the next lesson).
 
@@ -109,13 +115,17 @@ labels = gmm.predict(X)
 
 ### BIC (Bayesian Information Criterion)
 
-$$\text{BIC} = -2 \log P(X \mid \hat{\theta}) + k \ln(n)$$
+$$
+\text{BIC} = -2 \log P(X \mid \hat{\theta}) + k \ln(n)
+$$
 
 Penalizes complexity more than AIC — prefers simpler models.
 
 ### AIC (Akaike Information Criterion)
 
-$$\text{AIC} = -2 \log P(X \mid \hat{\theta}) + 2k$$
+$$
+\text{AIC} = -2 \log P(X \mid \hat{\theta}) + 2k
+$$
 
 Less penalty than BIC — may select more complex models.
 

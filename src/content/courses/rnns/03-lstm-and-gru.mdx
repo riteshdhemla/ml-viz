@@ -21,7 +21,9 @@ An LSTM carries **two** vectors between steps:
 
 The cell state is updated almost entirely by **addition**, not repeated matrix multiplication:
 
-$$\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t$$
+$$
+\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t
+$$
 
 That additive path is the gradient highway. Because $\partial \mathbf{c}_t / \partial \mathbf{c}_{t-1} \approx \mathbf{f}_t$ (a gate near 1, not a fixed weight matrix), gradients can flow across hundreds of steps without vanishing.
 
@@ -34,17 +36,27 @@ That additive path is the gradient highway. Because $\partial \mathbf{c}_t / \pa
 Each gate is a small sigmoid layer producing values in $(0, 1)$ — think of them as soft switches, where 0 = "block completely" and 1 = "let everything through." All three look at the previous hidden state $\mathbf{h}_{t-1}$ and the current input $\mathbf{x}_t$.
 
 **1. Forget gate** — what to erase from the cell state:
-$$\mathbf{f}_t = \sigma(W_f[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_f)$$
+$$
+\mathbf{f}_t = \sigma(W_f[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_f)
+$$
 
 **2. Input gate** — what new information to write:
-$$\mathbf{i}_t = \sigma(W_i[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_i)$$
-$$\tilde{\mathbf{c}}_t = \tanh(W_c[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_c) \quad\text{(candidate values)}$$
+$$
+\mathbf{i}_t = \sigma(W_i[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_i)
+$$
+$$
+\tilde{\mathbf{c}}_t = \tanh(W_c[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_c) \quad\text{(candidate values)}
+$$
 
 **3. Output gate** — what to expose as the hidden state:
-$$\mathbf{o}_t = \sigma(W_o[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_o)$$
+$$
+\mathbf{o}_t = \sigma(W_o[\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_o)
+$$
 
 And the state updates:
-$$\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t \qquad \mathbf{h}_t = \mathbf{o}_t \odot \tanh(\mathbf{c}_t)$$
+$$
+\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t \qquad \mathbf{h}_t = \mathbf{o}_t \odot \tanh(\mathbf{c}_t)
+$$
 
 ($\odot$ is element-wise multiplication; $[\cdot,\cdot]$ is concatenation.)
 
@@ -94,9 +106,15 @@ print(c_n.shape)      # (2, 4, 20) — final cell state, per layer
 
 The **Gated Recurrent Unit (GRU)** (Cho et al., 2014) merges the cell and hidden state into one and uses just **two** gates — a **reset** gate $\mathbf{r}_t$ and an **update** gate $\mathbf{z}_t$:
 
-$$\mathbf{z}_t = \sigma(W_z[\mathbf{h}_{t-1}, \mathbf{x}_t]) \qquad \mathbf{r}_t = \sigma(W_r[\mathbf{h}_{t-1}, \mathbf{x}_t])$$
-$$\tilde{\mathbf{h}}_t = \tanh(W_h[\mathbf{r}_t \odot \mathbf{h}_{t-1}, \mathbf{x}_t])$$
-$$\mathbf{h}_t = (1 - \mathbf{z}_t)\odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t$$
+$$
+\mathbf{z}_t = \sigma(W_z[\mathbf{h}_{t-1}, \mathbf{x}_t]) \qquad \mathbf{r}_t = \sigma(W_r[\mathbf{h}_{t-1}, \mathbf{x}_t])
+$$
+$$
+\tilde{\mathbf{h}}_t = \tanh(W_h[\mathbf{r}_t \odot \mathbf{h}_{t-1}, \mathbf{x}_t])
+$$
+$$
+\mathbf{h}_t = (1 - \mathbf{z}_t)\odot \mathbf{h}_{t-1} + \mathbf{z}_t \odot \tilde{\mathbf{h}}_t
+$$
 
 The update gate $\mathbf{z}_t$ does the job of the LSTM's forget *and* input gates at once: it interpolates between keeping the old state and writing the new candidate.
 

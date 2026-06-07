@@ -29,7 +29,9 @@ DQN learns *values* and acts greedily on them. **Policy gradient** methods skip 
 
 We want to maximize expected return $J(\theta) = \mathbb{E}_{\pi_\theta}[G]$. The remarkable result is that its gradient has a form we can estimate from samples:
 
-$$\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\Big[\nabla_\theta \log \pi_\theta(a\mid s)\; G_t\Big]$$
+$$
+\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\Big[\nabla_\theta \log \pi_\theta(a\mid s)\; G_t\Big]
+$$
 
 Read it as: **increase the log-probability of actions, weighted by the return that followed them.** Good returns ($G_t$ large) pull those actions' probabilities up; bad returns push them down. No model of the environment, no value table required.
 
@@ -70,7 +72,9 @@ def reinforce_update(log_probs, rewards, optim, gamma=0.99):
 REINFORCE works but learns slowly: the return $G_t$ is a noisy Monte-Carlo estimate over a whole episode, so the gradient has **high variance**. Two standard cures:
 
 1. **Baseline subtraction** — subtract a state-dependent baseline $b(s)$ from the return. It doesn't bias the gradient but slashes variance:
-$$\nabla_\theta J = \mathbb{E}\big[\nabla_\theta \log \pi_\theta(a\mid s)\,(G_t - b(s))\big]$$
+$$
+\nabla_\theta J = \mathbb{E}\big[\nabla_\theta \log \pi_\theta(a\mid s)\,(G_t - b(s))\big]
+$$
 The best baseline is the value function $V(s)$ — which gives the **advantage** $A(s,a) = G_t - V(s)$: "how much better than average was this action?"
 
 2. **Bootstrapping** — replace the full-episode return with a one-step estimate, just like TD learning.
@@ -86,8 +90,12 @@ Two cooperating networks:
 
 The actor updates using the advantage from the critic; the critic learns $V$ by TD just like before:
 
-$$A_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t) \quad(\text{TD error = advantage estimate})$$
-$$\theta \leftarrow \theta + \alpha\,\nabla_\theta \log\pi_\theta(a_t\mid s_t)\,A_t \qquad \phi \leftarrow \phi + \beta\,A_t \nabla_\phi V_\phi(s_t)$$
+$$
+A_t = r_t + \gamma V_\phi(s_{t+1}) - V_\phi(s_t) \quad(\text{TD error = advantage estimate})
+$$
+$$
+\theta \leftarrow \theta + \alpha\,\nabla_\theta \log\pi_\theta(a_t\mid s_t)\,A_t \qquad \phi \leftarrow \phi + \beta\,A_t \nabla_\phi V_\phi(s_t)
+$$
 
 <Callout type="tip" title="Actor and critic, in plain terms">
   The **actor** acts. The **critic** judges. The critic's TD error tells the actor "that action did better/worse than I expected from this state" — a low-variance learning signal that arrives every step instead of only at episode end. The actor adjusts; the critic sharpens its judgment. They improve together.

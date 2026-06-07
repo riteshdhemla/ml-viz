@@ -16,7 +16,9 @@ Tabular Q-learning dies when the state space is huge — you cannot tabulate eve
 
 Instead of storing $Q(s,a)$ in a grid, a network takes the state $s$ as input and outputs a Q-value for **every** action at once:
 
-$$Q(s, \cdot; \theta) : \mathbb{R}^{|s|} \to \mathbb{R}^{|A|}$$
+$$
+Q(s, \cdot; \theta) : \mathbb{R}^{|s|} \to \mathbb{R}^{|A|}
+$$
 
 For Atari, $s$ is a stack of 4 game frames, the network is a CNN, and the output is one Q-value per joystick action. Now nearby states share parameters, so the agent generalizes to screens it has never seen — impossible with a table.
 
@@ -28,7 +30,9 @@ For Atari, $s$ is a stack of 4 game frames, the network is a CNN, and the output
 
 We turn the Q-learning update into a supervised loss. The target is the same Bellman backup; we minimize the squared TD error:
 
-$$\mathcal{L}(\theta) = \mathbb{E}\Big[\big(\underbrace{r + \gamma \max_{a'} Q(s', a'; \theta^-)}_{\text{target } y} - Q(s, a; \theta)\big)^2\Big]$$
+$$
+\mathcal{L}(\theta) = \mathbb{E}\Big[\big(\underbrace{r + \gamma \max_{a'} Q(s', a'; \theta^-)}_{\text{target } y} - Q(s, a; \theta)\big)^2\Big]
+$$
 
 and update $\theta$ by gradient descent. But done naively this is **unstable** — for two deep reasons, each with a fix.
 
@@ -51,7 +55,9 @@ Benefits: breaks temporal correlation, and **reuses** each experience many times
 
 In the loss, the target $y$ depends on the *same* parameters $\theta$ we're updating — chasing a target that moves every step causes oscillation or divergence. DQN keeps a **separate, frozen** copy $\theta^-$ for computing targets, synced to $\theta$ only every $N$ steps:
 
-$$y = r + \gamma \max_{a'} Q(s', a';\, \theta^-) \qquad \theta^- \leftarrow \theta \text{ every } N \text{ steps}$$
+$$
+y = r + \gamma \max_{a'} Q(s', a';\, \theta^-) \qquad \theta^- \leftarrow \theta \text{ every } N \text{ steps}
+$$
 
 <Callout type="info" title="The two pillars of DQN">
   **Experience replay** decorrelates the data; the **target network** stabilizes the regression target. Remove either and DQN typically diverges. These two tricks are the whole reason deep Q-learning works.
@@ -92,7 +98,9 @@ def train_step(q, q_target, batch, optim, gamma=0.99):
 
 The $\max$ in the target systematically **overestimates** Q-values (it's a max over noisy estimates). **Double DQN** decouples action *selection* from *evaluation*: pick the best next action with the online net $\theta$, but read its value from the target net $\theta^-$:
 
-$$y = r + \gamma\, Q\big(s',\ \arg\max_{a'} Q(s', a'; \theta);\ \theta^-\big)$$
+$$
+y = r + \gamma\, Q\big(s',\ \arg\max_{a'} Q(s', a'; \theta);\ \theta^-\big)
+$$
 
 A one-line change that noticeably improves stability and final performance.
 

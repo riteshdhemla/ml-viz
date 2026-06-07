@@ -18,7 +18,9 @@ Pooling reduces the spatial size of feature maps, decreasing computation and pro
 
 Takes the maximum value in each window:
 
-$$\text{MaxPool}(X)_{i,j} = \max_{m,n \in \text{window}} X_{i+m, j+n}$$
+$$
+\text{MaxPool}(X)_{i,j} = \max_{m,n \in \text{window}} X_{i+m, j+n}
+$$
 
 ```python
 import torch.nn as nn
@@ -44,7 +46,9 @@ Takes the mean value in each window. Less common in modern architectures but use
 
 Reduces each feature map to a single value by averaging all pixels:
 
-$$\text{GAP}(\text{feature map}) = \frac{1}{H \times W} \sum_{i,j} X_{i,j}$$
+$$
+\text{GAP}(\text{feature map}) = \frac{1}{H \times W} \sum_{i,j} X_{i,j}
+$$
 
 GAP replaces fully connected layers at the end of the network, drastically reducing parameters:
 
@@ -59,7 +63,9 @@ print(f"After GAP: {gap(x).shape}")  # [1, 512, 1, 1]
 
 For pooling with window $p$, stride $s$, and padding $p$:
 
-$$\text{out} = \left\lfloor \frac{n - f + 2p}{s} \right\rfloor + 1$$
+$$
+\text{out} = \left\lfloor \frac{n - f + 2p}{s} \right\rfloor + 1
+$$
 
 | Operation | Window | Stride | Padding | Output |
 |-----------|--------|--------|---------|--------|
@@ -97,7 +103,9 @@ Showed that depth matters. Uses only $3 \times 3$ filters:
 
 Introduced **skip connections** to train very deep networks (152+ layers):
 
-$$\mathbf{y} = F(\mathbf{x}, \{W_i\}) + \mathbf{x}$$
+$$
+\mathbf{y} = F(\mathbf{x}, \{W_i\}) + \mathbf{x}
+$$
 
 The skip connection allows gradients to flow directly through the network, solving the vanishing gradient problem.
 

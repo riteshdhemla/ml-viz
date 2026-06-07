@@ -16,7 +16,9 @@ A CNN starts with a simple idea: instead of looking at every pixel independently
 
 Given an input matrix $X$ and a filter $K$ of size $f \times f$, the output at position $(i, j)$ is:
 
-$$(X * K)_{i,j} = \sum_{m=0}^{f-1} \sum_{n=0}^{f-1} X_{i+m,\; j+n} \cdot K_{m,n}$$
+$$
+(X * K)_{i,j} = \sum_{m=0}^{f-1} \sum_{n=0}^{f-1} X_{i+m,\; j+n} \cdot K_{m,n}
+$$
 
 The filter slides across every position, computing a dot product at each step. This produces a **feature map** — a new image highlighting where the filter's pattern appears.
 
@@ -45,7 +47,9 @@ A $3 \times 3$ filter applied to a $5 \times 5$ input:
 ```
 
 **Output at position (1,1):**
-$$1(1) + 0(0) + 1(-1) + 0(2) + 1(0) + 0(-2) + 1(1) + 0(0) + 1(-1) = 0$$
+$$
+1(1) + 0(0) + 1(-1) + 0(2) + 1(0) + 0(-2) + 1(1) + 0(0) + 1(-1) = 0
+$$
 
 ```python
 import numpy as np
@@ -84,7 +88,9 @@ Adding zeros around the border. **"Same"** padding preserves the spatial size. *
 
 Output size formula:
 
-$$\text{out} = \left\lfloor \frac{n - f + 2p}{s} \right\rfloor + 1$$
+$$
+\text{out} = \left\lfloor \frac{n - f + 2p}{s} \right\rfloor + 1
+$$
 
 where $n$ = input size, $f$ = filter size, $p$ = padding, $s$ = stride.
 
@@ -136,7 +142,9 @@ A typical conv layer is: **Convolution → Activation (ReLU) → BatchNorm** (op
 
 The ReLU adds non-linearity, allowing the network to learn complex patterns:
 
-$$\text{ReLU}(x) = \max(0, x)$$
+$$
+\text{ReLU}(x) = \max(0, x)
+$$
 
 ```python
 # Typical CNN block

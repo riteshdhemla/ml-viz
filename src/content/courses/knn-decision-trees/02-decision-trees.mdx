@@ -29,7 +29,9 @@ At each node, the tree picks the **feature and threshold** that best separates t
 
 ### Gini impurity
 
-$$\text{Gini}(S) = 1 - \sum_{k=1}^{K} p_k^2$$
+$$
+\text{Gini}(S) = 1 - \sum_{k=1}^{K} p_k^2
+$$
 
 where $p_k$ is the fraction of class $k$ in set $S$.
 
@@ -40,21 +42,33 @@ where $p_k$ is the fraction of class $k$ in set $S$.
 
 A node has 60 positive and 40 negative examples:
 
-$$\text{Gini} = 1 - (0.6^2 + 0.4^2) = 1 - (0.36 + 0.16) = 0.48$$
+$$
+\text{Gini} = 1 - (0.6^2 + 0.4^2) = 1 - (0.36 + 0.16) = 0.48
+$$
 
 After a split, left child has 50/10 and right child has 10/30:
 
-$$\text{Gini}_{\text{left}} = 1 - (0.83^2 + 0.17^2) = 0.28$$
-$$\text{Gini}_{\text{right}} = 1 - (0.25^2 + 0.75^2) = 0.38$$
-$$\text{Weighted Gini} = \frac{60}{100}(0.28) + \frac{40}{100}(0.38) = 0.32$$
+$$
+\text{Gini}_{\text{left}} = 1 - (0.83^2 + 0.17^2) = 0.28
+$$
+$$
+\text{Gini}_{\text{right}} = 1 - (0.25^2 + 0.75^2) = 0.38
+$$
+$$
+\text{Weighted Gini} = \frac{60}{100}(0.28) + \frac{40}{100}(0.38) = 0.32
+$$
 
 The split reduced Gini from 0.48 to 0.32 — a good split!
 
 ### Entropy and information gain
 
-$$\text{Entropy}(S) = -\sum_{k=1}^{K} p_k \log_2 p_k$$
+$$
+\text{Entropy}(S) = -\sum_{k=1}^{K} p_k \log_2 p_k
+$$
 
-$$\text{Information Gain} = \text{Entropy(parent)} - \sum \frac{|S_i|}{|S|} \text{Entropy}(S_i)$$
+$$
+\text{Information Gain} = \text{Entropy(parent)} - \sum \frac{|S_i|}{|S|} \text{Entropy}(S_i)
+$$
 
 <Callout type="info" title="Gini vs Entropy">
   In practice, Gini and Entropy produce very similar trees. Gini is slightly faster to compute (no logarithm). Most libraries (sklearn) default to Gini. ID3 uses Entropy.
@@ -83,7 +97,9 @@ print(f"Entropy: {entropy(labels):.3f}")  # 0.971
 
 For each feature and threshold, compute the **weighted impurity** of the children:
 
-$$\text{Weighted Impurity} = \frac{n_{\text{left}}}{n} \cdot I(\text{left}) + \frac{n_{\text{right}}}{n} \cdot I(\text{right})$$
+$$
+\text{Weighted Impurity} = \frac{n_{\text{left}}}{n} \cdot I(\text{left}) + \frac{n_{\text{right}}}{n} \cdot I(\text{right})
+$$
 
 Pick the split with the **lowest** weighted impurity.
 
@@ -147,7 +163,9 @@ print(f"Test accuracy: {tree.score(X_test, y_test):.3f}")
 
 A feature's importance is the total reduction in impurity it causes across all splits:
 
-$$\text{Importance}(j) = \sum_{\text{splits on } j} \frac{n_{\text{node}}}{n_{\text{total}}} \cdot \Delta \text{Gini}$$
+$$
+\text{Importance}(j) = \sum_{\text{splits on } j} \frac{n_{\text{node}}}{n_{\text{total}}} \cdot \Delta \text{Gini}
+$$
 
 ```python
 import matplotlib.pyplot as plt

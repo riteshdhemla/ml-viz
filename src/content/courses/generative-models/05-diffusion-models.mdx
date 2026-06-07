@@ -18,7 +18,9 @@ Diffusion models generate data by learning to **reverse a gradual noising proces
 
 Gradually add Gaussian noise to the data over $T$ timesteps:
 
-$$q(\mathbf{x}_t \mid \mathbf{x}_{t-1}) = \mathcal{N}(\mathbf{x}_t; \sqrt{1-\beta_t} \, \mathbf{x}_{t-1}, \beta_t \mathbf{I})$$
+$$
+q(\mathbf{x}_t \mid \mathbf{x}_{t-1}) = \mathcal{N}(\mathbf{x}_t; \sqrt{1-\beta_t} \, \mathbf{x}_{t-1}, \beta_t \mathbf{I})
+$$
 
 After many steps, $\mathbf{x}_T$ is pure Gaussian noise. This process is fixed (not learned).
 
@@ -26,11 +28,15 @@ After many steps, $\mathbf{x}_T$ is pure Gaussian noise. This process is fixed (
 
 Train a neural network to reverse each step:
 
-$$p_\theta(\mathbf{x}_{t-1} \mid \mathbf{x}_t) = \mathcal{N}(\mathbf{x}_{t-1}; \boldsymbol{\mu}_\theta(\mathbf{x}_t, t), \sigma_t^2 \mathbf{I})$$
+$$
+p_\theta(\mathbf{x}_{t-1} \mid \mathbf{x}_t) = \mathcal{N}(\mathbf{x}_{t-1}; \boldsymbol{\mu}_\theta(\mathbf{x}_t, t), \sigma_t^2 \mathbf{I})
+$$
 
 The network learns to predict the noise $\boldsymbol{\epsilon}$ that was added:
 
-$$\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \approx \boldsymbol{\epsilon}$$
+$$
+\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \approx \boldsymbol{\epsilon}
+$$
 
 <Callout type="tip" title="Intuition">
   Imagine a sculpture buried in sand. The forward process is burying it (adding noise). The reverse process is carefully brushing sand away (denoising) to reveal the sculpture. The neural network learns how to brush — what to remove at each stage.
@@ -40,7 +46,9 @@ $$\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \approx \boldsymbol{\epsilon}$$
 
 The simplified loss is just the MSE between predicted and actual noise:
 
-$$\mathcal{L} = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}} \left[ \| \boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \|^2 \right]$$
+$$
+\mathcal{L} = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}} \left[ \| \boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \|^2 \right]
+$$
 
 where $\mathbf{x}_t = \sqrt{\bar{\alpha}_t} \, \mathbf{x}_0 + \sqrt{1 - \bar{\alpha}_t} \, \boldsymbol{\epsilon}$ and $\bar{\alpha}_t = \prod_{s=1}^t (1 - \beta_s)$.
 
@@ -139,7 +147,9 @@ The noise schedule $\beta_t$ controls how fast noise is added:
 
 Standard DDPM requires $T=1000$ steps. **DDIM** (Denoising Diffusion Implicit Models) allows skipping steps:
 
-$$\mathbf{x}_{t-\Delta t} = \sqrt{\bar{\alpha}_{t-\Delta t}} \, \hat{\mathbf{x}}_0 + \sqrt{1 - \bar{\alpha}_{t-\theta}} \, \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)$$
+$$
+\mathbf{x}_{t-\Delta t} = \sqrt{\bar{\alpha}_{t-\Delta t}} \, \hat{\mathbf{x}}_0 + \sqrt{1 - \bar{\alpha}_{t-\theta}} \, \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)
+$$
 
 This reduces generation from 1000 steps to 50-100 steps with minimal quality loss.
 

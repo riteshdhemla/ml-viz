@@ -16,7 +16,9 @@ Bayesian Networks use *directed* arrows to express causation. But some relations
 
 An MRF factorizes the joint over **cliques** (fully-connected subsets of nodes) rather than over parent–child conditionals:
 
-$$P(X_1, \dots, X_n) = \frac{1}{Z} \prod_{c \in \mathcal{C}} \psi_c(X_c)$$
+$$
+P(X_1, \dots, X_n) = \frac{1}{Z} \prod_{c \in \mathcal{C}} \psi_c(X_c)
+$$
 
 - $\psi_c(X_c) \ge 0$ — a **potential function** scoring how "compatible" the values in clique $c$ are (higher = more agreeable). Unlike a CPT, it need **not** be a probability.
 - $Z = \sum_{\mathbf{x}} \prod_c \psi_c(\mathbf{x}_c)$ — the **partition function**, normalizing everything to sum to 1.
@@ -77,7 +79,9 @@ print("P(aligned) =", (psi[0] + psi[1]) / Z)
 
 Potentials are usually written as exponentiated **energies**, giving the Gibbs (Boltzmann) distribution:
 
-$$P(\mathbf{x}) = \frac{1}{Z}\exp\!\big(-E(\mathbf{x})\big), \qquad E(\mathbf{x}) = \sum_c E_c(\mathbf{x}_c)$$
+$$
+P(\mathbf{x}) = \frac{1}{Z}\exp\!\big(-E(\mathbf{x})\big), \qquad E(\mathbf{x}) = \sum_c E_c(\mathbf{x}_c)
+$$
 
 Low energy = high probability. This connects MRFs to statistical physics (the Ising model) and to energy-based models in deep learning (Hopfield nets, Boltzmann machines).
 

@@ -16,7 +16,9 @@ Value iteration needs the full model $P, R$. But agents in the real world don't 
 
 The trick is to turn the Bellman equation into a **learning rule**. After taking action $a$ in state $s$ and observing reward $r$ and next state $s'$, we have a *sample* of the Bellman backup. We nudge our current estimate $Q(s,a)$ toward this sample:
 
-$$Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\underbrace{r + \gamma \max_{a'} Q(s', a')}_{\text{TD target}} - \underbrace{Q(s,a)}_{\text{old estimate}}\Big]$$
+$$
+Q(s,a) \leftarrow Q(s,a) + \alpha\Big[\underbrace{r + \gamma \max_{a'} Q(s', a')}_{\text{TD target}} - \underbrace{Q(s,a)}_{\text{old estimate}}\Big]
+$$
 
 The bracket is the **TD error** — the gap between what we predicted and the bootstrapped target. $\alpha$ is the learning rate.
 
@@ -38,7 +40,9 @@ Notice the update uses $\max_{a'} Q(s', a')$ — the value of the **best** next 
 
 To learn good values the agent must **explore** (try unknown actions) yet to score well it must **exploit** (take known-good actions). The standard balance is **$\varepsilon$-greedy**: with probability $\varepsilon$ act randomly, otherwise act greedily.
 
-$$a = \begin{cases} \text{random action} & \text{with prob } \varepsilon \\ \arg\max_a Q(s,a) & \text{with prob } 1-\varepsilon \end{cases}$$
+$$
+a = \begin{cases} \text{random action} & \text{with prob } \varepsilon \\ \arg\max_a Q(s,a) & \text{with prob } 1-\varepsilon \end{cases}
+$$
 
 Typically $\varepsilon$ starts high (~1.0, explore a lot) and **decays** toward a small floor (~0.01) as the agent gains confidence.
 
