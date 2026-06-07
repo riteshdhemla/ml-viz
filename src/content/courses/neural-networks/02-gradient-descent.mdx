@@ -1,21 +1,20 @@
 ---
 title: "Gradient Descent"
-description: "How a network learns — following the slope of the loss surface downhill."
+description: "How a network learns — following the slope of the loss surface downhill, and the optimizers that speed it up."
 order: 2
 type: concept
-estimatedMinutes: 15
+estimatedMinutes: 18
 ---
 
 # Gradient Descent
 
-Training a neural network means finding weights that minimize a **loss function** —
-a number that measures how wrong the network's predictions are.
+Training a neural network means finding weights that minimize a **loss function** — a number that measures how wrong the network's predictions are. Gradient descent is the algorithm that does this, and it is the engine behind essentially all of deep learning.
+
+**Real-world examples:** Every trained model — image classifiers, language models, recommenders — was fit by some variant of gradient descent.
 
 ## The core idea
 
-Imagine standing on a hilly landscape in fog. You can feel the slope under your feet.
-The steepest downhill direction is the **negative gradient**. Take a small step that way.
-Repeat until you're in a valley.
+Imagine standing on a hilly landscape in fog. You can feel the slope under your feet. The steepest downhill direction is the **negative gradient**. Take a small step that way. Repeat until you're in a valley.
 
 $$
 w \leftarrow w - \eta \cdot \frac{\partial L}{\partial w}
@@ -24,16 +23,71 @@ $$
 Here $\eta$ is the **learning rate** — how big each step is.
 
 <Callout type="warning" title="Learning rate matters">
-  Too large: you overshoot the minimum and diverge.
+  Too large: you overshoot the minimum and diverge (the loss explodes to NaN).
   Too small: training takes forever and may get stuck in shallow minima.
+</Callout>
+
+### Worked example
+
+Loss $L(w) = (w - 5)^2$, so the gradient is $\frac{dL}{dw} = 2(w - 5)$. Starting at $w = 2$ with $\eta = 0.1$:
+
+$$\nabla = 2(2 - 5) = -6 \quad\Rightarrow\quad w \leftarrow 2 - 0.1(-6) = 2.6$$
+
+The negative gradient pushes $w$ toward 5, the minimum. Each step shrinks the distance to the optimum.
+
+```python
+import numpy as np
+
+def descend(grad, w, lr=0.1, steps=20):
+    for _ in range(steps):
+        w = w - lr * grad(w)
+    return w
+
+grad = lambda w: 2 * (w - 5)      # d/dw of (w-5)^2
+print(descend(grad, w=2.0))        # -> ~5.0
+```
+
+## Batch, stochastic, and mini-batch
+
+The gradient is an average over training examples. How many you use per step defines the variant:
+
+| Variant | Examples per step | Trade-off |
+|---------|-------------------|-----------|
+| **Batch** | All | Accurate gradient, slow, memory-heavy |
+| **Stochastic (SGD)** | One | Noisy, fast, can escape shallow minima |
+| **Mini-batch** | 32–512 | Best of both — the practical default |
+
+## Beyond vanilla: momentum and Adam
+
+Plain SGD crawls through narrow ravines and oscillates across them. Smarter optimizers fix this:
+
+- **Momentum** accumulates a velocity vector, accelerating along consistent downhill directions and damping oscillation: $v \leftarrow \beta v - \eta\nabla L,\; w \leftarrow w + v$.
+- **Adam** combines momentum with a **per-parameter adaptive** learning rate, so flat and steep directions each get an appropriate step size.
+
+<Callout type="info" title="Which optimizer?">
+  Start with **Adam** — it works well out of the box and is the default for most deep learning. Well-tuned SGD with momentum can generalize slightly better on some vision tasks, but Adam needs far less tuning.
 </Callout>
 
 ## Interactive: see it happen
 
-The visualization below runs gradient descent on a 2D loss surface.
-Adjust the learning rate and watch how the path changes.
+The visualization below runs gradient descent on a 2D loss surface. Adjust the learning rate and watch how the path changes — small rates inch along, large rates zig-zag or diverge.
 
 {/* To enable: import GradientDescentViz in mdxComponents.tsx */}
 {/* <GradientDescentViz /> */}
 
+## Common mistakes
+
+1. **Learning rate too high** — the loss diverges to NaN. If that happens, lower $\eta$ by 10×.
+2. **Forgetting to shuffle** mini-batches — ordered data biases the gradient and slows convergence.
+3. **Not normalizing inputs** — features on wildly different scales distort the loss surface into ravines.
+
+## Key takeaways
+
+- Gradient descent updates weights **opposite** the gradient: $w \leftarrow w - \eta\nabla L$.
+- The **learning rate** is the most important hyperparameter — too big diverges, too small crawls.
+- **Mini-batch** SGD is the practical default; **momentum** and **Adam** speed convergence.
+- Normalize inputs and tune $\eta$ first when training stalls.
+
 <Exercise id="lr-effect" />
+<Exercise id="gd-step" />
+<Exercise id="optimizer-choice" />
