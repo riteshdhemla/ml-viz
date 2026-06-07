@@ -1,0 +1,55 @@
+---
+title: "What is a Neuron?"
+description: "The building block of every neural network — what it computes and why."
+order: 1
+type: concept
+estimatedMinutes: 10
+---
+
+# What is a Neuron?
+
+A biological neuron fires when its inputs — signals from other neurons — surpass a threshold.
+Artificial neurons borrow this idea and make it differentiable.
+
+## The computation
+
+Given inputs $x_1, x_2, \ldots, x_n$, a neuron computes:
+
+$$
+y = f\!\left(\sum_{i=1}^n w_i x_i + b\right)
+$$
+
+where $w_i$ are **weights**, $b$ is a **bias**, and $f$ is an **activation function**.
+
+<Callout type="tip" title="Intuition">
+  Think of each weight as a "volume knob" — it controls how much a particular input contributes
+  to the output. The bias shifts the threshold at which the neuron activates.
+</Callout>
+
+## Why do we need activation functions?
+
+Without $f$, stacking neurons would just be matrix multiplication — a linear operation.
+Activation functions introduce **non-linearity**, letting the network learn curved decision boundaries.
+
+Common choices:
+
+| Function | Formula | When to use |
+|----------|---------|-------------|
+| ReLU | $\max(0, x)$ | Default hidden layers |
+| Sigmoid | $1 / (1 + e^{-x})$ | Binary output |
+| Softmax | $e^{x_i} / \sum e^{x_j}$ | Multi-class output |
+| Tanh | $(e^x - e^{-x}) / (e^x + e^{-x})$ | Centered outputs |
+
+<Exercise exercise={{
+  id: "neuron-weights-quiz",
+  type: "multiple-choice",
+  question: "A neuron has weights [2, -1, 0.5] and bias 1. Its inputs are [1, 1, 1]. What is the pre-activation value?",
+  hint: "Compute the dot product w·x + b.",
+  explanation: "2×1 + (−1)×1 + 0.5×1 + 1 = 2.5. The bias shifts the total regardless of input.",
+  options: [
+    { id: "a", label: "1.5", isCorrect: false },
+    { id: "b", label: "2.5", isCorrect: true },
+    { id: "c", label: "3.5", isCorrect: false },
+    { id: "d", label: "0.5", isCorrect: false }
+  ]
+}} />
