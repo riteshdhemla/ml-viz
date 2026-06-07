@@ -140,13 +140,28 @@ To override: add `notebookUrl: "https://..."` to the lesson frontmatter.
 
 ### Adding an exercise
 
-All exercises use the `Exercise` component from `src/components/exercises/Exercise.tsx`.
-In MDX, pass an inline `exercise` prop matching the `Exercise` union type from `src/types/exercise.ts`.
+Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
+`Record<id, Exercise>`). Lessons **reference** an exercise by id:
 
-Supported types: `multiple-choice`, `slider` — add new types by:
-1. Adding variant to `src/types/exercise.ts`
-2. Creating `src/components/exercises/[Type]Exercise.tsx`
-3. Adding a branch in `Exercise.tsx`
+```mdx
+<Exercise id="neuron-weights-quiz" />
+```
+
+> ⚠️ **Never pass an inline `exercise={{...}}` object in MDX.** Lesson MDX is
+> rendered with `next-mdx-remote`'s `blockJS: true` (the secure default, set
+> in `LessonLayout.tsx`), which strips JS expressions to prevent arbitrary
+> code execution. An inline object would be evaluated to `undefined` and crash
+> the build. The `id` attribute is a plain string, so it is safe.
+
+**To add an exercise instance:**
+1. Append a typed entry to the `allExercises` array in `src/lib/exercises.ts`
+   (id must be unique across the whole site)
+2. Reference it from a lesson with `<Exercise id="..." />`
+
+**To add an exercise _type_** (`multiple-choice`, `slider` exist today):
+1. Add the variant to `src/types/exercise.ts`
+2. Create `src/components/exercises/[Type]Exercise.tsx`
+3. Add a branch in `Exercise.tsx` (it resolves the id, then dispatches on `type`)
 
 ### Adding a lesson
 
@@ -163,7 +178,9 @@ Supported types: `multiple-choice`, `slider` — add new types by:
    ```
 3. Create `notebooks/[course-slug]/NN-kebab-title.ipynb` (same slug as MDX)
 4. Use `<Callout type="tip|info|warning|success">` for highlighted blocks
-5. Use `<Exercise exercise={{...}} />` for inline exercises
+5. Reference exercises by id with `<Exercise id="..." />` — define the data in
+   `src/lib/exercises.ts` (see "Adding an exercise"). Do **not** inline a JS
+   object; MDX runs with `blockJS: true`.
 6. Use `$$...$$` for display math, `$...$` for inline math
 
 ### Adding a course
