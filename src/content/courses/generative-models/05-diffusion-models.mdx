@@ -1,0 +1,168 @@
+---
+title: "Diffusion Models"
+description: "State-of-the-art generation by learning to reverse a gradual noising process."
+order: 5
+type: concept
+estimatedMinutes: 24
+---
+
+# Diffusion Models
+
+Diffusion models generate data by learning to **reverse a gradual noising process**. Start with pure noise and iteratively denoise until you get a clean sample. This is the architecture behind DALL-E 2, Stable Diffusion, and Midjourney.
+
+**Real-world examples:** Image generation (Stable Diffusion), video generation, audio synthesis, 3D shape generation, molecular design.
+
+## The two processes
+
+### Forward process (fixed)
+
+Gradually add Gaussian noise to the data over $T$ timesteps:
+
+$$q(\mathbf{x}_t \mid \mathbf{x}_{t-1}) = \mathcal{N}(\mathbf{x}_t; \sqrt{1-\beta_t} \, \mathbf{x}_{t-1}, \beta_t \mathbf{I})$$
+
+After many steps, $\mathbf{x}_T$ is pure Gaussian noise. This process is fixed (not learned).
+
+### Reverse process (learned)
+
+Train a neural network to reverse each step:
+
+$$p_\theta(\mathbf{x}_{t-1} \mid \mathbf{x}_t) = \mathcal{N}(\mathbf{x}_{t-1}; \boldsymbol{\mu}_\theta(\mathbf{x}_t, t), \sigma_t^2 \mathbf{I})$$
+
+The network learns to predict the noise $\boldsymbol{\epsilon}$ that was added:
+
+$$\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \approx \boldsymbol{\epsilon}$$
+
+<Callout type="tip" title="Intuition">
+  Imagine a sculpture buried in sand. The forward process is burying it (adding noise). The reverse process is carefully brushing sand away (denoising) to reveal the sculpture. The neural network learns how to brush — what to remove at each stage.
+</Callout>
+
+## The training objective
+
+The simplified loss is just the MSE between predicted and actual noise:
+
+$$\mathcal{L} = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}} \left[ \| \boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \|^2 \right]$$
+
+where $\mathbf{x}_t = \sqrt{\bar{\alpha}_t} \, \mathbf{x}_0 + \sqrt{1 - \bar{\alpha}_t} \, \boldsymbol{\epsilon}$ and $\bar{\alpha}_t = \prod_{s=1}^t (1 - \beta_s)$.
+
+```python
+import torch
+import torch.nn as nn
+
+class SimpleDiffusion(nn.Module):
+    def __init__(self, img_dim=784, hidden_dim=256, T=1000):
+        super().__init__()
+        self.T = T
+        self.time_embed = nn.Sequential(
+            nn.Linear(1, hidden_dim), nn.ReLU(), nn.Linear(hidden_dim, hidden_dim)
+        )
+        self.net = nn.Sequential(
+            nn.Linear(img_dim + hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, img_dim)
+        )
+    
+    def forward(self, x_t, t):
+        t_emb = self.time_embed(t.float().unsqueeze(1))
+        x = torch.cat([x_t, t_emb], dim=1)
+        return self.net(x)
+
+# Training loop
+model = SimpleDiffusion()
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+for epoch in range(100):
+    for x_0 in dataloader:
+        # Sample random timestep
+        t = torch.randint(0, model.T, (x_0.size(0),))
+        
+        # Add noise
+        noise = torch.randn_like(x_0)
+        alpha_bar = get_alpha_bar(t)  # precomputed schedule
+        x_t = torch.sqrt(alpha_bar) * x_0 + torch.sqrt(1 - alpha_bar) * noise
+        
+        # Predict noise
+        noise_pred = model(x_t, t)
+        loss = nn.MSELoss()(noise_pred, noise)
+        
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+```
+
+## Sampling (generation)
+
+Start with $\mathbf{x}_T \sim \mathcal{N}(0, I)$ and iteratively denoise:
+
+```python
+@torch.no_grad()
+def sample(model, shape, T=1000):
+    x = torch.randn(shape)  # start from noise
+    
+    for t in reversed(range(T)):
+        t_batch = torch.full((shape[0],), t, dtype=torch.long)
+        noise_pred = model(x, t_batch)
+        
+        # DDPM update rule
+        alpha_t = get_alpha(t)
+        alpha_bar_t = get_alpha_bar(t)
+        beta_t = get_beta(t)
+        
+        x = (1 / torch.sqrt(alpha_t)) * (
+            x - (beta_t / torch.sqrt(1 - alpha_bar_t)) * noise_pred
+        )
+        
+        if t > 0:
+            x += torch.sqrt(beta_t) * torch.randn_like(x)
+    
+    return x
+
+# Generate 16 images
+samples = sample(model, (16, 784))
+```
+
+## Noise schedules
+
+The noise schedule $\beta_t$ controls how fast noise is added:
+
+| Schedule | Formula | Effect |
+|----------|---------|--------|
+| Linear | $\beta_t = \beta_1 + (T-t) \frac{\beta_T - \beta_1}{T}$ | Original DDPM |
+| Cosine | $\bar{\alpha}_t = \frac{f(t)}{f(0)}$, $f(t) = \cos\left(\frac{t/T + s}{1+s} \cdot \frac{\pi}{2}\right)^2$ | Smoother, better quality |
+
+<Callout type="info" title="Why cosine schedule?">
+  The linear schedule adds noise too quickly in early steps. The cosine schedule is gentler — it keeps the image recognizable longer, giving the model more time to learn meaningful denoising patterns.
+</Callout>
+
+## Accelerated sampling: DDIM
+
+Standard DDPM requires $T=1000$ steps. **DDIM** (Denoising Diffusion Implicit Models) allows skipping steps:
+
+$$\mathbf{x}_{t-\Delta t} = \sqrt{\bar{\alpha}_{t-\Delta t}} \, \hat{\mathbf{x}}_0 + \sqrt{1 - \bar{\alpha}_{t-\theta}} \, \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t)$$
+
+This reduces generation from 1000 steps to 50-100 steps with minimal quality loss.
+
+## Diffusion vs GAN vs VAE
+
+| Property | Diffusion | GAN | VAE |
+|----------|-----------|-----|-----|
+| Quality | Best | Very good | Good |
+| Diversity | Excellent | Risk of mode collapse | Good |
+| Training | Stable | Unstable | Stable |
+| Speed | Slow (100-1000 steps) | Fast (1 step) | Fast (1 step) |
+| Likelihood | Lower bound | None | Lower bound |
+
+<Callout type="warning" title="Diffusion models are slow">
+  Generating one image requires 50-1000 forward passes through the network. This is 100-1000× slower than GANs. Acceleration methods (DDIM, distillation, consistency models) are an active research area.
+</Callout>
+
+## Common mistakes
+
+1. **Not enough timesteps** — Too few timesteps ($T < 100$) gives poor quality. Use at least 1000 for training, 50-100 for DDIM sampling.
+2. **Ignoring the noise schedule** — A bad schedule ruins quality. Use cosine schedule for images.
+3. **Forgetting classifier-free guidance** — For conditional generation, guidance scale $w > 1$ improves quality but reduces diversity.
+
+<Exercise id="diffusion-forward-reverse" />
+<Exercise id="diffusion-schedule" />
+<Exercise id="diffusion-sampling" />

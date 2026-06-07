@@ -1,0 +1,153 @@
+---
+title: "Autoencoders"
+description: "Learning compressed representations — and why they're not generative yet."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Autoencoders
+
+An autoencoder learns to compress data into a compact representation and reconstruct it. The bottleneck forces the network to learn the most important features.
+
+**Real-world examples:** Image denoising, dimensionality reduction, anomaly detection, feature learning, data compression.
+
+## Architecture
+
+An autoencoder has two parts:
+
+- **Encoder:** Maps input $\mathbf{x}$ to a latent code $\mathbf{z} = f_{\text{enc}}(\mathbf{x})$
+- **Decoder:** Reconstructs from the code $\hat{\mathbf{x}} = f_{\text{dec}}(\mathbf{z})$
+
+The training objective is to minimize reconstruction error:
+
+$$\mathcal{L} = \|\mathbf{x} - \hat{\mathbf{x}}\|^2$$
+
+<Callout type="tip" title="Intuition">
+  Think of autoencoders as a data compression algorithm. The encoder compresses, the decoder decompresses. The bottleneck is like a ZIP file — it can only store the essential information.
+</Callout>
+
+## Code: Simple autoencoder
+
+```python
+import torch
+import torch.nn as nn
+
+class Autoencoder(nn.Module):
+    def __init__(self, input_dim=784, latent_dim=32):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, latent_dim)
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 128),
+            nn.ReLU(),
+            nn.Linear(128, 256),
+            nn.ReLU(),
+            nn.Linear(256, input_dim),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x):
+        z = self.encoder(x)
+        x_hat = self.decoder(z)
+        return x_hat
+
+# Training loop
+model = Autoencoder(input_dim=784, latent_dim=32)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+for epoch in range(10):
+    x_hat = model(x)
+    loss = nn.MSELoss()(x_hat, x)
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+    print(f"Epoch {epoch}: loss={loss.item():.4f}")
+```
+
+## Types of autoencoders
+
+### Undercomplete autoencoder
+Latent dimension < input dimension. Forces compression. Most basic form.
+
+### Sparse autoencoder
+Adds a sparsity penalty to the latent space:
+
+$$\mathcal{L} = \|\mathbf{x} - \hat{\mathbf{x}}\|^2 + \lambda \sum_j |z_j|$$
+
+### Denoising autoencoder
+Trains on corrupted inputs, reconstructs clean ones:
+
+```python
+def add_noise(x, noise_factor=0.3):
+    return x + noise_factor * torch.randn_like(x)
+
+# Train on noisy input, reconstruct clean input
+x_noisy = add_noise(x)
+x_hat = model(x_noisy)
+loss = nn.MSELoss()(x_hat, x)  # compare to CLEAN input
+```
+
+### Convolutional autoencoder
+Uses Conv2d layers for images:
+
+```python
+class ConvAutoencoder(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(1, 16, 3, stride=2, padding=1),  # 28→14
+            nn.ReLU(),
+            nn.Conv2d(16, 32, 3, stride=2, padding=1), # 14→7
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 7),                       # 7→1
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(64, 32, 7),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 16, 3, stride=2, padding=1, output_padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(16, 1, 3, stride=2, padding=1, output_padding=1),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x):
+        z = self.encoder(x)
+        return self.decoder(z)
+```
+
+## Why autoencoders aren't generative
+
+A standard autoencoder maps each input to a **single point** in latent space. The latent space has "holes" — regions never seen during training. If you sample randomly from the latent space, the decoder produces garbage.
+
+<Callout type="warning" title="The holes problem">
+  Imagine the encoder maps all training images to a circle in 2D latent space. Points inside or outside the circle were never decoded. Sampling randomly gives unrealistic outputs. VAEs solve this by forcing the latent space to be continuous and complete.
+</Callout>
+
+## Applications
+
+| Application | How |
+|-------------|-----|
+| Anomalous data detection | High reconstruction error → anomaly |
+| Dimensionality reduction | Use encoder output as features |
+| Image denoising | Train on noisy → clean pairs |
+| Data compression | Encode to small latent, decode back |
+| Pretraining | Pretrain encoder, then fine-tune |
+
+```python
+# Anomaly detection: flag points with high reconstruction error
+reconstructions = model(X_test)
+errors = ((X_test - reconstructions) ** 2).mean(dim=1)
+threshold = errors.quantile(0.95)
+anomalies = errors > threshold
+print(f"Anomalies detected: {anomalies.sum().item()}")
+```
+
+<Exercise id="autoencoder-bottleneck" />
+<Exercise id="autoencoder-noise" />
+<Exercise id="autoencoder-anomaly" />

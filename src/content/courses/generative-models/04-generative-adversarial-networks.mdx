@@ -1,0 +1,192 @@
+---
+title: "Generative Adversarial Networks"
+description: "Two networks competing — a generator that creates and a discriminator that judges."
+order: 4
+type: concept
+estimatedMinutes: 24
+---
+
+# Generative Adversarial Networks (GANs)
+
+GANs learn to generate realistic data through a competitive game: a **generator** creates fake samples, and a **discriminator** tries to tell real from fake. Both improve through competition.
+
+**Real-world examples:** Image synthesis (StyleGAN), image-to-image translation (pix2pix), super-resolution, data augmentation, art generation.
+
+## The game
+
+- **Generator $G$:** Takes random noise $\mathbf{z} \sim P(\mathbf{z})$ and produces fake samples $G(\mathbf{z})$
+- **Discriminator $D$:** Classifies inputs as real or fake
+
+The minimax game:
+
+$$\min_G \max_D \; \mathbb{E}_{\mathbf{x} \sim P_{\text{data}}}[\log D(\mathbf{x})] + \mathbb{E}_{\mathbf{z} \sim P(\mathbf{z})}[\log(1 - D(G(\mathbf{z})))]$$
+
+<Callout type="tip" title="Intuition">
+  The generator is a forger creating fake paintings. The discriminator is an art expert learning to spot fakes. As the expert gets better, the forger must improve. At equilibrium, the forger produces works indistinguishable from real art.
+</Callout>
+
+## Training dynamics
+
+At Nash equilibrium:
+- $G$ produces samples indistinguishable from real data
+- $D(\mathbf{x}) = 0.5$ for all $\mathbf{x}$ — can't tell real from fake
+
+But in practice, training is unstable. Common issues:
+
+| Problem | Symptom | Solution |
+|---------|---------|----------|
+| Mode collapse | Generator produces limited variety | Unrolled GANs, minibatch discrimination |
+| Training instability | Loss oscillates wildly | Spectral normalization, two-timescale |
+| Vanishing gradients | Generator doesn't learn | Non-saturating loss, Wasserstein |
+| No convergence | Neither network improves | Careful learning rate balancing |
+
+## Code: Simple GAN
+
+```python
+class Generator(nn.Module):
+    def __init__(self, latent_dim=100, img_dim=784):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(latent_dim, 256),
+            nn.LeakyReLU(0.2),
+            nn.Linear(256, 512),
+            nn.LeakyReLU(0.2),
+            nn.Linear(512, img_dim),
+            nn.Tanh()  # output in [-1, 1]
+        )
+    
+    def forward(self, z):
+        return self.net(z)
+
+class Discriminator(nn.Module):
+    def __init__(self, img_dim=784):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(img_dim, 512),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(512, 256),
+            nn.LeakyReLU(0.2),
+            nn.Dropout(0.3),
+            nn.Linear(256, 1),
+            nn.Sigmoid()
+        )
+    
+    def forward(self, x):
+        return self.net(x)
+
+# Training
+G = Generator()
+D = Discriminator()
+opt_G = torch.optim.Adam(G.parameters(), lr=2e-4, betas=(0.5, 0.999))
+opt_D = torch.optim.Adam(D.parameters(), lr=2e-4, betas=(0.5, 0.999))
+criterion = nn.BCELoss()
+
+for epoch in range(100):
+    for real_imgs in dataloader:
+        batch_size = real_imgs.size(0)
+        
+        # Train Discriminator
+        z = torch.randn(batch_size, 100)
+        fake_imgs = G(z).detach()
+        
+        real_labels = torch.ones(batch_size, 1)
+        fake_labels = torch.zeros(batch_size, 1)
+        
+        d_loss = criterion(D(real_imgs), real_labels) + \
+                 criterion(D(fake_imgs), fake_labels)
+        
+        opt_D.zero_grad()
+        d_loss.backward()
+        opt_D.step()
+        
+        # Train Generator
+        z = torch.randn(batch_size, 100)
+        fake_imgs = G(z)
+        g_loss = criterion(D(fake_imgs), real_labels)  # fool discriminator
+        
+        opt_G.zero_grad()
+        g_loss.backward()
+        opt_G.step()
+```
+
+## Mode collapse
+
+Mode collapse occurs when the generator learns to produce only a few types of outputs that consistently fool the discriminator:
+
+- **Partial mode collapse:** Generator produces a subset of modes (e.g., only dogs, no cats)
+- **Complete mode collapse:** Generator produces the same output for every input
+
+<Callout type="warning" title="Mode collapse is the #1 GAN problem">
+  If the discriminator is too strong, the generator finds one image that fools it and produces only that. The discriminator can't learn to distinguish because it only sees one type of fake. Solutions: minibatch discrimination, unrolled GANs, Wasserstein loss.
+</Callout>
+
+## DCGAN (Deep Convolutional GAN)
+
+The first stable GAN architecture for images:
+
+- Replace pooling with strided convolutions (discriminator) and transposed convolutions (generator)
+- Use batch normalization in both networks
+- Use ReLU in generator (Tanh at output), LeakyReLU in discriminator
+
+```python
+class DCGANGenerator(nn.Module):
+    def __init__(self, latent_dim=100, channels=3):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.ConvTranspose2d(latent_dim, 512, 4, 1, 0),
+            nn.BatchNorm2d(512), nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, 4, 2, 1),
+            nn.BatchNorm2d(256), nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, 4, 2, 1),
+            nn.BatchNorm2d(128), nn.ReLU(),
+            nn.ConvTranspose2d(128, channels, 4, 2, 1),
+            nn.Tanh()
+        )
+    
+    def forward(self, z):
+        return self.net(z.view(-1, 100, 1, 1))
+```
+
+## Wasserstein GAN (WGAN)
+
+Replaces the binary cross-entropy with **Earth Mover's distance**:
+
+$$\min_G \max_{D \in \mathcal{D}} \; \mathbb{E}_{\mathbf{x}}[D(\mathbf{x})] - \mathbb{E}_{\mathbf{z}}[D(G(\mathbf{z}))]$$
+
+Key benefits:
+- Meaningful loss metric (correlates with image quality)
+- More stable training
+- No mode collapse
+
+```python
+# WGAN-GP (with gradient penalty)
+def gradient_penalty(D, real, fake, device):
+    batch_size = real.size(0)
+    alpha = torch.rand(batch_size, 1, 1, 1, device=device)
+    interpolated = (alpha * real + (1 - alpha) * fake).requires_grad_(True)
+    d_interpolated = D(interpolated)
+    
+    gradients = torch.autograd.grad(
+        outputs=d_interpolated, inputs=interpolated,
+        grad_outputs=torch.ones_like(d_interpolated),
+        create_graph=True, retain_graph=True
+    )[0]
+    gradients = gradients.view(batch_size, -1)
+    penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean()
+    return penalty
+```
+
+## GANs vs VAEs
+
+| Property | GAN | VAE |
+|----------|-----|-----|
+| Output quality | Sharp, realistic | Often blurry |
+| Training | Unstable | Stable |
+| Latent space | Not structured | Smooth, continuous |
+| Generation | Fast | Fast |
+| Mode coverage | May miss modes | Covers all modes |
+
+<Exercise id="gan-game-theory" />
+<Exercise id="gan-mode-collapse" />
+<Exercise id="gan-wgan" />

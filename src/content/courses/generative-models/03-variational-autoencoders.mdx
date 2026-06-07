@@ -1,0 +1,137 @@
+---
+title: "Variational Autoencoders"
+description: "Combining deep learning with variational inference to generate new data."
+order: 3
+type: concept
+estimatedMinutes: 24
+---
+
+# Variational Autoencoders (VAEs)
+
+A VAE is an autoencoder where the latent space is *regularized* to follow a known distribution — typically a standard Gaussian $\mathcal{N}(0, I)$.
+
+This single change transforms the autoencoder from a compression tool into a **generative model**.
+
+## The key idea
+
+Instead of encoding each input to a point $\mathbf{z}$, the encoder outputs the parameters of a **distribution**:
+
+$$q_\phi(\mathbf{z} \mid \mathbf{x}) = \mathcal{N}(\boldsymbol{\mu}_\phi(\mathbf{x}),\; \boldsymbol{\sigma}^2_\phi(\mathbf{x}) \cdot I)$$
+
+The latent vector is then *sampled* from this distribution:
+
+$$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$$
+
+<Callout type="tip" title="Why a distribution, not a point?">
+  By outputting a distribution, the encoder says "this input could map to *anywhere near here*." This forces nearby latent regions to decode to similar outputs, filling in the "holes" that make standard autoencoders non-generative.
+</Callout>
+
+## The loss function
+
+The VAE loss has two terms:
+
+$$\mathcal{L} = \underbrace{\|\mathbf{x} - \hat{\mathbf{x}}\|^2}_{\text{reconstruction}} + \underbrace{D_{\text{KL}}\!\left(q_\phi(\mathbf{z}|\mathbf{x}) \;\|\; \mathcal{N}(0, I)\right)}_{\text{KL divergence}}$$
+
+1. **Reconstruction loss** — keeps the decoded output close to the original
+2. **KL divergence** — pulls the encoder's distribution toward the standard Gaussian
+
+The KL divergence has a closed-form solution for two Gaussians:
+
+$$D_{\text{KL}} = -\frac{1}{2} \sum_{j=1}^{J} \left(1 + \log \sigma_j^2 - \mu_j^2 - \sigma_j^2\right)$$
+
+<Callout type="info" title="KL divergence intuition">
+  KL divergence measures how different two distributions are. If the encoder outputs $\mathcal{N}(0, 1)$, KL = 0 (matches the prior). If it outputs $\mathcal{N}(5, 1)$, KL is large (penalized). This regularization ensures the latent space is smooth and complete.
+</Callout>
+
+## The reparameterization trick
+
+We can't backpropagate through a random sampling operation. The **reparameterization trick** solves this by making the sampling *deterministic* except for an external noise term:
+
+$$\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}, \quad \boldsymbol{\epsilon} \sim \mathcal{N}(0, I)$$
+
+Now $\boldsymbol{\mu}$ and $\boldsymbol{\sigma}$ are deterministic outputs of the encoder, and $\boldsymbol{\epsilon}$ is the only random variable. Gradients flow through $\boldsymbol{\mu}$ and $\boldsymbol{\sigma}$ normally.
+
+<Callout type="info" title="The reparameterization trick">
+  This is one of the most elegant ideas in deep learning: by shifting the randomness to an external noise variable, we make sampling differentiable. It connects variational inference (a 200-year-old technique) with modern gradient-based optimization.
+</Callout>
+
+## Code: VAE in PyTorch
+
+```python
+class VAE(nn.Module):
+    def __init__(self, latent_dim=32):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(784, 256), nn.ReLU(), nn.Linear(256, 128), nn.ReLU()
+        )
+        self.mu_head = nn.Linear(128, latent_dim)
+        self.logvar_head = nn.Linear(128, latent_dim)  # log(σ²) for numerical stability
+
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 128), nn.ReLU(),
+            nn.Linear(128, 256), nn.ReLU(),
+            nn.Linear(256, 784), nn.Sigmoid()
+        )
+
+    def encode(self, x):
+        h = self.encoder(x)
+        return self.mu_head(h), self.logvar_head(h)
+
+    def reparameterize(self, mu, logvar):
+        std = torch.exp(0.5 * logvar)
+        eps = torch.randn_like(std)
+        return mu + eps * std
+
+    def decode(self, z):
+        return self.decoder(z)
+
+    def forward(self, x):
+        mu, logvar = self.encode(x)
+        z = self.reparameterize(mu, logvar)
+        return self.decode(z), mu, logvar
+
+def vae_loss(x_hat, x, mu, logvar):
+    recon = F.mse_loss(x_hat, x, reduction='sum')
+    kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+    return recon + kl
+```
+
+## Sampling from a VAE
+
+Once trained, generating new data is trivial:
+
+```python
+# Generate new samples
+z = torch.randn(1, latent_dim)   # sample from N(0, I)
+x_new = vae.decode(z)            # decode to data space
+
+# Interpolation in latent space
+z1 = torch.randn(1, latent_dim)
+z2 = torch.randn(1, latent_dim)
+for alpha in torch.linspace(0, 1, 10):
+    z = (1 - alpha) * z1 + alpha * z2
+    x_interp = vae.decode(z)  # smooth transition!
+```
+
+## VAE vs standard autoencoder
+
+| Property | Autoencoder | VAE |
+|----------|-------------|-----|
+| Latent space | Discontinuous (holes) | Continuous (smooth) |
+| Latent representation | Point | Distribution |
+| Generation | Cannot generate | Can generate |
+| Loss | Reconstruction only | Reconstruction + KL |
+| Sampling | Deterministic | Stochastic (reparameterized) |
+
+## The β-VAE
+
+Adding a weight $\beta$ to the KL term controls the tradeoff between reconstruction quality and latent space regularization:
+
+$$\mathcal{L} = \text{reconstruction} + \beta \cdot D_{\text{KL}}$$
+
+- $\beta < 1$: better reconstruction, less structured latent space
+- $\beta > 1$: more disentangled representations, potentially blurrier outputs
+
+<Exercise id="vae-kl-divergence" />
+<Exercise id="vae-reparameterize" />
+<Exercise id="vae-beta" />
