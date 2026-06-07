@@ -80,7 +80,30 @@ The site is deployed to Vercel. Key facts:
 - `src/lib/content.ts` uses `fs` (server-side only) — this works fine on Vercel serverless runtime.
 - `vercel.json` is in the repo root; Vercel reads it automatically.
 
-When adding a feature that needs an environment variable, add it to both `.env.example` and the Vercel dashboard.
+### CD pipeline
+
+Production deploys are **tag-driven**, not branch-driven:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+This triggers `.github/workflows/cd.yml`:
+1. Quality gate: `npm run type-check` + `npm run build`
+2. Vercel production deploy via CLI (`vercel build --prod` → `vercel deploy --prebuilt --prod`)
+3. GitHub Release auto-created with changelog + deployment URL
+
+A separate `.github/workflows/ci.yml` runs type-check + lint + build on every PR and `main` push.
+
+**Required GitHub secrets** (Settings → Secrets → Actions):
+- `VERCEL_TOKEN` — from Vercel dashboard → Settings → Tokens
+- `VERCEL_ORG_ID` — from `.vercel/project.json` after running `vercel link`
+- `VERCEL_PROJECT_ID` — same file
+
+**Required GitHub variable** (Settings → Variables → Actions):
+- `NEXT_PUBLIC_SITE_URL` = `https://ml-viz.vercel.app`
+
+When adding a feature that needs an environment variable, add it to: `.env.example`, Vercel dashboard, AND the `cd.yml` env block if it's needed at build time.
 
 ---
 

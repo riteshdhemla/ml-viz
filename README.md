@@ -26,29 +26,56 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy to Vercel
 
-### One-click (recommended)
+### One-click (first-time setup)
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Friteshdhemla%2Fml-viz&env=NEXT_PUBLIC_SITE_URL&envDescription=Your%20production%20URL%20(e.g.%20https%3A%2F%2Fml-viz.vercel.app)&project-name=ml-viz&repository-name=ml-viz)
 
-### Manual steps
+### CD pipeline — auto-deploy on release tag
 
-1. Push this repo to GitHub (if not already there)
-2. Go to [vercel.com/new](https://vercel.com/new) and import the `riteshdhemla/ml-viz` repo
-3. Vercel auto-detects Next.js — no build settings needed
-4. Add one environment variable:
+Pushes to `main` **do not** auto-deploy. Production deploys are triggered by a release tag.
 
-   | Name | Value |
-   |------|-------|
-   | `NEXT_PUBLIC_SITE_URL` | `https://<your-project>.vercel.app` |
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
 
-5. Click **Deploy**
+This runs `.github/workflows/cd.yml` which:
+1. Type-checks and builds (quality gate)
+2. Deploys to Vercel production via Vercel CLI
+3. Creates a GitHub Release with auto-generated changelog and deployment URL
 
-> **Notebook Colab links:** Each lesson's "Open in Colab" button points to the notebook files on the `main` branch of this GitHub repo. Merge your changes to `main` before deploying to ensure the links resolve.
+A CI workflow (`.github/workflows/ci.yml`) also runs on every PR and `main` push to catch type errors and build failures early.
 
-### Re-deploying after content changes
+### One-time secrets setup (required before first tag deploy)
 
-Vercel redeploys automatically on every push to the connected branch.
-MDX content and notebooks are compiled at build time — no server restart needed.
+Add these in **GitHub → Settings → Secrets and variables**:
+
+**Repository secrets** (`Settings → Secrets → Actions`):
+
+| Secret | Where to get it |
+|--------|----------------|
+| `VERCEL_TOKEN` | Vercel dashboard → Settings → Tokens → Create |
+| `VERCEL_ORG_ID` | Run `vercel link` locally, then check `.vercel/project.json` → `orgId` |
+| `VERCEL_PROJECT_ID` | Same file → `projectId` |
+
+**Repository variables** (`Settings → Variables → Actions`):
+
+| Variable | Value |
+|----------|-------|
+| `NEXT_PUBLIC_SITE_URL` | `https://ml-viz.vercel.app` |
+
+> Tip: run `npx vercel link` in the repo root once to generate `.vercel/project.json`, copy the IDs, then delete the file (it is gitignored).
+
+### Initial Vercel project setup (do this once)
+
+```bash
+npm i -g vercel
+vercel login
+vercel link          # connects local repo to a Vercel project
+vercel env add NEXT_PUBLIC_SITE_URL production   # set the env var in Vercel too
+```
+
+> **Notebook Colab links:** Each lesson's "Open in Colab" button points to notebooks on the `main` branch. Merge your branch to `main` before tagging so Colab links resolve in production.
 
 ## Adding content (vibe coding)
 
