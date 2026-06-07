@@ -1,0 +1,144 @@
+---
+title: "t-SNE & UMAP"
+description: "Non-linear dimensionality reduction for visualization and cluster discovery."
+order: 2
+type: concept
+estimatedMinutes: 20
+---
+
+# t-SNE & UMAP
+
+PCA finds linear projections. But what if the data lies on a **curved manifold**? t-SNE and UMAP are non-linear methods that preserve local structure — nearby points stay nearby in the low-dimensional embedding.
+
+**Real-world examples:** Visualizing single-cell RNA data (thousands of cell types), exploring word embeddings, visualizing deep network activations, cluster discovery in high-dimensional data.
+
+## t-SNE (t-distributed Stochastic Neighbor Embedding)
+
+### The idea
+
+1. Compute pairwise similarities in high-dimensional space using Gaussian kernels
+2. Initialize random points in 2D
+3. Compute pairwise similarities in 2D using **Student-t distribution** (heavier tails)
+4. Minimize the KL divergence between the two similarity distributions
+
+$$\text{KL}(P \| Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}}$$
+
+where $p_{ij}$ = high-D similarities, $q_{ij}$ = low-D similarities.
+
+<Callout type="tip" title="Why Student-t distribution in 2D?">
+  In high dimensions, many points are far apart. In 2D, they'd be forced close together. The Student-t distribution has heavier tails, so distant points in high-D can remain distant in low-D without causing large gradients. This is the key innovation over earlier methods.
+</Callout>
+
+### Perplexity
+
+The most important parameter — controls the balance between local and global structure:
+
+- **Low perplexity (5-15):** Captures local structure, tight clusters
+- **High perplexity (30-100):** Captures global structure, broader patterns
+- **Typical default:** 30
+
+```python
+from sklearn.manifold import TSNE
+from sklearn.datasets import load_digits
+import matplotlib.pyplot as plt
+
+digits = load_digits()
+X, y = digits.data, digits.target
+
+# t-SNE embedding
+tsne = TSNE(n_components=2, perplexity=30, random_state=42, n_iter=1000)
+X_tsne = tsne.fit_transform(X)
+
+plt.figure(figsize=(10, 8))
+scatter = plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=y, cmap='tab10', s=10, alpha=0.7)
+plt.colorbar(scatter, label='Digit')
+plt.title(f't-SNE (perplexity=30, KL={tsne.kl_divergence_:.3f})')
+plt.show()
+```
+
+### Limitations of t-SNE
+
+1. **Slow:** $O(n^2)$ in naive implementation (Barnes-Hut approximation: $O(n \log n)$)
+2. **Non-deterministic:** Different runs give different embeddings
+3. **Preserves local, not global structure:** Cluster sizes and distances between clusters are not meaningful
+4. **Cannot embed new points:** No `transform()` method — must retrain
+
+<Callout type="warning" title="Don't over-interpret t-SNE plots">
+  t-SNE cluster sizes, distances between clusters, and global geometry are NOT meaningful. Only the relative positions within clusters are reliable. A tight cluster means the points are similar; that's all you can conclude.
+</Callout>
+
+## UMAP (Uniform Manifold Approximation and Projection)
+
+UMAP is faster and often better at preserving global structure than t-SNE.
+
+### Advantages over t-SNE
+
+| Property | t-SNE | UMAP |
+|----------|-------|------|
+| Speed | $O(n \log n)$ | $O(n)$ — 10-100× faster |
+| Global structure | Poor | Better |
+| Transform new data | No | Yes |
+| Scalability | ~10K points | ~100K+ points |
+
+### Key parameters
+
+- **n_neighbors:** Local vs global structure (similar to perplexity)
+  - Small (5-15): tight clusters, local structure
+  - Large (50-200): broad patterns, global structure
+- **min_dist:** How tightly points pack together
+  - Small (0.0-0.1): tight clusters
+  - Large (0.5-1.0): spread out points
+
+```python
+import umap
+
+reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, random_state=42)
+X_umap = reducer.fit_transform(X)
+
+plt.figure(figsize=(10, 8))
+scatter = plt.scatter(X_umap[:, 0], X_umap[:, 1], c=y, cmap='tab10', s=10, alpha=0.7)
+plt.colorbar(scatter, label='Digit')
+plt.title('UMAP (n_neighbors=15, min_dist=0.1)')
+plt.show()
+```
+
+<Callout type="info" title="UMAP preserves more global structure">
+  In t-SNE, a cluster of "8"s might appear closer to "3"s than to "6"s just because of local density. UMAP is more likely to preserve the actual relationships — 8s closer to 6s and 3s.
+</Callout>
+
+## When to use what
+
+| Goal | Method |
+|------|--------|
+| Quick visualization of clusters | UMAP (faster) |
+| Publication-quality plots | t-SNE (more established) |
+| Embedding new data points | UMAP (has transform) |
+| Large datasets (> 100K) | UMAP |
+| Preserving global structure | UMAP |
+| Very high-dimensional data (images, text) | UMAP with PCA preprocessing |
+
+### Recommended pipeline
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
+# For high-dimensional data, reduce with PCA first
+pipeline = Pipeline([
+    ('scaler', StandardScaler()),
+    ('pca', PCA(n_components=50)),      # reduce to 50D first
+    ('umap', umap.UMAP(n_neighbors=15)) # then UMAP to 2D
+])
+X_embedded = pipeline.fit_transform(X_high_dim)
+```
+
+## Common mistakes
+
+1. **Using t-SNE/UMAP for clustering** — These are visualization tools, not clustering algorithms. Use their output as features for K-Means or DBSCAN, but don't cluster directly on the embedding.
+2. **Interpreting distances literally** — Only local neighborhoods are meaningful. A cluster being "larger" or "farther" doesn't mean anything quantitative.
+3. **Not preprocessing** — Both methods are sensitive to feature scales. Always standardize first. For high-dimensional data, reduce with PCA first.
+4. **Running on the full dataset** — UMAP on 1M+ points is fine, but t-SNE may need subsampling.
+
+<Exercise id="umap-parameters" />
+<Exercise id="tsne-perplexity" />
+<Exercise id="pca-vs-umap" />
