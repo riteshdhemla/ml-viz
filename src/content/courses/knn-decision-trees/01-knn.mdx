@@ -1,0 +1,158 @@
+---
+title: "K-Nearest Neighbors"
+description: "The simplest ML algorithm — classify by majority vote of nearby points."
+order: 1
+type: concept
+estimatedMinutes: 18
+---
+
+# K-Nearest Neighbors (KNN)
+
+KNN is the simplest machine learning algorithm: **no training at all**. To classify a new point, just find the $k$ closest training examples and take a majority vote.
+
+**Real-world examples:** Recommendation systems (users similar to you also liked...), anomaly detection (points far from any cluster are suspicious), handwritten digit recognition.
+
+## The algorithm
+
+1. Choose $k$ (the number of neighbors)
+2. Compute the distance from the new point to every training point
+3. Find the $k$ nearest points
+4. Return the most common label among them
+
+For regression, return the **average** of the $k$ neighbors' values instead of the majority vote.
+
+<Callout type="tip" title="Intuition">
+  Imagine you move to a new city and want to know if a neighborhood is safe. You ask the 5 closest neighbors — if 4 say "safe" and 1 says "dangerous", you'd probably feel safe. That's KNN with $k=5$.
+</Callout>
+
+### Worked example
+
+Training data:
+
+| Point | Features ($x_1, x_2$) | Label |
+|-------|----------------------|-------|
+| A | (1, 2) | Red |
+| B | (2, 3) | Red |
+| C | (6, 5) | Blue |
+| D | (7, 7) | Blue |
+| E | (8, 6) | Blue |
+
+New point: $\mathbf{x}_{\text{new}} = (3, 4)$
+
+Distances (Euclidean):
+- $d(A) = \sqrt{(3-1)^2 + (4-2)^2} = \sqrt{8} \approx 2.83$
+- $d(B) = \sqrt{(3-2)^2 + (4-3)^2} = \sqrt{2} \approx 1.41$
+- $d(C) = \sqrt{(3-6)^2 + (4-5)^2} = \sqrt{10} \approx 3.16$
+- $d(D) = \sqrt{(3-7)^2 + (4-7)^2} = \sqrt{25} = 5.0$
+- $d(E) = \sqrt{(3-8)^2 + (4-6)^2} = \sqrt{29} \approx 5.39$
+
+With $k=3$, the 3 nearest are B (Red), A (Red), C (Blue). **Majority vote: Red.**
+
+```python
+import numpy as np
+
+# Training data
+X_train = np.array([[1,2], [2,3], [6,5], [7,7], [8,6]])
+y_train = np.array(['Red', 'Red', 'Blue', 'Blue', 'Blue'])
+
+def knn_predict(X_train, y_train, x_new, k=3):
+    distances = np.sqrt(np.sum((X_train - x_new)**2, axis=1))
+    k_nearest = np.argsort(distances)[:k]
+    labels = y_train[k_nearest]
+    # Majority vote
+    values, counts = np.unique(labels, return_counts=True)
+    return values[np.argmax(counts)]
+
+print(knn_predict(X_train, y_train, np.array([3, 4]), k=3))  # 'Red'
+```
+
+## Distance metrics
+
+How do we measure "close"?
+
+| Metric | Formula | When to use |
+|--------|---------|-------------|
+| Euclidean | $\sqrt{\sum (x_i - y_i)^2}$ | Default for continuous features |
+| Manhattan | $\sum |x_i - y_i|$ | High-dimensional, sparse data |
+| Minkowski | $(\sum |x_i - y_i|^p)^{1/p}$ | Generalizes both above |
+| Hamming | $\frac{\sum \mathbf{1}[x_i \neq y_i]}{d}$ | Categorical features |
+
+<Callout type="warning" title="Feature scaling is critical">
+  KNN uses distances, so features with larger ranges dominate. A feature measured in millimeters (range 0-10000) will completely overwhelm one measured in meters (range 0-10). Always normalize or standardize features before applying KNN.
+</Callout>
+
+```python
+from sklearn.preprocessing import StandardScaler
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)  # use same scaler!
+```
+
+## Choosing k
+
+- **Small k** (e.g., $k=1$): very flexible, captures noise — low bias, high variance
+- **Large k** (e.g., $k=n$): always predicts the majority class — high bias, low variance
+
+The sweet spot is usually found via **cross-validation**. A common heuristic: $k = \sqrt{n}$.
+
+```python
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import cross_val_score
+
+# Find best k
+for k in range(1, 21):
+    knn = KNeighborsClassifier(n_neighbors=k)
+    scores = cross_val_score(knn, X_train_scaled, y_train, cv=5)
+    print(f"k={k:2d}: accuracy={scores.mean():.3f} ± {scores.std():.3f}")
+```
+
+## Decision boundaries
+
+KNN creates complex, non-linear decision boundaries. With $k=1$, the boundary is the Voronoi tessellation of the training points — each region is the set of points closest to one training example.
+
+As $k$ increases, the boundary becomes smoother. This is the **bias-variance tradeoff** in action:
+
+| k | Bias | Variance | Boundary |
+|---|------|----------|----------|
+| 1 | Low | High | Very jagged |
+| $\sqrt{n}$ | Medium | Medium | Balanced |
+| $n$ | High | Low | Always majority class |
+
+## The curse of dimensionality
+
+As dimensions increase, all points become equidistant:
+
+$$\frac{d_{\max} - d_{\min}}{d_{\min}} \to 0 \quad \text{as } d \to \infty$$
+
+In high dimensions, "nearest" loses meaning. KNN works well in low dimensions (2-10) but degrades rapidly beyond that.
+
+**Practical tip:** KNN is a great baseline but rarely competitive with trained models on high-dimensional data. It's most useful for: (1) quick prototyping, (2) low-dimensional problems, and (3) as a component in other algorithms.
+
+<Callout type="info" title="When to use KNN">
+  ✅ Small datasets (< 10K samples)<br/>
+  ✅ Low-dimensional features (< 20)<br/>
+  ✅ Non-linear decision boundaries<br/>
+  ✅ Quick baseline before trying complex models<br/>
+  ❌ High-dimensional data (use SVM or neural networks)<br/>
+  ❌ Large datasets (slow prediction: $O(n \cdot d)$ per query)
+</Callout>
+
+## Complexity
+
+| Operation | Time |
+|-----------|------|
+| Training | $O(1)$ — just store the data |
+| Prediction | $O(n \cdot d)$ — compute all distances |
+
+This is why KNN is called a **lazy learner** — all the work happens at prediction time.
+
+## Common mistakes
+
+1. **Forgetting to scale features** — The #1 KNN mistake. Always standardize.
+2. **Using even k for binary classification** — Can result in ties. Use odd k.
+3. **Ignoring the curse of dimensionality** — KNN degrades badly above ~20 features. Use dimensionality reduction first.
+
+<Exercise id="knn-k-choice" />
+<Exercise id="knn-distance-metric" />
+<Exercise id="knn-curse" />

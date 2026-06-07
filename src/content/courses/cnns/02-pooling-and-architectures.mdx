@@ -1,0 +1,158 @@
+---
+title: "Pooling and CNN Architectures"
+description: "Downsampling, famous architectures, and how deep networks learn hierarchical features."
+order: 2
+type: concept
+estimatedMinutes: 22
+---
+
+# Pooling and CNN Architectures
+
+After convolution, we need to reduce spatial dimensions and build deeper representations. Pooling does the downsampling, and famous architectures show how to stack layers effectively.
+
+## Pooling
+
+Pooling reduces the spatial size of feature maps, decreasing computation and providing translation invariance.
+
+### Max pooling
+
+Takes the maximum value in each window:
+
+$$\text{MaxPool}(X)_{i,j} = \max_{m,n \in \text{window}} X_{i+m, j+n}$$
+
+```python
+import torch.nn as nn
+
+# Max pooling: 2x2 window, stride 2 → halves spatial dimensions
+pool = nn.MaxPool2d(kernel_size=2, stride=2)
+
+# Input: [1, 64, 28, 28] → Output: [1, 64, 14, 14]
+x = torch.randn(1, 64, 28, 28)
+print(f"Before: {x.shape}")   # [1, 64, 28, 28]
+print(f"After: {pool(x).shape}")  # [1, 64, 14, 14]
+```
+
+### Average pooling
+
+Takes the mean value in each window. Less common in modern architectures but used in the final layer (Global Average Pooling).
+
+<Callout type="tip" title="Max vs Average pooling">
+  Max pooling preserves the strongest activation — "did this feature appear anywhere in the region?" Average pooling preserves the average activation — "how strong was this feature overall?" Max pooling is more common because it's better at detecting presence of features.
+</Callout>
+
+### Global Average Pooling (GAP)
+
+Reduces each feature map to a single value by averaging all pixels:
+
+$$\text{GAP}(\text{feature map}) = \frac{1}{H \times W} \sum_{i,j} X_{i,j}$$
+
+GAP replaces fully connected layers at the end of the network, drastically reducing parameters:
+
+```python
+# GAP: [1, 512, 7, 7] → [1, 512]
+gap = nn.AdaptiveAvgPool2d(1)
+x = torch.randn(1, 512, 7, 7)
+print(f"After GAP: {gap(x).shape}")  # [1, 512, 1, 1]
+```
+
+## Output size formula
+
+For pooling with window $p$, stride $s$, and padding $p$:
+
+$$\text{out} = \left\lfloor \frac{n - f + 2p}{s} \right\rfloor + 1$$
+
+| Operation | Window | Stride | Padding | Output |
+|-----------|--------|--------|---------|--------|
+| MaxPool | $2 \times 2$ | 2 | 0 | $n/2$ |
+| MaxPool | $3 \times 3$ | 2 | 1 | $(n-1)/2 + 1$ |
+| GAP | $H \times W$ | — | — | 1 |
+
+## Famous architectures
+
+### LeNet-5 (1998)
+
+The first successful CNN for digit recognition:
+
+```
+Input (32×32) → Conv(6) → Pool → Conv(16) → Pool → FC(120) → FC(84) → FC(10)
+```
+
+### AlexNet (2012)
+
+Won ImageNet with a huge margin. Key innovations:
+- Used ReLU instead of sigmoid/tanh
+- Dropout for regularization
+- Data augmentation (flips, crops)
+- GPU training
+
+### VGGNet (2014)
+
+Showed that depth matters. Uses only $3 \times 3$ filters:
+
+```
+[Conv3-64]×2 → Pool → [Conv3-128]×2 → Pool → [Conv3-256]×3 → Pool → ...
+```
+
+### ResNet (2015)
+
+Introduced **skip connections** to train very deep networks (152+ layers):
+
+$$\mathbf{y} = F(\mathbf{x}, \{W_i\}) + \mathbf{x}$$
+
+The skip connection allows gradients to flow directly through the network, solving the vanishing gradient problem.
+
+<Callout type="info" title="Why skip connections work">
+  Without skip connections, gradients must flow through every layer. In a 50-layer network, the gradient is multiplied by 50 weight matrices — it can vanish or explode. Skip connections create "gradient highways" that let errors flow directly to early layers.
+</Callout>
+
+```python
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.bn1 = nn.BatchNorm2d(channels)
+        self.conv2 = nn.Conv2d(channels, channels, 3, padding=1)
+        self.bn2 = nn.BatchNorm2d(channels)
+    
+    def forward(self, x):
+        residual = x                          # save input
+        out = F.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out += residual                       # skip connection!
+        return F.relu(out)
+```
+
+### Modern architectures
+
+| Architecture | Year | Key Innovation | Params |
+|-------------|------|----------------|--------|
+| LeNet | 1998 | First practical CNN | 60K |
+| AlexNet | 2012 | ReLU, Dropout, GPU | 60M |
+| VGG-16 | 2014 | Depth with 3×3 filters | 138M |
+| ResNet-50 | 2015 | Skip connections | 25M |
+| EfficientNet | 2019 | Compound scaling | 5M-66M |
+
+## Feature visualization
+
+What do CNN layers learn?
+
+- **Layer 1:** Edges, colors, simple textures
+- **Layer 2:** Corners, patterns, textures
+- **Layer 3:** Parts of objects (eyes, wheels, leaves)
+- **Layer 4-5:** Whole objects (faces, cars, animals)
+
+This **hierarchical feature learning** is what makes CNNs powerful — they automatically discover the right representations.
+
+<Callout type="tip" title="Practical tip">
+  When using a pretrained CNN, the early layers already detect useful features. You can reuse them for new tasks — this is the foundation of transfer learning (covered in the next lesson).
+</Callout>
+
+## Common mistakes
+
+1. **Using pooling everywhere** — Modern architectures prefer strided convolutions (stride=2) over max pooling. Pooling loses spatial information.
+2. **Not using batch normalization** — BN stabilizes training and allows higher learning rates. Always use it after conv layers.
+3. **Ignoring the classifier head** — GAP + a single FC layer is better than multiple FC layers. Fewer parameters, less overfitting.
+
+<Exercise id="pooling-output" />
+<Exercise id="resnet-skip" />
+<Exercise id="arch-comparison" />
