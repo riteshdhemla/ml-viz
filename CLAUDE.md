@@ -19,6 +19,7 @@ Each lesson also links to a Jupyter/Colab notebook with runnable Python code.
 | State | Zustand + `persist` | Progress in `src/lib/progress.ts` |
 | Math | KaTeX | Rendered in MDX via rehype-katex |
 | Notebooks | `.ipynb` + Colab | One notebook per lesson in `notebooks/` |
+| Hosting | Vercel | Auto-deploy on push to `main` |
 
 ---
 
@@ -62,6 +63,50 @@ notebooks/                      # Jupyter notebooks — one per lesson
 
 ---
 
+## Hosting (Vercel)
+
+The site is deployed to Vercel. Key facts:
+
+- **Production URL:** `https://ml-viz.vercel.app` (set as `NEXT_PUBLIC_SITE_URL` in Vercel dashboard)
+- **Auto-deploy:** every push to `main` triggers a rebuild
+- **Build:** `npm run build` — all MDX content is compiled statically at build time
+- **Environment variables** (set in Vercel dashboard → Settings → Environment Variables):
+
+  | Variable | Value | Notes |
+  |----------|-------|-------|
+  | `NEXT_PUBLIC_SITE_URL` | `https://ml-viz.vercel.app` | Used in lesson back-links inside notebooks |
+
+- **Colab links** point to notebooks on the `main` branch. Always merge to `main` before expecting Colab buttons to resolve in production.
+- `src/lib/content.ts` uses `fs` (server-side only) — this works fine on Vercel serverless runtime.
+- `vercel.json` is in the repo root; Vercel reads it automatically.
+
+### CD pipeline
+
+Production deploys are **tag-driven**, not branch-driven:
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+This triggers `.github/workflows/cd.yml`:
+1. Quality gate: `npm run type-check` + `npm run build`
+2. Vercel production deploy via CLI (`vercel build --prod` → `vercel deploy --prebuilt --prod`)
+3. GitHub Release auto-created with changelog + deployment URL
+
+A separate `.github/workflows/ci.yml` runs type-check + lint + build on every PR and `main` push.
+
+**Required GitHub secrets** (Settings → Secrets → Actions):
+- `VERCEL_TOKEN` — from Vercel dashboard → Settings → Tokens
+- `VERCEL_ORG_ID` — from `.vercel/project.json` after running `vercel link`
+- `VERCEL_PROJECT_ID` — same file
+
+**Required GitHub variable** (Settings → Variables → Actions):
+- `NEXT_PUBLIC_SITE_URL` = `https://ml-viz.vercel.app`
+
+When adding a feature that needs an environment variable, add it to: `.env.example`, Vercel dashboard, AND the `cd.yml` env block if it's needed at build time.
+
+---
+
 ## Notebook / Colab Convention
 
 Every lesson automatically gets an **"Open in Colab"** button in the header.
@@ -96,6 +141,8 @@ To override: add `notebookUrl: "https://..."` to the lesson frontmatter.
 ### Adding an exercise
 
 All exercises use the `Exercise` component from `src/components/exercises/Exercise.tsx`.
+In MDX, pass an inline `exercise` prop matching the `Exercise` union type from `src/types/exercise.ts`.
+
 Supported types: `multiple-choice`, `slider` — add new types by:
 1. Adding variant to `src/types/exercise.ts`
 2. Creating `src/components/exercises/[Type]Exercise.tsx`
@@ -109,7 +156,7 @@ Supported types: `multiple-choice`, `slider` — add new types by:
    ---
    title: "..."
    description: "..."
-   order: NN
+   order: NN          # integer, matches filename prefix
    type: concept | exercise | quiz | playground
    estimatedMinutes: N
    ---
@@ -121,38 +168,63 @@ Supported types: `multiple-choice`, `slider` — add new types by:
 
 ### Adding a course
 
-1. Create `src/content/courses/[slug]/index.mdx`
+1. Create `src/content/courses/[slug]/index.mdx` with frontmatter:
+   ```yaml
+   ---
+   title: "..."
+   description: "..."
+   difficulty: beginner | intermediate | advanced
+   topics: [...]
+   estimatedHours: N
+   prerequisites: []   # array of course slugs
+   order: N
+   coverColor: "bg-gradient-to-r from-brand-500 to-accent-teal"
+   ---
+   ```
 2. Add lesson MDX files to the same folder
 3. Add corresponding notebooks to `notebooks/[slug]/`
 
 ### Styling rules
 
 - Dark background: `bg-surface` (#0f1117), cards: `bg-surface-card` (#1a1d27)
-- Primary color: `brand-500` (#6366f1)
-- Use `card-glass` for bordered card containers, `text-gradient` for display text
-- Use `prose-lesson` (never `prose`) on lesson content
+- Primary color: `brand-500` (#6366f1) — buttons, links, active states
+- Accent colors for semantic use: `accent-teal` (success), `accent-yellow` (warning), `accent-rose` (error/advanced)
+- Use `card-glass` utility class for bordered card containers
+- Use `text-gradient` for hero/display text highlights
+- Never use `prose` directly on lesson content — use the `prose-lesson` utility class
 
 ### Component rules
 
 - All interactive components → `"use client"` directive
-- `src/lib/content.ts` is server-only — never import in client components
+- Server components: pages, layout components that don't need state
+- No `useState` in server components; no `fs` / file-system code in client components
+- `src/lib/content.ts` is server-only (imports `fs`) — never import in client components
 
 ---
 
 ## Design System (Brilliant-inspired)
 
-### Color tokens
+### Color tokens (Tailwind custom)
 
 ```
 brand-{50..900}  — indigo/purple, primary actions
+accent-orange    — highlights, CTA variants
 accent-teal      — success, beginner difficulty
 accent-yellow    — warning, intermediate difficulty
 accent-rose      — error, advanced difficulty
-surface          — page background (#0f1117)
-surface-card     — card background (#1a1d27)
-surface-elevated — hover/active state
+surface          — page background
+surface-card     — card background
+surface-elevated — hover/active card background
 surface-border   — borders
 ```
+
+### Visual language
+
+- **Dark background** everywhere (color scheme: dark)
+- **Cards** with subtle borders, no drop shadows
+- **Hover state**: slight border color lift + `-translate-y-0.5` transform
+- **Difficulty indicators**: teal dot (beginner), yellow (intermediate), rose (advanced)
+- **Progress**: teal check circles for completed lessons
 
 ---
 
@@ -191,7 +263,7 @@ surface-border   — borders
 
 ---
 
-## Visualization Components
+## Visualization Components Built
 
 | Component | File | Status |
 |-----------|------|--------|
@@ -206,11 +278,21 @@ surface-border   — borders
 
 ---
 
-## Vibe Coding Tips
+## Vibe Coding Tips for Claude Code
 
 - **New viz?** Copy `prompts/new-visualization.md` into chat
 - **New lesson?** Copy `prompts/new-lesson.md` into chat
 - **New exercise type?** Copy `prompts/new-exercise-type.md` into chat
 - **New course?** Copy `prompts/new-course.md` into chat
 
-When adding a lesson, always create both the `.mdx` and the `.ipynb` notebook with the same slug.
+The `prompts/` directory contains ready-made task descriptions for each common operation.
+Paste them directly into Claude Code to generate new content following established patterns.
+
+When adding a visualization, always:
+1. Check `src/components/mdx/mdxComponents.tsx` to see what's registered
+2. Add the new component to that registry after creating it
+3. Uncomment its import in `mdxComponents.tsx`
+
+When adding a lesson, always:
+1. Create both the `.mdx` and the `.ipynb` notebook with the same slug
+2. The Colab link is auto-wired — no extra config needed
