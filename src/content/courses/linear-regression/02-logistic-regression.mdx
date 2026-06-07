@@ -1,0 +1,172 @@
+---
+title: "Logistic Regression"
+description: "From regression to classification — the sigmoid, cross-entropy, and decision boundaries."
+order: 2
+type: concept
+estimatedMinutes: 20
+---
+
+# Logistic Regression
+
+Linear regression predicts continuous values. But what if we want to classify — predict $P(y=1 \mid \mathbf{x})$? We need a model that outputs probabilities between 0 and 1.
+
+**Real-world examples:** Email spam detection, disease diagnosis, customer churn prediction, fraud detection.
+
+## The sigmoid function
+
+Apply the linear model through a **sigmoid** (logistic) function:
+
+$$\sigma(z) = \frac{1}{1 + e^{-z}}$$
+
+This maps $(-\infty, +\infty)$ to $(0, 1)$, giving us a probability interpretation:
+
+$$P(y=1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T \mathbf{x} + w_0)$$
+
+<Callout type="tip" title="Intuition">
+  The sigmoid "squashes" the linear output. Large positive inputs → probability close to 1. Large negative inputs → probability close to 0. The transition happens smoothly around zero. Think of it as a smooth version of a step function.
+</Callout>
+
+### Worked example
+
+Suppose we have a model with $w = [2, -1]$ and $b = 0$. For input $\mathbf{x} = [1, 3]$:
+
+$$z = 2(1) + (-1)(3) + 0 = -1$$
+$$\sigma(-1) = \frac{1}{1 + e^{1}} \approx 0.27$$
+
+The model predicts a 27% probability of class 1. Since this is below 0.5, we classify as class 0.
+
+```python
+import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+# Example
+w = np.array([2, -1])
+b = 0
+x = np.array([1, 3])
+z = w @ x + b
+print(f"z = {z}, σ(z) = {sigmoid(z):.3f}")  # z = -1, σ(z) = 0.27
+```
+
+## The decision boundary
+
+Logistic regression classifies by thresholding the probability:
+
+$$\hat{y} = \begin{cases} 1 & \text{if } \sigma(\mathbf{w}^T \mathbf{x}) \geq 0.5 \\ 0 & \text{otherwise} \end{cases}$$
+
+Since $\sigma(0) = 0.5$, the decision boundary is where $\mathbf{w}^T \mathbf{x} = 0$ — a **hyperplane** in feature space. This means logistic regression learns linear boundaries, just like linear regression.
+
+<Callout type="info" title="Geometric interpretation">
+  The decision boundary divides the feature space into two half-spaces. Points on one side are classified as positive, the other as negative. The weights $\mathbf{w}$ are perpendicular to this boundary — they point in the direction of increasing probability.
+</Callout>
+
+## Cross-entropy loss
+
+We can't use MSE for classification — it's non-convex with the sigmoid. Instead, we use **binary cross-entropy**:
+
+$$\mathcal{L} = -\frac{1}{n} \sum_{i=1}^n \left[ y_i \log \hat{y}_i + (1 - y_i) \log(1 - \hat{y}_i) \right]$$
+
+This loss penalizes confident wrong predictions heavily:
+
+| Prediction | Actual | Loss |
+|-----------|--------|------|
+| 0.99 | 1 | $-\log(0.99) \approx 0.01$ (good) |
+| 0.01 | 1 | $-\log(0.01) \approx 4.6$ (terrible!) |
+| 0.5 | 1 | $-\log(0.5) \approx 0.7$ (uncertain) |
+
+<Callout type="info" title="Connection to MLE">
+  Cross-entropy loss is exactly the negative log-likelihood under a Bernoulli model. Minimizing it is equivalent to Maximum Likelihood Estimation (MLE) — finding the weights that make the observed data most probable.
+</Callout>
+
+```python
+def cross_entropy(y_true, y_pred):
+    eps = 1e-15  # avoid log(0)
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))
+
+# Example
+y_true = np.array([1, 0, 1, 1])
+y_pred = np.array([0.9, 0.1, 0.8, 0.3])
+print(f"Cross-entropy loss: {cross_entropy(y_true, y_pred):.3f}")
+```
+
+## Gradient descent
+
+The gradient of cross-entropy loss with respect to weights is:
+
+$$\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})$$
+
+This has the same form as linear regression! Update weights with:
+
+$$\mathbf{w} \leftarrow \mathbf{w} - \eta \cdot \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})$$
+
+```python
+# Full gradient descent implementation
+def logistic_regression_gd(X, y, lr=0.1, epochs=1000):
+    n, d = X.shape
+    w = np.zeros(d)
+    b = 0
+    
+    for epoch in range(epochs):
+        z = X @ w + b
+        y_pred = sigmoid(z)
+        
+        # Gradients
+        dw = (1/n) * X.T @ (y_pred - y)
+        db = (1/n) * np.sum(y_pred - y)
+        
+        # Update
+        w -= lr * dw
+        b -= lr * db
+        
+        if epoch % 200 == 0:
+            loss = cross_entropy(y, y_pred)
+            acc = np.mean((y_pred >= 0.5) == y)
+            print(f"Epoch {epoch}: loss={loss:.4f}, acc={acc:.3f}")
+    
+    return w, b
+```
+
+## Multi-class: softmax
+
+For $K > 2$ classes, replace the sigmoid with **softmax**:
+
+$$P(y = k \mid \mathbf{x}) = \frac{e^{\mathbf{w}_k^T \mathbf{x}}}{\sum_{j=1}^K e^{\mathbf{w}_j^T \mathbf{x}}}$$
+
+This is called **multinomial logistic regression** or **softmax regression**. The softmax ensures all probabilities sum to 1.
+
+```python
+def softmax(logits):
+    exp_logits = np.exp(logits - np.max(logits))  # numerical stability
+    return exp_logits / exp_logits.sum(axis=1, keepdims=True)
+
+# Example: 3 classes
+logits = np.array([[2.0, 1.0, 0.1]])
+probs = softmax(logits)
+print(f"Probabilities: {probs}")  # [[0.659, 0.242, 0.099]]
+```
+
+## Comparison
+
+| Property | Linear Regression | Logistic Regression |
+|----------|------------------|---------------------|
+| Output | $\mathbb{R}$ | $(0, 1)$ probability |
+| Loss | MSE | Cross-entropy |
+| Decision boundary | — | Hyperplane |
+| Assumptions | Linear relationship | Linear in log-odds |
+| Interpretability | High | High (odds ratios) |
+
+<Callout type="warning" title="Limitations">
+  Logistic regression can only learn linear decision boundaries. If the true boundary is non-linear (e.g., XOR), it will fail. You need feature engineering (polynomial features) or a more flexible model. Also, it assumes features are independent — correlated features can cause instability.
+</Callout>
+
+## Common mistakes
+
+1. **Using MSE instead of cross-entropy** — MSE is non-convex with sigmoid, leading to slow training and poor convergence.
+2. **Not handling class imbalance** — If 95% of samples are negative, the model can achieve 95% accuracy by always predicting negative. Use class weights or oversampling.
+3. **Interpreting coefficients as probabilities** — The coefficients are in log-odds space. $w_j = 2$ means a one-unit increase in $x_j$ multiplies the odds by $e^2 \approx 7.4$.
+
+<Exercise id="sigmoid-range" />
+<Exercise id="cross-entropy-penalty" />
+<Exercise id="logistic-decision-boundary" />

@@ -1,0 +1,146 @@
+---
+title: "Linear Regression"
+description: "Fitting a line to data — Ordinary Least Squares, Ridge, and Lasso."
+order: 1
+type: concept
+estimatedMinutes: 20
+---
+
+# Linear Regression
+
+The simplest supervised learning task: given input features $x_1, \ldots, x_d$, predict a continuous output $y$.
+
+**Real-world examples:** Predicting house prices from square footage, bedrooms, and location. Estimating a patient's blood pressure from age and weight. Forecasting sales from advertising spend.
+
+## The model
+
+$$\hat{y} = w_0 + w_1 x_1 + w_2 x_2 + \cdots + w_d x_d = \mathbf{w}^T \mathbf{x} + w_0$$
+
+In matrix form: $\hat{\mathbf{y}} = X\mathbf{w}$, where $X$ includes a bias column of ones.
+
+Each weight $w_j$ tells you how much $y$ changes when $x_j$ increases by one unit, **holding all other features constant**. This is the key interpretation of linear regression.
+
+<Callout type="tip" title="Intuition">
+  Imagine plotting house price vs. square footage. Linear regression finds the straight line that best fits the points. The slope is $w_1$ — for each additional square foot, the predicted price increases by $w_1$ dollars.
+</Callout>
+
+## Ordinary Least Squares (OLS)
+
+We find the weights that minimize the mean squared error:
+
+$$\mathcal{L}(\mathbf{w}) = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 = \frac{1}{n} \| \mathbf{y} - X\mathbf{w} \|^2$$
+
+Taking the gradient and setting it to zero gives the **closed-form solution**:
+
+$$\mathbf{w}^* = (X^T X)^{-1} X^T \mathbf{y}$$
+
+<Callout type="info" title="Why closed-form matters">
+  Unlike gradient descent, OLS gives you the exact answer in one computation. No learning rate to tune, no convergence to worry about. But it requires $X^T X$ to be invertible — which fails when features are perfectly correlated or when $d > n$ (more features than samples).
+</Callout>
+
+### Worked example
+
+Suppose we have 3 data points: $(1, 2), (2, 3), (3, 5)$.
+
+$$X = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 2 \\ 3 \\ 5 \end{bmatrix}$$
+
+$$X^T X = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}, \quad X^T \mathbf{y} = \begin{bmatrix} 10 \\ 23 \end{bmatrix}$$
+
+$$(X^T X)^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}$$
+
+$$\mathbf{w}^* = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 10 \\ 23 \end{bmatrix} = \begin{bmatrix} 0.33 \\ 1.5 \end{bmatrix}$$
+
+So $\hat{y} = 0.33 + 1.5x$. For a new house with $x = 4$, the prediction is $\hat{y} = 6.33$.
+
+## Python implementation
+
+```python
+import numpy as np
+
+# Data
+X = np.array([[1, 1], [1, 2], [1, 3]])  # column of ones for bias
+y = np.array([2, 3, 5])
+
+# Closed-form solution
+w = np.linalg.inv(X.T @ X) @ X.T @ y
+print(f"Weights: {w}")  # [0.33, 1.5]
+
+# Predict
+x_new = np.array([1, 4])  # bias=1, feature=4
+print(f"Prediction: {x_new @ w}")  # 6.33
+```
+
+## The problem: overfitting
+
+With many features (or correlated features), $X^T X$ can be nearly singular, causing the weights to blow up. The model fits the training noise perfectly but generalizes poorly.
+
+**Signs of overfitting in linear regression:**
+- Training error is much lower than test error
+- Weight magnitudes are very large
+- Small changes in data cause wild weight swings
+
+## Ridge regression (L2 regularization)
+
+Add a penalty on the **magnitude** of the weights:
+
+$$\mathcal{L}_{\text{Ridge}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|^2$$
+
+The closed-form solution becomes:
+
+$$\mathbf{w}^* = (X^T X + \lambda I)^{-1} X^T \mathbf{y}$$
+
+The $\lambda I$ term ensures $X^T X + \lambda I$ is always invertible and shrinks all weights toward zero.
+
+<Callout type="info" title="Effect of λ">
+  $\lambda = 0$: equivalent to OLS. As $\lambda \to \infty$: all weights shrink to zero (model predicts the mean). The optimal $\lambda$ balances fit and complexity — typically found via cross-validation.
+</Callout>
+
+```python
+from sklearn.linear_model import Ridge
+
+ridge = Ridge(alpha=1.0)  # alpha = λ
+ridge.fit(X_train, y_train)
+print(f"Ridge weights: {ridge.coef_}")
+print(f"Training R²: {ridge.score(X_train, y_train):.3f}")
+print(f"Test R²: {ridge.score(X_test, y_test):.3f}")
+```
+
+## Lasso regression (L1 regularization)
+
+Replace the L2 penalty with an L1 penalty:
+
+$$\mathcal{L}_{\text{Lasso}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|_1$$
+
+Unlike Ridge, Lasso can set weights **exactly to zero** — performing automatic feature selection. This is because the L1 penalty creates a diamond-shaped constraint region whose corners touch the axes.
+
+```python
+from sklearn.linear_model import Lasso
+
+lasso = Lasso(alpha=0.1)
+lasso.fit(X_train, y_train)
+print(f"Lasso weights: {lasso.coef_}")
+# Some weights may be exactly 0.0 — feature selection!
+print(f"Features selected: {np.sum(lasso.coef_ != 0)} / {len(lasso.coef_)}")
+```
+
+## Comparison
+
+| Regularization | Penalty | Effect | When to use |
+|----------------|---------|--------|-------------|
+| None (OLS) | — | Can overfit with many features | Few features, clean data |
+| Ridge (L2) | $\lambda \sum w_i^2$ | Shrinks weights, keeps all features | Many features, all potentially useful |
+| Lasso (L1) | $\lambda \sum |w_i|$ | Sparse solutions, feature selection | Many features, suspect most are irrelevant |
+
+<Callout type="warning" title="Correlated features">
+  When features are highly correlated, Ridge tends to distribute weight across them while Lasso picks one and zeros the rest. Neither is strictly better — it depends on whether you believe all correlated features matter. Elastic Net combines both penalties.
+</Callout>
+
+## Common mistakes
+
+1. **Forgetting to standardize features** — Ridge and Lasso are sensitive to feature scales. Always standardize before regularizing.
+2. **Tuning λ on the test set** — Use cross-validation on the training set to select λ. The test set is for final evaluation only.
+3. **Assuming linear means simple** — Linear regression with polynomial features, interactions, and transforms can model complex relationships while remaining interpretable.
+
+<Exercise id="ols-formula" />
+<Exercise id="ridge-vs-lasso" />
+<Exercise id="ols-worked-example" />
