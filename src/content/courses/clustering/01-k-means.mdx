@@ -1,0 +1,144 @@
+---
+title: "K-Means Clustering"
+description: "Partitioning data into K groups by minimizing within-cluster variance."
+order: 1
+type: concept
+estimatedMinutes: 20
+---
+
+# K-Means Clustering
+
+K-Means is the simplest and most popular clustering algorithm. It partitions $n$ data points into $K$ clusters by minimizing the within-cluster sum of squares.
+
+**Real-world examples:** Customer segmentation, document clustering, image compression, anomaly detection, gene expression analysis.
+
+## The algorithm
+
+1. **Initialize** $K$ centroids randomly (or use K-Means++)
+2. **Assign** each point to the nearest centroid
+3. **Update** each centroid as the mean of its assigned points
+4. **Repeat** steps 2-3 until convergence
+
+$$J = \sum_{k=1}^{K} \sum_{\mathbf{x}_i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$$
+
+where $C_k$ is the set of points in cluster $k$ and $\boldsymbol{\mu}_k$ is its centroid.
+
+<Callout type="tip" title="Intuition">
+  Imagine hanging $K$ magnets on a whiteboard and placing nails near each. Each nail jumps to the nearest magnet, then each magnet moves to the center of its nails. Repeat until nothing moves.
+</Callout>
+
+### Worked example
+
+5 points in 2D: $(1,1), (1.5,2), (3,4), (5,7), (3.5,5)$. $K=2$.
+
+**Iteration 1:**
+- Initialize centroids: $\boldsymbol{\mu}_1 = (1,1)$, $\boldsymbol{\mu}_2 = (5,7)$
+- Assign: $(1,1) \to C_1$, $(1.5,2) \to C_1$, $(3,4) \to C_1$, $(5,7) \to C_2$, $(3.5,5) \to C_2$
+- Update: $\boldsymbol{\mu}_1 = (1.83, 2.33)$, $\boldsymbol{\mu}_2 = (4.25, 6.0)$
+
+**Iteration 2:**
+- Reassign (same assignments — converged!)
+- Final clusters: $C_1 = \{(1,1), (1.5,2), (3,4)\}$, $C_2 = \{(5,7), (3.5,5)\}$
+
+```python
+import numpy as np
+from sklearn.cluster import KMeans
+
+X = np.array([[1,1], [1.5,2], [3,4], [5,7], [3.5,5]])
+kmeans = KMeans(n_clusters=2, random_state=42, n_init=10)
+kmeans.fit(X)
+
+print(f"Labels: {kmeans.labels_}")
+print(f"Centroids:\n{kmeans.cluster_centers_}")
+print(f"Inertia: {kmeans.inertia_:.2f}")
+```
+
+## Choosing K: The Elbow Method
+
+Plot inertia (within-cluster sum of squares) vs. $K$ and look for the "elbow" — the point where adding more clusters gives diminishing returns:
+
+```python
+inertias = []
+K_range = range(1, 11)
+
+for k in K_range:
+    km = KMeans(n_clusters=k, random_state=42, n_init=10)
+    km.fit(X)
+    inertias.append(km.inertia_)
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(8, 5))
+plt.plot(K_range, inertias, 'bo-', linewidth=2, markersize=8)
+plt.xlabel('Number of clusters (K)')
+plt.ylabel('Inertia')
+plt.title('Elbow Method')
+plt.grid(True, alpha=0.3)
+plt.show()
+```
+
+## Silhouette Score
+
+Measures how well each point fits its cluster vs. neighboring clusters:
+
+$$s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}$$
+
+where $a(i)$ = average distance to same cluster, $b(i)$ = average distance to nearest other cluster.
+
+- $s(i) \approx 1$: well-clustered
+- $s(i) \approx 0$: on boundary
+- $s(i) < 0$: probably in wrong cluster
+
+```python
+from sklearn.metrics import silhouette_score
+
+for k in range(2, 8):
+    km = KMeans(n_clusters=k, random_state=42, n_init=10)
+    labels = km.fit_predict(X)
+    score = silhouette_score(X, labels)
+    print(f"K={k}: silhouette={score:.3f}")
+```
+
+## K-Means++ initialization
+
+Standard K-Means can get stuck in bad local optima. K-Means++ spreads initial centroids far apart:
+
+1. Pick first centroid randomly
+2. For each remaining centroid, pick a point with probability proportional to its distance from the nearest existing centroid
+3. Repeat until $K$ centroids are placed
+
+```python
+# KMeans++ is the default in scikit-learn (init='k-means++')
+kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, random_state=42)
+```
+
+<Callout type="info" title="Always run multiple times">
+  K-Means converges to a local optimum — different runs can give different results. Always use `n_init=10` (default) or higher to try multiple initializations and keep the best.
+</Callout>
+
+## Limitations
+
+1. **Assumes spherical clusters** — Fails with elongated, crescent, or irregular shapes
+2. **Sensitive to outliers** — A single outlier can pull a centroid far away
+3. **Requires K in advance** — Must know or estimate the number of clusters
+4. **Sensitive to initialization** — Can converge to poor local optima
+
+| When K-Means works well | When it fails |
+|------------------------|---------------|
+| Spherical, equally-sized clusters | Crescent shapes |
+| Clear separation between clusters | Overlapping clusters |
+| Low-dimensional data | High-dimensional data |
+| No outliers | Outliers present |
+
+<Callout type="warning" title="Standardize your features">
+  K-Means uses Euclidean distance. If features have different scales (e.g., age in years vs. income in dollars), the larger-scale feature will dominate. Always standardize before clustering.
+</Callout>
+
+## Common mistakes
+
+1. **Not standardizing features** — The #1 K-Means mistake. Always use `StandardScaler`.
+2. **Using K=1 or K=n** — Trivial solutions. Use the elbow method or silhouette score.
+3. **Ignoring the initialization** — Always use K-Means++ and `n_init ≥ 10`.
+
+<Exercise id="kmeans-iteration" />
+<Exercise id="choosing-k" />
+<Exercise id="kmeans-scaling" />
