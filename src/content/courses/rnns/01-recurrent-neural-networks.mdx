@@ -16,9 +16,13 @@ A feed-forward network maps a fixed-size input to a fixed-size output. But langu
 
 A feed-forward layer computes $\mathbf{y} = f(W\mathbf{x})$ once. An RNN applies the *same* layer repeatedly, feeding its own previous output back in as extra input:
 
-$$\mathbf{h}_t = \tanh\!\left(W_{xh}\,\mathbf{x}_t + W_{hh}\,\mathbf{h}_{t-1} + \mathbf{b}_h\right)$$
+$$
+\mathbf{h}_t = \tanh\!\left(W_{xh}\,\mathbf{x}_t + W_{hh}\,\mathbf{h}_{t-1} + \mathbf{b}_h\right)
+$$
 
-$$\mathbf{y}_t = W_{hy}\,\mathbf{h}_t + \mathbf{b}_y$$
+$$
+\mathbf{y}_t = W_{hy}\,\mathbf{h}_t + \mathbf{b}_y
+$$
 
 - $\mathbf{x}_t$ — input at time step $t$ (e.g. the embedding of the $t$-th word)
 - $\mathbf{h}_t$ — hidden state at time $t$, the network's "memory"
@@ -69,9 +73,15 @@ RNNs flex to different tasks depending on how many inputs and outputs you wire u
 
 Let $W_{xh}=0.5$, $W_{hh}=0.9$, $b_h=0$, $\mathbf{h}_0=0$, and inputs $x = [1, 1, 1]$.
 
-$$h_1 = \tanh(0.5\cdot 1 + 0.9\cdot 0) = \tanh(0.5) = 0.462$$
-$$h_2 = \tanh(0.5\cdot 1 + 0.9\cdot 0.462) = \tanh(0.916) = 0.724$$
-$$h_3 = \tanh(0.5\cdot 1 + 0.9\cdot 0.724) = \tanh(1.152) = 0.818$$
+$$
+h_1 = \tanh(0.5\cdot 1 + 0.9\cdot 0) = \tanh(0.5) = 0.462
+$$
+$$
+h_2 = \tanh(0.5\cdot 1 + 0.9\cdot 0.462) = \tanh(0.916) = 0.724
+$$
+$$
+h_3 = \tanh(0.5\cdot 1 + 0.9\cdot 0.724) = \tanh(1.152) = 0.818
+$$
 
 The hidden state *accumulates* — each step builds on the last. The $\tanh$ keeps it bounded in $(-1, 1)$ so it cannot blow up within a step.
 

@@ -20,7 +20,9 @@ Bagging trains trees independently and averages them. **Boosting** trains trees 
 4. Combine all models weighted by their accuracy
 5. Repeat until $B$ models are trained
 
-$$\hat{f}_B(\mathbf{x}) = \sum_{b=1}^{B} \eta \cdot h_b(\mathbf{x})$$
+$$
+\hat{f}_B(\mathbf{x}) = \sum_{b=1}^{B} \eta \cdot h_b(\mathbf{x})
+$$
 
 where $h_b$ is the $b$-th weak learner and $\eta$ is the **learning rate** (shrinkage).
 
@@ -59,7 +61,9 @@ print(f"AdaBoost accuracy: {ada.score(X_test, y_test):.3f}")
 
 Generalizes boosting to any differentiable loss function. Each new tree fits the **negative gradient** (residuals) of the loss:
 
-$$r_i^{(b)} = -\frac{\partial \mathcal{L}(y_i, \hat{f}_{b-1}(\mathbf{x}_i))}{\partial \hat{f}_{b-1}(\mathbf{x}_i)}$$
+$$
+r_i^{(b)} = -\frac{\partial \mathcal{L}(y_i, \hat{f}_{b-1}(\mathbf{x}_i))}{\partial \hat{f}_{b-1}(\mathbf{x}_i)}
+$$
 
 For MSE loss, this is simply the residual $y_i - \hat{f}_{b-1}(\mathbf{x}_i)$.
 

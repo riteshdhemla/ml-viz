@@ -38,7 +38,9 @@ A token's query is compared against *every* key to score relevance; those scores
 
 The whole mechanism is one formula:
 
-$$\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right)V$$
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^{\top}}{\sqrt{d_k}}\right)V
+$$
 
 Step by step:
 
@@ -55,7 +57,9 @@ The dot product of two random $d_k$-dimensional vectors has variance proportiona
 
 Two tokens, $d_k = 2$. Suppose:
 
-$$Q = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},\quad K = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},\quad V = \begin{bmatrix} 10 & 0 \\ 0 & 10 \end{bmatrix}$$
+$$
+Q = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},\quad K = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},\quad V = \begin{bmatrix} 10 & 0 \\ 0 & 10 \end{bmatrix}
+$$
 
 Scores $QK^{\top} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}$, scaled by $\frac{1}{\sqrt{2}}\approx 0.707$: $\begin{bmatrix} 0.707 & 0 \\ 0 & 0.707 \end{bmatrix}$.
 

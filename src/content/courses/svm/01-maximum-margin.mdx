@@ -16,11 +16,15 @@ Support Vector Machines find the separating hyperplane with the **widest possibl
 
 The margin is the distance between the decision boundary and the nearest data points from each class:
 
-$$\text{margin} = \frac{2}{\|\mathbf{w}\|}$$
+$$
+\text{margin} = \frac{2}{\|\mathbf{w}\|}
+$$
 
 SVMs maximize this margin subject to the constraint that all points are correctly classified:
 
-$$\min_{\mathbf{w}, b} \frac{1}{2} \|\mathbf{w}\|^2 \quad \text{subject to} \quad y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 \quad \forall i$$
+$$
+\min_{\mathbf{w}, b} \frac{1}{2} \|\mathbf{w}\|^2 \quad \text{subject to} \quad y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 \quad \forall i
+$$
 
 <Callout type="tip" title="Intuition">
   Imagine you're placing a street between two neighborhoods. The wider the street, the more confident you are that new houses will be on the correct side. SVM finds the widest possible street.
@@ -72,7 +76,9 @@ This makes SVMs memory-efficient: at prediction time, you only need the support 
 
 Used for perfectly separable data:
 
-$$y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 \quad \forall i$$
+$$
+y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 \quad \forall i
+$$
 
 No violations allowed. Fails if data isn't linearly separable.
 
@@ -80,7 +86,9 @@ No violations allowed. Fails if data isn't linearly separable.
 
 Handles non-separable data by allowing violations ($\xi_i$):
 
-$$\min_{\mathbf{w}, b, \xi} \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^n \xi_i$$
+$$
+\min_{\mathbf{w}, b, \xi} \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^n \xi_i
+$$
 
 subject to: $y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 - \xi_i$ and $\xi_i \geq 0$
 
@@ -107,7 +115,9 @@ for C in [0.01, 1, 100]:
 
 The soft margin SVM objective can be written as:
 
-$$\mathcal{L} = \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^n \max(0, 1 - y_i \cdot f(\mathbf{x}_i))$$
+$$
+\mathcal{L} = \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^n \max(0, 1 - y_i \cdot f(\mathbf{x}_i))
+$$
 
 where $\max(0, 1 - y_i \cdot f(\mathbf{x}_i))$ is the **hinge loss**:
 

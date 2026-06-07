@@ -16,7 +16,9 @@ A joint distribution over $n$ binary variables has $2^n - 1$ free numbers — ho
 
 A Bayesian Network over variables $X_1, \dots, X_n$ defines:
 
-$$P(X_1, \dots, X_n) = \prod_{i=1}^{n} P(X_i \mid \text{Parents}(X_i))$$
+$$
+P(X_1, \dots, X_n) = \prod_{i=1}^{n} P(X_i \mid \text{Parents}(X_i))
+$$
 
 Each node carries a **Conditional Probability Table (CPT)** giving its distribution *given its parents*. Nodes with no parents store a simple prior.
 
@@ -30,7 +32,9 @@ Variables: Cloudy $C$, Sprinkler $S$, Rain $R$, Wet grass $W$. Structure: $C \to
 
 The joint factorizes as:
 
-$$P(C, S, R, W) = P(C)\,P(S \mid C)\,P(R \mid C)\,P(W \mid S, R)$$
+$$
+P(C, S, R, W) = P(C)\,P(S \mid C)\,P(R \mid C)\,P(W \mid S, R)
+$$
 
 Counting parameters: full joint = $2^4 - 1 = 15$ numbers. Factorized: $P(C)$ needs 1, $P(S|C)$ needs 2, $P(R|C)$ needs 2, $P(W|S,R)$ needs 4 — **9 total**. The savings explode as networks grow.
 

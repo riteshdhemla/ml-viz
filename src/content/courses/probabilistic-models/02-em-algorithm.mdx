@@ -16,7 +16,9 @@ GMMs have latent variables (which component generated each point?) that we never
 
 In a GMM, we observe $\mathbf{x}_i$ but not $z_i$ (which component generated it). If we knew $z_i$, we could easily compute the MLE:
 
-$$\boldsymbol{\mu}_k = \frac{\sum_{i: z_i = k} \mathbf{x}_i}{\sum_{i: z_i = k} 1}$$
+$$
+\boldsymbol{\mu}_k = \frac{\sum_{i: z_i = k} \mathbf{x}_i}{\sum_{i: z_i = k} 1}
+$$
 
 But we don't know $z_i$. EM solves this by alternating between two steps.
 
@@ -30,17 +32,25 @@ But we don't know $z_i$. EM solves this by alternating between two steps.
 
 Compute the expected value of the latent variables given current parameters:
 
-$$\gamma_{ik} = P(z_i = k \mid \mathbf{x}_i, \theta^{(t)}) = \frac{\pi_k^{(t)} \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k^{(t)}, \boldsymbol{\Sigma}_k^{(t)})}{\sum_{j} \pi_j^{(t)} \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j^{(t)}, \boldsymbol{\Sigma}_j^{(t)})}$$
+$$
+\gamma_{ik} = P(z_i = k \mid \mathbf{x}_i, \theta^{(t)}) = \frac{\pi_k^{(t)} \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k^{(t)}, \boldsymbol{\Sigma}_k^{(t)})}{\sum_{j} \pi_j^{(t)} \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j^{(t)}, \boldsymbol{\Sigma}_j^{(t)})}
+$$
 
 ### M-step (Maximization)
 
 Update parameters using the responsibilities as "soft" assignments:
 
-$$\boldsymbol{\mu}_k^{(t+1)} = \frac{\sum_i \gamma_{ik} \mathbf{x}_i}{\sum_i \gamma_{ik}}$$
+$$
+\boldsymbol{\mu}_k^{(t+1)} = \frac{\sum_i \gamma_{ik} \mathbf{x}_i}{\sum_i \gamma_{ik}}
+$$
 
-$$\boldsymbol{\Sigma}_k^{(t+1)} = \frac{\sum_i \gamma_{ik} (\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)})(\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)})^T}{\sum_i \gamma_{ik}}$$
+$$
+\boldsymbol{\Sigma}_k^{(t+1)} = \frac{\sum_i \gamma_{ik} (\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)})(\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)})^T}{\sum_i \gamma_{ik}}
+$$
 
-$$\pi_k^{(t+1)} = \frac{\sum_i \gamma_{ik}}{n}$$
+$$
+\pi_k^{(t+1)} = \frac{\sum_i \gamma_{ik}}{n}
+$$
 
 ```python
 import numpy as np
@@ -91,7 +101,9 @@ def em_gmm(X, K, max_iter=100, tol=1e-6):
 
 EM guarantees that the log-likelihood **monotonically increases** at each iteration:
 
-$$\mathcal{L}(\theta^{(t+1)}) \geq \mathcal{L}(\theta^{(t)})$$
+$$
+\mathcal{L}(\theta^{(t+1)}) \geq \mathcal{L}(\theta^{(t)})
+$$
 
 This is proven by showing that EM maximizes a lower bound (the ELBO — Evidence Lower Bound) on the log-likelihood.
 

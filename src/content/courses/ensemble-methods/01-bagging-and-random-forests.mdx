@@ -20,7 +20,9 @@ A single decision tree overfits easily — it's high-variance. **Bagging** (Boot
 
 Each tree sees a different "view" of the data. Some points appear multiple times, others not at all (~37% are left out per tree). Averaging many diverse trees reduces variance without increasing bias.
 
-$$\hat{f}_{\text{bag}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x})$$
+$$
+\hat{f}_{\text{bag}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x})
+$$
 
 <Callout type="tip" title="Why bagging works">
   Individual trees are uncorrelated because they see different data. When you average uncorrelated estimates, variance drops by a factor of $B$. Even if individual trees are noisy, the average is stable. Think of it like polling — one poll is noisy, but averaging 1000 polls gives a reliable estimate.
@@ -57,7 +59,9 @@ This decorrelates the trees further — they can't all rely on the same dominant
 | Classification | $\sqrt{d}$ |
 | Regression | $d/3$ |
 
-$$\hat{f}_{\text{RF}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x}, \theta_b)$$
+$$
+\hat{f}_{\text{RF}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x}, \theta_b)
+$$
 
 where $\theta_b$ are the random feature subsets for tree $b$.
 

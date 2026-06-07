@@ -22,9 +22,13 @@ A single self-attention head produces one set of attention weights — one "view
 
 Split the model dimension $d_{\text{model}}$ across $h$ heads, each of size $d_k = d_{\text{model}}/h$. Each head has its **own** $W_Q^{(i)}, W_K^{(i)}, W_V^{(i)}$, runs scaled dot-product attention independently, then all heads are concatenated and mixed by an output matrix $W_O$:
 
-$$\text{head}_i = \text{Attention}(QW_Q^{(i)},\, KW_K^{(i)},\, VW_V^{(i)})$$
+$$
+\text{head}_i = \text{Attention}(QW_Q^{(i)},\, KW_K^{(i)},\, VW_V^{(i)})
+$$
 
-$$\text{MultiHead}(Q,K,V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)\,W_O$$
+$$
+\text{MultiHead}(Q,K,V) = \text{Concat}(\text{head}_1, \dots, \text{head}_h)\,W_O
+$$
 
 Note the cost is roughly the same as one full-size head: each head is $1/h$ as wide, so total compute is unchanged — you get diversity for free.
 
@@ -70,7 +74,9 @@ Self-attention is **permutation-invariant**: shuffle the input tokens and the se
 
 The original Transformer adds a fixed **sinusoidal** vector to each token embedding, where each dimension oscillates at a different frequency:
 
-$$PE_{(pos,\,2i)} = \sin\!\left(\frac{pos}{10000^{2i/d}}\right) \qquad PE_{(pos,\,2i+1)} = \cos\!\left(\frac{pos}{10000^{2i/d}}\right)$$
+$$
+PE_{(pos,\,2i)} = \sin\!\left(\frac{pos}{10000^{2i/d}}\right) \qquad PE_{(pos,\,2i+1)} = \cos\!\left(\frac{pos}{10000^{2i/d}}\right)
+$$
 
 - $pos$ — position in the sequence (0, 1, 2, …)
 - $i$ — dimension index, giving wavelengths from $2\pi$ up to $\sim\!10000\cdot 2\pi$

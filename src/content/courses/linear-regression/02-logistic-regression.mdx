@@ -16,11 +16,15 @@ Linear regression predicts continuous values. But what if we want to classify �
 
 Apply the linear model through a **sigmoid** (logistic) function:
 
-$$\sigma(z) = \frac{1}{1 + e^{-z}}$$
+$$
+\sigma(z) = \frac{1}{1 + e^{-z}}
+$$
 
 This maps $(-\infty, +\infty)$ to $(0, 1)$, giving us a probability interpretation:
 
-$$P(y=1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T \mathbf{x} + w_0)$$
+$$
+P(y=1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T \mathbf{x} + w_0)
+$$
 
 <Callout type="tip" title="Intuition">
   The sigmoid "squashes" the linear output. Large positive inputs → probability close to 1. Large negative inputs → probability close to 0. The transition happens smoothly around zero. Think of it as a smooth version of a step function.
@@ -30,8 +34,12 @@ $$P(y=1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T \mathbf{x} + w_0)$$
 
 Suppose we have a model with $w = [2, -1]$ and $b = 0$. For input $\mathbf{x} = [1, 3]$:
 
-$$z = 2(1) + (-1)(3) + 0 = -1$$
-$$\sigma(-1) = \frac{1}{1 + e^{1}} \approx 0.27$$
+$$
+z = 2(1) + (-1)(3) + 0 = -1
+$$
+$$
+\sigma(-1) = \frac{1}{1 + e^{1}} \approx 0.27
+$$
 
 The model predicts a 27% probability of class 1. Since this is below 0.5, we classify as class 0.
 
@@ -53,7 +61,9 @@ print(f"z = {z}, σ(z) = {sigmoid(z):.3f}")  # z = -1, σ(z) = 0.27
 
 Logistic regression classifies by thresholding the probability:
 
-$$\hat{y} = \begin{cases} 1 & \text{if } \sigma(\mathbf{w}^T \mathbf{x}) \geq 0.5 \\ 0 & \text{otherwise} \end{cases}$$
+$$
+\hat{y} = \begin{cases} 1 & \text{if } \sigma(\mathbf{w}^T \mathbf{x}) \geq 0.5 \\ 0 & \text{otherwise} \end{cases}
+$$
 
 Since $\sigma(0) = 0.5$, the decision boundary is where $\mathbf{w}^T \mathbf{x} = 0$ — a **hyperplane** in feature space. This means logistic regression learns linear boundaries, just like linear regression.
 
@@ -65,7 +75,9 @@ Since $\sigma(0) = 0.5$, the decision boundary is where $\mathbf{w}^T \mathbf{x}
 
 We can't use MSE for classification — it's non-convex with the sigmoid. Instead, we use **binary cross-entropy**:
 
-$$\mathcal{L} = -\frac{1}{n} \sum_{i=1}^n \left[ y_i \log \hat{y}_i + (1 - y_i) \log(1 - \hat{y}_i) \right]$$
+$$
+\mathcal{L} = -\frac{1}{n} \sum_{i=1}^n \left[ y_i \log \hat{y}_i + (1 - y_i) \log(1 - \hat{y}_i) \right]
+$$
 
 This loss penalizes confident wrong predictions heavily:
 
@@ -95,11 +107,15 @@ print(f"Cross-entropy loss: {cross_entropy(y_true, y_pred):.3f}")
 
 The gradient of cross-entropy loss with respect to weights is:
 
-$$\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})$$
+$$
+\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
+$$
 
 This has the same form as linear regression! Update weights with:
 
-$$\mathbf{w} \leftarrow \mathbf{w} - \eta \cdot \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})$$
+$$
+\mathbf{w} \leftarrow \mathbf{w} - \eta \cdot \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
+$$
 
 ```python
 # Full gradient descent implementation
@@ -132,7 +148,9 @@ def logistic_regression_gd(X, y, lr=0.1, epochs=1000):
 
 For $K > 2$ classes, replace the sigmoid with **softmax**:
 
-$$P(y = k \mid \mathbf{x}) = \frac{e^{\mathbf{w}_k^T \mathbf{x}}}{\sum_{j=1}^K e^{\mathbf{w}_j^T \mathbf{x}}}$$
+$$
+P(y = k \mid \mathbf{x}) = \frac{e^{\mathbf{w}_k^T \mathbf{x}}}{\sum_{j=1}^K e^{\mathbf{w}_j^T \mathbf{x}}}
+$$
 
 This is called **multinomial logistic regression** or **softmax regression**. The softmax ensures all probabilities sum to 1.
 
