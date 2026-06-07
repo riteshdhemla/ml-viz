@@ -1,0 +1,164 @@
+---
+title: "Hierarchical Clustering & DBSCAN"
+description: "Grouping data without pre-specifying K — agglomerative and density-based methods."
+order: 2
+type: concept
+estimatedMinutes: 20
+---
+
+# Hierarchical Clustering & DBSCAN
+
+K-Means requires you to choose $K$ in advance and assumes spherical clusters. **Hierarchical clustering** builds a tree of clusters without specifying $K$. **DBSCAN** finds arbitrarily shaped clusters based on density.
+
+## Agglomerative hierarchical clustering
+
+Bottom-up approach: start with each point as its own cluster, then repeatedly merge the two closest clusters.
+
+### Linkage methods
+
+How do we measure distance between clusters?
+
+| Method | Definition | Pros/Cons |
+|--------|-----------|-----------|
+| **Single** | Min distance between any two points | Handles elongated clusters; chain effect |
+| **Complete** | Max distance between any two points | Compact clusters; sensitive to outliers |
+| **Average** | Mean distance between all pairs | Balanced; most commonly used |
+| **Ward** | Minimizes within-cluster variance | Produces equally-sized clusters |
+
+### Worked example
+
+Points: A(1,1), B(2,2), C(8,8), D(9,9)
+
+**Iteration 1:** Distances: d(A,B)=1.41, d(C,D)=1.41, others larger. Merge A+B → cluster AB.
+
+**Iteration 2:** Distances: d(AB,CD)=9.9. Merge AB+CD → single cluster.
+
+### Dendrogram
+
+A tree diagram showing the merge history. Cut the dendrogram at a height to choose the number of clusters:
+
+```python
+import numpy as np
+from scipy.cluster.hierarchy import dendrogram, linkage
+import matplotlib.pyplot as plt
+
+X = np.array([[1,1], [2,2], [8,8], [9,9], [5,5]])
+
+Z = linkage(X, method='ward')
+plt.figure(figsize=(10, 5))
+dendrogram(Z, labels=['A','B','C','D','E'])
+plt.title('Dendrogram (Ward linkage)')
+plt.xlabel('Points')
+plt.ylabel('Distance')
+plt.show()
+```
+
+<Callout type="tip" title="Choosing the number of clusters">
+  Look for the longest vertical line in the dendrogram that doesn't cross any horizontal merge line. Cut there. This gives the natural number of clusters.
+</Callout>
+
+```python
+from sklearn.cluster import AgglomerativeClustering
+
+# Cut at 2 clusters
+agg = AgglomerativeClustering(n_clusters=2, linkage='ward')
+labels = agg.fit_predict(X)
+print(f"Labels: {labels}")  # [0, 0, 1, 1, 0]
+```
+
+## DBSCAN (Density-Based Spatial Clustering)
+
+DBSCAN finds clusters of arbitrary shape based on **density** — regions where points are closely packed.
+
+### Key parameters
+
+- **$\varepsilon$ (eps):** Radius of the neighborhood around each point
+- **min_samples:** Minimum points required to form a dense region
+
+### Point types
+
+- **Core point:** At least `min_samples` points within distance $\varepsilon$
+- **Border point:** Within $\varepsilon$ of a core point but has fewer than `min_samples` neighbors
+- **Noise point:** Neither core nor border — an outlier
+
+<Callout type="info" title="Why DBSCAN is powerful">
+  Unlike K-Means, DBSCAN can find clusters of any shape (crescents, rings, blobs). It automatically detects outliers as noise points and doesn't require specifying the number of clusters.
+</Callout>
+
+### Worked example
+
+Points with $\varepsilon = 2$, min_samples = 3:
+
+```
+Core points (≥3 neighbors within eps=2):
+  - (1,1): neighbors (1,2), (2,1) → core
+  - (1,2): neighbors (1,1), (2,2) → core
+  - (2,1): neighbors (1,1), (2,2) → core
+  - (2,2): neighbors (1,2), (2,1) → core
+  - (8,8): neighbors (8,9), (9,8) → core
+  ...
+
+Noise: (5,5) — only 1 neighbor within eps=2
+```
+
+```python
+from sklearn.cluster import DBSCAN
+
+X = np.array([[1,1], [1,2], [2,1], [2,2], [8,8], [8,9], [9,8], [9,9], [5,5]])
+
+db = DBSCAN(eps=2, min_samples=3)
+labels = db.fit_predict(X)
+print(f"Labels: {labels}")  # [0, 0, 0, 0, 1, 1, 1, 1, -1]
+# -1 = noise point
+```
+
+## Choosing DBSCAN parameters
+
+### eps estimation
+
+Use the k-distance graph: plot the distance to the $k$-th nearest neighbor for each point (sorted). Look for the "elbow":
+
+```python
+from sklearn.neighbors import NearestNeighbors
+
+nn = NearestNeighbors(n_neighbors=3)
+nn.fit(X)
+distances, _ = nn.kneighbors(X)
+k_distances = np.sort(distances[:, -1])
+
+plt.figure(figsize=(8, 5))
+plt.plot(k_distances)
+plt.xlabel('Points (sorted)')
+plt.ylabel('3rd nearest neighbor distance')
+plt.title('k-Distance Graph — choose eps at the elbow')
+plt.grid(True, alpha=0.3)
+plt.show()
+```
+
+### min_samples rule of thumb
+
+- **min_samples ≥ dimension + 1** (at least 3 for 2D data)
+- **min_samples ≥ 2 × dimension** for larger datasets
+- Larger values → more conservative clustering, fewer noise points
+
+## Comparison
+
+| Algorithm | K needed? | Cluster shape | Handles noise | Scaling |
+|-----------|-----------|---------------|---------------|---------|
+| K-Means | Yes | Spherical | No | $O(nKd)$ |
+| Hierarchical | No (cut dendrogram) | Varies by linkage | No | $O(n^2 d)$ |
+| DBSCAN | No | Arbitrary | Yes | $O(n \log n)$ with index |
+
+<Callout type="warning" title="DBSCAN struggles with varying density">
+  DBSCAN uses a single $\varepsilon$ for all clusters. If clusters have very different densities, DBSCAN will either merge dense clusters or fragment sparse ones. Consider HDBSCAN for varying densities.
+</Callout>
+
+## Common mistakes
+
+1. **Using K-Means on non-spherical data** — If clusters are crescent-shaped or nested, use DBSCAN or hierarchical clustering.
+2. **Not scaling features before clustering** — DBSCAN and hierarchical clustering use distance metrics. Always standardize.
+3. **Setting eps too small/large** — Too small → everything is noise. Too large → everything merges into one cluster. Use the k-distance graph.
+
+<Exercise id="dbscan-parameters" />
+<Exercise id="hierarchical-linkage" />
+<Exercise id="dbscan-kdistance" />

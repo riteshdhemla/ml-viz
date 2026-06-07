@@ -1,0 +1,164 @@
+---
+title: "The Convolution Operation"
+description: "How convolutional filters extract spatial features from images."
+order: 1
+type: concept
+estimatedMinutes: 22
+---
+
+# The Convolution Operation
+
+A CNN starts with a simple idea: instead of looking at every pixel independently, slide a small **filter** (kernel) across the image to detect local patterns.
+
+**Real-world examples:** Image classification (is this a cat?), face detection, medical imaging (tumor detection in X-rays), self-driving cars (pedestrian detection).
+
+## What is convolution?
+
+Given an input matrix $X$ and a filter $K$ of size $f \times f$, the output at position $(i, j)$ is:
+
+$$(X * K)_{i,j} = \sum_{m=0}^{f-1} \sum_{n=0}^{f-1} X_{i+m,\; j+n} \cdot K_{m,n}$$
+
+The filter slides across every position, computing a dot product at each step. This produces a **feature map** — a new image highlighting where the filter's pattern appears.
+
+<Callout type="tip" title="Intuition">
+  Think of a $3 \times 3$ edge-detection filter. It slides across the image and outputs high values where edges exist. Each filter detects a different pattern — edges, corners, textures, or eventually complex shapes. The network learns which filters to use.
+</Callout>
+
+### Worked example
+
+A $3 \times 3$ filter applied to a $5 \times 5$ input:
+
+**Input:**
+```
+1  0  1  0  1
+0  1  0  1  0
+1  0  1  0  1
+0  1  0  1  0
+1  0  1  0  1
+```
+
+**Filter (edge detection):**
+```
+ 1  0 -1
+ 2  0 -2
+ 1  0 -1
+```
+
+**Output at position (1,1):**
+$$1(1) + 0(0) + 1(-1) + 0(2) + 1(0) + 0(-2) + 1(1) + 0(0) + 1(-1) = 0$$
+
+```python
+import numpy as np
+
+# Input and filter
+X = np.array([[1,0,1,0,1],
+              [0,1,0,1,0],
+              [1,0,1,0,1],
+              [0,1,0,1,0],
+              [1,0,1,0,1]], dtype=float)
+
+K = np.array([[1, 0, -1],
+              [2, 0, -2],
+              [1, 0, -1]], dtype=float)
+
+# Manual convolution at position (1,1)
+output_11 = np.sum(X[1:4, 1:4] * K)
+print(f"Output at (1,1): {output_11}")  # 0
+
+# Full convolution using scipy
+from scipy.signal import convolve2d
+output = convolve2d(X, K, mode='valid')
+print(f"Full output:\n{output}")
+```
+
+## Key parameters
+
+### Filter size
+Common choices: $3 \times 3$ (most common), $5 \times 5$, $7 \times 7$. Smaller filters capture finer details. Modern networks use mostly $3 \times 3$ filters — stacking two $3 \times 3$ filters has the same receptive field as one $5 \times 5$ but with fewer parameters and more non-linearity.
+
+### Stride
+How many pixels the filter moves at each step. Stride $s = 1$ means every position. Stride $s = 2$ means skip every other position, halving the output size.
+
+### Padding
+Adding zeros around the border. **"Same"** padding preserves the spatial size. **"Valid"** padding uses no padding (output shrinks).
+
+Output size formula:
+
+$$\text{out} = \left\lfloor \frac{n - f + 2p}{s} \right\rfloor + 1$$
+
+where $n$ = input size, $f$ = filter size, $p$ = padding, $s$ = stride.
+
+<Callout type="info" title="Quick reference">
+  | Padding | Output Size |
+  |---------|-------------|
+  | Valid ($p=0$) | $\lfloor(n-f)/s\rfloor + 1$ |
+  | Same ($p=(f-1)/2$) | $\lceil n/s \rceil$ |
+</Callout>
+
+## Why convolution is powerful
+
+### Weight sharing
+The same filter is used across the entire image. A $3 \times 3$ filter has only 9 parameters regardless of image size. A fully connected layer for a $256 \times 256$ image would need $256^2 \times 256^2$ parameters.
+
+### Translation equivariance
+If a cat moves in the image, the feature map shifts but the same features are detected. The network doesn't need to learn "cat at top-left" and "cat at bottom-right" separately.
+
+<Callout type="info" title="Parameter count">
+  A conv layer with $C_{\text{in}}$ input channels, $C_{\text{out}}$ output channels, and $f \times f$ filters has $C_{\text{in}} \times C_{\text{out}} \times f \times f$ parameters. For a $3 \to 64$ layer with $3 \times 3$ filters: $3 \times 64 \times 9 = 1{,}728$ parameters. Compare this to a fully connected layer: millions.
+</Callout>
+
+## Multi-channel convolution
+
+Real images have 3 channels (RGB). A conv layer takes $C_{\text{in}}$ channels and produces $C_{\text{out}}$ channels:
+
+- Each of the $C_{\text{out}}$ filters has depth $C_{\text{in}}$
+- Each filter produces one 2D feature map
+- Stack the $C_{\text{out}}$ feature maps into the output
+
+```
+Input:  H × W × C_in
+Filter: f × f × C_in  (one of C_out filters)
+Output: H' × W' × C_out
+```
+
+```python
+import torch.nn as nn
+
+# PyTorch conv layer: 3 input channels → 64 output channels
+conv = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
+print(f"Weight shape: {conv.weight.shape}")  # [64, 3, 3, 3]
+print(f"Parameters: {sum(p.numel() for p in conv.parameters())}")  # 1792
+```
+
+## Building blocks of a CNN layer
+
+A typical conv layer is: **Convolution → Activation (ReLU) → BatchNorm** (optional)
+
+The ReLU adds non-linearity, allowing the network to learn complex patterns:
+
+$$\text{ReLU}(x) = \max(0, x)$$
+
+```python
+# Typical CNN block
+class ConvBlock(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(in_ch, out_ch, 3, padding=1),
+            nn.BatchNorm2d(out_ch),
+            nn.ReLU(inplace=True)
+        )
+    
+    def forward(self, x):
+        return self.block(x)
+```
+
+## Common mistakes
+
+1. **Forgetting to add padding** — Without "same" padding, the spatial dimensions shrink at every layer. After 5 conv layers, a $32 \times 32$ input might become $22 \times 22$.
+2. **Using too many channels early** — Start with 32 or 64 channels, not 512. The first layers detect simple features (edges, textures) that don't need many channels.
+3. **Ignoring the receptive field** — Each output pixel only "sees" a small patch of the input. Stacking layers increases the receptive field.
+
+<Exercise id="conv-output-size" />
+<Exercise id="conv-params" />
+<Exercise id="conv-receptive-field" />
