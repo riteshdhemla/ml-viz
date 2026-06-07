@@ -1,0 +1,170 @@
+---
+title: "Transfer Learning"
+description: "Reusing pretrained networks — the most practical skill in deep learning."
+order: 3
+type: concept
+estimatedMinutes: 20
+---
+
+# Transfer Learning
+
+Training a CNN from scratch requires millions of images and days of computation. Transfer learning lets you **reuse a pretrained network** and adapt it to your task with much less data.
+
+**Real-world examples:** Medical imaging (only hundreds of X-rays available), satellite imagery classification, industrial defect detection, rare species identification.
+
+## The key insight
+
+A CNN trained on ImageNet (1.2M images, 1000 classes) has learned:
+- **Early layers:**通用 features — edges, textures, colors
+- **Middle layers:** Object parts — eyes, wheels, leaves
+- **Late layers:** Task-specific features — dog breeds, car models
+
+The early and middle layers are **universal** — they work for almost any image task. Only the late layers need adaptation.
+
+<Callout type="tip" title="Intuition">
+  It's like learning to paint. First you learn to see shapes, colors, and light (universal skills). Then you specialize — portraits, landscapes, abstract art. Transfer learning skips the "learning to see" part.
+</Callout>
+
+## Three strategies
+
+### Strategy 1: Feature extraction (least data)
+
+**Freeze** all pretrained layers, replace only the final classifier:
+
+```python
+import torch.nn as nn
+from torchvision import models
+
+# Load pretrained ResNet
+model = models.resnet50(weights='IMAGENET1K_V2')
+
+# Freeze all layers
+for param in model.parameters():
+    param.requires_grad = False
+
+# Replace classifier (only this part trains)
+model.fc = nn.Sequential(
+    nn.Linear(2048, 256),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(256, num_classes)
+)
+
+# Only ~5M parameters to train (vs ~25M total)
+trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+total = sum(p.numel() for p in model.parameters())
+print(f"Trainable: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)")
+```
+
+**When to use:** < 1,000 training images. The pretrained features are already good — you just need a simple classifier.
+
+### Strategy 2: Fine-tuning (medium data)
+
+Unfreeze the last few layers and train with a **small learning rate**:
+
+```python
+# Unfreeze last 2 blocks
+for param in model.layer4.parameters():
+    param.requires_grad = True
+
+# Use different learning rates
+optimizer = torch.optim.Adam([
+    {'params': model.layer4.parameters(), 'lr': 1e-4},   # small LR
+    {'params': model.fc.parameters(), 'lr': 1e-3}         # normal LR
+])
+```
+
+**When to use:** 1,000-100,000 images. The task is somewhat different from ImageNet (e.g., medical images vs natural images).
+
+### Strategy 3: Full fine-tuning (lots of data)
+
+Unfreeze everything and train with a very small learning rate:
+
+```python
+# Unfreeze everything
+for param in model.parameters():
+    param.requires_grad = True
+
+# Very small learning rate to avoid destroying pretrained features
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
+```
+
+**When to use:** > 100,000 images. The task is very different from ImageNet (e.g., satellite imagery, medical scans).
+
+## Decision guide
+
+| Data Size | Task Similarity | Strategy |
+|-----------|----------------|----------|
+| < 1K | Similar to ImageNet | Feature extraction |
+| < 1K | Different from ImageNet | Feature extraction + augmentation |
+| 1K-100K | Similar | Fine-tune last layers |
+| 1K-100K | Different | Fine-tune more layers |
+| > 100K | Any | Full fine-tuning |
+
+<Callout type="warning" title="Learning rate is critical">
+  When fine-tuning, use a learning rate 10-100× smaller than training from scratch. The pretrained weights are already good — large updates will destroy them. Use a learning rate scheduler to reduce LR over time.
+</Callout>
+
+## Practical tips
+
+1. **Start with feature extraction** — It's fast and often sufficient. Only move to fine-tuning if accuracy is insufficient.
+
+2. **Use data augmentation** — Transfer learning shines with small datasets. Augment aggressively:
+```python
+from torchvision import transforms
+
+transform = transforms.Compose([
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomRotation(15),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2),
+    transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
+```
+
+3. **Use the right pretrained model:**
+   - **ResNet-50:** Good default, balanced speed/accuracy
+   - **EfficientNet-B0:** Best accuracy per parameter
+   - **MobileNet:** Mobile/edge deployment
+   - **ViT:** State-of-the-art but needs more data
+
+4. **Monitor overfitting** — With small datasets, overfitting is the #1 enemy. Use early stopping, dropout, and weight decay.
+
+## Worked example: Medical image classification
+
+Task: Classify X-rays as pneumonia vs normal (1,000 training images).
+
+```python
+import torch
+from torchvision import models, transforms
+from torch.utils.data import DataLoader
+
+# 1. Load pretrained model
+model = models.resnet50(weights='IMAGENET1K_V2')
+
+# 2. Freeze early layers
+for param in model.parameters():
+    param.requires_grad = False
+
+# 3. Replace classifier
+model.fc = nn.Linear(2048, 2)
+
+# 4. Train with appropriate settings
+optimizer = torch.optim.Adam(model.fc.parameters(), lr=1e-3)
+criterion = nn.CrossEntropyLoss()
+
+# With only 1K images, feature extraction typically achieves 85-90% accuracy
+# Fine-tuning the last block might push it to 90-93%
+# Training from scratch with 1K images: likely < 70%
+```
+
+## Common mistakes
+
+1. **Using ImageNet normalization on non-RGB data** — Medical images, grayscale, or satellite images need different normalization stats.
+2. **Fine-tuning too aggressively** — Large learning rates destroy pretrained features. Start small.
+3. **Ignoring domain mismatch** — If your images look very different from ImageNet (e.g., X-rays, aerial photos), the pretrained features may not transfer well. Consider training from scratch if you have enough data.
+
+<Exercise id="transfer-learning-strategy" />
+<Exercise id="transfer-lr" />
+<Exercise id="transfer-freeze" />
