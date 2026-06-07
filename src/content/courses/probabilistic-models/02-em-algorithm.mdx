@@ -1,0 +1,157 @@
+---
+title: "The EM Algorithm"
+description: "Iteratively estimating latent variables — the engine behind GMMs, HMMs, and more."
+order: 2
+type: concept
+estimatedMinutes: 22
+---
+
+# The Expectation-Maximization Algorithm
+
+GMMs have latent variables (which component generated each point?) that we never observe. The **EM algorithm** handles this by iteratively guessing the latent variables and optimizing parameters.
+
+**Real-world examples:** Missing data imputation, topic modeling (LDA), hidden Markov models, clustering with partial labels.
+
+## The latent variable problem
+
+In a GMM, we observe $\mathbf{x}_i$ but not $z_i$ (which component generated it). If we knew $z_i$, we could easily compute the MLE:
+
+$$\boldsymbol{\mu}_k = \frac{\sum_{i: z_i = k} \mathbf{x}_i}{\sum_{i: z_i = k} 1}$$
+
+But we don't know $z_i$. EM solves this by alternating between two steps.
+
+<Callout type="tip" title="Intuition">
+  Imagine you're a detective. You don't know who committed the crime (latent variable), but you have suspects (components). First, you estimate the probability each suspect did it (E-step). Then you update your theory of the crime based on those probabilities (M-step). Repeat until your theory stabilizes.
+</Callout>
+
+## The two steps
+
+### E-step (Expectation)
+
+Compute the expected value of the latent variables given current parameters:
+
+$$\gamma_{ik} = P(z_i = k \mid \mathbf{x}_i, \theta^{(t)}) = \frac{\pi_k^{(t)} \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k^{(t)}, \boldsymbol{\Sigma}_k^{(t)})}{\sum_{j} \pi_j^{(t)} \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j^{(t)}, \boldsymbol{\Sigma}_j^{(t)})}$$
+
+### M-step (Maximization)
+
+Update parameters using the responsibilities as "soft" assignments:
+
+$$\boldsymbol{\mu}_k^{(t+1)} = \frac{\sum_i \gamma_{ik} \mathbf{x}_i}{\sum_i \gamma_{ik}}$$
+
+$$\boldsymbol{\Sigma}_k^{(t+1)} = \frac{\sum_i \gamma_{ik} (\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)})(\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)})^T}{\sum_i \gamma_{ik}}$$
+
+$$\pi_k^{(t+1)} = \frac{\sum_i \gamma_{ik}}{n}$$
+
+```python
+import numpy as np
+from scipy.stats import multivariate_normal
+
+def em_gmm(X, K, max_iter=100, tol=1e-6):
+    n, d = X.shape
+    
+    # Initialize parameters randomly
+    indices = np.random.choice(n, K, replace=False)
+    means = X[indices].copy()
+    covs = [np.eye(d) for _ in range(K)]
+    weights = np.ones(K) / K
+    
+    log_likelihoods = []
+    
+    for iteration in range(max_iter):
+        # E-step: compute responsibilities
+        responsibilities = np.zeros((n, K))
+        for k in range(K):
+            responsibilities[:, k] = weights[k] * multivariate_normal.pdf(X, means[k], covs[k])
+        responsibilities /= responsibilities.sum(axis=1, keepdims=True)
+        
+        # M-step: update parameters
+        N_k = responsibilities.sum(axis=0)
+        for k in range(K):
+            means[k] = (responsibilities[:, k:k+1].T @ X) / N_k[k]
+            diff = X - means[k]
+            covs[k] = (responsibilities[:, k:k+1] * diff).T @ diff / N_k[k]
+            covs[k] += 1e-6 * np.eye(d)  # regularization
+        weights = N_k / n
+        
+        # Compute log-likelihood
+        ll = 0
+        for k in range(K):
+            ll += weights[k] * multivariate_normal.pdf(X, means[k], covs[k])
+        log_likelihoods.append(np.log(ll + 1e-10).sum())
+        
+        if iteration > 0 and abs(log_likelihoods[-1] - log_likelihoods[-2]) < tol:
+            print(f"Converged at iteration {iteration}")
+            break
+    
+    labels = responsibilities.argmax(axis=1)
+    return labels, means, covs, weights, log_likelihoods
+```
+
+## Convergence guarantee
+
+EM guarantees that the log-likelihood **monotonically increases** at each iteration:
+
+$$\mathcal{L}(\theta^{(t+1)}) \geq \mathcal{L}(\theta^{(t)})$$
+
+This is proven by showing that EM maximizes a lower bound (the ELBO — Evidence Lower Bound) on the log-likelihood.
+
+<Callout type="info" title="Local optima warning">
+  EM converges to a **local** optimum, not necessarily the global one. Different initializations can give different results. Always run EM multiple times and keep the result with the highest log-likelihood.
+</Callout>
+
+## Worked example: 2D GMM
+
+```python
+import matplotlib.pyplot as plt
+from sklearn.mixture import GaussianMixture
+
+# Generate mixture data
+np.random.seed(42)
+X1 = np.random.multivariate_normal([0, 0], [[1, 0], [0, 1]], 200)
+X2 = np.random.multivariate_normal([5, 5], [[2, 0.5], [0.5, 2]], 200)
+X = np.vstack([X1, X2])
+
+# Fit GMM
+gmm = GaussianMixture(n_components=2, covariance_type='full', n_init=10)
+labels = gmm.fit_predict(X)
+
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='coolwarm', s=10, alpha=0.7)
+plt.scatter(gmm.means_[:, 0], gmm.means_[:, 1], c='black', marker='X', s=200)
+plt.title('GMM Clustering')
+
+plt.subplot(1, 2, 2)
+probs = gmm.predict_proba(X)
+plt.scatter(X[:, 0], X[:, 1], c=probs[:, 1], cmap='coolwarm', s=10, alpha=0.7)
+plt.colorbar(label='P(component 2)')
+plt.title('Soft Assignments (probabilities)')
+plt.tight_layout()
+plt.show()
+```
+
+## EM beyond GMMs
+
+EM is a general framework for latent variable models:
+
+| Model | Latent variables | What EM does |
+|-------|-----------------|--------------|
+| GMM | Cluster assignments $z_i$ | Soft clustering |
+| HMM | Hidden states | Forward-backward algorithm |
+| Topic models (LDA) | Topic assignments | Topic inference |
+| Missing data | Missing values | Imputation |
+
+<Callout type="warning" title="EM is not clustering alone">
+  EM finds maximum likelihood parameters for latent variable models. Clustering is just one application. The same framework powers speech recognition (HMMs), topic modeling (LDA), and missing data analysis.
+</Callout>
+
+## Common mistakes
+
+1. **Bad initialization** — Random initialization can converge to poor local optima. Use K-Means++ initialization or run multiple times.
+2. **Singular covariances** — If a component collapses to a single point, the covariance becomes singular. Add regularization: $\boldsymbol{\Sigma}_k \leftarrow \boldsymbol{\Sigma}_k + \epsilon I$.
+3. **Not enough data per component** — EM needs sufficient data to estimate parameters. Rule of thumb: at least $10d$ points per component.
+4. **Ignoring convergence criteria** — Don't just run for a fixed number of iterations. Check if the log-likelihood change is below a threshold.
+
+<Exercise id="em-convergence" />
+<Exercise id="em-e-step" />
+<Exercise id="em-initialization" />

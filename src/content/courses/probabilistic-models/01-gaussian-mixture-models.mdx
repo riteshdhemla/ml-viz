@@ -1,0 +1,155 @@
+---
+title: "Gaussian Mixture Models"
+description: "Soft clustering with probabilistic assignments — a flexible generalization of K-Means."
+order: 1
+type: concept
+estimatedMinutes: 20
+---
+
+# Gaussian Mixture Models (GMMs)
+
+K-Means assigns each point to exactly one cluster. **GMMs** assign soft probabilities — each point belongs to every cluster with some probability. This captures uncertainty and handles elliptical clusters.
+
+**Real-world examples:** Speaker identification, image segmentation, density estimation, anomaly detection, semi-supervised learning.
+
+## The model
+
+A GMM assumes data is generated from a mixture of $K$ Gaussian distributions:
+
+$$P(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$
+
+- $\pi_k$: mixing weight (probability of component $k$), $\sum \pi_k = 1$
+- $\boldsymbol{\mu}_k$: mean of component $k$
+- $\boldsymbol{\Sigma}_k$: covariance of component $k$
+
+<Callout type="tip" title="Intuition">
+  Imagine data comes from three different cameras with different lighting and angles. Each camera produces a Gaussian cloud of points. The GMM figures out which camera took each photo and the settings (mean, spread) of each camera.
+</Callout>
+
+## Posterior probability (responsibility)
+
+Given a data point $\mathbf{x}_i$, the probability it came from component $k$ is:
+
+$$\gamma_{ik} = P(z_i = k \mid \mathbf{x}_i) = \frac{\pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_{j=1}^{K} \pi_j \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}$$
+
+This is Bayes' theorem — the **responsibility** of component $k$ for point $i$.
+
+```python
+import numpy as np
+from scipy.stats import multivariate_normal
+
+def compute_responsibilities(X, means, covs, weights):
+    K = len(weights)
+    responsibilities = np.zeros((len(X), K))
+    for k in range(K):
+        responsibilities[:, k] = weights[k] * multivariate_normal.pdf(X, means[k], covs[k])
+    responsibilities /= responsibilities.sum(axis=1, keepdims=True)
+    return responsibilities
+
+# Example: 2 components
+X = np.array([[1,2], [1.5,2.5], [8,9], [8.5,9.5]])
+means = [np.array([1.25, 2.25]), np.array([8.25, 9.25])]
+covs = [np.eye(2)*0.1, np.eye(2)*0.1]
+weights = [0.5, 0.5]
+
+gamma = compute_responsibilities(X, means, covs, weights)
+print("Responsibilities:")
+print(gamma.round(3))
+# First two points → component 0, last two → component 1
+```
+
+## GMM vs K-Means
+
+| Property | K-Means | GMM |
+|----------|---------|-----|
+| Cluster shape | Spherical | Elliptical |
+| Assignment | Hard (0 or 1) | Soft (probability) |
+| Parameters | $\boldsymbol{\mu}_k$ | $\boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k, \pi_k$ |
+| Optimization | Alternating assign/update | EM algorithm |
+| Model selection | Elbow/silhouette | BIC/AIC |
+
+**K-Means is a special case of GMM** where all covariances are $\sigma^2 I$ (spherical) and responsibilities are hard-assigned.
+
+## Maximum Likelihood Estimation
+
+Parameters $\theta = \{\pi_k, \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\}$ are found by maximizing the log-likelihood:
+
+$$\log P(X \mid \theta) = \sum_{i=1}^{n} \log \left( \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k) \right)$$
+
+Because of the log-sum, there's no closed-form solution. We use the **EM algorithm** (covered in the next lesson).
+
+## Covariance types
+
+scikit-learn supports four covariance structures:
+
+| Type | Parameters per cluster | Shape |
+|------|----------------------|-------|
+| `full` | $d(d+3)/2$ | Arbitrary ellipsoids |
+| `tied` | $d(d+3)/2$ | Same ellipse for all |
+| `diag` | $2d$ | Axis-aligned ellipses |
+| `spherical` | $d+1$ | Circles |
+
+```python
+from sklearn.mixture import GaussianMixture
+
+# Fit GMM with full covariance
+gmm = GaussianMixture(n_components=3, covariance_type='full', random_state=42)
+gmm.fit(X)
+
+print(f"Means:\n{gmm.means_}")
+print(f"Weights: {gmm.weights_}")
+print(f"Log-likelihood: {gmm.score(X) * len(X):.2f}")
+
+# Predict responsibilities
+probs = gmm.predict_proba(X)
+labels = gmm.predict(X)
+```
+
+## Choosing the number of components
+
+### BIC (Bayesian Information Criterion)
+
+$$\text{BIC} = -2 \log P(X \mid \hat{\theta}) + k \ln(n)$$
+
+Penalizes complexity more than AIC — prefers simpler models.
+
+### AIC (Akaike Information Criterion)
+
+$$\text{AIC} = -2 \log P(X \mid \hat{\theta}) + 2k$$
+
+Less penalty than BIC — may select more complex models.
+
+```python
+n_components_range = range(1, 8)
+bics = []
+aics = []
+
+for n in n_components_range:
+    gmm = GaussianMixture(n_components=n, random_state=42)
+    gmm.fit(X)
+    bics.append(gmm.bic(X))
+    aics.append(gmm.aic(X))
+
+plt.figure(figsize=(8, 5))
+plt.plot(n_components_range, bics, 'bo-', label='BIC')
+plt.plot(n_components_range, aics, 'rs-', label='AIC')
+plt.xlabel('Number of components')
+plt.ylabel('Information criterion')
+plt.legend()
+plt.title('Choosing K with BIC/AIC')
+plt.show()
+```
+
+<Callout type="info" title="BIC vs AIC">
+  BIC penalizes complexity more heavily (grows with $\ln n$). Use BIC when you want a parsimonious model. Use AIC when you suspect the true model is complex. For small datasets, BIC is safer.
+</Callout>
+
+## Common mistakes
+
+1. **Not enough data** — GMMs need sufficient points per component to estimate covariance. Rule of thumb: at least $10d$ points per component ($d$ = dimensions).
+2. **Using `full` covariance with small data** — Full covariance has $O(d^2)$ parameters per component. Use `diag` or `spherical` for small datasets.
+3. **Ignoring initialization** — EM converges to local optima. Run multiple times (`n_init`) and keep the best.
+
+<Exercise id="gmm-responsibility" />
+<Exercise id="gmm-covariance" />
+<Exercise id="gmm-bic-aic" />
