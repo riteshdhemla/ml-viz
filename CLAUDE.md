@@ -299,10 +299,22 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | DecisionBoundaryViz | `visualizations/DecisionBoundary/` | linear-regression/02-logistic-regression | ✅ |
 | KMeansViz | `visualizations/KMeans/` | clustering/01-k-means | ✅ |
 | PCAViz | `visualizations/PCA/` | pca-dimensionality/01-pca | ✅ |
+| VectorViz | `visualizations/Vector/` | linear-algebra/01-vectors-and-spaces | ✅ |
+| MatrixTransformViz | `visualizations/MatrixTransform/` | linear-algebra/02-matrices-and-transformations | ✅ |
+| EigenvectorViz | `visualizations/Eigenvector/` | linear-algebra/03-eigenvalues-and-eigenvectors | ✅ |
+| FunctionTangentViz | `visualizations/FunctionTangent/` | calculus-for-ml/01-derivatives-and-gradients | ✅ |
+| ComputationalGraphViz | `visualizations/ComputationalGraph/` | calculus-for-ml/02-chain-rule-and-backpropagation | ✅ |
+| GradientFieldViz | `visualizations/GradientField/` | calculus-for-ml/03-multivariable-optimization | ✅ |
+| DistributionViz | `visualizations/Distribution/` | probability-statistics/01-probability-distributions | ✅ |
+| MLEViz | `visualizations/MLE/` | probability-statistics/02-maximum-likelihood-estimation | ✅ |
+| BayesViz | `visualizations/Bayes/` | probability-statistics/03-bayesian-inference | ✅ |
+| AttentionViz | `visualizations/Attention/` | transformers/01-self-attention | ✅ |
+| ConvolutionViz | `visualizations/Convolution/` | cnns/01-convolution-operation | ✅ |
+| VanishingGradientViz | `visualizations/VanishingGradient/` | rnns/02-bptt-and-vanishing-gradient | ✅ |
+| KNNBoundaryViz | `visualizations/KNNBoundary/` | knn-decision-trees/01-knn | ✅ |
+| MarginViz | `visualizations/Margin/` | svm/01-maximum-margin | ✅ |
+| DecisionTreeSplitViz | `visualizations/DecisionTreeSplit/` | knn-decision-trees/02-decision-trees | ✅ |
 | NeuralNetworkViz | `visualizations/NeuralNetwork/` | — | planned |
-| SVMViz | `visualizations/SVM/` | — | planned |
-| AttentionViz | `visualizations/Attention/` | — | planned |
-| DecisionTreeViz | `visualizations/DecisionTree/` | — | planned |
 
 ---
 
