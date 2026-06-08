@@ -1,0 +1,145 @@
+---
+title: "Probability Distributions"
+description: "Random variables, expectation, variance, and the key distributions that appear everywhere in machine learning."
+order: 1
+type: concept
+estimatedMinutes: 18
+---
+
+# Probability Distributions
+
+Machine learning is fundamentally about uncertainty — uncertain data, uncertain labels, uncertain predictions. Probability theory gives us the language to reason precisely about uncertainty. Most ML models are probability distributions in disguise.
+
+## Random variables and distributions
+
+A **random variable** $X$ maps outcomes to numbers. Its **probability distribution** describes how likely each value (or range of values) is.
+
+**Discrete** distributions assign probability to individual values: $P(X = k)$.
+**Continuous** distributions use a **probability density function** (PDF) $p(x)$:
+
+$$
+P(a \leq X \leq b) = \int_a^b p(x)\, dx, \qquad \int_{-\infty}^\infty p(x)\, dx = 1
+$$
+
+## Expectation and variance
+
+The **expected value** (mean) is the probability-weighted average:
+
+$$
+\mathbb{E}[X] = \sum_k k \cdot P(X = k) \quad \text{(discrete)}, \qquad \mathbb{E}[X] = \int x\, p(x)\, dx \quad \text{(continuous)}
+$$
+
+The **variance** measures spread around the mean:
+
+$$
+\text{Var}(X) = \mathbb{E}\left[(X - \mathbb{E}[X])^2\right] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2
+$$
+
+The **standard deviation** $\sigma = \sqrt{\text{Var}(X)}$ has the same units as $X$.
+
+**Key identity:** $\text{Var}(aX + b) = a^2 \text{Var}(X)$ — shifting doesn't change variance, scaling does.
+
+## Key distributions in ML
+
+### Bernoulli — binary outcomes
+
+$X \in \{0, 1\}$ with success probability $p$:
+
+$$
+P(X = 1) = p, \quad \mathbb{E}[X] = p, \quad \text{Var}(X) = p(1-p)
+$$
+
+**Where:** Binary classification output. A logistic regression outputs a Bernoulli probability.
+
+### Categorical — multi-class outcomes
+
+$X \in \{1, \ldots, K\}$ with probabilities $\boldsymbol{\pi} = [\pi_1, \ldots, \pi_K]$, $\sum_k \pi_k = 1$.
+
+**Where:** Multi-class classification. Softmax output = categorical distribution.
+
+### Gaussian (Normal) — the bell curve
+
+$$
+p(x) = \frac{1}{\sigma\sqrt{2\pi}}\exp\!\left(-\frac{(x-\mu)^2}{2\sigma^2}\right), \quad X \sim \mathcal{N}(\mu, \sigma^2)
+$$
+
+$\mathbb{E}[X] = \mu$, $\text{Var}(X) = \sigma^2$.
+
+<Callout type="tip" title="Why Gaussian is everywhere">
+  The **Central Limit Theorem**: the mean of many independent random variables converges to a Gaussian, regardless of the original distribution. Features in real datasets are often (approximately) Gaussian — gradients of large neural networks are too.
+</Callout>
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(42)
+
+# Bernoulli: flip 1000 biased coins
+p = 0.7
+samples = rng.binomial(n=1, p=p, size=1000)
+print(f"Empirical mean: {samples.mean():.3f}")   # ≈ 0.7
+
+# Gaussian
+mu, sigma = 3.0, 1.5
+samples = rng.normal(mu, sigma, size=10000)
+print(f"μ̂ = {samples.mean():.3f}, σ̂ = {samples.std():.3f}")
+```
+
+### Multivariate Gaussian
+
+$$
+p(\mathbf{x}) = \frac{1}{(2\pi)^{n/2}|\boldsymbol{\Sigma}|^{1/2}} \exp\!\left(-\frac{1}{2}(\mathbf{x}-\boldsymbol{\mu})^\top \boldsymbol{\Sigma}^{-1} (\mathbf{x}-\boldsymbol{\mu})\right)
+$$
+
+The covariance matrix $\boldsymbol{\Sigma}$ captures both variance (diagonal) and correlations (off-diagonal). It's always symmetric positive semi-definite.
+
+**Where:** Gaussian Mixture Models, Kalman filters, Gaussian Processes, VAEs.
+
+## Conditional probability and independence
+
+$$
+P(A | B) = \frac{P(A \cap B)}{P(B)}
+$$
+
+Events $A$ and $B$ are **independent** if $P(A \cap B) = P(A) P(B)$, equivalently $P(A|B) = P(A)$.
+
+**In ML:** Naïve Bayes assumes features are conditionally independent given the class. This strong assumption is often violated but still works well in practice.
+
+## The sum and product rules
+
+$$
+P(A) = \sum_B P(A, B) \quad \text{(sum rule / marginalization)}
+$$
+
+$$
+P(A, B) = P(A|B) P(B) = P(B|A) P(A) \quad \text{(product rule)}
+$$
+
+Combining them gives **Bayes' theorem**:
+
+$$
+P(A | B) = \frac{P(B | A)\, P(A)}{P(B)}
+$$
+
+<Callout type="info" title="KL divergence — comparing distributions">
+  The **Kullback–Leibler divergence** measures how different distribution $q$ is from distribution $p$:
+  $$D_\text{KL}(p \| q) = \int p(x) \ln \frac{p(x)}{q(x)} dx \geq 0$$
+  $D_\text{KL}(p\|q) = 0$ iff $p = q$. KL divergence appears in the VAE loss, reinforcement learning policy gradient, and variational inference.
+</Callout>
+
+## Key takeaways
+
+- Distributions summarize uncertainty; ML models output distributions (often Bernoulli or Categorical).
+- **Expectation** = mean; **variance** = spread; the Gaussian is determined by just two numbers ($\mu, \sigma^2$).
+- **Conditional probability** is the foundation of Bayes' theorem and most probabilistic inference.
+- **Independence** means knowing one variable tells you nothing about the other — rare in real data.
+
+## Related concepts
+
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/02-maximum-likelihood-estimation) — fitting distributions to data
+- [**Bayesian Inference**](/courses/probability-statistics/03-bayesian-inference) — reasoning about uncertainty with priors
+- [**Probabilistic Models & EM**](/courses/probabilistic-models/01-gaussian-mixture-models) — Gaussian mixtures in practice
+
+<Exercise id="prob-expectation" />
+<Exercise id="prob-gaussian" />
+<Exercise id="prob-independence" />

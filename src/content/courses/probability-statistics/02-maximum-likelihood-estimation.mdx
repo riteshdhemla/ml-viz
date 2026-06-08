@@ -1,0 +1,146 @@
+---
+title: "Maximum Likelihood Estimation"
+description: "How to fit distributions to data — MLE, log-likelihood, and the connection between cross-entropy loss and Gaussian negative log-likelihood."
+order: 2
+type: concept
+estimatedMinutes: 16
+---
+
+# Maximum Likelihood Estimation
+
+Given some data and a family of distributions, which distribution best explains what you observed? **Maximum Likelihood Estimation (MLE)** gives a principled answer: choose the parameters that make the observed data most probable.
+
+## The likelihood function
+
+Given data $\mathcal{D} = \{x_1, \ldots, x_n\}$ i.i.d. from distribution $p(x | \theta)$, the **likelihood** is:
+
+$$
+L(\theta) = p(\mathcal{D} | \theta) = \prod_{i=1}^n p(x_i | \theta)
+$$
+
+The **MLE estimate** is:
+
+$$
+\hat{\theta}_\text{MLE} = \arg\max_\theta L(\theta)
+$$
+
+## Log-likelihood
+
+Products are hard to maximize — logarithms turn products into sums:
+
+$$
+\ell(\theta) = \ln L(\theta) = \sum_{i=1}^n \ln p(x_i | \theta)
+$$
+
+Since $\ln$ is monotonically increasing, $\arg\max \ell(\theta) = \arg\max L(\theta)$.
+
+<Callout type="tip" title="Always maximize log-likelihood">
+  The product of many small probabilities underflows to zero numerically. Log-likelihood avoids this and is convex in many common cases, making optimization easier.
+</Callout>
+
+## MLE for a Gaussian
+
+Model: $x_i \sim \mathcal{N}(\mu, \sigma^2)$. Log-likelihood:
+
+$$
+\ell(\mu, \sigma^2) = -\frac{n}{2}\ln(2\pi\sigma^2) - \frac{1}{2\sigma^2}\sum_{i=1}^n (x_i - \mu)^2
+$$
+
+Setting $\frac{\partial \ell}{\partial \mu} = 0$:
+
+$$
+\hat{\mu}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i = \bar{x}
+$$
+
+Setting $\frac{\partial \ell}{\partial \sigma^2} = 0$:
+
+$$
+\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2
+$$
+
+**Insight:** MLE for a Gaussian gives the sample mean and (biased) sample variance. **Minimizing mean squared error (MSE) is exactly MLE under a Gaussian noise assumption.**
+
+## MLE for Bernoulli
+
+Model: $x_i \sim \text{Bernoulli}(p)$. Log-likelihood:
+
+$$
+\ell(p) = \sum_{i=1}^n \left[x_i \ln p + (1-x_i)\ln(1-p)\right]
+$$
+
+Setting $\frac{d\ell}{dp} = 0$:
+
+$$
+\hat{p}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i
+$$
+
+The MLE estimate is simply the **empirical fraction** of positive examples.
+
+## Connection to cross-entropy loss
+
+In binary classification, minimizing cross-entropy loss is **exactly** MLE:
+
+$$
+\mathcal{L}_\text{CE} = -\frac{1}{n}\sum_{i=1}^n \left[y_i \ln \hat{y}_i + (1-y_i)\ln(1-\hat{y}_i)\right] = -\frac{1}{n}\ell(\theta)
+$$
+
+Minimizing cross-entropy = maximizing the Bernoulli log-likelihood of the labels.
+
+For multi-class classification, categorical cross-entropy = MLE for a categorical distribution.
+
+<Callout type="info" title="Loss functions as probability models">
+  Almost every standard loss function corresponds to an MLE objective:
+  - **MSE** = MLE for Gaussian noise model
+  - **Binary cross-entropy** = MLE for Bernoulli
+  - **Categorical cross-entropy** = MLE for Categorical
+  - **MAE** = MLE for Laplace noise model
+</Callout>
+
+```python
+import numpy as np
+from scipy.optimize import minimize_scalar
+
+# MLE for a Bernoulli — coin with unknown p
+data = np.array([1, 1, 0, 1, 1, 0, 1, 0, 1, 1])  # 7 heads, 3 tails
+
+def neg_log_likelihood(p, data):
+    eps = 1e-10   # avoid log(0)
+    return -np.sum(data * np.log(p + eps) + (1 - data) * np.log(1 - p + eps))
+
+result = minimize_scalar(neg_log_likelihood, bounds=(0.01, 0.99),
+                          method='bounded', args=(data,))
+print(f"MLE estimate: p̂ = {result.x:.3f}")   # ≈ 0.700
+print(f"Sample mean:  p̄ = {data.mean():.3f}") # 0.700 — same!
+```
+
+## Properties of MLE
+
+| Property | Description |
+|----------|-------------|
+| **Consistent** | $\hat{\theta} \to \theta^*$ as $n \to \infty$ |
+| **Asymptotically efficient** | Achieves the Cramér–Rao lower bound for large $n$ |
+| **Invariant** | $\widehat{f(\theta)} = f(\hat{\theta})$ for any invertible transform |
+| **Biased** | May be biased in finite samples (e.g., Gaussian variance) |
+
+## Common mistake: confusing likelihood and probability
+
+$L(\theta) = p(\mathcal{D} | \theta)$ is a function of $\theta$ with the data fixed — **not** a probability over $\theta$. It does not integrate to 1 over $\theta$.
+
+To reason about uncertainty in $\theta$ itself, you need **Bayesian inference** (next lesson).
+
+## Key takeaways
+
+- MLE chooses parameters that maximize the probability of the observed data.
+- **Log-likelihood** converts a product into a sum — always use it.
+- MLE for Gaussian = minimize MSE; MLE for Bernoulli = minimize cross-entropy.
+- MLE is consistent and asymptotically efficient, but says nothing about parameter uncertainty.
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/01-probability-distributions) — the distributions MLE fits
+- [**Bayesian Inference**](/courses/probability-statistics/03-bayesian-inference) — adds a prior to MLE
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimizer that maximizes likelihood in deep models
+
+<Exercise id="mle-gaussian" />
+<Exercise id="mle-loss-connection" />
+<Exercise id="mle-bernoulli" />
