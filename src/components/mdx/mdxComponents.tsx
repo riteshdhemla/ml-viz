@@ -15,6 +15,9 @@ import { PCAViz } from "@/components/visualizations/PCA/PCAViz";
 import { VectorViz } from "@/components/visualizations/Vector/VectorViz";
 import { MatrixTransformViz } from "@/components/visualizations/MatrixTransform/MatrixTransformViz";
 import { EigenvectorViz } from "@/components/visualizations/Eigenvector/EigenvectorViz";
+import { FunctionTangentViz } from "@/components/visualizations/FunctionTangent/FunctionTangentViz";
+import { ComputationalGraphViz } from "@/components/visualizations/ComputationalGraph/ComputationalGraphViz";
+import { GradientFieldViz } from "@/components/visualizations/GradientField/GradientFieldViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -36,4 +39,7 @@ export const mdxComponents: MDXComponents = {
   VectorViz,
   MatrixTransformViz,
   EigenvectorViz,
+  FunctionTangentViz,
+  ComputationalGraphViz,
+  GradientFieldViz,
 };
