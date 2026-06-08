@@ -1,0 +1,138 @@
+---
+title: "Multivariable Optimization"
+description: "Finding minima in high-dimensional landscapes — critical points, convexity, the Hessian, and why most ML losses are non-convex."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Multivariable Optimization
+
+Training a neural network is an optimization problem: find weights $\mathbf{w}^*$ that minimize the loss $\mathcal{L}(\mathbf{w})$. In high dimensions, optimization is much richer than the single-variable case. Understanding the geometry of loss landscapes explains why some problems are easy and others are hard.
+
+## Critical points
+
+A **critical point** is where the gradient vanishes: $\nabla f(\mathbf{x}^*) = \mathbf{0}$.
+
+Critical points come in three flavors:
+
+| Type | Description | In ML |
+|------|-------------|-------|
+| Local minimum | Lowest in a neighborhood | Desired outcome |
+| Local maximum | Highest in a neighborhood | Avoided by gradient descent |
+| Saddle point | Low in some directions, high in others | Very common in deep nets |
+
+<Callout type="info" title="Deep networks rarely hit local minima">
+  Research has shown that most critical points in deep network loss landscapes are saddle points, not poor local minima. The loss value at any local minimum in a large network tends to be close to the global minimum (this is the "lottery ticket" intuition). Saddle points are more problematic because gradient descent slows down — the gradient is near zero.
+</Callout>
+
+## The Hessian matrix
+
+The **Hessian** $\mathbf{H}$ is the matrix of second-order partial derivatives:
+
+$$
+H_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}
+$$
+
+It generalizes the second derivative to multiple dimensions and captures **curvature**:
+
+- **Positive definite** Hessian ($\lambda_{\min} > 0$): local minimum
+- **Negative definite** Hessian ($\lambda_{\max} < 0$): local maximum
+- **Indefinite** Hessian (mixed signs): saddle point
+
+The eigenvalues of $\mathbf{H}$ tell you the curvature in each eigendirection.
+
+### Second-order Taylor expansion
+
+Near any point $\mathbf{x}_0$:
+
+$$
+f(\mathbf{x}) \approx f(\mathbf{x}_0) + \nabla f(\mathbf{x}_0)^\top (\mathbf{x} - \mathbf{x}_0) + \frac{1}{2}(\mathbf{x} - \mathbf{x}_0)^\top \mathbf{H}(\mathbf{x}_0)(\mathbf{x} - \mathbf{x}_0)
+$$
+
+This is why **Newton's method** converges faster than gradient descent — it uses curvature to take a smarter step:
+
+$$
+\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1} \nabla f(\mathbf{x})
+$$
+
+The problem: computing and inverting $\mathbf{H}$ for millions of parameters is computationally infeasible. Adam and other adaptive methods approximate the diagonal of $\mathbf{H}^{-1}$.
+
+## Convexity
+
+A function is **convex** if the line segment between any two points on its graph lies above or on the graph:
+
+$$
+f(\lambda \mathbf{x} + (1-\lambda)\mathbf{y}) \leq \lambda f(\mathbf{x}) + (1-\lambda)f(\mathbf{y}), \quad \lambda \in [0,1]
+$$
+
+Equivalently, $\mathbf{H} \succeq 0$ (positive semi-definite) everywhere.
+
+**Why convexity matters:**
+- Every local minimum is a global minimum
+- Gradient descent is guaranteed to converge to the global optimum
+- No saddle points
+
+**Convex ML problems:** Linear regression, logistic regression, SVM, Lasso, Ridge regression.
+**Non-convex ML problems:** Neural networks with non-linear activations (any depth ≥ 2).
+
+```python
+import numpy as np
+
+def is_convex_quadratic(H):
+    """Check if a quadratic f(x) = x^T H x is convex."""
+    eigenvalues = np.linalg.eigvalsh(H)  # eigvalsh for symmetric
+    return np.all(eigenvalues >= 0)      # PSD ↔ convex
+
+H_convex   = np.array([[2, 1], [1, 3]])   # eigenvalues: [1.27, 3.73] > 0
+H_nonconvex = np.array([[1, 2], [2, 1]])  # eigenvalues: [-1, 3] — indefinite
+
+print(is_convex_quadratic(H_convex))    # True
+print(is_convex_quadratic(H_nonconvex)) # False
+```
+
+## Learning rate and curvature
+
+The optimal gradient descent step size is related to the largest eigenvalue of $\mathbf{H}$ (the **Lipschitz constant** $L$):
+
+$$
+\eta^* = \frac{1}{L} = \frac{1}{\lambda_{\max}(\mathbf{H})}
+$$
+
+- **Too large $\eta$:** overshoots; oscillates or diverges if $\eta > 2/L$
+- **Too small $\eta$:** slow convergence, especially in flat directions
+
+This is why the curvature of the loss landscape determines the best learning rate — and why adaptive methods like Adam use per-parameter estimates of curvature.
+
+<Callout type="warning" title="Saddle points and plateaus">
+  In high dimensions, saddle points are exponentially more common than local minima. Gradient descent slows near them because the gradient is small. SGD noise and momentum help escape them by adding randomness to the updates.
+</Callout>
+
+## Constrained optimization and Lagrange multipliers
+
+To minimize $f(\mathbf{x})$ subject to $g(\mathbf{x}) = 0$, form the **Lagrangian**:
+
+$$
+\mathcal{L}(\mathbf{x}, \lambda) = f(\mathbf{x}) + \lambda g(\mathbf{x})
+$$
+
+At the constrained optimum, $\nabla f = -\lambda \nabla g$ — the gradient of the objective is parallel to the constraint gradient.
+
+**In ML:** Weight decay (L2 regularization) is equivalent to constrained optimization: minimize loss subject to $\|\mathbf{w}\|^2 \leq r^2$.
+
+## Key takeaways
+
+- Critical points have $\nabla f = 0$; the **Hessian** determines whether they're minima, maxima, or saddle points.
+- **Convex** losses have guaranteed global optima; neural networks are non-convex.
+- Optimal learning rate is $1/\lambda_{\max}(\mathbf{H})$ — too large and you diverge.
+- Saddle points slow training; SGD noise, momentum, and adaptive methods help escape.
+
+## Related concepts
+
+- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients) — the first-order tools
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimizer that navigates these landscapes
+- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — eigenvalues of $\mathbf{H}$ classify critical points
+
+<Exercise id="calc-critical-points" />
+<Exercise id="calc-convexity" />
+<Exercise id="calc-learning-rate" />

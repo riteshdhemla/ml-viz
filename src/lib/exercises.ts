@@ -1694,6 +1694,414 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The critic explores while the actor stores experiences", isCorrect: false },
     ],
   },
+  // ── Linear Algebra ──────────────────────────────────────────────
+  {
+    id: "linalg-dot-product",
+    type: "multiple-choice",
+    question:
+      "What is the dot product of u = [3, 1] and v = [2, 4]?",
+    hint: "Multiply component-wise and sum: u₁v₁ + u₂v₂.",
+    explanation:
+      "3×2 + 1×4 = 6 + 4 = 10. The dot product sums the products of corresponding components.",
+    options: [
+      { id: "a", label: "10", isCorrect: true },
+      { id: "b", label: "14", isCorrect: false },
+      { id: "c", label: "6", isCorrect: false },
+      { id: "d", label: "7", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-orthogonality",
+    type: "multiple-choice",
+    question:
+      "Two vectors are orthogonal if their dot product equals what?",
+    hint: "Think about what cos(90°) equals.",
+    explanation:
+      "Orthogonal vectors are perpendicular (90° apart). cos(90°) = 0, so u·v = ‖u‖‖v‖cos(90°) = 0. Orthogonal vectors carry no shared information.",
+    options: [
+      { id: "a", label: "1", isCorrect: false },
+      { id: "b", label: "-1", isCorrect: false },
+      { id: "c", label: "0", isCorrect: true },
+      { id: "d", label: "Depends on the norms", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-norm",
+    type: "multiple-choice",
+    question:
+      "What is the Euclidean norm of v = [3, 4]?",
+    hint: "Use the Pythagorean theorem: ‖v‖ = √(v₁² + v₂²).",
+    explanation:
+      "‖v‖ = √(3² + 4²) = √(9 + 16) = √25 = 5. This is the 3-4-5 right triangle.",
+    options: [
+      { id: "a", label: "7", isCorrect: false },
+      { id: "b", label: "5", isCorrect: true },
+      { id: "c", label: "25", isCorrect: false },
+      { id: "d", label: "√7", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-matmul",
+    type: "multiple-choice",
+    question:
+      "A = [[1,2],[3,4]] and x = [1, 0]. What is Ax?",
+    hint: "Each output row is the dot product of a row of A with x.",
+    explanation:
+      "Row 1: 1×1 + 2×0 = 1. Row 2: 3×1 + 4×0 = 3. So Ax = [1, 3]. Multiplying by a standard basis vector just selects a column of A.",
+    options: [
+      { id: "a", label: "[1, 2]", isCorrect: false },
+      { id: "b", label: "[1, 3]", isCorrect: true },
+      { id: "c", label: "[3, 4]", isCorrect: false },
+      { id: "d", label: "[4, 6]", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-rank",
+    type: "multiple-choice",
+    question:
+      "A 3×3 matrix has rank 2. What can you conclude?",
+    hint: "Rank = dimension of the column space.",
+    explanation:
+      "Rank 2 means the matrix has 2 linearly independent columns — one column is a linear combination of the others. The matrix is not invertible (det = 0) and maps 3D space onto a 2D plane.",
+    options: [
+      { id: "a", label: "The matrix is invertible", isCorrect: false },
+      { id: "b", label: "One column is a linear combination of the others", isCorrect: true },
+      { id: "c", label: "All columns are identical", isCorrect: false },
+      { id: "d", label: "The matrix is the identity", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-transpose",
+    type: "multiple-choice",
+    question:
+      "For matrices A and B, which identity is always true?",
+    hint: "Think about the transpose of a product.",
+    explanation:
+      "(AB)ᵀ = BᵀAᵀ — the order reverses when transposing a product. This is analogous to reversing the order when inverting a product: (AB)⁻¹ = B⁻¹A⁻¹.",
+    options: [
+      { id: "a", label: "(AB)ᵀ = AᵀBᵀ", isCorrect: false },
+      { id: "b", label: "(AB)ᵀ = BᵀAᵀ", isCorrect: true },
+      { id: "c", label: "(AB)ᵀ = AB", isCorrect: false },
+      { id: "d", label: "Aᵀ = A⁻¹ always", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-eigenvalue",
+    type: "multiple-choice",
+    question:
+      "A matrix A has eigenvalue λ = 0. What does this imply?",
+    hint: "Av = 0·v = 0 for some non-zero v.",
+    explanation:
+      "λ = 0 means Av = 0 for some non-zero v, so the null space is non-trivial. The matrix is singular (det = 0) and not invertible — it collapses space in the eigenvector direction.",
+    options: [
+      { id: "a", label: "All vectors are eigenvectors", isCorrect: false },
+      { id: "b", label: "The matrix is not invertible", isCorrect: true },
+      { id: "c", label: "The matrix is the identity", isCorrect: false },
+      { id: "d", label: "The matrix has rank n", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-eigenvector",
+    type: "multiple-choice",
+    question:
+      "If you scale an eigenvector v by 3 to get 3v, is 3v also an eigenvector?",
+    hint: "A(cv) = cAv for any scalar c.",
+    explanation:
+      "A(3v) = 3Av = 3(λv) = λ(3v). Yes, 3v is also an eigenvector with the same eigenvalue λ. Eigenvectors are only defined up to a scalar multiple — direction matters, not magnitude.",
+    options: [
+      { id: "a", label: "No — scaling changes the eigenvalue", isCorrect: false },
+      { id: "b", label: "Yes — with the same eigenvalue λ", isCorrect: true },
+      { id: "c", label: "Only if λ = 1", isCorrect: false },
+      { id: "d", label: "No — eigenvectors must have norm 1", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-pca-connection",
+    type: "multiple-choice",
+    question:
+      "In PCA, the first principal component is the eigenvector of the covariance matrix with what property?",
+    hint: "PCA maximizes variance.",
+    explanation:
+      "The first principal component is the eigenvector with the largest eigenvalue. Since the covariance matrix eigenvalue equals the variance along that direction, the largest eigenvalue → direction of maximum variance.",
+    options: [
+      { id: "a", label: "The smallest eigenvalue", isCorrect: false },
+      { id: "b", label: "The largest eigenvalue", isCorrect: true },
+      { id: "c", label: "Eigenvalue = 1", isCorrect: false },
+      { id: "d", label: "Any eigenvalue — order doesn't matter", isCorrect: false },
+    ],
+  },
+  // ── Calculus for ML ──────────────────────────────────────────────
+  {
+    id: "calc-partial-derivative",
+    type: "multiple-choice",
+    question:
+      "For f(x, y) = 3x²y + y², what is ∂f/∂x?",
+    hint: "Treat y as a constant and differentiate with respect to x.",
+    explanation:
+      "∂f/∂x = 6xy. When computing ∂/∂x, y is a constant, so d/dx(3x²y) = 6xy and d/dx(y²) = 0.",
+    options: [
+      { id: "a", label: "6xy + 2y", isCorrect: false },
+      { id: "b", label: "6xy", isCorrect: true },
+      { id: "c", label: "3x² + 2y", isCorrect: false },
+      { id: "d", label: "6x", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-gradient-direction",
+    type: "multiple-choice",
+    question:
+      "The gradient ∇f(x) points in the direction of steepest ___.",
+    hint: "Think about which direction gradient descent moves.",
+    explanation:
+      "The gradient points in the direction of steepest ascent (uphill). Gradient descent moves in the opposite direction (−∇f) to decrease the loss as quickly as possible.",
+    options: [
+      { id: "a", label: "Descent (downhill)", isCorrect: false },
+      { id: "b", label: "Ascent (uphill)", isCorrect: true },
+      { id: "c", label: "Neither — it's perpendicular to level sets", isCorrect: false },
+      { id: "d", label: "Parallel to the x-axis", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-sigmoid-derivative",
+    type: "multiple-choice",
+    question:
+      "The derivative of sigmoid σ(x) is σ(x)(1 − σ(x)). What is its maximum value?",
+    hint: "Maximize σ(x)(1 − σ(x)) — treat it as a function of p = σ(x) in [0,1].",
+    explanation:
+      "p(1−p) is maximized at p = 0.5, giving 0.25. This means the sigmoid gradient is at most 0.25 — it saturates near 0 and 1. Stacking 4 sigmoid layers reduces gradients by at least 0.25⁴ ≈ 0.004.",
+    options: [
+      { id: "a", label: "1.0", isCorrect: false },
+      { id: "b", label: "0.5", isCorrect: false },
+      { id: "c", label: "0.25", isCorrect: true },
+      { id: "d", label: "0.0", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-chain-rule",
+    type: "multiple-choice",
+    question:
+      "For h(x) = (3x + 1)⁴, what is h'(x)?",
+    hint: "Use the chain rule: d/dx f(g(x)) = f'(g(x)) · g'(x).",
+    explanation:
+      "Let g = 3x + 1, f(g) = g⁴. Then h'(x) = 4g³ · 3 = 12(3x + 1)³.",
+    options: [
+      { id: "a", label: "4(3x + 1)³", isCorrect: false },
+      { id: "b", label: "12(3x + 1)³", isCorrect: true },
+      { id: "c", label: "4(3x + 1)³ · 3x", isCorrect: false },
+      { id: "d", label: "(3x + 1)⁴ · 3", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-backprop-simple",
+    type: "multiple-choice",
+    question:
+      "In backpropagation, the gradient at each node is computed as the product of what two things?",
+    hint: "Each node has its own derivative and receives a signal from downstream.",
+    explanation:
+      "Each node multiplies the upstream gradient (from the next layer) by its local gradient (derivative of its own output w.r.t. its input). This is the chain rule applied to the computational graph.",
+    options: [
+      { id: "a", label: "The weight and the activation", isCorrect: false },
+      { id: "b", label: "The upstream gradient and the local gradient", isCorrect: true },
+      { id: "c", label: "The loss and the learning rate", isCorrect: false },
+      { id: "d", label: "The input and the output", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-vanishing",
+    type: "multiple-choice",
+    question:
+      "Why does stacking many sigmoid activations cause vanishing gradients?",
+    hint: "Think about what happens when you multiply many numbers less than 1.",
+    explanation:
+      "Each sigmoid has a maximum derivative of 0.25. Backprop multiplies these together: with 10 sigmoid layers, the gradient is at most 0.25¹⁰ ≈ 10⁻⁶ — essentially zero. ReLU's derivative is 1 for positive inputs, avoiding this.",
+    options: [
+      { id: "a", label: "Sigmoid outputs are too large", isCorrect: false },
+      { id: "b", label: "Multiplying many values ≤ 0.25 drives gradients to zero", isCorrect: true },
+      { id: "c", label: "Sigmoid doesn't have a derivative", isCorrect: false },
+      { id: "d", label: "The learning rate becomes too large", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-critical-points",
+    type: "multiple-choice",
+    question:
+      "At a saddle point, the gradient is zero. How can you identify it (vs a minimum)?",
+    hint: "Look at the Hessian matrix.",
+    explanation:
+      "At a saddle point, the Hessian is indefinite — it has both positive and negative eigenvalues, meaning the function curves up in some directions and down in others. A local minimum has a positive definite Hessian (all eigenvalues > 0).",
+    options: [
+      { id: "a", label: "The Hessian is positive definite", isCorrect: false },
+      { id: "b", label: "The Hessian is indefinite (mixed eigenvalue signs)", isCorrect: true },
+      { id: "c", label: "The gradient is non-zero", isCorrect: false },
+      { id: "d", label: "The loss is at a global minimum", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-convexity",
+    type: "multiple-choice",
+    question:
+      "Which of the following is a convex function?",
+    hint: "Convex functions have a bowl shape — no local minima other than the global one.",
+    explanation:
+      "f(x) = x² is convex (bowl-shaped, f'' = 2 > 0). sin(x) oscillates (non-convex). x³ has an inflection point (neither convex nor concave globally). A neural network with non-linear activations is non-convex.",
+    options: [
+      { id: "a", label: "f(x) = sin(x)", isCorrect: false },
+      { id: "b", label: "f(x) = x²", isCorrect: true },
+      { id: "c", label: "f(x) = x³", isCorrect: false },
+      { id: "d", label: "A neural network with ReLU activations", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-learning-rate",
+    type: "multiple-choice",
+    question:
+      "If the loss landscape has Lipschitz constant L (maximum curvature), what is the optimal gradient descent step size?",
+    hint: "Too large and you overshoot; too small and you crawl.",
+    explanation:
+      "The theoretically optimal step size is η = 1/L where L is the Lipschitz constant (largest eigenvalue of the Hessian). Larger steps cause oscillation or divergence; smaller steps converge slowly.",
+    options: [
+      { id: "a", label: "η = L", isCorrect: false },
+      { id: "b", label: "η = 1/L", isCorrect: true },
+      { id: "c", label: "η = L²", isCorrect: false },
+      { id: "d", label: "η = 1/L² ", isCorrect: false },
+    ],
+  },
+  // ── Probability & Statistics ────────────────────────────────────
+  {
+    id: "prob-expectation",
+    type: "multiple-choice",
+    question:
+      "A die is rolled. What is E[X]?",
+    hint: "E[X] = Σ x · P(X = x) over all outcomes.",
+    explanation:
+      "E[X] = (1+2+3+4+5+6)/6 = 21/6 = 3.5. Each face has probability 1/6, so E[X] = 1×(1/6) + 2×(1/6) + ... + 6×(1/6) = 3.5.",
+    options: [
+      { id: "a", label: "3", isCorrect: false },
+      { id: "b", label: "3.5", isCorrect: true },
+      { id: "c", label: "4", isCorrect: false },
+      { id: "d", label: "2.5", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-gaussian",
+    type: "multiple-choice",
+    question:
+      "For X ~ N(μ, σ²), approximately what percentage of values fall within 1 standard deviation of the mean?",
+    hint: "Recall the 68-95-99.7 rule.",
+    explanation:
+      "The 68-95-99.7 rule: ~68% of values lie within ±1σ, ~95% within ±2σ, ~99.7% within ±3σ. This is a fundamental property of the Gaussian distribution.",
+    options: [
+      { id: "a", label: "50%", isCorrect: false },
+      { id: "b", label: "68%", isCorrect: true },
+      { id: "c", label: "95%", isCorrect: false },
+      { id: "d", label: "99.7%", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-independence",
+    type: "multiple-choice",
+    question:
+      "If A and B are independent events, what is P(A ∩ B)?",
+    hint: "Independence means knowing B tells you nothing about A.",
+    explanation:
+      "P(A ∩ B) = P(A) · P(B) when A and B are independent. This is the definition of independence. If dependent, P(A ∩ B) = P(A|B) · P(B) ≠ P(A) · P(B) in general.",
+    options: [
+      { id: "a", label: "P(A) + P(B)", isCorrect: false },
+      { id: "b", label: "P(A) · P(B)", isCorrect: true },
+      { id: "c", label: "P(A) / P(B)", isCorrect: false },
+      { id: "d", label: "P(A|B)", isCorrect: false },
+    ],
+  },
+  {
+    id: "mle-gaussian",
+    type: "multiple-choice",
+    question:
+      "MLE for the mean of a Gaussian distribution gives which estimate?",
+    hint: "Maximize the log-likelihood by setting the derivative to zero.",
+    explanation:
+      "MLE for the Gaussian mean is μ̂ = (1/n)Σxᵢ — the sample mean. Setting ∂ℓ/∂μ = 0 gives exactly the arithmetic mean of the observed data.",
+    options: [
+      { id: "a", label: "The median of the data", isCorrect: false },
+      { id: "b", label: "The sample mean (1/n)Σxᵢ", isCorrect: true },
+      { id: "c", label: "The mode of the data", isCorrect: false },
+      { id: "d", label: "Zero always", isCorrect: false },
+    ],
+  },
+  {
+    id: "mle-loss-connection",
+    type: "multiple-choice",
+    question:
+      "Minimizing mean squared error (MSE) is equivalent to MLE under what assumption?",
+    hint: "Which distribution has MSE as its negative log-likelihood?",
+    explanation:
+      "MSE corresponds to MLE under a Gaussian noise model: yᵢ = f(xᵢ) + ε, ε ~ N(0, σ²). The negative log-likelihood of this model is (up to constants) the MSE.",
+    options: [
+      { id: "a", label: "Bernoulli noise", isCorrect: false },
+      { id: "b", label: "Gaussian (normal) noise", isCorrect: true },
+      { id: "c", label: "Laplace noise", isCorrect: false },
+      { id: "d", label: "Uniform noise", isCorrect: false },
+    ],
+  },
+  {
+    id: "mle-bernoulli",
+    type: "multiple-choice",
+    question:
+      "You flip a coin 10 times and get 7 heads. What is the MLE estimate of p (probability of heads)?",
+    hint: "MLE for Bernoulli is the empirical frequency.",
+    explanation:
+      "p̂_MLE = 7/10 = 0.7. For Bernoulli, the MLE is always the fraction of observed positives. This maximizes the log-likelihood Σ[xᵢ log p + (1−xᵢ) log(1−p)].",
+    options: [
+      { id: "a", label: "0.5 (assume fair coin)", isCorrect: false },
+      { id: "b", label: "0.7", isCorrect: true },
+      { id: "c", label: "7", isCorrect: false },
+      { id: "d", label: "Cannot be determined", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-posterior",
+    type: "multiple-choice",
+    question:
+      "P(Disease | Positive test) is the posterior. Which theorem connects it to P(Positive | Disease)?",
+    hint: "We need to 'flip' the conditional.",
+    explanation:
+      "Bayes' theorem: P(D|T+) = P(T+|D)·P(D) / P(T+). It lets us compute the posterior P(Disease|Test) from the likelihood P(Test|Disease) and the prior P(Disease). This is critical in medical diagnosis where we know sensitivity but want the actual disease probability.",
+    options: [
+      { id: "a", label: "The law of large numbers", isCorrect: false },
+      { id: "b", label: "Bayes' theorem", isCorrect: true },
+      { id: "c", label: "The central limit theorem", isCorrect: false },
+      { id: "d", label: "The law of total expectation", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-map-regularization",
+    type: "multiple-choice",
+    question:
+      "MAP estimation with a Gaussian prior N(0, τ²) on weights is equivalent to what regularization?",
+    hint: "The log of a Gaussian prior involves the squared norm of the weights.",
+    explanation:
+      "log p(w) = -‖w‖²/(2τ²) + const for a Gaussian prior. Adding this to the log-likelihood gives MAP, which is equivalent to minimizing the loss + λ‖w‖² where λ = 1/(2τ²). That's L2 (Ridge) regularization.",
+    options: [
+      { id: "a", label: "L1 (Lasso) regularization", isCorrect: false },
+      { id: "b", label: "L2 (Ridge) regularization", isCorrect: true },
+      { id: "c", label: "Dropout", isCorrect: false },
+      { id: "d", label: "Batch normalization", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-conjugate",
+    type: "multiple-choice",
+    question:
+      "You use a Beta(2, 2) prior for a coin's bias p. After observing 6 heads and 4 tails, what is the posterior?",
+    hint: "For Beta-Bernoulli conjugacy: posterior = Beta(α + heads, β + tails).",
+    explanation:
+      "Beta(2+6, 2+4) = Beta(8, 6). The Beta prior is conjugate to the Bernoulli likelihood — the posterior is also Beta with α updated by the number of heads and β by the number of tails.",
+    options: [
+      { id: "a", label: "Beta(6, 4)", isCorrect: false },
+      { id: "b", label: "Beta(8, 6)", isCorrect: true },
+      { id: "c", label: "Beta(2, 2)", isCorrect: false },
+      { id: "d", label: "Beta(4, 8)", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -1,0 +1,135 @@
+---
+title: "Vectors and Spaces"
+description: "What vectors really are, how to operate on them, and why the dot product is the single most important operation in machine learning."
+order: 1
+type: concept
+estimatedMinutes: 16
+---
+
+# Vectors and Spaces
+
+Every piece of data in machine learning — an image, a sentence, a medical record — is eventually represented as a **vector**: a list of numbers with direction and magnitude. Understanding vectors deeply unlocks intuition for why algorithms work.
+
+## What is a vector?
+
+A vector $\mathbf{v} \in \mathbb{R}^n$ is an ordered list of $n$ real numbers:
+
+$$
+\mathbf{v} = \begin{bmatrix} v_1 \\ v_2 \\ \vdots \\ v_n \end{bmatrix}
+$$
+
+Geometrically, you can think of it as an arrow from the origin to a point in $n$-dimensional space. In ML, $n$ is often the number of features.
+
+**Real-world example:** A house with area 1500 sq ft, 3 bedrooms, and price $300k is the vector $\mathbf{x} = [1500, 3, 300000]^\top$.
+
+## Core operations
+
+### Addition and scaling
+
+$$
+\mathbf{u} + \mathbf{v} = \begin{bmatrix} u_1 + v_1 \\ u_2 + v_2 \end{bmatrix}, \qquad c\mathbf{v} = \begin{bmatrix} cv_1 \\ cv_2 \end{bmatrix}
+$$
+
+These two operations are the building blocks of every linear model. A linear model $f(\mathbf{x}) = \mathbf{w}^\top \mathbf{x} + b$ is just a scaled sum of inputs.
+
+### The Euclidean norm
+
+The **length** (norm) of a vector measures how far it points from the origin:
+
+$$
+\|\mathbf{v}\| = \sqrt{v_1^2 + v_2^2 + \cdots + v_n^2} = \sqrt{\mathbf{v}^\top \mathbf{v}}
+$$
+
+A **unit vector** has norm 1. You can normalize any vector: $\hat{\mathbf{v}} = \mathbf{v} / \|\mathbf{v}\|$.
+
+```python
+import numpy as np
+
+v = np.array([3.0, 4.0])
+norm = np.linalg.norm(v)       # 5.0
+unit = v / norm                 # [0.6, 0.8]
+print(f"‖v‖ = {norm}")
+print(f"unit vector: {unit}")
+```
+
+## The dot product
+
+The dot product is the most fundamental operation in ML:
+
+$$
+\mathbf{u} \cdot \mathbf{v} = \mathbf{u}^\top \mathbf{v} = \sum_{i=1}^n u_i v_i = \|\mathbf{u}\|\|\mathbf{v}\|\cos\theta
+$$
+
+where $\theta$ is the angle between the vectors.
+
+<Callout type="tip" title="Why the dot product matters">
+  Every neuron computes a dot product $\mathbf{w}^\top \mathbf{x}$. Cosine similarity — used in word embeddings and recommendation systems — is just the dot product of unit vectors: $\cos\theta = \hat{\mathbf{u}} \cdot \hat{\mathbf{v}}$.
+</Callout>
+
+### What the dot product measures
+
+| $\mathbf{u} \cdot \mathbf{v}$ | Meaning |
+|-------------------------------|---------|
+| $> 0$ | Vectors point in roughly the same direction |
+| $= 0$ | Vectors are **orthogonal** (perpendicular) |
+| $< 0$ | Vectors point in roughly opposite directions |
+
+### Worked example
+
+$\mathbf{u} = [2, 1]$, $\mathbf{v} = [1, 3]$:
+
+$$
+\mathbf{u} \cdot \mathbf{v} = 2 \times 1 + 1 \times 3 = 5
+$$
+
+$$
+\cos\theta = \frac{5}{\sqrt{5} \cdot \sqrt{10}} = \frac{5}{\sqrt{50}} \approx 0.707 \implies \theta \approx 45°
+$$
+
+```python
+u = np.array([2.0, 1.0])
+v = np.array([1.0, 3.0])
+
+dot = np.dot(u, v)              # 5.0
+cos_theta = dot / (np.linalg.norm(u) * np.linalg.norm(v))  # ≈ 0.707
+angle_deg = np.degrees(np.arccos(cos_theta))                # ≈ 45°
+```
+
+## Vector spaces and basis
+
+A **vector space** is a set of vectors that is closed under addition and scalar multiplication. $\mathbb{R}^n$ is the most common one in ML.
+
+A **basis** is a set of linearly independent vectors that span the space. In $\mathbb{R}^2$, the standard basis is:
+
+$$
+\mathbf{e}_1 = \begin{bmatrix}1\\0\end{bmatrix}, \quad \mathbf{e}_2 = \begin{bmatrix}0\\1\end{bmatrix}
+$$
+
+Every vector is a **linear combination** of basis vectors: $\mathbf{v} = v_1\mathbf{e}_1 + v_2\mathbf{e}_2$.
+
+<Callout type="info" title="Orthogonal bases are special">
+  When basis vectors are mutually orthogonal (all pairwise dot products = 0), projection onto any basis vector is simply the dot product. PCA finds the orthogonal basis of maximum variance — that's why it's so powerful.
+</Callout>
+
+## Linear independence and span
+
+Vectors $\mathbf{v}_1, \ldots, \mathbf{v}_k$ are **linearly independent** if no one of them can be written as a combination of the others. Equivalently, $\sum_i c_i \mathbf{v}_i = \mathbf{0}$ implies all $c_i = 0$.
+
+The **span** of a set is all vectors you can reach by linear combination — it describes the "reachable" subspace.
+
+## Key takeaways
+
+- A vector is a list of numbers representing a point/direction in space.
+- The **dot product** $\mathbf{w}^\top \mathbf{x}$ is the core of every linear model — it measures similarity and projects one vector onto another.
+- **Orthogonal** vectors have zero dot product; orthogonal bases simplify projection.
+- **Norm** measures length; normalizing a vector gives direction without magnitude.
+
+## Related concepts
+
+- [**Matrices and Transformations**](/courses/linear-algebra/02-matrices-and-transformations) — how vectors transform
+- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — special directions in linear transformations
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the dot product in action
+
+<Exercise id="linalg-dot-product" />
+<Exercise id="linalg-orthogonality" />
+<Exercise id="linalg-norm" />

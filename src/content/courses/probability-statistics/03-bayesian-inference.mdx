@@ -1,0 +1,149 @@
+---
+title: "Bayesian Inference"
+description: "Incorporating prior knowledge into learning — Bayes' theorem, posteriors, conjugate priors, and MAP estimation."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# Bayesian Inference
+
+MLE gives a single point estimate of $\theta$. But what if we have prior beliefs about $\theta$ — for example, that weights in a neural network should be small? **Bayesian inference** formalizes this by treating $\theta$ itself as a random variable.
+
+## Bayes' theorem
+
+$$
+\underbrace{p(\theta | \mathcal{D})}_{\text{posterior}} = \frac{\underbrace{p(\mathcal{D} | \theta)}_{\text{likelihood}} \cdot \underbrace{p(\theta)}_{\text{prior}}}{\underbrace{p(\mathcal{D})}_{\text{evidence}}}
+$$
+
+The **posterior** $p(\theta | \mathcal{D})$ combines what the data says (likelihood) with what we believed before seeing data (prior).
+
+| Term | Meaning |
+|------|---------|
+| **Prior** $p(\theta)$ | Belief about $\theta$ before seeing data |
+| **Likelihood** $p(\mathcal{D} \mid \theta)$ | How probable the data is under $\theta$ |
+| **Posterior** $p(\theta \mid \mathcal{D})$ | Updated belief after seeing data |
+| **Evidence** $p(\mathcal{D})$ | Normalizing constant; often intractable |
+
+## Updating beliefs with data
+
+Bayesian inference is sequential. Start with a prior; after seeing data, your posterior becomes the prior for the next observation.
+
+**Intuition:** Toss a coin once and see heads. $p(\text{fair}) = 0.5$. After 100 heads in a row, $p(\text{fair}) \approx 0$.
+
+The posterior concentrates around the true parameter as data accumulates:
+
+$$
+p(\theta | x_1, \ldots, x_n) \propto p(\theta) \prod_{i=1}^n p(x_i | \theta)
+$$
+
+## Conjugate priors
+
+A prior is **conjugate** to a likelihood if the posterior is in the same family as the prior — making the update analytical.
+
+| Likelihood | Conjugate Prior | Posterior |
+|------------|----------------|-----------|
+| Bernoulli$(p)$ | Beta$(\alpha, \beta)$ | Beta$(\alpha + n_1, \beta + n_0)$ |
+| Gaussian$(\mu, \sigma^2)$ known $\sigma^2$ | Gaussian$(\mu_0, \tau^2)$ | Gaussian (updated mean/precision) |
+| Categorical$(\boldsymbol{\pi})$ | Dirichlet$(\boldsymbol{\alpha})$ | Dirichlet$(\boldsymbol{\alpha} + \mathbf{n})$ |
+
+### Beta-Bernoulli example
+
+Model: $x_i \sim \text{Bernoulli}(p)$, Prior: $p \sim \text{Beta}(\alpha, \beta)$.
+
+After observing $n_1$ heads and $n_0$ tails:
+
+$$
+p \mid \mathcal{D} \sim \text{Beta}(\alpha + n_1,\; \beta + n_0)
+$$
+
+The posterior mean is:
+
+$$
+\mathbb{E}[p | \mathcal{D}] = \frac{\alpha + n_1}{\alpha + \beta + n_1 + n_0}
+$$
+
+$\alpha$ and $\beta$ act like **pseudo-counts** — prior data. With $\alpha = \beta = 1$ (uniform prior), this reduces to the MLE estimate for large $n$.
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import beta as beta_dist
+
+# Prior: Beta(2, 2) — slight belief coin is fair
+alpha_prior, beta_prior = 2, 2
+
+# Observe 7 heads, 3 tails
+n_heads, n_tails = 7, 3
+alpha_post = alpha_prior + n_heads   # 9
+beta_post  = beta_prior  + n_tails   # 5
+
+# Posterior mean
+posterior_mean = alpha_post / (alpha_post + beta_post)
+print(f"Posterior mean: {posterior_mean:.3f}")   # ≈ 0.643
+print(f"MLE estimate:   {n_heads / (n_heads + n_tails):.3f}")  # 0.700
+
+# The prior shrinks us toward 0.5
+p_vals = np.linspace(0, 1, 200)
+prior     = beta_dist.pdf(p_vals, alpha_prior, beta_prior)
+posterior = beta_dist.pdf(p_vals, alpha_post, beta_post)
+```
+
+## MAP estimation
+
+**Maximum a Posteriori (MAP)** estimation finds the mode of the posterior:
+
+$$
+\hat{\theta}_\text{MAP} = \arg\max_\theta p(\theta | \mathcal{D}) = \arg\max_\theta \left[\ln p(\mathcal{D} | \theta) + \ln p(\theta)\right]
+$$
+
+MAP = MLE + log-prior penalty.
+
+<Callout type="tip" title="L2 regularization is MAP with a Gaussian prior">
+  A Gaussian prior $\theta \sim \mathcal{N}(0, \tau^2)$ adds $\ln p(\theta) = -\frac{\|\theta\|^2}{2\tau^2} + \text{const}$ to the log-likelihood. Maximizing this is identical to minimizing:
+  $$\mathcal{L}(\theta) - \frac{\lambda}{2}\|\theta\|^2$$
+  That's L2 (Ridge) regularization. **L2 regularization is MAP estimation with a Gaussian prior.**
+</Callout>
+
+Similarly, L1 regularization (Lasso) corresponds to a Laplace prior.
+
+## Bayesian vs frequentist
+
+| | Frequentist (MLE) | Bayesian |
+|-|-------------------|---------|
+| $\theta$ is... | Fixed unknown constant | Random variable |
+| Output | Point estimate | Full posterior distribution |
+| Uncertainty | Confidence intervals (tricky to interpret) | Credible intervals (direct probability) |
+| Prior knowledge | Cannot incorporate | Naturally incorporated |
+| Scalability | Fast | Can be slow (posterior integration) |
+
+## Predictive distribution
+
+Rather than a single $\hat{\theta}$, Bayesian models make predictions by averaging over all parameters weighted by the posterior:
+
+$$
+p(x_\text{new} | \mathcal{D}) = \int p(x_\text{new} | \theta)\, p(\theta | \mathcal{D})\, d\theta
+$$
+
+This **marginalizes out** $\theta$ and naturally quantifies uncertainty in the prediction. In practice, this integral is often approximated with variational inference or MCMC.
+
+<Callout type="info" title="Bayesian deep learning">
+  Full Bayesian inference over neural network weights is computationally intractable. Practical approximations include: **dropout as approximate Bayes** (Gal & Ghahramani, 2016), **variational inference** (Bayes by Backprop), and **deep ensembles** (train multiple networks from different initializations).
+</Callout>
+
+## Key takeaways
+
+- Bayesian inference treats model parameters as random variables with a **prior** distribution.
+- The **posterior** = likelihood × prior (normalized) — it combines data evidence with prior beliefs.
+- **MAP** = MLE + log-prior; Gaussian prior → L2 regularization; Laplace prior → L1 regularization.
+- The predictive distribution averages over parameters, naturally capturing uncertainty.
+
+## Related concepts
+
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/02-maximum-likelihood-estimation) — the data-only special case
+- [**Probability Distributions**](/courses/probability-statistics/01-probability-distributions) — the distributions used as priors and likelihoods
+- [**Probabilistic Models & EM**](/courses/probabilistic-models/01-gaussian-mixture-models) — Bayesian mixture models
+
+<Exercise id="bayes-posterior" />
+<Exercise id="bayes-map-regularization" />
+<Exercise id="bayes-conjugate" />

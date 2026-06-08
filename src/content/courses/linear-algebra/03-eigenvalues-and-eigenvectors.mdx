@@ -1,0 +1,158 @@
+---
+title: "Eigenvalues and Eigenvectors"
+description: "The special directions a matrix can't rotate — and why they underpin PCA, spectral methods, and the stability of neural networks."
+order: 3
+type: concept
+estimatedMinutes: 20
+---
+
+# Eigenvalues and Eigenvectors
+
+When you apply a matrix $\mathbf{A}$ to most vectors, both the direction and the length change. But there exist special vectors — **eigenvectors** — that only get scaled, never rotated. These special directions reveal the matrix's fundamental geometry.
+
+## The eigenvalue equation
+
+A non-zero vector $\mathbf{v}$ is an **eigenvector** of $\mathbf{A}$ if:
+
+$$
+\mathbf{A}\mathbf{v} = \lambda\mathbf{v}
+$$
+
+The scalar $\lambda$ is the corresponding **eigenvalue** — it tells you how much the eigenvector stretches or shrinks.
+
+- $\lambda > 1$: stretches along this direction
+- $0 < \lambda < 1$: shrinks along this direction
+- $\lambda < 0$: flips and scales
+- $\lambda = 0$: collapses — information is lost in this direction (rank deficiency)
+
+## Finding eigenvalues
+
+Rewrite the equation: $(\mathbf{A} - \lambda \mathbf{I})\mathbf{v} = \mathbf{0}$. For this to have a non-zero solution, the matrix must be singular:
+
+$$
+\det(\mathbf{A} - \lambda \mathbf{I}) = 0
+$$
+
+This is the **characteristic equation**. For a $2 \times 2$ matrix, it's a quadratic in $\lambda$.
+
+### Worked example
+
+$$
+\mathbf{A} = \begin{bmatrix}4 & 1 \\ 2 & 3\end{bmatrix}
+$$
+
+Characteristic equation:
+$$
+(4-\lambda)(3-\lambda) - 2 = \lambda^2 - 7\lambda + 10 = 0 \implies \lambda_1 = 5,\; \lambda_2 = 2
+$$
+
+For $\lambda_1 = 5$: $(\mathbf{A} - 5\mathbf{I})\mathbf{v} = \mathbf{0}$ gives $\mathbf{v}_1 = [1, 1]^\top$.
+For $\lambda_2 = 2$: $\mathbf{v}_2 = [1, -2]^\top$.
+
+```python
+import numpy as np
+
+A = np.array([[4, 1], [2, 3]])
+eigenvalues, eigenvectors = np.linalg.eig(A)
+
+print("Eigenvalues:", eigenvalues)       # [5., 2.]
+print("Eigenvectors:\n", eigenvectors)  # columns are eigenvectors
+# Verify: A @ v == λ * v
+for i in range(2):
+    v = eigenvectors[:, i]
+    lam = eigenvalues[i]
+    print(f"Av = {A @ v}, λv = {lam * v}")  # should be equal
+```
+
+## Eigendecomposition
+
+If $\mathbf{A}$ has $n$ linearly independent eigenvectors, it can be **diagonalized**:
+
+$$
+\mathbf{A} = \mathbf{V}\boldsymbol{\Lambda}\mathbf{V}^{-1}
+$$
+
+where $\mathbf{V} = [\mathbf{v}_1 | \cdots | \mathbf{v}_n]$ and $\boldsymbol{\Lambda} = \text{diag}(\lambda_1, \ldots, \lambda_n)$.
+
+<Callout type="info" title="Symmetric matrices are special">
+  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal. Covariance matrices are symmetric — this is why PCA always gives orthogonal components.
+</Callout>
+
+## Connection to PCA
+
+PCA of a dataset $\mathbf{X}$ finds the eigenvectors of the **covariance matrix** $\mathbf{C} = \frac{1}{n}\mathbf{X}^\top\mathbf{X}$.
+
+- The eigenvector with the **largest eigenvalue** is the direction of maximum variance (first principal component).
+- The eigenvector with the second largest eigenvalue is the next orthogonal direction of maximum variance.
+- Projecting $\mathbf{X}$ onto the top $k$ eigenvectors gives a rank-$k$ approximation that captures as much variance as possible.
+
+$$
+\mathbf{X}_\text{PCA} = \mathbf{X}\mathbf{V}_k, \quad \mathbf{V}_k = [\mathbf{v}_1 | \cdots | \mathbf{v}_k]
+$$
+
+```python
+# PCA via eigendecomposition
+X = np.random.randn(100, 5)       # 100 samples, 5 features
+X -= X.mean(axis=0)               # center the data
+
+C = (X.T @ X) / len(X)           # covariance matrix
+eigenvalues, V = np.linalg.eigh(C) # eigh for symmetric matrices
+
+# Sort by descending eigenvalue
+idx = np.argsort(eigenvalues)[::-1]
+eigenvalues, V = eigenvalues[idx], V[:, idx]
+
+explained_variance = eigenvalues / eigenvalues.sum()
+print("Variance explained by PC1:", explained_variance[0])
+
+X_2d = X @ V[:, :2]              # project to 2D
+```
+
+## Trace and determinant
+
+Two scalar summaries of a matrix are directly tied to eigenvalues:
+
+$$
+\text{tr}(\mathbf{A}) = \sum_i A_{ii} = \sum_i \lambda_i, \qquad \det(\mathbf{A}) = \prod_i \lambda_i
+$$
+
+- **Trace** = sum of eigenvalues = total variance preserved.
+- **Determinant** = product of eigenvalues = signed volume scaling factor.
+  - $\det = 0$ means at least one eigenvalue is 0 → matrix is singular, not invertible.
+
+## Singular Value Decomposition (SVD)
+
+For **any** matrix (not just square or symmetric), SVD generalizes eigendecomposition:
+
+$$
+\mathbf{A} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^\top
+$$
+
+- $\mathbf{U}$: left singular vectors (orthonormal)
+- $\boldsymbol{\Sigma}$: diagonal matrix of singular values $\sigma_i \geq 0$
+- $\mathbf{V}$: right singular vectors (orthonormal)
+
+SVD is used for **low-rank approximations** (keeping only the top-$k$ singular values), matrix completion (Netflix Prize), and computing the pseudo-inverse.
+
+<Callout type="tip" title="SVD everywhere in ML">
+  For a square symmetric PSD matrix like a covariance matrix, SVD and eigendecomposition coincide: $\sigma_i = \lambda_i$ and $\mathbf{U} = \mathbf{V} = \mathbf{Q}$.
+  For general weight matrices in neural networks, SVD reveals the effective rank and is used for compression.
+</Callout>
+
+## Key takeaways
+
+- Eigenvectors are directions that a matrix only **scales** — the eigenvalue is the scale factor.
+- Symmetric matrices have **real, orthogonal** eigenvectors — guaranteed clean decomposition.
+- PCA = finding eigenvectors of the covariance matrix; eigenvalues = variance along each component.
+- **SVD** generalizes to any matrix shape; singular values are always non-negative.
+- $\det(\mathbf{A}) = \prod \lambda_i$ — zero determinant means lost information (singular matrix).
+
+## Related concepts
+
+- [**Matrices and Transformations**](/courses/linear-algebra/02-matrices-and-transformations) — what eigendecomposition decomposes
+- [**PCA & Dimensionality Reduction**](/courses/pca-dimensionality/01-pca-from-scratch) — eigendecomposition applied
+- [**Calculus for ML: Derivatives**](/courses/calculus-for-ml/01-derivatives-and-gradients) — gradients point in the eigenvector direction at optima
+
+<Exercise id="linalg-eigenvalue" />
+<Exercise id="linalg-eigenvector" />
+<Exercise id="linalg-pca-connection" />

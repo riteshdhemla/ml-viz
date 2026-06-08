@@ -1,0 +1,156 @@
+---
+title: "Chain Rule and Backpropagation"
+description: "How gradients flow backward through composed functions — the chain rule is the only math you need to understand backpropagation."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Chain Rule and Backpropagation
+
+Backpropagation is not magic — it's the chain rule applied to computational graphs. Once you understand the chain rule, every step of backprop becomes a mechanical application of one idea.
+
+## The chain rule
+
+When a function is composed of other functions, the chain rule tells you how to differentiate the composition:
+
+$$
+\frac{d}{dx} f(g(x)) = f'(g(x)) \cdot g'(x) = \frac{df}{dg} \cdot \frac{dg}{dx}
+$$
+
+**Example:** $h(x) = \sigma(3x^2)$ where $\sigma$ is sigmoid.
+
+Let $g = 3x^2$ and $f(g) = \sigma(g)$:
+
+$$
+h'(x) = \sigma'(g) \cdot 6x = \sigma(3x^2)(1 - \sigma(3x^2)) \cdot 6x
+$$
+
+## Multivariable chain rule
+
+For $z = f(x, y)$ where $x = x(t)$ and $y = y(t)$:
+
+$$
+\frac{dz}{dt} = \frac{\partial f}{\partial x}\frac{dx}{dt} + \frac{\partial f}{\partial y}\frac{dy}{dt}
+$$
+
+When $z$ depends on $\mathbf{x} \in \mathbb{R}^n$ and $\mathbf{x}$ depends on $\mathbf{w}$ via $\mathbf{x} = g(\mathbf{w})$, the chain rule becomes a matrix product of **Jacobians**:
+
+$$
+\frac{\partial z}{\partial \mathbf{w}} = \frac{\partial z}{\partial \mathbf{x}} \cdot \frac{\partial \mathbf{x}}{\partial \mathbf{w}}
+$$
+
+## Computational graphs
+
+A **computational graph** represents a function as a directed acyclic graph (DAG): nodes are operations, edges carry values forward (forward pass) and gradients backward (backward pass).
+
+**Example graph:** $L = (\mathbf{w}^\top \mathbf{x} - y)^2$
+
+```
+x, w → [dot product] → z
+z, y → [subtract]   → r = z - y
+r    → [square]      → L = r²
+```
+
+### Forward pass
+
+Compute each node's output in topological order:
+
+$$
+z = \mathbf{w}^\top \mathbf{x}, \quad r = z - y, \quad L = r^2
+$$
+
+### Backward pass
+
+Starting from $\frac{\partial L}{\partial L} = 1$, apply the chain rule in reverse:
+
+$$
+\frac{\partial L}{\partial r} = 2r = 2(z - y)
+$$
+
+$$
+\frac{\partial L}{\partial z} = \frac{\partial L}{\partial r} \cdot \frac{\partial r}{\partial z} = 2(z-y) \cdot 1 = 2(z-y)
+$$
+
+$$
+\frac{\partial L}{\partial \mathbf{w}} = \frac{\partial L}{\partial z} \cdot \frac{\partial z}{\partial \mathbf{w}} = 2(z-y) \cdot \mathbf{x}
+$$
+
+<Callout type="tip" title="Local gradients × upstream gradient">
+  Each node stores its **local gradient** (derivative of output w.r.t. its inputs). During backprop, it multiplies the incoming upstream gradient by the local gradient and passes it back. The chain rule is always: local × upstream.
+</Callout>
+
+## Worked example: one hidden layer
+
+Network: $\hat{y} = \sigma(\mathbf{w}_2^\top \text{ReLU}(\mathbf{W}_1 \mathbf{x} + \mathbf{b}_1) + b_2)$, loss $L = -y \ln\hat{y} - (1-y)\ln(1-\hat{y})$.
+
+```python
+import numpy as np
+
+def sigmoid(z): return 1 / (1 + np.exp(-z))
+def relu(z):    return np.maximum(0, z)
+
+# Forward pass
+x  = np.array([1.0, 2.0, 3.0])
+W1 = np.random.randn(4, 3) * 0.1
+b1 = np.zeros(4)
+w2 = np.random.randn(4) * 0.1
+b2 = 0.0
+y  = 1.0
+
+z1    = W1 @ x + b1      # pre-activation layer 1
+a1    = relu(z1)          # activation layer 1
+z2    = w2 @ a1 + b2     # pre-activation output
+y_hat = sigmoid(z2)       # predicted probability
+L     = -(y * np.log(y_hat) + (1-y) * np.log(1-y_hat))
+
+# Backward pass
+dL_dz2 = y_hat - y                          # gradient of BCE + sigmoid
+dL_dw2 = dL_dz2 * a1
+dL_da1 = dL_dz2 * w2
+dL_dz1 = dL_da1 * (z1 > 0)                 # ReLU derivative
+dL_dW1 = np.outer(dL_dz1, x)
+dL_db1 = dL_dz1
+```
+
+## Why backprop is efficient
+
+Naively computing $\frac{\partial L}{\partial w_i}$ by finite differences requires two forward passes **per parameter**. A network with millions of parameters would be intractable.
+
+Backpropagation computes **all gradients in one backward pass** by reusing intermediate results. The key insight: gradients at earlier layers are computed by multiplying already-computed downstream gradients with local Jacobians. Total cost: $\approx 3\times$ the forward pass cost.
+
+<Callout type="info" title="Automatic differentiation">
+  Modern frameworks (PyTorch, JAX) implement **automatic differentiation** — they build the computational graph on-the-fly, store forward activations, and replay the backward pass automatically. You never write the backward pass by hand.
+</Callout>
+
+## Vanishing and exploding gradients
+
+When many small Jacobians are multiplied together (deep networks, long sequences), the gradient can **vanish**:
+
+$$
+\frac{\partial L}{\partial \mathbf{w}_1} = \frac{\partial L}{\partial \mathbf{a}_n} \cdot \prod_{k=1}^{n-1} J_k
+$$
+
+If each $\|J_k\| < 1$, the gradient decays exponentially. Sigmoid's max derivative is $0.25$ — stacking 20 sigmoid layers multiplies gradients by at most $0.25^{20} \approx 10^{-12}$.
+
+Solutions:
+- **ReLU:** gradient is exactly 1 for positive inputs, no saturation
+- **Batch normalization:** stabilizes activations, preventing saturation
+- **Residual connections:** add the input directly, creating gradient highways
+
+## Key takeaways
+
+- Backpropagation = chain rule applied to a computational graph.
+- Each node multiplies the upstream gradient by its local gradient and passes it back.
+- Backprop computes all gradients simultaneously in one pass — this is why neural network training is tractable.
+- **Vanishing gradients** happen when many $< 1$ factors multiply; solved by ReLU, batch norm, or residual connections.
+
+## Related concepts
+
+- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients) — the building blocks
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — using the gradients backprop computes
+- [**Recurrent Neural Networks**](/courses/rnns/01-rnn-basics) — backprop through time (BPTT)
+
+<Exercise id="calc-chain-rule" />
+<Exercise id="calc-backprop-simple" />
+<Exercise id="calc-vanishing" />
