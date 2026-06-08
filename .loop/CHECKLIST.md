@@ -5,7 +5,7 @@ Branch: `feat/thorough-notebooks`. Per item: (a) make lesson easy-to-follow + co
 Mark `[x]` when both lesson + notebook done. Add notes inline.
 
 ## Foundations
-- [~] linear-algebra/01-vectors-and-spaces — lesson: added Projection derivation ✓. TODO: add worked linear-independence/span example to lesson; notebook still needs projection-derivation cell + linear-independence/rank cell.
+- [x] linear-algebra/01-vectors-and-spaces — lesson: Projection derivation + dependent/independent worked example + rank callout. notebook: +projection-derivation cell (residual ⟂ a) +linear-independence/rank/solve cell.
 - [ ] linear-algebra/02-matrices-and-transformations
 - [ ] linear-algebra/03-eigenvalues-and-eigenvectors
 - [ ] calculus-for-ml/01-derivatives-and-gradients

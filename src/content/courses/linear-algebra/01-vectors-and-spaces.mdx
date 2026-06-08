@@ -130,6 +130,16 @@ Vectors $\mathbf{v}_1, \ldots, \mathbf{v}_k$ are **linearly independent** if no 
 
 The **span** of a set is all vectors you can reach by linear combination — it describes the "reachable" subspace.
 
+### Worked example: dependent vs independent
+
+Take $\mathbf{a} = [1, 2]$ and $\mathbf{b} = [2, 4]$. Notice $\mathbf{b} = 2\mathbf{a}$, so $2\mathbf{a} - \mathbf{b} = \mathbf{0}$ with non-zero coefficients — they are **dependent**. Their span is just the *line* through $\mathbf{a}$; no combination ever leaves it, so they cannot describe a 2D plane.
+
+Now take $\mathbf{a} = [1, 2]$ and $\mathbf{c} = [2, 1]$. The only way $c_1\mathbf{a} + c_2\mathbf{c} = \mathbf{0}$ is $c_1 = c_2 = 0$ (the equations $c_1 + 2c_2 = 0$ and $2c_1 + c_2 = 0$ force it), so they are **independent** and their span is *all* of $\mathbb{R}^2$ — they form a basis.
+
+<Callout type="tip" title="The rank test">
+  Stack the vectors as columns of a matrix. The number of independent vectors is the matrix **rank**. Full rank (rank = number of vectors) ⇒ independent. In ML, rank-deficient feature matrices cause unstable models — two features that are linear combinations of each other carry no new information.
+</Callout>
+
 ## Key takeaways
 
 - A vector is a list of numbers representing a point/direction in space.
