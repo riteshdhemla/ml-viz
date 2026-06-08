@@ -21,6 +21,9 @@ import { GradientFieldViz } from "@/components/visualizations/GradientField/Grad
 import { DistributionViz } from "@/components/visualizations/Distribution/DistributionViz";
 import { MLEViz } from "@/components/visualizations/MLE/MLEViz";
 import { BayesViz } from "@/components/visualizations/Bayes/BayesViz";
+import { AttentionViz } from "@/components/visualizations/Attention/AttentionViz";
+import { ConvolutionViz } from "@/components/visualizations/Convolution/ConvolutionViz";
+import { VanishingGradientViz } from "@/components/visualizations/VanishingGradient/VanishingGradientViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -48,4 +51,7 @@ export const mdxComponents: MDXComponents = {
   DistributionViz,
   MLEViz,
   BayesViz,
+  AttentionViz,
+  ConvolutionViz,
+  VanishingGradientViz,
 };
