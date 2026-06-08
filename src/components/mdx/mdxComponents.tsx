@@ -24,6 +24,9 @@ import { BayesViz } from "@/components/visualizations/Bayes/BayesViz";
 import { AttentionViz } from "@/components/visualizations/Attention/AttentionViz";
 import { ConvolutionViz } from "@/components/visualizations/Convolution/ConvolutionViz";
 import { VanishingGradientViz } from "@/components/visualizations/VanishingGradient/VanishingGradientViz";
+import { KNNBoundaryViz } from "@/components/visualizations/KNNBoundary/KNNBoundaryViz";
+import { MarginViz } from "@/components/visualizations/Margin/MarginViz";
+import { DecisionTreeSplitViz } from "@/components/visualizations/DecisionTreeSplit/DecisionTreeSplitViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -54,4 +57,7 @@ export const mdxComponents: MDXComponents = {
   AttentionViz,
   ConvolutionViz,
   VanishingGradientViz,
+  KNNBoundaryViz,
+  MarginViz,
+  DecisionTreeSplitViz,
 };
