@@ -12,6 +12,9 @@ import { LinearRegressionViz } from "@/components/visualizations/LinearRegressio
 import { DecisionBoundaryViz } from "@/components/visualizations/DecisionBoundary/DecisionBoundaryViz";
 import { KMeansViz } from "@/components/visualizations/KMeans/KMeansViz";
 import { PCAViz } from "@/components/visualizations/PCA/PCAViz";
+import { VectorViz } from "@/components/visualizations/Vector/VectorViz";
+import { MatrixTransformViz } from "@/components/visualizations/MatrixTransform/MatrixTransformViz";
+import { EigenvectorViz } from "@/components/visualizations/Eigenvector/EigenvectorViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -30,4 +33,7 @@ export const mdxComponents: MDXComponents = {
   DecisionBoundaryViz,
   KMeansViz,
   PCAViz,
+  VectorViz,
+  MatrixTransformViz,
+  EigenvectorViz,
 };
