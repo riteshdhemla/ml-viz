@@ -4,7 +4,7 @@
 
 ---
 
-Add an interactive D3.js visualization for **[CONCEPT NAME]** to the ml-viz website.
+Add an interactive visualization for **[CONCEPT NAME]** to the ml-viz website.
 
 **Location:** `src/components/visualizations/[ConceptName]/[ConceptName]Viz.tsx`
 
@@ -16,16 +16,24 @@ Add an interactive D3.js visualization for **[CONCEPT NAME]** to the ml-viz webs
 
 **Requirements:**
 - Mark `"use client"` at the top
-- Use `useRef<SVGSVGElement>` and D3 in a `useEffect` for rendering
-- Accept `className?: string` and `animated?: boolean` props
-- Wrap in `<div className="not-prose card-glass p-4 my-6">`
-- Use `cn()` from `@/lib/utils` for class merging
-- Use the design tokens from tailwind.config.ts (brand-500, surface-card, etc.)
+- Draw with **plain SVG** — no D3. Map data → pixels with `scale()` from the kit
+- Animate with React state + `useAnimationLoop` (or a `setInterval` for discrete
+  steps like K-Means / gradient descent). Generate any data deterministically
+  with `seededRandom` / `gaussian` so the viz looks identical on every render
+- Accept a `className?: string` prop
+- Wrap output in `<VizFrame title=... caption=... className={className}>` and use
+  `VizSlider` / `VizButton` / `VizStat` for controls (all from
+  `@/components/visualizations/viz-kit`)
+- Use the `VIZ` colour tokens (they mirror tailwind.config.ts: brand, teal, rose…)
 - Export the component and add it to `src/components/mdx/mdxComponents.tsx`
 
 **After creating the file, also:**
-1. Import it in `src/components/mdx/mdxComponents.tsx`
-2. Add it to the `mdxComponents` object
-3. Add it to the playground page at `src/app/playground/page.tsx`
+1. Import it in `src/components/mdx/mdxComponents.tsx` and add it to the
+   `mdxComponents` object
+2. Reference it from the relevant lesson MDX with a self-closing tag,
+   e.g. `<KMeansViz />`
+3. Update the "Visualization Components Built" table in `CLAUDE.md`
 
-See `src/components/visualizations/NeuralNetwork/NeuralNetworkViz.tsx` as a reference example.
+See `src/components/visualizations/KMeans/KMeansViz.tsx` (animated, stepped) or
+`src/components/visualizations/ActivationFunction/ActivationFunctionViz.tsx`
+(slider-driven) as reference examples, and `viz-kit.tsx` for the shared helpers.
