@@ -97,6 +97,17 @@ cos_theta = dot / (np.linalg.norm(u) * np.linalg.norm(v))  # ≈ 0.707
 angle_deg = np.degrees(np.arccos(cos_theta))                # ≈ 45°
 ```
 
+### Projection: the dot product's geometric job
+
+The dot product answers *"how much of $\mathbf{b}$ points along $\mathbf{a}$?"* That quantity is the **projection** of $\mathbf{b}$ onto $\mathbf{a}$ (the shadow $\mathbf{b}$ casts on the line through $\mathbf{a}$). Start from $\mathbf{a}\cdot\mathbf{b} = \|\mathbf{a}\|\|\mathbf{b}\|\cos\theta$ and divide by $\|\mathbf{a}\|$:
+
+$$
+\text{scalar proj} = \|\mathbf{b}\|\cos\theta = \frac{\mathbf{a}\cdot\mathbf{b}}{\|\mathbf{a}\|}, \qquad
+\text{vector proj}_{\mathbf{a}}\mathbf{b} = \underbrace{\frac{\mathbf{a}\cdot\mathbf{b}}{\mathbf{a}\cdot\mathbf{a}}}_{\text{how many copies of }\mathbf{a}}\,\mathbf{a}
+$$
+
+The denominator $\mathbf{a}\cdot\mathbf{a} = \|\mathbf{a}\|^2$ rescales by $\mathbf{a}$'s length so the result lands exactly on the line through $\mathbf{a}$. This single formula is the engine behind least-squares regression (project the targets onto the column space) and PCA (project data onto principal directions). Drag the vectors above to watch the projection segment grow and shrink with the angle.
+
 ## Vector spaces and basis
 
 A **vector space** is a set of vectors that is closed under addition and scalar multiplication. $\mathbb{R}^n$ is the most common one in ML.
