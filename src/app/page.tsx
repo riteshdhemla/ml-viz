@@ -6,6 +6,8 @@ import { HeroSection } from "@/components/layout/HeroSection";
 
 export default function HomePage() {
   const courses = getAllCourses();
+  const foundations = courses.filter((c) => (c.order ?? 0) < 0);
+  const mainCourses = courses.filter((c) => (c.order ?? 0) >= 0);
 
   return (
     <div className="min-h-screen bg-surface">
@@ -13,7 +15,28 @@ export default function HomePage() {
       <main>
         <HeroSection />
 
-        {/* Courses grid */}
+        {/* Foundations strip */}
+        {foundations.length > 0 && (
+          <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-4">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <span className="text-brand-400">◆</span> Foundations
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Start here — the math every ML practitioner needs
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+              {foundations.map((course) => (
+                <CourseCard key={course.slug} course={course} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Main courses grid */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="flex items-center justify-between mb-10">
             <div>
@@ -30,13 +53,13 @@ export default function HomePage() {
             </Link>
           </div>
 
-          {courses.length === 0 ? (
+          {mainCourses.length === 0 ? (
             <p className="text-slate-500 text-center py-16">
               Courses coming soon. Check back shortly.
             </p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses.map((course) => (
+              {mainCourses.map((course) => (
                 <CourseCard key={course.slug} course={course} />
               ))}
             </div>

@@ -7,8 +7,11 @@ export const metadata: Metadata = { title: "Courses" };
 
 export default function CoursesPage() {
   const courses = getAllCourses();
+
+  // Courses with order < 0 are prerequisite foundations; rest group by difficulty
+  const foundations = courses.filter((c) => (c.order ?? 0) < 0);
   const byDifficulty = {
-    beginner: courses.filter((c) => c.difficulty === "beginner"),
+    beginner: courses.filter((c) => (c.order ?? 0) >= 0 && c.difficulty === "beginner"),
     intermediate: courses.filter((c) => c.difficulty === "intermediate"),
     advanced: courses.filter((c) => c.difficulty === "advanced"),
   };
@@ -22,6 +25,27 @@ export default function CoursesPage() {
           Interactive visual lessons for every stage of the ML journey.
         </p>
 
+        {/* Foundations — prerequisite math courses */}
+        {foundations.length > 0 && (
+          <section className="mb-14">
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-white flex items-center gap-3">
+                <span className="text-brand-400">◆</span>
+                Foundations
+              </h2>
+              <p className="text-sm text-slate-500 mt-1 ml-7">
+                Essential math before diving into ML algorithms
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {foundations.map((course) => (
+                <CourseCard key={course.slug} course={course} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Courses grouped by difficulty */}
         {(["beginner", "intermediate", "advanced"] as const).map((level) => {
           const group = byDifficulty[level];
           if (group.length === 0) return null;
