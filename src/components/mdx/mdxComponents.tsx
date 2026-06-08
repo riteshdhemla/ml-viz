@@ -18,6 +18,9 @@ import { EigenvectorViz } from "@/components/visualizations/Eigenvector/Eigenvec
 import { FunctionTangentViz } from "@/components/visualizations/FunctionTangent/FunctionTangentViz";
 import { ComputationalGraphViz } from "@/components/visualizations/ComputationalGraph/ComputationalGraphViz";
 import { GradientFieldViz } from "@/components/visualizations/GradientField/GradientFieldViz";
+import { DistributionViz } from "@/components/visualizations/Distribution/DistributionViz";
+import { MLEViz } from "@/components/visualizations/MLE/MLEViz";
+import { BayesViz } from "@/components/visualizations/Bayes/BayesViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -42,4 +45,7 @@ export const mdxComponents: MDXComponents = {
   FunctionTangentViz,
   ComputationalGraphViz,
   GradientFieldViz,
+  DistributionViz,
+  MLEViz,
+  BayesViz,
 };
