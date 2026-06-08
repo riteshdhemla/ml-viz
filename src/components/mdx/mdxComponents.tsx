@@ -6,6 +6,12 @@ import type { MDXComponents } from "mdx/types";
 import { Callout } from "./Callout";
 import { CodeBlock } from "./CodeBlock";
 import { Exercise } from "@/components/exercises/Exercise";
+import { GradientDescentViz } from "@/components/visualizations/GradientDescent/GradientDescentViz";
+import { ActivationFunctionViz } from "@/components/visualizations/ActivationFunction/ActivationFunctionViz";
+import { LinearRegressionViz } from "@/components/visualizations/LinearRegression/LinearRegressionViz";
+import { DecisionBoundaryViz } from "@/components/visualizations/DecisionBoundary/DecisionBoundaryViz";
+import { KMeansViz } from "@/components/visualizations/KMeans/KMeansViz";
+import { PCAViz } from "@/components/visualizations/PCA/PCAViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -16,4 +22,12 @@ export const mdxComponents: MDXComponents = {
 
   Callout,
   Exercise,
+
+  // Visualizations (pure-SVG client components — see visualizations/viz-kit.tsx)
+  GradientDescentViz,
+  ActivationFunctionViz,
+  LinearRegressionViz,
+  DecisionBoundaryViz,
+  KMeansViz,
+  PCAViz,
 };

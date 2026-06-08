@@ -30,9 +30,8 @@ src/
 ├── app/                        # Next.js pages
 │   ├── page.tsx                # Homepage
 │   ├── courses/page.tsx        # Course list
-│   ├── courses/[courseSlug]/   # Course overview
-│   │   └── [lessonSlug]/       # Individual lesson
-│   └── playground/page.tsx     # Free-form viz sandbox
+│   └── courses/[courseSlug]/   # Course overview
+│       └── [lessonSlug]/       # Individual lesson
 │
 ├── components/
 │   ├── layout/                 # SiteHeader, HeroSection
@@ -130,11 +129,15 @@ To override: add `notebookUrl: "https://..."` to the lesson frontmatter.
 ### Adding a visualization
 
 1. Create `src/components/visualizations/[ConceptName]/[ConceptName]Viz.tsx`
-2. Mark `"use client"` — all D3 code runs client-side
-3. Use `useRef<SVGSVGElement>` + `useEffect` for D3 rendering
-4. Accept a `className?: string` prop and spread with `cn()`
-5. Wrap output in `<div className="not-prose card-glass p-4 my-6">`
+2. Mark `"use client"` — all viz render client-side
+3. Draw with **plain SVG** (no D3). Animate via React state + `useAnimationLoop`
+   from `viz-kit.tsx`; use `seededRandom`/`gaussian` for deterministic data and
+   `scale()` to map data → pixels
+4. Accept a `className?: string` prop
+5. Wrap output in `<VizFrame title=... caption=... className={className}>` and
+   reuse `VizSlider` / `VizButton` / `VizStat` for controls
 6. Export from file, then add to `src/components/mdx/mdxComponents.tsx`
+7. Reference it in a lesson MDX with a self-closing tag, e.g. `<KMeansViz />`
 
 **Template:** see `prompts/new-visualization.md`
 
@@ -282,16 +285,24 @@ surface-border   — borders
 
 ## Visualization Components Built
 
-| Component | File | Status |
-|-----------|------|--------|
-| NeuralNetworkViz | `visualizations/NeuralNetwork/` | ✅ |
-| GradientDescentViz | `visualizations/GradientDescent/` | ✅ |
-| LinearRegressionViz | `visualizations/LinearRegression/` | planned |
-| SVMViz | `visualizations/SVM/` | planned |
-| KMeansViz | `visualizations/KMeans/` | planned |
-| PCAViz | `visualizations/PCA/` | planned |
-| AttentionViz | `visualizations/Attention/` | planned |
-| DecisionTreeViz | `visualizations/DecisionTree/` | planned |
+All viz are **pure-SVG React client components** (no D3 dependency). Shared
+primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
+`VizSlider`, `VizButton`, `VizStat`, `useAnimationLoop`, `seededRandom`,
+`gaussian`, `scale`, `VIZ` colour tokens). Each viz is wired into a lesson via
+`mdxComponents.tsx` and rendered with a `<ComponentName />` tag in the MDX.
+
+| Component | File | Wired into lesson | Status |
+|-----------|------|-------------------|--------|
+| GradientDescentViz | `visualizations/GradientDescent/` | neural-networks/02-gradient-descent | ✅ |
+| ActivationFunctionViz | `visualizations/ActivationFunction/` | neural-networks/01-what-is-a-neuron | ✅ |
+| LinearRegressionViz | `visualizations/LinearRegression/` | linear-regression/01-linear-regression | ✅ |
+| DecisionBoundaryViz | `visualizations/DecisionBoundary/` | linear-regression/02-logistic-regression | ✅ |
+| KMeansViz | `visualizations/KMeans/` | clustering/01-k-means | ✅ |
+| PCAViz | `visualizations/PCA/` | pca-dimensionality/01-pca | ✅ |
+| NeuralNetworkViz | `visualizations/NeuralNetwork/` | — | planned |
+| SVMViz | `visualizations/SVM/` | — | planned |
+| AttentionViz | `visualizations/Attention/` | — | planned |
+| DecisionTreeViz | `visualizations/DecisionTree/` | — | planned |
 
 ---
 
