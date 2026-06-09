@@ -30,47 +30,91 @@ $$
 
 ## The chain through time
 
-To see why long-range learning is hard, trace how the loss at step $T$ depends on a hidden state far back at step $k$. The chain rule multiplies one Jacobian per step:
+To see why long-range learning is hard, trace how the loss at step $T$ depends on a hidden state far back at step $k$. We need $\partial \mathcal{L}_T / \partial \mathbf{h}_k$, and the only path from $\mathbf{h}_k$ to $\mathcal{L}_T$ runs *forward through every hidden state in between*. The chain rule therefore threads through $\mathbf{h}_{k+1}, \mathbf{h}_{k+2}, \dots, \mathbf{h}_T$:
 
 $$
-\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k} = \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T} \prod_{t=k+1}^{T} \frac{\partial \mathbf{h}_t}{\partial \mathbf{h}_{t-1}}
+\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k} = \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}\,\frac{\partial \mathbf{h}_T}{\partial \mathbf{h}_{T-1}}\,\frac{\partial \mathbf{h}_{T-1}}{\partial \mathbf{h}_{T-2}}\cdots\frac{\partial \mathbf{h}_{k+1}}{\partial \mathbf{h}_k}
+= \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T} \prod_{t=k+1}^{T} \frac{\partial \mathbf{h}_t}{\partial \mathbf{h}_{t-1}}
 $$
 
-Each factor is $\dfrac{\partial \mathbf{h}_t}{\partial \mathbf{h}_{t-1}} = W_{hh}^{\top}\,\mathrm{diag}\big(\tanh'(\cdot)\big)$. So the gradient over a gap of $T-k$ steps is a **product of $T-k$ such matrices**.
+So the gradient over a gap of $T-k$ steps is a **product of $T-k$ Jacobians**. Everything hinges on what one of those Jacobians looks like.
+
+### Deriving one step's Jacobian
+
+The recurrence is $\mathbf{h}_t = \tanh(\mathbf{a}_t)$ where the **pre-activation** is $\mathbf{a}_t = W_{hh}\mathbf{h}_{t-1} + W_{xh}\mathbf{x}_t + \mathbf{b}$. Differentiate component-by-component. For output unit $i$ and input unit $j$:
+
+$$
+\frac{\partial h_{t,i}}{\partial h_{t-1,j}}
+= \underbrace{\tanh'(a_{t,i})}_{\text{outer: activation}}\cdot\underbrace{\frac{\partial a_{t,i}}{\partial h_{t-1,j}}}_{= \,(W_{hh})_{ij}}
+= \tanh'(a_{t,i})\,(W_{hh})_{ij}
+$$
+
+The $\tanh'(a_{t,i})$ factor depends only on the row $i$, so collecting all $i,j$ into a matrix puts those factors on a diagonal:
+
+$$
+\boxed{\;\frac{\partial \mathbf{h}_t}{\partial \mathbf{h}_{t-1}} = \mathrm{diag}\!\big(\tanh'(\mathbf{a}_t)\big)\,W_{hh}\;}
+$$
+
+In backprop we propagate the gradient *backward*, which uses the transpose: $\mathbf{d}\mathbf{h}_{t-1} = W_{hh}^{\top}\,\mathrm{diag}(\tanh'(\mathbf{a}_t))\,\mathbf{d}\mathbf{h}_t$. Either way, **each step back multiplies by one copy of $W_{hh}$ and one diagonal of $\tanh'$ values.**
 
 <VanishingGradientViz />
 
 ## Why gradients vanish (or explode)
 
-A product of many similar matrices behaves like raising a number to a power. Look at the largest singular value $\lambda$ of $W_{hh}$ (roughly, its "gain"):
-
-- **$\lambda < 1$** → the product shrinks like $\lambda^{T-k} \to 0$. The gradient **vanishes**. Distant steps receive almost no learning signal.
-- **$\lambda > 1$** → the product grows like $\lambda^{T-k} \to \infty$. The gradient **explodes**. Updates become huge and unstable (NaNs).
-
-The $\tanh'$ term makes vanishing *worse*: $\tanh'(z) = 1 - \tanh^2(z) \le 1$, and it is near 0 whenever the unit saturates.
-
-### Worked example
-
-Suppose the effective per-step gradient factor is $0.7$. Over a gap of 20 steps:
+Substitute the Jacobian into the product. Over the gap $k \to T$:
 
 $$
-0.7^{20} \approx 0.0008
+\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k} = \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T} \prod_{t=k+1}^{T} \mathrm{diag}\!\big(\tanh'(\mathbf{a}_t)\big)\,W_{hh}
 $$
 
-The signal from 20 steps ago arrives at less than **0.1%** strength — effectively zero. With a factor of $1.3$ instead:
+Take norms and use $\|AB\| \le \|A\|\,\|B\|$ (submultiplicativity). Let $\gamma = \max_z \tanh'(z) = \tanh'(0) = 1$ bound the diagonal, and let $\|W_{hh}\|$ be the spectral norm (largest singular value). Every one of the $T-k$ factors is bounded the same way, so:
 
 $$
-1.3^{20} \approx 190
+\left\|\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k}\right\|
+\;\le\; \left\|\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}\right\|\;\big(\,\|W_{hh}\|\cdot\gamma\,\big)^{T-k}
 $$
 
-— a 190× blow-up. There is almost no "safe" value: only exactly 1 keeps the signal stable, and a learned matrix never sits there.
+That exponent $T-k$ is the whole story. Writing $\lambda = \|W_{hh}\|$ (its "gain" per step, $\gamma \le 1$):
+
+- **$\lambda < 1$** → the bound shrinks like $\lambda^{T-k} \to 0$. The gradient **vanishes**: distant steps receive almost no learning signal.
+- **$\lambda > 1$** → the matrix has a direction it stretches, the product grows like $\lambda^{T-k} \to \infty$, and the gradient **explodes** (huge updates, NaNs).
+- **$\lambda = 1$** is the only stable knife-edge — and a *learned* matrix never sits exactly there.
+
+The same picture holds with the largest eigenvalue (spectral radius) for the long-run growth rate: a product of a matrix with itself grows like $\rho(W_{hh})^{T-k}$ along its dominant eigenvector.
+
+The $\tanh'$ term only makes vanishing **worse**, never better: $\tanh'(z) = 1 - \tanh^2(z) \in (0, 1]$. It equals 1 *only* at $z = 0$ and collapses toward 0 the moment a unit saturates ($\tanh'(1) \approx 0.42$, $\tanh'(2) \approx 0.07$). So the effective per-step gain is $\|W_{hh}\| \cdot \gamma_t \le \|W_{hh}\|$ — it can pull a borderline-stable RNN below 1, but it can never lift a vanishing one back up.
+
+### Worked example: a concrete spectral radius
+
+Pick $W_{hh}$ with largest eigenvalue exactly $0.5$ (e.g. the diagonal matrix $\mathrm{diag}(0.5, 0.3)$, whose $n$-th power is $\mathrm{diag}(0.5^n, 0.3^n)$, so its norm decays like $0.5^n$). With $\tanh' \le 1$ the gradient magnitude after $n = T-k$ steps is at most $0.5^n$:
+
+$$
+0.5^{1}=0.5,\quad 0.5^{10}\approx 9.8\times10^{-4},\quad 0.5^{20}\approx 9.5\times10^{-7},\quad 0.5^{50}\approx 8.9\times10^{-16}
+$$
+
+After 20 steps the signal is below **0.0001%** of full strength — numerically zero. Now take an eigenvalue of $1.5$ instead ($\mathrm{diag}(1.5, 1.2)$, norm grows like $1.5^n$):
+
+$$
+1.5^{1}=1.5,\quad 1.5^{10}\approx 57.7,\quad 1.5^{20}\approx 3.3\times10^{3},\quad 1.5^{50}\approx 6.4\times10^{8}
+$$
+
+— a $3300\times$ blow-up by 20 steps. Folding in a *typical* saturated $\tanh' \approx 0.4$ makes the decaying case even more brutal: the per-step gain becomes $0.5 \times 0.4 = 0.2$, so $0.2^{10}\approx 10^{-7}$ — the signal is gone in ten steps.
 
 ```python
-import numpy as np
+# Pure-stdlib: no numpy needed. Per-step gain = spectral_radius * max|tanh'|.
+import math
 
-for factor in [0.7, 0.9, 1.0, 1.1, 1.3]:
-    for gap in [5, 10, 20, 50]:
-        print(f"factor={factor}, gap={gap:>2}: {factor**gap:.2e}")
+def tanh_prime(z):
+    return 1 - math.tanh(z)**2
+
+print("max tanh'(z) is at z=0:", round(tanh_prime(0.0), 4),
+      "| saturated tanh'(2):", round(tanh_prime(2.0), 4))
+print()
+
+for radius in [0.5, 1.0, 1.5]:               # eigenvalue / spectral radius of W_hh
+    print(f"spectral radius = {radius}  (tanh' <= 1, so gain <= {radius})")
+    for gap in [1, 10, 20, 50]:
+        print(f"    gap={gap:>2}: ||grad|| ~ {radius**gap:.3e}")
     print()
 ```
 
@@ -103,7 +147,7 @@ hidden = hidden.detach()   # keep the value, drop the gradient history
 
 ## The real fix is architectural
 
-You cannot tune your way out of vanishing gradients — change the architecture so gradients have a **highway** to flow along unchanged. That is exactly what LSTMs and GRUs do with their **cell state** and **gates**, the topic of the next lesson.
+You cannot tune your way out of vanishing gradients: the bound $(\|W_{hh}\|\cdot\gamma)^{T-k}$ is exponential in the gap no matter how you initialize, because *every* path back multiplies by $W_{hh}$ and $\tanh'$. The fix is to change the architecture so there is a path whose per-step Jacobian is $\approx 1$ instead of $\|W_{hh}\|\cdot\gamma$. That is exactly what LSTMs and GRUs do: their **cell state** is updated additively ($c_t \approx c_{t-1} + \text{(stuff)}$), so $\partial c_t/\partial c_{t-1} \approx 1$ and the product of Jacobians stays near 1 over long gaps — a gradient **highway**. The next lesson derives those gates.
 
 | Problem | Symptom | Fix |
 |---------|---------|-----|
@@ -119,9 +163,10 @@ You cannot tune your way out of vanishing gradients — change the architecture 
 ## Key takeaways
 
 - **BPTT** is backprop on the unrolled network; one weight matrix appears at every step.
-- Repeated multiplication makes gradients **vanish** (gain below 1) or **explode** (gain above 1).
-- **Gradient clipping** fixes explosions but not vanishing.
-- Vanishing needs an architectural fix — gated cells.
+- One step's Jacobian is $\partial\mathbf{h}_t/\partial\mathbf{h}_{t-1} = \mathrm{diag}(\tanh'(\mathbf{a}_t))\,W_{hh}$; the gap-$(T-k)$ gradient is a **product of $T-k$** of these.
+- That product is bounded by $(\|W_{hh}\|\cdot\gamma)^{T-k}$, so gradients **vanish** (gain below 1) or **explode** (gain above 1) *exponentially* in the gap.
+- $\tanh' \le 1$ only ever makes vanishing **worse**, never lifts it back.
+- **Gradient clipping** fixes explosions but not vanishing; vanishing needs an architectural fix — gated cells whose Jacobian is $\approx 1$.
 
 ## Related concepts
 
