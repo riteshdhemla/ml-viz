@@ -38,7 +38,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 - [x] ensemble-methods/02-boosting — lesson: derived α=½ln((1−ε)/ε) as minimizer of exp loss (1−ε)e^−α+εe^α; +worked one-round AdaBoost (10 pts, ε=0.2→α=0.693, reweight correct×0.5/wrong×2, normalize→0.0625/0.25, misclassified now hold exactly 0.5 weight = general identity). notebook: +one-round-by-hand cell verifying α, reweight, and the 0.5-weight identity.
 
 ## Deep learning
-- [ ] cnns/01-convolution-operation
+- [x] cnns/01-convolution-operation — lesson: FIXED param-count contradiction (callout said 1728, code said 1792 — missing 64 biases; now C_out(C_in·f²+1)=64·28=1792 broken out); +output-size derivation (count valid left-edge positions) + worked table (5→3, 7/p1/s2→4, 32 same, 28/f5→24); +varied worked example (4×4 input + Sobel → [[-4,-4],[4,-4]]) since checkerboard gave all-0; fixed scipy convolve2d to flip K (true cross-correlation). notebook: +by-hand 4×4 conv cell (every window printed, matches [[-4,-4],[4,-4]]) + param weights/bias breakdown. [scouted via read-only Explore sub-agent; numbers re-verified in pure-python]
 - [ ] cnns/02-pooling-and-architectures
 - [ ] cnns/03-transfer-learning
 - [ ] rnns/01-recurrent-neural-networks
