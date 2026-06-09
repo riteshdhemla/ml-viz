@@ -29,18 +29,62 @@ where $C_k$ is the set of points in cluster $k$ and $\boldsymbol{\mu}_k$ is its 
   Imagine hanging $K$ magnets on a whiteboard and placing nails near each. Each nail jumps to the nearest magnet, then each magnet moves to the center of its nails. Repeat until nothing moves.
 </Callout>
 
+### Why update to the mean?
+
+The two steps are not arbitrary — each one **provably decreases $J$**:
+
+- **Assign step.** With the centroids fixed, $J$ is a sum of per-point terms $\|\mathbf{x}_i - \boldsymbol{\mu}_{k}\|^2$. Sending each point to its *nearest* centroid minimizes its term, so it minimizes $J$ over all possible assignments.
+- **Update step.** With the assignments fixed, the centroids decouple — cluster $k$ only appears in $\sum_{\mathbf{x}_i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$. Minimize it by setting the gradient to zero:
+
+$$
+\frac{\partial}{\partial \boldsymbol{\mu}_k} \sum_{\mathbf{x}_i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2
+= \sum_{\mathbf{x}_i \in C_k} -2(\mathbf{x}_i - \boldsymbol{\mu}_k) = \mathbf{0}
+$$
+
+$$
+\Rightarrow \sum_{\mathbf{x}_i \in C_k} \mathbf{x}_i = |C_k|\,\boldsymbol{\mu}_k
+\quad\Rightarrow\quad
+\boldsymbol{\mu}_k = \frac{1}{|C_k|}\sum_{\mathbf{x}_i \in C_k} \mathbf{x}_i
+$$
+
+So **the mean is the point that minimizes within-cluster squared distance** — that is *why* the update sets each centroid to its cluster's mean. Since both steps only ever lower $J$ and there are finitely many assignments, K-Means must converge (to a local optimum).
+
 ### Worked example
 
-5 points in 2D: $(1,1), (1.5,2), (3,4), (5,7), (3.5,5)$. $K=2$.
+5 points in 2D: $A(1,1),\, B(1.5,2),\, C(3,4),\, D(5,7),\, E(3.5,5)$. $K=2$.
 
-**Iteration 1:**
-- Initialize centroids: $\boldsymbol{\mu}_1 = (1,1)$, $\boldsymbol{\mu}_2 = (5,7)$
-- Assign: $(1,1) \to C_1$, $(1.5,2) \to C_1$, $(3,4) \to C_1$, $(5,7) \to C_2$, $(3.5,5) \to C_2$
-- Update: $\boldsymbol{\mu}_1 = (1.83, 2.33)$, $\boldsymbol{\mu}_2 = (4.25, 6.0)$
+**Initialize:** $\boldsymbol{\mu}_1 = (1,1)$, $\boldsymbol{\mu}_2 = (3.5,5)$.
 
-**Iteration 2:**
-- Reassign (same assignments — converged!)
-- Final clusters: $C_1 = \{(1,1), (1.5,2), (3,4)\}$, $C_2 = \{(5,7), (3.5,5)\}$
+**Iteration 1 — assign** (squared distance to each centroid; pick the smaller):
+
+| point | $\|\mathbf{x}-\boldsymbol{\mu}_1\|^2$ | $\|\mathbf{x}-\boldsymbol{\mu}_2\|^2$ | cluster |
+|-------|------|------|---------|
+| $A(1,1)$   | $0$    | $6.25+16=22.25$ | $C_1$ |
+| $B(1.5,2)$ | $0.25+1=1.25$ | $4+9=13$ | $C_1$ |
+| $C(3,4)$   | $4+9=13$ | $0.25+1=1.25$ | $C_2$ |
+| $D(5,7)$   | $16+36=52$ | $2.25+4=6.25$ | $C_2$ |
+| $E(3.5,5)$ | $6.25+16=22.25$ | $0$ | $C_2$ |
+
+So $C_1=\{A,B\}$, $C_2=\{C,D,E\}$. The objective with these *old* centroids is
+
+$$
+J_{\text{before}} = (0 + 1.25) + (1.25 + 6.25 + 0) = 8.75.
+$$
+
+**Iteration 1 — update** (mean of each cluster):
+
+$$
+\boldsymbol{\mu}_1 = \tfrac{1}{2}\big((1,1)+(1.5,2)\big) = (1.25,\,1.5)
+$$
+$$
+\boldsymbol{\mu}_2 = \tfrac{1}{3}\big((3,4)+(5,7)+(3.5,5)\big) = (3.83,\,5.33)
+$$
+
+Recomputing $J$ with the new centroids gives $J_{\text{after}} \approx 7.46 < 8.75$ — the update step lowered the objective, exactly as the derivation guarantees.
+
+**Iteration 2 — reassign:** every point is still closest to its own cluster's new centroid (check $A,B \to C_1$; $C,D,E \to C_2$), so assignments don't change. **Converged.**
+
+Final clusters: $C_1 = \{A, B\}$, $C_2 = \{C, D, E\}$.
 
 ```python
 import numpy as np
