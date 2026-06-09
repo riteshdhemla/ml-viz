@@ -8,7 +8,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 - [x] linear-algebra/01-vectors-and-spaces — lesson: Projection derivation + dependent/independent worked example + rank callout. notebook: +projection-derivation cell (residual ⟂ a) +linear-independence/rank/solve cell.
 - [x] linear-algebra/02-matrices-and-transformations — lesson: worked RS matmul example + determinant subsection (area scaling, det=0⇒singular). notebook: determinant-as-area cell (ad-bc vs shoelace area vs np.det).
 - [x] linear-algebra/03-eigenvalues-and-eigenvectors — lesson: full (A−λI)v=0 nullspace algebra for both eigenvectors. notebook: by-hand characteristic poly (λ²−trλ+det) + nullspace eigvec + trace/det identity checks.
-- [ ] calculus-for-ml/01-derivatives-and-gradients
+- [x] calculus-for-ml/01-derivatives-and-gradients — lesson: full σ′=σ(1−σ) chain-rule derivation. notebook: FIXED Py<3.12 f-string SyntaxError in grad table (nested quotes→.format); added sigmoid-derivative derive+verify cell. Added per-cell AST-parse to verify routine.
 - [ ] calculus-for-ml/02-chain-rule-and-backpropagation
 - [ ] calculus-for-ml/03-multivariable-optimization
 - [ ] probability-statistics/01-probability-distributions
