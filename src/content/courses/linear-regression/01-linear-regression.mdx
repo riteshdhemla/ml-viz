@@ -28,43 +28,126 @@ Each weight $w_j$ tells you how much $y$ changes when $x_j$ increases by one uni
 
 ## Ordinary Least Squares (OLS)
 
-We find the weights that minimize the mean squared error:
+We find the weights that minimize the mean squared error (MSE):
 
 $$
 \mathcal{L}(\mathbf{w}) = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 = \frac{1}{n} \| \mathbf{y} - X\mathbf{w} \|^2
 $$
 
-Taking the gradient and setting it to zero gives the **closed-form solution**:
+The $\frac{1}{n}$ is just a positive constant — it does not move the location of the minimum, so to keep the algebra clean we minimize the plain sum of squared errors $\| \mathbf{y} - X\mathbf{w} \|^2$ instead. The minimizer is identical.
+
+### Deriving the normal equation, step by step
+
+We want the $\mathbf{w}$ that makes the gradient of the loss zero. Start by expanding the squared norm. Recall that $\|\mathbf{v}\|^2 = \mathbf{v}^\top\mathbf{v}$, so with $\mathbf{v} = \mathbf{y} - X\mathbf{w}$:
 
 $$
-\mathbf{w}^* = (X^T X)^{-1} X^T \mathbf{y}
+\| \mathbf{y} - X\mathbf{w} \|^2 = (\mathbf{y} - X\mathbf{w})^\top (\mathbf{y} - X\mathbf{w})
 $$
+
+**Step 1 — multiply it out.** Using $(\mathbf{a}-\mathbf{b})^\top(\mathbf{a}-\mathbf{b}) = \mathbf{a}^\top\mathbf{a} - 2\,\mathbf{a}^\top\mathbf{b} + \mathbf{b}^\top\mathbf{b}$ (valid because $\mathbf{y}^\top X\mathbf{w}$ is a scalar, so it equals its own transpose $\mathbf{w}^\top X^\top \mathbf{y}$):
+
+$$
+\mathcal{L}(\mathbf{w}) = \mathbf{y}^\top \mathbf{y} \;-\; 2\,\mathbf{w}^\top X^\top \mathbf{y} \;+\; \mathbf{w}^\top X^\top X \mathbf{w}
+$$
+
+**Step 2 — take the gradient with respect to $\mathbf{w}$.** We use two standard matrix-calculus identities:
+
+$$
+\nabla_{\mathbf{w}} \left( \mathbf{w}^\top \mathbf{b} \right) = \mathbf{b}, \qquad \nabla_{\mathbf{w}} \left( \mathbf{w}^\top A \mathbf{w} \right) = 2 A \mathbf{w} \quad (\text{for symmetric } A)
+$$
+
+Here $A = X^\top X$ is symmetric. The first term $\mathbf{y}^\top\mathbf{y}$ has no $\mathbf{w}$, so its gradient is $\mathbf{0}$:
+
+$$
+\nabla_{\mathbf{w}} \mathcal{L} = \mathbf{0} \;-\; 2 X^\top \mathbf{y} \;+\; 2 X^\top X \mathbf{w}
+$$
+
+**Step 3 — set the gradient to zero.** This is the *normal equation*:
+
+$$
+-2 X^\top \mathbf{y} + 2 X^\top X \mathbf{w} = \mathbf{0}
+\quad\Longrightarrow\quad
+X^\top X \,\mathbf{w} = X^\top \mathbf{y}
+$$
+
+**Step 4 — solve for $\mathbf{w}$** by left-multiplying both sides by $(X^\top X)^{-1}$:
+
+$$
+\boxed{\;\mathbf{w}^* = (X^\top X)^{-1} X^\top \mathbf{y}\;}
+$$
+
+This is a genuine minimum (not a maximum or saddle) because the Hessian $\nabla^2_{\mathbf{w}}\mathcal{L} = 2X^\top X$ is positive semi-definite — the loss is convex, so the single stationary point is the global minimum.
 
 <Callout type="info" title="Why closed-form matters">
-  Unlike gradient descent, OLS gives you the exact answer in one computation. No learning rate to tune, no convergence to worry about. But it requires $X^T X$ to be invertible — which fails when features are perfectly correlated or when $d > n$ (more features than samples).
+  Unlike gradient descent, OLS gives you the exact answer in one computation. No learning rate to tune, no convergence to worry about. But it requires $X^\top X$ to be invertible — which fails when features are perfectly correlated (collinearity) or when $d > n$ (more features than samples).
 </Callout>
 
-### Worked example
+### A tiny least-squares fit, done entirely by hand
 
-Suppose we have 3 data points: $(1, 2), (2, 3), (3, 5)$.
+Suppose we have 3 data points: $(x, y) = (1, 2),\ (2, 3),\ (3, 5)$. We fit $\hat{y} = w_0 + w_1 x$. The design matrix $X$ gets a leading column of ones for the bias $w_0$:
 
 $$
 X = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 2 \\ 3 \\ 5 \end{bmatrix}
 $$
 
+**Compute $X^\top X$** (a $2\times 2$ matrix). The top-left entry is $1^2+1^2+1^2 = 3$; the off-diagonal is $1\cdot1+1\cdot2+1\cdot3 = 6$; the bottom-right is $1^2+2^2+3^2 = 14$:
+
 $$
-X^T X = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}, \quad X^T \mathbf{y} = \begin{bmatrix} 10 \\ 23 \end{bmatrix}
+X^\top X = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}, \qquad
+X^\top \mathbf{y} = \begin{bmatrix} 2+3+5 \\ 1\cdot2 + 2\cdot3 + 3\cdot5 \end{bmatrix} = \begin{bmatrix} 10 \\ 23 \end{bmatrix}
+$$
+
+**Invert $X^\top X$.** For a $2\times2$ matrix $\begin{bmatrix} a & b \\ c & d \end{bmatrix}$ the inverse is $\frac{1}{ad-bc}\begin{bmatrix} d & -b \\ -c & a \end{bmatrix}$. Here the determinant is $3\cdot14 - 6\cdot6 = 42 - 36 = 6$:
+
+$$
+(X^\top X)^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}
+$$
+
+**Multiply** $(X^\top X)^{-1}$ by $X^\top\mathbf{y}$:
+
+$$
+\mathbf{w}^* = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 10 \\ 23 \end{bmatrix}
+= \frac{1}{6} \begin{bmatrix} 14\cdot10 - 6\cdot23 \\ -6\cdot10 + 3\cdot23 \end{bmatrix}
+= \frac{1}{6} \begin{bmatrix} 140 - 138 \\ -60 + 69 \end{bmatrix}
+= \frac{1}{6} \begin{bmatrix} 2 \\ 9 \end{bmatrix}
+= \begin{bmatrix} 0.333 \\ 1.5 \end{bmatrix}
+$$
+
+So the fitted line is $\hat{y} = 0.333 + 1.5\,x$. For a new point with $x = 4$ the prediction is $\hat{y} = 0.333 + 1.5\cdot4 = 6.333$.
+
+### Residuals and $R^2$ for this fit
+
+A **residual** is the gap between truth and prediction, $r_i = y_i - \hat{y}_i$. Plug each $x_i$ into the fitted line:
+
+$$
+\hat{y}_1 = 0.333 + 1.5\cdot1 = 1.833, \quad
+\hat{y}_2 = 0.333 + 1.5\cdot2 = 3.333, \quad
+\hat{y}_3 = 0.333 + 1.5\cdot3 = 4.833
 $$
 
 $$
-(X^T X)^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}
+r_1 = 2 - 1.833 = 0.167, \quad r_2 = 3 - 3.333 = -0.333, \quad r_3 = 5 - 4.833 = 0.167
 $$
 
+The **residual sum of squares** measures leftover error:
+
 $$
-\mathbf{w}^* = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 10 \\ 23 \end{bmatrix} = \begin{bmatrix} 0.33 \\ 1.5 \end{bmatrix}
+\text{SS}_{\text{res}} = \sum_i r_i^2 = 0.167^2 + (-0.333)^2 + 0.167^2 \approx 0.0278 + 0.111 + 0.0278 = 0.167
 $$
 
-So $\hat{y} = 0.33 + 1.5x$. For a new house with $x = 4$, the prediction is $\hat{y} = 6.33$.
+The **total sum of squares** measures how much $y$ varies around its mean $\bar{y} = \frac{2+3+5}{3} = 3.333$:
+
+$$
+\text{SS}_{\text{tot}} = \sum_i (y_i - \bar{y})^2 = (2-3.333)^2 + (3-3.333)^2 + (5-3.333)^2 \approx 1.778 + 0.111 + 2.778 = 4.667
+$$
+
+The **coefficient of determination** $R^2$ is the fraction of variance the model explains:
+
+$$
+R^2 = 1 - \frac{\text{SS}_{\text{res}}}{\text{SS}_{\text{tot}}} = 1 - \frac{0.167}{4.667} \approx 0.964
+$$
+
+So this line explains about **96%** of the variation in $y$. $R^2 = 1$ is a perfect fit; $R^2 = 0$ means the model does no better than always predicting the mean $\bar{y}$.
 
 <LinearRegressionViz />
 
@@ -73,17 +156,27 @@ So $\hat{y} = 0.33 + 1.5x$. For a new house with $x = 4$, the prediction is $\ha
 ```python
 import numpy as np
 
-# Data
-X = np.array([[1, 1], [1, 2], [1, 3]])  # column of ones for bias
+# Data: a leading column of ones encodes the bias w0
+X = np.array([[1, 1], [1, 2], [1, 3]])
 y = np.array([2, 3, 5])
 
-# Closed-form solution
+# Closed-form normal equation: w = (X^T X)^-1 X^T y
 w = np.linalg.inv(X.T @ X) @ X.T @ y
-print(f"Weights: {w}")  # [0.33, 1.5]
+print("Weights [w0, w1]:", w.round(3))   # [0.333 1.5]
 
-# Predict
+# Predictions and residuals
+y_hat = X @ w
+resid = y - y_hat
+print("Residuals:", resid.round(3))      # [ 0.167 -0.333  0.167]
+
+# R^2 = 1 - SS_res / SS_tot
+ss_res = (resid ** 2).sum()
+ss_tot = ((y - y.mean()) ** 2).sum()
+print("R^2:", round(1 - ss_res / ss_tot, 3))  # 0.964
+
+# Predict a new point x = 4
 x_new = np.array([1, 4])  # bias=1, feature=4
-print(f"Prediction: {x_new @ w}")  # 6.33
+print("Prediction at x=4:", round(x_new @ w, 3))  # 6.333
 ```
 
 ## The problem: overfitting
@@ -103,13 +196,21 @@ $$
 \mathcal{L}_{\text{Ridge}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|^2
 $$
 
-The closed-form solution becomes:
+The derivation mirrors OLS. The extra penalty $\lambda\|\mathbf{w}\|^2 = \lambda\,\mathbf{w}^\top\mathbf{w}$ has gradient $2\lambda\mathbf{w}$, so setting the full gradient to zero gives:
 
 $$
-\mathbf{w}^* = (X^T X + \lambda I)^{-1} X^T \mathbf{y}
+-2X^\top\mathbf{y} + 2X^\top X\mathbf{w} + 2\lambda\mathbf{w} = \mathbf{0}
+\;\Longrightarrow\;
+(X^\top X + \lambda I)\,\mathbf{w} = X^\top\mathbf{y}
 $$
 
-The $\lambda I$ term ensures $X^T X + \lambda I$ is always invertible and shrinks all weights toward zero.
+so the closed-form solution becomes:
+
+$$
+\mathbf{w}^* = (X^\top X + \lambda I)^{-1} X^\top \mathbf{y}
+$$
+
+The $\lambda I$ term adds a positive amount to every eigenvalue of $X^\top X$, which guarantees $X^\top X + \lambda I$ is always invertible (even when $X^\top X$ alone is singular) and shrinks all weights toward zero.
 
 <Callout type="info" title="Effect of λ">
   $\lambda = 0$: equivalent to OLS. As $\lambda \to \infty$: all weights shrink to zero (model predicts the mean). The optimal $\lambda$ balances fit and complexity — typically found via cross-validation.
