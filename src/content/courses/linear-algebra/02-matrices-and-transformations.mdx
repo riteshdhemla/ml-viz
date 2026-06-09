@@ -53,6 +53,16 @@ $$
 
 The $(i,j)$ entry is the dot product of row $i$ of $\mathbf{A}$ with column $j$ of $\mathbf{B}$.
 
+### Worked example
+
+Compose a 90° rotation $\mathbf{R} = \begin{bmatrix}0&-1\\1&0\end{bmatrix}$ with a scale $\mathbf{S} = \begin{bmatrix}2&0\\0&3\end{bmatrix}$. Each entry of $\mathbf{RS}$ is row of $\mathbf{R}$ · column of $\mathbf{S}$:
+
+$$
+\mathbf{RS} = \begin{bmatrix} 0\cdot2 + (-1)\cdot0 & 0\cdot0 + (-1)\cdot3 \\ 1\cdot2 + 0\cdot0 & 1\cdot0 + 0\cdot3 \end{bmatrix} = \begin{bmatrix} 0 & -3 \\ 2 & 0 \end{bmatrix}
+$$
+
+Read the columns: $\mathbf{e}_1=[1,0]$ is first scaled to $[2,0]$ then rotated to $[0,2]$ — exactly column 1 of $\mathbf{RS}$. The product *is* "do $\mathbf{S}$, then $\mathbf{R}$."
+
 **Key properties:**
 - Not commutative: $\mathbf{AB} \neq \mathbf{BA}$ in general
 - Associative: $(\mathbf{AB})\mathbf{C} = \mathbf{A}(\mathbf{BC})$
@@ -91,7 +101,21 @@ The **rank** of $\mathbf{A}$ is the dimension of its column space — the number
 - **Full rank:** $\text{rank}(\mathbf{A}) = \min(m, n)$. For square $n\times n$ matrices, full rank ↔ invertible.
 - **Rank deficient:** some columns are redundant (linearly dependent).
 
-A square matrix $\mathbf{A}$ is **invertible** iff $\det(\mathbf{A}) \neq 0$, and then $\mathbf{A}^{-1}$ satisfies $\mathbf{A}\mathbf{A}^{-1} = \mathbf{I}$.
+### The determinant
+
+The **determinant** measures the *signed factor by which a transformation scales area* (volume in higher dimensions). For a $2\times2$ matrix:
+
+$$
+\det\begin{bmatrix}a&b\\c&d\end{bmatrix} = ad - bc
+$$
+
+Geometrically, the unit square (area 1) becomes a parallelogram of area $|\det|$. So:
+
+- $|\det| > 1$ expands area, $|\det| < 1$ shrinks it.
+- $\det < 0$ means the transformation **flips orientation** (a reflection).
+- $\det = 0$ means the square collapses to a line (area 0) — the map squashes 2D down to 1D, throwing away a dimension. You can't undo that, which is exactly why **$\det = 0 \Leftrightarrow$ not invertible**.
+
+The interactive figure above shows the determinant updating as you change the matrix. A square matrix $\mathbf{A}$ is **invertible** iff $\det(\mathbf{A}) \neq 0$, and then $\mathbf{A}^{-1}$ satisfies $\mathbf{A}\mathbf{A}^{-1} = \mathbf{I}$.
 
 <Callout type="warning" title="When matrices are not invertible">
   Rank-deficient matrices map multiple inputs to the same output — information is lost. In ML, this shows up as multicollinear features (OLS fails) or as underdetermined systems (more unknowns than equations).
