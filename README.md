@@ -26,10 +26,6 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Deploy to Vercel
 
-### One-click (first-time setup)
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Friteshdhemla%2Fml-viz&env=NEXT_PUBLIC_SITE_URL&envDescription=Your%20production%20URL%20(e.g.%20https%3A%2F%2Fml-viz.vercel.app)&project-name=ml-viz&repository-name=ml-viz)
-
 ### CD pipeline — auto-deploy on release tag
 
 Pushes to `main` **do not** auto-deploy. Production deploys are triggered by a release tag.
