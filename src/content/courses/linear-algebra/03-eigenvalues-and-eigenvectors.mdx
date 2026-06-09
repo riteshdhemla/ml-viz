@@ -48,8 +48,21 @@ $$
 (4-\lambda)(3-\lambda) - 2 = \lambda^2 - 7\lambda + 10 = 0 \implies \lambda_1 = 5,\; \lambda_2 = 2
 $$
 
-For $\lambda_1 = 5$: $(\mathbf{A} - 5\mathbf{I})\mathbf{v} = \mathbf{0}$ gives $\mathbf{v}_1 = [1, 1]^\top$.
-For $\lambda_2 = 2$: $\mathbf{v}_2 = [1, -2]^\top$.
+Now solve $(\mathbf{A} - \lambda\mathbf{I})\mathbf{v} = \mathbf{0}$ for each $\lambda$ — substitute the eigenvalue, then read off the direction the rows force.
+
+**For $\lambda_1 = 5$:**
+$$
+\mathbf{A} - 5\mathbf{I} = \begin{bmatrix}4-5 & 1 \\ 2 & 3-5\end{bmatrix} = \begin{bmatrix}-1 & 1 \\ 2 & -2\end{bmatrix}
+$$
+The top row gives $-v_x + v_y = 0 \Rightarrow v_y = v_x$, so $\mathbf{v}_1 = [1, 1]^\top$ (any non-zero scaling works).
+
+**For $\lambda_2 = 2$:**
+$$
+\mathbf{A} - 2\mathbf{I} = \begin{bmatrix}2 & 1 \\ 2 & 1\end{bmatrix}
+$$
+The row gives $2v_x + v_y = 0 \Rightarrow v_y = -2v_x$, so $\mathbf{v}_2 = [1, -2]^\top$.
+
+Both rows of each $(\mathbf{A}-\lambda\mathbf{I})$ are multiples of one another — that redundancy (the matrix is singular by construction) is *why* a whole line of eigenvectors exists rather than a single point.
 
 ```python
 import numpy as np
