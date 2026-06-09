@@ -38,11 +38,28 @@ $$
 K(\mathbf{x}_i, \mathbf{x}_j) = (\gamma \, \mathbf{x}_i^T \mathbf{x}_j + r)^d
 $$
 
-Maps to a space of all monomials up to degree $d$. For $d=2$ and 2D input $(x_1, x_2)$:
+Maps to a space of all monomials up to degree $d$. For $d=2$, $\gamma=1$, $r=1$ and 2D input $(x_1, x_2)$:
 
 $$
-\phi(x_1, x_2) = (x_1^2, x_2^2, \sqrt{2} x_1 x_2, \sqrt{2} x_1, \sqrt{2} x_2, 1)
+\phi(x_1, x_2) = (x_1^2,\; x_2^2,\; \sqrt{2}\, x_1 x_2,\; \sqrt{2}\, x_1,\; \sqrt{2}\, x_2,\; 1)
 $$
+
+**Why this $\phi$ works — expand the kernel.** Take two points $\mathbf x=(x_1,x_2)$, $\mathbf z=(z_1,z_2)$ and expand the kernel directly:
+
+$$
+(\mathbf{x}^\top\mathbf{z}+1)^2 = (x_1 z_1 + x_2 z_2 + 1)^2
+$$
+$$
+= x_1^2 z_1^2 + x_2^2 z_2^2 + 2x_1 x_2 z_1 z_2 + 2x_1 z_1 + 2 x_2 z_2 + 1.
+$$
+
+Now group the cross terms using $2ab=(\sqrt2 a)(\sqrt2 b)$ — this is exactly $\phi(\mathbf x)^\top\phi(\mathbf z)$:
+
+$$
+= \underbrace{x_1^2 z_1^2}_{} + \underbrace{x_2^2 z_2^2}_{} + \underbrace{(\sqrt2 x_1x_2)(\sqrt2 z_1z_2)}_{} + \underbrace{(\sqrt2 x_1)(\sqrt2 z_1)}_{} + \underbrace{(\sqrt2 x_2)(\sqrt2 z_2)}_{} + \underbrace{1\cdot1}_{}.
+$$
+
+So the $\sqrt2$ factors in $\phi$ are exactly what's needed to make the explicit dot product equal the cheap kernel evaluation. We get a 6-D feature space for the cost of one dot product and a square — **that's the trick.**
 
 ### RBF (Gaussian) kernel
 
@@ -69,7 +86,18 @@ Similar to a neural network with one hidden layer. Less commonly used.
 
 ## Worked example
 
-Two classes that are not linearly separable:
+**Numeric check of the trick.** Let $\mathbf x=(1,2)$, $\mathbf z=(3,-1)$.
+
+- Cheap kernel: $\mathbf x^\top\mathbf z = 1{\cdot}3 + 2{\cdot}(-1) = 1$, so $(\mathbf x^\top\mathbf z+1)^2 = 2^2 = 4$.
+- Explicit map: $\phi(\mathbf x)=(1,4,2\sqrt2,\sqrt2,2\sqrt2,1)$, $\phi(\mathbf z)=(9,1,-3\sqrt2,3\sqrt2,-\sqrt2,1)$. Their dot product is $9+4-12+6-4+1 = 4$. ✓
+
+Same answer — but the kernel never built the 6-D vectors. For an RBF kernel the equivalent $\phi$ is **infinite-dimensional** (its Taylor expansion has every monomial), yet $K$ is still one cheap exponential.
+
+<Callout type="info" title="What makes a function a valid kernel?">
+  Not every $K$ corresponds to some $\phi$. **Mercer's condition:** $K$ is a valid kernel iff for every finite set of points the Gram matrix $K_{ij}=K(\mathbf x_i,\mathbf x_j)$ is symmetric **positive semi-definite**. Linear, polynomial, and RBF all satisfy this; the sigmoid kernel does *not* in general, which is why it can misbehave.
+</Callout>
+
+Now a non-separable dataset where only a kernel can succeed:
 
 ```python
 import numpy as np

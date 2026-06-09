@@ -33,7 +33,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 
 ## Supervised — intermediate
 - [x] svm/01-maximum-margin — lesson: +derivation of margin=2/‖w‖ (signed dist (wᵀx+b)/‖w‖, rescale SVs to ±1 ⇒ half-width 1/‖w‖); FIXED broken worked example (old class−1 {(0,0),(1,0)} made (1,0) the true SV not (0,0), and w=[1,1]/b=−1.5 wasn't tight at ±1). New clean 6-pt example on y=x: SVs (2,2)&(0,0), solve 4a+b=1/b=−1 ⇒ w=(0.5,0.5),b=−1, margin=2√2=2.83=SV gap. notebook: +by-hand solve cell (margin eqns, y·f=1 at SVs, sklearn cross-check).
-- [ ] svm/02-kernel-trick
+- [x] svm/02-kernel-trick — lesson: added algebraic expansion proving (xᵀz+1)²=φ(x)ᵀφ(z) (shows where the √2 factors come from); +numeric worked example x=(1,2),z=(3,-1): kernel=4=φ·φ=9+4-12+6-4+1; +Mercer-condition callout (valid kernel ⇔ PSD Gram; sigmoid fails). notebook: +Mercer PSD Gram-matrix check across linear/poly/rbf/sigmoid (sigmoid min-eig<0).
 - [ ] ensemble-methods/01-bagging-and-random-forests
 - [ ] ensemble-methods/02-boosting
 
