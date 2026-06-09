@@ -26,6 +26,14 @@ $$
 h'(x) = \sigma'(g) \cdot 6x = \sigma(3x^2)(1 - \sigma(3x^2)) \cdot 6x
 $$
 
+The trick that powers backprop is to read this **right to left**. We never write the whole derivative as one giant formula. Instead each elementary operation contributes one local factor, and we multiply those factors together:
+
+$$
+\underbrace{\frac{dh}{dx}}_{\text{what we want}} = \underbrace{\frac{dh}{dg}}_{\sigma'(g)} \cdot \underbrace{\frac{dg}{dx}}_{6x}
+$$
+
+If a third operation were stacked on top, say $p = h^2$, we would simply prepend one more factor: $\frac{dp}{dx} = \frac{dp}{dh}\cdot\frac{dh}{dg}\cdot\frac{dg}{dx}$. Backprop is nothing more than this — a chain of single-operation derivatives multiplied together.
+
 ## Multivariable chain rule
 
 For $z = f(x, y)$ where $x = x(t)$ and $y = y(t)$:
@@ -82,9 +90,74 @@ $$
   Each node stores its **local gradient** (derivative of output w.r.t. its inputs). During backprop, it multiplies the incoming upstream gradient by the local gradient and passes it back. The chain rule is always: local × upstream.
 </Callout>
 
+### A fully worked numeric pass
+
+Let's run the squared-error graph with real numbers so every multiplication is concrete. Take a single weight $w$ and feature $x$, so $z = wx$ (a one-element dot product), with
+
+$$
+w = 2, \quad x = 3, \quad y = 5.
+$$
+
+**Forward pass** — compute and *cache* each intermediate value:
+
+$$
+z = wx = 2 \cdot 3 = 6, \qquad r = z - y = 6 - 5 = 1, \qquad L = r^2 = 1.
+$$
+
+**Backward pass** — start at the output with $\frac{\partial L}{\partial L} = 1$ and walk back, multiplying upstream × local at each node:
+
+$$
+\frac{\partial L}{\partial r} = \underbrace{1}_{\text{upstream}} \cdot \underbrace{2r}_{\text{local}} = 2 \cdot 1 = 2
+$$
+
+$$
+\frac{\partial L}{\partial z} = \underbrace{2}_{\partial L/\partial r} \cdot \underbrace{1}_{\partial r/\partial z} = 2
+$$
+
+$$
+\frac{\partial L}{\partial w} = \underbrace{2}_{\partial L/\partial z} \cdot \underbrace{x}_{\partial z/\partial w} = 2 \cdot 3 = 6
+$$
+
+So $\frac{\partial L}{\partial w} = 6$. We can sanity-check against the closed form $L = (wx-y)^2 \Rightarrow \frac{\partial L}{\partial w} = 2(wx-y)x = 2(1)(3) = 6$. ✅ The notebook reproduces this and confirms it against a finite-difference estimate.
+
 ## Worked example: one hidden layer
 
-Network: $\hat{y} = \sigma(\mathbf{w}_2^\top \text{ReLU}(\mathbf{W}_1 \mathbf{x} + \mathbf{b}_1) + b_2)$, loss $L = -y \ln\hat{y} - (1-y)\ln(1-\hat{y})$.
+Now scale the *exact same procedure* up to a tiny MLP. Network:
+
+$$
+\hat{y} = \sigma\big(\mathbf{w}_2^\top \,\text{ReLU}(\mathbf{W}_1 \mathbf{x} + \mathbf{b}_1) + b_2\big), \qquad L = -y \ln\hat{y} - (1-y)\ln(1-\hat{y}).
+$$
+
+Name every intermediate node so we can attach a gradient to each one:
+
+$$
+\mathbf{z}_1 = \mathbf{W}_1\mathbf{x} + \mathbf{b}_1, \quad \mathbf{a}_1 = \text{ReLU}(\mathbf{z}_1), \quad z_2 = \mathbf{w}_2^\top\mathbf{a}_1 + b_2, \quad \hat{y} = \sigma(z_2).
+$$
+
+The backward pass is one chain-rule multiplication per node, output → input. The first step uses a classic simplification: for binary cross-entropy composed with sigmoid, the two local gradients collapse to a single clean expression,
+
+$$
+\frac{\partial L}{\partial z_2}
+= \underbrace{\frac{\partial L}{\partial \hat{y}}}_{\frac{\hat{y}-y}{\hat{y}(1-\hat{y})}}
+\cdot \underbrace{\frac{\partial \hat{y}}{\partial z_2}}_{\hat{y}(1-\hat{y})}
+= \hat{y} - y.
+$$
+
+From there each subsequent line is upstream × local:
+
+$$
+\frac{\partial L}{\partial \mathbf{w}_2} = \frac{\partial L}{\partial z_2}\,\mathbf{a}_1, \qquad
+\frac{\partial L}{\partial b_2} = \frac{\partial L}{\partial z_2}, \qquad
+\frac{\partial L}{\partial \mathbf{a}_1} = \frac{\partial L}{\partial z_2}\,\mathbf{w}_2
+$$
+
+$$
+\frac{\partial L}{\partial \mathbf{z}_1} = \frac{\partial L}{\partial \mathbf{a}_1}\odot \text{ReLU}'(\mathbf{z}_1), \qquad
+\frac{\partial L}{\partial \mathbf{W}_1} = \frac{\partial L}{\partial \mathbf{z}_1}\,\mathbf{x}^\top, \qquad
+\frac{\partial L}{\partial \mathbf{b}_1} = \frac{\partial L}{\partial \mathbf{z}_1}
+$$
+
+where $\odot$ is element-wise product and $\text{ReLU}'(\mathbf{z}_1)$ is $1$ where $\mathbf{z}_1 > 0$ and $0$ elsewhere. Notice how the cached forward values ($\mathbf{a}_1$, $\mathbf{w}_2$, $\mathbf{z}_1$, $\mathbf{x}$) are exactly what each local gradient needs — that reuse is why one backward pass suffices.
 
 ```python
 import numpy as np
@@ -106,13 +179,14 @@ z2    = w2 @ a1 + b2     # pre-activation output
 y_hat = sigmoid(z2)       # predicted probability
 L     = -(y * np.log(y_hat) + (1-y) * np.log(1-y_hat))
 
-# Backward pass
-dL_dz2 = y_hat - y                          # gradient of BCE + sigmoid
-dL_dw2 = dL_dz2 * a1
-dL_da1 = dL_dz2 * w2
-dL_dz1 = dL_da1 * (z1 > 0)                 # ReLU derivative
-dL_dW1 = np.outer(dL_dz1, x)
-dL_db1 = dL_dz1
+# Backward pass — one line per node, upstream × local
+dL_dz2 = y_hat - y                          # BCE + sigmoid collapse
+dL_dw2 = dL_dz2 * a1                         # × a1
+dL_db2 = dL_dz2                              # × 1
+dL_da1 = dL_dz2 * w2                         # × w2
+dL_dz1 = dL_da1 * (z1 > 0)                  # × ReLU'(z1)
+dL_dW1 = np.outer(dL_dz1, x)                # × xᵀ
+dL_db1 = dL_dz1                             # × 1
 ```
 
 ## Why backprop is efficient
