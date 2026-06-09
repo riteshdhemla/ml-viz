@@ -20,51 +20,195 @@ $$
 w \leftarrow w - \eta \cdot \frac{\partial L}{\partial w}
 $$
 
-Here $\eta$ is the **learning rate** — how big each step is.
+Here $\eta$ is the **learning rate** — how big each step is. We'll see exactly how it controls speed versus stability after the worked example below.
 
-<Callout type="warning" title="Learning rate matters">
-  Too large: you overshoot the minimum and diverge (the loss explodes to NaN).
-  Too small: training takes forever and may get stuck in shallow minima.
-</Callout>
-
-### Worked example
+### Warm-up: a single-parameter bowl
 
 Loss $L(w) = (w - 5)^2$, so the gradient is $\frac{dL}{dw} = 2(w - 5)$. Starting at $w = 2$ with $\eta = 0.1$:
 
 $$
-\nabla = 2(2 - 5) = -6 \quad\Rightarrow\quad w \leftarrow 2 - 0.1(-6) = 2.6
+\nabla = 2(2 - 5) = -6 \quad\Rightarrow\quad w \leftarrow 2 - 0.1\,(-6) = 2.6
 $$
 
-The negative gradient pushes $w$ toward 5, the minimum. Each step shrinks the distance to the optimum.
+The negative gradient is positive-pushing here, so $w$ moves toward 5, the minimum. Each step shrinks the distance to the optimum. That is the whole mechanic — now let's apply it to a real model.
+
+## Worked example: fitting a line with MSE
+
+Almost every "loss" you'll meet is the **mean squared error (MSE)** of a model's predictions. Let's derive the update rule for the simplest model, a straight line, and then run two iterations entirely by hand.
+
+### 1. The model and the loss
+
+Model with two parameters, a slope $w$ and an intercept $b$:
+
+$$
+\hat{y}_i = w\,x_i + b
+$$
+
+Over $n$ training examples $(x_i, y_i)$, the MSE loss is the average squared gap between prediction and target:
+
+$$
+L(w, b) = \frac{1}{n}\sum_{i=1}^{n}\bigl(\hat{y}_i - y_i\bigr)^2
+= \frac{1}{n}\sum_{i=1}^{n}\bigl(w x_i + b - y_i\bigr)^2
+$$
+
+### 2. Deriving the gradients
+
+We need $\dfrac{\partial L}{\partial w}$ and $\dfrac{\partial L}{\partial b}$. Apply the chain rule to one term $\bigl(w x_i + b - y_i\bigr)^2$. Let $r_i = w x_i + b - y_i$ be the **residual**. The outer derivative of $r_i^2$ is $2 r_i$; the inner derivative of $r_i$ with respect to $w$ is $x_i$, and with respect to $b$ is $1$:
+
+$$
+\frac{\partial}{\partial w}\bigl(r_i^2\bigr) = 2 r_i \cdot x_i,
+\qquad
+\frac{\partial}{\partial b}\bigl(r_i^2\bigr) = 2 r_i \cdot 1
+$$
+
+Averaging over all $n$ examples gives the full gradients:
+
+$$
+\boxed{\;\frac{\partial L}{\partial w} = \frac{2}{n}\sum_{i=1}^{n}\bigl(w x_i + b - y_i\bigr)\,x_i\;}
+\qquad
+\boxed{\;\frac{\partial L}{\partial b} = \frac{2}{n}\sum_{i=1}^{n}\bigl(w x_i + b - y_i\bigr)\;}
+$$
+
+The update rule applies the same step to both parameters at once:
+
+$$
+w \leftarrow w - \eta\,\frac{\partial L}{\partial w},
+\qquad
+b \leftarrow b - \eta\,\frac{\partial L}{\partial b}
+$$
+
+### 3. The data
+
+Three points that lie exactly on the line $y = 2x + 1$ (so we know the answer is $w = 2$, $b = 1$):
+
+| $x_i$ | $y_i$ |
+|-------|-------|
+| 1 | 3 |
+| 2 | 5 |
+| 3 | 7 |
+
+We start from $w = 0$, $b = 0$ with learning rate $\eta = 0.1$. At the start the predictions are all $0$, so the residuals are $r = (0-3,\,0-5,\,0-7) = (-3, -5, -7)$ and the loss is
+
+$$
+L = \frac{(-3)^2 + (-5)^2 + (-7)^2}{3} = \frac{9 + 25 + 49}{3} = \frac{83}{3} \approx 27.67
+$$
+
+### 4. Iteration 1, by hand
+
+With $w = 0, b = 0$ the residuals are $r_i = -y_i$. Plug into the boxed formulas:
+
+$$
+\frac{\partial L}{\partial w} = \frac{2}{3}\Bigl[(-3)(1) + (-5)(2) + (-7)(3)\Bigr]
+= \frac{2}{3}(-3 - 10 - 21) = \frac{2}{3}(-34) = -\frac{68}{3} \approx -22.67
+$$
+
+$$
+\frac{\partial L}{\partial b} = \frac{2}{3}\Bigl[(-3) + (-5) + (-7)\Bigr] = \frac{2}{3}(-15) = -10
+$$
+
+Now step downhill (subtract $\eta$ times each gradient):
+
+$$
+w \leftarrow 0 - 0.1\,(-22.67) = 2.267,
+\qquad
+b \leftarrow 0 - 0.1\,(-10) = 1.0
+$$
+
+The new loss is $L \approx 0.332$ — a single step took us from $27.67$ down to $0.33$ because the gradients were large.
+
+### 5. Iteration 2, by hand
+
+Recompute the residuals with $w = 2.267, b = 1.0$:
+
+$$
+\begin{aligned}
+r_1 &= 2.267(1) + 1 - 3 = 0.267 \\
+r_2 &= 2.267(2) + 1 - 5 = 0.533 \\
+r_3 &= 2.267(3) + 1 - 7 = 0.800
+\end{aligned}
+$$
+
+$$
+\frac{\partial L}{\partial w} = \frac{2}{3}\bigl[0.267(1) + 0.533(2) + 0.800(3)\bigr]
+= \frac{2}{3}(3.733) \approx 2.489
+$$
+
+$$
+\frac{\partial L}{\partial b} = \frac{2}{3}\bigl[0.267 + 0.533 + 0.800\bigr] = \frac{2}{3}(1.6) \approx 1.067
+$$
+
+Step again:
+
+$$
+w \leftarrow 2.267 - 0.1\,(2.489) = 2.018,
+\qquad
+b \leftarrow 1.0 - 0.1\,(1.067) = 0.893
+$$
+
+Loss drops to $L \approx 0.0053$. Notice the gradients shrank from $\sim 23$ to $\sim 2.5$: **as you approach the minimum the slope flattens, so the steps automatically get smaller.** Keep iterating and $(w, b)$ converges to exactly $(2, 1)$.
 
 ```python
-import numpy as np
+# Linear-model MSE gradient descent — reproduces the hand calculation above.
+data = [(1, 3), (2, 5), (3, 7)]   # points on y = 2x + 1
 
-def descend(grad, w, lr=0.1, steps=20):
-    for _ in range(steps):
-        w = w - lr * grad(w)
-    return w
+def gradients(w, b):
+    n = len(data)
+    dw = (2 / n) * sum((w * x + b - y) * x for x, y in data)
+    db = (2 / n) * sum((w * x + b - y)     for x, y in data)
+    return dw, db
 
-grad = lambda w: 2 * (w - 5)      # d/dw of (w-5)^2
-print(descend(grad, w=2.0))        # -> ~5.0
+def loss(w, b):
+    n = len(data)
+    return sum((w * x + b - y) ** 2 for x, y in data) / n
+
+w, b, lr = 0.0, 0.0, 0.1
+for step in range(2):
+    dw, db = gradients(w, b)
+    w, b = w - lr * dw, b - lr * db
+    print("step {}: w={:.3f} b={:.3f} L={:.4f}".format(step + 1, w, b, loss(w, b)))
+# step 1: w=2.267 b=1.000 L=0.3319
+# step 2: w=2.018 b=0.893 L=0.0053
 ```
+
+## The learning rate, concretely
+
+The learning rate $\eta$ scales every step. Using the same line-fitting problem, here is what 50 steps from $(w,b)=(0,0)$ produce for different $\eta$:
+
+| $\eta$ | Behavior after 50 steps | Final loss |
+|--------|--------------------------|------------|
+| $0.001$ | Crawls — barely moved ($w \approx 0.87$) | $\approx 9.07$ |
+| $0.1$ | Converges smoothly to $(2, 1)$ | $\approx 0.0001$ |
+| $0.5$ | **Overshoots and diverges** to NaN | $\infty$ |
+
+<Callout type="warning" title="Learning rate matters">
+  Too large: each step overshoots the minimum and lands further out than it
+  started, so the loss grows every step and explodes to NaN. Too small:
+  training is stable but painfully slow and can stall in shallow minima. When
+  training diverges, the first fix is to lower $\eta$ by 10×.
+</Callout>
 
 ## Batch, stochastic, and mini-batch
 
-The gradient is an average over training examples. How many you use per step defines the variant:
+In the example above we summed the gradient over **all three** points before each step. That is *full-batch* gradient descent. With millions of examples, summing over the whole dataset for a single step is far too slow, so we estimate the gradient from a subset. The number of examples per step defines the variant:
 
 | Variant | Examples per step | Trade-off |
 |---------|-------------------|-----------|
-| **Batch** | All | Accurate gradient, slow, memory-heavy |
-| **Stochastic (SGD)** | One | Noisy, fast, can escape shallow minima |
+| **Batch** | All ($n$) | Exact gradient, smooth path, slow & memory-heavy |
+| **Stochastic (SGD)** | One | Noisy, cheap, the noise can jump out of shallow minima |
 | **Mini-batch** | 32–512 | Best of both — the practical default |
+
+The key insight: a mini-batch gradient is an **unbiased estimate** of the full gradient. On average it points the right way; any single step is noisy, but over many steps the noise averages out while each step costs a fraction of the full-batch price. With $n$ examples and batch size $B$, one pass over the data (an **epoch**) does $n/B$ updates instead of just one — so mini-batch SGD makes far more progress per pass.
 
 ## Beyond vanilla: momentum and Adam
 
-Plain SGD crawls through narrow ravines and oscillates across them. Smarter optimizers fix this:
+Plain SGD crawls through narrow ravines — directions where the loss is steep one way and nearly flat the other. It bounces back and forth across the steep walls while barely advancing along the flat valley floor. Smarter optimizers fix this:
 
-- **Momentum** accumulates a velocity vector, accelerating along consistent downhill directions and damping oscillation: $v \leftarrow \beta v - \eta\nabla L,\; w \leftarrow w + v$.
-- **Adam** combines momentum with a **per-parameter adaptive** learning rate, so flat and steep directions each get an appropriate step size.
+- **Momentum** keeps a running **velocity** $v$ that accumulates past gradients, so consistent downhill directions build up speed while side-to-side oscillations cancel out:
+  $$
+  v \leftarrow \beta v - \eta\,\nabla L, \qquad w \leftarrow w + v
+  $$
+  The decay $\beta$ (typically $0.9$) sets how much past momentum carries over. Think of a ball rolling downhill: it gathers speed on long slopes and isn't deflected by small bumps.
+- **Adam** combines momentum with a **per-parameter adaptive** learning rate — it divides each parameter's step by a running estimate of that parameter's gradient magnitude, so flat directions get larger effective steps and steep directions get smaller ones. This is why Adam handles ravines without manual tuning.
 
 <Callout type="info" title="Which optimizer?">
   Start with **Adam** — it works well out of the box and is the default for most deep learning. Well-tuned SGD with momentum can generalize slightly better on some vision tasks, but Adam needs far less tuning.
@@ -88,8 +232,10 @@ Watch gradient descent move across a 2D loss surface — small learning rates in
 
 ## Key takeaways
 
-- Gradient descent updates weights **opposite** the gradient: $w \leftarrow w - \eta\nabla L$.
-- The **learning rate** is the most important hyperparameter — too big diverges, too small crawls.
+- Gradient descent updates parameters **opposite** the gradient: $w \leftarrow w - \eta\,\nabla L$, applied to every parameter ($w$ and $b$) at once.
+- For MSE on a linear model, $\frac{\partial L}{\partial w} = \frac{2}{n}\sum (w x_i + b - y_i)\,x_i$ and $\frac{\partial L}{\partial b} = \frac{2}{n}\sum (w x_i + b - y_i)$ — averaged residuals, weighted by the input for $w$.
+- Gradients shrink as you near the minimum, so steps **automatically slow down** even with a fixed $\eta$.
+- The **learning rate** is the most important hyperparameter — too big diverges to NaN, too small crawls.
 - **Mini-batch** SGD is the practical default; **momentum** and **Adam** speed convergence.
 - Normalize inputs and tune $\eta$ first when training stalls.
 
