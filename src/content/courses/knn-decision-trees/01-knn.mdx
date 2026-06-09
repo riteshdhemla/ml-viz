@@ -37,16 +37,37 @@ Training data:
 | D | (7, 7) | Blue |
 | E | (8, 6) | Blue |
 
-New point: $\mathbf{x}_{\text{new}} = (3, 4)$
+We want to classify the new query point $\mathbf{x}_{\text{new}} = (3, 4)$.
 
-Distances (Euclidean):
-- $d(A) = \sqrt{(3-1)^2 + (4-2)^2} = \sqrt{8} \approx 2.83$
-- $d(B) = \sqrt{(3-2)^2 + (4-3)^2} = \sqrt{2} \approx 1.41$
-- $d(C) = \sqrt{(3-6)^2 + (4-5)^2} = \sqrt{10} \approx 3.16$
-- $d(D) = \sqrt{(3-7)^2 + (4-7)^2} = \sqrt{25} = 5.0$
-- $d(E) = \sqrt{(3-8)^2 + (4-6)^2} = \sqrt{29} \approx 5.39$
+**Step 1 — compute the Euclidean distance to every training point.** For each point we take the gap in $x_1$, the gap in $x_2$, square both, add, and square-root:
 
-With $k=3$, the 3 nearest are B (Red), A (Red), C (Blue). **Majority vote: Red.**
+$$
+\begin{aligned}
+d(A) &= \sqrt{(3-1)^2 + (4-2)^2} = \sqrt{4 + 4} = \sqrt{8} \approx 2.83 \\
+d(B) &= \sqrt{(3-2)^2 + (4-3)^2} = \sqrt{1 + 1} = \sqrt{2} \approx 1.41 \\
+d(C) &= \sqrt{(3-6)^2 + (4-5)^2} = \sqrt{9 + 1} = \sqrt{10} \approx 3.16 \\
+d(D) &= \sqrt{(3-7)^2 + (4-7)^2} = \sqrt{16 + 9} = \sqrt{25} = 5.00 \\
+d(E) &= \sqrt{(3-8)^2 + (4-6)^2} = \sqrt{25 + 4} = \sqrt{29} \approx 5.39
+\end{aligned}
+$$
+
+**Step 2 — sort by distance (nearest first):**
+
+| Rank | Point | Distance | Label |
+|------|-------|----------|-------|
+| 1 | B | 1.41 | Red |
+| 2 | A | 2.83 | Red |
+| 3 | C | 3.16 | Blue |
+| 4 | D | 5.00 | Blue |
+| 5 | E | 5.39 | Blue |
+
+**Step 3 — keep the $k$ nearest and vote.** With $k=3$, the neighbors are **B (Red), A (Red), C (Blue)**.
+
+$$
+\text{votes} = \{\text{Red}: 2,\ \text{Blue}: 1\} \;\Rightarrow\; \boxed{\text{predict Red}}
+$$
+
+This is the exact query point and result reproduced in the companion notebook. Notice that the answer can flip with $k$: at $k=5$ the votes become $\{\text{Red}: 2,\ \text{Blue}: 3\}$, so the prediction would change to **Blue**. The choice of $k$ is not a detail — it can decide the class.
 
 ```python
 import numpy as np
@@ -68,14 +89,54 @@ print(knn_predict(X_train, y_train, np.array([3, 4]), k=3))  # 'Red'
 
 ## Distance metrics
 
-How do we measure "close"?
+Everything in KNN depends on the word **"close."** How do we measure it?
 
 | Metric | Formula | When to use |
 |--------|---------|-------------|
-| Euclidean | $\sqrt{\sum (x_i - y_i)^2}$ | Default for continuous features |
-| Manhattan | $\sum |x_i - y_i|$ | High-dimensional, sparse data |
-| Minkowski | $(\sum |x_i - y_i|^p)^{1/p}$ | Generalizes both above |
-| Hamming | $\frac{\sum \mathbf{1}[x_i \neq y_i]}{d}$ | Categorical features |
+| Euclidean | $\sqrt{\sum_i (x_i - y_i)^2}$ | Default for continuous features |
+| Manhattan | $\sum_i |x_i - y_i|$ | High-dimensional, sparse, or grid-like data |
+| Minkowski | $\left(\sum_i |x_i - y_i|^p\right)^{1/p}$ | Generalizes both above |
+| Hamming | $\frac{1}{d}\sum_i \mathbf{1}[x_i \neq y_i]$ | Categorical features |
+
+The **Minkowski distance** is the master formula. Plug in $p$ and you recover the others:
+
+$$
+d_p(\mathbf{x}, \mathbf{y}) = \left(\sum_{i=1}^{d} |x_i - y_i|^p\right)^{1/p}
+$$
+
+- $p = 1 \Rightarrow$ **Manhattan** (city-block): walk along the grid, no diagonals.
+- $p = 2 \Rightarrow$ **Euclidean** (straight-line): the ruler distance.
+- $p \to \infty \Rightarrow$ **Chebyshev**: the single largest coordinate gap dominates.
+
+### Worked distance computation
+
+Take two points $\mathbf{x} = (1, 2, 3)$ and $\mathbf{y} = (4, 6, 3)$. The per-coordinate gaps are:
+
+$$
+|x_1 - y_1| = |1-4| = 3, \quad |x_2 - y_2| = |2-6| = 4, \quad |x_3 - y_3| = |3-3| = 0
+$$
+
+Now feed those gaps $(3, 4, 0)$ into each metric:
+
+**Manhattan ($p=1$):** just add the gaps.
+
+$$
+d_1 = 3 + 4 + 0 = 7
+$$
+
+**Euclidean ($p=2$):** square, sum, square-root.
+
+$$
+d_2 = \sqrt{3^2 + 4^2 + 0^2} = \sqrt{9 + 16 + 0} = \sqrt{25} = 5
+$$
+
+**Minkowski with $p=3$:** cube the gaps, sum, take the cube root.
+
+$$
+d_3 = \left(3^3 + 4^3 + 0^3\right)^{1/3} = (27 + 64)^{1/3} = 91^{1/3} \approx 4.50
+$$
+
+Notice the ordering $d_1 \ge d_2 \ge d_3$: **larger $p$ shrinks the distance**, because higher powers increasingly let the single biggest gap (here, 4) dominate while small gaps fade out. As $p \to \infty$ the distance approaches $\max(3,4,0) = 4$ exactly (Chebyshev).
 
 <Callout type="warning" title="Feature scaling is critical">
   KNN uses distances, so features with larger ranges dominate. A feature measured in millimeters (range 0-10000) will completely overwhelm one measured in meters (range 0-10). Always normalize or standardize features before applying KNN.
@@ -89,12 +150,19 @@ X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)  # use same scaler!
 ```
 
-## Choosing k
+## Choosing k: the bias–variance tradeoff
 
-- **Small k** (e.g., $k=1$): very flexible, captures noise — low bias, high variance
-- **Large k** (e.g., $k=n$): always predicts the majority class — high bias, low variance
+The hyperparameter $k$ controls **how much you smooth**. Think of it as a dial between trusting one neighbor versus averaging a whole crowd.
 
-The sweet spot is usually found via **cross-validation**. A common heuristic: $k = \sqrt{n}$.
+**Small $k$ (e.g. $k=1$) — low bias, high variance.**
+The prediction copies the single closest point. The model bends around every individual example, so it fits the training data perfectly — but a single mislabeled or noisy point creates its own little island of wrong predictions. Move the query a hair and the answer can flip. The decision boundary is jagged.
+
+**Large $k$ (e.g. $k=n$) — high bias, low variance.**
+Every query averages over a huge neighborhood, so noise washes out and predictions are stable. But the model can no longer represent fine structure: in the extreme $k=n$ it ignores the query entirely and always returns the **global majority class**. The boundary is over-smoothed and underfits.
+
+We want the $k$ that minimizes **total error = bias² + variance + irreducible noise**. As $k$ grows, variance falls but bias rises, so the test error typically traces a **U-shape** — too small overfits, too large underfits, and the bottom of the U is the sweet spot.
+
+You don't guess it — you measure it with **cross-validation**: try a range of $k$, score each on held-out folds, and pick the best. A useful starting point is the heuristic $k \approx \sqrt{n}$. For **binary** classification, prefer an **odd** $k$ so a two-way vote can never tie.
 
 ```python
 from sklearn.neighbors import KNeighborsClassifier
@@ -123,13 +191,26 @@ As $k$ increases, the boundary becomes smoother. This is the **bias-variance tra
 
 ## The curse of dimensionality
 
-As dimensions increase, all points become equidistant:
+KNN's whole premise is that "nearest" means "most similar." In high dimensions that premise quietly breaks. As you add dimensions, **all pairwise distances bunch together** — the nearest and farthest neighbors become almost equally far away:
 
 $$
 \frac{d_{\max} - d_{\min}}{d_{\min}} \to 0 \quad \text{as } d \to \infty
 $$
 
-In high dimensions, "nearest" loses meaning. KNN works well in low dimensions (2-10) but degrades rapidly beyond that.
+### Why it happens (worked intuition)
+
+Suppose each coordinate contributes a small, roughly independent squared gap of size $s$ to the distance. With $d$ dimensions the squared distance is a **sum of $d$ such gaps**, so it grows like $d \cdot s$, and the distance grows like $\sqrt{d \cdot s}$. By the law of large numbers, that sum concentrates tightly around its mean: the **spread of distances grows much slower than the distances themselves**. So every point ends up sitting at roughly the same distance from every other point.
+
+Concretely, draw 500 random points in the unit cube and measure how far the farthest neighbor is versus the nearest:
+
+| Dimension $d$ | Typical $d_{\max} / d_{\min}$ |
+|---------------|-------------------------------|
+| 2 | ≈ 20–40× (nearest is clearly nearest) |
+| 10 | ≈ 3–4× |
+| 100 | ≈ 1.5× |
+| 1000 | ≈ 1.1× (everything is "equally far") |
+
+By $d = 1000$ the closest neighbor is only about 10% nearer than the farthest one — the ranking that KNN relies on is almost pure noise. The companion notebook computes this exact ratio. In high dimensions, "nearest" loses meaning. KNN works well in low dimensions (2–10) but degrades rapidly beyond that.
 
 **Practical tip:** KNN is a great baseline but rarely competitive with trained models on high-dimensional data. It's most useful for: (1) quick prototyping, (2) low-dimensional problems, and (3) as a component in other algorithms.
 
