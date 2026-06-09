@@ -12,36 +12,84 @@ Linear regression predicts continuous values. But what if we want to classify �
 
 **Real-world examples:** Email spam detection, disease diagnosis, customer churn prediction, fraud detection.
 
-## The sigmoid function
+## From a linear score to a probability
 
-Apply the linear model through a **sigmoid** (logistic) function:
+A linear model produces a raw score $z = \mathbf{w}^T \mathbf{x} + w_0$ that can be any real number. A probability must live in $(0, 1)$. We need a function that maps the whole real line into that interval. The **sigmoid** (logistic) function does exactly this:
 
 $$
 \sigma(z) = \frac{1}{1 + e^{-z}}
 $$
 
-This maps $(-\infty, +\infty)$ to $(0, 1)$, giving us a probability interpretation:
+Let's check the limits to see why this is a probability:
 
 $$
-P(y=1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T \mathbf{x} + w_0)
+z \to +\infty: \quad e^{-z} \to 0 \;\Rightarrow\; \sigma(z) \to \frac{1}{1+0} = 1
+$$
+$$
+z \to -\infty: \quad e^{-z} \to +\infty \;\Rightarrow\; \sigma(z) \to \frac{1}{\infty} = 0
+$$
+$$
+z = 0: \quad \sigma(0) = \frac{1}{1 + e^{0}} = \frac{1}{2}
+$$
+
+So we define the model's predicted probability as:
+
+$$
+\hat{y} = P(y=1 \mid \mathbf{x}) = \sigma(\mathbf{w}^T \mathbf{x} + w_0)
 $$
 
 <Callout type="tip" title="Intuition">
-  The sigmoid "squashes" the linear output. Large positive inputs → probability close to 1. Large negative inputs → probability close to 0. The transition happens smoothly around zero. Think of it as a smooth version of a step function.
+  The sigmoid "squashes" the linear score into a probability. Large positive scores → close to 1, large negative scores → close to 0, and the transition happens smoothly around $z=0$. It is a smooth, differentiable version of a hard step function — and being differentiable is what lets us train it with gradient descent.
 </Callout>
+
+### The log-odds link (why this model is "linear")
+
+The sigmoid is not an arbitrary choice — it is the function that makes the **log-odds** linear in $\mathbf{x}$. The *odds* of the positive class are the ratio $\frac{\hat{y}}{1-\hat{y}}$. Start from $\hat{y} = \sigma(z)$ and compute it:
+
+$$
+1 - \hat{y} = 1 - \frac{1}{1+e^{-z}} = \frac{(1+e^{-z}) - 1}{1+e^{-z}} = \frac{e^{-z}}{1+e^{-z}}
+$$
+
+Now divide:
+
+$$
+\frac{\hat{y}}{1-\hat{y}} = \frac{\frac{1}{1+e^{-z}}}{\frac{e^{-z}}{1+e^{-z}}} = \frac{1}{e^{-z}} = e^{z}
+$$
+
+Take logs of both sides:
+
+$$
+\log \frac{\hat{y}}{1-\hat{y}} = z = \mathbf{w}^T \mathbf{x} + w_0
+$$
+
+This is the key identity. The model is **linear in the log-odds** (also called the *logit*). A one-unit increase in feature $x_j$ adds $w_j$ to the log-odds, i.e. multiplies the odds by $e^{w_j}$. This is exactly why coefficients are interpreted as odds ratios, not probabilities.
+
+### A useful derivative
+
+We will need the derivative of the sigmoid for training. It has a famously clean form:
+
+$$
+\sigma'(z) = \frac{d}{dz}\,(1+e^{-z})^{-1} = -(1+e^{-z})^{-2}\cdot(-e^{-z}) = \frac{e^{-z}}{(1+e^{-z})^2}
+$$
+
+Rewrite using $\sigma(z) = \frac{1}{1+e^{-z}}$ and $1-\sigma(z) = \frac{e^{-z}}{1+e^{-z}}$:
+
+$$
+\sigma'(z) = \frac{1}{1+e^{-z}}\cdot\frac{e^{-z}}{1+e^{-z}} = \sigma(z)\,\bigl(1 - \sigma(z)\bigr)
+$$
 
 ### Worked example
 
-Suppose we have a model with $w = [2, -1]$ and $b = 0$. For input $\mathbf{x} = [1, 3]$:
+Take a model with weights $\mathbf{w} = [2, -1]$ and bias $w_0 = 0$. For the input $\mathbf{x} = [1, 3]$:
 
 $$
-z = 2(1) + (-1)(3) + 0 = -1
+z = 2(1) + (-1)(3) + 0 = 2 - 3 = -1
 $$
 $$
-\sigma(-1) = \frac{1}{1 + e^{1}} \approx 0.27
+\hat{y} = \sigma(-1) = \frac{1}{1 + e^{1}} = \frac{1}{1 + 2.718} \approx 0.269
 $$
 
-The model predicts a 27% probability of class 1. Since this is below 0.5, we classify as class 0.
+The model predicts a $\approx 27\%$ probability of class 1. Since $0.269 < 0.5$ (equivalently $z < 0$), we classify this point as class **0**. We can also read off the odds: $\frac{0.269}{0.731} \approx 0.368 = e^{-1}$, exactly as the log-odds identity promised.
 
 ```python
 import numpy as np
@@ -54,34 +102,81 @@ w = np.array([2, -1])
 b = 0
 x = np.array([1, 3])
 z = w @ x + b
-print(f"z = {z}, σ(z) = {sigmoid(z):.3f}")  # z = -1, σ(z) = 0.27
+print("z = {}, sigma(z) = {:.3f}".format(z, sigmoid(z)))  # z = -1, sigma(z) = 0.269
+print("odds = {:.3f}, e^z = {:.3f}".format(sigmoid(z) / (1 - sigmoid(z)), np.exp(z)))
 ```
 
 ## The decision boundary
 
-Logistic regression classifies by thresholding the probability:
+To turn a probability into a class, we threshold at $0.5$:
 
 $$
-\hat{y} = \begin{cases} 1 & \text{if } \sigma(\mathbf{w}^T \mathbf{x}) \geq 0.5 \\ 0 & \text{otherwise} \end{cases}
+\hat{c} = \begin{cases} 1 & \text{if } \sigma(\mathbf{w}^T \mathbf{x} + w_0) \geq 0.5 \\ 0 & \text{otherwise} \end{cases}
 $$
 
-Since $\sigma(0) = 0.5$, the decision boundary is where $\mathbf{w}^T \mathbf{x} = 0$ — a **hyperplane** in feature space. This means logistic regression learns linear boundaries, just like linear regression.
+Because $\sigma$ is increasing and $\sigma(0) = 0.5$, the condition $\sigma(z) \geq 0.5$ is **exactly** $z \geq 0$. So the threshold on probability becomes a threshold on the linear score, and the boundary itself is the set of points where the score is zero:
+
+$$
+\mathbf{w}^T \mathbf{x} + w_0 = 0
+$$
+
+This is the equation of a **hyperplane** (a line in 2-D, a plane in 3-D). Logistic regression therefore learns a *linear* boundary, just like linear regression learns a linear fit.
+
+### Geometry of the boundary
+
+Write the score for any point as $z(\mathbf{x}) = \mathbf{w}^T\mathbf{x} + w_0$. Take two points $\mathbf{x}_1, \mathbf{x}_2$ that both lie on the boundary, so $z(\mathbf{x}_1) = z(\mathbf{x}_2) = 0$. Subtracting:
+
+$$
+\mathbf{w}^T(\mathbf{x}_1 - \mathbf{x}_2) = 0
+$$
+
+The vector $\mathbf{x}_1 - \mathbf{x}_2$ points *along* the boundary, and it is orthogonal to $\mathbf{w}$. So **$\mathbf{w}$ is perpendicular to the decision boundary** and points toward the positive-class side (where $z > 0$ and $\hat{y} > 0.5$). The signed distance of a point from the boundary is $\frac{z(\mathbf{x})}{\lVert \mathbf{w} \rVert}$ — the further you go in the $\mathbf{w}$ direction, the more confident the prediction.
 
 <Callout type="info" title="Geometric interpretation">
-  The decision boundary divides the feature space into two half-spaces. Points on one side are classified as positive, the other as negative. The weights $\mathbf{w}$ are perpendicular to this boundary — they point in the direction of increasing probability.
+  The boundary splits feature space into two half-spaces: one classified positive, one negative. The weight vector $\mathbf{w}$ is the normal to that boundary, pointing toward increasing probability, and its length controls how sharply the probability ramps from 0 to 1 as you cross.
 </Callout>
 
 <DecisionBoundaryViz />
 
-## Cross-entropy loss
+## Cross-entropy loss, derived from MLE
 
-We can't use MSE for classification — it's non-convex with the sigmoid. Instead, we use **binary cross-entropy**:
+We can't use MSE here — paired with the sigmoid it gives a non-convex loss with flat regions, so gradient descent stalls. Instead the right loss falls out of **Maximum Likelihood Estimation**. Let's derive it.
+
+### Step 1 — model each label as a Bernoulli trial
+
+Each label is either 0 or 1, so model $y_i$ as a coin flip whose probability of landing on 1 is the model's output $\hat{y}_i = \sigma(\mathbf{w}^T\mathbf{x}_i + w_0)$:
 
 $$
-\mathcal{L} = -\frac{1}{n} \sum_{i=1}^n \left[ y_i \log \hat{y}_i + (1 - y_i) \log(1 - \hat{y}_i) \right]
+P(y_i \mid \mathbf{x}_i) = \hat{y}_i^{\,y_i}\,(1 - \hat{y}_i)^{\,1 - y_i}
 $$
 
-This loss penalizes confident wrong predictions heavily:
+This single expression is a clean trick: when $y_i = 1$ it collapses to $\hat{y}_i$, and when $y_i = 0$ it collapses to $1 - \hat{y}_i$ (since anything to the power 0 is 1).
+
+### Step 2 — likelihood of the whole dataset
+
+Assuming the examples are independent, the probability of observing all $n$ labels is the product:
+
+$$
+L(\mathbf{w}) = \prod_{i=1}^n \hat{y}_i^{\,y_i}\,(1 - \hat{y}_i)^{\,1 - y_i}
+$$
+
+### Step 3 — take the log
+
+Products of many small numbers underflow and are hard to differentiate. Logs turn products into sums (and $\log$ is monotonic, so the maximizer is unchanged):
+
+$$
+\log L(\mathbf{w}) = \sum_{i=1}^n \Bigl[\, y_i \log \hat{y}_i + (1 - y_i)\log(1 - \hat{y}_i) \,\Bigr]
+$$
+
+### Step 4 — minimize the negative, averaged
+
+Maximizing the log-likelihood is the same as minimizing its negative. Dividing by $n$ to get a per-example average (so the learning rate doesn't depend on dataset size) gives the **binary cross-entropy loss**:
+
+$$
+\mathcal{L}(\mathbf{w}) = -\frac{1}{n} \sum_{i=1}^n \left[ y_i \log \hat{y}_i + (1 - y_i) \log(1 - \hat{y}_i) \right]
+$$
+
+This is not a heuristic — it *is* the negative log-likelihood of a Bernoulli model, so minimizing it is exactly MLE. It also penalizes confident wrong predictions heavily:
 
 | Prediction | Actual | Loss |
 |-----------|--------|------|
@@ -89,8 +184,8 @@ This loss penalizes confident wrong predictions heavily:
 | 0.01 | 1 | $-\log(0.01) \approx 4.6$ (terrible!) |
 | 0.5 | 1 | $-\log(0.5) \approx 0.7$ (uncertain) |
 
-<Callout type="info" title="Connection to MLE">
-  Cross-entropy loss is exactly the negative log-likelihood under a Bernoulli model. Minimizing it is equivalent to Maximum Likelihood Estimation (MLE) — finding the weights that make the observed data most probable.
+<Callout type="success" title="Why this is convex">
+  With $\hat{y} = \sigma(\mathbf{w}^T\mathbf{x})$, cross-entropy is convex in $\mathbf{w}$ — there are no bad local minima, so gradient descent reaches the global optimum. MSE composed with the sigmoid loses this property.
 </Callout>
 
 ```python
@@ -102,22 +197,143 @@ def cross_entropy(y_true, y_pred):
 # Example
 y_true = np.array([1, 0, 1, 1])
 y_pred = np.array([0.9, 0.1, 0.8, 0.3])
-print(f"Cross-entropy loss: {cross_entropy(y_true, y_pred):.3f}")
+print("Cross-entropy loss: {:.3f}".format(cross_entropy(y_true, y_pred)))
 ```
 
-## Gradient descent
+## The gradient: deriving the clean collapse
 
-The gradient of cross-entropy loss with respect to weights is:
+The headline result is that the gradient of cross-entropy is astonishingly simple:
 
 $$
 \frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
 $$
 
-This has the same form as linear regression! Update weights with:
+The factor that "should" appear from $\sigma'$ cancels exactly. Let's see *why*. We work out one example $i$ and one weight $w_j$, then stack the results.
+
+### Step 1 — write the per-example loss
+
+For a single example, with $z_i = \mathbf{w}^T\mathbf{x}_i$ and $\hat{y}_i = \sigma(z_i)$:
+
+$$
+\mathcal{L}_i = -\bigl[\, y_i \log \hat{y}_i + (1 - y_i)\log(1 - \hat{y}_i)\,\bigr]
+$$
+
+### Step 2 — chain rule, in three links
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial w_j}
+= \underbrace{\frac{\partial \mathcal{L}_i}{\partial \hat{y}_i}}_{\text{loss}\to\text{prob}}
+\cdot
+\underbrace{\frac{\partial \hat{y}_i}{\partial z_i}}_{\text{prob}\to\text{score}}
+\cdot
+\underbrace{\frac{\partial z_i}{\partial w_j}}_{\text{score}\to\text{weight}}
+$$
+
+### Step 3 — evaluate each link
+
+**Link 1 — loss with respect to the prediction:**
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial \hat{y}_i}
+= -\left[\frac{y_i}{\hat{y}_i} - \frac{1 - y_i}{1 - \hat{y}_i}\right]
+$$
+
+**Link 2 — the sigmoid derivative we proved earlier:**
+
+$$
+\frac{\partial \hat{y}_i}{\partial z_i} = \sigma'(z_i) = \hat{y}_i\,(1 - \hat{y}_i)
+$$
+
+**Link 3 — the score is linear in the weights:**
+
+$$
+z_i = \sum_k w_k x_{ik} \;\Rightarrow\; \frac{\partial z_i}{\partial w_j} = x_{ij}
+$$
+
+### Step 4 — multiply and watch the cancellation
+
+Multiply Link 1 and Link 2 first:
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial z_i}
+= -\left[\frac{y_i}{\hat{y}_i} - \frac{1 - y_i}{1 - \hat{y}_i}\right]\hat{y}_i(1-\hat{y}_i)
+$$
+
+Distribute $\hat{y}_i(1-\hat{y}_i)$ into the bracket. The first term's $\hat{y}_i$ cancels, the second term's $(1-\hat{y}_i)$ cancels:
+
+$$
+= -\bigl[\, y_i\,(1 - \hat{y}_i) - (1 - y_i)\,\hat{y}_i \,\bigr]
+$$
+
+Expand the bracket:
+
+$$
+= -\bigl[\, y_i - y_i\hat{y}_i - \hat{y}_i + y_i\hat{y}_i \,\bigr] = -\bigl[\, y_i - \hat{y}_i \,\bigr] = \hat{y}_i - y_i
+$$
+
+That is the whole point: $\dfrac{\partial \mathcal{L}_i}{\partial z_i} = \hat{y}_i - y_i$, just the **prediction error**. Now bring in Link 3:
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial w_j} = (\hat{y}_i - y_i)\,x_{ij}
+$$
+
+### Step 5 — average over the dataset and vectorize
+
+Averaging over all $n$ examples:
+
+$$
+\frac{\partial \mathcal{L}}{\partial w_j} = \frac{1}{n}\sum_{i=1}^n (\hat{y}_i - y_i)\,x_{ij}
+$$
+
+Stacking over all features $j$ is exactly a matrix–vector product with the design matrix $X$ (rows are examples, columns are features):
+
+$$
+\boxed{\;\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})\;}
+$$
+
+Identical in form to linear regression's gradient — the only difference is that $\hat{\mathbf{y}} = \sigma(X\mathbf{w})$ instead of $X\mathbf{w}$. Gradient descent then updates:
 
 $$
 \mathbf{w} \leftarrow \mathbf{w} - \eta \cdot \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
 $$
+
+### A tiny worked gradient step
+
+Take two 1-feature examples (with a bias column of 1s, so each row is $[1, x]$):
+
+$$
+X = \begin{bmatrix} 1 & 2 \\ 1 & -1 \end{bmatrix},\quad
+\mathbf{y} = \begin{bmatrix} 1 \\ 0 \end{bmatrix},\quad
+\mathbf{w} = \begin{bmatrix} 0 \\ 0 \end{bmatrix},\quad \eta = 0.5
+$$
+
+**Forward pass.** With $\mathbf{w} = \mathbf{0}$, every score is $z_i = 0$, so $\hat{y}_i = \sigma(0) = 0.5$:
+
+$$
+\hat{\mathbf{y}} = \begin{bmatrix} 0.5 \\ 0.5 \end{bmatrix},\qquad
+\hat{\mathbf{y}} - \mathbf{y} = \begin{bmatrix} 0.5 - 1 \\ 0.5 - 0 \end{bmatrix} = \begin{bmatrix} -0.5 \\ 0.5 \end{bmatrix}
+$$
+
+**Gradient** $\frac{1}{n}X^T(\hat{\mathbf{y}}-\mathbf{y})$ with $n = 2$:
+
+$$
+X^T(\hat{\mathbf{y}} - \mathbf{y}) =
+\begin{bmatrix} 1 & 1 \\ 2 & -1 \end{bmatrix}
+\begin{bmatrix} -0.5 \\ 0.5 \end{bmatrix}
+= \begin{bmatrix} -0.5 + 0.5 \\ -1.0 - 0.5 \end{bmatrix}
+= \begin{bmatrix} 0 \\ -1.5 \end{bmatrix}
+$$
+$$
+\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \tfrac{1}{2}\begin{bmatrix} 0 \\ -1.5 \end{bmatrix} = \begin{bmatrix} 0 \\ -0.75 \end{bmatrix}
+$$
+
+**Update** $\mathbf{w} \leftarrow \mathbf{w} - \eta\,\nabla$:
+
+$$
+\mathbf{w} = \begin{bmatrix} 0 \\ 0 \end{bmatrix} - 0.5\begin{bmatrix} 0 \\ -0.75 \end{bmatrix} = \begin{bmatrix} 0 \\ 0.375 \end{bmatrix}
+$$
+
+The bias stayed at 0 (the two errors cancelled), and the slope moved *positive* — which makes sense: the positive example sits at $x=2$ and the negative at $x=-1$, so a positive slope raises the score for the positive point and lowers it for the negative one.
 
 ```python
 # Full gradient descent implementation
@@ -141,7 +357,7 @@ def logistic_regression_gd(X, y, lr=0.1, epochs=1000):
         if epoch % 200 == 0:
             loss = cross_entropy(y, y_pred)
             acc = np.mean((y_pred >= 0.5) == y)
-            print(f"Epoch {epoch}: loss={loss:.4f}, acc={acc:.3f}")
+            print("Epoch {}: loss={:.4f}, acc={:.3f}".format(epoch, loss, acc))
     
     return w, b
 ```
@@ -164,7 +380,7 @@ def softmax(logits):
 # Example: 3 classes
 logits = np.array([[2.0, 1.0, 0.1]])
 probs = softmax(logits)
-print(f"Probabilities: {probs}")  # [[0.659, 0.242, 0.099]]
+print("Probabilities: {}".format(probs.round(3)))  # [[0.659 0.242 0.099]]
 ```
 
 ## Comparison
