@@ -53,44 +53,105 @@ Step by step:
 
 ### Why divide by $\sqrt{d_k}$?
 
-The dot product of two random $d_k$-dimensional vectors has variance proportional to $d_k$. For large $d_k$ the raw scores get large, pushing softmax into saturated regions where one weight ≈ 1 and the rest ≈ 0 — and where the gradient is nearly zero. Dividing by $\sqrt{d_k}$ rescales the variance back to ≈ 1, keeping softmax in a well-behaved range.
-
-### Worked example
-
-Two tokens, $d_k = 2$. Suppose:
+Take a query $\mathbf{q}$ and key $\mathbf{k}$ whose components are independent with mean $0$ and variance $1$. Their dot product is a sum of $d_k$ independent terms:
 
 $$
-Q = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},\quad K = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix},\quad V = \begin{bmatrix} 10 & 0 \\ 0 & 10 \end{bmatrix}
+\mathbf{q}\cdot\mathbf{k} = \sum_{i=1}^{d_k} q_i k_i .
 $$
 
-Scores $QK^{\top} = \begin{bmatrix} 1 & 0 \\ 0 & 1 \end{bmatrix}$, scaled by $\frac{1}{\sqrt{2}}\approx 0.707$: $\begin{bmatrix} 0.707 & 0 \\ 0 & 0.707 \end{bmatrix}$.
+Each term $q_i k_i$ has mean $\mathbb{E}[q_i k_i] = \mathbb{E}[q_i]\,\mathbb{E}[k_i] = 0$ and variance $\operatorname{Var}(q_i k_i) = \mathbb{E}[q_i^2]\,\mathbb{E}[k_i^2] = 1\cdot 1 = 1$. Summing $d_k$ independent unit-variance terms gives
 
-Softmax each row: $\text{softmax}([0.707, 0]) = [0.670, 0.330]$. So token 1's output is $0.670\cdot[10,0] + 0.330\cdot[0,10] = [6.70, 3.30]$ — mostly its own value, with a third borrowed from token 2.
+$$
+\operatorname{Var}(\mathbf{q}\cdot\mathbf{k}) = \sum_{i=1}^{d_k} 1 = d_k ,
+$$
+
+so the typical magnitude of a raw score grows like $\sqrt{d_k}$. For large $d_k$ those scores get large, pushing softmax into saturated regions where one weight $\approx 1$ and the rest $\approx 0$ — and where the gradient is nearly zero, so learning stalls. Dividing by $\sqrt{d_k}$ rescales the variance back to $1$ (since $\operatorname{Var}(\tfrac{1}{\sqrt{d_k}}\,\mathbf{q}\cdot\mathbf{k}) = \tfrac{1}{d_k}\cdot d_k = 1$), keeping softmax in a well-behaved range regardless of dimension.
+
+<Callout type="info" title="Check the variance yourself">
+  Sampling 20,000 random $\mathbf{q},\mathbf{k}$ pairs of unit-variance Gaussians gives empirical $\operatorname{Var}(\mathbf{q}\cdot\mathbf{k}) \approx 2.0$ for $d_k=2$, $\approx 8.0$ for $d_k=8$, $\approx 64$ for $d_k=64$ — matching $d_k$ exactly. The notebook reproduces this.
+</Callout>
+
+### Worked example (by hand)
+
+Three tokens, $d_k = 2$. We give the projected vectors directly (each **row** is one token):
+
+$$
+Q = \begin{bmatrix} 2 & 0 \\ 0 & 2 \\ 2 & 2 \end{bmatrix},\quad
+K = \begin{bmatrix} 2 & 0 \\ 0 & 2 \\ 1 & 1 \end{bmatrix},\quad
+V = \begin{bmatrix} 1 & 0 \\ 0 & 1 \\ 10 & 10 \end{bmatrix}.
+$$
+
+**Step 1 — Scores $QK^{\top}$.** Entry $(i,j)$ is $\mathbf{q}_i\cdot\mathbf{k}_j$. For example, row 1 ($\mathbf{q}_1=[2,0]$) against the three keys gives $[2,0]\cdot[2,0]=4$, $[2,0]\cdot[0,2]=0$, $[2,0]\cdot[1,1]=2$:
+
+$$
+QK^{\top} = \begin{bmatrix} 4 & 0 & 2 \\ 0 & 4 & 2 \\ 4 & 4 & 4 \end{bmatrix}.
+$$
+
+**Step 2 — Scale by $\tfrac{1}{\sqrt{d_k}}=\tfrac{1}{\sqrt{2}}\approx 0.707$.** Using $\tfrac{4}{\sqrt2}=2\sqrt2\approx2.828$ and $\tfrac{2}{\sqrt2}=\sqrt2\approx1.414$:
+
+$$
+\frac{QK^{\top}}{\sqrt 2} = \begin{bmatrix} 2.828 & 0 & 1.414 \\ 0 & 2.828 & 1.414 \\ 2.828 & 2.828 & 2.828 \end{bmatrix}.
+$$
+
+**Step 3 — Softmax each row.** Take $e^{s}$ of each entry, then divide by the row sum. Row 1:
+
+$$
+e^{2.828}=16.92,\quad e^{0}=1,\quad e^{1.414}=4.11,\quad \text{sum}=22.03,
+$$
+$$
+\text{softmax(row 1)} = \tfrac{1}{22.03}[16.92,\,1,\,4.11] = [0.768,\,0.045,\,0.187].
+$$
+
+Row 3 is special: all three scaled scores are **equal** ($2.828$), so $e^{s}$ is the same for each and softmax is exactly uniform: $[\tfrac13,\tfrac13,\tfrac13]=[0.333,0.333,0.333]$. By symmetry row 2 mirrors row 1: $[0.045,\,0.768,\,0.187]$.
+
+$$
+\text{weights} = \begin{bmatrix} 0.768 & 0.045 & 0.187 \\ 0.045 & 0.768 & 0.187 \\ 0.333 & 0.333 & 0.333 \end{bmatrix}\ \text{(every row sums to 1).}
+$$
+
+**Step 4 — Weighted sum of values, $\text{weights}\cdot V$.** Row 1's output blends the value rows by its weights:
+
+$$
+0.768[1,0] + 0.045[0,1] + 0.187[10,10] = [0.768+1.867,\ 0.045+1.867] = [2.635,\,1.912].
+$$
+
+Row 3, with uniform weights, is just the average of the value rows: $\tfrac13([1,0]+[0,1]+[10,10]) = [3.667,\,3.667]$. The full output:
+
+$$
+\begin{bmatrix} 2.635 & 1.912 \\ 1.912 & 2.635 \\ 3.667 & 3.667 \end{bmatrix}.
+$$
+
+Token 1 attends mostly to **key 1** (its strongest match) but the large value of token 3 still pulls its output upward; token 3, matching everything equally, returns the plain average. The block below recomputes all of this in pure Python so you can check every number.
 
 ```python
-import numpy as np
+import math
 
-def softmax(x, axis=-1):
-    e = np.exp(x - x.max(axis=axis, keepdims=True))
-    return e / e.sum(axis=axis, keepdims=True)
+def softmax(row):
+    e = [math.exp(s) for s in row]
+    z = sum(e)
+    return [x / z for x in e]
 
-def self_attention(X, W_Q, W_K, W_V):
-    Q, K, V = X @ W_Q, X @ W_K, X @ W_V
-    d_k = Q.shape[-1]
-    scores = Q @ K.T / np.sqrt(d_k)       # (seq, seq)
-    weights = softmax(scores, axis=-1)    # rows sum to 1
-    return weights @ V, weights
+# Each row is one token's projected vector (d_k = 2)
+Q = [[2, 0], [0, 2], [2, 2]]
+K = [[2, 0], [0, 2], [1, 1]]
+V = [[1, 0], [0, 1], [10, 10]]
+d_k = 2
 
-np.random.seed(0)
-X = np.random.randn(4, 8)                 # 4 tokens, model dim 8
-W_Q = np.random.randn(8, 8) * 0.1
-W_K = np.random.randn(8, 8) * 0.1
-W_V = np.random.randn(8, 8) * 0.1
+# Step 1: scores QKᵀ  (dot product of every query with every key)
+scores = [[sum(q[d] * k[d] for d in range(d_k)) for k in K] for q in Q]
+# Step 2: scale, then Step 3: softmax each row
+scaled  = [[s / math.sqrt(d_k) for s in row] for row in scores]
+weights = [softmax(row) for row in scaled]
+# Step 4: weighted sum of value rows
+out = [[sum(weights[i][j] * V[j][d] for j in range(3)) for d in range(d_k)]
+       for i in range(3)]
 
-out, attn = self_attention(X, W_Q, W_K, W_V)
-print("output:", out.shape)               # (4, 8)
-print("attention weights (rows sum to 1):\n", np.round(attn, 2))
+print("scores   :", scores)                       # [[4,0,2],[0,4,2],[4,4,4]]
+print("weights  :", [[round(w, 3) for w in r] for r in weights])
+print("row sums :", [round(sum(r), 6) for r in weights])  # all 1.0
+print("output   :", [[round(o, 3) for o in r] for r in out])
 ```
+
+Running it prints the matrices above, including `weights row 1 = [0.768, 0.045, 0.187]` and `output row 3 = [3.667, 3.667]`.
 
 ## In PyTorch
 
