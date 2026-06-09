@@ -32,9 +32,42 @@ $$
 
 Note the cost is roughly the same as one full-size head: each head is $1/h$ as wide, so total compute is unchanged — you get diversity for free.
 
-### Worked example — dimensions
+### Worked example — dimension bookkeeping
 
-GPT-style block: $d_{\text{model}} = 512$, $h = 8$ heads. Then each head uses $d_k = 512/8 = 64$. Eight heads each output a 64-dim vector; concatenating gives $8 \times 64 = 512$, back to $d_{\text{model}}$. $W_O$ is $512 \times 512$.
+GPT-style block: $d_{\text{model}} = 512$, $h = 8$ heads, sequence length $T = 10$. Each head uses
+
+$$
+d_k = \frac{d_{\text{model}}}{h} = \frac{512}{8} = 64.
+$$
+
+Track the shapes for **one head** $i$ (the input $X$ is $10 \times 512$):
+
+| Quantity | Multiply | Shape |
+|----------|----------|-------|
+| $X$ | — | $10 \times 512$ |
+| $W_Q^{(i)},W_K^{(i)},W_V^{(i)}$ | per-head projections | $512 \times 64$ |
+| $Q^{(i)}=XW_Q^{(i)}$ | $(10{\times}512)(512{\times}64)$ | $10 \times 64$ |
+| $K^{(i)},V^{(i)}$ | same | $10 \times 64$ |
+| scores $Q^{(i)}K^{(i)\top}/\sqrt{d_k}$ | $(10{\times}64)(64{\times}10)$ | $10 \times 10$ |
+| $\text{head}_i = \text{softmax}(\cdot)V^{(i)}$ | $(10{\times}10)(10{\times}64)$ | $10 \times 64$ |
+
+Eight heads each output $10 \times 64$. **Concatenating along the feature axis** gives
+
+$$
+\text{Concat}(\text{head}_1,\dots,\text{head}_8):\quad 10 \times (8 \cdot 64) = 10 \times 512,
+$$
+
+back to $d_{\text{model}}$. Finally $W_O$ is $512 \times 512$, so the output is $(10{\times}512)(512{\times}512) = 10 \times 512$ — same shape as the input. In practice the per-head $W_Q^{(i)}$ are stacked into one $512 \times 512$ matrix $W_Q$ and reshaped, which is why the parameter count below uses full $d_{\text{model}} \times d_{\text{model}}$ matrices.
+
+### Worked example — parameter count
+
+Multi-head attention has exactly **four** learned projections, each $d_{\text{model}} \times d_{\text{model}}$: the stacked $W_Q, W_K, W_V$ and the output $W_O$. Ignoring biases,
+
+$$
+\#\text{params} = 4\,d_{\text{model}}^2 = 4 \cdot 512^2 = 4 \cdot 262{,}144 = 1{,}048{,}576 \approx 1.05\text{M}.
+$$
+
+Crucially this is **independent of $h$**: splitting into more heads only reshapes the same matrices, so 1 head and 8 heads cost the *same* parameters and (nearly) the same FLOPs. You get multiple attention views for free.
 
 ```python
 import torch
@@ -81,7 +114,38 @@ $$
 - $pos$ — position in the sequence (0, 1, 2, …)
 - $i$ — dimension index, giving wavelengths from $2\pi$ up to $\sim\!10000\cdot 2\pi$
 
-Why sinusoids? Low frequencies encode coarse position, high frequencies encode fine position — like the hands of a clock. And because $\sin/\cos$ have addition identities, a fixed offset $k$ can be written as a linear function of the encoding at $pos$, letting the model learn **relative** positions easily. It also **extrapolates** to sequence lengths longer than seen in training.
+Why sinusoids? Low frequencies encode coarse position, high frequencies encode fine position — like the hands of a clock.
+
+### Worked example — computing PE by hand
+
+Take a tiny model dimension $d = 4$, so there are two frequency pairs: $i = 0$ uses dimensions $(0,1)$ and $i = 1$ uses dimensions $(2,3)$. The two angular frequencies are
+
+$$
+\frac{1}{10000^{0/4}} = \frac{1}{1} = 1, \qquad \frac{1}{10000^{2/4}} = \frac{1}{\sqrt{10000}} = \frac{1}{100} = 0.01.
+$$
+
+Now fill in a few positions ($\sin/\cos$ in radians):
+
+| $pos$ | dim 0 = $\sin(pos\cdot 1)$ | dim 1 = $\cos(pos\cdot 1)$ | dim 2 = $\sin(pos\cdot 0.01)$ | dim 3 = $\cos(pos\cdot 0.01)$ |
+|------|------|------|------|------|
+| 0 | $\sin 0 = 0$ | $\cos 0 = 1$ | $\sin 0 = 0$ | $\cos 0 = 1$ |
+| 1 | $\sin 1 = 0.8415$ | $\cos 1 = 0.5403$ | $\sin 0.01 = 0.0100$ | $\cos 0.01 = 1.0000$ |
+| 2 | $\sin 2 = 0.9093$ | $\cos 2 = -0.4161$ | $\sin 0.02 = 0.0200$ | $\cos 0.02 = 0.9998$ |
+
+Notice the high-frequency pair (dims 0–1) swings a lot between adjacent positions, while the low-frequency pair (dims 2–3) barely moves — exactly the coarse/fine split. The notebook reproduces every number in this table.
+
+### Why this captures *relative* position
+
+Because $\sin/\cos$ obey the angle-addition identities, shifting position by a fixed offset $k$ is a **fixed linear rotation** of the encoding — independent of the absolute position $pos$. For the frequency $\omega$ of one pair, write $\mathbf{p}(pos) = [\sin(\omega\,pos),\,\cos(\omega\,pos)]$. Then
+
+$$
+\begin{aligned}
+\sin(\omega(pos+k)) &= \sin(\omega\,pos)\cos(\omega k) + \cos(\omega\,pos)\sin(\omega k),\\
+\cos(\omega(pos+k)) &= \cos(\omega\,pos)\cos(\omega k) - \sin(\omega\,pos)\sin(\omega k),
+\end{aligned}
+$$
+
+i.e. $\mathbf{p}(pos+k) = R(\omega k)\,\mathbf{p}(pos)$ where $R$ is the $2\times 2$ rotation by $\omega k$. The offset matrix $R(\omega k)$ depends only on $k$, not on $pos$, so the model can learn to attend "three tokens back" with a single fixed transform that works everywhere in the sequence. It also **extrapolates** to sequence lengths longer than seen in training.
 
 ```python
 import numpy as np
