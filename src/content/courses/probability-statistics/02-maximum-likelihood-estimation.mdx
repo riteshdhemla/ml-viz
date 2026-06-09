@@ -8,111 +8,211 @@ estimatedMinutes: 16
 
 # Maximum Likelihood Estimation
 
-Given some data and a family of distributions, which distribution best explains what you observed? **Maximum Likelihood Estimation (MLE)** gives a principled answer: choose the parameters that make the observed data most probable.
+You flip a bent coin 10 times and get 7 heads. What is the coin's true probability of heads? Your gut says $0.7$ — but *why* is that the best answer, and not $0.6$ or $0.8$?
+
+**Maximum Likelihood Estimation (MLE)** turns that gut feeling into a principle: out of every possible coin (every value of $p$), pick the one that makes the data you actually saw as probable as possible. The same idea fits a Gaussian to measurements, fits a logistic regression to labels, and underlies almost every loss function in machine learning.
 
 ## The likelihood function
 
-Given data $\mathcal{D} = \{x_1, \ldots, x_n\}$ i.i.d. from distribution $p(x | \theta)$, the **likelihood** is:
+Suppose your data $\mathcal{D} = \{x_1, \ldots, x_n\}$ are drawn **independently** from a distribution $p(x \mid \theta)$, where $\theta$ collects the unknown parameters (the coin's $p$, or a Gaussian's $\mu$ and $\sigma^2$).
+
+Because the draws are independent, the probability of seeing *all* of them is the product of the individual probabilities. Viewed as a function of $\theta$ with the data held fixed, that product is the **likelihood**:
 
 $$
-L(\theta) = p(\mathcal{D} | \theta) = \prod_{i=1}^n p(x_i | \theta)
+L(\theta) = p(\mathcal{D} \mid \theta) = \prod_{i=1}^n p(x_i \mid \theta)
 $$
 
-The **MLE estimate** is:
+MLE picks the $\theta$ that maximizes it:
 
 $$
-\hat{\theta}_\text{MLE} = \arg\max_\theta L(\theta)
+\hat{\theta}_\text{MLE} = \arg\max_\theta \; L(\theta)
 $$
 
-## Log-likelihood
-
-Products are hard to maximize — logarithms turn products into sums:
-
-$$
-\ell(\theta) = \ln L(\theta) = \sum_{i=1}^n \ln p(x_i | \theta)
-$$
-
-Since $\ln$ is monotonically increasing, $\arg\max \ell(\theta) = \arg\max L(\theta)$.
-
-<Callout type="tip" title="Always maximize log-likelihood">
-  The product of many small probabilities underflows to zero numerically. Log-likelihood avoids this and is convex in many common cases, making optimization easier.
+<Callout type="warning" title="Likelihood is not a probability over θ">
+  $L(\theta)$ varies $\theta$ with the *data fixed*. It is **not** a probability distribution over $\theta$ — it does not integrate to 1 over $\theta$. To get probabilities over $\theta$ you need a prior, which is Bayesian inference (next lesson).
 </Callout>
+
+## Why we maximize the log-likelihood
+
+Multiplying $n$ numbers between 0 and 1 produces a vanishingly small product (think $0.1^{1000}$), which underflows to exactly $0.0$ on a computer. Taking the logarithm fixes this and, because $\ln$ turns products into sums, makes the calculus far easier:
+
+$$
+\ell(\theta) = \ln L(\theta) = \ln \prod_{i=1}^n p(x_i \mid \theta) = \sum_{i=1}^n \ln p(x_i \mid \theta)
+$$
+
+The log is **strictly increasing**, so it never moves the location of the maximum:
+
+$$
+\arg\max_\theta \; \ell(\theta) = \arg\max_\theta \; L(\theta)
+$$
+
+The recipe for the rest of this lesson is always the same: write $\ell(\theta)$, differentiate, set the derivative to zero, and solve.
 
 <MLEViz />
 
-## MLE for a Gaussian
+## Worked derivation 1 — Gaussian mean and variance
 
-Model: $x_i \sim \mathcal{N}(\mu, \sigma^2)$. Log-likelihood:
+Model: each $x_i \sim \mathcal{N}(\mu, \sigma^2)$, so the density of a single point is
+
+$$
+p(x_i \mid \mu, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\!\left(-\frac{(x_i - \mu)^2}{2\sigma^2}\right)
+$$
+
+**Step 1 — log a single term.** The $\ln$ cancels the $\exp$:
+
+$$
+\ln p(x_i \mid \mu, \sigma^2) = -\tfrac{1}{2}\ln(2\pi\sigma^2) - \frac{(x_i - \mu)^2}{2\sigma^2}
+$$
+
+**Step 2 — sum over all $n$ points** to get the full log-likelihood:
 
 $$
 \ell(\mu, \sigma^2) = -\frac{n}{2}\ln(2\pi\sigma^2) - \frac{1}{2\sigma^2}\sum_{i=1}^n (x_i - \mu)^2
 $$
 
-Setting $\frac{\partial \ell}{\partial \mu} = 0$:
+### Solving for the mean μ
+
+**Step 3 — differentiate with respect to $\mu$.** The first term has no $\mu$, so only the sum survives. Using the chain rule on $(x_i - \mu)^2$, whose derivative w.r.t. $\mu$ is $-2(x_i-\mu)$:
 
 $$
-\hat{\mu}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i = \bar{x}
+\frac{\partial \ell}{\partial \mu} = -\frac{1}{2\sigma^2}\sum_{i=1}^n -2(x_i - \mu) = \frac{1}{\sigma^2}\sum_{i=1}^n (x_i - \mu)
 $$
 
-Setting $\frac{\partial \ell}{\partial \sigma^2} = 0$:
+**Step 4 — set it to zero.** Since $\sigma^2 > 0$, the prefactor cannot make it zero, so the sum must vanish:
 
 $$
-\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2
+\sum_{i=1}^n (x_i - \mu) = 0 \;\;\Longrightarrow\;\; \sum_{i=1}^n x_i - n\mu = 0
 $$
 
-**Insight:** MLE for a Gaussian gives the sample mean and (biased) sample variance. **Minimizing mean squared error (MSE) is exactly MLE under a Gaussian noise assumption.**
-
-## MLE for Bernoulli
-
-Model: $x_i \sim \text{Bernoulli}(p)$. Log-likelihood:
+**Step 5 — solve.** Move $n\mu$ across and divide by $n$:
 
 $$
-\ell(p) = \sum_{i=1}^n \left[x_i \ln p + (1-x_i)\ln(1-p)\right]
+\boxed{\;\hat{\mu}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i = \bar{x}\;}
 $$
 
-Setting $\frac{d\ell}{dp} = 0$:
+The MLE for the mean is just the **sample average**.
+
+### Solving for the variance σ²
+
+It is cleanest to treat $v = \sigma^2$ as the variable. Rewrite the log-likelihood:
 
 $$
-\hat{p}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i
+\ell(\mu, v) = -\frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln v - \frac{1}{2v}\sum_{i=1}^n (x_i - \mu)^2
 $$
 
-The MLE estimate is simply the **empirical fraction** of positive examples.
-
-## Connection to cross-entropy loss
-
-In binary classification, minimizing cross-entropy loss is **exactly** MLE:
+**Step 6 — differentiate with respect to $v$.** Using $\frac{d}{dv}\ln v = \frac{1}{v}$ and $\frac{d}{dv}\,\frac{1}{v} = -\frac{1}{v^2}$:
 
 $$
-\mathcal{L}_\text{CE} = -\frac{1}{n}\sum_{i=1}^n \left[y_i \ln \hat{y}_i + (1-y_i)\ln(1-\hat{y}_i)\right] = -\frac{1}{n}\ell(\theta)
+\frac{\partial \ell}{\partial v} = -\frac{n}{2v} + \frac{1}{2v^2}\sum_{i=1}^n (x_i - \mu)^2
 $$
 
-Minimizing cross-entropy = maximizing the Bernoulli log-likelihood of the labels.
+**Step 7 — set it to zero and multiply through by $2v^2$:**
 
-For multi-class classification, categorical cross-entropy = MLE for a categorical distribution.
+$$
+-n v + \sum_{i=1}^n (x_i - \mu)^2 = 0
+$$
 
-<Callout type="info" title="Loss functions as probability models">
-  Almost every standard loss function corresponds to an MLE objective:
-  - **MSE** = MLE for Gaussian noise model
-  - **Binary cross-entropy** = MLE for Bernoulli
-  - **Categorical cross-entropy** = MLE for Categorical
-  - **MAE** = MLE for Laplace noise model
+**Step 8 — solve** for $v$, plugging in $\mu = \hat\mu = \bar x$:
+
+$$
+\boxed{\;\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\;}
+$$
+
+<Callout type="info" title="Why this estimate is biased">
+  Notice the divisor is $n$, not $n-1$. Because we reused the *estimated* mean $\bar x$ (which is itself fit to the data) the squared deviations come out slightly too small, so $\hat\sigma^2_\text{MLE}$ underestimates the true variance on average. The unbiased estimator uses $n-1$. MLE is consistent — the bias vanishes as $n \to \infty$ — but it is not unbiased in finite samples.
+</Callout>
+
+**Insight:** maximizing the Gaussian log-likelihood over $\mu$ is the same as *minimizing* $\sum (x_i - \mu)^2$. So **fitting a model by minimizing squared error (MSE) is exactly MLE under the assumption that the noise is Gaussian.**
+
+## Worked derivation 2 — Bernoulli p
+
+Model: each $x_i \in \{0, 1\}$ with $x_i \sim \text{Bernoulli}(p)$. A compact way to write the probability of one outcome is
+
+$$
+p(x_i \mid p) = p^{x_i}(1-p)^{1-x_i}
+$$
+
+Check it: if $x_i = 1$ this is $p$; if $x_i = 0$ it is $1-p$. 
+
+**Step 1 — log a single term** (the exponents drop down as multipliers):
+
+$$
+\ln p(x_i \mid p) = x_i \ln p + (1 - x_i)\ln(1-p)
+$$
+
+**Step 2 — sum over all points.** Let $k = \sum_i x_i$ be the number of successes:
+
+$$
+\ell(p) = \sum_{i=1}^n \big[x_i \ln p + (1-x_i)\ln(1-p)\big] = k\ln p + (n-k)\ln(1-p)
+$$
+
+**Step 3 — differentiate**, using $\frac{d}{dp}\ln(1-p) = -\frac{1}{1-p}$:
+
+$$
+\frac{d\ell}{dp} = \frac{k}{p} - \frac{n-k}{1-p}
+$$
+
+**Step 4 — set to zero** and cross-multiply by $p(1-p)$:
+
+$$
+\frac{k}{p} = \frac{n-k}{1-p} \;\;\Longrightarrow\;\; k(1-p) = (n-k)p
+$$
+
+**Step 5 — expand and solve.** The $kp$ terms cancel:
+
+$$
+k - kp = np - kp \;\;\Longrightarrow\;\; k = np \;\;\Longrightarrow\;\; \boxed{\;\hat{p}_\text{MLE} = \frac{k}{n} = \frac{1}{n}\sum_{i=1}^n x_i\;}
+$$
+
+So the MLE is the **empirical fraction** of successes. For the bent coin (7 heads in 10 tosses) this is exactly $\hat p = 0.7$, confirming the gut feeling from the start of the lesson.
+
+## MLE = minimizing negative log-likelihood = cross-entropy
+
+Optimizers minimize, so in practice we minimize the **negative log-likelihood (NLL)** instead of maximizing $\ell$ — same answer, flipped sign:
+
+$$
+\hat\theta_\text{MLE} = \arg\max_\theta \ell(\theta) = \arg\min_\theta \big[-\ell(\theta)\big] = \arg\min_\theta \;\text{NLL}(\theta)
+$$
+
+Now take the Bernoulli NLL and divide by $n$ to make it a per-example average. Writing the model's predicted probability as $\hat y_i = p(y_i = 1 \mid x_i, \theta)$:
+
+$$
+\frac{1}{n}\,\text{NLL}(\theta) = -\frac{1}{n}\sum_{i=1}^n \big[y_i \ln \hat{y}_i + (1-y_i)\ln(1-\hat{y}_i)\big]
+$$
+
+That right-hand side is *literally the definition* of **binary cross-entropy loss** $\mathcal{L}_\text{CE}$. There is nothing to prove beyond recognizing the two formulas are identical:
+
+$$
+\mathcal{L}_\text{CE} = -\frac{1}{n}\,\ell(\theta)
+$$
+
+Therefore **minimizing cross-entropy is exactly maximizing the Bernoulli log-likelihood of the labels.** Every time you train a classifier with cross-entropy, you are doing MLE. For more than two classes, the same argument with a categorical distribution gives **categorical cross-entropy**.
+
+<Callout type="info" title="Loss functions are MLE objectives in disguise">
+  Pick a noise/label distribution, write its negative log-likelihood, and you recover a familiar loss:
+  - **MSE** = MLE for Gaussian noise (derivation 1 above)
+  - **Binary cross-entropy** = MLE for Bernoulli (derivation 2 above)
+  - **Categorical cross-entropy** = MLE for a Categorical distribution
+  - **MAE** = MLE for Laplace noise
 </Callout>
 
 ```python
 import numpy as np
-from scipy.optimize import minimize_scalar
 
-# MLE for a Bernoulli — coin with unknown p
+# MLE for a Bernoulli — bent coin with unknown p
 data = np.array([1, 1, 0, 1, 1, 0, 1, 0, 1, 1])  # 7 heads, 3 tails
 
-def neg_log_likelihood(p, data):
-    eps = 1e-10   # avoid log(0)
-    return -np.sum(data * np.log(p + eps) + (1 - data) * np.log(1 - p + eps))
+def log_likelihood(p, data):
+    eps = 1e-12   # avoid log(0)
+    return np.sum(data * np.log(p + eps) + (1 - data) * np.log(1 - p + eps))
 
-result = minimize_scalar(neg_log_likelihood, bounds=(0.01, 0.99),
-                          method='bounded', args=(data,))
-print(f"MLE estimate: p̂ = {result.x:.3f}")   # ≈ 0.700
-print(f"Sample mean:  p̄ = {data.mean():.3f}") # 0.700 — same!
+# Brute force: scan a grid of candidate p and keep the argmax
+grid = np.linspace(0.01, 0.99, 9999)
+ll = np.array([log_likelihood(p, data) for p in grid])
+p_grid = grid[ll.argmax()]
+
+print("Grid-search MLE:  p = {:.3f}".format(p_grid))   # ~0.700
+print("Closed-form k/n:  p = {:.3f}".format(data.mean()))  # 0.700 — same!
 ```
 
 ## Properties of MLE
@@ -126,15 +226,17 @@ print(f"Sample mean:  p̄ = {data.mean():.3f}") # 0.700 — same!
 
 ## Common mistake: confusing likelihood and probability
 
-$L(\theta) = p(\mathcal{D} | \theta)$ is a function of $\theta$ with the data fixed — **not** a probability over $\theta$. It does not integrate to 1 over $\theta$.
+This trips up almost everyone at first. $L(\theta) = p(\mathcal{D} \mid \theta)$ is a function of $\theta$ with the **data fixed** — it answers "how plausible is this parameter given what I saw?" It is **not** a probability distribution over $\theta$: it does not integrate to 1 over $\theta$, and "the probability that $\mu = 3$" is not something MLE can give you.
 
-To reason about uncertainty in $\theta$ itself, you need **Bayesian inference** (next lesson).
+To reason about uncertainty in $\theta$ itself — to put a probability distribution *on the parameters* — you need a prior, which is **Bayesian inference** (next lesson).
 
 ## Key takeaways
 
-- MLE chooses parameters that maximize the probability of the observed data.
-- **Log-likelihood** converts a product into a sum — always use it.
-- MLE for Gaussian = minimize MSE; MLE for Bernoulli = minimize cross-entropy.
+- MLE chooses parameters that maximize the probability of the observed data: $\hat\theta = \arg\max_\theta \ell(\theta)$.
+- **Log-likelihood** turns the product into a sum, avoids underflow, and is what you actually differentiate.
+- Gaussian MLE → $\hat\mu = \bar x$ and $\hat\sigma^2 = \frac1n\sum(x_i-\bar x)^2$ (biased, divisor $n$).
+- Bernoulli MLE → $\hat p = k/n$, the empirical success rate.
+- Maximizing log-likelihood = minimizing NLL; for a Bernoulli that NLL *is* cross-entropy, so MSE and cross-entropy are MLE objectives in disguise.
 - MLE is consistent and asymptotically efficient, but says nothing about parameter uncertainty.
 
 ## Related concepts
