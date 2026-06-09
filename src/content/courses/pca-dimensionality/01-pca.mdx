@@ -69,6 +69,28 @@ $$
 
 where $V_k$ contains the first $k$ eigenvectors.
 
+### Why is PC1 the top eigenvector?
+
+This is the heart of PCA. The variance of the data projected onto a unit direction $\mathbf{v}$ is
+
+$$
+\text{Var}(\tilde{X}\mathbf{v}) = \frac{1}{n-1}(\tilde{X}\mathbf{v})^\top(\tilde{X}\mathbf{v}) = \mathbf{v}^\top \underbrace{\tfrac{1}{n-1}\tilde{X}^\top\tilde{X}}_{C}\,\mathbf{v} = \mathbf{v}^\top C\,\mathbf{v}.
+$$
+
+PC1 maximizes this subject to $\|\mathbf{v}\|=1$. Use a Lagrange multiplier $\lambda$:
+
+$$
+\mathcal{L}(\mathbf{v},\lambda) = \mathbf{v}^\top C \mathbf{v} - \lambda(\mathbf{v}^\top\mathbf{v} - 1),
+\qquad
+\frac{\partial \mathcal{L}}{\partial \mathbf{v}} = 2C\mathbf{v} - 2\lambda\mathbf{v} = \mathbf{0}.
+$$
+
+$$
+\Rightarrow\; C\mathbf{v} = \lambda\mathbf{v}.
+$$
+
+So the optimum $\mathbf{v}$ is an **eigenvector** of $C$. Left-multiplying by $\mathbf{v}^\top$ gives the variance it captures: $\mathbf{v}^\top C \mathbf{v} = \lambda\, \mathbf{v}^\top\mathbf{v} = \lambda$. To **maximize** variance, pick the eigenvector with the **largest eigenvalue** — that's PC1. PC2 is the next-largest (automatically orthogonal, since $C$ is symmetric), and so on. The eigenvalue *is* the variance along that component.
+
 ```python
 import numpy as np
 from sklearn.decomposition import PCA
@@ -81,30 +103,39 @@ print(f"Explained variance: {pca.explained_variance_ratio_}")
 print(f"Total variance explained: {sum(pca.explained_variance_ratio_):.3f}")
 ```
 
-## Worked example
+## Worked example (by hand)
 
-3D data with points roughly on a plane:
+Take 4 centered 2D points: $(2,1),\,(1,2),\,(-1,-2),\,(-2,-1)$ (mean is already $\mathbf 0$).
+
+**Step 2 — covariance** $C = \tfrac{1}{n-1}\tilde X^\top \tilde X$ with $n=4$:
+
+$$
+\textstyle\sum x_i^2 = 4{+}1{+}1{+}4 = 10,\quad \sum y_i^2 = 10,\quad \sum x_i y_i = 2{+}2{+}2{+}2 = 8
+$$
+$$
+C = \tfrac{1}{3}\begin{bmatrix} 10 & 8 \\ 8 & 10 \end{bmatrix}
+= \begin{bmatrix} 3.33 & 2.67 \\ 2.67 & 3.33 \end{bmatrix}.
+$$
+
+**Step 3 — eigenvalues** via the characteristic polynomial $\lambda^2 - (\text{tr}\,C)\lambda + \det C = 0$ (same trick as the [eigenvalues lesson](/courses/linear-algebra/03-eigenvalues-and-eigenvectors)). Here $\text{tr}\,C = 6.67$ and $\det C = 3.33^2 - 2.67^2 = 11.11 - 7.11 = 4.0$:
+
+$$
+\lambda^2 - 6.67\lambda + 4.0 = 0 \;\Rightarrow\; \lambda_1 = 6.0,\quad \lambda_2 = 0.667.
+$$
+
+**Eigenvectors:** solving $(C-\lambda I)\mathbf v = \mathbf 0$ gives $\mathbf v_1 \propto (1,1)$ for $\lambda_1$ and $\mathbf v_2 \propto (1,-1)$ for $\lambda_2$ — the data stretches most along the $45°$ diagonal.
+
+**Variance explained:** $\dfrac{\lambda_1}{\lambda_1+\lambda_2} = \dfrac{6.0}{6.667} = 90\%$. Keeping only PC1 (the $(1,1)$ direction) retains 90% of the variance while halving the dimensions.
 
 ```python
 import numpy as np
 
-# Generate data on a tilted plane + noise
-np.random.seed(42)
-t = np.random.uniform(-3, 3, 100)
-X_3d = np.column_stack([
-    t + np.random.normal(0, 0.3, 100),
-    2*t + np.random.normal(0, 0.3, 100),
-    0.5*t + np.random.normal(0, 0.3, 100)
-])
-
-# PCA to 2D
-pca = PCA(n_components=2)
-X_2d = pca.fit_transform(X_3d)
-
-print(f"Original shape: {X_3d.shape}")   # (100, 3)
-print(f"Reduced shape: {X_2d.shape}")    # (100, 2)
-print(f"Variance explained: {pca.explained_variance_ratio_}")  # ~[0.95, 0.03]
-# PC1 captures 95% of variance — the data is nearly 1D!
+X = np.array([[2,1],[1,2],[-1,-2],[-2,-1]])   # already centered
+C = np.cov(X.T)                                # (1/(n-1)) X^T X
+eigvals, eigvecs = np.linalg.eigh(C)           # ascending order
+print("covariance:\n", C)
+print("eigenvalues:", np.round(eigvals[::-1], 3))          # [6.0, 0.667]
+print("variance ratio:", np.round(eigvals[::-1]/eigvals.sum(), 3))  # [0.9, 0.1]
 ```
 
 ## Choosing the number of components
