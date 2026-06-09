@@ -22,6 +22,49 @@ Critical points come in three flavors:
 | Local maximum | Highest in a neighborhood | Avoided by gradient descent |
 | Saddle point | Low in some directions, high in others | Very common in deep nets |
 
+### Worked example: finding the critical points
+
+Take the two-variable function
+
+$$
+f(x, y) = x^2 + xy + y^2 - 3x.
+$$
+
+**Step 1 — compute the gradient.** Differentiate with respect to each variable, treating the other as a constant:
+
+$$
+\frac{\partial f}{\partial x} = 2x + y - 3,
+\qquad
+\frac{\partial f}{\partial y} = x + 2y.
+$$
+
+So $\nabla f = \begin{bmatrix} 2x + y - 3 \\ x + 2y \end{bmatrix}$.
+
+**Step 2 — set the gradient to zero.** A critical point solves the linear system
+
+$$
+\begin{cases}
+2x + y - 3 = 0 \\
+x + 2y = 0
+\end{cases}
+$$
+
+From the second equation, $x = -2y$. Substitute into the first:
+
+$$
+2(-2y) + y - 3 = 0
+\;\Longrightarrow\;
+-4y + y - 3 = 0
+\;\Longrightarrow\;
+-3y = 3
+\;\Longrightarrow\;
+y = -1.
+$$
+
+Then $x = -2(-1) = 2$. The single critical point is $\mathbf{x}^* = (2, -1)$.
+
+We still do not know *what kind* of critical point it is — for that we need the Hessian.
+
 <Callout type="info" title="Deep networks rarely hit local minima">
   Research has shown that most critical points in deep network loss landscapes are saddle points, not poor local minima. The loss value at any local minimum in a large network tends to be close to the global minimum (this is the "lottery ticket" intuition). Saddle points are more problematic because gradient descent slows down — the gradient is near zero.
 </Callout>
@@ -34,29 +77,121 @@ $$
 H_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}
 $$
 
-It generalizes the second derivative to multiple dimensions and captures **curvature**:
+It generalizes the second derivative to multiple dimensions and captures **curvature**. For a smooth function the mixed partials are equal ($\partial^2 f / \partial x \partial y = \partial^2 f / \partial y \partial x$), so the Hessian is always **symmetric** — which is why its eigenvalues are real.
+
+### Worked example: the Hessian of our function
+
+Continue with $f(x, y) = x^2 + xy + y^2 - 3x$. Differentiate each first derivative again:
+
+$$
+\frac{\partial^2 f}{\partial x^2} = \frac{\partial}{\partial x}(2x + y - 3) = 2,
+\qquad
+\frac{\partial^2 f}{\partial y^2} = \frac{\partial}{\partial y}(x + 2y) = 2,
+$$
+
+$$
+\frac{\partial^2 f}{\partial x \partial y} = \frac{\partial}{\partial y}(2x + y - 3) = 1,
+\qquad
+\frac{\partial^2 f}{\partial y \partial x} = \frac{\partial}{\partial x}(x + 2y) = 1.
+$$
+
+Collecting these:
+
+$$
+\mathbf{H} = \begin{bmatrix} 2 & 1 \\ 1 & 2 \end{bmatrix}.
+$$
+
+Here the Hessian is constant (the function is quadratic), so it has the same value at every point, including the critical point $(2,-1)$.
+
+### Classifying the critical point with eigenvalues
+
+The curvature in each eigendirection is given by the eigenvalues of $\mathbf{H}$:
 
 - **Positive definite** Hessian ($\lambda_{\min} > 0$): local minimum
 - **Negative definite** Hessian ($\lambda_{\max} < 0$): local maximum
 - **Indefinite** Hessian (mixed signs): saddle point
 
-The eigenvalues of $\mathbf{H}$ tell you the curvature in each eigendirection.
+**Step 1 — solve the characteristic equation** $\det(\mathbf{H} - \lambda \mathbf{I}) = 0$:
+
+$$
+\det\begin{bmatrix} 2 - \lambda & 1 \\ 1 & 2 - \lambda \end{bmatrix}
+= (2 - \lambda)^2 - 1 = 0.
+$$
+
+**Step 2 — expand and solve:**
+
+$$
+(2 - \lambda)^2 = 1
+\;\Longrightarrow\;
+2 - \lambda = \pm 1
+\;\Longrightarrow\;
+\lambda = 1 \ \text{or}\ \lambda = 3.
+$$
+
+Both eigenvalues are positive, so $\mathbf{H}$ is **positive definite** and $(2, -1)$ is a **local minimum** (and, since $f$ is convex, the global minimum). The valley is three times steeper along the $\lambda = 3$ eigendirection than along the $\lambda = 1$ direction.
 
 ### Second-order Taylor expansion
 
-Near any point $\mathbf{x}_0$:
+Near any point $\mathbf{x}_0$, a smooth function is well approximated by a quadratic:
 
 $$
 f(\mathbf{x}) \approx f(\mathbf{x}_0) + \nabla f(\mathbf{x}_0)^\top (\mathbf{x} - \mathbf{x}_0) + \frac{1}{2}(\mathbf{x} - \mathbf{x}_0)^\top \mathbf{H}(\mathbf{x}_0)(\mathbf{x} - \mathbf{x}_0)
 $$
 
-This is why **Newton's method** converges faster than gradient descent — it uses curvature to take a smarter step:
+The three terms are: the value, the linear (slope) correction, and the quadratic (curvature) correction. At a critical point $\nabla f = \mathbf{0}$, so the linear term drops and the local shape is governed entirely by $\mathbf{H}$ — this is precisely why the Hessian's eigenvalues decide minimum vs. saddle.
+
+Let $\mathbf{s} = \mathbf{x} - \mathbf{x}_0$. Writing the curvature term in the eigenbasis $\mathbf{H} = \sum_i \lambda_i \mathbf{v}_i \mathbf{v}_i^\top$ gives
 
 $$
-\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1} \nabla f(\mathbf{x})
+\tfrac{1}{2}\,\mathbf{s}^\top \mathbf{H}\,\mathbf{s} = \tfrac{1}{2}\sum_i \lambda_i\,(\mathbf{v}_i^\top \mathbf{s})^2.
 $$
 
-The problem: computing and inverting $\mathbf{H}$ for millions of parameters is computationally infeasible. Adam and other adaptive methods approximate the diagonal of $\mathbf{H}^{-1}$.
+Each eigendirection contributes $\tfrac{1}{2}\lambda_i$ times the squared distance moved along it: positive $\lambda_i$ curves the bowl **up**, negative $\lambda_i$ curves it **down**. A mix of signs is exactly a saddle.
+
+### Newton's method: one step, derived
+
+Newton's method minimizes the quadratic Taylor model exactly in one step. Treat the right-hand side as a function of $\mathbf{s}$ and minimize it. Take the gradient with respect to $\mathbf{s}$ and set it to zero:
+
+$$
+\nabla_{\mathbf{s}}\Big[\nabla f(\mathbf{x}_0)^\top \mathbf{s} + \tfrac{1}{2}\mathbf{s}^\top \mathbf{H}\,\mathbf{s}\Big]
+= \nabla f(\mathbf{x}_0) + \mathbf{H}\,\mathbf{s} = \mathbf{0}.
+$$
+
+Solve for the step $\mathbf{s}$:
+
+$$
+\mathbf{H}\,\mathbf{s} = -\nabla f(\mathbf{x}_0)
+\;\Longrightarrow\;
+\mathbf{s} = -\,\mathbf{H}^{-1}\nabla f(\mathbf{x}_0).
+$$
+
+This gives the update
+
+$$
+\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1} \nabla f(\mathbf{x}).
+$$
+
+**Worked single step.** Start at $\mathbf{x}_0 = (0, 0)$ on our $f$. There $\nabla f(0,0) = \begin{bmatrix} 2(0)+0-3 \\ 0+0 \end{bmatrix} = \begin{bmatrix} -3 \\ 0 \end{bmatrix}$.
+
+Invert the (constant) Hessian. For a $2\times2$ matrix, $\mathbf{H}^{-1} = \dfrac{1}{\det \mathbf{H}}\begin{bmatrix} d & -b \\ -c & a \end{bmatrix}$ with $\det \mathbf{H} = 2\cdot2 - 1\cdot1 = 3$:
+
+$$
+\mathbf{H}^{-1} = \frac{1}{3}\begin{bmatrix} 2 & -1 \\ -1 & 2 \end{bmatrix}.
+$$
+
+The Newton step is
+
+$$
+\mathbf{x} = \mathbf{x}_0 - \mathbf{H}^{-1}\nabla f
+= \begin{bmatrix} 0 \\ 0 \end{bmatrix}
+- \frac{1}{3}\begin{bmatrix} 2 & -1 \\ -1 & 2 \end{bmatrix}\begin{bmatrix} -3 \\ 0 \end{bmatrix}
+= -\frac{1}{3}\begin{bmatrix} -6 \\ 3 \end{bmatrix}
+= \begin{bmatrix} 2 \\ -1 \end{bmatrix}.
+$$
+
+Newton's method lands **exactly** on the minimum $(2, -1)$ in a single step. This is the headline property: for a quadratic, Newton is exact because the quadratic Taylor model *is* the function. A plain gradient step $\mathbf{x}_0 - \eta\,\nabla f = (0,0) - \eta(-3,0) = (3\eta, 0)$ only crawls along the $x$-axis and would need many iterations to arrive.
+
+The catch: computing and inverting $\mathbf{H}$ for millions of parameters is infeasible ($O(n^3)$ per step, $O(n^2)$ storage). Adam and other adaptive methods approximate only the *diagonal* of $\mathbf{H}^{-1}$.
 
 <GradientFieldViz />
 
@@ -68,7 +203,7 @@ $$
 f(\lambda \mathbf{x} + (1-\lambda)\mathbf{y}) \leq \lambda f(\mathbf{x}) + (1-\lambda)f(\mathbf{y}), \quad \lambda \in [0,1]
 $$
 
-Equivalently, $\mathbf{H} \succeq 0$ (positive semi-definite) everywhere.
+Equivalently, $\mathbf{H} \succeq 0$ (positive semi-definite) everywhere — every eigenvalue is $\geq 0$ at every point.
 
 **Why convexity matters:**
 - Every local minimum is a global minimum
@@ -78,19 +213,48 @@ Equivalently, $\mathbf{H} \succeq 0$ (positive semi-definite) everywhere.
 **Convex ML problems:** Linear regression, logistic regression, SVM, Lasso, Ridge regression.
 **Non-convex ML problems:** Neural networks with non-linear activations (any depth ≥ 2).
 
+### The eigenvalue convexity test, worked
+
+A quadratic $f(\mathbf{x}) = \tfrac{1}{2}\mathbf{x}^\top \mathbf{H}\,\mathbf{x}$ is convex iff $\mathbf{H} \succeq 0$. Test two matrices by hand using the same $2\times2$ characteristic equation as before, $\det(\mathbf{H} - \lambda\mathbf{I}) = 0$.
+
+**Convex case** $\mathbf{H} = \begin{bmatrix} 2 & 1 \\ 1 & 3 \end{bmatrix}$:
+
+$$
+(2 - \lambda)(3 - \lambda) - 1 = 0
+\;\Longrightarrow\;
+\lambda^2 - 5\lambda + 5 = 0
+\;\Longrightarrow\;
+\lambda = \frac{5 \pm \sqrt{25 - 20}}{2} = \frac{5 \pm \sqrt{5}}{2}.
+$$
+
+That gives $\lambda \approx 1.38$ and $\lambda \approx 3.62$, both positive — **convex** (positive definite).
+
+**Saddle case** $\mathbf{H} = \begin{bmatrix} 1 & 2 \\ 2 & 1 \end{bmatrix}$:
+
+$$
+(1 - \lambda)^2 - 4 = 0
+\;\Longrightarrow\;
+1 - \lambda = \pm 2
+\;\Longrightarrow\;
+\lambda = -1 \ \text{or}\ \lambda = 3.
+$$
+
+One eigenvalue is negative, so $\mathbf{H}$ is **indefinite** — *not* convex, and the origin is a **saddle point**. Along the eigenvector for $\lambda = 3$ the surface curves up; along the eigenvector for $\lambda = -1$ it curves down.
+
+This is exactly the test the companion notebook implements: read off the eigenvalues of $\mathbf{H}$ and check their signs.
+
 ```python
 import numpy as np
 
-def is_convex_quadratic(H):
-    """Check if a quadratic f(x) = x^T H x is convex."""
-    eigenvalues = np.linalg.eigvalsh(H)  # eigvalsh for symmetric
-    return np.all(eigenvalues >= 0)      # PSD ↔ convex
+def classify(H):
+    """Classify a critical point from the Hessian's eigenvalues."""
+    eigs = np.linalg.eigvalsh(H)        # real eigenvalues (H is symmetric)
+    if np.all(eigs > 0):  return "local minimum", eigs
+    if np.all(eigs < 0):  return "local maximum", eigs
+    return "saddle point", eigs
 
-H_convex   = np.array([[2, 1], [1, 3]])   # eigenvalues: [1.27, 3.73] > 0
-H_nonconvex = np.array([[1, 2], [2, 1]])  # eigenvalues: [-1, 3] — indefinite
-
-print(is_convex_quadratic(H_convex))    # True
-print(is_convex_quadratic(H_nonconvex)) # False
+print(classify(np.array([[2., 1.], [1., 3.]])))  # ('local minimum', [1.38, 3.62])
+print(classify(np.array([[1., 2.], [2., 1.]])))  # ('saddle point',  [-1.,  3.])
 ```
 
 ## Learning rate and curvature
@@ -103,6 +267,29 @@ $$
 
 - **Too large $\eta$:** overshoots; oscillates or diverges if $\eta > 2/L$
 - **Too small $\eta$:** slow convergence, especially in flat directions
+
+### Worked example: the divergence threshold
+
+Take the separable quadratic $f(\mathbf{w}) = 2w_1^2 + \tfrac{1}{2}w_2^2$, whose Hessian is
+
+$$
+\mathbf{H} = \begin{bmatrix} 4 & 0 \\ 0 & 1 \end{bmatrix},
+\qquad \lambda_{\max} = 4,\ \ \lambda_{\min} = 1.
+$$
+
+Gradient descent on a quadratic updates each eigendirection independently. Along the eigendirection with eigenvalue $\lambda$, one step multiplies the coordinate by the factor $(1 - \eta\lambda)$:
+
+$$
+w \leftarrow w - \eta\,(\lambda w) = (1 - \eta\lambda)\,w.
+$$
+
+The iteration **converges** in that direction only when $|1 - \eta\lambda| < 1$, i.e. $0 < \eta < 2/\lambda$. The *tightest* constraint comes from the largest eigenvalue, so the step diverges as soon as
+
+$$
+\eta > \frac{2}{\lambda_{\max}} = \frac{2}{4} = 0.5.
+$$
+
+The fastest *stable* choice that balances both directions is $\eta^* = 1/\lambda_{\max} = 0.25$. The notebook runs $\eta \in \{0.05, 0.2, 0.49, 0.51\}$ and shows the last value blowing up — exactly the $0.5$ threshold predicted here.
 
 This is why the curvature of the loss landscape determines the best learning rate — and why adaptive methods like Adam use per-parameter estimates of curvature.
 
