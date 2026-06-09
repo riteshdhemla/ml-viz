@@ -70,6 +70,57 @@ $$
 
 Imagine a single cell tracking grammatical subject *number* (singular vs plural) while reading "The **keys** to the cabinet ...". At the word "keys" the input gate writes "plural" to the cell. As irrelevant words ("to", "the", "cabinet") stream past, the forget gate stays near 1 — **preserving** "plural" — so that many steps later the model conjugates "**are** on the table," not "is." A vanilla RNN would have forgotten the subject by then.
 
+### A full LSTM timestep, by hand
+
+Let's run **one** timestep of a scalar LSTM ($D = 1$ input, $H = 1$ hidden) with small explicit numbers so every gate is hand-checkable. The concatenated input is $z = [\,h_{t-1},\, x_t\,]$, and each gate has weights $[W_h, W_x]$ and a bias.
+
+**Inputs:** $h_{t-1} = 0$, $x_t = 1$, $c_{t-1} = 2$.
+
+**Weights** (chosen to keep the sums simple):
+
+| Gate | $W_h$ | $W_x$ | bias |
+|------|-------|-------|------|
+| Forget $f$ | 0 | 0 | $+2$ |
+| Input $i$ | 0 | 1 | $-1$ |
+| Candidate $\tilde{c}$ | 0 | 1 | 0 |
+| Output $o$ | 0 | 1 | 0 |
+
+**Step 1 — pre-activations** (each is $W_h h_{t-1} + W_x x_t + b$):
+
+$$
+z_f = 0\cdot 0 + 0\cdot 1 + 2 = 2,\quad
+z_i = 0\cdot 0 + 1\cdot 1 - 1 = 0,\quad
+z_{\tilde c} = 1,\quad
+z_o = 1
+$$
+
+**Step 2 — apply the nonlinearities** ($\sigma$ on the gates, $\tanh$ on the candidate):
+
+$$
+\begin{aligned}
+f_t &= \sigma(2) = \tfrac{1}{1+e^{-2}} \approx 0.881 \\
+i_t &= \sigma(0) = 0.5 \\
+\tilde{c}_t &= \tanh(1) \approx 0.762 \\
+o_t &= \sigma(1) \approx 0.731
+\end{aligned}
+$$
+
+**Step 3 — update the cell state** (the additive rule):
+
+$$
+c_t = f_t\, c_{t-1} + i_t\, \tilde{c}_t
+= 0.881\times 2 + 0.5\times 0.762
+= 1.762 + 0.381 = \boxed{2.142}
+$$
+
+**Step 4 — emit the hidden state:**
+
+$$
+h_t = o_t \tanh(c_t) = 0.731 \times \tanh(2.142) = 0.731 \times 0.973 = \boxed{0.711}
+$$
+
+So this cell mostly **kept** its old memory ($f_t \approx 0.88$, carrying $1.76$ of the old $2.0$ forward) and wrote a small amount of new content. These exact numbers are reproduced and verified in the companion notebook.
+
 ```python
 import numpy as np
 
@@ -118,11 +169,33 @@ $$
 
 The update gate $\mathbf{z}_t$ does the job of the LSTM's forget *and* input gates at once: it interpolates between keeping the old state and writing the new candidate.
 
+### Counting the parameters
+
+Each gate is one linear layer over the concatenation $[\mathbf{h}_{t-1}, \mathbf{x}_t]$. With input dimension $D$ and hidden size $H$, that layer has:
+
+$$
+\underbrace{H\times D}_{W_x} + \underbrace{H\times H}_{W_h} + \underbrace{H}_{\text{bias}} \;=\; H(D + H + 1) \text{ parameters per gate.}
+$$
+
+An **LSTM has 4 such layers** (forget, input, candidate, output), a **GRU has 3** (reset, update, candidate):
+
+$$
+P_{\text{LSTM}} = 4\,H(D + H + 1), \qquad P_{\text{GRU}} = 3\,H(D + H + 1).
+$$
+
+**Concrete count** for $D = 10$, $H = 20$. One gate is $20(10 + 20 + 1) = 20\times 31 = 620$ parameters, so:
+
+$$
+P_{\text{LSTM}} = 4\times 620 = 2{,}480, \qquad P_{\text{GRU}} = 3\times 620 = 1{,}860.
+$$
+
+The GRU has exactly $1860/2480 = 0.75$ of the parameters — **25% fewer**, because it drops one of the four gate layers. (Both are also verified in the notebook.)
+
 | | LSTM | GRU |
 |---|------|-----|
-| Gates | 3 (forget, input, output) | 2 (reset, update) |
+| Gates | 3 + candidate (4 layers) | 2 + candidate (3 layers) |
 | State vectors | 2 ($\mathbf{h}$ and $\mathbf{c}$) | 1 ($\mathbf{h}$) |
-| Parameters | More | ~25% fewer |
+| Parameters (D=10, H=20) | 2,480 | 1,860 (25% fewer) |
 | Speed | Slower | Faster |
 | Typical edge | Long, complex sequences | Smaller data, faster training |
 
@@ -131,6 +204,24 @@ The update gate $\mathbf{z}_t$ does the job of the LSTM's forget *and* input gat
 </Callout>
 
 ## Why gates beat plain RNNs
+
+Differentiate the additive cell update with respect to the previous cell state. Holding the gates fixed (they depend on $\mathbf{h}_{t-1}$, but that second-order path is small), the dominant term is strikingly simple:
+
+$$
+\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t
+\quad\Longrightarrow\quad
+\frac{\partial \mathbf{c}_t}{\partial \mathbf{c}_{t-1}} \approx \mathbf{f}_t.
+$$
+
+Chaining this back over $T$ steps multiplies the **forget gates** together:
+
+$$
+\frac{\partial \mathbf{c}_T}{\partial \mathbf{c}_0} \approx \prod_{t=1}^{T} \mathbf{f}_t.
+$$
+
+Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mathrm{diag}(\tanh')$ — so the gradient scales like $\big(W_{hh}\big)^{T}$ and a single eigenvalue below 1 makes it **vanish** exponentially.
+
+**Concrete contrast over $T = 50$ steps.** If the LSTM keeps its forget gate at $f = 0.95$, the surviving gradient is $0.95^{50} \approx 0.077$. A vanilla RNN with an effective per-step factor of $0.9$ gives $0.9^{50} \approx 0.005$ — about **15× smaller**. Push the forget gate to $f = 0.99$ and $0.99^{50} \approx 0.61$: nearly **two-thirds of the gradient survives** 50 steps. That is the gradient highway.
 
 <Callout type="success" title="The gradient highway">
   The additive cell update $\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \dots$ means the gradient flowing back through the cell state is multiplied by the forget gate (often ≈ 1), **not** by a weight matrix raised to a power. That is precisely what lets LSTMs and GRUs learn dependencies hundreds of steps long where a vanilla RNN tops out around 10–20.
