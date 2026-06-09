@@ -32,7 +32,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 - [x] probabilistic-models/02-em-algorithm — lesson: replaced thin "convergence guarantee" with full ELBO derivation (Jensen → log p = ELBO + KL(q‖posterior); E-step makes bound tight, M-step maximizes it → monotonic non-decrease proven by chaining ≥/≥/=); +by-hand one-iteration worked example X={1,2,4,5}: γ table (0.855/0.145…), M-step μ→(2.08,3.92) σ→1.286, LL −7.514→−7.390. notebook: +one-EM-iteration cell verifying γ + LL rise.
 
 ## Supervised — intermediate
-- [ ] svm/01-maximum-margin
+- [x] svm/01-maximum-margin — lesson: +derivation of margin=2/‖w‖ (signed dist (wᵀx+b)/‖w‖, rescale SVs to ±1 ⇒ half-width 1/‖w‖); FIXED broken worked example (old class−1 {(0,0),(1,0)} made (1,0) the true SV not (0,0), and w=[1,1]/b=−1.5 wasn't tight at ±1). New clean 6-pt example on y=x: SVs (2,2)&(0,0), solve 4a+b=1/b=−1 ⇒ w=(0.5,0.5),b=−1, margin=2√2=2.83=SV gap. notebook: +by-hand solve cell (margin eqns, y·f=1 at SVs, sklearn cross-check).
 - [ ] svm/02-kernel-trick
 - [ ] ensemble-methods/01-bagging-and-random-forests
 - [ ] ensemble-methods/02-boosting
