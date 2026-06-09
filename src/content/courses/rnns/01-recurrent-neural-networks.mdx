@@ -24,14 +24,24 @@ $$
 \mathbf{y}_t = W_{hy}\,\mathbf{h}_t + \mathbf{b}_y
 $$
 
-- $\mathbf{x}_t$ — input at time step $t$ (e.g. the embedding of the $t$-th word)
-- $\mathbf{h}_t$ — hidden state at time $t$, the network's "memory"
+- $\mathbf{x}_t$ — input at time step $t$ (e.g. the embedding of the $t$-th word), a $D$-vector
+- $\mathbf{h}_t$ — hidden state at time $t$, the network's "memory", an $H$-vector
 - $\mathbf{h}_{t-1}$ — hidden state from the previous step
-- $W_{xh}, W_{hh}, W_{hy}$ — weight matrices, **shared across all time steps**
+- $W_{xh}$ ($H\times D$), $W_{hh}$ ($H\times H$), $W_{hy}$ ($O\times H$) — weight matrices, **shared across all time steps**
 
 <Callout type="tip" title="Intuition">
   The hidden state is like reading a book and keeping a running summary in your head. Each new sentence ($\mathbf{x}_t$) updates your understanding ($\mathbf{h}_t$) based on what you already knew ($\mathbf{h}_{t-1}$). You never re-read the whole book — the summary carries the context forward.
 </Callout>
+
+### Why the hidden state *is* memory
+
+Unroll the recurrence by substituting $\mathbf{h}_{t-1}$, then $\mathbf{h}_{t-2}$, and so on:
+
+$$
+\mathbf{h}_t = \tanh\!\Big(W_{xh}\mathbf{x}_t + W_{hh}\,\underbrace{\tanh(W_{xh}\mathbf{x}_{t-1} + W_{hh}\mathbf{h}_{t-2} + \mathbf{b}_h)}_{\mathbf{h}_{t-1}} + \mathbf{b}_h\Big)
+$$
+
+Every past input $\mathbf{x}_1,\dots,\mathbf{x}_t$ has left a fingerprint inside $\mathbf{h}_t$. There is no separate storage buffer — the *single fixed-size vector* $\mathbf{h}_t$ is a lossy compression of the entire prefix. That is exactly why we call it memory: change an earlier input and $\mathbf{h}_t$ changes too.
 
 ## Unrolling the loop
 
@@ -58,20 +68,76 @@ Crucially, every box is the **same** set of weights. This **parameter sharing** 
 | Sees order of inputs? | No | Yes |
 | Has memory of past? | No | Yes (hidden state) |
 
-## Sequence-to-what? The four shapes
+## How many parameters? Counting an RNN cell
 
-RNNs flex to different tasks depending on how many inputs and outputs you wire up:
+Because the weights are shared, the parameter count is **independent of sequence length**. For input size $D$, hidden size $H$, output size $O$:
 
-| Pattern | Inputs → Outputs | Example |
-|---------|------------------|---------|
-| **one-to-many** | 1 → N | Image → caption |
-| **many-to-one** | N → 1 | Review → sentiment label |
-| **many-to-many (aligned)** | N → N | Part-of-speech tagging |
-| **many-to-many (seq2seq)** | N → M | Translation (encoder–decoder) |
+| Tensor | Shape | Count |
+|--------|-------|-------|
+| $W_{xh}$ | $H\times D$ | $HD$ |
+| $W_{hh}$ | $H\times H$ | $H^2$ |
+| $\mathbf{b}_h$ | $H$ | $H$ |
+| $W_{hy}$ | $O\times H$ | $OH$ |
+| $\mathbf{b}_y$ | $O$ | $O$ |
+
+$$
+\text{total} = \underbrace{HD + H^2 + H}_{\text{recurrent cell}} + \underbrace{OH + O}_{\text{output head}}
+$$
+
+**Worked count** for $D=3,\;H=4,\;O=2$:
+
+$$
+\underbrace{4\cdot 3}_{12} + \underbrace{4^2}_{16} + \underbrace{4}_{4} + \underbrace{2\cdot 4}_{8} + \underbrace{2}_{2} = 42
+$$
+
+The recurrent cell alone (the part reused at every step) is $HD + H^2 + H = 12 + 16 + 4 = 32$ parameters. Process a length-3 or a length-3000 sequence — it is still these same 32 numbers.
+
+## Worked forward pass — two timesteps by hand
+
+Let's run the full recurrence with $D=2$ input, $H=2$ hidden, $O=1$ output, and tiny explicit weights:
+
+$$
+W_{xh}=\begin{bmatrix}0.5 & -0.3\\ 0.1 & 0.4\end{bmatrix},\quad
+W_{hh}=\begin{bmatrix}0.2 & 0\\ 0 & 0.2\end{bmatrix},\quad
+\mathbf{b}_h=\begin{bmatrix}0\\0\end{bmatrix},\quad
+W_{hy}=\begin{bmatrix}1 & -1\end{bmatrix},\quad b_y=0
+$$
+
+Start from $\mathbf{h}_0 = \begin{bmatrix}0\\0\end{bmatrix}$ and feed $\mathbf{x}_1=\begin{bmatrix}1\\2\end{bmatrix}$, then $\mathbf{x}_2=\begin{bmatrix}-1\\1\end{bmatrix}$.
+
+**Step 1.** Since $\mathbf{h}_0=\mathbf{0}$, the $W_{hh}\mathbf{h}_0$ term vanishes:
+
+$$
+W_{xh}\mathbf{x}_1=\begin{bmatrix}0.5(1)-0.3(2)\\ 0.1(1)+0.4(2)\end{bmatrix}=\begin{bmatrix}-0.1\\ 0.9\end{bmatrix}
+$$
+$$
+\mathbf{h}_1=\tanh\!\begin{bmatrix}-0.1\\ 0.9\end{bmatrix}=\begin{bmatrix}\tanh(-0.1)\\ \tanh(0.9)\end{bmatrix}=\begin{bmatrix}-0.0997\\ 0.7163\end{bmatrix}
+$$
+$$
+y_1 = W_{hy}\mathbf{h}_1 = 1(-0.0997) + (-1)(0.7163) = -0.8160
+$$
+
+**Step 2.** Now the previous hidden state feeds back in. First the two contributions to the pre-activation:
+
+$$
+W_{xh}\mathbf{x}_2=\begin{bmatrix}0.5(-1)-0.3(1)\\ 0.1(-1)+0.4(1)\end{bmatrix}=\begin{bmatrix}-0.8\\ 0.3\end{bmatrix},\qquad
+W_{hh}\mathbf{h}_1=0.2\,\mathbf{h}_1=\begin{bmatrix}-0.0199\\ 0.1433\end{bmatrix}
+$$
+$$
+\text{pre}_2 = \begin{bmatrix}-0.8\\ 0.3\end{bmatrix}+\begin{bmatrix}-0.0199\\ 0.1433\end{bmatrix}=\begin{bmatrix}-0.8199\\ 0.4433\end{bmatrix}
+$$
+$$
+\mathbf{h}_2=\tanh\!\begin{bmatrix}-0.8199\\ 0.4433\end{bmatrix}=\begin{bmatrix}-0.6750\\ 0.4163\end{bmatrix}
+$$
+$$
+y_2 = 1(-0.6750) + (-1)(0.4163) = -1.0914
+$$
+
+Notice the $W_{hh}\mathbf{h}_1$ term: $\mathbf{h}_2$ depends on $\mathbf{x}_1$ *through* $\mathbf{h}_1$. That feedback path is the memory channel. The notebook recomputes every number above and asserts they match.
 
 ### Worked example — a 1-D hidden state
 
-Let $W_{xh}=0.5$, $W_{hh}=0.9$, $b_h=0$, $\mathbf{h}_0=0$, and inputs $x = [1, 1, 1]$.
+To see memory accumulate over more steps, drop to a scalar: $W_{xh}=0.5$, $W_{hh}=0.9$, $b_h=0$, $h_0=0$, inputs $x = [1, 1, 1]$.
 
 $$
 h_1 = \tanh(0.5\cdot 1 + 0.9\cdot 0) = \tanh(0.5) = 0.462
@@ -84,6 +150,21 @@ h_3 = \tanh(0.5\cdot 1 + 0.9\cdot 0.724) = \tanh(1.152) = 0.818
 $$
 
 The hidden state *accumulates* — each step builds on the last. The $\tanh$ keeps it bounded in $(-1, 1)$ so it cannot blow up within a step.
+
+## Sequence-to-what? The four shapes
+
+RNNs flex to different tasks depending on how many inputs and outputs you wire up:
+
+| Pattern | Inputs → Outputs | Example |
+|---------|------------------|---------|
+| **one-to-many** | 1 → N | Image → caption |
+| **many-to-one** | N → 1 | Review → sentiment label |
+| **many-to-many (aligned)** | N → N | Part-of-speech tagging |
+| **many-to-many (seq2seq)** | N → M | Translation (encoder–decoder) |
+
+### From scratch in code
+
+The same recurrence, with a small random RNN over a length-5 sequence:
 
 ```python
 import numpy as np
