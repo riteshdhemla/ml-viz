@@ -20,6 +20,15 @@ $$
 \text{margin} = \frac{2}{\|\mathbf{w}\|}
 $$
 
+### Where does $2/\|\mathbf{w}\|$ come from?
+
+The signed distance from a point $\mathbf{x}$ to the hyperplane $\mathbf{w}^\top\mathbf{x}+b=0$ is $\dfrac{\mathbf{w}^\top\mathbf{x}+b}{\|\mathbf{w}\|}$ (project onto the unit normal $\mathbf{w}/\|\mathbf{w}\|$). We are free to **rescale** $\mathbf{w},b$ so that the closest points satisfy $\mathbf{w}^\top\mathbf{x}+b=\pm 1$ — this fixes the otherwise-arbitrary scale. Then:
+
+- the $+1$ margin hyperplane is $\mathbf{w}^\top\mathbf{x}+b=+1$,
+- the $-1$ margin hyperplane is $\mathbf{w}^\top\mathbf{x}+b=-1$.
+
+The distance from the boundary to either is $\dfrac{|\pm 1|}{\|\mathbf{w}\|}=\dfrac{1}{\|\mathbf{w}\|}$, so the full street width is $\dfrac{2}{\|\mathbf{w}\|}$. **Maximizing** the margin therefore means **minimizing** $\|\mathbf{w}\|$ (equivalently $\tfrac12\|\mathbf{w}\|^2$, which is smooth):
+
 SVMs maximize this margin subject to the constraint that all points are correctly classified:
 
 $$
@@ -30,34 +39,43 @@ $$
   Imagine you're placing a street between two neighborhoods. The wider the street, the more confident you are that new houses will be on the correct side. SVM finds the widest possible street.
 </Callout>
 
-### Worked example
+### Worked example (solved by hand)
 
-Two classes in 2D:
-- Class +1: $(2, 2), (3, 3)$
-- Class -1: $(0, 0), (1, 0)$
+Two classes along the line $y=x$:
+- Class $+1$: $(2,2),\,(3,3),\,(4,4)$
+- Class $-1$: $(0,0),\,(-1,-1),\,(-2,-2)$
 
-The decision boundary $\mathbf{w}^T \mathbf{x} + b = 0$ with $\mathbf{w} = [1, 1]$, $b = -1.5$:
+The closest opposing pair is $(2,2)$ and $(0,0)$ — these are the **support vectors**. By symmetry the boundary is their perpendicular bisector, with normal $\mathbf{w}\propto(2,2)-(0,0)=(1,1)$. Write $\mathbf{w}=a(1,1)$ and impose the margin equations on the two support vectors:
 
-- Point $(2, 2)$: $1(2) + 1(2) - 1.5 = 2.5 \geq 1$ ✓
-- Point $(0, 0)$: $1(0) + 1(0) - 1.5 = -1.5 \leq -1$ ✓
+$$
+\mathbf{w}^\top(2,2)+b = +1:\;\; 4a+b=1, \qquad
+\mathbf{w}^\top(0,0)+b = -1:\;\; b=-1.
+$$
 
-Margin = $2 / \sqrt{1^2 + 1^2} = 2 / \sqrt{2} = \sqrt{2} \approx 1.41$
+Solving: $b=-1$, then $4a=2 \Rightarrow a=0.5$, so $\mathbf{w}=(0.5,\,0.5)$, $b=-1$. The boundary is $0.5x+0.5y-1=0$, i.e. $x+y=2$.
+
+**Margin:** $\|\mathbf{w}\| = \sqrt{0.5^2+0.5^2}=\sqrt{0.5}\approx 0.707$, so
+
+$$
+\text{margin} = \frac{2}{\|\mathbf{w}\|} = \frac{2}{0.707} = 2\sqrt{2}\approx 2.83,
+$$
+
+which equals the distance between the two support vectors $\sqrt{(2{-}0)^2+(2{-}0)^2}=\sqrt 8 = 2\sqrt2$ — the street exactly spans the gap. Every other point satisfies $y_i(\mathbf{w}^\top\mathbf{x}_i+b)>1$ strictly, so moving them (while staying on their side) changes nothing.
 
 ```python
 import numpy as np
 from sklearn.svm import SVC
 
-# Simple 2D dataset
-X = np.array([[2,2], [3,3], [0,0], [1,0]])
-y = np.array([1, 1, -1, -1])
+X = np.array([[2,2], [3,3], [4,4], [0,0], [-1,-1], [-2,-2]])
+y = np.array([1, 1, 1, -1, -1, -1])
 
-# Train linear SVM
 svm = SVC(kernel='linear', C=1000)  # large C = hard margin
 svm.fit(X, y)
 
-print(f"Weights: {svm.coef_[0]}")
-print(f"Bias: {svm.intercept_[0]}")
-print(f"Support vectors: {svm.support_vectors_}")
+print(f"Weights: {svm.coef_[0]}")          # ~[0.5, 0.5]
+print(f"Bias: {svm.intercept_[0]}")        # ~-1.0
+print(f"Margin: {2/np.linalg.norm(svm.coef_[0]):.3f}")   # ~2.83
+print(f"Support vectors:\n{svm.support_vectors_}")        # (2,2) and (0,0)
 ```
 
 <MarginViz />
