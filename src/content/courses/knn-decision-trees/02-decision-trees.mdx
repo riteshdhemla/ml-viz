@@ -25,7 +25,19 @@ At each node, the tree picks the **feature and threshold** that best separates t
   Think of 20 Questions. You ask the most informative question first ("Is it an animal?"), then narrow down based on the answer. A decision tree does the same with features — "Is age > 30?" → "Is income > 50K?" → approve/deny.
 </Callout>
 
+## A running example
+
+To make every formula concrete, we'll use one small loan-approval dataset for the rest of this lesson. Each applicant has a single feature, **age**, and a label: 1 = approved, 0 = denied.
+
+| Age | 22 | 25 | 28 | 30 | 33 | 36 | 40 | 45 | 50 | 60 |
+|-----|----|----|----|----|----|----|----|----|----|----|
+| Label | 0 | 0 | 0 | 0 | 1 | 1 | 0 | 1 | 1 | 1 |
+
+There are **5 approvals and 5 denials**. The pattern is "older applicants tend to be approved," but it is noisy: a 33-year-old was approved while a 40-year-old was denied. A decision tree has to find the age threshold that best separates approvals from denials.
+
 ## Impurity measures
+
+Before we can score a split, we need to measure how *mixed* a group of labels is. A group that is all one class is **pure** (impurity 0); a 50/50 group is maximally **impure**.
 
 ### Gini impurity
 
@@ -38,40 +50,30 @@ where $p_k$ is the fraction of class $k$ in set $S$.
 - Pure node (all one class): $\text{Gini} = 0$
 - Maximum impurity (50/50 split): $\text{Gini} = 0.5$
 
-### Worked example
-
-A node has 60 positive and 40 negative examples:
+**Worked example — the root node.** Our root has 5 approvals and 5 denials out of 10, so $p_1 = \frac{5}{10} = 0.5$ and $p_0 = 0.5$:
 
 $$
-\text{Gini} = 1 - (0.6^2 + 0.4^2) = 1 - (0.36 + 0.16) = 0.48
+\text{Gini}(\text{root}) = 1 - (0.5^2 + 0.5^2) = 1 - (0.25 + 0.25) = 0.5
 $$
 
-After a split, left child has 50/10 and right child has 10/30:
+This is the worst possible value — a perfectly mixed node.
 
-$$
-\text{Gini}_{\text{left}} = 1 - (0.83^2 + 0.17^2) = 0.28
-$$
-$$
-\text{Gini}_{\text{right}} = 1 - (0.25^2 + 0.75^2) = 0.38
-$$
-$$
-\text{Weighted Gini} = \frac{60}{100}(0.28) + \frac{40}{100}(0.38) = 0.32
-$$
-
-The split reduced Gini from 0.48 to 0.32 — a good split!
-
-### Entropy and information gain
+### Entropy
 
 $$
 \text{Entropy}(S) = -\sum_{k=1}^{K} p_k \log_2 p_k
 $$
 
+Entropy measures the same idea (mixedness) in *bits*. It ranges from 0 (pure) to 1 (50/50 for two classes).
+
+**Worked example — the root node.** With $p_1 = p_0 = 0.5$ and $\log_2 0.5 = -1$:
+
 $$
-\text{Information Gain} = \text{Entropy(parent)} - \sum \frac{|S_i|}{|S|} \text{Entropy}(S_i)
+\text{Entropy}(\text{root}) = -\big(0.5 \log_2 0.5 + 0.5 \log_2 0.5\big) = -\big(0.5(-1) + 0.5(-1)\big) = 1.0
 $$
 
 <Callout type="info" title="Gini vs Entropy">
-  In practice, Gini and Entropy produce very similar trees. Gini is slightly faster to compute (no logarithm). Most libraries (sklearn) default to Gini. ID3 uses Entropy.
+  In practice, Gini and Entropy produce very similar trees. Gini is slightly faster to compute (no logarithm), so most libraries (sklearn) default to it. ID3 / C4.5 use Entropy. We'll compute both for our split below so you can see they agree.
 </Callout>
 
 ```python
@@ -80,30 +82,90 @@ import numpy as np
 def gini(labels):
     _, counts = np.unique(labels, return_counts=True)
     probs = counts / counts.sum()
-    return 1 - np.sum(probs**2)
+    return 1 - np.sum(probs ** 2)
 
 def entropy(labels):
     _, counts = np.unique(labels, return_counts=True)
     probs = counts / counts.sum()
     return -np.sum(probs * np.log2(probs + 1e-10))
 
-# Example
-labels = np.array([1,1,1,1,1,1,0,0,0,0])
-print(f"Gini: {gini(labels):.3f}")    # 0.48
-print(f"Entropy: {entropy(labels):.3f}")  # 0.971
+# Root node of our running example: 5 approvals, 5 denials
+labels = np.array([0, 0, 0, 0, 1, 1, 0, 1, 1, 1])
+print(f"Gini:    {gini(labels):.3f}")     # 0.500
+print(f"Entropy: {entropy(labels):.3f}")  # 1.000
 ```
 
 <DecisionTreeSplitViz />
 
+## Information gain: scoring one split
+
+A split sends the data into a **left** child (rows satisfying the test) and a **right** child (the rest). We score it by how much impurity it removes:
+
+$$
+\text{Information Gain} = I(\text{parent}) - \underbrace{\left( \frac{n_{\text{left}}}{n} I(\text{left}) + \frac{n_{\text{right}}}{n} I(\text{right}) \right)}_{\text{weighted child impurity}}
+$$
+
+where $I$ is Gini *or* Entropy. The second term weights each child by its share of the data, so a big impure child hurts more than a tiny one.
+
+### Worked example — split on "Age ≤ 31.5"
+
+This test puts the four youngest applicants (22, 25, 28, 30) on the left and the other six on the right.
+
+- **Left** = ages 22, 25, 28, 30 → labels {0, 0, 0, 0} → **0 approved, 4 denied** (pure!)
+- **Right** = ages 33, 36, 40, 45, 50, 60 → labels {1, 1, 0, 1, 1, 1} → **5 approved, 1 denied**
+
+**Step 1 — left child Gini.** All one class, so $p_0 = 1$:
+
+$$
+\text{Gini}(\text{left}) = 1 - (1^2 + 0^2) = 0
+$$
+
+**Step 2 — right child Gini.** Here $p_1 = \frac{5}{6} \approx 0.8333$ and $p_0 = \frac{1}{6} \approx 0.1667$:
+
+$$
+\text{Gini}(\text{right}) = 1 - \left(0.8333^2 + 0.1667^2\right) = 1 - (0.6944 + 0.0278) = 0.2778
+$$
+
+**Step 3 — weighted child impurity.** Left has $\frac{4}{10}$ of the rows, right has $\frac{6}{10}$:
+
+$$
+\frac{4}{10}(0) + \frac{6}{10}(0.2778) = 0 + 0.1667 = 0.1667
+$$
+
+**Step 4 — information gain (Gini).**
+
+$$
+\text{Gain} = 0.5 - 0.1667 = 0.3333
+$$
+
+**Cross-check with entropy.** The left child has entropy 0. For the right child, $\log_2(5/6) = -0.2630$ and $\log_2(1/6) = -2.5850$:
+
+$$
+\text{Entropy}(\text{right}) = -\left(\tfrac{5}{6}(-0.2630) + \tfrac{1}{6}(-2.5850)\right) = 0.6500
+$$
+$$
+\text{Info Gain} = 1.0 - \left(\tfrac{4}{10}(0) + \tfrac{6}{10}(0.6500)\right) = 1.0 - 0.3900 = 0.6100
+$$
+
+Both measures agree: this split is a big improvement. Now we have to check whether any *other* threshold is even better.
+
 ## Choosing the best split
 
-For each feature and threshold, compute the **weighted impurity** of the children:
+The tree tries **every candidate threshold** (the midpoints between consecutive sorted ages) and keeps the one with the highest information gain. Here is the full scan over our dataset:
 
-$$
-\text{Weighted Impurity} = \frac{n_{\text{left}}}{n} \cdot I(\text{left}) + \frac{n_{\text{right}}}{n} \cdot I(\text{right})
-$$
+| Test (Age ≤ t) | Left (P/N) | Right (P/N) | Weighted Gini | Gini Gain |
+|----------------|-----------|-------------|---------------|-----------|
+| 23.5 | 0 / 1 | 5 / 4 | 0.4444 | 0.0556 |
+| 26.5 | 0 / 2 | 5 / 3 | 0.3750 | 0.1250 |
+| 29.0 | 0 / 3 | 5 / 2 | 0.2857 | 0.2143 |
+| **31.5** | **0 / 4** | **5 / 1** | **0.1667** | **0.3333** |
+| 34.5 | 1 / 4 | 4 / 1 | 0.3200 | 0.1800 |
+| 38.0 | 2 / 4 | 3 / 1 | 0.4167 | 0.0833 |
+| 42.5 | 2 / 5 | 3 / 0 | 0.2857 | 0.2143 |
+| 47.5 | 3 / 5 | 2 / 0 | 0.3750 | 0.1250 |
+| 55.0 | 4 / 5 | 1 / 0 | 0.4444 | 0.0556 |
 
-Pick the split with the **lowest** weighted impurity.
+The winner is **Age ≤ 31.5** with a Gini gain of **0.3333** — exactly the split we worked out above. The tree makes this its root question, then recurses on each child. The general rule is: pick the split with the **lowest weighted impurity** (equivalently, the **highest information gain**).
 
 ```python
 def best_split(X, y):
@@ -134,18 +196,36 @@ def best_split(X, y):
                 best_threshold = threshold
     
     return best_feature, best_threshold
+
+# Running this on our age dataset returns feature 0, threshold ~31.5
+# with best_gain == 0.3333 — matching the hand calculation above.
 ```
 
-## Stopping criteria
+## Overfitting and pruning
 
-Without constraints, a tree will grow until every leaf is pure — memorizing the training data. Prevent overfitting with:
+Left unconstrained, a tree keeps splitting until **every leaf is pure** — even if that means isolating individual noisy points. On our dataset, a greedy tree would carve out a separate leaf just for the lone denied 40-year-old, reaching 100% training accuracy by memorizing noise. That tree is **overfit**: it will mislabel the next 40-year-old who *does* get approved.
+
+The symptom is a gap between training and test accuracy:
+
+| Tree | Train accuracy | Test accuracy |
+|------|---------------|---------------|
+| Unconstrained (deep) | ~1.00 | ~0.75 |
+| `max_depth=2` | ~0.90 | ~0.85 |
+
+High train, much lower test → the tree learned the training set's quirks instead of the underlying pattern.
+
+There are two ways to fight this:
+
+**1. Pre-pruning (early stopping).** Stop growing before the tree gets too complex:
 
 | Criterion | Effect |
 |-----------|--------|
 | `max_depth` | Limit tree depth (most important) |
-| `min_samples_split` | Require minimum samples to split |
-| `min_samples_leaf` | Require minimum samples in each leaf |
-| `max_features` | Consider only a random subset of features |
+| `min_samples_split` | Require a minimum number of samples to even attempt a split |
+| `min_samples_leaf` | Require a minimum number of samples in each resulting leaf |
+| `max_features` | Consider only a random subset of features at each node |
+
+**2. Post-pruning (cost-complexity pruning).** Grow the full tree, then collapse branches whose accuracy gain does not justify their added complexity. sklearn exposes this via the `ccp_alpha` parameter — larger values prune more aggressively.
 
 ```python
 from sklearn.tree import DecisionTreeClassifier
