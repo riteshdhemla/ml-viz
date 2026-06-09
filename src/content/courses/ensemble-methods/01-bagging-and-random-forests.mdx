@@ -28,6 +28,21 @@ $$
   Individual trees are uncorrelated because they see different data. When you average uncorrelated estimates, variance drops by a factor of $B$. Even if individual trees are noisy, the average is stable. Think of it like polling — one poll is noisy, but averaging 1000 polls gives a reliable estimate.
 </Callout>
 
+### How much does variance actually drop?
+
+The "factor of $B$" only holds if the trees are *perfectly uncorrelated* — but bagged trees aren't, since they share most of their data. For $B$ identically-distributed trees each with variance $\sigma^2$ and **pairwise correlation $\rho$**, the variance of their average is:
+
+$$
+\text{Var}\!\left(\frac{1}{B}\sum_b T_b\right) = \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2.
+$$
+
+Two terms with very different behavior:
+
+- The second term $\frac{1-\rho}{B}\sigma^2$ vanishes as $B\to\infty$ — **adding more trees** kills it.
+- The first term $\rho\sigma^2$ is a **floor** that more trees cannot touch.
+
+This is the key insight behind random forests: once you have enough trees, the only way to reduce variance further is to **lower $\rho$**. Bagging alone leaves $\rho$ high (trees all latch onto the same dominant feature); random feature subsets at each split push $\rho$ down, lowering the floor. So RF attacks the term bagging can't.
+
 ### Worked example
 
 5 trees predict [cat, dog, cat, cat, dog] for a new image. Majority vote: **cat** (3 vs 2).
@@ -112,7 +127,13 @@ for i in np.argsort(result.importances_mean)[::-1][:5]:
 
 ## Out-of-Bag (OOB) evaluation
 
-Each bootstrap sample leaves out ~37% of the data. Use these **out-of-bag** samples as a built-in validation set — no cross-validation needed:
+**Where does "~37%" come from?** A bootstrap sample draws $n$ rows with replacement. The chance a specific row is *not* picked on one draw is $1-\tfrac1n$, and draws are independent, so the chance it's missed by all $n$ draws is:
+
+$$
+\left(1 - \frac{1}{n}\right)^{n} \;\xrightarrow{\;n\to\infty\;}\; e^{-1} \approx 0.368.
+$$
+
+So each tree leaves out about **37%** of the rows (e.g. $n=100$ gives $0.366$). Those out-of-bag rows were never seen by that tree, so we can use them as a built-in validation set — no cross-validation needed:
 
 ```python
 rf = RandomForestClassifier(n_estimators=100, oob_score=True, random_state=42)
