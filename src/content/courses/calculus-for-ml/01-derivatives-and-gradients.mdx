@@ -39,12 +39,19 @@ $$
 \frac{d}{dx} \max(0, x) = \begin{cases} 1 & x > 0 \\ 0 & x < 0 \end{cases}
 $$
 
-**Sigmoid derivative:**
+**Sigmoid derivative.** With $\sigma(x) = (1 + e^{-x})^{-1}$, apply the chain rule to the inner $1 + e^{-x}$:
+
 $$
-\sigma'(x) = \sigma(x)(1 - \sigma(x))
+\sigma'(x) = -\,(1 + e^{-x})^{-2}\cdot(-e^{-x}) = \frac{e^{-x}}{(1+e^{-x})^2}
 $$
 
-This is why sigmoid saturates — near 0 or 1, the derivative approaches 0, killing gradients.
+Now split that fraction and recognize each piece as a sigmoid:
+
+$$
+\frac{e^{-x}}{(1+e^{-x})^2} = \underbrace{\frac{1}{1+e^{-x}}}_{\sigma(x)}\cdot\underbrace{\frac{e^{-x}}{1+e^{-x}}}_{1-\sigma(x)} = \sigma(x)\,(1 - \sigma(x))
+$$
+
+This compact form means a network can reuse the forward value $\sigma(x)$ to get its gradient for free. It also explains **saturation**: near 0 or 1, one of the factors is tiny, so $\sigma'(x) \to 0$ and gradients die.
 
 ## Partial derivatives
 
