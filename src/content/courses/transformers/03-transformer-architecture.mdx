@@ -40,7 +40,13 @@ $$
 \text{FFN}(\mathbf{x}) = W_2\,\text{ReLU}(W_1\mathbf{x} + \mathbf{b}_1) + \mathbf{b}_2
 $$
 
-With $d_{\text{model}} = 512$, the hidden layer is typically $d_{ff} = 2048$. Attention mixes information *between* tokens; the FFN does the heavy *per-token* computation. The FFN holds the majority of a Transformer's parameters.
+with inner (hidden) dimension $d_{ff}$, almost always $d_{ff} = 4\,d_{\text{model}}$. With $d_{\text{model}} = 512$ that gives $d_{ff} = 2048$. Attention mixes information *between* tokens; the FFN does the heavy *per-token* computation. The FFN holds the majority of a Transformer's parameters.
+
+**Parameter count of one FFN.** $W_1$ is $d_{\text{model}} \times d_{ff}$ and $W_2$ is $d_{ff} \times d_{\text{model}}$, so the weights total $2\,d_{\text{model}}\,d_{ff}$ (the biases $\mathbf{b}_1, \mathbf{b}_2$ add a negligible $d_{ff} + d_{\text{model}}$). For $d_{\text{model}}=512,\ d_{ff}=2048$:
+
+$$
+2 \cdot 512 \cdot 2048 = 2{,}097{,}152 \approx 2.1\text{M weights}.
+$$
 
 <Callout type="tip" title="Two jobs, alternating">
   A block alternates between **communication** (attention — tokens look at each other) and **computation** (FFN — each token thinks on its own). Stacking many blocks lets information mix, get processed, mix again — building progressively richer representations.
@@ -48,12 +54,70 @@ With $d_{\text{model}} = 512$, the hidden layer is typically $d_{ff} = 2048$. At
 
 ## Residuals and layer norm: why they matter
 
-- **Residual connections** ($\mathbf{x} + \text{sublayer}(\mathbf{x})$) give gradients a direct path to early layers, making it possible to train networks dozens of layers deep — the same trick that made ResNets work.
+- **Residual connections** ($\mathbf{x} + \text{Sublayer}(\mathbf{x})$) give gradients a direct path to early layers, making it possible to train networks dozens of layers deep — the same trick that made ResNets work.
 - **Layer normalization** stabilizes the scale of activations across the feature dimension, which keeps very deep stacks trainable.
+
+### Deriving LayerNorm
+
+For a single token's feature vector $\mathbf{x} \in \mathbb{R}^{d}$, LayerNorm standardizes across the $d$ features (not across the batch), then applies a learned scale $\boldsymbol{\gamma}$ and shift $\boldsymbol{\beta}$:
+
+$$
+\mu = \frac{1}{d}\sum_{i=1}^{d} x_i, \qquad
+\sigma^2 = \frac{1}{d}\sum_{i=1}^{d} (x_i - \mu)^2,
+$$
+$$
+\mathbf{y} = \boldsymbol{\gamma} \odot \frac{\mathbf{x} - \mu}{\sqrt{\sigma^2 + \epsilon}} + \boldsymbol{\beta}.
+$$
+
+The $\epsilon$ (tiny, e.g. $10^{-5}$) guards against division by zero. After normalizing, every token's features have mean 0 and variance 1; $\boldsymbol{\gamma}, \boldsymbol{\beta}$ (each a length-$d$ vector) then let the network re-scale and re-center if that helps.
+
+**Worked example by hand.** Take a tiny $d = 8$ feature vector
+
+$$
+\mathbf{x} = [\,2,\ 4,\ 4,\ 4,\ 5,\ 5,\ 7,\ 9\,].
+$$
+
+**Step 1 — mean.** $\mu = \dfrac{2+4+4+4+5+5+7+9}{8} = \dfrac{40}{8} = 5$.
+
+**Step 2 — variance.** Deviations from the mean are $[-3,-1,-1,-1,0,0,2,4]$, squared $[9,1,1,1,0,0,4,16]$, summing to $32$:
+
+$$
+\sigma^2 = \frac{32}{8} = 4, \qquad \sqrt{\sigma^2} = 2.
+$$
+
+**Step 3 — normalize** (with $\epsilon$ negligible, divide each deviation by $\sigma = 2$):
+
+$$
+\hat{\mathbf{x}} = \frac{\mathbf{x} - 5}{2} = [\,-1.5,\ -0.5,\ -0.5,\ -0.5,\ 0,\ 0,\ 1.0,\ 2.0\,].
+$$
+
+You can check this has mean 0 and variance 1. **Step 4 — affine.** With $\boldsymbol{\gamma} = 2,\ \boldsymbol{\beta} = 1$ (broadcast), $\mathbf{y} = 2\hat{\mathbf{x}} + 1 = [-2, 0, 0, 0, 1, 1, 3, 5]$. The notebook reproduces these exact numbers.
+
+<Callout type="info" title="Why LayerNorm, not BatchNorm, for sequences">
+  **BatchNorm** normalizes each feature across the *batch* — it needs a stable batch of comparable examples and breaks when sequences have **variable length** or the batch is tiny (common in NLP). It also leaks across examples, which is awkward for autoregressive decoding. **LayerNorm** normalizes across the *feature* dimension of each token *independently*, so it is batch-size- and length-agnostic and behaves identically at train and inference time — exactly what sequence models need.
+</Callout>
 
 <Callout type="info" title="Pre-LN vs Post-LN">
   The original paper put LayerNorm *after* the residual add (Post-LN). Modern models (GPT-2 onward) use **Pre-LN** — normalize *before* the sub-layer: $\mathbf{x} + \text{Attn}(\text{LN}(\mathbf{x}))$. Pre-LN trains more stably and needs less learning-rate warmup, so it's now the default.
 </Callout>
+
+## Counting an encoder layer's parameters
+
+A full encoder layer is the sum of three parts (ignoring the small bias terms):
+
+| Part | Formula | Count at $d_{\text{model}}=512,\ d_{ff}=2048,\ h=8$ |
+|------|---------|------|
+| Multi-head attention ($W_Q, W_K, W_V, W_O$, each $d\times d$) | $4\,d_{\text{model}}^2$ | $4 \cdot 512^2 = 1{,}048{,}576$ |
+| Feed-forward network | $2\,d_{\text{model}}\,d_{ff}$ | $2 \cdot 512 \cdot 2048 = 2{,}097{,}152$ |
+| Two LayerNorms ($\boldsymbol{\gamma}, \boldsymbol{\beta}$ each $d$) | $4\,d_{\text{model}}$ | $4 \cdot 512 = 2{,}048$ |
+
+Note the head count $h$ does **not** change the parameter total: the per-head projections $d \times \tfrac{d}{h}$ for all $h$ heads concatenate back to $d \times d$. Adding the three rows:
+
+$$
+1{,}048{,}576 + 2{,}097{,}152 + 2{,}048 = 3{,}147{,}776 \approx 3.15\text{M per layer}.
+$$
+
+The FFN alone is $\approx 66.6\%$ of the parameters and attention is $\approx 33.3\%$ — which is why people say "the FFN is where most of the weights live." A 6-layer encoder is roughly $6 \times 3.15\text{M} \approx 19\text{M}$ parameters (before embeddings).
 
 ## Three families
 
@@ -65,9 +129,15 @@ How you mask attention and stack blocks defines the model's purpose:
 | **Decoder-only** | Causal (masked) | Only past tokens | Generation | GPT, LLaMA, Claude |
 | **Encoder–decoder** | Both | Input + generated output | Seq2seq (translation) | T5, original Transformer |
 
-### Encoder–decoder and cross-attention
+### Encoder vs decoder layers
 
-The original Transformer translates with two stacks. The **encoder** reads the source sentence bidirectionally. The **decoder** generates the target one token at a time, using a third attention flavor — **cross-attention** — where queries come from the decoder but keys/values come from the *encoder's* output. That's how the decoder "looks at" the source while writing the translation.
+An **encoder layer** is exactly what we counted above: bidirectional self-attention → FFN, each with residual + LayerNorm. A **decoder layer** has **three** sub-layers instead of two:
+
+1. **Masked (causal) self-attention** — the same self-attention, but a triangular mask sets all "future" scores to $-\infty$ before the softmax, so position $t$ can attend only to positions $\le t$. This is what makes generation autoregressive: while predicting token $t$ the model cannot peek at $t+1$.
+2. **Cross-attention** — queries come from the decoder, keys/values from the *encoder's* output. This is how the decoder "looks at" the source.
+3. **Feed-forward network** — same per-token MLP.
+
+The original Transformer translates with two stacks. The **encoder** reads the source sentence bidirectionally. The **decoder** generates the target one token at a time, mixing the masked self-attention (what it has written so far) with cross-attention (the source it is translating).
 
 ```python
 import torch
