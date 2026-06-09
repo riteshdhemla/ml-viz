@@ -15,15 +15,33 @@ Training a CNN from scratch requires millions of images and days of computation.
 ## The key insight
 
 A CNN trained on ImageNet (1.2M images, 1000 classes) has learned:
-- **Early layers:**通用 features — edges, textures, colors
-- **Middle layers:** Object parts — eyes, wheels, leaves
-- **Late layers:** Task-specific features — dog breeds, car models
+- **Early layers:** universal features — edges, textures, colors
+- **Middle layers:** object parts — eyes, wheels, leaves
+- **Late layers:** task-specific features — dog breeds, car models
 
 The early and middle layers are **universal** — they work for almost any image task. Only the late layers need adaptation.
 
 <Callout type="tip" title="Intuition">
   It's like learning to paint. First you learn to see shapes, colors, and light (universal skills). Then you specialize — portraits, landscapes, abstract art. Transfer learning skips the "learning to see" part.
 </Callout>
+
+### Why freezing early layers works — the gradient view
+
+"Freezing" a layer means setting `requires_grad = False` on its parameters. Concretely, during backprop the optimizer simply **skips the weight update** for that layer:
+
+$$
+W \leftarrow W - \eta \,\frac{\partial \mathcal{L}}{\partial W}
+\quad\Longrightarrow\quad
+W \leftarrow W \quad (\text{no change, gradient discarded})
+$$
+
+This is justified by two facts:
+
+1. **Early-layer features are already near-optimal.** Gabor-like edge and color detectors emerge in the first conv layers of *almost every* vision model regardless of the final task. Their gradient $\partial \mathcal{L}/\partial W$ on your small dataset is mostly noise — updating them risks **overfitting** more than it helps.
+
+2. **Frozen layers cost nothing to "train."** Their gradients are never computed, so each step is cheaper, and the optimizer has far fewer parameters to estimate — exactly what you want when data is scarce. With $N$ trainable parameters you need roughly $\mathcal{O}(N)$ examples to constrain them; freezing slashes $N$ by orders of magnitude (we count this exactly below).
+
+The forward pass still flows through the frozen layers — they act as a **fixed feature extractor** turning your image into a 2048-dimensional embedding (for ResNet-50). Only the head learns to map that embedding to your classes.
 
 ## Three strategies
 
@@ -50,13 +68,53 @@ model.fc = nn.Sequential(
     nn.Linear(256, num_classes)
 )
 
-# Only ~5M parameters to train (vs ~25M total)
+# Count what's actually trainable
 trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
 total = sum(p.numel() for p in model.parameters())
 print(f"Trainable: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)")
 ```
 
 **When to use:** < 1,000 training images. The pretrained features are already good — you just need a simple classifier.
+
+#### Worked parameter count — swapping the head on ResNet-50
+
+ResNet-50 ships with **25,557,032** parameters and an ImageNet head `fc = Linear(2048, 1000)`. A fully-connected layer with $d_\text{in}$ inputs and $d_\text{out}$ outputs has
+
+$$
+\#\text{params} = \underbrace{d_\text{in}\cdot d_\text{out}}_{\text{weights}} + \underbrace{d_\text{out}}_{\text{biases}}.
+$$
+
+**Original head** ($2048 \to 1000$):
+
+$$
+2048 \times 1000 + 1000 = 2{,}049{,}000 \text{ params.}
+$$
+
+Strip it off and the **frozen backbone** keeps the rest:
+
+$$
+25{,}557{,}032 - 2{,}049{,}000 = 23{,}508{,}032 \text{ frozen params.}
+$$
+
+Now bolt on the new two-layer head above for, say, $k = 2$ classes (pneumonia vs normal):
+
+$$
+\begin{aligned}
+\text{Linear}(2048 \to 256): &\quad 2048 \times 256 + 256 = 524{,}544 \\
+\text{ReLU, Dropout}: &\quad 0 \quad (\text{no learnable params}) \\
+\text{Linear}(256 \to 2): &\quad 256 \times 2 + 2 = 514 \\
+\hline
+\text{new head total}: &\quad 525{,}058
+\end{aligned}
+$$
+
+So the model now has $23{,}508{,}032 + 525{,}058 = 24{,}033{,}090$ parameters, but only the head is trainable:
+
+$$
+\frac{525{,}058}{24{,}033{,}090} \approx \boxed{2.2\%}
+$$
+
+**Only 2.2% of the network learns.** If you instead used a plain `Linear(2048, 2)` head ($4{,}098$ params) the trainable fraction drops to a stunning **0.017%** — you are fitting ~4K numbers, which a few hundred images can comfortably constrain. *This* is why feature extraction works on tiny datasets.
 
 ### Strategy 2: Fine-tuning (medium data)
 
@@ -76,6 +134,33 @@ optimizer = torch.optim.Adam([
 
 **When to use:** 1,000-100,000 images. The task is somewhat different from ImageNet (e.g., medical images vs natural images).
 
+#### "Last few layers" is not a few parameters
+
+It's tempting to think unfreezing `layer4` only adds a little. In ResNet-50, `layer4` is the **widest stage** (it works with up to 2048 channels), so it alone holds about **14.96M** parameters — roughly **58.6%** of the whole network:
+
+$$
+\frac{14{,}964{,}736}{25{,}557{,}032} \approx 58.6\%.
+$$
+
+Unfreezing `layer4` plus the new head from Strategy 1 makes
+
+$$
+14{,}964{,}736 + 525{,}058 = 15{,}489{,}794
+$$
+
+parameters trainable — about **64%** of the model. So "fine-tune the last block" is really "retrain the majority of the weights." That is exactly why you need more data (1K–100K) and a smaller learning rate than feature extraction.
+
+#### Why discriminative (layer-wise) learning rates
+
+The two parameter groups above use **different** learning rates on purpose:
+
+- The **new head** is randomly initialized — its weights are *garbage*, so it needs a normal-sized LR ($\approx 10^{-3}$) to learn fast.
+- The **pretrained `layer4`** is already excellent — it only needs gentle nudging, so it gets a $10\times$ smaller LR ($\approx 10^{-4}$).
+
+If you used the head's large LR on the backbone, the first few mini-batches — when the head's gradients are huge and meaningless — would flow back and **overwrite the pretrained features** before the head has learned anything useful. This is *catastrophic forgetting*. Discriminative LRs (often a geometric decay like $\eta_\ell = \eta_{\text{head}} \cdot \gamma^{\,(L-\ell)}$ for layer $\ell$, with $\gamma \approx 0.3$–$0.5$) keep early layers nearly fixed while letting the head move freely.
+
+A common companion trick is to **warm up the head first**: freeze the backbone for a few epochs (feature extraction) until the head's gradients are sane, *then* unfreeze `layer4` for fine-tuning.
+
 ### Strategy 3: Full fine-tuning (lots of data)
 
 Unfreeze everything and train with a very small learning rate:
@@ -93,6 +178,8 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 
 ## Decision guide
 
+The choice hinges on two axes: **how much labeled data you have** (more data lets you safely train more parameters without overfitting) and **how different your images are from ImageNet** (a bigger domain gap means the late, task-specific features transfer poorly and must be relearned).
+
 | Data Size | Task Similarity | Strategy |
 |-----------|----------------|----------|
 | < 1K | Similar to ImageNet | Feature extraction |
@@ -101,8 +188,10 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 | 1K-100K | Different | Fine-tune more layers |
 | > 100K | Any | Full fine-tuning |
 
+The logic of the table is a simple guardrail: **trainable parameters $\lesssim$ examples.** With ~1K images you can responsibly fit the ~4K–525K parameters of a new head (feature extraction), but not the ~15M of `layer4` — you'd overfit. As data grows you can afford to unfreeze more, and a large domain gap *forces* you to (because the frozen features no longer match your images).
+
 <Callout type="warning" title="Learning rate is critical">
-  When fine-tuning, use a learning rate 10-100× smaller than training from scratch. The pretrained weights are already good — large updates will destroy them. Use a learning rate scheduler to reduce LR over time.
+  When fine-tuning, use a learning rate 10-100× smaller than training from scratch. The pretrained weights sit in a good local minimum; a from-scratch LR produces large updates whose first steps move the weights *out* of that minimum faster than the loss can pull them back — you destroy in one epoch what ImageNet spent days learning. Pair the small LR with a scheduler (cosine or step decay) so updates shrink further as you approach the new optimum.
 </Callout>
 
 ## Practical tips
@@ -147,17 +236,20 @@ model = models.resnet50(weights='IMAGENET1K_V2')
 for param in model.parameters():
     param.requires_grad = False
 
-# 3. Replace classifier
-model.fc = nn.Linear(2048, 2)
+# 3. Replace classifier with a 2-class head
+model.fc = nn.Linear(2048, 2)   # 2048*2 + 2 = 4,098 trainable params
 
 # 4. Train with appropriate settings
 optimizer = torch.optim.Adam(model.fc.parameters(), lr=1e-3)
 criterion = nn.CrossEntropyLoss()
 
+# Of ResNet-50's ~25.5M params, only 4,098 (0.017%) update here.
 # With only 1K images, feature extraction typically achieves 85-90% accuracy
 # Fine-tuning the last block might push it to 90-93%
 # Training from scratch with 1K images: likely < 70%
 ```
+
+With 1,000 images and a 4,098-parameter head you are fitting only ~4 parameters per training image — comfortably constrained. Training all 25.5M parameters from scratch on the same data means ~25,557 parameters per image, vastly underdetermined, which is why it overfits to near-uselessness on this dataset.
 
 ## Common mistakes
 
@@ -168,9 +260,11 @@ criterion = nn.CrossEntropyLoss()
 ## Key takeaways
 
 - **Transfer learning** reuses features learned on a huge dataset (ImageNet) for your task.
+- **Freezing** a layer discards its gradient so its weights never update — the backbone becomes a fixed feature extractor and only the head learns.
+- A swapped head is tiny: ResNet-50's $2048\to1000$ ImageNet head ($2{,}049{,}000$ params) becomes a $2048\to2$ head ($4{,}098$ params), and feature extraction trains as little as **0.017%** of the network.
+- "Fine-tune the last block" is misleadingly small: ResNet-50's `layer4` is ~15M params (**58.6%** of the model), so unfreezing it retrains the majority of the weights — hence the need for more data and a smaller LR.
+- Use **discriminative learning rates** (small for the pretrained backbone, larger for the new head) and a from-scratch-÷10–100 LR to avoid catastrophic forgetting.
 - Little data → freeze the backbone, train a new head; lots → fine-tune more layers.
-- Always fine-tune with a **small learning rate** to avoid wrecking pretrained weights.
-- It slashes data needs and training time versus training from scratch.
 
 ## Related concepts
 
