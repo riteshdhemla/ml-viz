@@ -27,16 +27,48 @@ $$
 
 where $p_{ij}$ = high-D similarities, $q_{ij}$ = low-D similarities.
 
+### The actual similarities
+
+**High-D (Gaussian).** Point $i$ "picks neighbor" $j$ with conditional probability shrinking with squared distance, bandwidth $\sigma_i$ set per-point (see perplexity below):
+
+$$
+p_{j|i} = \frac{\exp(-\|\mathbf{x}_i-\mathbf{x}_j\|^2 / 2\sigma_i^2)}{\sum_{k\neq i}\exp(-\|\mathbf{x}_i-\mathbf{x}_k\|^2 / 2\sigma_i^2)},
+\qquad
+p_{ij} = \frac{p_{j|i} + p_{i|j}}{2n}
+$$
+
+The symmetrization makes $p_{ij}=p_{ji}$ and guarantees every point contributes (so outliers aren't ignored).
+
+**Low-D (Student-t, 1 d.o.f.).** The heavy tail is the whole trick — it lets dissimilar points sit far apart cheaply:
+
+$$
+q_{ij} = \frac{(1+\|\mathbf{y}_i-\mathbf{y}_j\|^2)^{-1}}{\sum_{k\neq l}(1+\|\mathbf{y}_k-\mathbf{y}_l\|^2)^{-1}}
+$$
+
+Minimizing the KL by gradient descent gives a clean force law — attract when $p>q$, repel when $q>p$:
+
+$$
+\frac{\partial \,\text{KL}}{\partial \mathbf{y}_i} = 4\sum_{j}(p_{ij}-q_{ij})(\mathbf{y}_i-\mathbf{y}_j)\,(1+\|\mathbf{y}_i-\mathbf{y}_j\|^2)^{-1}
+$$
+
 <Callout type="tip" title="Why Student-t distribution in 2D?">
   In high dimensions, many points are far apart. In 2D, they'd be forced close together. The Student-t distribution has heavier tails, so distant points in high-D can remain distant in low-D without causing large gradients. This is the key innovation over earlier methods.
 </Callout>
 
-### Perplexity
+### Perplexity = effective number of neighbors
 
-The most important parameter — controls the balance between local and global structure:
+Perplexity isn't an arbitrary knob — it's defined as $2$ raised to the Shannon entropy of the conditional distribution $P_i$:
 
-- **Low perplexity (5-15):** Captures local structure, tight clusters
-- **High perplexity (30-100):** Captures global structure, broader patterns
+$$
+\text{Perplexity}(P_i) = 2^{H(P_i)}, \qquad H(P_i) = -\sum_{j} p_{j|i}\log_2 p_{j|i}.
+$$
+
+For each point, t-SNE **binary-searches $\sigma_i$** until the perplexity hits your target. Interpretation: if $P_i$ spreads evenly over $m$ neighbors, $H=\log_2 m$ so perplexity $=m$ — **the effective neighbor count**. Perplexity 30 means "tune each point's Gaussian so it has roughly 30 meaningful neighbors."
+
+**Worked mini-example.** Suppose $P_i$ puts probability evenly on exactly 4 neighbors ($p=\tfrac14$ each, 0 elsewhere). Then $H = -4\cdot\tfrac14\log_2\tfrac14 = \log_2 4 = 2$, so perplexity $=2^2=4$ — exactly the neighbor count. A peaked distribution like $(0.97, 0.01, 0.01, 0.01)$ has $H\approx0.24$, perplexity $\approx1.18$: effectively one neighbor.
+
+- **Low perplexity (5-15):** small $\sigma_i$, few effective neighbors → tight local clusters
+- **High perplexity (30-100):** large $\sigma_i$, many effective neighbors → broader global patterns
 - **Typical default:** 30
 
 ```python
