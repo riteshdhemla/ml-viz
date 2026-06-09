@@ -67,6 +67,6 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 - [ ] reinforcement-learning/04-policy-gradient
 
 ## Loop notes
-- Loop cron id: fd7302ae (every 30m).
+- Loop cron id: b826bb26 (hourly at :13, session-only, 7-day expiry). [prior: fd7302ae 30m — dead, session-bound]
 - Convention: pure-SVG viz already wired in 20 lessons; do NOT add new viz here — focus on prose clarity + notebook math.
 - Verify gate before commit: `npm run type-check` and `npm run test` must pass.
