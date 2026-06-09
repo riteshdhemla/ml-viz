@@ -39,7 +39,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 
 ## Deep learning
 - [x] cnns/01-convolution-operation — lesson: FIXED param-count contradiction (callout said 1728, code said 1792 — missing 64 biases; now C_out(C_in·f²+1)=64·28=1792 broken out); +output-size derivation (count valid left-edge positions) + worked table (5→3, 7/p1/s2→4, 32 same, 28/f5→24); +varied worked example (4×4 input + Sobel → [[-4,-4],[4,-4]]) since checkerboard gave all-0; fixed scipy convolve2d to flip K (true cross-correlation). notebook: +by-hand 4×4 conv cell (every window printed, matches [[-4,-4],[4,-4]]) + param weights/bias breakdown. [scouted via read-only Explore sub-agent; numbers re-verified in pure-python]
-- [ ] cnns/02-pooling-and-architectures
+- [x] cnns/02-pooling-and-architectures — lesson: fixed output-size caption typo (window/padding both "p"→f); +4×4 max/avg pool worked example (Max [[6,4],[7,8]], Avg [[3.75,2.25],[2.5,4.0]]); +pool size table with n=28 column; QUANTIFIED the "two 3×3 = one 5×5" VGG claim — derived RF=1+L(f-1) (two 3×3→5) + param compare 25C² vs 18C² (28% fewer, C=64: 102400 vs 73728). notebook: +RF-derivation + param-tradeoff cell. [read-only Explore sub-agent scouted; numbers re-verified pure-python]
 - [ ] cnns/03-transfer-learning
 - [ ] rnns/01-recurrent-neural-networks
 - [ ] rnns/02-bptt-and-vanishing-gradient
