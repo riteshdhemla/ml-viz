@@ -27,11 +27,26 @@ How do we measure distance between clusters?
 
 ### Worked example
 
-Points: A(1,1), B(2,2), C(8,8), D(9,9)
+Points: A(1,1), B(2,2), C(8,8), D(9,9). Full pairwise (Euclidean) distance matrix:
 
-**Iteration 1:** Distances: d(A,B)=1.41, d(C,D)=1.41, others larger. Merge A+B → cluster AB.
+|   | A | B | C | D |
+|---|---|---|---|---|
+| **A** | 0 | $\sqrt2{=}1.41$ | $\sqrt{98}{=}9.90$ | $\sqrt{128}{=}11.31$ |
+| **B** | | 0 | $\sqrt{72}{=}8.49$ | $\sqrt{98}{=}9.90$ |
+| **C** | | | 0 | $\sqrt2{=}1.41$ |
+| **D** | | | | 0 |
 
-**Iteration 2:** Distances: d(AB,CD)=9.9. Merge AB+CD → single cluster.
+**Merge 1:** smallest entry is $1.41$ (tie A–B and C–D). Merge **A+B** at height $1.41$.
+
+**Merge 2:** next smallest is again $1.41$. Merge **C+D** at height $1.41$.
+
+**Merge 3:** now only two clusters $\{AB\}$ and $\{CD\}$ remain. The height depends on the **linkage** rule (this is exactly where the methods differ):
+
+- **Single** (nearest pair): $\min = d(B,C) = 8.49$
+- **Complete** (farthest pair): $\max = d(A,D) = 11.31$
+- **Average** (mean of all 4 cross-pairs): $\tfrac{1}{4}(9.90{+}11.31{+}8.49{+}9.90) = 9.90$
+
+All three agree on the *structure* $\{A,B\}$ and $\{C,D\}$ — they only disagree on the **height** of the final merge, i.e. how far apart the two blobs are judged to be.
 
 ### Dendrogram
 
@@ -87,19 +102,22 @@ DBSCAN finds clusters of arbitrary shape based on **density** — regions where 
 
 ### Worked example
 
-Points with $\varepsilon = 2$, min_samples = 3:
+Points with $\varepsilon = 2$, `min_samples` = 3.
 
-```
-Core points (≥3 neighbors within eps=2):
-  - (1,1): neighbors (1,2), (2,1) → core
-  - (1,2): neighbors (1,1), (2,2) → core
-  - (2,1): neighbors (1,1), (2,2) → core
-  - (2,2): neighbors (1,2), (2,1) → core
-  - (8,8): neighbors (8,9), (9,8) → core
-  ...
+<Callout type="warning" title="min_samples counts the point itself">
+  In scikit-learn, a point is **core** when its $\varepsilon$-neighborhood contains $\ge$ `min_samples` points *including itself*. So with `min_samples=3` a core point needs **2 other neighbors** within $\varepsilon$. This off-by-one trips up almost everyone.
+</Callout>
 
-Noise: (5,5) — only 1 neighbor within eps=2
-```
+Bottom-left blob $\{(1,1),(1,2),(2,1),(2,2)\}$ — every pair is within $\varepsilon=2$ (the diagonal $(1,1)\!-\!(2,2)=\sqrt2\approx1.41<2$), so each point sees the other 3:
+
+| point | neighbors within $\varepsilon=2$ (excl. self) | $\|N_\varepsilon\|$ incl. self | type |
+|-------|-----------------------------------------------|--------------------------------|------|
+| $(1,1)$ | $(1,2),(2,1),(2,2)$ | $4 \ge 3$ | **core** |
+| $(2,2)$ | $(1,1),(1,2),(2,1)$ | $4 \ge 3$ | **core** |
+| $(8,8)$ | $(8,9),(9,8),(9,9)$ | $4 \ge 3$ | **core** |
+| $(5,5)$ | — (nearest is $(2,2)$ at $\sqrt{18}\approx4.24$) | $1 < 3$ | **noise** |
+
+The two blobs become two clusters; $(5,5)$ is labeled $-1$ (noise) because it has no neighbor within $\varepsilon$.
 
 ```python
 from sklearn.cluster import DBSCAN

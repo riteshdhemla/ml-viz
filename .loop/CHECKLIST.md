@@ -25,7 +25,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 
 ## Unsupervised
 - [x] clustering/01-k-means — lesson: FIXED worked-example tie bug (point (3,4) was equidistant from both init centroids); new init μ2=(3.5,5), full squared-dist table, J 8.75→7.46 decrease shown; added ∂J/∂μ=0 ⇒ mean derivation ("why update to the mean"). notebook: +mean-minimizes derivation cell, +by-hand worked example (dist table, J monotone decrease, 2000-grid check mean is optimal, convergence check).
-- [ ] clustering/02-hierarchical-and-dbscan
+- [x] clustering/02-hierarchical-and-dbscan — lesson: hierarchical worked ex now has full A/B/C/D distance matrix + explicit single(8.49)/complete(11.31)/average(9.90) final-merge heights (old "9.9" was unexplained average); DBSCAN worked ex fixed (added missing (2,2) neighbor) + warning callout that sklearn min_samples counts the point itself + neighbor-count table. notebook: +DBSCAN by-hand core/border/noise vs sklearn cross-check, +hierarchical by-hand dist-matrix + per-linkage height vs scipy linkage.
 - [ ] pca-dimensionality/01-pca
 - [ ] pca-dimensionality/02-t-sne-and-umap
 - [ ] probabilistic-models/01-gaussian-mixture-models
