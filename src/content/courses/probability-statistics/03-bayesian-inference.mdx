@@ -8,7 +8,7 @@ estimatedMinutes: 18
 
 # Bayesian Inference
 
-MLE gives a single point estimate of $\theta$. But what if we have prior beliefs about $\theta$ — for example, that weights in a neural network should be small? **Bayesian inference** formalizes this by treating $\theta$ itself as a random variable.
+MLE gives a single point estimate of $\theta$. But what if we have prior beliefs about $\theta$ — for example, that weights in a neural network should be small? **Bayesian inference** formalizes this by treating $\theta$ itself as a random variable, so the output is a whole *distribution* over $\theta$ rather than one number.
 
 ## Bayes' theorem
 
@@ -25,7 +25,53 @@ The **posterior** $p(\theta | \mathcal{D})$ combines what the data says (likelih
 | **Posterior** $p(\theta \mid \mathcal{D})$ | Updated belief after seeing data |
 | **Evidence** $p(\mathcal{D})$ | Normalizing constant; often intractable |
 
+The evidence is just whatever number makes the posterior integrate to $1$:
+
+$$
+p(\mathcal{D}) = \int p(\mathcal{D} | \theta)\, p(\theta)\, d\theta
+$$
+
+Because it does not depend on $\theta$, we often drop it and write the *unnormalized* posterior, restoring the constant only at the end:
+
+$$
+p(\theta | \mathcal{D}) \;\propto\; p(\mathcal{D} | \theta)\, p(\theta)
+$$
+
 <BayesViz />
+
+### Worked example: medical test (Bayes' theorem in numbers)
+
+Bayes' theorem also works for discrete events. A disease affects $1\%$ of the population. A test is $99\%$ sensitive (catches sick people) and $95\%$ specific (correctly clears healthy people). **You test positive. What is the probability you are actually sick?**
+
+Define the events: $D$ = "has the disease", $T^+$ = "tests positive". We are given:
+
+$$
+p(D) = 0.01, \qquad p(T^+ | D) = 0.99, \qquad p(T^+ | \neg D) = 1 - 0.95 = 0.05
+$$
+
+We want $p(D | T^+)$. Apply Bayes' theorem:
+
+$$
+p(D | T^+) = \frac{p(T^+ | D)\, p(D)}{p(T^+)}
+$$
+
+**Step 1 — compute the evidence** $p(T^+)$ by summing over both ways to test positive (sick *or* healthy):
+
+$$
+p(T^+) = \underbrace{p(T^+ | D)\,p(D)}_{\text{true positive}} + \underbrace{p(T^+ | \neg D)\,p(\neg D)}_{\text{false positive}}
+$$
+
+$$
+p(T^+) = (0.99)(0.01) + (0.05)(0.99) = 0.0099 + 0.0495 = 0.0594
+$$
+
+**Step 2 — divide:**
+
+$$
+p(D | T^+) = \frac{0.0099}{0.0594} \approx 0.167
+$$
+
+Despite a positive result from a "$99\%$ accurate" test, you are only about **$17\%$** likely to be sick. The prior $p(D) = 0.01$ is so small that false positives from the huge healthy population swamp the true positives. This is the classic **base-rate** lesson: the prior matters enormously.
 
 ## Updating beliefs with data
 
@@ -41,7 +87,7 @@ $$
 
 ## Conjugate priors
 
-A prior is **conjugate** to a likelihood if the posterior is in the same family as the prior — making the update analytical.
+A prior is **conjugate** to a likelihood if the posterior is in the same family as the prior — making the update analytical (no integral to evaluate).
 
 | Likelihood | Conjugate Prior | Posterior |
 |------------|----------------|-----------|
@@ -49,23 +95,61 @@ A prior is **conjugate** to a likelihood if the posterior is in the same family 
 | Gaussian$(\mu, \sigma^2)$ known $\sigma^2$ | Gaussian$(\mu_0, \tau^2)$ | Gaussian (updated mean/precision) |
 | Categorical$(\boldsymbol{\pi})$ | Dirichlet$(\boldsymbol{\alpha})$ | Dirichlet$(\boldsymbol{\alpha} + \mathbf{n})$ |
 
-### Beta-Bernoulli example
+### Deriving the Beta-Bernoulli posterior end-to-end
 
-Model: $x_i \sim \text{Bernoulli}(p)$, Prior: $p \sim \text{Beta}(\alpha, \beta)$.
+Let's *prove* the first row of the table from scratch. Model: each flip $x_i \sim \text{Bernoulli}(p)$, and the prior on the bias is $p \sim \text{Beta}(\alpha, \beta)$.
 
-After observing $n_1$ heads and $n_0$ tails:
-
-$$
-p \mid \mathcal{D} \sim \text{Beta}(\alpha + n_1,\; \beta + n_0)
-$$
-
-The posterior mean is:
+**Step 1 — write the likelihood.** Suppose we observe $n$ flips with $k$ heads (so $n - k$ tails). Each flip contributes $p$ if it's a head and $1-p$ if it's a tail:
 
 $$
-\mathbb{E}[p | \mathcal{D}] = \frac{\alpha + n_1}{\alpha + \beta + n_1 + n_0}
+p(\mathcal{D} | p) = \prod_{i=1}^n p^{\,x_i}(1-p)^{1-x_i} = p^{\,k}\,(1-p)^{\,n-k}
 $$
 
-$\alpha$ and $\beta$ act like **pseudo-counts** — prior data. With $\alpha = \beta = 1$ (uniform prior), this reduces to the MLE estimate for large $n$.
+**Step 2 — write the prior.** The Beta density is
+
+$$
+p(p) = \frac{1}{B(\alpha, \beta)}\, p^{\,\alpha - 1}(1-p)^{\,\beta - 1}, \qquad B(\alpha,\beta) = \frac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}
+$$
+
+where $B(\alpha,\beta)$ is a constant that does not depend on $p$.
+
+**Step 3 — multiply (Bayes, unnormalized).** Drop every factor that does not contain $p$:
+
+$$
+p(p | \mathcal{D}) \;\propto\; \underbrace{p^{\,k}(1-p)^{\,n-k}}_{\text{likelihood}} \cdot \underbrace{p^{\,\alpha - 1}(1-p)^{\,\beta - 1}}_{\text{prior}}
+$$
+
+**Step 4 — collect exponents.** Add the powers of $p$ and of $(1-p)$:
+
+$$
+p(p | \mathcal{D}) \;\propto\; p^{\,(\alpha + k) - 1}\,(1-p)^{\,(\beta + n - k) - 1}
+$$
+
+**Step 5 — recognize the shape.** This is *exactly* the kernel of a Beta density with parameters $\alpha + k$ and $\beta + n - k$. Since a probability distribution is determined by its kernel, the normalizing constant must be $B(\alpha + k,\ \beta + n - k)$, and therefore:
+
+$$
+\boxed{\,p \mid \mathcal{D} \sim \text{Beta}(\alpha + k,\; \beta + n - k)\,}
+$$
+
+No integral was needed — the conjugacy did the work. Writing $n_1 = k$ heads and $n_0 = n - k$ tails recovers the table entry $\text{Beta}(\alpha + n_1,\ \beta + n_0)$. The posterior mean is
+
+$$
+\mathbb{E}[p | \mathcal{D}] = \frac{\alpha + k}{\alpha + \beta + n}
+$$
+
+$\alpha$ and $\beta$ act like **pseudo-counts** — imaginary prior heads and tails. With $\alpha = \beta = 1$ (uniform prior), the posterior mean is $\frac{k+1}{n+2}$, which approaches the MLE $\frac{k}{n}$ as $n$ grows.
+
+**Numeric instance.** Prior $\text{Beta}(2, 2)$ (a mild "probably fair" belief), then observe $k = 7$ heads in $n = 10$ flips ($n_0 = 3$ tails):
+
+$$
+\alpha_\text{post} = 2 + 7 = 9, \qquad \beta_\text{post} = 2 + 3 = 5
+$$
+
+$$
+\mathbb{E}[p | \mathcal{D}] = \frac{9}{9 + 5} = \frac{9}{14} \approx 0.643, \qquad \hat{p}_\text{MLE} = \frac{7}{10} = 0.700
+$$
+
+The prior pulls the estimate from $0.70$ down toward $0.50$, landing at $0.643$. With more data the pull weakens and the posterior mean converges to the MLE.
 
 ```python
 import numpy as np
@@ -82,8 +166,8 @@ beta_post  = beta_prior  + n_tails   # 5
 
 # Posterior mean
 posterior_mean = alpha_post / (alpha_post + beta_post)
-print(f"Posterior mean: {posterior_mean:.3f}")   # ≈ 0.643
-print(f"MLE estimate:   {n_heads / (n_heads + n_tails):.3f}")  # 0.700
+print("Posterior mean: {:.3f}".format(posterior_mean))   # 0.643
+print("MLE estimate:   {:.3f}".format(n_heads / (n_heads + n_tails)))  # 0.700
 
 # The prior shrinks us toward 0.5
 p_vals = np.linspace(0, 1, 200)
@@ -93,21 +177,53 @@ posterior = beta_dist.pdf(p_vals, alpha_post, beta_post)
 
 ## MAP estimation
 
-**Maximum a Posteriori (MAP)** estimation finds the mode of the posterior:
+**Maximum a Posteriori (MAP)** estimation finds the mode of the posterior — the single most probable $\theta$:
 
 $$
-\hat{\theta}_\text{MAP} = \arg\max_\theta p(\theta | \mathcal{D}) = \arg\max_\theta \left[\ln p(\mathcal{D} | \theta) + \ln p(\theta)\right]
+\hat{\theta}_\text{MAP} = \arg\max_\theta p(\theta | \mathcal{D})
 $$
 
-MAP = MLE + log-prior penalty.
+Because the evidence $p(\mathcal{D})$ does not depend on $\theta$, it cannot change *where* the maximum sits, so we may drop it. Taking $\log$ (which is monotonic, so it preserves the location of the maximum) turns the product into a sum:
+
+$$
+\hat{\theta}_\text{MAP} = \arg\max_\theta \big[\, p(\mathcal{D}|\theta)\,p(\theta)\,\big] = \arg\max_\theta \left[\underbrace{\ln p(\mathcal{D} | \theta)}_{\text{MLE objective}} + \underbrace{\ln p(\theta)}_{\text{prior penalty}}\right]
+$$
+
+So **MAP = MLE + log-prior penalty**. If the prior is flat (uniform), $\ln p(\theta)$ is a constant and MAP collapses back to MLE — the data-only estimate. The prior only matters when it is *informative*.
 
 <Callout type="tip" title="L2 regularization is MAP with a Gaussian prior">
-  A Gaussian prior $\theta \sim \mathcal{N}(0, \tau^2)$ adds $\ln p(\theta) = -\frac{\|\theta\|^2}{2\tau^2} + \text{const}$ to the log-likelihood. Maximizing this is identical to minimizing:
-  $$\mathcal{L}(\theta) - \frac{\lambda}{2}\|\theta\|^2$$
-  That's L2 (Ridge) regularization. **L2 regularization is MAP estimation with a Gaussian prior.**
+  Put a zero-mean Gaussian prior on each weight, $\theta \sim \mathcal{N}(0, \tau^2)$. Its log is
+  $$\ln p(\theta) = -\frac{\|\theta\|^2}{2\tau^2} + \text{const}.$$
+  Plug this into the MAP objective (and flip the sign to turn the maximization into the usual loss minimization):
+  $$\hat{\theta}_\text{MAP} = \arg\min_\theta \Big[\underbrace{-\ln p(\mathcal{D}|\theta)}_{\text{data loss}} + \underbrace{\tfrac{1}{2\tau^2}\|\theta\|^2}_{\text{penalty}}\Big].$$
+  Setting $\lambda = \tfrac{1}{2\tau^2}$, that is exactly **L2 (Ridge) regularization** with penalty $\lambda\|\theta\|^2$. A *tighter* prior (small $\tau^2$) means a *stronger* penalty (large $\lambda$). **L2 regularization is MAP estimation with a Gaussian prior.**
 </Callout>
 
-Similarly, L1 regularization (Lasso) corresponds to a Laplace prior.
+Similarly, **L1 regularization (Lasso)** corresponds to a Laplace prior $\theta \sim \text{Laplace}(0, b)$, whose log is $-\frac{1}{b}|\theta| + \text{const}$ — an absolute-value penalty $\lambda\|\theta\|_1$.
+
+### Worked example: MAP vs MLE for the coin
+
+The Beta-Bernoulli model gives a clean closed form for both estimates, so we can compare them by hand. With $k$ heads in $n$ flips and prior $\text{Beta}(\alpha, \beta)$:
+
+**MLE** maximizes the likelihood $p^k(1-p)^{n-k}$. Differentiate the log-likelihood and set it to zero:
+
+$$
+\frac{d}{dp}\big[k\ln p + (n-k)\ln(1-p)\big] = \frac{k}{p} - \frac{n-k}{1-p} = 0 \;\Longrightarrow\; \hat{p}_\text{MLE} = \frac{k}{n}
+$$
+
+**MAP** maximizes the posterior, i.e. the *mode* of $\text{Beta}(\alpha + k,\ \beta + n - k)$. The mode of $\text{Beta}(a, b)$ is $\frac{a-1}{a+b-2}$, so:
+
+$$
+\hat{p}_\text{MAP} = \frac{(\alpha + k) - 1}{(\alpha + k) + (\beta + n - k) - 2} = \frac{\alpha + k - 1}{\alpha + \beta + n - 2}
+$$
+
+**Numbers.** With $\alpha = \beta = 2$, $k = 7$, $n = 10$:
+
+$$
+\hat{p}_\text{MLE} = \frac{7}{10} = 0.700, \qquad \hat{p}_\text{MAP} = \frac{2 + 7 - 1}{2 + 2 + 10 - 2} = \frac{8}{12} \approx 0.667
+$$
+
+The MAP estimate sits between the prior mode ($0.5$) and the MLE ($0.7$), pulled toward the prior. Note all three summaries differ: $\hat{p}_\text{MLE} = 0.700$, the posterior **mode** (MAP) $= 0.667$, and the posterior **mean** $= 0.643$. As $n \to \infty$, the $-1$ and $-2$ corrections become negligible and $\hat{p}_\text{MAP} \to \hat{p}_\text{MLE}$ — the data overwhelms the prior.
 
 ## Bayesian vs frequentist
 
