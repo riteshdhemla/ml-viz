@@ -17,11 +17,11 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 
 ## Supervised — core
 - [x] neural-networks/01-what-is-a-neuron — lesson: worked forward pass w=[2,−1,0.5] b=1 x=[3,2,4] term-by-term dot, z=7 thru ReLU/sigmoid/tanh, ∂z/∂wᵢ=xᵢ change-one-weight. notebook: matching forward pass, change-weight demo. (sub-agent)
-- [ ] neural-networks/02-gradient-descent
-- [ ] linear-regression/01-linear-regression
-- [ ] linear-regression/02-logistic-regression
-- [ ] knn-decision-trees/01-knn
-- [ ] knn-decision-trees/02-decision-trees
+- [x] neural-networks/02-gradient-descent — lesson: MSE line-fit ∂L/∂w,∂L/∂b derived, 2 iters by hand (loss 27.67→0.33→0.005), η table (0.001/0.1/0.5), batch/SGD/momentum/Adam. notebook: GD from scratch, loss+param-path, η compare. (sub-agent)
+- [x] linear-regression/01-linear-regression — lesson: normal eqn derived from ∇MSE=0, by-hand LSQ fit (w*=[0.333,1.5]), residuals/R²=0.964, Ridge closed form. notebook: FIXED invalid `def lasso.coordinate_descent`; closed-form vs GD, residual plot, R². (sub-agent)
+- [x] linear-regression/02-logistic-regression — lesson: log-odds link, σ'=σ(1-σ), BCE from MLE, gradient collapse to (1/n)Xᵀ(σ(Xw)−y) step-by-step, boundary geometry, tiny numeric step. notebook: from-scratch GD, decision boundary, loss curve. (sub-agent)
+- [x] knn-decision-trees/01-knn — lesson: Minkowski metrics worked (Manh7/Eucl5/p3≈4.5/Cheb4), query (3,4) full vote table (k=3 Red→k=5 Blue flip), bias-variance k, curse-of-dim ratio table. notebook: KNN from scratch classifies (3,4), boundary, k-panels. (sub-agent)
+- [x] knn-decision-trees/02-decision-trees — lesson: 10-row loan dataset, root Gini 0.5/Entropy 1.0, split Age≤31.5 worked (gain 0.333/infogain 0.61), full threshold-scan table, pruning. notebook: FIXED undefined-ref cell; gini/entropy/split_score, best-split scan, impurity plots. (sub-agent)
 
 ## Unsupervised
 - [ ] clustering/01-k-means
