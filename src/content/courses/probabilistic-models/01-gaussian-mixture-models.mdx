@@ -38,6 +38,28 @@ $$
 
 This is Bayes' theorem — the **responsibility** of component $k$ for point $i$.
 
+### Worked example (by hand)
+
+Two 1D components, equal weights $\pi_1=\pi_2=0.5$, means $\mu_1=0,\,\mu_2=5$, both $\sigma=1$. What is the responsibility of each for the point $x=2$?
+
+Plug into the 1D Gaussian $\mathcal N(x\mid\mu,\sigma)=\tfrac{1}{\sqrt{2\pi}}e^{-(x-\mu)^2/2\sigma^2}$ (the $\tfrac{1}{\sqrt{2\pi}}$ cancels in the ratio, but we keep it for clarity):
+
+$$
+\mathcal N(2\mid 0,1) = \tfrac{1}{\sqrt{2\pi}}e^{-2} = 0.0540,
+\qquad
+\mathcal N(2\mid 5,1) = \tfrac{1}{\sqrt{2\pi}}e^{-4.5} = 0.00443.
+$$
+
+Weight by $\pi_k$ (both $0.5$) and normalize:
+
+$$
+\gamma_1 = \frac{0.5\,(0.0540)}{0.5\,(0.0540) + 0.5\,(0.00443)} = \frac{0.0540}{0.0584} = 0.924,
+\qquad
+\gamma_2 = 0.076.
+$$
+
+So $x=2$ is **92.4% component 1, 7.6% component 2** — a *soft* assignment. K-Means would hard-assign it 100% to component 1 and throw away that 7.6% of doubt. Points exactly between the means ($x=2.5$) split $50/50$.
+
 ```python
 import numpy as np
 from scipy.stats import multivariate_normal
@@ -82,7 +104,16 @@ $$
 \log P(X \mid \theta) = \sum_{i=1}^{n} \log \left( \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k) \right)
 $$
 
-Because of the log-sum, there's no closed-form solution. We use the **EM algorithm** (covered in the next lesson).
+Because of the log-sum (a log *of a sum* can't be split), there's no closed-form solution. The **EM algorithm** (next lesson) gets around this by alternating: compute responsibilities $\gamma_{ik}$ (E-step), then update parameters as **responsibility-weighted** statistics (M-step):
+
+$$
+N_k = \sum_i \gamma_{ik},\quad
+\boldsymbol{\mu}_k = \frac{1}{N_k}\sum_i \gamma_{ik}\mathbf{x}_i,\quad
+\boldsymbol{\Sigma}_k = \frac{1}{N_k}\sum_i \gamma_{ik}(\mathbf{x}_i-\boldsymbol{\mu}_k)(\mathbf{x}_i-\boldsymbol{\mu}_k)^\top,\quad
+\pi_k = \frac{N_k}{n}.
+$$
+
+These are exactly the K-Means update equations with the hard 0/1 membership replaced by the soft $\gamma_{ik}$ — which is why a GMM is the **soft generalization of K-Means**.
 
 ## Covariance types
 
