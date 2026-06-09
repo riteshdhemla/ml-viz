@@ -24,7 +24,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 - [x] knn-decision-trees/02-decision-trees — lesson: 10-row loan dataset, root Gini 0.5/Entropy 1.0, split Age≤31.5 worked (gain 0.333/infogain 0.61), full threshold-scan table, pruning. notebook: FIXED undefined-ref cell; gini/entropy/split_score, best-split scan, impurity plots. (sub-agent)
 
 ## Unsupervised
-- [ ] clustering/01-k-means
+- [x] clustering/01-k-means — lesson: FIXED worked-example tie bug (point (3,4) was equidistant from both init centroids); new init μ2=(3.5,5), full squared-dist table, J 8.75→7.46 decrease shown; added ∂J/∂μ=0 ⇒ mean derivation ("why update to the mean"). notebook: +mean-minimizes derivation cell, +by-hand worked example (dist table, J monotone decrease, 2000-grid check mean is optimal, convergence check).
 - [ ] clustering/02-hierarchical-and-dbscan
 - [ ] pca-dimensionality/01-pca
 - [ ] pca-dimensionality/02-t-sne-and-umap
