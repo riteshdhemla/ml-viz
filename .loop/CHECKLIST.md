@@ -35,7 +35,7 @@ Mark `[x]` when both lesson + notebook done. Add notes inline.
 - [x] svm/01-maximum-margin — lesson: +derivation of margin=2/‖w‖ (signed dist (wᵀx+b)/‖w‖, rescale SVs to ±1 ⇒ half-width 1/‖w‖); FIXED broken worked example (old class−1 {(0,0),(1,0)} made (1,0) the true SV not (0,0), and w=[1,1]/b=−1.5 wasn't tight at ±1). New clean 6-pt example on y=x: SVs (2,2)&(0,0), solve 4a+b=1/b=−1 ⇒ w=(0.5,0.5),b=−1, margin=2√2=2.83=SV gap. notebook: +by-hand solve cell (margin eqns, y·f=1 at SVs, sklearn cross-check).
 - [x] svm/02-kernel-trick — lesson: added algebraic expansion proving (xᵀz+1)²=φ(x)ᵀφ(z) (shows where the √2 factors come from); +numeric worked example x=(1,2),z=(3,-1): kernel=4=φ·φ=9+4-12+6-4+1; +Mercer-condition callout (valid kernel ⇔ PSD Gram; sigmoid fails). notebook: +Mercer PSD Gram-matrix check across linear/poly/rbf/sigmoid (sigmoid min-eig<0).
 - [x] ensemble-methods/01-bagging-and-random-forests — lesson: +derivation of ~37% OOB ((1-1/n)^n→1/e=0.368; n=100→0.366); +correlated-average variance formula Var=ρσ²+(1-ρ)/B σ² explaining WHY RF decorrelates (more trees kill (1-ρ)/B; only lower ρ touches the ρσ² floor). notebook: +simulation cell verifying OOB fraction (closed vs empirical) AND variance formula (ρ=0.5/0.1, B=1/10/1000 vs sim).
-- [ ] ensemble-methods/02-boosting
+- [x] ensemble-methods/02-boosting — lesson: derived α=½ln((1−ε)/ε) as minimizer of exp loss (1−ε)e^−α+εe^α; +worked one-round AdaBoost (10 pts, ε=0.2→α=0.693, reweight correct×0.5/wrong×2, normalize→0.0625/0.25, misclassified now hold exactly 0.5 weight = general identity). notebook: +one-round-by-hand cell verifying α, reweight, and the 0.5-weight identity.
 
 ## Deep learning
 - [ ] cnns/01-convolution-operation
