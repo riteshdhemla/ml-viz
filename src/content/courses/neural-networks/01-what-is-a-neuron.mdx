@@ -26,29 +26,75 @@ where $w_i$ are **weights**, $b$ is a **bias**, and $f$ is an **activation funct
   Think of each weight as a "volume knob" — it controls how much a particular input contributes to the output. The bias shifts the threshold at which the neuron activates, independent of any input.
 </Callout>
 
-### Worked example
+### A fully worked forward pass
 
-Weights $\mathbf{w} = [2, -1, 0.5]$, bias $b = 1$, inputs $\mathbf{x} = [1, 1, 1]$.
+Let's push concrete numbers through a single neuron, one step at a time. Suppose the neuron has three inputs with:
 
 $$
-z = 2(1) + (-1)(1) + 0.5(1) + 1 = 2.5
+\mathbf{w} = [\,2,\; -1,\; 0.5\,], \qquad b = 1, \qquad \mathbf{x} = [\,3,\; 2,\; 4\,]
 $$
 
-With ReLU activation, $y = \max(0, 2.5) = 2.5$. The bias contributed $+1$ regardless of the inputs.
+**Step 1 — the dot product, term by term.** The weighted sum $\mathbf{w}\cdot\mathbf{x}$ multiplies each input by its weight and adds the results:
+
+$$
+\mathbf{w}\cdot\mathbf{x} = \underbrace{(2)(3)}_{=\,6} \;+\; \underbrace{(-1)(2)}_{=\,-2} \;+\; \underbrace{(0.5)(4)}_{=\,2} \;=\; 6 - 2 + 2 \;=\; 6
+$$
+
+**Step 2 — add the bias** to get the pre-activation $z$:
+
+$$
+z = \mathbf{w}\cdot\mathbf{x} + b = 6 + 1 = 7
+$$
+
+**Step 3 — apply the activation.** Different activations turn that same $z = 7$ into very different outputs:
+
+$$
+\text{ReLU: } y = \max(0,\,7) = 7
+\qquad
+\text{Sigmoid: } y = \frac{1}{1 + e^{-7}} \approx 0.999
+\qquad
+\text{Tanh: } y = \tanh(7) \approx 1.000
+$$
+
+Notice how sigmoid and tanh have *saturated* — once $z$ is large, pushing it higher barely changes the output. That saturation is exactly what makes their gradients vanish in deep networks.
 
 ```python
 import numpy as np
 
 def neuron(x, w, b, activation="relu"):
-    z = np.dot(w, x) + b                  # pre-activation
-    if activation == "relu":    return max(0, z), z
-    if activation == "sigmoid": return 1 / (1 + np.exp(-z)), z
+    z = np.dot(w, x) + b                      # pre-activation
+    if activation == "relu":    return max(0.0, z), z
+    if activation == "sigmoid": return 1.0 / (1.0 + np.exp(-z)), z
     if activation == "tanh":    return np.tanh(z), z
-    return z, z                            # linear
+    return z, z                                # linear
 
-y, z = neuron([1, 1, 1], [2, -1, 0.5], 1)
-print(f"pre-activation z = {z}")           # 2.5
-print(f"output y (ReLU)  = {y}")           # 2.5
+y, z = neuron([3, 2, 4], [2, -1, 0.5], 1)
+print("pre-activation z = {}".format(z))       # 7.0
+print("output y (ReLU)  = {}".format(y))       # 7.0
+```
+
+### How changing one weight changes the output
+
+Weights are the dials the network turns during training. Let's see the effect of nudging a *single* weight while keeping everything else fixed.
+
+Keep $\mathbf{x} = [3, 2, 4]$ and $b = 1$, but change only $w_1$ from $2$ to $3$:
+
+$$
+z_{\text{new}} = \underbrace{(3)(3)}_{=\,9} + (-1)(2) + (0.5)(4) + 1 = 9 - 2 + 2 + 1 = 10
+$$
+
+The pre-activation jumped from $7$ to $10$ — an increase of $3$. That is no accident: because $z$ depends on $w_1$ only through the term $w_1 x_1$, increasing $w_1$ by $1$ changes $z$ by exactly $x_1 = 3$. In general:
+
+$$
+\frac{\partial z}{\partial w_i} = x_i
+$$
+
+So a weight attached to a *large* input has a *large* influence on the output — this is the very quantity gradient descent uses to decide how much to adjust each weight.
+
+```python
+z_before = np.dot([2, -1, 0.5], [3, 2, 4]) + 1   # 7.0
+z_after  = np.dot([3, -1, 0.5], [3, 2, 4]) + 1   # 10.0
+print("change in z = {}".format(z_after - z_before))  # 3.0 == x[0]
 ```
 
 ## Why do we need activation functions?
