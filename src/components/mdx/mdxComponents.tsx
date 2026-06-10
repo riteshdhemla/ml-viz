@@ -55,6 +55,7 @@ import { SoftMarginViz } from "@/components/visualizations/SoftMargin/SoftMargin
 import { BoostingShrinkageViz } from "@/components/visualizations/BoostingShrinkage/BoostingShrinkageViz";
 import { SilhouetteViz } from "@/components/visualizations/Silhouette/SilhouetteViz";
 import { PCAReconstructionViz } from "@/components/visualizations/PCAReconstruction/PCAReconstructionViz";
+import { NaiveBayesVotesViz } from "@/components/visualizations/NaiveBayesVotes/NaiveBayesVotesViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -116,4 +117,5 @@ export const mdxComponents: MDXComponents = {
   BoostingShrinkageViz,
   SilhouetteViz,
   PCAReconstructionViz,
+  NaiveBayesVotesViz,
 };

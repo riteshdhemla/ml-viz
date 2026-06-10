@@ -58,9 +58,9 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **PCAReconstructionViz** — closed-form 2x2 PCA, m toggle, error
       segments, variance-explained + MSE = discarded-λ₂ stats; wired into
       `pca-dimensionality/03-pca-in-practice.mdx` (PR #45)
-- [ ] **NaiveBayesVotesViz** — toy spam classifier; type/select words, show
-      per-word log-likelihood-ratio vote bars summing to a verdict. Wire into
-      `probabilistic-models/03-naive-bayes.mdx`
+- [x] **NaiveBayesVotesViz** — toggleable word buttons, Laplace-smoothed LLR
+      vote bars + prior, live sum/P(spam)/verdict; wired into
+      `probabilistic-models/03-naive-bayes.mdx` (PR #46)
 
 ### Presentation
 
