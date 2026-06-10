@@ -82,6 +82,18 @@ $$
 
 The latent space captures the "essence" of the data — style, pose, identity — while the decoder fills in the details.
 
+### A concrete density: 2D Gaussian
+
+To make $P(x)$ concrete, consider a 2D Gaussian with mean $\mu = [1, 2]^\top$ and diagonal covariance $\Sigma = \text{diag}(1, 4)$. Evaluating the density at the mean $x = [1, 2]^\top$ (where $x - \mu = \mathbf{0}$, so the exponent is zero):
+
+$$
+p(x) = \frac{1}{2\pi\sqrt{|\Sigma|}} \exp\!\left(-\tfrac{1}{2}(x-\mu)^\top \Sigma^{-1}(x-\mu)\right) = \frac{1}{2\pi\cdot 2}\exp(0) = \frac{1}{4\pi} \approx 0.0796
+$$
+
+Here $|\Sigma| = 1 \times 4 = 4$, so $\sqrt{|\Sigma|} = 2$.
+
+A GAN trained on this distribution can sample $x \sim p(x)$ but cannot compute $p(x)$ for a given $x$ — the generator function $G(z)$ has no inverse.
+
 ## Quick comparison
 
 | Model | Type | Pros | Cons |
@@ -90,6 +102,12 @@ The latent space captures the "essence" of the data — style, pose, identity �
 | GAN | Implicit | Sharp, realistic outputs | Training instability, mode collapse |
 | Diffusion | Explicit | Best quality, stable training | Slow sampling |
 | Autoregressive | Explicit | Exact likelihood | Slow (sequential) |
+
+## Common mistakes
+
+1. **Confusing discriminative and generative models** — a discriminative model learns $p(y|x)$; a generative model learns $p(x)$ or $p(x,y)$. Only generative models can produce new samples.
+2. **Misunderstanding latent spaces** — the latent vector $z$ is not the same as learned features in a discriminative model; it is a compressed stochastic representation, not a deterministic encoding.
+3. **Equating sampling with evaluating $p(x)$** — GANs can sample but cannot compute $p(x)$ explicitly; VAEs and diffusion models can (approximately); this distinction matters for density estimation tasks.
 
 ## Key takeaways
 

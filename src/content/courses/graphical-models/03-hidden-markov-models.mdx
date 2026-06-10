@@ -80,6 +80,17 @@ Step 2, Sunny: $\max(0.06\cdot 0.3,\ 0.24\cdot 0.6)\cdot 0.3 = \max(0.018, 0.144
 
 Winner at $t=2$: Sunny ($0.0432$), back-pointer → Sunny. **Best path: Sunny → Sunny.**
 
+### Backpointer table (tracking the best path)
+
+| Time step | Observation | Rainy ($\delta$, from) | Sunny ($\delta$, from) |
+|-----------|-------------|------------------------|------------------------|
+| $t=1$ | Walk | 0.06, — | 0.24, — |
+| $t=2$ | Shop | 0.0384, **Sunny** | 0.0432, **Sunny** |
+
+The highest score at $t=2$ is $\delta_2(S)=0.0432$, so we start back-tracking from Sunny. Reading the path backwards from the highest final state: $q_T^* \to q_{T-1}^* \to \ldots \to q_1^*$. In our example this gives the state sequence **Sunny → Sunny**: at $t=2$ the winner is Sunny, and its back-pointer records it came from Sunny at $t=1$.
+
+To reconstruct the path in code, store $\psi_t(j) = \arg\max_i [\delta_{t-1}(i)\,A_{ij}]$ at every step. At the end, find $q_T^* = \arg\max_j \delta_T(j)$, then follow the back-pointers: $q_{t-1}^* = \psi_t(q_t^*)$. This single backward pass recovers the complete optimal sequence in $O(KT)$ time — no additional computation beyond what the forward pass already stored.
+
 ```python
 import numpy as np
 from hmmlearn import hmm   # pip install hmmlearn

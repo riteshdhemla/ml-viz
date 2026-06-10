@@ -35,20 +35,20 @@ Viz tasks (T09+) all follow the same shape: create `src/components/visualization
 - [x] **T05 — probability-statistics house-style sections.**
   Add `## Common mistakes` and `**Real-world examples:**` intro lines to all 3 lessons (e.g. PDF > 1 confusion, likelihood ≠ probability, prior overconfidence).
 
-- [ ] **T06 — generative-models consistency pass.**
+- [x] **T06 — generative-models consistency pass.**
   Add `## Common mistakes` to lessons 01–04. Add a worked numeric example to lesson 01 (compute $P(x)$ for a 2D Gaussian, contrast with GAN's implicit density). Align lesson 02's code with its narrative (mean MSE, not summed). After lesson 05's comparison table, add an info Callout explaining why diffusion displaced GANs (stability + quality vs. sampling speed; DDIM/distillation closing the gap).
 
-- [ ] **T07 — reinforcement-learning DQN depth.**
+- [x] **T07 — reinforcement-learning DQN depth.**
   Add a step-by-step worked example to `03-deep-q-networks.mdx`: one full DQN training step with concrete numbers (state → action → reward → target-net bootstrap → TD target → loss → gradient direction). Expand `notebooks/reinforcement-learning/03-deep-q-networks.ipynb` with a replay-buffer demo (store ~100 transitions, sample a minibatch, show correlation breaking).
 
-- [ ] **T08 — Clarity polish across 4 lessons.**
+- [x] **T08 — Clarity polish across 4 lessons.**
   (a) `graphical-models/01`: add a mini-table giving a concrete sprinkler-network example for each d-separation pattern (chain/fork/collider). (b) `graphical-models/03`: add an explicit backpointer table to the Viterbi worked example. (c) `probabilistic-models/02`: add the post-M-step responsibility table so the iteration-to-iteration change is visible. (d) `neural-networks/01`: add a "Related concepts" link forward to `03-layers-and-forward-pass`.
 
 ## Wave 2 — Visualization gaps (one viz per task)
 
 Ordered by how hard the concept is without animation.
 
-- [ ] **T09 — KernelViz → `svm/02-kernel-trick.mdx`.** 2D points in concentric circles; toggle linear/poly/RBF; show the implicit feature-space separation (e.g. plot $\phi(x) = (x_1^2, x_2^2)$ projection or RBF similarity contours); γ slider.
+- [x] **T09 — KernelViz → `svm/02-kernel-trick.mdx`.** 2D points in concentric circles; toggle linear/poly/RBF; show the implicit feature-space separation (e.g. plot $\phi(x) = (x_1^2, x_2^2)$ projection or RBF similarity contours); γ slider.
 - [ ] **T10 — LSTMGateViz → `rnns/03-lstm-and-gru.mdx`.** Animate a cell over ~8 timesteps: forget/input/output gate values as opacity, cell state as a horizontal "highway"; sliders for gate biases showing memory retention vs. erasure.
 - [ ] **T11 — DSeparationViz → `graphical-models/01-bayesian-networks.mdx`.** Small fixed DAG; click nodes to condition (shade them); paths recolor as blocked/unblocked per chain/fork/collider rules; readout naming the active rule.
 - [ ] **T12 — GridWorldViz → `reinforcement-learning/01-markov-decision-processes.mdx`.** 4×4 gridworld; step button runs value iteration sweeps; cells show $V(s)$ as color+number, arrows show the greedy policy; γ slider.

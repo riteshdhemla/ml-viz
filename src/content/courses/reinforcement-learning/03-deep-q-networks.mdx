@@ -94,6 +94,46 @@ def train_step(q, q_target, batch, optim, gamma=0.99):
     return loss.item()
 ```
 
+### A fully worked DQN training step
+
+Setup: a 2-action gridworld (actions: left = 0, right = 1). At training step $t$ the agent samples one transition from its replay buffer:
+
+- $(s, a, r, s') = (\text{state A},\ \text{right},\ -1,\ \text{state B})$
+- Online network outputs: $Q_\theta(\text{A}) = [0.3,\ 0.7]$ → selected $Q_\theta(\text{A}, \text{right}) = 0.7$
+- Target network outputs: $Q_{\theta^-}(\text{B}) = [0.5,\ 0.9]$ → $\max = 0.9$
+- Discount: $\gamma = 0.99$
+
+**Step 1 — TD target from the frozen target network:**
+
+$$y = r + \gamma \max_{a'} Q_{\theta^-}(s', a') = -1 + 0.99 \times 0.9 = -1 + 0.891 = -0.109$$
+
+**Step 2 — TD error (Bellman residual):**
+
+$$\delta = y - Q_\theta(s, a) = -0.109 - 0.7 = -0.809$$
+
+**Step 3 — Loss for this transition:**
+
+$$\mathcal{L} = \delta^2 = (-0.809)^2 = 0.654$$
+
+**Step 4 — Gradient update (conceptually):** the online network nudges $Q_\theta(\text{A}, \text{right})$ downward toward $-0.109$, while $Q_{\theta^-}$ remains frozen. After $C$ steps the weights are copied: $\theta \to \theta^-$.
+
+```python
+gamma = 0.99
+r = -1
+q_online_s = [0.3, 0.7]        # online Q(A, .)
+q_target_s_prime = [0.5, 0.9]  # target Q(B, .)
+a = 1                           # action taken: right
+
+q_sa = q_online_s[a]
+td_target = r + gamma * max(q_target_s_prime)
+td_error  = td_target - q_sa
+loss      = td_error ** 2
+
+print(f"TD target: {td_target:.3f}")   # -0.109
+print(f"TD error:  {td_error:.3f}")    # -0.809
+print(f"Loss:      {loss:.3f}")        # 0.654
+```
+
 ## Double DQN — fixing overestimation
 
 The $\max$ in the target systematically **overestimates** Q-values (it's a max over noisy estimates). **Double DQN** decouples action *selection* from *evaluation*: pick the best next action with the online net $\theta$, but read its value from the target net $\theta^-$:
