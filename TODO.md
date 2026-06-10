@@ -78,8 +78,11 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **Learning path page** — `/path`: prerequisite-depth tiers
       (Foundations → Frontier), per-course progress bars, lock icons for
       unmet prereqs, "you are here" marker; nav link + sitemap entry (PR #50)
-- [ ] **Mobile audit** — verify palette, sliders, viz, and quiz interactions at
-      375px width; fix overflow/tap-target issues found
+- [x] **Mobile audit** — checked 11 page types at 375px in a real browser.
+      Fixed: Callout flex child couldn't shrink (min-w-0) so KaTeX display
+      blocks inside callouts stretched the page; made markdown tables and
+      non-prose katex-display scrollable. Remaining scrollWidth deltas are
+      phantom (clipped KaTeX MathML; page does not pan) (PR #52)
 
 ### Curriculum gaps — extend existing courses
 
