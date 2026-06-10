@@ -8,6 +8,7 @@ import rehypeHighlight from "rehype-highlight";
 import type { LessonMeta } from "@/types/course";
 import { mdxComponents } from "@/components/mdx/mdxComponents";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
+import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { getNotebookUrl } from "@/lib/utils";
 
 interface Props {
@@ -24,10 +25,11 @@ const LESSON_TYPE_BADGE: Partial<Record<LessonMeta["type"], { label: string; cla
   playground: { label: "Playground", className: "bg-orange-500/10 text-accent-orange border-orange-500/20" },
 };
 
-export function LessonLayout({ meta, source, prev, next }: Props) {
+export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
   const isQuiz = meta.type === "quiz";
   const notebookUrl = isQuiz ? null : getNotebookUrl(meta.courseSlug, meta.slug, meta.notebookUrl);
   const badge = LESSON_TYPE_BADGE[meta.type];
+  const position = allLessons.findIndex((l) => l.slug === meta.slug) + 1;
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -41,6 +43,11 @@ export function LessonLayout({ meta, source, prev, next }: Props) {
             <ChevronLeft size={20} />
           </Link>
           <span className="text-slate-400 text-sm truncate flex-1">{meta.title}</span>
+          {position > 0 && (
+            <span className="hidden sm:inline text-xs text-slate-600 tabular-nums shrink-0">
+              {position} / {allLessons.length} · {meta.estimatedMinutes} min
+            </span>
+          )}
           {badge && (
             <span className={`hidden sm:inline text-xs font-medium px-2 py-0.5 rounded border ${badge.className}`}>
               {badge.label}
@@ -76,6 +83,8 @@ export function LessonLayout({ meta, source, prev, next }: Props) {
             }}
           />
         </article>
+
+        <LessonCompleteButton meta={meta} next={next} />
 
         {/* Prev / Next navigation */}
         <div className="mt-16 pt-8 border-t border-surface-border flex items-center justify-between gap-4">
