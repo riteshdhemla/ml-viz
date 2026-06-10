@@ -35,6 +35,10 @@ $$
 
 Small $\eta$ (0.01–0.1) means each tree corrects only a fraction of the remaining error, leaving room for later trees to refine. This is the single most reliable quality knob: **lower $\eta$ + more trees almost always generalizes better**, at the cost of training time. The standard move is to fix $\eta$ small and use *early stopping* — keep adding trees until validation error stops improving.
 
+Try the trade yourself — drag η down and watch how many more trees it takes to fit, but how much later (and lower) the test error bottoms out:
+
+<BoostingShrinkageViz />
+
 ## Row and column subsampling
 
 Borrowing from [Random Forests](/courses/ensemble-methods/01-bagging-and-random-forests), each tree (or each split) sees only a random fraction of rows (`subsample`) and columns (`colsample_bytree`). Decorrelating the trees reduces variance — and as a bonus makes training faster.
