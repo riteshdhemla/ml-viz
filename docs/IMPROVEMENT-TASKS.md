@@ -49,9 +49,9 @@ Viz tasks (T09+) all follow the same shape: create `src/components/visualization
 Ordered by how hard the concept is without animation.
 
 - [x] **T09 — KernelViz → `svm/02-kernel-trick.mdx`.** 2D points in concentric circles; toggle linear/poly/RBF; show the implicit feature-space separation (e.g. plot $\phi(x) = (x_1^2, x_2^2)$ projection or RBF similarity contours); γ slider.
-- [ ] **T10 — LSTMGateViz → `rnns/03-lstm-and-gru.mdx`.** Animate a cell over ~8 timesteps: forget/input/output gate values as opacity, cell state as a horizontal "highway"; sliders for gate biases showing memory retention vs. erasure.
-- [ ] **T11 — DSeparationViz → `graphical-models/01-bayesian-networks.mdx`.** Small fixed DAG; click nodes to condition (shade them); paths recolor as blocked/unblocked per chain/fork/collider rules; readout naming the active rule.
-- [ ] **T12 — GridWorldViz → `reinforcement-learning/01-markov-decision-processes.mdx`.** 4×4 gridworld; step button runs value iteration sweeps; cells show $V(s)$ as color+number, arrows show the greedy policy; γ slider.
+- [x] **T10 — LSTMGateViz → `rnns/03-lstm-and-gru.mdx`.** Animate a cell over ~8 timesteps: forget/input/output gate values as opacity, cell state as a horizontal "highway"; sliders for gate biases showing memory retention vs. erasure.
+- [x] **T11 — DSeparationViz → `graphical-models/01-bayesian-networks.mdx`.** Small fixed DAG; click nodes to condition (shade them); paths recolor as blocked/unblocked per chain/fork/collider rules; readout naming the active rule.
+- [x] **T12 — GridWorldViz → `reinforcement-learning/01-markov-decision-processes.mdx`.** 4×4 gridworld; step button runs value iteration sweeps; cells show $V(s)$ as color+number, arrows show the greedy policy; γ slider.
 - [ ] **T13 — DiffusionViz → `generative-models/05-diffusion-models.mdx`.** 2D point cloud (two moons via `seededRandom`); slider over timestep t shows forward noising; play button animates reverse denoising (precomputed trajectory); β-schedule toggle.
 - [ ] **T14 — BoostingViz → `ensemble-methods/02-boosting.mdx`.** 1D/2D points with stump classifiers; step button runs AdaBoost rounds; point radius = sample weight; show ensemble boundary tightening and per-round α.
 - [ ] **T15 — QTableViz → `reinforcement-learning/02-q-learning.mdx`.** Q-table heatmap for the gridworld; play button runs ε-greedy episodes; cells flash on TD updates; ε and α sliders; episode/return stats.

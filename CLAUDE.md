@@ -317,6 +317,9 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | MarginViz | `visualizations/Margin/` | svm/01-maximum-margin | ✅ |
 | DecisionTreeSplitViz | `visualizations/DecisionTreeSplit/` | knn-decision-trees/02-decision-trees | ✅ |
 | NeuralNetworkViz | `visualizations/NeuralNetwork/` | neural-networks/03-layers-and-forward-pass | ✅ |
+| LSTMGateViz | `visualizations/LSTMGate/` | rnns/03-lstm-and-gru | ✅ |
+| DSeparationViz | `visualizations/DSeparation/` | graphical-models/01-bayesian-networks | ✅ |
+| GridWorldViz | `visualizations/GridWorld/` | reinforcement-learning/01-markov-decision-processes | ✅ |
 
 ---
 
