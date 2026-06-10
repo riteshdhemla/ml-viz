@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getLessonContent, getAllCourses, getLessonsForCourse } from "@/lib/content";
 import { LessonLayout } from "@/components/lessons/LessonLayout";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { Metadata } from "next";
 
 interface Props {
@@ -25,7 +27,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { courseSlug, lessonSlug } = await params;
   const result = await getLessonContent(courseSlug, lessonSlug);
   if (!result) return {};
-  return { title: result.meta.title };
+  const url = absoluteUrl(`/courses/${courseSlug}/${lessonSlug}`);
+  return {
+    title: result.meta.title,
+    description: result.meta.description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: result.meta.title,
+      description: result.meta.description,
+      url,
+      type: "article",
+    },
+  };
 }
 
 export default async function LessonPage({ params }: Props) {
@@ -39,12 +52,31 @@ export default async function LessonPage({ params }: Props) {
   const next = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
 
   return (
-    <LessonLayout
-      meta={result.meta}
-      source={result.source}
-      prev={prev}
-      next={next}
-      allLessons={allLessons}
-    />
+    <>
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "LearningResource",
+          name: result.meta.title,
+          description: result.meta.description,
+          url: absoluteUrl(`/courses/${courseSlug}/${lessonSlug}`),
+          learningResourceType: result.meta.type,
+          timeRequired: `PT${result.meta.estimatedMinutes}M`,
+          isAccessibleForFree: true,
+          provider: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+          isPartOf: {
+            "@type": "Course",
+            url: absoluteUrl(`/courses/${courseSlug}`),
+          },
+        }}
+      />
+      <LessonLayout
+        meta={result.meta}
+        source={result.source}
+        prev={prev}
+        next={next}
+        allLessons={allLessons}
+      />
+    </>
   );
 }

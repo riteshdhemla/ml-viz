@@ -4,6 +4,8 @@ import { getCourse, getAllCourses } from "@/lib/content";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { LessonList } from "@/components/lessons/LessonList";
 import { CourseProgressBar } from "@/components/lessons/CourseProgressBar";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { Metadata } from "next";
 
 interface Props {
@@ -21,7 +23,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { courseSlug } = await params;
   const course = getCourse(courseSlug);
   if (!course) return {};
-  return { title: course.title, description: course.description };
+  const url = absoluteUrl(`/courses/${courseSlug}`);
+  return {
+    title: course.title,
+    description: course.description,
+    alternates: { canonical: url },
+    openGraph: {
+      title: course.title,
+      description: course.description,
+      url,
+      type: "website",
+    },
+  };
 }
 
 export default async function CoursePage({ params }: Props) {
@@ -31,6 +44,25 @@ export default async function CoursePage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-surface">
+      <JsonLd
+        data={{
+          "@context": "https://schema.org",
+          "@type": "Course",
+          name: course.title,
+          description: course.description,
+          url: absoluteUrl(`/courses/${courseSlug}`),
+          provider: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
+          educationalLevel: course.difficulty,
+          about: course.topics,
+          timeRequired: `PT${Math.round(course.estimatedHours * 60)}M`,
+          isAccessibleForFree: true,
+          hasCourseInstance: {
+            "@type": "CourseInstance",
+            courseMode: "online",
+            courseWorkload: `PT${Math.round(course.estimatedHours * 60)}M`,
+          },
+        }}
+      />
       <SiteHeader />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Breadcrumb */}
