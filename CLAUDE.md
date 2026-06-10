@@ -335,6 +335,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | GANTrainingViz | `visualizations/GANTraining/` | generative-models/04-generative-adversarial-networks | ✅ |
 | TransformerBlockViz | `visualizations/TransformerBlock/` | transformers/03-transformer-architecture | ✅ |
 | PerplexityViz | `visualizations/Perplexity/` | pca-dimensionality/02-t-sne-and-umap | ✅ |
+| PolicyGradientViz | `visualizations/PolicyGradient/` | reinforcement-learning/04-policy-gradient | ✅ |
 
 ---
 

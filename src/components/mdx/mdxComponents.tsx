@@ -47,6 +47,7 @@ import { DendrogramViz } from "@/components/visualizations/Dendrogram/Dendrogram
 import { TransformerBlockViz } from "@/components/visualizations/TransformerBlock/TransformerBlockViz";
 import { GANTrainingViz } from "@/components/visualizations/GANTraining/GANTrainingViz";
 import { PerplexityViz } from "@/components/visualizations/Perplexity/PerplexityViz";
+import { PolicyGradientViz } from "@/components/visualizations/PolicyGradient/PolicyGradientViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -100,4 +101,5 @@ export const mdxComponents: MDXComponents = {
   TransformerBlockViz,
   GANTrainingViz,
   PerplexityViz,
+  PolicyGradientViz,
 };
