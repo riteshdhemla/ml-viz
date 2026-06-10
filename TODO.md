@@ -49,9 +49,9 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **SoftMarginViz** — hinge-loss SVM retrained per C value (log slider);
       margin band, violator/misclassified rings, margin-width and Σξ stats;
       wired into `svm/03-soft-margins.mdx` (PR #42)
-- [ ] **BoostingShrinkageViz** — staged boosting fit on 1D sine data; sliders
-      for η and number of trees; train vs test error curves. Wire into
-      `ensemble-methods/03-xgboost.mdx`
+- [x] **BoostingShrinkageViz** — stumps boosted on noisy sine; η + trees
+      sliders, staged fit panel, train/test MSE curves with best-test marker;
+      wired into `ensemble-methods/03-xgboost.mdx` (PR #43)
 - [ ] **SilhouetteViz** — blobs clustered at chosen k; per-point silhouette bars
       grouped by cluster; k slider, mean-silhouette stat. Wire into
       `clustering/03-evaluating-clusters.mdx`
