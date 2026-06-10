@@ -43,9 +43,9 @@ fully, verify, ship, check it off. One item per iteration.
 ### Visualizations for the 7 new lessons (one per iteration)
 
 - [x] **BiasVarianceViz** — wired into `knn-decision-trees/03-bias-variance.mdx` (PR #35)
-- [ ] **RegularizationPathViz** — Ridge vs Lasso weight paths as λ slider moves;
-      show Lasso weights snapping to exactly zero. Wire into
-      `linear-regression/03-regularization.mdx`
+- [x] **RegularizationPathViz** — Ridge (closed form) vs Lasso (coordinate
+      descent) paths over a log-λ grid, λ slider, non-zero-weight counter;
+      wired into `linear-regression/03-regularization.mdx` (PR #41)
 - [ ] **SoftMarginViz** — 2D points with margin band; C slider reshapes
       boundary/margin; highlight violators (ξ > 0) and misclassified (ξ > 1).
       Wire into `svm/03-soft-margins.mdx`
