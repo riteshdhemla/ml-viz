@@ -67,8 +67,8 @@ fully, verify, ship, check it off. One item per iteration.
 - [ ] **Key-takeaways blocks** — add a closing "Key takeaways" section (3-5
       bullets) to every older concept lesson that lacks one (audit all 17
       courses; the 7 new lessons already have them)
-- [ ] **Reading progress bar** — thin top-of-viewport scroll progress indicator
-      on lesson pages (client component in `LessonLayout`)
+- [x] **Reading progress bar** — rAF-throttled scroll indicator pinned to the
+      sticky lesson header's bottom edge (PR #48)
 - [ ] **Quiz results summary** — on quiz lessons, show score (n/total correct)
       once all exercises answered, with retry option
 
