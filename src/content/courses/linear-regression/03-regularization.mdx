@@ -57,6 +57,10 @@ The absolute value's gradient is $\pm\lambda$ — a **constant** force regardles
 
 This is why Lasso performs **feature selection**: as you raise $\lambda$, features drop out of the model one by one, leaving a sparse, interpretable subset.
 
+Watch it happen. Below, six weights are re-fit at every $\lambda$: three carry real signal, one is a correlated echo, two are pure noise. Switch between Ridge and Lasso and drag $\lambda$ — Ridge shrinks everything smoothly, Lasso snaps the useless weights to exactly zero first:
+
+<RegularizationPathViz />
+
 <Callout type="tip" title="The geometric picture">
   Picture the constraint regions: L2 is a circle, L1 is a diamond. The loss contours expand until they touch the region — and they almost always touch the diamond at a **corner**, where some coordinates are exactly zero. Circles have no corners, so Ridge solutions are never sparse.
 </Callout>
