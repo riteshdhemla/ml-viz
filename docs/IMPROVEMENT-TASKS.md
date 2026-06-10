@@ -67,7 +67,7 @@ Ordered by how hard the concept is without animation.
 - [x] **T25 — GANTrainingViz → `generative-models/04-generative-adversarial-networks.mdx`.** 1D data distribution vs. generator distribution (precomputed training trajectory); play button; show mode collapse with a toggle; D confidence curve overlay.
 - [x] **T26 — TransformerBlockViz → `transformers/03-transformer-architecture.mdx`.** Block diagram of one transformer layer; hover/click each sub-block (attention, FFN, residual, layernorm) to highlight the data path; toggle encoder vs decoder (masked) mode.
 - [x] **T27 — PerplexityViz → `pca-dimensionality/02-t-sne-and-umap.mdx`.** Precomputed t-SNE-style embeddings of the same dataset at 3–4 perplexity values; slider morphs between them; caption warning about over-interpreting cluster sizes/distances.
-- [ ] **T28 — PolicyGradientViz → `reinforcement-learning/04-policy-gradient.mdx`.** 1D/bandit policy as a softmax over actions; step button samples actions, shows advantage sign pushing probabilities up/down; baseline toggle showing variance reduction.
+- [x] **T28 — PolicyGradientViz → `reinforcement-learning/04-policy-gradient.mdx`.** 1D/bandit policy as a softmax over actions; step button samples actions, shows advantage sign pushing probabilities up/down; baseline toggle showing variance reduction.
 
 ## Wave 3 — Structural features
 
