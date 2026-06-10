@@ -11,6 +11,7 @@ interface ProgressStore extends UserProgress {
     result: "correct" | "incorrect"
   ) => void;
   getCourseProgress: (courseSlug: string) => number; // 0-100
+  getCompletedLessonCount: (courseSlug: string) => number;
   isLessonComplete: (courseSlug: string, lessonSlug: string) => boolean;
 }
 
@@ -67,6 +68,12 @@ export const useProgress = create<ProgressStore>()(
         );
         const completed = courseLessons.filter((l) => l.completed).length;
         return courseLessons.length === 0 ? 0 : (completed / courseLessons.length) * 100;
+      },
+
+      getCompletedLessonCount(courseSlug) {
+        return Object.values(get().lessons).filter(
+          (l) => l.courseSlug === courseSlug && l.completed
+        ).length;
       },
 
       isLessonComplete(courseSlug, lessonSlug) {
