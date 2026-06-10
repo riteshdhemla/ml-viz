@@ -1,0 +1,91 @@
+---
+title: "SVD & Low-Rank Approximation"
+description: "Every matrix is a rotation, a stretch, and another rotation — and cutting the stretch short is the best compression there is."
+order: 4
+type: concept
+estimatedMinutes: 18
+---
+
+# SVD & Low-Rank Approximation
+
+[Eigendecomposition](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) was powerful but picky: it needs a square matrix, and the nicest guarantees only arrive when the matrix is symmetric. The **singular value decomposition** drops every restriction. *Any* matrix — rectangular, rank-deficient, ugly — factors as:
+
+$$
+A = U \Sigma V^\top
+$$
+
+- $V^\top$ — an orthogonal **rotation** of the input space (columns of $V$ = right singular vectors)
+- $\Sigma$ — a diagonal **stretch** by the singular values $\sigma_1 \ge \sigma_2 \ge \cdots \ge 0$
+- $U$ — an orthogonal **rotation** of the output space (columns = left singular vectors)
+
+Every linear map, no matter how messy, is just *rotate → stretch along perpendicular axes → rotate*. The singular values are the stretch factors, and they are always real and non-negative.
+
+## Where it comes from
+
+The matrices $A^\top A$ and $A A^\top$ are always symmetric, so the [spectral theorem](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) applies to them even when it doesn't apply to $A$:
+
+- $V$ = eigenvectors of $A^\top A$
+- $U$ = eigenvectors of $A A^\top$
+- $\sigma_i = \sqrt{\lambda_i}$, the square roots of their (shared, non-negative) eigenvalues
+
+This is also exactly the [PCA](/courses/pca-dimensionality/01-pca) connection: for centered data $X$, the covariance is $\frac{1}{n}X^\top X$, so the principal components *are* the right singular vectors of $X$, and explained variances are $\sigma_i^2 / n$. Numerical libraries compute PCA via SVD rather than forming the covariance matrix — it's more stable.
+
+## The sum-of-layers view
+
+Multiplying out the factorization one column at a time rewrites $A$ as a stack of rank-1 "layers":
+
+$$
+A = \sum_{i=1}^{r} \sigma_i \, \mathbf{u}_i \mathbf{v}_i^\top
+$$
+
+Each layer $\mathbf{u}_i \mathbf{v}_i^\top$ is the simplest possible matrix (rank 1), and $\sigma_i$ says how much of $A$ lives in that layer. Because the $\sigma_i$ are sorted, the first few layers carry most of the matrix.
+
+## Eckart–Young: the best rank-k approximation
+
+Truncate the sum after $k$ terms:
+
+$$
+A_k = \sum_{i=1}^{k} \sigma_i \, \mathbf{u}_i \mathbf{v}_i^\top
+$$
+
+The **Eckart–Young theorem** says $A_k$ is the *best possible* rank-$k$ approximation of $A$ — no other rank-$k$ matrix is closer in Frobenius norm, and the error is exactly the discarded tail $\sqrt{\sum_{i>k} \sigma_i^2}$. This single fact powers:
+
+- **Image compression** — a 512×512 image stored as 50 layers: $50 \times (512 + 512 + 1)$ numbers instead of $512^2$, ~5× smaller, visually near-identical
+- **Recommender systems** — a sparse user×item ratings matrix approximated at low rank: the layers become "taste dimensions"
+- **LoRA fine-tuning** — adapting an LLM by learning only a low-rank update $\Delta W = BA$ to each frozen weight matrix, betting that the *change* needed is low-rank
+- **Noise filtering** — small singular values are mostly noise; truncating them denoises (the same logic as [discarding low-variance components in PCA](/courses/pca-dimensionality/03-pca-in-practice))
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+A = rng.normal(size=(60, 40)) @ rng.normal(size=(40, 40))  # full-rank matrix
+
+U, s, Vt = np.linalg.svd(A, full_matrices=False)
+
+k = 10
+A_k = U[:, :k] @ np.diag(s[:k]) @ Vt[:k, :]
+
+err = np.linalg.norm(A - A_k, "fro")
+tail = np.sqrt((s[k:] ** 2).sum())
+print(f"rank-{k} error = {err:.4f}, discarded tail = {tail:.4f}")  # identical
+```
+
+<Callout type="tip" title="Reading the spectrum">
+  Plot the singular values. A steep drop followed by a flat "noise floor" means the matrix is *effectively* low-rank — the elbow tells you the true number of underlying factors, just like the scree plot in PCA. A flat spectrum means no free lunch: the matrix genuinely needs all its dimensions.
+</Callout>
+
+<Exercise id="linalg-svd-rank" />
+
+## Key takeaways
+
+- SVD factors **any** matrix into rotation · stretch · rotation; singular values are the stretch factors, always real and ≥ 0
+- $U$, $V$ are eigenvectors of $AA^\top$ and $A^\top A$; $\sigma_i = \sqrt{\lambda_i}$ — and PCA is the SVD of centered data
+- $A = \sum_i \sigma_i \mathbf{u}_i \mathbf{v}_i^\top$: a stack of rank-1 layers, sorted by importance
+- Truncating the stack gives the provably best rank-k approximation (Eckart–Young) — the engine behind compression, recommenders, denoising, and LoRA
+
+## Related concepts
+
+- [**Eigenvalues & Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — the square-symmetric special case SVD generalizes
+- [**PCA**](/courses/pca-dimensionality/01-pca) — SVD applied to centered data
+- [**PCA in Practice**](/courses/pca-dimensionality/03-pca-in-practice) — choosing k from the spectrum, reconstruction error

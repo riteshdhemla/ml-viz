@@ -3432,6 +3432,22 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It becomes negative", isCorrect: false },
     ],
   },
+  // ── Linear Algebra: SVD & Low-Rank Approximation ─────────────────────
+  {
+    id: "linalg-svd-rank",
+    type: "multiple-choice",
+    question:
+      "A 1000×800 matrix has singular values [95, 80, 60, 0.4, 0.3, 0.2, ...all below 0.4]. What's the best way to describe it?",
+    hint: "Where does the spectrum drop off a cliff?",
+    explanation:
+      "Three singular values dominate; the rest form a tiny noise floor. By Eckart–Young, the rank-3 truncation reconstructs the matrix almost perfectly (error = the discarded tail, which is tiny). The matrix is effectively rank 3 — three underlying factors plus noise — and can be stored as 3(1000+800+1) numbers instead of 800,000.",
+    options: [
+      { id: "a", label: "Effectively rank 3 — a rank-3 truncation captures nearly everything", isCorrect: true },
+      { id: "b", label: "Full rank, since all singular values are non-zero", isCorrect: false },
+      { id: "c", label: "Rank 800, because that's min(1000, 800)", isCorrect: false },
+      { id: "d", label: "Impossible to compress without losing important structure", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
