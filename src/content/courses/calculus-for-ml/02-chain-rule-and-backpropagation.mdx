@@ -10,6 +10,8 @@ estimatedMinutes: 18
 
 Backpropagation is not magic — it's the chain rule applied to computational graphs. Once you understand the chain rule, every step of backprop becomes a mechanical application of one idea.
 
+**Real-world examples:** Backpropagation — the algorithm that trains every deep neural network — is the chain rule applied recursively through a computational graph.
+
 ## The chain rule
 
 When a function is composed of other functions, the chain rule tells you how to differentiate the composition:
@@ -213,6 +215,12 @@ Solutions:
 - **ReLU:** gradient is exactly 1 for positive inputs, no saturation
 - **Batch normalization:** stabilizes activations, preventing saturation
 - **Residual connections:** add the input directly, creating gradient highways
+
+## Common mistakes
+
+1. **Forgetting to cache forward-pass activations** — backprop needs them to compute local gradients; without caching, you'd have to recompute the entire forward pass for every parameter.
+2. **Confusing vanishing gradients with the chain rule being wrong** — vanishing gradients are a consequence of multiplying many small terms (< 1) together, not an error in the chain rule itself.
+3. **Applying the chain rule to matrix operations without respecting the transpose** — $\frac{\partial}{\partial W}(Wx)$ involves $x^\top$, not $x$; transposing preserves dimension consistency in the gradient.
 
 ## Key takeaways
 

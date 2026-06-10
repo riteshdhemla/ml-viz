@@ -10,6 +10,8 @@ estimatedMinutes: 18
 
 A matrix is more than a grid of numbers — it's a **function** that transforms vectors. Every layer in a neural network is a matrix multiplication followed by a nonlinearity. Understanding what matrices do geometrically makes deep learning intuitive.
 
+**Real-world examples:** Weight matrices in neural networks, image rotations and projections in computer graphics, data whitening and covariance in statistics, change-of-basis in PCA.
+
 ## What is a matrix?
 
 A matrix $\mathbf{A} \in \mathbb{R}^{m \times n}$ has $m$ rows and $n$ columns. It defines a linear map from $\mathbb{R}^n$ to $\mathbb{R}^m$:
@@ -131,6 +133,12 @@ The **OLS closed form** $\hat{\mathbf{w}} = (\mathbf{X}^\top \mathbf{X})^{-1}\ma
 | Diagonal | Off-diagonal zeros | Efficient batch normalization |
 | Orthogonal | $\mathbf{Q}^\top \mathbf{Q} = \mathbf{I}$ | QR decomposition, rotations |
 | Positive semi-definite | $\mathbf{x}^\top \mathbf{A}\mathbf{x} \geq 0$ | Covariance matrices |
+
+## Common mistakes
+
+1. **Assuming matrix multiplication is commutative** — $\mathbf{AB} \neq \mathbf{BA}$ in general. Order matters: "rotate then scale" and "scale then rotate" produce different results. Only diagonal matrices (and scalar multiples of the identity) commute with everything.
+2. **Confusing rank with the number of columns** — the rank is the number of *linearly independent* columns, which can be much smaller. A $10\times 10$ matrix of all ones has rank 1 despite having 10 columns.
+3. **Forgetting that non-square matrices can still have left- or right-inverses** — a tall matrix ($m > n$, full column rank) has a left-inverse $(\mathbf{A}^\top\mathbf{A})^{-1}\mathbf{A}^\top$; a wide matrix ($m < n$, full row rank) has a right-inverse. Only square full-rank matrices have both.
 
 ## Key takeaways
 

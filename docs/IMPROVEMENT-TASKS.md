@@ -20,19 +20,19 @@ Viz tasks (T09+) all follow the same shape: create `src/components/visualization
 
 ## Wave 1 — Metadata & text consistency
 
-- [ ] **T01 — Fix `estimatedHours` in all 17 course `index.mdx` files.**
+- [x] **T01 — Fix `estimatedHours` in all 17 course `index.mdx` files.**
   Convention: `estimatedHours = round to nearest 0.5 of (sum of lesson estimatedMinutes × 2.5) / 60` (the 2.5× covers notebook + exercises). Compute per course from actual lesson frontmatter. Document this convention in CLAUDE.md under "Adding a course".
 
-- [ ] **T02 — Declare foundational prerequisites.**
+- [x] **T02 — Declare foundational prerequisites.**
   Edit `prerequisites:` in `index.mdx` of: neural-networks → `["linear-algebra", "calculus-for-ml"]`; cnns, rnns → keep `neural-networks` (transitively covers math); svm → add `"linear-algebra"`; clustering → keep; pca-dimensionality → add `"linear-algebra"`; probabilistic-models → add `"probability-statistics"`; graphical-models → keep; reinforcement-learning → keep. Verify each added slug is a real course folder and the DAG stays acyclic.
 
-- [ ] **T03 — linear-algebra house-style sections + notebook endings.**
+- [x] **T03 — linear-algebra house-style sections + notebook endings.**
   Add `## Common mistakes` (2–3 bullets, before "Key takeaways") to all 3 lessons; add a `**Real-world examples:**` line to the intro of lessons 02 and 03. Fix `notebooks/linear-algebra/01` and `02` to end with a matplotlib visualization cell instead of prints.
 
-- [ ] **T04 — calculus-for-ml house-style sections.**
+- [x] **T04 — calculus-for-ml house-style sections.**
   Add `## Common mistakes` to all 3 lessons and `**Real-world examples:**` intro lines to all 3. Also smooth the lesson-01 mention of directional derivatives (define briefly or forward-reference lesson 03).
 
-- [ ] **T05 — probability-statistics house-style sections.**
+- [x] **T05 — probability-statistics house-style sections.**
   Add `## Common mistakes` and `**Real-world examples:**` intro lines to all 3 lessons (e.g. PDF > 1 confusion, likelihood ≠ probability, prior overconfidence).
 
 - [ ] **T06 — generative-models consistency pass.**

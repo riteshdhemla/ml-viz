@@ -10,6 +10,8 @@ estimatedMinutes: 16
 
 Training a neural network is an optimization problem: find weights $\mathbf{w}^*$ that minimize the loss $\mathcal{L}(\mathbf{w})$. In high dimensions, optimization is much richer than the single-variable case. Understanding the geometry of loss landscapes explains why some problems are easy and others are hard.
 
+**Real-world examples:** Hyperparameter tuning landscapes, neural network loss surfaces, and convex optimization in SVMs are all multivariable optimization problems.
+
 ## Critical points
 
 A **critical point** is where the gradient vanishes: $\nabla f(\mathbf{x}^*) = \mathbf{0}$.
@@ -308,6 +310,12 @@ $$
 At the constrained optimum, $\nabla f = -\lambda \nabla g$ — the gradient of the objective is parallel to the constraint gradient.
 
 **In ML:** Weight decay (L2 regularization) is equivalent to constrained optimization: minimize loss subject to $\|\mathbf{w}\|^2 \leq r^2$.
+
+## Common mistakes
+
+1. **Assuming a critical point is a minimum** — a gradient of zero could indicate a saddle point, which are far more common in high-dimensional loss surfaces than local minima.
+2. **Treating a non-convex loss surface as if it has a unique global minimum** — neural network losses are non-convex; there are typically many local minima and saddle points of varying quality.
+3. **Choosing a learning rate without considering curvature** — second-order methods (Newton, L-BFGS) adapt to curvature; SGD doesn't, which is why the optimal learning rate depends on $\lambda_{\max}(\mathbf{H})$.
 
 ## Key takeaways
 

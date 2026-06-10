@@ -10,6 +10,8 @@ estimatedMinutes: 15
 
 Every gradient-based learning algorithm — from linear regression to GPT — reduces to one idea: find the direction in which a function decreases fastest, and take a small step in that direction. That direction is the **negative gradient**.
 
+**Real-world examples:** Every neural network trained with backpropagation, every optimizer (SGD, Adam), fine-tuning a language model — all rely on computing gradients via the chain rule.
+
 <FunctionTangentViz />
 
 ## The derivative
@@ -120,7 +122,7 @@ print("Numerical: ", numerical_grad(f, x))  # ≈ [4., 9.]
 
 ## Directional derivatives
 
-The rate of change of $f$ in any direction $\hat{\mathbf{d}}$ (unit vector) is:
+The **directional derivative** $\nabla_{\mathbf{v}} f$ measures the rate of change of $f$ along direction $\mathbf{v}$, computed as $\nabla f \cdot \hat{\mathbf{v}}$ (the dot product of the gradient with the unit vector in that direction). More precisely, the rate of change of $f$ in any direction $\hat{\mathbf{d}}$ (unit vector) is:
 
 $$
 D_{\hat{\mathbf{d}}} f = \nabla f \cdot \hat{\mathbf{d}} = \|\nabla f\| \cos\theta
@@ -131,6 +133,12 @@ This is maximized when $\hat{\mathbf{d}} = \frac{\nabla f}{\|\nabla f\|}$ — i.
 <Callout type="info" title="Gradient magnitude and loss landscapes">
   When training neural networks, very large gradient magnitudes indicate steep curvature (exploding gradients). Very small gradients indicate flat regions (vanishing gradients or near-optimal parameters). Gradient clipping and careful initialization manage both.
 </Callout>
+
+## Common mistakes
+
+1. **Confusing the gradient direction with steepest descent** — the gradient points uphill; descent follows the **negative** gradient.
+2. **Applying the chain rule in the wrong order** when composing functions — always differentiate the outer function first, then multiply by the derivative of the inner function.
+3. **Forgetting that the gradient of a scalar function with respect to a vector is itself a vector** of the same shape as the input.
 
 ## Key takeaways
 
