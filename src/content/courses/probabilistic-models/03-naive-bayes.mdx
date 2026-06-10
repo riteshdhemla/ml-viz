@@ -1,0 +1,70 @@
+---
+title: "Naive Bayes"
+description: "The independence assumption that shouldn't work but does — building a spam filter from counting words."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# Naive Bayes
+
+[Gaussian mixture models](/courses/probabilistic-models/01-gaussian-mixture-models) modeled how data is *generated* without labels. Naive Bayes applies the same generative thinking to classification: model how each class generates its features, then invert with Bayes' rule. It powered the first generation of spam filters and remains a startlingly strong baseline for text.
+
+## From Bayes' rule to a classifier
+
+For a class $y$ and features $\mathbf{x} = (x_1, \ldots, x_d)$:
+
+$$
+P(y \mid \mathbf{x}) \propto P(y) \, P(\mathbf{x} \mid y)
+$$
+
+The joint likelihood $P(\mathbf{x} \mid y)$ is the hard part — with $d$ binary features it's a table of $2^d$ entries per class. The **naive assumption** collapses it: treat features as conditionally independent given the class,
+
+$$
+P(\mathbf{x} \mid y) = \prod_{j=1}^{d} P(x_j \mid y)
+$$
+
+Now we need only $d$ small one-dimensional distributions per class, each estimable by simple counting. Prediction is:
+
+$$
+\hat{y} = \arg\max_y \; \log P(y) + \sum_{j} \log P(x_j \mid y)
+$$
+
+(Logs because multiplying ten thousand small probabilities underflows; sums of logs don't.)
+
+## A spam filter from counts
+
+With word counts as features (multinomial Naive Bayes), training is literally counting:
+
+- $P(\text{spam})$ — fraction of training emails that are spam
+- $P(\text{"viagra"} \mid \text{spam})$ — occurrences of "viagra" in spam, over total words in spam
+
+Each word in a new email votes with its log-likelihood ratio, and the votes add. A word common in spam and rare in ham pushes hard toward spam; neutral words push nowhere.
+
+One fix is mandatory: a word never seen in spam would give $P(x_j \mid \text{spam}) = 0$ and veto every other word with $\log 0 = -\infty$. **Laplace smoothing** adds a pseudo-count $\alpha$ (usually 1) to every count:
+
+$$
+P(x_j \mid y) = \frac{\text{count}(x_j, y) + \alpha}{\text{count}(y) + \alpha \, d}
+$$
+
+<Callout type="info" title="Pick the flavor to match the features">
+  **Multinomial** — word counts, the text workhorse. **Bernoulli** — binary present/absent features. **Gaussian** — continuous features, fitting a per-class mean and variance to each (the same per-dimension Gaussian estimation you saw in [the EM algorithm](/courses/probabilistic-models/02-em-algorithm), but with labels making it a one-shot count).
+</Callout>
+
+## Why the wrong assumption still works
+
+Words are *not* independent given the class — "machine" and "learning" travel together. So $P(y \mid \mathbf{x})$ is badly calibrated: correlated evidence gets double-counted and the predicted probabilities saturate toward 0 or 1. But classification only needs the **argmax** to be right, and the ranking of classes survives a lot of double-counting. Wrong probabilities, right answers.
+
+The trade-offs follow directly:
+
+- **Strengths** — trains in one pass, handles huge sparse vocabularies, needs little data, naturally multiclass, easy to update online
+- **Weaknesses** — overconfident probabilities (don't threshold them naively), blind to feature interactions, beaten by discriminative models (logistic regression, boosted trees) when training data is plentiful
+
+<Exercise id="probmodel-nb-smoothing" />
+
+## Key takeaways
+
+- Naive Bayes = Bayes' rule + conditional independence: $P(\mathbf{x}|y) = \prod_j P(x_j|y)$
+- Training is counting; prediction is summing log-likelihood votes
+- Laplace smoothing prevents a single unseen word from vetoing the entire prediction
+- The independence assumption breaks calibration, not (usually) the argmax — great classifier, untrustworthy probabilities

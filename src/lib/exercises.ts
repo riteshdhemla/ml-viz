@@ -2288,6 +2288,111 @@ const allExercises: Exercise[] = [
     unit: "",
   },
 
+  // ── Third-lesson exercises (regularization, bias-variance, etc.) ────
+  {
+    id: "linreg-regularization-lambda",
+    type: "multiple-choice",
+    question:
+      "You train Ridge regression and see training error 0.1, validation error 2.4. What should you do with λ?",
+    hint: "A big train/validation gap is a variance problem.",
+    explanation:
+      "Low training error with much higher validation error means overfitting — a variance problem. Increasing λ strengthens the penalty, shrinks the weights, and trades a little training fit for better generalization. Decreasing λ would widen the gap further.",
+    options: [
+      { id: "a", label: "Increase λ — the model is overfitting", isCorrect: true },
+      { id: "b", label: "Decrease λ — the model is underfitting", isCorrect: false },
+      { id: "c", label: "Set λ = 0 to recover OLS", isCorrect: false },
+      { id: "d", label: "λ has no effect on this gap", isCorrect: false },
+    ],
+  },
+  {
+    id: "knntree-bias-variance",
+    type: "multiple-choice",
+    question:
+      "Training error and validation error are both high, and close together. What's the diagnosis and cure?",
+    hint: "The model can't even fit the data it has seen.",
+    explanation:
+      "High error on both sets with a small gap is a bias problem: the model is too simple to capture the signal. Add capacity (smaller k, deeper trees, more features). Gathering more data fixes variance, not bias — a too-simple model stays too simple with a million samples.",
+    options: [
+      { id: "a", label: "High bias — increase model capacity", isCorrect: true },
+      { id: "b", label: "High variance — collect more data", isCorrect: false },
+      { id: "c", label: "High variance — regularize harder", isCorrect: false },
+      { id: "d", label: "Irreducible noise — nothing can be done", isCorrect: false },
+    ],
+  },
+  {
+    id: "svm-slack-meaning",
+    type: "multiple-choice",
+    question: "A training point has slack ξ = 1.4 in a soft-margin SVM. Where is it?",
+    hint: "ξ = 0 is outside the margin; ξ = 1 is exactly on the decision boundary.",
+    explanation:
+      "ξ measures margin violation: ξ = 0 means no violation, 0 < ξ < 1 means inside the margin but correctly classified, ξ = 1 means exactly on the boundary, and ξ > 1 means the point has crossed to the wrong side — misclassified. At 1.4, it's 0.4 'past' the boundary.",
+    options: [
+      { id: "a", label: "On the wrong side of the boundary — misclassified", isCorrect: true },
+      { id: "b", label: "Inside the margin, correctly classified", isCorrect: false },
+      { id: "c", label: "Exactly on the margin", isCorrect: false },
+      { id: "d", label: "Safely outside the margin", isCorrect: false },
+    ],
+  },
+  {
+    id: "ensemble-xgb-eta",
+    type: "multiple-choice",
+    question:
+      "You cut XGBoost's learning rate η from 0.3 to 0.03. What else must change for good results?",
+    hint: "Each tree now corrects 10× less of the remaining error.",
+    explanation:
+      "With each tree contributing 10× less, you need roughly proportionally more trees to reach the same training fit — typically with early stopping deciding the exact count. Small η + many trees + early stopping is the standard recipe for better generalization at higher compute cost.",
+    options: [
+      { id: "a", label: "Train many more trees (ideally with early stopping)", isCorrect: true },
+      { id: "b", label: "Reduce the number of trees to compensate", isCorrect: false },
+      { id: "c", label: "Increase max_depth to 50", isCorrect: false },
+      { id: "d", label: "Nothing — η doesn't interact with tree count", isCorrect: false },
+    ],
+  },
+  {
+    id: "clustering-silhouette",
+    type: "multiple-choice",
+    question: "A point has silhouette score s = −0.3. What does that tell you?",
+    hint: "Negative means b(i) < a(i) — compare the definitions.",
+    explanation:
+      "s < 0 means the point's average distance to its own cluster exceeds its distance to the nearest other cluster — it sits closer to the neighbors than to its assigned mates, suggesting misassignment. Many negative-silhouette points signal a wrong k or the wrong algorithm for the data's shape.",
+    options: [
+      { id: "a", label: "It's closer to another cluster than its own — likely misassigned", isCorrect: true },
+      { id: "b", label: "It's a perfectly central member of its cluster", isCorrect: false },
+      { id: "c", label: "It's an outlier far from every cluster", isCorrect: false },
+      { id: "d", label: "Silhouette can't be negative — a computation bug", isCorrect: false },
+    ],
+  },
+  {
+    id: "pca-components-choice",
+    type: "multiple-choice",
+    question:
+      "PCA feeds a classifier. The first 10 components explain 95% of variance, but validation accuracy peaks at 40 components. How many should you keep?",
+    hint: "Variance explained is PCA's objective — is it the classifier's?",
+    explanation:
+      "Keep 40 — the number that maximizes the metric you actually care about, found by cross-validating the full pipeline. Explained variance measures reconstruction fidelity, not class information; discriminative signal can live in low-variance directions that the 95% rule throws away.",
+    options: [
+      { id: "a", label: "40 — cross-validated downstream accuracy outranks variance rules", isCorrect: true },
+      { id: "b", label: "10 — always stop at 95% variance", isCorrect: false },
+      { id: "c", label: "All components — more is always better", isCorrect: false },
+      { id: "d", label: "1 — the first component is the most important", isCorrect: false },
+    ],
+  },
+  {
+    id: "probmodel-nb-smoothing",
+    type: "multiple-choice",
+    question:
+      "Without Laplace smoothing, what happens when a test email contains a word never seen in spam during training?",
+    hint: "One factor in the product becomes zero.",
+    explanation:
+      "P(word | spam) = 0 makes the entire product zero (log → −∞), so spam scores zero probability no matter how spammy every other word is — one unseen word vetoes all other evidence. Adding pseudo-count α keeps every probability positive and the votes additive.",
+    options: [
+      { id: "a", label: "P(spam | email) collapses to 0, vetoing all other evidence", isCorrect: true },
+      { id: "b", label: "The word is silently skipped", isCorrect: false },
+      { id: "c", label: "The classifier falls back to the prior", isCorrect: false },
+      { id: "d", label: "Nothing — unseen words get average probability", isCorrect: false },
+    ],
+  },
+
   // ── Neural Networks course quiz ──────────────────────────────────────
   {
     id: "nn-quiz-activation",

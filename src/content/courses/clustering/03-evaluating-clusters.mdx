@@ -1,0 +1,59 @@
+---
+title: "Evaluating Clusters & Choosing k"
+description: "No labels, no accuracy — how silhouette scores, inertia curves, and stability tell you whether your clusters are real."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# Evaluating Clusters & Choosing k
+
+Classification has accuracy. Regression has RMSE. Clustering has… a problem: there are no labels to check against, and [K-Means](/courses/clustering/01-k-means) will happily carve *any* dataset — including pure noise — into exactly $k$ pieces. Evaluating clusters means asking two questions: *are these clusters real?* and *how many should there be?*
+
+## Inertia and the elbow
+
+K-Means' own objective — within-cluster sum of squares — always decreases as $k$ grows. More centroids, shorter distances, until $k = n$ gives inertia 0. So you can't pick the $k$ that minimizes it.
+
+The **elbow method** plots inertia against $k$ and looks for the bend: the point where adding another cluster stops paying. Before the elbow, each new centroid claims a genuine group; after it, new centroids just split real groups in half for marginal gains.
+
+The elbow is quick but subjective — many real curves bend gradually with no obvious knee. Treat it as a first look, not a verdict.
+
+## Silhouette: cohesion vs. separation
+
+The **silhouette coefficient** scores each point by comparing its own cluster to the nearest other one:
+
+$$
+s(i) = \frac{b(i) - a(i)}{\max(a(i),\, b(i))}
+$$
+
+- $a(i)$ — mean distance from point $i$ to others in its own cluster (cohesion)
+- $b(i)$ — mean distance to points in the *nearest other* cluster (separation)
+
+Reading the value:
+
+| $s(i)$ | Meaning |
+|---|---|
+| ≈ +1 | comfortably inside its cluster, far from the next one |
+| ≈ 0 | sitting on the boundary between two clusters |
+| < 0 | closer to a neighboring cluster — likely misassigned |
+
+Average $s$ over all points and you get one number per $k$ — pick the $k$ that maximizes it. Even better, look at the **silhouette plot** (per-cluster profiles): a healthy clustering shows clusters of similar width, all above the average line; a bad one shows thin slivers and negative tails.
+
+<Callout type="warning" title="Metrics inherit assumptions">
+  Silhouette and inertia both reward compact, round, well-separated blobs — the same geometry K-Means assumes. The two interleaved crescents that [DBSCAN](/courses/clustering/02-hierarchical-and-dbscan) finds perfectly can score *worse* on silhouette than a wrong K-Means split of the same data. A metric can only validate clusters against its own definition of "good."
+</Callout>
+
+## Stability: the practitioner's check
+
+A complementary test that assumes nothing about shape: **resample and re-cluster**. Take bootstrap samples (or random 80% subsets), run the algorithm, and measure how often pairs of points land together (e.g. with the adjusted Rand index between runs). Real structure survives perturbation; artifacts of one particular sample don't. If $k=4$ produces nearly identical partitions across resamples while $k=6$ scrambles, trust 4.
+
+And when ground-truth labels *do* exist (evaluating against known categories), use **adjusted Rand index** or **normalized mutual information** — both compare partitions while correcting for chance agreement.
+
+<Exercise id="clustering-silhouette" />
+
+## Key takeaways
+
+- Inertia always falls with $k$ — look for the elbow, but don't expect it to be sharp
+- Silhouette balances cohesion against separation: +1 great, 0 boundary, negative misassigned
+- Every internal metric carries shape assumptions; silhouette favors round blobs just like K-Means
+- Stability under resampling is the strongest label-free evidence that clusters are real
