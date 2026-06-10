@@ -55,9 +55,9 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **SilhouetteViz** — k-means on 3 blobs with k slider (2-6), per-point
       silhouette bars grouped by cluster, mean-silhouette marker/stat; wired
       into `clustering/03-evaluating-clusters.mdx` (PR #44)
-- [ ] **PCAReconstructionViz** — 2D points projected onto first PC; m toggle
-      (1 vs 2 components); show reconstruction segments + error stat. Wire into
-      `pca-dimensionality/03-pca-in-practice.mdx`
+- [x] **PCAReconstructionViz** — closed-form 2x2 PCA, m toggle, error
+      segments, variance-explained + MSE = discarded-λ₂ stats; wired into
+      `pca-dimensionality/03-pca-in-practice.mdx` (PR #45)
 - [ ] **NaiveBayesVotesViz** — toy spam classifier; type/select words, show
       per-word log-likelihood-ratio vote bars summing to a verdict. Wire into
       `probabilistic-models/03-naive-bayes.mdx`
