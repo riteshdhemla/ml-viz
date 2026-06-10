@@ -10,6 +10,8 @@ estimatedMinutes: 18
 
 Machine learning is fundamentally about uncertainty — uncertain data, uncertain labels, uncertain predictions. Probability theory gives us the language to reason precisely about uncertainty. Most ML models are probability distributions in disguise.
 
+**Real-world examples:** Classification models output probability distributions over classes; generative models (VAEs, diffusion) model data as distributions; A/B testing uses hypothesis tests grounded in statistical distributions.
+
 ## Random variables and distributions
 
 A **random variable** $X$ maps outcomes to numbers. Its **probability distribution** describes how likely each value (or range of values) is. There are two flavours, and the difference matters.
@@ -242,6 +244,12 @@ $$
 $$
 
 The best-fit success probability is simply the **fraction of heads** — exactly the intuitive answer, now derived from first principles. This same recipe (write the likelihood, take its log, maximize) is how logistic regression, linear regression, and neural-network classifiers are all trained; their loss functions are *negative* log-likelihoods in disguise. We pick this idea apart in the next lesson.
+
+## Common mistakes
+
+1. Thinking a **PDF value** is a probability — the PDF can exceed 1 for continuous distributions; only integrals over intervals give probabilities.
+2. Assuming features are independent when using the independence assumption (naïve Bayes) — this almost never holds exactly.
+3. Confusing the **sample mean converging** to the population mean (law of large numbers) with any individual sample being "corrected" by prior outcomes (gambler's fallacy).
 
 ## Key takeaways
 

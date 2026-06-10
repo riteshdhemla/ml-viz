@@ -199,6 +199,8 @@ Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
    prerequisites: []   # array of course slugs
    order: N
    coverColor: "bg-gradient-to-r from-brand-500 to-accent-teal"
+   # estimatedHours = round to nearest 0.5 of (sum of lesson estimatedMinutes × 2.5) / 60
+   # — the 2.5× accounts for notebook and exercise time
    ---
    ```
 2. Add lesson MDX files to the same folder

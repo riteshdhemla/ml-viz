@@ -10,6 +10,8 @@ estimatedMinutes: 18
 
 MLE gives a single point estimate of $\theta$. But what if we have prior beliefs about $\theta$ — for example, that weights in a neural network should be small? **Bayesian inference** formalizes this by treating $\theta$ itself as a random variable, so the output is a whole *distribution* over $\theta$ rather than one number.
 
+**Real-world examples:** Bayesian neural networks model parameter uncertainty; spam filters update beliefs with each new email; medical diagnosis combines prior prevalence with test sensitivity/specificity.
+
 ## Bayes' theorem
 
 $$
@@ -248,6 +250,12 @@ This **marginalizes out** $\theta$ and naturally quantifies uncertainty in the p
 <Callout type="info" title="Bayesian deep learning">
   Full Bayesian inference over neural network weights is computationally intractable. Practical approximations include: **dropout as approximate Bayes** (Gal & Ghahramani, 2016), **variational inference** (Bayes by Backprop), and **deep ensembles** (train multiple networks from different initializations).
 </Callout>
+
+## Common mistakes
+
+1. Choosing an **uninformative prior** carelessly — a flat prior over a parameter is not uninformative after a change of variables (Jeffreys prior addresses this).
+2. Treating the **posterior mean** as the answer without acknowledging posterior width — narrow posteriors can be overconfident on small datasets.
+3. Confusing **MAP estimation** (maximizes the posterior, ignores uncertainty) with full Bayesian inference (integrates over the posterior).
 
 ## Key takeaways
 

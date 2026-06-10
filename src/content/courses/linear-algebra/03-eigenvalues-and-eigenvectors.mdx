@@ -10,6 +10,8 @@ estimatedMinutes: 20
 
 When you apply a matrix $\mathbf{A}$ to most vectors, both the direction and the length change. But there exist special vectors — **eigenvectors** — that only get scaled, never rotated. These special directions reveal the matrix's fundamental geometry.
 
+**Real-world examples:** PCA uses eigenvectors of the covariance matrix to find directions of maximum variance; Google PageRank is the dominant eigenvector of the web link graph; neural network stability analysis uses the spectral radius (largest absolute eigenvalue) to determine whether gradients will explode or vanish.
+
 <EigenvectorViz />
 
 ## The eigenvalue equation
@@ -153,6 +155,12 @@ SVD is used for **low-rank approximations** (keeping only the top-$k$ singular v
   For a square symmetric PSD matrix like a covariance matrix, SVD and eigendecomposition coincide: $\sigma_i = \lambda_i$ and $\mathbf{U} = \mathbf{V} = \mathbf{Q}$.
   For general weight matrices in neural networks, SVD reveals the effective rank and is used for compression.
 </Callout>
+
+## Common mistakes
+
+1. **Assuming all matrices are diagonalizable** — defective matrices (repeated eigenvalues with too few independent eigenvectors) cannot be diagonalized. The $2\times2$ matrix $\begin{bmatrix}0&1\\0&0\end{bmatrix}$ has eigenvalue 0 with algebraic multiplicity 2 but only one eigenvector direction.
+2. **Confusing eigenvalues with singular values** — they coincide only for symmetric positive semi-definite matrices. For a general matrix, singular values are always non-negative, eigenvalues can be negative or complex, and the two sets are unrelated.
+3. **Forgetting eigenvectors are defined only up to scalar multiple** — only the *direction* of an eigenvector is meaningful, not its length or sign. Multiplying an eigenvector by any non-zero scalar gives another valid eigenvector for the same eigenvalue.
 
 ## Key takeaways
 

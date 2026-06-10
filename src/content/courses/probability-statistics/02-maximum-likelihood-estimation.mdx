@@ -12,6 +12,8 @@ You flip a bent coin 10 times and get 7 heads. What is the coin's true probabili
 
 **Maximum Likelihood Estimation (MLE)** turns that gut feeling into a principle: out of every possible coin (every value of $p$), pick the one that makes the data you actually saw as probable as possible. The same idea fits a Gaussian to measurements, fits a logistic regression to labels, and underlies almost every loss function in machine learning.
 
+**Real-world examples:** Fitting a linear regression model, training a logistic classifier, and learning the parameters of a Gaussian mixture — all minimize the negative log-likelihood, i.e. maximize the likelihood of the data.
+
 ## The likelihood function
 
 Suppose your data $\mathcal{D} = \{x_1, \ldots, x_n\}$ are drawn **independently** from a distribution $p(x \mid \theta)$, where $\theta$ collects the unknown parameters (the coin's $p$, or a Gaussian's $\mu$ and $\sigma^2$).
@@ -229,6 +231,12 @@ print("Closed-form k/n:  p = {:.3f}".format(data.mean()))  # 0.700 — same!
 This trips up almost everyone at first. $L(\theta) = p(\mathcal{D} \mid \theta)$ is a function of $\theta$ with the **data fixed** — it answers "how plausible is this parameter given what I saw?" It is **not** a probability distribution over $\theta$: it does not integrate to 1 over $\theta$, and "the probability that $\mu = 3$" is not something MLE can give you.
 
 To reason about uncertainty in $\theta$ itself — to put a probability distribution *on the parameters* — you need a prior, which is **Bayesian inference** (next lesson).
+
+## Common mistakes
+
+1. Confusing **likelihood** with probability — $L(\theta; x) = p(x|\theta)$ is a function of $\theta$ for fixed $x$, not a probability over $\theta$.
+2. Maximizing likelihood on training data without regularization leads to **overfitting** — MLE can perfectly interpolate noise.
+3. Forgetting to check that the MLE objective is concave (or using gradient descent for a non-concave likelihood) — multiple local optima can exist.
 
 ## Key takeaways
 

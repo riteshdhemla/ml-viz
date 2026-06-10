@@ -140,6 +140,12 @@ Now take $\mathbf{a} = [1, 2]$ and $\mathbf{c} = [2, 1]$. The only way $c_1\math
   Stack the vectors as columns of a matrix. The number of independent vectors is the matrix **rank**. Full rank (rank = number of vectors) ⇒ independent. In ML, rank-deficient feature matrices cause unstable models — two features that are linear combinations of each other carry no new information.
 </Callout>
 
+## Common mistakes
+
+1. **Confusing the dot product with the cross product** — the dot product $\mathbf{u}\cdot\mathbf{v}$ is a scalar; the cross product is a vector (and only defined in $\mathbb{R}^3$). Also, cosine similarity requires normalizing both vectors first — skipping normalization makes it length-dependent, not angle-dependent.
+2. **Assuming all vector spaces are Euclidean** — $\mathbb{R}^n$ is not the only vector space. Function spaces (e.g. continuous functions on $[0,1]$) and probability distributions (under appropriate operations) are also vector spaces. ML uses many non-Euclidean spaces.
+3. **Confusing a basis with just any spanning set** — a basis must be both linearly independent *and* spanning. A spanning set with redundant vectors is not a basis; removing the redundancy (e.g. via row reduction) is needed to obtain one.
+
 ## Key takeaways
 
 - A vector is a list of numbers representing a point/direction in space.
