@@ -34,6 +34,10 @@ The mean squared reconstruction error equals exactly the sum of the *discarded* 
 
 The classic demonstration is **eigenfaces**: run PCA on thousands of face images and the leading components are ghostly face-like patterns — lighting direction, face width, glasses. Any face compresses to ~50–150 coefficients with recognizable reconstruction, from inputs of thousands of pixels. Reconstruction error also doubles as a simple **anomaly detector**: a sample that reconstructs poorly doesn't live in the subspace the training data occupies.
 
+Here is that equation as a picture — toggle how many components survive and watch where the error goes:
+
+<PCAReconstructionViz />
+
 ## Whitening
 
 Standard PCA output has uncorrelated coordinates with *unequal* variances ($\lambda_1 \gg \lambda_m$). **Whitening** additionally rescales each coordinate by $1/\sqrt{\lambda_i}$, producing features with identity covariance — uncorrelated *and* unit variance.
