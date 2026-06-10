@@ -18,8 +18,16 @@ interface Props {
   allLessons: LessonMeta[];
 }
 
+const LESSON_TYPE_BADGE: Partial<Record<LessonMeta["type"], { label: string; className: string }>> = {
+  quiz: { label: "Quiz", className: "bg-brand-500/20 text-brand-300 border-brand-500/30" },
+  exercise: { label: "Exercise", className: "bg-teal-500/10 text-accent-teal border-teal-500/20" },
+  playground: { label: "Playground", className: "bg-orange-500/10 text-accent-orange border-orange-500/20" },
+};
+
 export function LessonLayout({ meta, source, prev, next }: Props) {
-  const notebookUrl = getNotebookUrl(meta.courseSlug, meta.slug, meta.notebookUrl);
+  const isQuiz = meta.type === "quiz";
+  const notebookUrl = isQuiz ? null : getNotebookUrl(meta.courseSlug, meta.slug, meta.notebookUrl);
+  const badge = LESSON_TYPE_BADGE[meta.type];
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -33,7 +41,12 @@ export function LessonLayout({ meta, source, prev, next }: Props) {
             <ChevronLeft size={20} />
           </Link>
           <span className="text-slate-400 text-sm truncate flex-1">{meta.title}</span>
-          <NotebookLink href={notebookUrl} />
+          {badge && (
+            <span className={`hidden sm:inline text-xs font-medium px-2 py-0.5 rounded border ${badge.className}`}>
+              {badge.label}
+            </span>
+          )}
+          {notebookUrl && <NotebookLink href={notebookUrl} />}
         </div>
       </header>
 
