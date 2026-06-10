@@ -2287,6 +2287,1014 @@ const allExercises: Exercise[] = [
     correctRange: [0.9, 0.999],
     unit: "",
   },
+
+  // ── Neural Networks course quiz ──────────────────────────────────────
+  {
+    id: "nn-quiz-activation",
+    type: "multiple-choice",
+    question: "Why does a neural network need non-linear activation functions?",
+    hint: "What happens when you compose two linear functions?",
+    explanation:
+      "Composing linear layers gives another linear function: W₂(W₁x) = (W₂W₁)x. Without non-linearities, a 100-layer network can only represent what a single linear layer can. Activations like ReLU break this collapse and let networks approximate arbitrary functions.",
+    options: [
+      { id: "a", label: "Stacked linear layers collapse into one linear map", isCorrect: true },
+      { id: "b", label: "They make training faster", isCorrect: false },
+      { id: "c", label: "They prevent overfitting", isCorrect: false },
+      { id: "d", label: "They keep outputs positive", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-quiz-backprop",
+    type: "multiple-choice",
+    question: "What does backpropagation actually compute?",
+    hint: "It's an application of one rule from calculus.",
+    explanation:
+      "Backprop is the chain rule applied efficiently: it computes the gradient of the loss with respect to every weight in one backward sweep, reusing intermediate results. The optimizer (e.g. SGD) then uses those gradients to update weights — backprop itself doesn't update anything.",
+    options: [
+      { id: "a", label: "The gradient of the loss w.r.t. every weight", isCorrect: true },
+      { id: "b", label: "The optimal weight values directly", isCorrect: false },
+      { id: "c", label: "The network's prediction", isCorrect: false },
+      { id: "d", label: "The learning rate schedule", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-quiz-xor",
+    type: "multiple-choice",
+    question: "Why can't a single perceptron solve XOR?",
+    hint: "Try drawing the four XOR points and separating them with one line.",
+    explanation:
+      "A perceptron draws a single linear decision boundary. XOR's positive points (0,1) and (1,0) sit on opposite corners, so no single line separates them from (0,0) and (1,1). A hidden layer fixes this by transforming the inputs into a linearly separable space.",
+    options: [
+      { id: "a", label: "XOR is not linearly separable", isCorrect: true },
+      { id: "b", label: "XOR needs more than two inputs", isCorrect: false },
+      { id: "c", label: "Perceptrons can't take binary inputs", isCorrect: false },
+      { id: "d", label: "The learning rate is too small", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-quiz-forward",
+    type: "multiple-choice",
+    question: "A dense layer with weights W, bias b, and activation σ computes which function of its input x?",
+    hint: "Linear transformation first, then the non-linearity.",
+    explanation:
+      "Each layer applies an affine map then a non-linearity: σ(Wx + b). The order matters — applying σ before the weights would give Wσ(x) + b, a different (and less useful) computation.",
+    options: [
+      { id: "a", label: "σ(Wx + b)", isCorrect: true },
+      { id: "b", label: "Wσ(x) + b", isCorrect: false },
+      { id: "c", label: "σ(W)x + b", isCorrect: false },
+      { id: "d", label: "Wx + σ(b)", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-quiz-init",
+    type: "multiple-choice",
+    question: "Why not initialize all weights to zero?",
+    hint: "Think about what gradients each hidden neuron would receive.",
+    explanation:
+      "With identical weights, every neuron in a layer computes the same output and receives the same gradient — they stay identical forever. This symmetry means the layer effectively has one neuron. Random initialization breaks the symmetry so neurons can specialize.",
+    options: [
+      { id: "a", label: "All neurons stay identical — symmetry is never broken", isCorrect: true },
+      { id: "b", label: "Zero weights cause division-by-zero errors", isCorrect: false },
+      { id: "c", label: "The loss would be undefined", isCorrect: false },
+      { id: "d", label: "Biases would also have to be zero", isCorrect: false },
+    ],
+  },
+
+  // ── Linear & Logistic Regression course quiz ─────────────────────────
+  {
+    id: "linreg-quiz-ols",
+    type: "multiple-choice",
+    question: "Ordinary least squares chooses the line that minimizes what?",
+    hint: "Residual = actual − predicted.",
+    explanation:
+      "OLS minimizes the sum of squared residuals Σ(yᵢ − ŷᵢ)². Squaring penalizes large errors heavily and makes the objective differentiable everywhere, which yields the closed-form normal equations.",
+    options: [
+      { id: "a", label: "Sum of squared residuals", isCorrect: true },
+      { id: "b", label: "Sum of absolute residuals", isCorrect: false },
+      { id: "c", label: "Maximum residual", isCorrect: false },
+      { id: "d", label: "Number of misclassified points", isCorrect: false },
+    ],
+  },
+  {
+    id: "linreg-quiz-lasso",
+    type: "multiple-choice",
+    question: "What distinguishes Lasso (L1) from Ridge (L2) regularization in practice?",
+    hint: "Look at the shape of the L1 constraint region — it has corners.",
+    explanation:
+      "Lasso's L1 penalty has corners at zero, so the optimum often lands exactly on an axis — driving some weights to exactly 0 and performing feature selection. Ridge shrinks all weights smoothly toward zero but rarely makes any exactly zero.",
+    options: [
+      { id: "a", label: "Lasso drives some weights exactly to zero", isCorrect: true },
+      { id: "b", label: "Lasso always achieves lower test error", isCorrect: false },
+      { id: "c", label: "Ridge removes features; Lasso shrinks them", isCorrect: false },
+      { id: "d", label: "Lasso has a closed-form solution; Ridge does not", isCorrect: false },
+    ],
+  },
+  {
+    id: "linreg-quiz-sigmoid",
+    type: "multiple-choice",
+    question: "What does logistic regression output for an input x?",
+    hint: "The sigmoid squashes wᵀx + b into (0, 1).",
+    explanation:
+      "Logistic regression outputs σ(wᵀx + b) ∈ (0, 1), interpreted as P(y = 1 | x). It's a probability, not a class — you get a class by thresholding (usually at 0.5), and you can move that threshold to trade precision against recall.",
+    options: [
+      { id: "a", label: "A probability that y = 1", isCorrect: true },
+      { id: "b", label: "A class label directly", isCorrect: false },
+      { id: "c", label: "An unbounded real score", isCorrect: false },
+      { id: "d", label: "The distance to the decision boundary", isCorrect: false },
+    ],
+  },
+  {
+    id: "linreg-quiz-boundary",
+    type: "multiple-choice",
+    question: "What shape is logistic regression's decision boundary?",
+    hint: "Where does σ(wᵀx + b) = 0.5?",
+    explanation:
+      "σ(z) = 0.5 exactly when z = 0, so the boundary is the set wᵀx + b = 0 — a straight line (hyperplane in higher dimensions). The sigmoid makes the output non-linear in x, but the boundary itself stays linear.",
+    options: [
+      { id: "a", label: "Linear (a hyperplane)", isCorrect: true },
+      { id: "b", label: "S-shaped, like the sigmoid", isCorrect: false },
+      { id: "c", label: "Circular", isCorrect: false },
+      { id: "d", label: "Piecewise constant", isCorrect: false },
+    ],
+  },
+  {
+    id: "linreg-quiz-r2",
+    type: "multiple-choice",
+    question: "An R² of 0.8 means what?",
+    hint: "Compare your model's squared error to that of always predicting the mean.",
+    explanation:
+      "R² = 1 − SS_res/SS_tot: the fraction of the target's variance the model explains relative to a predict-the-mean baseline. 0.8 means the model accounts for 80% of the variance. It is not accuracy, a probability, or a correlation coefficient (though it equals the squared correlation for simple linear regression).",
+    options: [
+      { id: "a", label: "The model explains 80% of the variance in y", isCorrect: true },
+      { id: "b", label: "80% of predictions are correct", isCorrect: false },
+      { id: "c", label: "The slope of the fitted line is 0.8", isCorrect: false },
+      { id: "d", label: "20% of the data are outliers", isCorrect: false },
+    ],
+  },
+
+  // ── KNN & Decision Trees course quiz ─────────────────────────────────
+  {
+    id: "knntree-quiz-k1",
+    type: "multiple-choice",
+    question: "What happens to a KNN classifier as k decreases to 1?",
+    hint: "With k = 1, the training error is exactly zero. Suspicious?",
+    explanation:
+      "k = 1 memorizes the training set — every training point is its own nearest neighbor, so training error is 0 while the boundary becomes jagged and noise-sensitive: low bias, high variance. Larger k smooths the boundary, trading variance for bias.",
+    options: [
+      { id: "a", label: "Lower bias, higher variance — it overfits", isCorrect: true },
+      { id: "b", label: "Higher bias, lower variance — it underfits", isCorrect: false },
+      { id: "c", label: "Both bias and variance decrease", isCorrect: false },
+      { id: "d", label: "Nothing — k doesn't affect the boundary", isCorrect: false },
+    ],
+  },
+  {
+    id: "knntree-quiz-scaling",
+    type: "multiple-choice",
+    question: "Why does KNN usually require feature scaling?",
+    hint: "Imagine one feature in meters (0–2) and another in dollars (0–100,000).",
+    explanation:
+      "KNN ranks neighbors by distance. A feature with a large numeric range dominates the distance computation, making other features irrelevant. Standardizing puts features on comparable scales so each contributes meaningfully. Tree-based models don't need this — splits are scale-invariant.",
+    options: [
+      { id: "a", label: "Large-range features dominate the distance metric", isCorrect: true },
+      { id: "b", label: "Unscaled features cause numeric overflow", isCorrect: false },
+      { id: "c", label: "Scaling reduces the number of neighbors needed", isCorrect: false },
+      { id: "d", label: "Distances are undefined for unscaled data", isCorrect: false },
+    ],
+  },
+  {
+    id: "knntree-quiz-infogain",
+    type: "multiple-choice",
+    question: "Information gain measures what about a candidate split?",
+    hint: "Entropy before vs. entropy after.",
+    explanation:
+      "Information gain = entropy(parent) − weighted average entropy(children). A split that produces purer child nodes reduces entropy more, so the tree greedily picks the split with the highest gain at each node.",
+    options: [
+      { id: "a", label: "The reduction in entropy it achieves", isCorrect: true },
+      { id: "b", label: "The number of samples it separates", isCorrect: false },
+      { id: "c", label: "The depth it adds to the tree", isCorrect: false },
+      { id: "d", label: "The accuracy of the resulting leaves", isCorrect: false },
+    ],
+  },
+  {
+    id: "knntree-quiz-gini",
+    type: "multiple-choice",
+    question: "What is the Gini impurity of a node containing only one class?",
+    hint: "Gini = 1 − Σpᵢ². What if one pᵢ = 1?",
+    explanation:
+      "A pure node has p = 1 for one class, so Gini = 1 − 1² = 0. Gini impurity is the probability of misclassifying a randomly drawn sample if labeled by the node's class distribution — zero when there's nothing to confuse.",
+    options: [
+      { id: "a", label: "0", isCorrect: true },
+      { id: "b", label: "1", isCorrect: false },
+      { id: "c", label: "0.5", isCorrect: false },
+      { id: "d", label: "Depends on the number of samples", isCorrect: false },
+    ],
+  },
+  {
+    id: "knntree-quiz-overfit",
+    type: "multiple-choice",
+    question: "An unconstrained decision tree grown to purity usually does what?",
+    hint: "Each leaf may end up holding a single training point.",
+    explanation:
+      "Grown to purity, a tree carves a leaf for nearly every training point, memorizing noise — near-perfect training accuracy, poor generalization. Limiting depth, requiring minimum samples per leaf, or pruning trades a little training accuracy for much better test performance.",
+    options: [
+      { id: "a", label: "Overfits — memorizes noise in the training data", isCorrect: true },
+      { id: "b", label: "Underfits — the tree is too simple", isCorrect: false },
+      { id: "c", label: "Generalizes perfectly", isCorrect: false },
+      { id: "d", label: "Fails to converge", isCorrect: false },
+    ],
+  },
+
+  // ── CNNs course quiz ─────────────────────────────────────────────────
+  {
+    id: "cnn-quiz-sharing",
+    type: "multiple-choice",
+    question: "What is the main benefit of weight sharing in a convolutional layer?",
+    hint: "The same 3×3 kernel slides across the whole image.",
+    explanation:
+      "One kernel is reused at every spatial position, so an edge detector learned in one corner works everywhere (translation equivariance) and the layer needs only kernel-sized parameters instead of one weight per pixel pair — a dense layer on a 224×224 image would need billions.",
+    options: [
+      { id: "a", label: "Far fewer parameters + features detected anywhere in the image", isCorrect: true },
+      { id: "b", label: "It eliminates the need for pooling", isCorrect: false },
+      { id: "c", label: "It guarantees rotation invariance", isCorrect: false },
+      { id: "d", label: "It makes the network deeper", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-quiz-pooling",
+    type: "multiple-choice",
+    question: "What does max pooling contribute to a CNN?",
+    hint: "It keeps the strongest activation in each window and throws away its exact position.",
+    explanation:
+      "Max pooling downsamples feature maps, cutting computation and growing the effective receptive field, while keeping only the strongest response per window — adding tolerance to small translations. It has no learnable parameters.",
+    options: [
+      { id: "a", label: "Downsampling and small-shift invariance", isCorrect: true },
+      { id: "b", label: "Additional learnable parameters", isCorrect: false },
+      { id: "c", label: "Non-linearity, replacing ReLU", isCorrect: false },
+      { id: "d", label: "Normalization of activations", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-quiz-outputsize",
+    type: "multiple-choice",
+    question: "A 32×32 input goes through a 5×5 convolution with stride 1 and no padding. What's the output size?",
+    hint: "Output = (N − F)/S + 1.",
+    explanation:
+      "(32 − 5)/1 + 1 = 28, so the output is 28×28. The kernel can only be placed where it fully fits, losing F − 1 = 4 pixels per dimension. 'Same' padding (P = 2 here) would preserve 32×32.",
+    options: [
+      { id: "a", label: "28×28", isCorrect: true },
+      { id: "b", label: "32×32", isCorrect: false },
+      { id: "c", label: "27×27", isCorrect: false },
+      { id: "d", label: "30×30", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-quiz-receptive",
+    type: "multiple-choice",
+    question: "How does the receptive field of a neuron change with network depth?",
+    hint: "A neuron in layer 2 sees a window of layer-1 outputs, each of which saw a window of pixels.",
+    explanation:
+      "Each layer's neurons see a window of the previous layer, so the region of the input image influencing a neuron compounds with depth. Early layers see edges in small patches; deep layers see object-scale structure — this growing receptive field is what builds the feature hierarchy.",
+    options: [
+      { id: "a", label: "It grows — deep neurons see larger input regions", isCorrect: true },
+      { id: "b", label: "It shrinks with depth", isCorrect: false },
+      { id: "c", label: "It stays fixed at the kernel size", isCorrect: false },
+      { id: "d", label: "It depends only on the learning rate", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-quiz-transfer",
+    type: "multiple-choice",
+    question: "Why does transfer learning from ImageNet work for, say, medical images?",
+    hint: "What do the first few conv layers of any vision network learn?",
+    explanation:
+      "Early conv layers learn generic features — edges, textures, color blobs — that are useful for almost any visual task. Reusing them means only the task-specific later layers need training, so a small dataset suffices. The less similar the domain, the more layers you'll want to fine-tune.",
+    options: [
+      { id: "a", label: "Early layers learn generic features that transfer across domains", isCorrect: true },
+      { id: "b", label: "ImageNet contains medical images", isCorrect: false },
+      { id: "c", label: "Pretrained weights are always optimal", isCorrect: false },
+      { id: "d", label: "It avoids the need for any labeled data", isCorrect: false },
+    ],
+  },
+
+  // ── SVM course quiz ──────────────────────────────────────────────────
+  {
+    id: "svm-quiz-sv",
+    type: "multiple-choice",
+    question: "Which training points actually determine an SVM's decision boundary?",
+    hint: "Most points could be deleted without changing the solution.",
+    explanation:
+      "Only the support vectors — points on or inside the margin — have non-zero weight in the solution. Every other point could be removed and the boundary wouldn't move. This sparsity is what makes SVMs memory-efficient at prediction time.",
+    options: [
+      { id: "a", label: "The support vectors on or inside the margin", isCorrect: true },
+      { id: "b", label: "All training points equally", isCorrect: false },
+      { id: "c", label: "The class centroids", isCorrect: false },
+      { id: "d", label: "A random subsample", isCorrect: false },
+    ],
+  },
+  {
+    id: "svm-quiz-margin",
+    type: "multiple-choice",
+    question: "Maximizing the margin is equivalent to minimizing what?",
+    hint: "The margin width is 2/‖w‖.",
+    explanation:
+      "The margin equals 2/‖w‖, so maximizing it means minimizing ‖w‖ (in practice ½‖w‖² for a differentiable objective) subject to all points being classified correctly with margin ≥ 1. A wider margin gives better generalization guarantees.",
+    options: [
+      { id: "a", label: "The norm of the weight vector ‖w‖", isCorrect: true },
+      { id: "b", label: "The number of support vectors", isCorrect: false },
+      { id: "c", label: "The training error", isCorrect: false },
+      { id: "d", label: "The bias term b", isCorrect: false },
+    ],
+  },
+  {
+    id: "svm-quiz-kernel",
+    type: "multiple-choice",
+    question: "What does the kernel trick let an SVM do?",
+    hint: "K(x, x') = φ(x)·φ(x') — but you never compute φ.",
+    explanation:
+      "The dual SVM only needs dot products between data points. A kernel computes φ(x)·φ(x') in a high- (even infinite-) dimensional feature space without ever constructing φ(x), so the SVM learns a non-linear boundary at essentially linear-model cost.",
+    options: [
+      { id: "a", label: "Learn non-linear boundaries without computing the feature map", isCorrect: true },
+      { id: "b", label: "Train faster on linearly separable data", isCorrect: false },
+      { id: "c", label: "Avoid the need for support vectors", isCorrect: false },
+      { id: "d", label: "Guarantee zero training error", isCorrect: false },
+    ],
+  },
+  {
+    id: "svm-quiz-gamma",
+    type: "multiple-choice",
+    question: "What does a very large γ in an RBF kernel do to the decision boundary?",
+    hint: "γ controls how fast similarity decays with distance.",
+    explanation:
+      "Large γ makes the kernel's influence extremely local — each support vector affects only its immediate neighborhood, so the boundary wraps tightly around individual points and overfits. Small γ smooths the boundary toward nearly linear.",
+    options: [
+      { id: "a", label: "Makes it wiggly and prone to overfitting", isCorrect: true },
+      { id: "b", label: "Makes it smoother and more linear", isCorrect: false },
+      { id: "c", label: "Has no effect on its shape", isCorrect: false },
+      { id: "d", label: "Forces it through the origin", isCorrect: false },
+    ],
+  },
+  {
+    id: "svm-quiz-c",
+    type: "multiple-choice",
+    question: "In a soft-margin SVM, what does a very large C encourage?",
+    hint: "C is the price of each margin violation.",
+    explanation:
+      "C penalizes slack (margin violations). A huge C makes violations so expensive the optimizer fits the training data as tightly as possible — narrow margin, risk of overfitting. Small C tolerates misclassifications in exchange for a wider, more robust margin.",
+    options: [
+      { id: "a", label: "Few margin violations — narrow margin, possible overfitting", isCorrect: true },
+      { id: "b", label: "A wider margin with more violations", isCorrect: false },
+      { id: "c", label: "More support vectors", isCorrect: false },
+      { id: "d", label: "A non-linear boundary", isCorrect: false },
+    ],
+  },
+
+  // ── Ensemble Methods course quiz ─────────────────────────────────────
+  {
+    id: "ensemble-quiz-bagging",
+    type: "multiple-choice",
+    question: "Bagging primarily reduces which component of error?",
+    hint: "Averaging many noisy estimates does what to the noise?",
+    explanation:
+      "Bagging trains the same model on bootstrap resamples and averages. Averaging nearly-independent estimates cancels their fluctuations — variance drops while bias stays roughly the same. That's why it shines with high-variance learners like deep decision trees.",
+    options: [
+      { id: "a", label: "Variance", isCorrect: true },
+      { id: "b", label: "Bias", isCorrect: false },
+      { id: "c", label: "Irreducible noise", isCorrect: false },
+      { id: "d", label: "Both bias and noise", isCorrect: false },
+    ],
+  },
+  {
+    id: "ensemble-quiz-boosting",
+    type: "multiple-choice",
+    question: "How does boosting differ fundamentally from bagging?",
+    hint: "Can you train boosted trees in parallel?",
+    explanation:
+      "Bagging trains members independently (parallelizable) and averages them. Boosting is sequential: each new weak learner focuses on the mistakes of the ensemble so far — reweighted points in AdaBoost, residual gradients in gradient boosting — so it reduces bias, not just variance.",
+    options: [
+      { id: "a", label: "Models are trained sequentially, each fixing previous errors", isCorrect: true },
+      { id: "b", label: "Boosting uses deeper trees", isCorrect: false },
+      { id: "c", label: "Boosting requires fewer models", isCorrect: false },
+      { id: "d", label: "Boosting only works for regression", isCorrect: false },
+    ],
+  },
+  {
+    id: "ensemble-quiz-rf",
+    type: "multiple-choice",
+    question: "Beyond bagging, what extra randomness does a Random Forest add?",
+    hint: "Look at what each split is allowed to consider.",
+    explanation:
+      "At every split, each tree considers only a random subset of features (typically √p for classification). This decorrelates the trees — otherwise a single dominant feature would head every tree, and averaging correlated trees barely reduces variance.",
+    options: [
+      { id: "a", label: "Each split considers only a random subset of features", isCorrect: true },
+      { id: "b", label: "Random learning rates per tree", isCorrect: false },
+      { id: "c", label: "Random class labels during training", isCorrect: false },
+      { id: "d", label: "Randomly deleted branches after training", isCorrect: false },
+    ],
+  },
+  {
+    id: "ensemble-quiz-oob",
+    type: "multiple-choice",
+    question: "What are out-of-bag (OOB) samples used for?",
+    hint: "Each bootstrap sample leaves out ~37% of the training points.",
+    explanation:
+      "A bootstrap resample omits ~1/e ≈ 37% of points. Each point can be evaluated by the trees that never saw it, giving an unbiased validation estimate for free — no separate held-out set needed.",
+    options: [
+      { id: "a", label: "Free validation — estimating generalization without a held-out set", isCorrect: true },
+      { id: "b", label: "Extra training data for deeper trees", isCorrect: false },
+      { id: "c", label: "Initializing tree weights", isCorrect: false },
+      { id: "d", label: "Balancing class distributions", isCorrect: false },
+    ],
+  },
+  {
+    id: "ensemble-quiz-gbt",
+    type: "multiple-choice",
+    question: "In gradient boosting, what does each new tree fit?",
+    hint: "For squared error, this is just the residuals.",
+    explanation:
+      "Each tree fits the negative gradient of the loss with respect to the current ensemble's predictions — the 'pseudo-residuals.' For squared error these are literally the residuals y − ŷ. Adding the tree (scaled by the learning rate) is a gradient-descent step in function space.",
+    options: [
+      { id: "a", label: "The negative gradient of the loss (pseudo-residuals)", isCorrect: true },
+      { id: "b", label: "The original labels, reweighted", isCorrect: false },
+      { id: "c", label: "The predictions of the previous tree", isCorrect: false },
+      { id: "d", label: "A random subsample of labels", isCorrect: false },
+    ],
+  },
+
+  // ── Clustering course quiz ───────────────────────────────────────────
+  {
+    id: "clustering-quiz-objective",
+    type: "multiple-choice",
+    question: "What objective does K-Means minimize?",
+    hint: "It's also called inertia.",
+    explanation:
+      "K-Means minimizes within-cluster sum of squared distances to centroids (inertia): Σᵢ ‖xᵢ − μ_c(i)‖². Both steps reduce it — assignment picks the nearest centroid, the update moves each centroid to its cluster mean — so the algorithm always converges (to a local optimum).",
+    options: [
+      { id: "a", label: "Sum of squared distances from points to their centroids", isCorrect: true },
+      { id: "b", label: "Distance between the two closest centroids", isCorrect: false },
+      { id: "c", label: "The number of clusters", isCorrect: false },
+      { id: "d", label: "Cross-entropy between clusters", isCorrect: false },
+    ],
+  },
+  {
+    id: "clustering-quiz-kmeans-fail",
+    type: "multiple-choice",
+    question: "On which data shape does K-Means fail badly?",
+    hint: "K-Means assigns each point to the nearest centroid — what geometry does that impose?",
+    explanation:
+      "Nearest-centroid assignment partitions space into convex (Voronoi) cells, so K-Means assumes roughly spherical, similar-sized clusters. Two interleaved crescents or concentric rings get sliced through the middle. Density-based methods like DBSCAN handle those.",
+    options: [
+      { id: "a", label: "Non-convex shapes like nested rings or crescents", isCorrect: true },
+      { id: "b", label: "Well-separated spherical blobs", isCorrect: false },
+      { id: "c", label: "Any data with more than two clusters", isCorrect: false },
+      { id: "d", label: "High-dimensional data of any shape", isCorrect: false },
+    ],
+  },
+  {
+    id: "clustering-quiz-dbscan",
+    type: "multiple-choice",
+    question: "What can DBSCAN do that K-Means cannot?",
+    hint: "DBSCAN's clusters are regions of high density.",
+    explanation:
+      "DBSCAN grows clusters from density-connected points, so it finds arbitrarily shaped clusters, determines the number of clusters itself, and explicitly labels sparse points as noise. Its trade-off: sensitivity to ε/minPts and trouble with clusters of differing densities.",
+    options: [
+      { id: "a", label: "Find arbitrary-shaped clusters and label outliers as noise", isCorrect: true },
+      { id: "b", label: "Run faster on all datasets", isCorrect: false },
+      { id: "c", label: "Guarantee a globally optimal clustering", isCorrect: false },
+      { id: "d", label: "Work without any hyperparameters", isCorrect: false },
+    ],
+  },
+  {
+    id: "clustering-quiz-elbow",
+    type: "multiple-choice",
+    question: "How does the elbow method choose k?",
+    hint: "Plot inertia against k and look at the shape of the curve.",
+    explanation:
+      "Inertia always decreases as k grows (more centroids = shorter distances), so you can't just minimize it. The elbow is where adding another cluster stops buying much — the point of diminishing returns. Silhouette score is a common, more principled alternative.",
+    options: [
+      { id: "a", label: "Pick k where the inertia curve's improvement levels off", isCorrect: true },
+      { id: "b", label: "Pick k that minimizes inertia", isCorrect: false },
+      { id: "c", label: "Pick k equal to the number of features", isCorrect: false },
+      { id: "d", label: "Pick the k with the most balanced cluster sizes", isCorrect: false },
+    ],
+  },
+  {
+    id: "clustering-quiz-linkage",
+    type: "multiple-choice",
+    question: "Single linkage in hierarchical clustering is prone to which artifact?",
+    hint: "It merges clusters based on their two closest points.",
+    explanation:
+      "Single linkage measures cluster distance by the closest pair, so a thin trail of intermediate points can 'chain' two well-separated groups into one long straggly cluster. Complete or Ward linkage resists chaining by considering farthest pairs or variance.",
+    options: [
+      { id: "a", label: "Chaining — long straggly clusters connected by stray points", isCorrect: true },
+      { id: "b", label: "Splitting every cluster in half", isCorrect: false },
+      { id: "c", label: "Ignoring small clusters entirely", isCorrect: false },
+      { id: "d", label: "Producing overlapping clusters", isCorrect: false },
+    ],
+  },
+
+  // ── PCA & Dimensionality Reduction course quiz ───────────────────────
+  {
+    id: "pca-quiz-firstpc",
+    type: "multiple-choice",
+    question: "What is the first principal component?",
+    hint: "Project the data onto a line — which line keeps the data most spread out?",
+    explanation:
+      "The first PC is the direction along which projected data has maximum variance — equivalently, the line minimizing total squared perpendicular reconstruction error. Each subsequent PC maximizes remaining variance while staying orthogonal to the previous ones.",
+    options: [
+      { id: "a", label: "The direction of maximum variance in the data", isCorrect: true },
+      { id: "b", label: "The feature with the largest values", isCorrect: false },
+      { id: "c", label: "The direction connecting the two farthest points", isCorrect: false },
+      { id: "d", label: "The mean of all data points", isCorrect: false },
+    ],
+  },
+  {
+    id: "pca-quiz-eigen",
+    type: "multiple-choice",
+    question: "Mathematically, the principal components are the…",
+    hint: "PCA diagonalizes a particular matrix built from the data.",
+    explanation:
+      "PCs are the eigenvectors of the data's covariance matrix, and each eigenvalue is the variance captured along its eigenvector. Sorting eigenvalues descending orders the components by importance — this is why eigendecomposition (or SVD) is the engine of PCA.",
+    options: [
+      { id: "a", label: "Eigenvectors of the covariance matrix", isCorrect: true },
+      { id: "b", label: "Rows of the data matrix", isCorrect: false },
+      { id: "c", label: "Gradients of the loss function", isCorrect: false },
+      { id: "d", label: "Cluster centroids of the data", isCorrect: false },
+    ],
+  },
+  {
+    id: "pca-quiz-variance",
+    type: "multiple-choice",
+    question: "The 'explained variance ratio' of a principal component equals…",
+    hint: "Each eigenvalue measures variance along its component.",
+    explanation:
+      "It's that component's eigenvalue divided by the sum of all eigenvalues — the fraction of total variance it captures. Cumulative explained variance is the standard tool for choosing how many components to keep (e.g., enough for 95%).",
+    options: [
+      { id: "a", label: "Its eigenvalue over the sum of all eigenvalues", isCorrect: true },
+      { id: "b", label: "Its eigenvalue times the number of features", isCorrect: false },
+      { id: "c", label: "The norm of its eigenvector", isCorrect: false },
+      { id: "d", label: "1 divided by the component's rank", isCorrect: false },
+    ],
+  },
+  {
+    id: "pca-quiz-standardize",
+    type: "multiple-choice",
+    question: "Why standardize features before PCA?",
+    hint: "Variance has units. Income in dollars has huge variance; age in years doesn't.",
+    explanation:
+      "PCA chases variance, and raw variance depends on units. A feature measured in large numbers (income in dollars) swamps one in small numbers (age in years), so PC1 would just point along the big-unit feature. Standardizing makes variance comparable so every feature competes fairly.",
+    options: [
+      { id: "a", label: "Otherwise large-scale features dominate the components", isCorrect: true },
+      { id: "b", label: "PCA is undefined for unstandardized data", isCorrect: false },
+      { id: "c", label: "It guarantees orthogonal components", isCorrect: false },
+      { id: "d", label: "It makes all eigenvalues equal", isCorrect: false },
+    ],
+  },
+  {
+    id: "pca-quiz-tsne",
+    type: "multiple-choice",
+    question: "What does t-SNE preserve that makes it good for visualization — and what does it sacrifice?",
+    hint: "Trust the clusters; don't measure with a ruler between them.",
+    explanation:
+      "t-SNE preserves local neighborhoods — nearby points stay nearby — which makes cluster structure pop visually. But global geometry is sacrificed: distances between separated clusters and relative cluster sizes in the embedding are essentially meaningless.",
+    options: [
+      { id: "a", label: "Preserves local neighborhoods; distorts global distances", isCorrect: true },
+      { id: "b", label: "Preserves all pairwise distances exactly", isCorrect: false },
+      { id: "c", label: "Preserves global structure; distorts local structure", isCorrect: false },
+      { id: "d", label: "Preserves feature interpretability", isCorrect: false },
+    ],
+  },
+
+  // ── Probabilistic Models & EM course quiz ────────────────────────────
+  {
+    id: "probmodel-quiz-gmm",
+    type: "multiple-choice",
+    question: "How does a GMM's cluster assignment differ from K-Means?",
+    hint: "A point near the boundary between two Gaussians belongs to… both?",
+    explanation:
+      "GMMs assign soft responsibilities — each point gets a probability of belonging to every component — while K-Means makes hard nearest-centroid assignments. GMMs also fit per-component covariances, so clusters can be elliptical and differently sized.",
+    options: [
+      { id: "a", label: "Soft probabilistic assignments instead of hard ones", isCorrect: true },
+      { id: "b", label: "GMM assigns each point to exactly one cluster faster", isCorrect: false },
+      { id: "c", label: "GMM requires no choice of component count", isCorrect: false },
+      { id: "d", label: "GMM only works in one dimension", isCorrect: false },
+    ],
+  },
+  {
+    id: "probmodel-quiz-estep",
+    type: "multiple-choice",
+    question: "What does the E-step of EM compute for a GMM?",
+    hint: "Given current parameters, how responsible is each Gaussian for each point?",
+    explanation:
+      "The E-step computes responsibilities: the posterior probability that each component generated each point, given current parameters (via Bayes' rule on the component densities and mixing weights). These soft assignments are what the M-step then uses as weights.",
+    options: [
+      { id: "a", label: "The posterior probability each component generated each point", isCorrect: true },
+      { id: "b", label: "New means and covariances", isCorrect: false },
+      { id: "c", label: "The gradient of the likelihood", isCorrect: false },
+      { id: "d", label: "The optimal number of components", isCorrect: false },
+    ],
+  },
+  {
+    id: "probmodel-quiz-mstep",
+    type: "multiple-choice",
+    question: "And the M-step?",
+    hint: "It's a weighted version of fitting each Gaussian to 'its' points.",
+    explanation:
+      "The M-step re-estimates each component's mean, covariance, and mixing weight as responsibility-weighted averages over all points — maximizing the expected complete-data log-likelihood given the E-step's soft assignments.",
+    options: [
+      { id: "a", label: "Updates parameters using responsibility-weighted averages", isCorrect: true },
+      { id: "b", label: "Assigns points to their most likely component", isCorrect: false },
+      { id: "c", label: "Adds or removes mixture components", isCorrect: false },
+      { id: "d", label: "Randomly perturbs the parameters", isCorrect: false },
+    ],
+  },
+  {
+    id: "probmodel-quiz-em-guarantee",
+    type: "multiple-choice",
+    question: "What does EM guarantee about the data log-likelihood?",
+    hint: "Guaranteed progress, not a guaranteed destination.",
+    explanation:
+      "Each EM iteration never decreases the log-likelihood, so it converges — but only to a local optimum (or saddle). Different initializations can give very different fits, which is why GMMs are typically run from multiple random starts (or K-Means initialization).",
+    options: [
+      { id: "a", label: "It never decreases, but may reach only a local optimum", isCorrect: true },
+      { id: "b", label: "It converges to the global maximum", isCorrect: false },
+      { id: "c", label: "It increases by a fixed amount per step", isCorrect: false },
+      { id: "d", label: "Nothing — likelihood can oscillate", isCorrect: false },
+    ],
+  },
+  {
+    id: "probmodel-quiz-naivebayes",
+    type: "multiple-choice",
+    question: "What is the 'naive' assumption in Naive Bayes?",
+    hint: "How does it factor P(x₁, x₂, …, xₙ | y)?",
+    explanation:
+      "Naive Bayes assumes features are conditionally independent given the class: P(x | y) = Π P(xᵢ | y). It's false in practice (words in an email correlate!) yet classification often survives because the argmax over classes is robust to the miscalibrated probabilities.",
+    options: [
+      { id: "a", label: "Features are conditionally independent given the class", isCorrect: true },
+      { id: "b", label: "All classes are equally likely", isCorrect: false },
+      { id: "c", label: "Features follow Gaussian distributions", isCorrect: false },
+      { id: "d", label: "The training data is unbiased", isCorrect: false },
+    ],
+  },
+
+  // ── RNNs course quiz ─────────────────────────────────────────────────
+  {
+    id: "rnn-quiz-sharing",
+    type: "multiple-choice",
+    question: "How are an RNN's weights used across time steps?",
+    hint: "Unroll the network — how many distinct weight matrices do you see?",
+    explanation:
+      "The same weight matrices are reused at every time step. That's what lets one RNN handle sequences of any length and generalize patterns across positions — and it's also why gradients through time multiply the same matrix repeatedly, causing vanishing/exploding gradients.",
+    options: [
+      { id: "a", label: "The same weights are shared at every step", isCorrect: true },
+      { id: "b", label: "Each time step has its own weights", isCorrect: false },
+      { id: "c", label: "Weights alternate between two sets", isCorrect: false },
+      { id: "d", label: "Weights grow with sequence length", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-quiz-vanishing",
+    type: "multiple-choice",
+    question: "Why do gradients vanish in vanilla RNNs over long sequences?",
+    hint: "What happens when you multiply 50 numbers that are each less than 1?",
+    explanation:
+      "Backprop through time multiplies the recurrent Jacobian at every step. If its spectral norm is below 1, the product shrinks exponentially with distance — gradients from step 50 barely reach step 1, so long-range dependencies can't be learned. Norms above 1 explode instead.",
+    options: [
+      { id: "a", label: "Repeated multiplication of small Jacobians shrinks gradients exponentially", isCorrect: true },
+      { id: "b", label: "The loss saturates at zero", isCorrect: false },
+      { id: "c", label: "Long sequences exceed floating-point range", isCorrect: false },
+      { id: "d", label: "Weight sharing prevents gradient flow entirely", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-quiz-cellstate",
+    type: "multiple-choice",
+    question: "How does the LSTM cell state combat vanishing gradients?",
+    hint: "Compare 'multiply at every step' with 'add at every step'.",
+    explanation:
+      "The cell state is updated additively — gated contributions are added rather than the state being re-multiplied through a squashing non-linearity each step. With the forget gate near 1, gradients flow back through this 'highway' nearly unchanged across many steps.",
+    options: [
+      { id: "a", label: "Additive, gated updates create a path where gradients flow undiminished", isCorrect: true },
+      { id: "b", label: "It uses a larger learning rate for distant steps", isCorrect: false },
+      { id: "c", label: "It clips all gradients to a fixed norm", isCorrect: false },
+      { id: "d", label: "It processes the sequence in both directions", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-quiz-forget",
+    type: "multiple-choice",
+    question: "What does the LSTM forget gate control?",
+    hint: "It outputs values in (0, 1) that multiply the previous cell state.",
+    explanation:
+      "The forget gate outputs a value in (0, 1) per cell dimension, multiplying the previous cell state: 1 = keep this memory entirely, 0 = erase it. Combined with the input gate (what new information to write), it gives the LSTM explicit, learnable memory management.",
+    options: [
+      { id: "a", label: "How much of the previous cell state to keep or erase", isCorrect: true },
+      { id: "b", label: "Which inputs to ignore at the current step", isCorrect: false },
+      { id: "c", label: "The size of the hidden layer", isCorrect: false },
+      { id: "d", label: "When to stop processing the sequence", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-quiz-bptt",
+    type: "multiple-choice",
+    question: "What is backpropagation through time (BPTT)?",
+    hint: "First unroll, then apply something familiar.",
+    explanation:
+      "BPTT unrolls the RNN into a deep feed-forward graph — one copy per time step with shared weights — and runs ordinary backprop through it, summing each weight's gradient contributions across all steps. Truncated BPTT caps how many steps back gradients flow to bound cost.",
+    options: [
+      { id: "a", label: "Standard backprop applied to the network unrolled across time steps", isCorrect: true },
+      { id: "b", label: "Training the RNN on time-reversed sequences", isCorrect: false },
+      { id: "c", label: "A separate optimizer for recurrent weights", isCorrect: false },
+      { id: "d", label: "Backprop run once per epoch instead of per batch", isCorrect: false },
+    ],
+  },
+
+  // ── Graphical Models course quiz ─────────────────────────────────────
+  {
+    id: "graphical-quiz-bn",
+    type: "multiple-choice",
+    question: "What does a Bayesian network's DAG structure encode?",
+    hint: "Missing edges are the informative part.",
+    explanation:
+      "The DAG encodes conditional independencies: each node is independent of its non-descendants given its parents. This factorizes the joint as Π P(xᵢ | parents(xᵢ)), collapsing an exponential joint table into small local conditionals.",
+    options: [
+      { id: "a", label: "Conditional independencies that factorize the joint distribution", isCorrect: true },
+      { id: "b", label: "The causal strength of every relationship", isCorrect: false },
+      { id: "c", label: "The time-order of observations", isCorrect: false },
+      { id: "d", label: "Correlation coefficients between variables", isCorrect: false },
+    ],
+  },
+  {
+    id: "graphical-quiz-collider",
+    type: "multiple-choice",
+    question: "In the collider structure A → C ← B, when does information flow between A and B?",
+    hint: "This is the 'explaining away' pattern — it's backwards from chains and forks.",
+    explanation:
+      "A collider blocks the path when C is unobserved (A and B are marginally independent) and opens it when C — or any descendant of C — is observed. That's explaining away: knowing the alarm rang and that there was an earthquake lowers the probability of a burglary.",
+    options: [
+      { id: "a", label: "Only when C (or a descendant) is observed", isCorrect: true },
+      { id: "b", label: "Only when C is unobserved", isCorrect: false },
+      { id: "c", label: "Always — colliders never block", isCorrect: false },
+      { id: "d", label: "Never — colliders always block", isCorrect: false },
+    ],
+  },
+  {
+    id: "graphical-quiz-hmm",
+    type: "multiple-choice",
+    question: "What two assumptions define a hidden Markov model?",
+    hint: "One about state transitions, one about emissions.",
+    explanation:
+      "(1) Hidden states form a Markov chain — the next state depends only on the current one. (2) Each observation depends only on the current hidden state. Together these factorize the joint over an arbitrarily long sequence into transition and emission tables.",
+    options: [
+      { id: "a", label: "Markov transitions between hidden states; observations depend only on current state", isCorrect: true },
+      { id: "b", label: "Gaussian states and linear observations", isCorrect: false },
+      { id: "c", label: "Independent states and independent observations", isCorrect: false },
+      { id: "d", label: "Observable states with hidden transitions", isCorrect: false },
+    ],
+  },
+  {
+    id: "graphical-quiz-viterbi",
+    type: "multiple-choice",
+    question: "What does the Viterbi algorithm find?",
+    hint: "Compare with the forward algorithm, which sums over paths.",
+    explanation:
+      "Viterbi finds the single most probable hidden-state sequence given the observations, using dynamic programming with a max instead of the forward algorithm's sum. Maxing path-by-path differs from picking each step's most likely state independently — the joint best path is what Viterbi guarantees.",
+    options: [
+      { id: "a", label: "The most likely complete sequence of hidden states", isCorrect: true },
+      { id: "b", label: "The total probability of the observations", isCorrect: false },
+      { id: "c", label: "The most likely state at each step, independently", isCorrect: false },
+      { id: "d", label: "The optimal transition matrix", isCorrect: false },
+    ],
+  },
+  {
+    id: "graphical-quiz-forward",
+    type: "multiple-choice",
+    question: "And the forward algorithm computes…",
+    hint: "It marginalizes over all possible hidden paths.",
+    explanation:
+      "The forward algorithm computes P(observations) by summing over all hidden-state paths with dynamic programming — O(TK²) instead of the naive O(Kᵀ). That likelihood is what you maximize when training an HMM (e.g., inside Baum–Welch / EM).",
+    options: [
+      { id: "a", label: "The likelihood of the observation sequence under the model", isCorrect: true },
+      { id: "b", label: "The best single hidden path", isCorrect: false },
+      { id: "c", label: "The stationary distribution of the chain", isCorrect: false },
+      { id: "d", label: "The number of hidden states to use", isCorrect: false },
+    ],
+  },
+
+  // ── Attention & Transformers course quiz ─────────────────────────────
+  {
+    id: "transformer-quiz-attention",
+    type: "multiple-choice",
+    question: "In self-attention, the output for each token is a…",
+    hint: "softmax(QKᵀ/√d)V — read it right to left.",
+    explanation:
+      "Each token's output is a weighted sum of all tokens' value vectors, with weights from softmaxing its query against every key. Every token can directly gather information from every other token in one step — no recurrence needed.",
+    options: [
+      { id: "a", label: "Weighted sum of value vectors, weighted by query–key similarity", isCorrect: true },
+      { id: "b", label: "Concatenation of all other tokens' embeddings", isCorrect: false },
+      { id: "c", label: "The value vector of the single most similar token", isCorrect: false },
+      { id: "d", label: "A recurrent update of the previous token's state", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-scale",
+    type: "multiple-choice",
+    question: "Why divide QKᵀ by √d before the softmax?",
+    hint: "What's the variance of a dot product of two random d-dimensional vectors?",
+    explanation:
+      "Dot products of d-dimensional vectors have variance growing with d. Large logits push softmax into its saturated regime where it's nearly one-hot and gradients vanish. Dividing by √d keeps logit variance near 1, so attention stays trainable.",
+    options: [
+      { id: "a", label: "To stop large dot products from saturating the softmax", isCorrect: true },
+      { id: "b", label: "To normalize the values to unit length", isCorrect: false },
+      { id: "c", label: "To reduce computation cost", isCorrect: false },
+      { id: "d", label: "To make attention weights sum to 1", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-multihead",
+    type: "multiple-choice",
+    question: "Why use multiple attention heads instead of one big one?",
+    hint: "One softmax produces one weighting pattern per token.",
+    explanation:
+      "Each head learns its own Q/K/V projections and can attend to a different relationship — one tracks syntax, another coreference, another nearby positions. A single head gives each token one attention distribution; multiple heads let it gather several kinds of context at once.",
+    options: [
+      { id: "a", label: "Each head can attend to different relationships in parallel", isCorrect: true },
+      { id: "b", label: "More heads always means lower overfitting", isCorrect: false },
+      { id: "c", label: "It reduces the parameter count", isCorrect: false },
+      { id: "d", label: "Softmax requires at least 8 heads", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-posenc",
+    type: "multiple-choice",
+    question: "Why do transformers need positional encodings at all?",
+    hint: "Shuffle the input tokens — what changes in the attention computation?",
+    explanation:
+      "Self-attention is permutation-equivariant: it treats input as an unordered set, so 'dog bites man' and 'man bites dog' would be identical without position information. Positional encodings (sinusoidal, learned, or rotary) inject token order into the representations.",
+    options: [
+      { id: "a", label: "Attention is order-blind — it sees a set, not a sequence", isCorrect: true },
+      { id: "b", label: "They speed up training convergence", isCorrect: false },
+      { id: "c", label: "They prevent attention weights from overflowing", isCorrect: false },
+      { id: "d", label: "They are needed only for images, not text", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-vs-rnn",
+    type: "multiple-choice",
+    question: "What is the transformer's key computational advantage over RNNs?",
+    hint: "What did sequential hidden-state updates prevent?",
+    explanation:
+      "RNNs must process tokens one at a time — step t needs the state from t−1. Self-attention computes all positions simultaneously as matrix multiplications, fully exploiting parallel hardware. That's what made training on web-scale corpora practical (at O(n²) attention cost).",
+    options: [
+      { id: "a", label: "All sequence positions are processed in parallel during training", isCorrect: true },
+      { id: "b", label: "It uses fewer parameters than an RNN", isCorrect: false },
+      { id: "c", label: "It needs no training data labels", isCorrect: false },
+      { id: "d", label: "Its memory usage is independent of sequence length", isCorrect: false },
+    ],
+  },
+
+  // ── Generative Models course quiz ────────────────────────────────────
+  {
+    id: "genmodel-quiz-vaeloss",
+    type: "multiple-choice",
+    question: "A VAE's loss combines which two terms?",
+    hint: "One term wants faithful outputs; the other disciplines the latent space.",
+    explanation:
+      "The ELBO has a reconstruction term (decode z back to something close to the input) and a KL divergence pulling the encoder's posterior q(z|x) toward the prior N(0, I). The KL term is what organizes the latent space so that sampling from the prior decodes to realistic data.",
+    options: [
+      { id: "a", label: "Reconstruction error + KL divergence to the prior", isCorrect: true },
+      { id: "b", label: "Classification loss + adversarial loss", isCorrect: false },
+      { id: "c", label: "Two reconstruction errors at different scales", isCorrect: false },
+      { id: "d", label: "Pixel loss + perceptual loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "genmodel-quiz-reparam",
+    type: "multiple-choice",
+    question: "What problem does the reparameterization trick solve?",
+    hint: "Can you backprop through 'draw a random sample'?",
+    explanation:
+      "Sampling z ~ N(μ, σ²) is not differentiable w.r.t. μ and σ. Rewriting z = μ + σ·ε with ε ~ N(0,1) moves the randomness into an external input, leaving a deterministic, differentiable path from the encoder's outputs to the loss — so the encoder can train by backprop.",
+    options: [
+      { id: "a", label: "It makes sampling differentiable so gradients reach the encoder", isCorrect: true },
+      { id: "b", label: "It prevents posterior collapse", isCorrect: false },
+      { id: "c", label: "It reduces the latent dimensionality", isCorrect: false },
+      { id: "d", label: "It removes the KL term from the loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "genmodel-quiz-gan",
+    type: "multiple-choice",
+    question: "In a GAN, what objective does the generator pursue?",
+    hint: "It never sees real data directly — only the discriminator's reaction.",
+    explanation:
+      "The generator maps noise to samples and is trained to make the discriminator classify them as real — its gradient signal comes entirely through the discriminator. The two play a minimax game whose equilibrium (in theory) is the generator matching the data distribution.",
+    options: [
+      { id: "a", label: "Produce samples the discriminator classifies as real", isCorrect: true },
+      { id: "b", label: "Minimize pixel distance to training images", isCorrect: false },
+      { id: "c", label: "Maximize the likelihood of the training data", isCorrect: false },
+      { id: "d", label: "Classify real vs. fake samples", isCorrect: false },
+    ],
+  },
+  {
+    id: "genmodel-quiz-modecollapse",
+    type: "multiple-choice",
+    question: "What is mode collapse in GAN training?",
+    hint: "The generator finds one thing that fools the discriminator and…",
+    explanation:
+      "Mode collapse is when the generator concentrates on a few outputs (or one) that currently fool the discriminator, abandoning the diversity of the data distribution — e.g., generating the same face over and over. Remedies include minibatch discrimination, unrolled discriminators, and Wasserstein losses.",
+    options: [
+      { id: "a", label: "The generator produces only a narrow subset of the data's variety", isCorrect: true },
+      { id: "b", label: "The discriminator's accuracy collapses to 50%", isCorrect: false },
+      { id: "c", label: "Gradients explode and weights diverge", isCorrect: false },
+      { id: "d", label: "The latent space dimension shrinks during training", isCorrect: false },
+    ],
+  },
+  {
+    id: "genmodel-quiz-diffusion",
+    type: "multiple-choice",
+    question: "What does a diffusion model learn to do?",
+    hint: "Training corrupts images with noise; generation runs that movie backwards.",
+    explanation:
+      "The forward process gradually adds Gaussian noise until the data is pure noise. The model learns the reverse: at each step it predicts (the noise component of) a less-noisy version. Generation starts from random noise and applies the learned denoiser step by step until an image emerges.",
+    options: [
+      { id: "a", label: "Reverse a gradual noising process, denoising step by step", isCorrect: true },
+      { id: "b", label: "Compress images into a discrete codebook", isCorrect: false },
+      { id: "c", label: "Distinguish real images from noisy ones", isCorrect: false },
+      { id: "d", label: "Map noise directly to images in one step", isCorrect: false },
+    ],
+  },
+
+  // ── Reinforcement Learning course quiz ───────────────────────────────
+  {
+    id: "rl-quiz-markov",
+    type: "multiple-choice",
+    question: "The Markov property of an MDP states that…",
+    hint: "How much history does the transition function get to see?",
+    explanation:
+      "The next state and reward depend only on the current state and action — not on how the agent got there: P(s'|s, a, history) = P(s'|s, a). This is what makes value functions over states well-defined and dynamic programming tractable.",
+    options: [
+      { id: "a", label: "The future depends only on the current state and action", isCorrect: true },
+      { id: "b", label: "Rewards must be deterministic", isCorrect: false },
+      { id: "c", label: "All states are equally likely", isCorrect: false },
+      { id: "d", label: "The agent always knows the full environment model", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-quiz-offpolicy",
+    type: "multiple-choice",
+    question: "Why is Q-learning called an off-policy algorithm?",
+    hint: "Compare the action it takes with the action in its update target.",
+    explanation:
+      "Q-learning explores with one policy (e.g., ε-greedy) but its update target uses max_a Q(s', a) — the value of the greedy policy. It learns about the optimal policy while behaving differently. SARSA, which plugs in the action it actually takes next, is the on-policy counterpart.",
+    options: [
+      { id: "a", label: "It learns the greedy policy's values while following an exploratory one", isCorrect: true },
+      { id: "b", label: "It never uses a policy during training", isCorrect: false },
+      { id: "c", label: "It updates Q-values only after episodes end", isCorrect: false },
+      { id: "d", label: "It requires a model of the environment", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-quiz-bellman",
+    type: "multiple-choice",
+    question: "The Bellman optimality equation for Q* says Q*(s, a) equals…",
+    hint: "Immediate reward plus the discounted value of acting optimally afterward.",
+    explanation:
+      "Q*(s, a) = E[r + γ max_{a'} Q*(s', a')]: the immediate reward plus the discounted value of the best action in the next state. Q-learning is a stochastic approximation that nudges Q toward this self-consistent fixed point from sampled transitions.",
+    options: [
+      { id: "a", label: "E[r + γ max over a' of Q*(s', a')]", isCorrect: true },
+      { id: "b", label: "E[r + γ average of Q*(s', a') over all a']", isCorrect: false },
+      { id: "c", label: "The sum of all future rewards, undiscounted", isCorrect: false },
+      { id: "d", label: "The probability of reaching the goal from s", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-quiz-epsilon",
+    type: "multiple-choice",
+    question: "What does ε-greedy action selection accomplish?",
+    hint: "What happens to an agent that always exploits from day one?",
+    explanation:
+      "With probability ε the agent picks a random action; otherwise it exploits the best-known one. Without exploration, the agent locks onto early lucky estimates and may never discover better strategies. ε is typically annealed: explore widely early, exploit increasingly later.",
+    options: [
+      { id: "a", label: "Balances exploring unknown actions against exploiting known good ones", isCorrect: true },
+      { id: "b", label: "Guarantees convergence in fewer episodes", isCorrect: false },
+      { id: "c", label: "Eliminates the need for a reward signal", isCorrect: false },
+      { id: "d", label: "Makes the policy deterministic", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-quiz-policygrad",
+    type: "multiple-choice",
+    question: "How do policy-gradient methods differ from value-based ones like Q-learning?",
+    hint: "What object does each method parameterize and optimize?",
+    explanation:
+      "Policy-gradient methods parameterize the policy π(a|s; θ) directly and ascend the gradient of expected return — no argmax over actions needed. That handles continuous action spaces and naturally stochastic policies, where value-based methods' max over actions becomes impractical.",
+    options: [
+      { id: "a", label: "They optimize a parameterized policy directly instead of a value function", isCorrect: true },
+      { id: "b", label: "They require a perfect environment model", isCorrect: false },
+      { id: "c", label: "They cannot use neural networks", isCorrect: false },
+      { id: "d", label: "They only work in deterministic environments", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
