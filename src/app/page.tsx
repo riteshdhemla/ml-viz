@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { getAllCourses } from "@/lib/content";
+import { buildSearchIndex } from "@/lib/search-index";
 import { CourseCard } from "@/components/lessons/CourseCard";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { HeroSection } from "@/components/layout/HeroSection";
+import { ContinueLearning } from "@/components/layout/ContinueLearning";
 
 export default function HomePage() {
   const courses = getAllCourses();
+  const searchItems = buildSearchIndex();
   const foundations = courses.filter((c) => (c.order ?? 0) < 0);
   const mainCourses = courses.filter((c) => (c.order ?? 0) >= 0);
 
@@ -14,6 +17,8 @@ export default function HomePage() {
       <SiteHeader />
       <main>
         <HeroSection />
+
+        <ContinueLearning items={searchItems} />
 
         {/* Foundations strip */}
         {foundations.length > 0 && (

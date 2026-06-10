@@ -222,6 +222,25 @@ Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
 - No `useState` in server components; no `fs` / file-system code in client components
 - `src/lib/content.ts` is server-only (imports `fs`) — never import in client components
 
+### Search & progress (site-wide UX)
+
+- **Search palette** (Ctrl/⌘+K): `src/components/search/CommandPalette.tsx`,
+  mounted globally in `src/app/layout.tsx`. The index is built server-side by
+  `src/lib/search-index.ts` from MDX frontmatter — new courses/lessons are
+  indexed automatically, no registration needed. Open state lives in
+  `src/lib/search-store.ts` (Zustand) so any component (e.g. SiteHeader) can
+  trigger it.
+- **Lesson completion**: `LessonCompleteButton` (rendered by `LessonLayout`)
+  is the only writer of `markLessonComplete`. It advances to the next lesson,
+  or back to the course page on the last lesson. Progress bars, the
+  `/progress` dashboard, and the homepage "Continue learning" card
+  (`src/components/layout/ContinueLearning.tsx`) all read from the same
+  Zustand store (`src/lib/progress.ts`, persisted as `ml-viz-progress`).
+- **SEO**: canonical site URL helpers live in `src/lib/site.ts`
+  (`SITE_URL`, `absoluteUrl()`); `sitemap.ts`/`robots.ts`/`icon.tsx`/
+  `opengraph-image.tsx` under `src/app/` are generated from content at build
+  time. Course/lesson pages emit JSON-LD via `src/components/seo/JsonLd.tsx`.
+
 ---
 
 ## Design System (Brilliant-inspired)
