@@ -39,6 +39,10 @@ import { QTableViz } from "@/components/visualizations/QTable/QTableViz";
 import { PoolingViz } from "@/components/visualizations/Pooling/PoolingViz";
 import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
 import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
+import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbiViz";
+import { TransferLearningViz } from "@/components/visualizations/TransferLearning/TransferLearningViz";
+import { GMMResponsibilityViz } from "@/components/visualizations/GMM/GMMResponsibilityViz";
+import { PositionalEncodingViz } from "@/components/visualizations/PositionalEncoding/PositionalEncodingViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -84,4 +88,8 @@ export const mdxComponents: MDXComponents = {
   PoolingViz,
   LatentSpaceViz,
   RNNUnrollViz,
+  HMMViterbiViz,
+  TransferLearningViz,
+  GMMResponsibilityViz,
+  PositionalEncodingViz,
 };
