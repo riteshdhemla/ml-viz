@@ -329,6 +329,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | PoolingViz | `visualizations/Pooling/` | cnns/02-pooling-and-architectures | ✅ |
 | TransferLearningViz | `visualizations/TransferLearning/` | cnns/03-transfer-learning | ✅ |
 | PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
+| GMMResponsibilityViz | `visualizations/GMM/` | probabilistic-models/01-gaussian-mixture-models | ✅ |
+| HMMViterbiViz | `visualizations/HMMViterbi/` | graphical-models/03-hidden-markov-models | ✅ |
 
 ---
 
