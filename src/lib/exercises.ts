@@ -3400,6 +3400,22 @@ const allExercises: Exercise[] = [
       { id: "d", label: "They only work in deterministic environments", isCorrect: false },
     ],
   },
+  // ── Probability & Statistics: Thinking in Probabilities ──────────────
+  {
+    id: "prob-expectation-die",
+    type: "multiple-choice",
+    question:
+      "A fair six-sided die has expectation E[X] = 3.5. What does that number mean?",
+    hint: "Can a die ever show 3.5?",
+    explanation:
+      "Expectation is the probability-weighted average — the long-run mean over many rolls, the center of mass of the distribution. It is not a prediction of any single roll (3.5 is not even a possible outcome), and it is not the most likely value (all six faces are equally likely).",
+    options: [
+      { id: "a", label: "The average over many rolls converges to 3.5", isCorrect: true },
+      { id: "b", label: "The next roll will most likely be 3 or 4", isCorrect: false },
+      { id: "c", label: "3.5 is the most probable outcome", isCorrect: false },
+      { id: "d", label: "Half of all rolls land above 3.5 only if the die is biased", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

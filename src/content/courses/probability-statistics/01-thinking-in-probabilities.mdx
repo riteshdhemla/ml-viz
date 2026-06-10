@@ -1,0 +1,100 @@
+---
+title: "Thinking in Probabilities"
+description: "Sample spaces, events, random variables, and expectation — the vocabulary everything else in this course is written in."
+order: 1
+type: concept
+estimatedMinutes: 14
+---
+
+# Thinking in Probabilities
+
+Machine learning is the business of making decisions under uncertainty — a model never *knows* the label, it *believes* it with some strength. Probability is the language those beliefs are written in. Before meeting the famous [distributions](/courses/probability-statistics/02-probability-distributions), it pays to nail down the small set of words everything else is built from.
+
+## Sample spaces and events
+
+A **sample space** $\Omega$ is the set of everything that could happen in one run of an experiment:
+
+- One coin flip: $\Omega = \{H, T\}$
+- One die roll: $\Omega = \{1, 2, 3, 4, 5, 6\}$
+- Tomorrow's temperature: $\Omega = \mathbb{R}$ (uncountably many outcomes!)
+
+An **event** is any subset of outcomes you might care about: "the roll is even" is the event $A = \{2, 4, 6\}$. A probability function $P$ assigns each event a number, subject to three rules (the Kolmogorov axioms):
+
+1. $P(A) \ge 0$ — no negative beliefs
+2. $P(\Omega) = 1$ — *something* happens
+3. If $A$ and $B$ can't both happen, $P(A \cup B) = P(A) + P(B)$ — probabilities of exclusive events add
+
+That's the entire rulebook. Everything else — Bayes' theorem, likelihoods, expectation — is a consequence.
+
+<Callout type="info" title="Two readings of the same number">
+  What does $P(\text{rain}) = 0.3$ *mean*? The **frequentist** reading: in many repeats of days like this one, 30% are rainy. The **Bayesian** reading: 0.3 is a degree of belief, which new evidence should update. The axioms above don't care which story you tell — both readings obey the same math, and ML uses each where it fits ([Bayesian inference](/courses/probability-statistics/04-bayesian-inference) leans on the second).
+</Callout>
+
+## Conditional probability — the comma and the bar
+
+Two notations carry most of probability's meaning:
+
+$$
+P(A, B) = \text{both happen} \qquad P(A \mid B) = \text{$A$ happens, given $B$ did}
+$$
+
+They're linked by the **product rule**, arguably the most-used identity in ML:
+
+$$
+P(A, B) = P(A \mid B)\, P(B)
+$$
+
+Conditioning is *zooming in*: $P(A \mid B)$ throws away every world where $B$ didn't happen and renormalizes what's left. When the zoom changes nothing — $P(A \mid B) = P(A)$ — the events are **independent**, and the product rule collapses to $P(A,B) = P(A)P(B)$. (Naive Bayes builds an entire classifier from pretending this collapse holds.)
+
+## Random variables
+
+A **random variable** $X$ attaches a number to each outcome — the die's face value, a pixel's brightness, tomorrow's temperature. This is the bridge from raw outcomes to arithmetic: once outcomes are numbers, you can average them, weight them, and feed them to models.
+
+- **Discrete** $X$ takes countable values, described by a probability *mass* function: $P(X = k)$
+- **Continuous** $X$ takes values in a continuum, described by a probability *density* function, where only *areas* are probabilities: $P(a \le X \le b) = \int_a^b p(x)\,dx$
+
+The next lesson makes this concrete with the four distributions ML reaches for daily.
+
+## Expectation: the long-run average
+
+The **expectation** of a random variable is its probability-weighted average:
+
+$$
+\mathbb{E}[X] = \sum_k k \, P(X = k) \qquad \text{or} \qquad \mathbb{E}[X] = \int x \, p(x) \, dx
+$$
+
+Roll a fair die forever and your average roll converges to $\mathbb{E}[X] = 3.5$ — a value the die never actually shows. Expectation is the center of mass of belief, not a prediction of any single outcome.
+
+**Variance** measures spread around that center: $\mathrm{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2]$.
+
+You can watch the law of large numbers pull a running average onto the expectation in a few lines:
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+rolls = rng.integers(1, 7, size=10_000)
+
+running_mean = np.cumsum(rolls) / np.arange(1, rolls.size + 1)
+print(running_mean[[9, 99, 999, 9999 - 1]])
+# → drifts toward 3.5 as the sample grows: e.g. [3.1, 3.38, 3.46, 3.50]
+```
+
+<Callout type="tip" title="Why ML cares so much about 𝔼">
+  Almost every training objective is an expectation: the loss you minimize is the *expected* loss over the data distribution, approximated by averaging over your training set. Gradient descent on a mini-batch works precisely because the mini-batch average is an unbiased estimate of that expectation.
+</Callout>
+
+<Exercise id="prob-expectation-die" />
+
+## Key takeaways
+
+- Probability assigns numbers to events under three axioms: non-negative, sums to 1, additive over exclusive events
+- The product rule $P(A,B) = P(A \mid B)P(B)$ links joint and conditional probability; independence means conditioning changes nothing
+- Random variables turn outcomes into numbers; discrete ones have mass functions, continuous ones have densities (areas = probabilities)
+- Expectation is the probability-weighted average — the quantity nearly every ML loss function is secretly approximating
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the named shapes (Gaussian, uniform, Bernoulli, Poisson) that package these definitions for daily use
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — turning "probability of data given parameters" around into a fitting principle
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the product rule run in reverse: updating beliefs from evidence

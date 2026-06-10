@@ -22,10 +22,10 @@ fully, verify, ship, check it off. One item per iteration.
 - [ ] **Axis labels audit (all viz)** — every plot-style viz gets x/y axis
       labels (and ticks where meaningful). Audit all ~40 components in
       `src/components/visualizations/`.
-- [ ] **Probability course intro lesson** — course jumps straight into
-      distributions. Add new lesson 01 "Thinking in Probabilities" (sample
-      spaces, events, random variables, expectation intuition); renumber
-      existing lessons/notebooks/quiz accordingly.
+- [x] **Probability course intro lesson** — added 01 "Thinking in
+      Probabilities" (sample spaces, axioms, conditional probability, random
+      variables, expectation) + notebook + exercise; renumbered lessons,
+      notebooks, quiz, and all cross-links (PR #37)
 - [ ] **Collapsible content** — `<Details summary="...">` MDX component
       (collapsible deep-dive section, dark-theme styled); use in long lessons.
 - [ ] **Exercise notebooks (scaffold style)** — notebooks teach concept recap +
