@@ -108,7 +108,10 @@ describe("Foundation lessons — frontmatter", () => {
       expect(typeof l.data.description).toBe("string");
       expect(l.data.description.trim().length).toBeGreaterThan(0);
       expect(typeof l.data.order).toBe("number");
-      expect(l.data.type).toBe("concept");
+      expect(
+        ["concept", "quiz"].includes(l.data.type as string),
+        `type="${l.data.type}" must be concept or quiz`
+      ).toBe(true);
       expect(typeof l.data.estimatedMinutes).toBe("number");
       expect(l.data.estimatedMinutes).toBeGreaterThan(0);
     }
@@ -126,13 +129,14 @@ describe("Foundation lessons — frontmatter", () => {
 // ─── Lesson content ──────────────────────────────────────────────────────────
 
 describe("Foundation lessons — content quality", () => {
+  // Quiz lessons are intentionally minimal (exercises only) — skip content checks for them.
   const allLessons = FOUNDATION_SLUGS.flatMap((courseSlug) =>
     getLessonFiles(courseSlug).map((file) => {
       const full = path.join(COURSES_DIR, courseSlug, file);
-      const { content } = readFrontmatter(full);
-      return { courseSlug, file, content };
+      const { data, content } = readFrontmatter(full);
+      return { courseSlug, file, content, type: data.type as string };
     })
-  );
+  ).filter((l) => l.type !== "quiz");
 
   it.each(allLessons.map((l) => [`${l.courseSlug}/${l.file}`, l] as const))(
     "%s contains LaTeX math",
@@ -222,11 +226,15 @@ describe("Foundation exercises — registry", () => {
 // ─── Companion notebooks ─────────────────────────────────────────────────────
 
 describe("Foundation notebooks", () => {
+  // Quiz lessons have no companion notebook — skip them.
   const allLessons = FOUNDATION_SLUGS.flatMap((courseSlug) =>
-    getLessonFiles(courseSlug).map((file) => ({
-      courseSlug,
-      slug: file.replace(/\.mdx$/, ""),
-    }))
+    getLessonFiles(courseSlug)
+      .map((file) => {
+        const full = path.join(COURSES_DIR, courseSlug, file);
+        const { data } = readFrontmatter(full);
+        return { courseSlug, slug: file.replace(/\.mdx$/, ""), type: data.type as string };
+      })
+      .filter((l) => l.type !== "quiz")
   );
 
   it.each(allLessons.map((l) => [`${l.courseSlug}/${l.slug}`, l] as const))(
