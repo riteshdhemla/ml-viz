@@ -359,6 +359,13 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | TransformerBlockViz | `visualizations/TransformerBlock/` | transformers/03-transformer-architecture | ✅ |
 | PerplexityViz | `visualizations/Perplexity/` | pca-dimensionality/02-t-sne-and-umap | ✅ |
 | PolicyGradientViz | `visualizations/PolicyGradient/` | reinforcement-learning/04-policy-gradient | ✅ |
+| BiasVarianceViz | `visualizations/BiasVariance/` | knn-decision-trees/03-bias-variance | ✅ |
+| RegularizationPathViz | `visualizations/RegularizationPath/` | linear-regression/03-regularization | ✅ |
+| SoftMarginViz | `visualizations/SoftMargin/` | svm/03-soft-margins | ✅ |
+| BoostingShrinkageViz | `visualizations/BoostingShrinkage/` | ensemble-methods/03-xgboost | ✅ |
+| SilhouetteViz | `visualizations/Silhouette/` | clustering/03-evaluating-clusters | ✅ |
+| PCAReconstructionViz | `visualizations/PCAReconstruction/` | pca-dimensionality/03-pca-in-practice | ✅ |
+| NaiveBayesVotesViz | `visualizations/NaiveBayesVotes/` | probabilistic-models/03-naive-bayes | ✅ |
 
 ---
 
