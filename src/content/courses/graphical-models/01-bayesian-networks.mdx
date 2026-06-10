@@ -83,6 +83,18 @@ The collider is the surprising one. Two independent causes become *dependent* on
 
 **d-separation** generalizes these rules: variables $X$ and $Y$ are independent given evidence $Z$ if *every* path between them is "blocked" by $Z$ (blocked at chains/forks in $Z$, or at colliders **not** in $Z$ and with no observed descendant).
 
+### d-separation patterns: sprinkler-network examples
+
+| Pattern | Structure | Sprinkler Example | Blocked when? |
+|---------|-----------|-------------------|---------------|
+| Chain | $A \to B \to C$ | Cloudy → Sprinkler → Wet | $B$ is observed |
+| Fork | $A \leftarrow B \to C$ | Rain ← Cloudy → Sprinkler | $B$ is observed |
+| Collider | $A \to B \leftarrow C$ | Sprinkler → Wet ← Rain | $B$ is **not** observed (or a descendant is) |
+
+<Callout type="tip" title="Colliders are counterintuitive">
+  Conditioning on a collider (e.g. observing $\text{Wet}=1$) **opens** the path between its parents — now Sprinkler and Rain become dependent. This is 'explaining away': if you know the grass is wet, learning the sprinkler was on makes rain less likely.
+</Callout>
+
 ## Inference: asking questions
 
 Given a network, we ask queries like $P(\text{Disease} \mid \text{Symptoms})$. Approaches:

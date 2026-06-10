@@ -150,6 +150,19 @@ $$
 
 **Check the guarantee:** the log-likelihood rose from $-7.514$ to $-7.390$ in this single step — exactly the monotonic increase the ELBO argument promises. The means pulled slightly toward the data and the Gaussians tightened.
 
+### After M-step: how responsibilities shift
+
+Re-running the E-step formula with the updated parameters $\mu_1^{(1)}=2.08$, $\mu_2^{(1)}=3.92$, $\sigma^{(1)}=1.286$ shifts every responsibility:
+
+| Point | $r_{i1}^{(0)}$ (before) | $r_{i1}^{(1)}$ (after) |
+|-------|--------------------------|-------------------------|
+| 1 | 0.855 | 0.902 |
+| 2 | 0.709 | 0.753 |
+| 4 | 0.291 | 0.247 |
+| 5 | 0.145 | 0.098 |
+
+Cluster 1's mean moved from 2.0 to 2.08, pulling it closer to the points at $x=1$ and $x=2$, so those points now have slightly higher responsibility for cluster 1. The borderline points ($x=4,5$) shift in the opposite direction — now assigned even more firmly to cluster 2 — because the two Gaussians have tightened ($\sigma$ dropped from 1.5 to 1.286) and overlapped less.
+
 <Callout type="info" title="Local optima warning">
   EM converges to a **local** optimum, not necessarily the global one. Different initializations can give different results. Always run EM multiple times and keep the result with the highest log-likelihood.
 </Callout>

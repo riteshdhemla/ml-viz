@@ -65,7 +65,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 for epoch in range(10):
     x_hat = model(x)
-    loss = nn.MSELoss()(x_hat, x)
+    loss = nn.MSELoss()(x_hat, x)  # mean over pixels — matches nn.MSELoss(reduction='mean')
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
@@ -151,6 +151,12 @@ threshold = errors.quantile(0.95)
 anomalies = errors > threshold
 print(f"Anomalies detected: {anomalies.sum().item()}")
 ```
+
+## Common mistakes
+
+1. **Confusing reconstruction with generation** — an autoencoder can reconstruct inputs well but interpolating in latent space produces incoherent outputs because the latent space has "holes" (unenforced structure).
+2. **Overfitting the bottleneck** — a bottleneck that is too wide memorises rather than compresses; test reconstruction quality to detect this.
+3. **Using autoencoders as generative models** — standard autoencoders are not generative; they lack a prior over the latent space. Use a VAE if you need to sample.
 
 ## Key takeaways
 

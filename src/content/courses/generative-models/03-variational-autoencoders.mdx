@@ -144,6 +144,12 @@ $$
 - $\beta < 1$: better reconstruction, less structured latent space
 - $\beta > 1$: more disentangled representations, potentially blurrier outputs
 
+## Common mistakes
+
+1. **KL divergence too high or too low** — if $\beta$ (the KL weight) is too large the model ignores the input ("posterior collapse"); too small and it ignores the prior and cannot sample coherently.
+2. **Misunderstanding the reparameterisation trick** — sampling $z \sim \mathcal{N}(\mu, \sigma^2)$ is not differentiable; the trick rewrites this as $z = \mu + \sigma \epsilon$ where $\epsilon \sim \mathcal{N}(0,1)$, moving randomness outside the gradient path.
+3. **Treating the ELBO bound as the true log-likelihood** — the ELBO is a lower bound; tighter bounds (importance-weighted ELBO) exist but require more samples.
+
 ## Key takeaways
 
 - A **VAE** encodes to a *distribution*, regularized toward $\mathcal{N}(0,I)$ by KL.
