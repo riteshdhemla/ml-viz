@@ -64,9 +64,9 @@ fully, verify, ship, check it off. One item per iteration.
 
 ### Presentation
 
-- [ ] **Key-takeaways blocks** — add a closing "Key takeaways" section (3-5
-      bullets) to every older concept lesson that lacks one (audit all 17
-      courses; the 7 new lessons already have them)
+- [x] **Key-takeaways blocks** — audited: all 55 concept lessons across 17
+      courses already end with a Key takeaways section; no gaps (verified
+      via grep, no PR needed)
 - [x] **Reading progress bar** — rAF-throttled scroll indicator pinned to the
       sticky lesson header's bottom edge (PR #48)
 - [x] **Quiz results summary** — quiz store records every exercise outcome;
