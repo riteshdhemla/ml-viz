@@ -43,6 +43,10 @@ import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbi
 import { TransferLearningViz } from "@/components/visualizations/TransferLearning/TransferLearningViz";
 import { GMMResponsibilityViz } from "@/components/visualizations/GMM/GMMResponsibilityViz";
 import { PositionalEncodingViz } from "@/components/visualizations/PositionalEncoding/PositionalEncodingViz";
+import { DendrogramViz } from "@/components/visualizations/Dendrogram/DendrogramViz";
+import { TransformerBlockViz } from "@/components/visualizations/TransformerBlock/TransformerBlockViz";
+import { GANTrainingViz } from "@/components/visualizations/GANTraining/GANTrainingViz";
+import { PerplexityViz } from "@/components/visualizations/Perplexity/PerplexityViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -92,4 +96,8 @@ export const mdxComponents: MDXComponents = {
   TransferLearningViz,
   GMMResponsibilityViz,
   PositionalEncodingViz,
+  DendrogramViz,
+  TransformerBlockViz,
+  GANTrainingViz,
+  PerplexityViz,
 };
