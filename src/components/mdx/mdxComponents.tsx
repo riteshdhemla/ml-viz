@@ -27,6 +27,7 @@ import { VanishingGradientViz } from "@/components/visualizations/VanishingGradi
 import { KNNBoundaryViz } from "@/components/visualizations/KNNBoundary/KNNBoundaryViz";
 import { MarginViz } from "@/components/visualizations/Margin/MarginViz";
 import { DecisionTreeSplitViz } from "@/components/visualizations/DecisionTreeSplit/DecisionTreeSplitViz";
+import { NeuralNetworkViz } from "@/components/visualizations/NeuralNetwork/NeuralNetworkViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -60,4 +61,5 @@ export const mdxComponents: MDXComponents = {
   KNNBoundaryViz,
   MarginViz,
   DecisionTreeSplitViz,
+  NeuralNetworkViz,
 };

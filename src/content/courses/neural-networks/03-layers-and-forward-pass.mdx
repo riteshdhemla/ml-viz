@@ -1,0 +1,157 @@
+---
+title: "Layers & the Forward Pass"
+description: "Stacking neurons into layers turns dot products into matrix multiplications — and stacking layers lets simple features compose into complex ones."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Layers & the Forward Pass
+
+A single neuron computes one weighted sum. A **layer** is just many neurons looking at the *same* inputs in parallel — and the moment you stack neurons this way, the math collapses into one clean matrix multiplication. Running data through layer after layer is called the **forward pass**, and it is the only thing a trained network ever does at prediction time.
+
+**Real-world examples:** Every model inference you've ever triggered — a photo tagged, a sentence autocompleted, a fraud alert raised — is one forward pass through stacked layers.
+
+## From one neuron to a layer
+
+Recall that a single neuron computes $y = f(\mathbf{w}\cdot\mathbf{x} + b)$. Now put $m$ neurons side by side, each with its **own** weight vector and bias, all reading the same input $\mathbf{x} \in \mathbb{R}^n$. Stack the $m$ weight vectors as the *rows* of a matrix $W \in \mathbb{R}^{m \times n}$ and the biases into a vector $\mathbf{b} \in \mathbb{R}^m$:
+
+$$
+\mathbf{h} = f\!\left(W\mathbf{x} + \mathbf{b}\right)
+$$
+
+Each row of $W$ is one neuron; each entry of $\mathbf{h}$ is that neuron's activation. The activation $f$ is applied **element-wise**. A multi-layer network is then nothing but this rule applied repeatedly:
+
+$$
+\mathbf{h}^{(1)} = f\!\left(W^{(1)}\mathbf{x} + \mathbf{b}^{(1)}\right), \qquad
+\mathbf{h}^{(2)} = f\!\left(W^{(2)}\mathbf{h}^{(1)} + \mathbf{b}^{(2)}\right), \qquad
+\hat{y} = g\!\left(W^{(3)}\mathbf{h}^{(2)} + \mathbf{b}^{(3)}\right)
+$$
+
+where $g$ is the output activation — sigmoid for binary classification, softmax for multi-class, or identity (linear) for regression.
+
+<Callout type="tip" title="The shape rule">
+  A layer mapping $n$ inputs to $m$ outputs has $W \in \mathbb{R}^{m \times n}$ and $\mathbf{b} \in \mathbb{R}^m$ — that's $mn + m$ parameters. Memorize "rows = outputs, columns = inputs" and you will never mis-shape a matrix again.
+</Callout>
+
+### A fully worked 2→2→1 forward pass
+
+Let's push concrete numbers through a tiny network: 2 inputs, one hidden layer of 2 ReLU neurons, and a sigmoid output. The parameters:
+
+$$
+W^{(1)} = \begin{bmatrix} 2 & -1 \\ 0.5 & 1 \end{bmatrix}, \quad
+\mathbf{b}^{(1)} = \begin{bmatrix} 0.5 \\ -3 \end{bmatrix}, \quad
+W^{(2)} = \begin{bmatrix} 2 & 3 \end{bmatrix}, \quad
+b^{(2)} = 1, \quad
+\mathbf{x} = \begin{bmatrix} 1 \\ 2 \end{bmatrix}
+$$
+
+**Step 1 — hidden pre-activations.** Each row of $W^{(1)}$ dots with $\mathbf{x}$, plus its bias:
+
+$$
+z^{(1)}_1 = \underbrace{(2)(1)}_{=\,2} + \underbrace{(-1)(2)}_{=\,-2} + 0.5 = 0.5
+\qquad
+z^{(1)}_2 = \underbrace{(0.5)(1)}_{=\,0.5} + \underbrace{(1)(2)}_{=\,2} - 3 = -0.5
+$$
+
+So $\mathbf{z}^{(1)} = [\,0.5,\; -0.5\,]$.
+
+**Step 2 — apply ReLU element-wise.** The second neuron's pre-activation is negative, so ReLU clamps it to zero:
+
+$$
+\mathbf{h}^{(1)} = \text{ReLU}\!\left(\mathbf{z}^{(1)}\right) = [\,\max(0, 0.5),\; \max(0, -0.5)\,] = [\,0.5,\; 0\,]
+$$
+
+The second neuron is **inactive** for this input — it contributes nothing downstream. For a different input it might switch on; that input-dependent on/off pattern is how ReLU networks build piecewise-linear functions.
+
+**Step 3 — output layer.** The output neuron weights the hidden activations and applies sigmoid:
+
+$$
+z^{(2)} = (2)(0.5) + (3)(0) + 1 = 2
+\qquad
+\hat{y} = \sigma(2) = \frac{1}{1 + e^{-2}} \approx 0.881
+$$
+
+The network predicts class 1 with probability $\approx 0.88$. That's the entire forward pass — two matrix-vector products and two activations.
+
+```python
+import numpy as np
+
+def sigmoid(z): return 1 / (1 + np.exp(-z))
+
+W1 = np.array([[2.0, -1.0], [0.5, 1.0]])   # (2 hidden, 2 inputs)
+b1 = np.array([0.5, -3.0])
+W2 = np.array([[2.0, 3.0]])                 # (1 output, 2 hidden)
+b2 = np.array([1.0])
+x  = np.array([1.0, 2.0])
+
+z1 = W1 @ x + b1                            # [ 0.5 -0.5]
+h1 = np.maximum(0, z1)                      # [ 0.5  0. ]  ← ReLU clamps neuron 2
+z2 = W2 @ h1 + b2                           # [2.]
+y  = sigmoid(z2)                            # [0.8808]
+print("z1 = {}  h1 = {}  z2 = {}  y = {}".format(z1, h1, z2, y.round(4)))
+```
+
+<Callout type="info" title="Batches are free">
+  Replace the vector $\mathbf{x}$ with a matrix $X \in \mathbb{R}^{B \times n}$ holding $B$ examples as rows and the *same code* processes the whole batch at once: $H = f(XW^\top + \mathbf{b})$. This is why GPUs make deep learning fast — a forward pass is just a few big matrix multiplications.
+</Callout>
+
+## Why depth composes features
+
+Each layer doesn't see the raw input — it sees the *previous layer's* activations. Layer 1 might learn simple detectors ("is $x_1$ bigger than $x_2$?"); layer 2 combines those detectors into more abstract ones ("are both edge detectors on?"). Mathematically, the network is a **composition of functions**:
+
+$$
+\hat{y} = g\Bigl(W^{(3)}\, f\bigl(W^{(2)}\, f(W^{(1)}\mathbf{x} + \mathbf{b}^{(1)}) + \mathbf{b}^{(2)}\bigr) + \mathbf{b}^{(3)}\Bigr)
+$$
+
+The non-linearity $f$ between every pair of matrices is essential: without it, the product $W^{(3)}W^{(2)}W^{(1)}$ collapses into one matrix and the whole network is a single linear map, no matter how deep. With it, each layer can *bend* the representation, so a few stacked layers carve decision boundaries no single layer could.
+
+Watch this happen below. Drag the inputs and follow the activations layer by layer — edge color shows weight sign, neuron brightness shows the activation flowing through:
+
+<NeuralNetworkViz />
+
+Try this with the viz: switch to ReLU and move the sliders until some hidden neurons read exactly $0.00$ — those neurons are clamped off, and the output is momentarily insensitive to them. Then add a second hidden layer and notice how the same input change ripples differently through the deeper network.
+
+## How wide should a hidden layer be?
+
+Width is capacity. With $h$ hidden ReLU neurons, a 2-input network can carve the plane into regions using up to $h$ "fold lines" — each hidden neuron contributes one. Two neurons can solve XOR; a wiggly spiral boundary may need dozens. The parameter count grows quickly though: a $2 \to h \to 1$ network has
+
+$$
+\underbrace{2h + h}_{\text{layer 1}} + \underbrace{h + 1}_{\text{output}} = 4h + 1
+\quad\text{parameters} \qquad (h = 4 \Rightarrow 17)
+$$
+
+The practical trade-off:
+
+| Choice | Pros | Cons |
+|--------|------|------|
+| **Wider** | More capacity per layer, easy to optimize | Parameters grow fast, features stay "shallow" |
+| **Deeper** | Composes features hierarchically, parameter-efficient | Harder to train (vanishing gradients) without tricks |
+
+<Callout type="warning" title="Width is not a substitute for depth">
+  The universal approximation theorem says one hidden layer *can* fit anything — but possibly only with exponentially many neurons. Depth re-uses intermediate features, so deep-and-narrow usually beats shallow-and-huge at equal parameter count. In practice: start with 1–2 hidden layers of modest width and grow only when underfitting.
+</Callout>
+
+## Common mistakes
+
+1. **Mis-shaped matrices** — remember rows = outputs, columns = inputs; `W @ x` fails (or silently broadcasts wrong) otherwise.
+2. **Applying the hidden activation to the output layer** — a regression output squashed through ReLU can never be negative; a classification output needs sigmoid/softmax, not tanh.
+3. **Forgetting that ReLU zeros are persistent** — if a neuron's pre-activation is negative for *every* training input, it is "dead" and its weights stop receiving gradient.
+
+## Key takeaways
+
+- A layer is $m$ neurons sharing an input: $\mathbf{h} = f(W\mathbf{x} + \mathbf{b})$ with $W \in \mathbb{R}^{m \times n}$ — $mn + m$ parameters.
+- The **forward pass** is alternating matrix multiplications and element-wise activations, layer by layer.
+- The non-linearity between layers is what stops the stack collapsing into a single linear map.
+- **Depth composes features** — later layers build abstractions out of earlier ones, which is more parameter-efficient than going wide.
+- **Width adds capacity** within a layer; each hidden ReLU neuron adds one "fold" to the function the network can express.
+
+## Related concepts
+
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the unit each row of $W$ represents
+- [**Matrices & Transformations**](/courses/linear-algebra/02-matrices-and-transformations) — what $W\mathbf{x}$ does geometrically
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — how gradients flow backwards through this same composition
+
+<Exercise id="forward-pass-matrix" />
+<Exercise id="hidden-width" />
+<Exercise id="depth-vs-width" />
