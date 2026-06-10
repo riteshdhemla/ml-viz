@@ -331,6 +331,10 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
 | GMMResponsibilityViz | `visualizations/GMM/` | probabilistic-models/01-gaussian-mixture-models | ✅ |
 | HMMViterbiViz | `visualizations/HMMViterbi/` | graphical-models/03-hidden-markov-models | ✅ |
+| DendrogramViz | `visualizations/Dendrogram/` | clustering/02-hierarchical-and-dbscan | ✅ |
+| GANTrainingViz | `visualizations/GANTraining/` | generative-models/04-generative-adversarial-networks | ✅ |
+| TransformerBlockViz | `visualizations/TransformerBlock/` | transformers/03-transformer-architecture | ✅ |
+| PerplexityViz | `visualizations/Perplexity/` | pca-dimensionality/02-t-sne-and-umap | ✅ |
 
 ---
 
