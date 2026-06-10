@@ -43,6 +43,10 @@ The original boosting algorithm:
 
 Mispredicted samples get higher weights, so the next tree focuses on them.
 
+Watch AdaBoost reweight the training set — misclassified points grow larger each round, forcing the next stump to focus on the hard examples:
+
+<BoostingViz />
+
 ### Where does $\alpha_b$ come from?
 
 AdaBoost is greedy minimization of the **exponential loss** $\sum_i w_i\exp(-\alpha\, y_i h_b(\mathbf x_i))$. Split the sum into correct ($y_i h_b=+1$) and wrong ($y_i h_b=-1$) terms — their weights are $(1-\epsilon_b)$ and $\epsilon_b$:

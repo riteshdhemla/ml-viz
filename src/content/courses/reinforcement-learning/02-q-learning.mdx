@@ -26,6 +26,10 @@ The bracket is the **TD error** — the gap between what we predicted and the bo
   You guessed a state was worth 10. You act, collect a reward, and land somewhere your *own table* says is worth 15 (discounted). Your guess was too low — bump it up. **Temporal difference** learning means correcting each prediction using the very next prediction, without waiting for the final outcome. You learn during the episode, not just at the end.
 </Callout>
 
+Watch the Q-table fill in over 200 episodes — Q-values propagate from the goal outward and the greedy policy converges to the optimal path:
+
+<QTableViz />
+
 ## Why "off-policy"?
 
 Notice the update uses $\max_{a'} Q(s', a')$ — the value of the **best** next action — regardless of which action the agent *actually* takes next. This makes Q-learning **off-policy**: it learns the optimal policy $\pi^*$ while *behaving* with a different, exploratory policy.
