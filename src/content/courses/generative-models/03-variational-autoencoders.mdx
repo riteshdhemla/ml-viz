@@ -51,6 +51,10 @@ $$
   KL divergence measures how different two distributions are. If the encoder outputs $\mathcal{N}(0, 1)$, KL = 0 (matches the prior). If it outputs $\mathcal{N}(5, 1)$, KL is large (penalized). This regularization ensures the latent space is smooth and complete.
 </Callout>
 
+Drag the sample point — in AE mode you can land in a "hole" that produces incoherent output; VAE's KL term fills those gaps:
+
+<LatentSpaceViz />
+
 ## The reparameterization trick
 
 We can't backpropagate through a random sampling operation. The **reparameterization trick** solves this by making the sampling *deterministic* except for an external noise term:

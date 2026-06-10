@@ -33,8 +33,12 @@ import { LSTMGateViz } from "@/components/visualizations/LSTMGate/LSTMGateViz";
 import { DSeparationViz } from "@/components/visualizations/DSeparation/DSeparationViz";
 import { GridWorldViz } from "@/components/visualizations/GridWorld/GridWorldViz";
 import { DiffusionViz } from "@/components/visualizations/Diffusion/DiffusionViz";
+import { BaggingViz } from "@/components/visualizations/Bagging/BaggingViz";
 import { BoostingViz } from "@/components/visualizations/Boosting/BoostingViz";
 import { QTableViz } from "@/components/visualizations/QTable/QTableViz";
+import { PoolingViz } from "@/components/visualizations/Pooling/PoolingViz";
+import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
+import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -74,6 +78,10 @@ export const mdxComponents: MDXComponents = {
   DSeparationViz,
   GridWorldViz,
   DiffusionViz,
+  BaggingViz,
   BoostingViz,
   QTableViz,
+  PoolingViz,
+  LatentSpaceViz,
+  RNNUnrollViz,
 };
