@@ -16,11 +16,9 @@ fully, verify, ship, check it off. One item per iteration.
 
 ### User-reported fixes (priority)
 
-- [ ] **DistributionViz fixed y-scale + axis labels** — uniform (and gaussian)
-      look wrong because `ymax` rescales with the peak, so the curve height
-      never visibly changes as [a,b] widens; pin the y-domain per distribution
-      so widening visibly lowers the density (area stays 1). Add x/y axis
-      labels + tick values.
+- [x] **DistributionViz fixed y-scale + axis labels** — pinned y-domain per
+      distribution (area-stays-1 now visible), x/y labels, ticks, gridlines,
+      live uniform-height stat (PR #36)
 - [ ] **Axis labels audit (all viz)** — every plot-style viz gets x/y axis
       labels (and ticks where meaningful). Audit all ~40 components in
       `src/components/visualizations/`.
