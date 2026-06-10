@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { getExercise } from "@/lib/exercises";
+import { useQuizStore } from "@/lib/quiz-store";
 import { MultipleChoiceExercise } from "./MultipleChoiceExercise";
 import { SliderExercise } from "./SliderExercise";
 
@@ -14,6 +15,16 @@ interface Props {
 export function Exercise({ id, onComplete }: Props) {
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
   const [showExplanation, setShowExplanation] = useState(false);
+  const record = useQuizStore((s) => s.record);
+  const epoch = useQuizStore((s) => s.epoch);
+
+  // Reset local answer state when the quiz store epoch bumps (retry).
+  const [seenEpoch, setSeenEpoch] = useState(epoch);
+  if (epoch !== seenEpoch) {
+    setSeenEpoch(epoch);
+    setResult(null);
+    setShowExplanation(false);
+  }
 
   const exercise = getExercise(id);
   if (!exercise) {
@@ -29,6 +40,7 @@ export function Exercise({ id, onComplete }: Props) {
     const r = isCorrect ? "correct" : "incorrect";
     setResult(r);
     setShowExplanation(true);
+    record(id, r);
     onComplete?.(r);
   }
 
@@ -43,6 +55,7 @@ export function Exercise({ id, onComplete }: Props) {
 
       {exercise.type === "multiple-choice" && (
         <MultipleChoiceExercise
+          key={epoch}
           exercise={exercise}
           onAnswer={handleAnswer}
           locked={result !== null}
@@ -50,6 +63,7 @@ export function Exercise({ id, onComplete }: Props) {
       )}
       {exercise.type === "slider" && (
         <SliderExercise
+          key={epoch}
           exercise={exercise}
           onAnswer={handleAnswer}
           locked={result !== null}
