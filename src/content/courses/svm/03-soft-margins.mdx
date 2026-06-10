@@ -1,0 +1,68 @@
+---
+title: "Soft Margins & Tuning C"
+description: "Real data isn't separable — slack variables let the margin bend, and C decides how much."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# Soft Margins & Tuning C
+
+The [maximum-margin classifier](/courses/svm/01-maximum-margin) assumed the two classes could be perfectly separated. Real datasets have label noise, outliers, and overlap — demand perfect separation and either no solution exists, or a single mislabeled point swings the entire boundary. The **soft margin** fixes this by making violations possible, but priced.
+
+## Slack variables
+
+Give every training point a slack $\xi_i \geq 0$ measuring how badly it violates the margin:
+
+$$
+y_i(\mathbf{w}^\top \mathbf{x}_i + b) \geq 1 - \xi_i
+$$
+
+- $\xi_i = 0$ — the point is safely outside the margin (no violation)
+- $0 < \xi_i < 1$ — inside the margin, but still on the correct side
+- $\xi_i > 1$ — fully misclassified
+
+The objective charges for total slack:
+
+$$
+\min_{\mathbf{w},\, b,\, \boldsymbol{\xi}} \;\; \frac{1}{2}\|\mathbf{w}\|^2 + C \sum_{i=1}^{n} \xi_i
+$$
+
+## C is the price of a violation
+
+$C$ sets how much one unit of slack costs relative to margin width:
+
+| | Small $C$ | Large $C$ |
+|---|---|---|
+| Violations | cheap — tolerated freely | expensive — avoided at all costs |
+| Margin | wide, ignores stragglers | narrow, wraps around every point |
+| Bias / variance | higher bias, lower variance | lower bias, higher variance |
+| Outlier sensitivity | robust | one outlier can reshape the boundary |
+
+As $C \to \infty$ you recover the hard-margin SVM: infinite price means zero tolerance. As $C \to 0$, the margin grows until the data barely matters.
+
+<Callout type="warning" title="C and γ tune together">
+  With an RBF kernel (see [the kernel trick](/courses/svm/02-kernel-trick)), $C$ and $\gamma$ interact: large $\gamma$ + large $C$ is a recipe for memorizing the training set, while small $\gamma$ + small $C$ underfits to a nearly linear, very wide margin. Grid-search them jointly on a log scale (e.g. $C \in 10^{-2} \ldots 10^{3}$, $\gamma \in 10^{-4} \ldots 10^{1}$) with cross-validation.
+</Callout>
+
+## The hinge loss view
+
+The same optimization can be written without constraints, as a loss function:
+
+$$
+\mathcal{L} = \frac{1}{2}\|\mathbf{w}\|^2 + C \sum_i \max\!\big(0,\; 1 - y_i(\mathbf{w}^\top \mathbf{x}_i + b)\big)
+$$
+
+The $\max(0, 1 - \text{margin})$ term is the **hinge loss**: zero for points beyond the margin, growing linearly for violators. Two things fall out of this view:
+
+1. Points outside the margin contribute *nothing* — gradient zero. Only margin violators and boundary points (the support vectors) shape the solution.
+2. The SVM is "just" a linear model with hinge loss plus L2 regularization, where $1/C$ plays the role of the regularization strength $\lambda$. The same bias–variance dial as everywhere else.
+
+<Exercise id="svm-slack-meaning" />
+
+## Key takeaways
+
+- Slack variables $\xi_i$ measure margin violations; the soft margin permits them at a price
+- $C$ is that price: small $C$ → wide tolerant margin, large $C$ → strict narrow margin, $C \to \infty$ → hard margin
+- Soft-margin SVM ≡ hinge loss + L2 regularization with $\lambda = 1/C$
+- Tune $C$ (and $\gamma$ for RBF) jointly, on a log grid, with cross-validation

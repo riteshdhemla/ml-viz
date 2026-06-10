@@ -1,0 +1,54 @@
+---
+title: "PCA in Practice"
+description: "Choosing the number of components, reconstructing data, whitening, and the eigenfaces story."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# PCA in Practice
+
+[The PCA lesson](/courses/pca-dimensionality/01-pca) gave you the theory: components are eigenvectors of the covariance matrix, ranked by explained variance. This lesson is about using it well — how many components to keep, what reconstruction error means, and the preprocessing details that quietly make or break results.
+
+## How many components?
+
+Three standard answers, in increasing order of principle:
+
+1. **Cumulative explained variance.** Keep enough components to cover a target (90%, 95%, 99%). Plot the cumulative ratio $\sum_{i \le m} \lambda_i / \sum_i \lambda_i$ against $m$ and read off the threshold.
+2. **The scree elbow.** Plot eigenvalues in decreasing order; keep components before the curve flattens into the "rubble" of noise-level eigenvalues.
+3. **Downstream performance.** If PCA feeds a classifier, choose $m$ by cross-validating the whole pipeline. The variance a component explains is not the same as the *usefulness* of that component — a low-variance direction can carry the class signal.
+
+<Callout type="warning" title="Fit PCA inside the pipeline">
+  Standardize and fit PCA on the **training fold only**, then apply the learned transform to the validation fold. Fitting PCA on all data before splitting leaks information and inflates your scores — one of the most common silent bugs in ML pipelines.
+</Callout>
+
+## Reconstruction: compression with a quality dial
+
+Projecting to $m$ components and mapping back gives the best rank-$m$ approximation of your data:
+
+$$
+\hat{\mathbf{x}} = \boldsymbol{\mu} + \sum_{i=1}^{m} (\mathbf{v}_i^\top (\mathbf{x} - \boldsymbol{\mu}))\, \mathbf{v}_i
+$$
+
+The mean squared reconstruction error equals exactly the sum of the *discarded* eigenvalues $\sum_{i > m} \lambda_i$ — variance kept is fidelity kept. This is PCA as lossy compression: store $m$ coefficients per sample instead of $d$ features.
+
+The classic demonstration is **eigenfaces**: run PCA on thousands of face images and the leading components are ghostly face-like patterns — lighting direction, face width, glasses. Any face compresses to ~50–150 coefficients with recognizable reconstruction, from inputs of thousands of pixels. Reconstruction error also doubles as a simple **anomaly detector**: a sample that reconstructs poorly doesn't live in the subspace the training data occupies.
+
+## Whitening
+
+Standard PCA output has uncorrelated coordinates with *unequal* variances ($\lambda_1 \gg \lambda_m$). **Whitening** additionally rescales each coordinate by $1/\sqrt{\lambda_i}$, producing features with identity covariance — uncorrelated *and* unit variance.
+
+Useful when a downstream algorithm is sensitive to relative scales (distance-based methods, some neural-net inputs). The cost: directions that were mostly noise get amplified to the same size as real signal, so whitening with too many components can hurt. Keep fewer, whiten, validate.
+
+## When PCA is the wrong tool
+
+PCA is linear and variance-chasing. It will not unroll a swiss-roll manifold, and it can bury a low-variance class boundary. For visualization of non-linear structure, hand the data to [t-SNE or UMAP](/courses/pca-dimensionality/02-t-sne-and-umap) — typically *after* a PCA down to ~50 dimensions, which removes noise and makes the neighbor computations tractable. The two tools are teammates, not rivals.
+
+<Exercise id="pca-components-choice" />
+
+## Key takeaways
+
+- Choose $m$ by cumulative variance for compression, by cross-validation when PCA feeds a model
+- Reconstruction error = discarded eigenvalues; it powers compression and simple anomaly detection
+- Whitening equalizes component variances — useful for scale-sensitive consumers, risky on noise components
+- Fit PCA on training data only; for non-linear structure, PCA first, then t-SNE/UMAP

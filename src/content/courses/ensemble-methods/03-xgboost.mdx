@@ -1,0 +1,63 @@
+---
+title: "Gradient Boosting in Practice: XGBoost"
+description: "From the boosting idea to the system that wins tabular-data competitions — regularization, shrinkage, and the knobs that matter."
+order: 3
+type: concept
+estimatedMinutes: 20
+---
+
+# Gradient Boosting in Practice: XGBoost
+
+[Boosting](/courses/ensemble-methods/02-boosting) gave us the recipe: fit each new tree to the gradient of the loss, nudging the ensemble downhill in function space. **XGBoost** (and its cousins LightGBM and CatBoost) turned that recipe into the engine that has dominated tabular-data machine learning for a decade. The difference is regularization — applied everywhere.
+
+## The regularized objective
+
+XGBoost doesn't just fit the gradient; it minimizes a penalized objective at every tree:
+
+$$
+\mathcal{L} = \sum_{i} \ell(y_i, \hat{y}_i) \;+\; \sum_{\text{trees}} \left[ \gamma T + \frac{1}{2}\lambda \sum_{j=1}^{T} w_j^2 \right]
+$$
+
+where $T$ is the number of leaves in a tree and $w_j$ are its leaf output values. Two penalties, two effects:
+
+- $\gamma T$ — each leaf must justify its existence: a split happens only if it improves the loss by more than $\gamma$. Built-in pruning.
+- $\lambda \sum w_j^2$ — L2 shrinkage on leaf values, the same medicine as Ridge regression, applied inside every tree.
+
+XGBoost also uses the **second-order** Taylor expansion of the loss (gradients *and* Hessians), which gives a closed-form optimal leaf weight and split score instead of a heuristic.
+
+## Shrinkage: the learning rate
+
+Each tree's contribution is scaled by a learning rate $\eta$:
+
+$$
+\hat{y}^{(t)} = \hat{y}^{(t-1)} + \eta \, f_t(x)
+$$
+
+Small $\eta$ (0.01–0.1) means each tree corrects only a fraction of the remaining error, leaving room for later trees to refine. This is the single most reliable quality knob: **lower $\eta$ + more trees almost always generalizes better**, at the cost of training time. The standard move is to fix $\eta$ small and use *early stopping* — keep adding trees until validation error stops improving.
+
+## Row and column subsampling
+
+Borrowing from [Random Forests](/courses/ensemble-methods/01-bagging-and-random-forests), each tree (or each split) sees only a random fraction of rows (`subsample`) and columns (`colsample_bytree`). Decorrelating the trees reduces variance — and as a bonus makes training faster.
+
+<Callout type="tip" title="A sane starting configuration">
+  `eta=0.05`, `max_depth=6`, `subsample=0.8`, `colsample_bytree=0.8`, `n_estimators` large with `early_stopping_rounds=50`. Then tune `max_depth` (capacity), `min_child_weight` (leaf conservatism), and the regularizers `lambda`/`gamma` — in that order. Resist tuning ten knobs at once.
+</Callout>
+
+## Why trees still beat neural nets on tables
+
+On heterogeneous tabular data — mixed scales, missing values, categorical features, low sample counts — gradient-boosted trees remain the strongest default:
+
+- Splits are invariant to feature scaling and monotone transforms; no normalization needed
+- XGBoost handles missing values natively, learning a default direction per split
+- Trees capture sharp interactions and thresholds that smooth function approximators need many samples to find
+
+Deep learning wins when there's structure to exploit — images, text, audio, huge datasets. For a 50,000-row CSV, boosted trees are the bar to beat.
+
+<Exercise id="ensemble-xgb-eta" />
+
+## Key takeaways
+
+- XGBoost = gradient boosting + regularization at every level: penalized leaves ($\gamma$, $\lambda$), shrinkage ($\eta$), and row/column subsampling
+- Second-order (gradient + Hessian) approximation gives principled split scores and leaf values
+- Lower learning rate + more trees + early stopping is the most dependable tuning move
+- For tabular data, gradient-boosted trees are still the default champion

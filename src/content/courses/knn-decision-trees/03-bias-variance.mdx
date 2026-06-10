@@ -1,0 +1,64 @@
+---
+title: "The Bias–Variance Tradeoff"
+description: "Why every model choice is a bet between being too rigid and too jumpy — seen through k and tree depth."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# The Bias–Variance Tradeoff
+
+You've now met two models with an obvious "complexity dial": the $k$ in [K-Nearest Neighbors](/courses/knn-decision-trees/01-knn) and the depth of a [decision tree](/courses/knn-decision-trees/02-decision-trees). Turn the dial one way and the model ignores real structure; turn it the other way and it hallucinates structure that isn't there. This tension has a name — the **bias–variance tradeoff** — and it governs every model you will ever train.
+
+## The decomposition
+
+For squared error, the expected test error at a point splits into three pieces:
+
+$$
+\mathbb{E}\left[(y - \hat{f}(x))^2\right] = \underbrace{\text{Bias}^2}_{\text{wrong on average}} + \underbrace{\text{Variance}}_{\text{jumpy across datasets}} + \underbrace{\sigma^2}_{\text{irreducible noise}}
+$$
+
+- **Bias** — the error your model makes *on average over many training sets*, because it's too simple to represent the truth. A linear fit to a curved relationship is biased no matter how much data you give it.
+- **Variance** — how much the fitted model *changes* when you redraw the training set. A wiggly model that chases every data point lands somewhere different every time.
+- **Noise** $\sigma^2$ — randomness in the labels themselves. No model escapes it.
+
+The bet: simpler models accept bias to cut variance; complex models accept variance to cut bias. Total error is minimized somewhere in the middle.
+
+## Seeing it in k
+
+For KNN, $k$ controls how much the prediction averages over:
+
+| | $k = 1$ | $k = n$ |
+|---|---|---|
+| Prediction | copy the nearest point | average everyone |
+| Bias | minimal | maximal — predicts the global mean |
+| Variance | huge — one noisy neighbor flips the answer | tiny |
+| Boundary | jagged islands around noise points | nearly flat |
+
+Small $k$ = low bias, high variance. Large $k$ = high bias, low variance. The best $k$ — found by cross-validation — sits where the two curves cross.
+
+## Seeing it in tree depth
+
+Tree depth is the same dial wearing different clothes:
+
+- **Depth 1** (a stump): one split, massive bias, near-zero variance
+- **Unbounded depth**: a private leaf for every training point — zero training error, terrible variance
+
+This is exactly why [bagging and Random Forests](/courses/ensemble-methods/01-bagging-and-random-forests) work: deep trees are low-bias/high-variance, and averaging many of them keeps the low bias while canceling the variance.
+
+<Callout type="tip" title="Diagnosing which problem you have">
+  Compare training and validation error. **Both high** → bias problem: your model can't even fit the data it has seen — add capacity or features. **Training low, validation high** → variance problem: regularize, simplify, or get more data. More data fixes variance; it never fixes bias.
+</Callout>
+
+## The modern footnote
+
+Classical theory predicts a U-shaped test error curve. Very large neural networks complicate the picture ("double descent"): past the point where the model can memorize the training set, test error can *fall again*. The bias–variance lens is still the right starting intuition — just know its edges are an active research area.
+
+<Exercise id="knntree-bias-variance" />
+
+## Key takeaways
+
+- Test error = bias² + variance + irreducible noise
+- Small $k$ / deep trees → low bias, high variance; large $k$ / shallow trees → the reverse
+- Diagnose by comparing training vs. validation error; the gap is variance, the floor is bias
+- More data cures variance, never bias; ensembles cancel the variance of low-bias models

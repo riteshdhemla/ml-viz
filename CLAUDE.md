@@ -278,18 +278,18 @@ surface-border   — borders
 
 ### Supervised Learning — Beginner
 - [x] **Neural Networks** — perceptron, forward pass, backprop *(course + 3 lessons)*
-- [x] **Linear & Logistic Regression** — OLS, Ridge, Lasso, decision boundary *(course + 2 lessons)*
-- [x] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity *(course + 2 lessons)*
+- [x] **Linear & Logistic Regression** — OLS, Ridge, Lasso, regularization, decision boundary *(course + 3 lessons + quiz)*
+- [x] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity, bias-variance *(course + 3 lessons + quiz)*
 
 ### Supervised Learning — Intermediate
 - [x] **Convolutional Neural Networks** — kernels, feature maps, pooling *(course + 3 lessons)*
-- [x] **Support Vector Machines** — max-margin, kernel trick, RBF *(course + 2 lessons)*
-- [x] **Ensemble Methods** — bagging, boosting, Random Forest, XGBoost *(course + 2 lessons)*
+- [x] **Support Vector Machines** — max-margin, kernel trick, RBF, soft margins *(course + 3 lessons + quiz)*
+- [x] **Ensemble Methods** — bagging, boosting, Random Forest, XGBoost *(course + 3 lessons + quiz)*
 
 ### Unsupervised Learning
-- [x] **Clustering** — K-Means, hierarchical, DBSCAN *(course + 2 lessons)*
-- [x] **PCA & Dimensionality Reduction** — eigendecomposition, t-SNE, UMAP *(course + 2 lessons)*
-- [x] **Probabilistic Models & EM** — GMM, EM algorithm, Naive Bayes *(course + 2 lessons)*
+- [x] **Clustering** — K-Means, hierarchical, DBSCAN, cluster evaluation *(course + 3 lessons + quiz)*
+- [x] **PCA & Dimensionality Reduction** — eigendecomposition, t-SNE, UMAP, PCA in practice *(course + 3 lessons + quiz)*
+- [x] **Probabilistic Models & EM** — GMM, EM algorithm, Naive Bayes *(course + 3 lessons + quiz)*
 
 ### Sequence & Probabilistic
 - [x] **Recurrent Neural Networks** — hidden state, BPTT, vanishing gradient, LSTM *(course + 3 lessons)*

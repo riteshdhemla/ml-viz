@@ -1,0 +1,81 @@
+---
+title: "Regularization: Ridge & Lasso"
+description: "Taming overfitting by penalizing large weights — and why L1 performs feature selection while L2 doesn't."
+order: 3
+type: concept
+estimatedMinutes: 20
+---
+
+# Regularization: Ridge & Lasso
+
+A model with enough parameters can fit any training set perfectly — including its noise. [Linear regression](/courses/linear-regression/01-linear-regression) with many correlated features is especially prone to this: weights blow up to huge opposing values that cancel on the training data but swing wildly on anything new. **Regularization** fixes this by making large weights expensive.
+
+**Real-world examples:** Genomics (thousands of gene features, few patients), house-price models with dozens of correlated features, any setting where features outnumber samples.
+
+## The regularized objective
+
+Instead of minimizing the squared error alone, we add a penalty on the weights:
+
+$$
+\mathcal{L}(\mathbf{w}) = \underbrace{\sum_{i=1}^{n} (y_i - \mathbf{w}^\top \mathbf{x}_i)^2}_{\text{fit the data}} + \lambda \cdot \underbrace{\Omega(\mathbf{w})}_{\text{stay simple}}
+$$
+
+The hyperparameter $\lambda \geq 0$ sets the exchange rate between the two goals:
+
+- $\lambda = 0$ — ordinary least squares; nothing restrains the weights
+- $\lambda \to \infty$ — the penalty dominates; all weights are crushed to zero and the model predicts the mean
+
+The two classic choices of $\Omega$ differ by one exponent — and behave completely differently.
+
+## Ridge regression (L2)
+
+$$
+\Omega(\mathbf{w}) = \|\mathbf{w}\|_2^2 = \sum_j w_j^2
+$$
+
+Squaring means the penalty's gradient is $2\lambda w_j$ — proportional to the weight itself. Big weights feel strong pressure, small weights barely any. The result: Ridge **shrinks all weights smoothly toward zero but almost never exactly to zero**.
+
+Ridge also has a closed-form solution:
+
+$$
+\mathbf{w}^* = (X^\top X + \lambda I)^{-1} X^\top \mathbf{y}
+$$
+
+Adding $\lambda I$ makes the matrix invertible even when features are perfectly correlated — the numerical fix and the statistical fix are the same fix.
+
+<Callout type="info" title="Why Ridge loves correlated features">
+  Given two nearly identical features, OLS may assign them weights +1000 and −998. Ridge instead splits the weight between them (≈ +1 each): the sum of squares of two halves is smaller than the square of one whole.
+</Callout>
+
+## Lasso (L1)
+
+$$
+\Omega(\mathbf{w}) = \|\mathbf{w}\|_1 = \sum_j |w_j|
+$$
+
+The absolute value's gradient is $\pm\lambda$ — a **constant** force regardless of the weight's size. A weight whose contribution to fitting the data is worth less than $\lambda$ gets pushed all the way to exactly zero and stays there.
+
+This is why Lasso performs **feature selection**: as you raise $\lambda$, features drop out of the model one by one, leaving a sparse, interpretable subset.
+
+<Callout type="tip" title="The geometric picture">
+  Picture the constraint regions: L2 is a circle, L1 is a diamond. The loss contours expand until they touch the region — and they almost always touch the diamond at a **corner**, where some coordinates are exactly zero. Circles have no corners, so Ridge solutions are never sparse.
+</Callout>
+
+## Choosing between them — and λ
+
+| Situation | Reach for |
+|-----------|-----------|
+| Many features, most probably irrelevant | Lasso — prunes them |
+| Many correlated, all somewhat relevant | Ridge — shares weight gracefully |
+| Want both behaviors | Elastic Net — a blend: $\alpha\|\mathbf{w}\|_1 + (1-\alpha)\|\mathbf{w}\|_2^2$ |
+
+$\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick the one with the best held-out error. Plotting validation error against $\lambda$ reproduces the classic U-shape — underfitting on the right, overfitting on the left, the sweet spot in between. This is the same bias–variance trade-off you'll meet in [the bias–variance lesson](/courses/knn-decision-trees/03-bias-variance), expressed as a single dial.
+
+<Exercise id="linreg-regularization-lambda" />
+
+## Key takeaways
+
+- Regularization adds a weight penalty so the model must *earn* its complexity
+- Ridge (L2) shrinks weights smoothly; great with correlated features; never sparse
+- Lasso (L1) zeroes out weak features entirely — built-in feature selection
+- $\lambda$ trades bias for variance; tune it with cross-validation, never on training error
