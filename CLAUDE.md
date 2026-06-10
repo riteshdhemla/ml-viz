@@ -251,35 +251,35 @@ surface-border   — borders
 ## Comprehensive ML Content Roadmap
 
 ### Foundations
-- [ ] **Linear Algebra for ML** — vectors, matrices, dot products, eigendecomposition
-- [ ] **Calculus for ML** — derivatives, chain rule, Jacobians, Hessians
-- [ ] **Probability & Statistics** — distributions, MLE, MAP, Bayes' theorem
+- [x] **Linear Algebra for ML** — vectors, matrices, dot products, eigendecomposition *(course + 3 lessons)*
+- [x] **Calculus for ML** — derivatives, chain rule, Jacobians, Hessians *(course + 3 lessons)*
+- [x] **Probability & Statistics** — distributions, MLE, MAP, Bayes' theorem *(course + 3 lessons)*
 
 ### Supervised Learning — Beginner
-- [x] **Neural Networks** — perceptron, forward pass, backprop *(course + 2 lessons)*
-- [ ] **Linear & Logistic Regression** — OLS, Ridge, Lasso, decision boundary *(course stub)*
-- [ ] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity *(course stub)*
+- [x] **Neural Networks** — perceptron, forward pass, backprop *(course + 3 lessons)*
+- [x] **Linear & Logistic Regression** — OLS, Ridge, Lasso, decision boundary *(course + 2 lessons)*
+- [x] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity *(course + 2 lessons)*
 
 ### Supervised Learning — Intermediate
-- [ ] **Convolutional Neural Networks** — kernels, feature maps, pooling *(course stub)*
-- [ ] **Support Vector Machines** — max-margin, kernel trick, RBF *(course stub)*
-- [ ] **Ensemble Methods** — bagging, boosting, Random Forest, XGBoost *(course stub)*
+- [x] **Convolutional Neural Networks** — kernels, feature maps, pooling *(course + 3 lessons)*
+- [x] **Support Vector Machines** — max-margin, kernel trick, RBF *(course + 2 lessons)*
+- [x] **Ensemble Methods** — bagging, boosting, Random Forest, XGBoost *(course + 2 lessons)*
 
 ### Unsupervised Learning
-- [ ] **Clustering** — K-Means, hierarchical, DBSCAN *(course stub)*
-- [ ] **PCA & Dimensionality Reduction** — eigendecomposition, t-SNE, UMAP *(course stub)*
-- [ ] **Probabilistic Models & EM** — GMM, EM algorithm, Naive Bayes *(course stub)*
+- [x] **Clustering** — K-Means, hierarchical, DBSCAN *(course + 2 lessons)*
+- [x] **PCA & Dimensionality Reduction** — eigendecomposition, t-SNE, UMAP *(course + 2 lessons)*
+- [x] **Probabilistic Models & EM** — GMM, EM algorithm, Naive Bayes *(course + 2 lessons)*
 
 ### Sequence & Probabilistic
-- [ ] **Recurrent Neural Networks** — hidden state, BPTT, vanishing gradient, LSTM *(course stub)*
-- [ ] **Graphical Models** — Bayesian Networks, MRFs, HMMs, belief propagation *(course stub)*
+- [x] **Recurrent Neural Networks** — hidden state, BPTT, vanishing gradient, LSTM *(course + 3 lessons)*
+- [x] **Graphical Models** — Bayesian Networks, MRFs, HMMs, belief propagation *(course + 3 lessons)*
 
 ### Advanced Deep Learning
-- [ ] **Attention & Transformers** — self-attention, multi-head, positional encoding *(course stub)*
-- [ ] **Generative Models** — VAE, GAN, Diffusion *(course stub)*
+- [x] **Attention & Transformers** — self-attention, multi-head, positional encoding *(course + 3 lessons)*
+- [x] **Generative Models** — VAE, GAN, Diffusion *(course + 5 lessons)*
 
 ### Reinforcement Learning
-- [ ] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course stub)*
+- [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course + 4 lessons)*
 
 ---
 
@@ -314,7 +314,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | KNNBoundaryViz | `visualizations/KNNBoundary/` | knn-decision-trees/01-knn | ✅ |
 | MarginViz | `visualizations/Margin/` | svm/01-maximum-margin | ✅ |
 | DecisionTreeSplitViz | `visualizations/DecisionTreeSplit/` | knn-decision-trees/02-decision-trees | ✅ |
-| NeuralNetworkViz | `visualizations/NeuralNetwork/` | — | planned |
+| NeuralNetworkViz | `visualizations/NeuralNetwork/` | neural-networks/03-layers-and-forward-pass | ✅ |
 
 ---
 

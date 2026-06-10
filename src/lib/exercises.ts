@@ -102,6 +102,50 @@ const allExercises: Exercise[] = [
       { id: "d", label: "RMSProp", isCorrect: false },
     ],
   },
+  {
+    id: "forward-pass-matrix",
+    type: "multiple-choice",
+    question:
+      "A hidden layer computes z = Wx + b = [-1.5, 2.0]. After applying ReLU element-wise, what is the activation vector h?",
+    hint: "ReLU(z) = max(0, z), applied to each entry separately.",
+    explanation:
+      "ReLU clamps negative entries to zero and passes positive ones through: h = [max(0, −1.5), max(0, 2.0)] = [0, 2.0]. The first neuron is inactive for this input.",
+    options: [
+      { id: "a", label: "[-1.5, 2.0]", isCorrect: false },
+      { id: "b", label: "[0, 2.0]", isCorrect: true },
+      { id: "c", label: "[1.5, 2.0]", isCorrect: false },
+      { id: "d", label: "[0, 0]", isCorrect: false },
+    ],
+  },
+  {
+    id: "hidden-width",
+    type: "slider",
+    question:
+      "A network has 2 inputs, one hidden layer of 4 neurons, and 1 output. How many parameters (weights + biases) does it have in total?",
+    hint: "Each layer mapping n inputs to m outputs has m×n weights plus m biases. Sum both layers.",
+    explanation:
+      "Hidden layer: 4×2 weights + 4 biases = 12. Output layer: 1×4 weights + 1 bias = 5. Total = 17. In general a 2→h→1 network has 4h + 1 parameters — width makes the count grow fast.",
+    min: 0,
+    max: 40,
+    step: 1,
+    correctRange: [17, 17],
+    unit: "params",
+  },
+  {
+    id: "depth-vs-width",
+    type: "multiple-choice",
+    question:
+      "Why does a deep network often need far fewer parameters than a single wide hidden layer to fit the same function?",
+    hint: "Think about what later layers receive as input.",
+    explanation:
+      "Each layer builds on the previous layer's outputs, so intermediate features are computed once and re-used by everything downstream. A single wide layer cannot compose features — it may need exponentially many neurons to match what composition gives almost for free.",
+    options: [
+      { id: "a", label: "Deeper networks always have smaller weights", isCorrect: false },
+      { id: "b", label: "Later layers re-use and compose features computed by earlier layers", isCorrect: true },
+      { id: "c", label: "Depth removes the need for biases", isCorrect: false },
+      { id: "d", label: "Wide layers require more training data per neuron", isCorrect: false },
+    ],
+  },
   // ── Linear & Logistic Regression ──────────────────────────────
   {
     id: "ols-formula",
