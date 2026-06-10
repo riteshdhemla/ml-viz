@@ -75,9 +75,9 @@ fully, verify, ship, check it off. One item per iteration.
 
 ### Ease of use
 
-- [ ] **Learning path page** — `/path` route: courses ordered by
-      `prerequisites` (topological), grouped in tiers, with per-course progress
-      and a "you are here" marker
+- [x] **Learning path page** — `/path`: prerequisite-depth tiers
+      (Foundations → Frontier), per-course progress bars, lock icons for
+      unmet prereqs, "you are here" marker; nav link + sitemap entry (PR #50)
 - [ ] **Mobile audit** — verify palette, sliders, viz, and quiz interactions at
       375px width; fix overflow/tap-target issues found
 
