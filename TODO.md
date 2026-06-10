@@ -52,9 +52,9 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **BoostingShrinkageViz** — stumps boosted on noisy sine; η + trees
       sliders, staged fit panel, train/test MSE curves with best-test marker;
       wired into `ensemble-methods/03-xgboost.mdx` (PR #43)
-- [ ] **SilhouetteViz** — blobs clustered at chosen k; per-point silhouette bars
-      grouped by cluster; k slider, mean-silhouette stat. Wire into
-      `clustering/03-evaluating-clusters.mdx`
+- [x] **SilhouetteViz** — k-means on 3 blobs with k slider (2-6), per-point
+      silhouette bars grouped by cluster, mean-silhouette marker/stat; wired
+      into `clustering/03-evaluating-clusters.mdx` (PR #44)
 - [ ] **PCAReconstructionViz** — 2D points projected onto first PC; m toggle
       (1 vs 2 components); show reconstruction segments + error stat. Wire into
       `pca-dimensionality/03-pca-in-practice.mdx`

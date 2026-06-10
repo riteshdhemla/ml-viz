@@ -43,6 +43,10 @@ Average $s$ over all points and you get one number per $k$ — pick the $k$ that
   Silhouette and inertia both reward compact, round, well-separated blobs — the same geometry K-Means assumes. The two interleaved crescents that [DBSCAN](/courses/clustering/02-hierarchical-and-dbscan) finds perfectly can score *worse* on silhouette than a wrong K-Means split of the same data. A metric can only validate clusters against its own definition of "good."
 </Callout>
 
+See it on real blobs — the data below has 3 true clusters. Move k and watch the bars: only the right k gives tall, even silhouettes in every cluster:
+
+<SilhouetteViz />
+
 ## Stability: the practitioner's check
 
 A complementary test that assumes nothing about shape: **resample and re-cluster**. Take bootstrap samples (or random 80% subsets), run the algorithm, and measure how often pairs of points land together (e.g. with the adjusted Rand index between runs). Real structure survives perturbation; artifacts of one particular sample don't. If $k=4$ produces nearly identical partitions across resamples while $k=6$ scrambles, trust 4.

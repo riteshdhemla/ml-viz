@@ -53,6 +53,7 @@ import { BiasVarianceViz } from "@/components/visualizations/BiasVariance/BiasVa
 import { RegularizationPathViz } from "@/components/visualizations/RegularizationPath/RegularizationPathViz";
 import { SoftMarginViz } from "@/components/visualizations/SoftMargin/SoftMarginViz";
 import { BoostingShrinkageViz } from "@/components/visualizations/BoostingShrinkage/BoostingShrinkageViz";
+import { SilhouetteViz } from "@/components/visualizations/Silhouette/SilhouetteViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -112,4 +113,5 @@ export const mdxComponents: MDXComponents = {
   RegularizationPathViz,
   SoftMarginViz,
   BoostingShrinkageViz,
+  SilhouetteViz,
 };
