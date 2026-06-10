@@ -10,6 +10,7 @@ import { mdxComponents } from "@/components/mdx/mdxComponents";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
+import { QuizResults } from "@/components/exercises/QuizResults";
 import { getNotebookUrl } from "@/lib/utils";
 
 interface Props {
@@ -85,6 +86,12 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
             }}
           />
         </article>
+
+        {isQuiz && (
+          <QuizResults
+            exerciseIds={[...source.matchAll(/<Exercise\s+id="([^"]+)"/g)].map((m) => m[1])}
+          />
+        )}
 
         <LessonCompleteButton meta={meta} next={next} />
 

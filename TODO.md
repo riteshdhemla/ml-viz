@@ -69,8 +69,9 @@ fully, verify, ship, check it off. One item per iteration.
       courses; the 7 new lessons already have them)
 - [x] **Reading progress bar** — rAF-throttled scroll indicator pinned to the
       sticky lesson header's bottom edge (PR #48)
-- [ ] **Quiz results summary** — on quiz lessons, show score (n/total correct)
-      once all exercises answered, with retry option
+- [x] **Quiz results summary** — quiz store records every exercise outcome;
+      quiz pages show n/total progress, then a scored card (tone by score)
+      with retry that resets all exercises via store epoch (PR #49)
 
 ### Ease of use
 
