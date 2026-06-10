@@ -321,8 +321,12 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | DSeparationViz | `visualizations/DSeparation/` | graphical-models/01-bayesian-networks | ✅ |
 | GridWorldViz | `visualizations/GridWorld/` | reinforcement-learning/01-markov-decision-processes | ✅ |
 | DiffusionViz | `visualizations/Diffusion/` | generative-models/05-diffusion-models | ✅ |
+| BaggingViz | `visualizations/Bagging/` | ensemble-methods/01-bagging-and-random-forests | ✅ |
 | BoostingViz | `visualizations/Boosting/` | ensemble-methods/02-boosting | ✅ |
 | QTableViz | `visualizations/QTable/` | reinforcement-learning/02-q-learning | ✅ |
+| RNNUnrollViz | `visualizations/RNNUnroll/` | rnns/01-recurrent-neural-networks | ✅ |
+| LatentSpaceViz | `visualizations/LatentSpace/` | generative-models/03-variational-autoencoders | ✅ |
+| PoolingViz | `visualizations/Pooling/` | cnns/02-pooling-and-architectures | ✅ |
 
 ---
 
