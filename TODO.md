@@ -26,8 +26,9 @@ fully, verify, ship, check it off. One item per iteration.
       Probabilities" (sample spaces, axioms, conditional probability, random
       variables, expectation) + notebook + exercise; renumbered lessons,
       notebooks, quiz, and all cross-links (PR #37)
-- [ ] **Collapsible content** — `<Details summary="...">` MDX component
-      (collapsible deep-dive section, dark-theme styled); use in long lessons.
+- [x] **Collapsible content** — `<Details summary="...">` MDX component
+      (native <details>, zero client JS); used for double-descent and
+      density>1 deep dives (PR #38)
 - [ ] **Exercise notebooks (scaffold style)** — notebooks teach concept recap +
       code outline with `# TODO(you)` blanks and asserts that check answers.
       Convert one course as the pattern, then roll out to all.
