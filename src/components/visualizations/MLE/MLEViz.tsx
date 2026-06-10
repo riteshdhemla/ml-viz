@@ -66,6 +66,8 @@ export function MLEViz({ className }: { className?: string }) {
     >
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="MLE for a Gaussian">
         <line x1={M.left} y1={H - M.bottom} x2={W - M.right} y2={H - M.bottom} stroke={VIZ.axis} strokeWidth={1} />
+        <text x={(M.left + W - M.right) / 2} y={H - 6} fill={VIZ.text} fontSize={11} textAnchor="middle">x (observed values)</text>
+        <text x={M.left} y={M.top + 10} fill={VIZ.text} fontSize={11}>density</text>
 
         {/* likelihood contribution lines */}
         {SAMPLE.map((x, i) => (

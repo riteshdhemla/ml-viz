@@ -94,6 +94,8 @@ export function BiasVarianceViz({ className }: { className?: string }) {
         {DATASETS[0].map((p, i) => (
           <circle key={i} cx={sx(p.x)} cy={sy(p.y)} r={2.5} fill={VIZ.brandLight} opacity={0.45} />
         ))}
+        <text x={W - 8} y={H - 8} fill={VIZ.text} fontSize={10} textAnchor="end" opacity={0.85}>x (input)</text>
+        <text x={8} y={16} fill={VIZ.text} fontSize={10} opacity={0.85}>y</text>
       </svg>
 
       <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-[11px] text-slate-400">

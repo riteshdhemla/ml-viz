@@ -251,6 +251,8 @@ export function PerplexityViz({ className }: { className?: string }) {
             </text>
           </g>
         ))}
+        <text x={W - 8} y={H - 8} fill={VIZ.text} fontSize={10} textAnchor="end" opacity={0.85}>embedding dim 1 (arbitrary units)</text>
+        <text x={8} y={14} fill={VIZ.text} fontSize={10} opacity={0.85}>embedding dim 2</text>
       </svg>
 
       <div className="mt-3 mb-3">
