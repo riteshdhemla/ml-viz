@@ -41,6 +41,10 @@ With word counts as features (multinomial Naive Bayes), training is literally co
 
 Each word in a new email votes with its log-likelihood ratio, and the votes add. A word common in spam and rare in ham pushes hard toward spam; neutral words push nowhere.
 
+Compose an email yourself and watch the votes add up:
+
+<NaiveBayesVotesViz />
+
 One fix is mandatory: a word never seen in spam would give $P(x_j \mid \text{spam}) = 0$ and veto every other word with $\log 0 = -\infty$. **Laplace smoothing** adds a pseudo-count $\alpha$ (usually 1) to every count:
 
 $$
