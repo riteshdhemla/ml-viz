@@ -327,6 +327,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | RNNUnrollViz | `visualizations/RNNUnroll/` | rnns/01-recurrent-neural-networks | ✅ |
 | LatentSpaceViz | `visualizations/LatentSpace/` | generative-models/03-variational-autoencoders | ✅ |
 | PoolingViz | `visualizations/Pooling/` | cnns/02-pooling-and-architectures | ✅ |
+| TransferLearningViz | `visualizations/TransferLearning/` | cnns/03-transfer-learning | ✅ |
+| PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
 
 ---
 

@@ -91,6 +91,8 @@ The highest score at $t=2$ is $\delta_2(S)=0.0432$, so we start back-tracking fr
 
 To reconstruct the path in code, store $\psi_t(j) = \arg\max_i [\delta_{t-1}(i)\,A_{ij}]$ at every step. At the end, find $q_T^* = \arg\max_j \delta_T(j)$, then follow the back-pointers: $q_{t-1}^* = \psi_t(q_t^*)$. This single backward pass recovers the complete optimal sequence in $O(KT)$ time — no additional computation beyond what the forward pass already stored.
 
+<HMMViterbiViz />
+
 ```python
 import numpy as np
 from hmmlearn import hmm   # pip install hmmlearn
