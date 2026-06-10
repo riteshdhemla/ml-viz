@@ -2146,6 +2146,147 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Beta(4, 8)", isCorrect: false },
     ],
   },
+  // ── T30 Slider exercises ────────────────────────────────────────
+  {
+    id: "slider-knn-k",
+    type: "slider",
+    question:
+      "For a training set of 500 points in 2D, set k (number of neighbors) for a balanced KNN classifier.",
+    hint: "Too small = memorizes training data (high variance); too large = over-smooths. Rule of thumb: start around √n ≈ 22.",
+    explanation:
+      "√500 ≈ 22. A range of 3–25 captures the practical sweet spot. k=1 overfits (each point has its own boundary); k>50 typically blurs local structure for 500 samples. Always cross-validate across odd values.",
+    min: 1,
+    max: 100,
+    step: 1,
+    correctRange: [3, 25],
+    unit: "neighbors",
+  },
+  {
+    id: "slider-svm-c",
+    type: "slider",
+    question:
+      "Set the SVM soft-margin penalty C for a noisy, overlapping 2-class dataset.",
+    hint: "C=0 ignores all violations. Very large C tries to classify everything correctly (overfits to noise).",
+    explanation:
+      "C ∈ [0.1, 10] is the practical starting range. C<0.01 often makes the margin too wide (underfitting). C>100 overfits without clear benefit on noisy data. Always use cross-validation to fine-tune C.",
+    min: 0.01,
+    max: 100,
+    step: 0.01,
+    correctRange: [0.1, 10],
+    unit: "",
+  },
+  {
+    id: "slider-rbf-gamma",
+    type: "slider",
+    question:
+      "Set the RBF kernel γ for an SVM to capture non-linear structure without memorizing every training point.",
+    hint: "High γ = tight kernels → complex/jagged boundary. Low γ = wide kernels → smooth boundary.",
+    explanation:
+      "γ ∈ [0.01, 1] (with 1/n_features as a common default) balances expressiveness and generalization. γ > 5 typically causes jagged overfitting; γ < 0.001 approaches a linear kernel. Always pair with cross-validated C.",
+    min: 0.001,
+    max: 10,
+    step: 0.001,
+    correctRange: [0.01, 1],
+    unit: "",
+  },
+  {
+    id: "slider-tsne-perplexity-range",
+    type: "slider",
+    question:
+      "Set the t-SNE perplexity for exploring cluster structure in a 3000-point dataset.",
+    hint: "Perplexity ≈ effective number of neighbors. Too low → fractured clusters; too high → washed-out global structure.",
+    explanation:
+      "Perplexity 20–80 is the practical range for ~3000 points (Maaten & Hinton recommend 5–50 generally). No single perplexity is universally correct — always try several values and compare. The optimal value scales weakly with n.",
+    min: 5,
+    max: 200,
+    step: 1,
+    correctRange: [20, 80],
+    unit: "",
+  },
+  {
+    id: "slider-epsilon-greedy",
+    type: "slider",
+    question:
+      "Set the initial ε for ε-greedy exploration at the start of Q-learning (before any decay).",
+    hint: "At the very start, the Q-table contains random values. Pure exploitation of noise leads nowhere.",
+    explanation:
+      "Starting near ε = 1.0 (fully random) is standard when the Q-table is uninitialized. Typical schedules start at 1.0 and decay to 0.01–0.1 over training. ε < 0.5 at initialization means the agent exploits noisy Q-values too early.",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    correctRange: [0.5, 1.0],
+    unit: "",
+  },
+  {
+    id: "slider-vae-beta-strength",
+    type: "slider",
+    question:
+      "Set β in a β-VAE to encourage disentangled representations while keeping reconstructions reasonable.",
+    hint: "β = 1 is a standard VAE. Higher β forces more independent latent dimensions at the cost of reconstruction quality.",
+    explanation:
+      "β ∈ [2, 10] produces disentanglement without catastrophic reconstruction loss. The original β-VAE papers (Higgins et al.) used β = 4–6 on dSprites. β > 10 often collapses the latent space into a few dimensions.",
+    min: 0.1,
+    max: 20,
+    step: 0.1,
+    correctRange: [2, 10],
+    unit: "",
+  },
+  {
+    id: "slider-dropout",
+    type: "slider",
+    question:
+      "Set the dropout rate for a fully-connected layer in a CNN fine-tuned on a small dataset (~1 000 images).",
+    hint: "Too low = no regularization; too high = most activations drop and the network can't learn.",
+    explanation:
+      "Dropout 0.2–0.5 is the standard range for fully-connected layers. 0.5 was Hinton's original recommendation; 0.2–0.3 is common in convolutional layers. Beyond 0.7, training stalls because too few units survive each forward pass.",
+    min: 0,
+    max: 0.9,
+    step: 0.05,
+    correctRange: [0.2, 0.5],
+    unit: "",
+  },
+  {
+    id: "slider-momentum",
+    type: "slider",
+    question:
+      "Set the momentum coefficient β for SGD with momentum (not Adam).",
+    hint: "β = 0 is standard SGD with no memory. β → 1 gives the optimizer infinitely long memory.",
+    explanation:
+      "β ∈ [0.8, 0.95] is the practical range; 0.9 is the PyTorch/TensorFlow default. β < 0.5 barely accumulates history. β > 0.99 overshoots sharp minima because past gradients dominate the current one.",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    correctRange: [0.8, 0.95],
+    unit: "",
+  },
+  {
+    id: "slider-boosting-n-trees",
+    type: "slider",
+    question:
+      "Set the number of boosting rounds for gradient boosting on a medium-sized tabular classification task.",
+    hint: "More trees = lower training loss, but too many overfit. Use early stopping to find the sweet spot.",
+    explanation:
+      "50–500 trees is the practical range; 100–300 is the typical sweet spot. With early stopping (halting when validation loss plateaus), you can search a wider range safely. Optimal count depends on learning rate and tree depth.",
+    min: 10,
+    max: 1000,
+    step: 10,
+    correctRange: [50, 500],
+    unit: "trees",
+  },
+  {
+    id: "slider-discount-factor",
+    type: "slider",
+    question:
+      "Set the discount factor γ for an RL agent in a game with ~100-step episodes where future rewards matter.",
+    hint: "γ = 0 → only immediate reward; γ = 1 → all future rewards equally weighted.",
+    explanation:
+      "γ ∈ [0.9, 0.99] for 100-step episodes. At γ = 0.99, a reward 100 steps ahead is still weighted at 0.99^100 ≈ 0.37 — meaningful. γ < 0.9 makes the agent myopic, ignoring consequences beyond ~10 steps. γ = 1 causes instability without terminal states.",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    correctRange: [0.9, 0.999],
+    unit: "",
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
