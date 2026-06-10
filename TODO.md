@@ -29,9 +29,13 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **Collapsible content** — `<Details summary="...">` MDX component
       (native <details>, zero client JS); used for double-descent and
       density>1 deep dives (PR #38)
-- [ ] **Exercise notebooks (scaffold style)** — notebooks teach concept recap +
-      code outline with `# TODO(you)` blanks and asserts that check answers.
-      Convert one course as the pattern, then roll out to all.
+- [x] **Exercise notebooks (scaffold style) — pattern** — "✏️ Your turn"
+      sections with `# TODO(you)` outlines, assert checks, and collapsible
+      solutions added to all 3 knn-decision-trees notebooks; convention
+      documented in CLAUDE.md (PR #39)
+- [ ] **Exercise notebooks — rollout** — apply the knn-decision-trees scaffold
+      pattern to the remaining 16 courses' notebooks (one course per
+      iteration is fine)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 

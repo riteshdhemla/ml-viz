@@ -121,6 +121,10 @@ To override: add `notebookUrl: "https://..."` to the lesson frontmatter.
 2. Code cell: imports + dark matplotlib style
 3. Alternating markdown (concept/equation) + code (implementation) cells
 4. End with a visualization or interactive demo
+5. Then a **"✏️ Your turn"** scaffold section (see `notebooks/knn-decision-trees/`
+   for the pattern): per exercise — concept recap markdown, code outline with
+   `# TODO(you)` blanks, an `assert` cell that passes silently when correct,
+   and a `<details>` markdown cell with the solution
 
 ---
 
