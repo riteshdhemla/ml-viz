@@ -150,8 +150,9 @@ describe("cross-links", () => {
   });
 
   it("every lesson links to at least one related concept", () => {
+    // Quiz lessons are exercises-only by design and need no cross-links.
     const noLinks = lessons
-      .filter((l) => !l.content.includes("](/courses/"))
+      .filter((l) => l.data.type !== "quiz" && !l.content.includes("](/courses/"))
       .map((l) => `${l.courseSlug}/${l.file}`);
     expect(noLinks).toEqual([]);
   });
@@ -161,6 +162,7 @@ describe("companion notebooks", () => {
   it("every lesson has a valid .ipynb (unless it overrides notebookUrl)", () => {
     for (const l of lessons) {
       if (l.data.notebookUrl) continue; // external override, no local file required
+      if (l.data.type === "quiz") continue; // quiz lessons have no companion notebook
       const nb = path.join(NOTEBOOKS_DIR, l.courseSlug, `${l.slug}.ipynb`);
       expect(fs.existsSync(nb), `missing notebook: ${l.courseSlug}/${l.slug}.ipynb`).toBe(true);
 
