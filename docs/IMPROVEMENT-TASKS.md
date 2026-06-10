@@ -71,7 +71,7 @@ Ordered by how hard the concept is without animation.
 
 ## Wave 3 — Structural features
 
-- [ ] **T29 — Course progress UI.** Call the existing `getCourseProgress()` (`src/lib/progress.ts`) from `CourseCard.tsx` (progress bar overlay) and the course overview page. Client component boundaries per CLAUDE.md (no fs in client, "use client" where state is read).
+- [x] **T29 — Course progress UI.** Call the existing `getCourseProgress()` (`src/lib/progress.ts`) from `CourseCard.tsx` (progress bar overlay) and the course overview page. Client component boundaries per CLAUDE.md (no fs in client, "use client" where state is read).
 - [ ] **T30 — Slider exercise expansion.** Add ~10 slider-type exercises to `src/lib/exercises.ts` for parameter-tuning intuition (learning rate, k in KNN, C in SVM, γ in RBF, perplexity, ε-greedy, β-VAE weight…), and reference each from the relevant lesson next to the related section.
 - [ ] **T31 — Quiz lessons.** Add an end-of-course `type: quiz` lesson to the 3 foundations courses (e.g. `04-quiz.mdx`, frontmatter type `quiz`, 5–6 `<Exercise>` refs reusing/adding registry entries, minimal prose). Verify LessonLayout renders type `quiz` correctly (adjust badge/styling branch if needed). Create matching minimal notebooks only if the build requires them — otherwise set `notebookUrl` override or confirm the Colab button degrades gracefully.
 - [ ] **T32 — Progress dashboard page.** New `/progress` page: courses started/completed (X/17), lessons completed (Y/47), per-course bars, "recommended next course" computed from the prerequisites DAG + completion state. Client component reading the Zustand store; match dark design tokens.

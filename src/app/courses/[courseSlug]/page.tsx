@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCourse, getAllCourses } from "@/lib/content";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { LessonList } from "@/components/lessons/LessonList";
+import { CourseProgressBar } from "@/components/lessons/CourseProgressBar";
 import type { Metadata } from "next";
 
 interface Props {
@@ -59,6 +60,8 @@ export default async function CoursePage({ params }: Props) {
               </span>
             ))}
           </div>
+
+          <CourseProgressBar courseSlug={courseSlug} totalLessons={course.lessons.length} />
         </div>
 
         {/* Lessons */}
