@@ -8,6 +8,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     { url: absoluteUrl("/"), changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/courses"), changeFrequency: "weekly", priority: 0.9 },
+    { url: absoluteUrl("/path"), changeFrequency: "weekly", priority: 0.8 },
   ];
 
   const coursePages: MetadataRoute.Sitemap = courses.map((course) => ({
