@@ -3416,6 +3416,22 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Half of all rolls land above 3.5 only if the die is biased", isCorrect: false },
     ],
   },
+  // ── Probability & Statistics: Entropy & KL Divergence ────────────────
+  {
+    id: "prob-kl-asymmetry",
+    type: "multiple-choice",
+    question:
+      "Your model q assigns probability 0 to a word that actually occurs in the data distribution p. What happens to the forward KL divergence D(p‖q)?",
+    hint: "Look at the term p(x) · log(p(x)/q(x)) when q(x) = 0 but p(x) > 0.",
+    explanation:
+      "The term p(x)·log(p(x)/0) is infinite: forward KL imposes an unbounded penalty for calling a possible event impossible. This is why MLE-trained models must spread probability over everything seen in training, and why smoothing (e.g. Laplace) exists. Reverse KL D(q‖p) would NOT blow up here — the asymmetry is real and consequential.",
+    options: [
+      { id: "a", label: "It becomes infinite — q called a possible event impossible", isCorrect: true },
+      { id: "b", label: "It equals the entropy of p", isCorrect: false },
+      { id: "c", label: "It is unaffected, since q(x)=0 contributes nothing", isCorrect: false },
+      { id: "d", label: "It becomes negative", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

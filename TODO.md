@@ -86,9 +86,10 @@ fully, verify, ship, check it off. One item per iteration.
 
 ### Curriculum gaps — extend existing courses
 
-- [ ] **probability-statistics: Entropy & KL divergence lesson** — entropy,
-      cross-entropy, KL divergence; ties to loss functions. Lesson + notebook +
-      exercise (insert before quiz, renumber quiz)
+- [x] **probability-statistics: Entropy & KL divergence lesson** — lesson 05
+      (surprise → entropy → cross-entropy → KL, forward/reverse asymmetry)
+      + notebook (incl. bimodal forward-vs-reverse KL fit) + exercise; quiz
+      renumbered to 06, hours 3→4 (PR #53)
 - [ ] **linear-algebra: SVD & matrix decompositions lesson** — SVD geometry,
       low-rank approximation, relation to eigendecomposition/PCA
 - [ ] **calculus-for-ml: Jacobians & Hessians audit** — check lesson 03 depth;

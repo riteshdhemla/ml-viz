@@ -1,0 +1,96 @@
+---
+title: "Entropy & KL Divergence"
+description: "Measuring surprise, comparing distributions, and why cross-entropy is the loss function of deep learning."
+order: 5
+type: concept
+estimatedMinutes: 16
+---
+
+# Entropy & KL Divergence
+
+Every classifier you will ever train with cross-entropy loss is secretly doing information theory. This lesson builds the three quantities that run modern ML — entropy, cross-entropy, and KL divergence — from one primitive: **surprise**.
+
+## Surprise and entropy
+
+If an event has probability $p$, define its surprise as $-\log p$. Rare events are very surprising ($-\log 0.01 \approx 4.6$ nats); certain events aren't surprising at all ($-\log 1 = 0$). The log makes surprise *additive*: the surprise of two independent events is the sum of their surprises.
+
+**Entropy** is the expected surprise of a distribution:
+
+$$
+H(p) = -\sum_x p(x) \log p(x)
+$$
+
+It measures how unpredictable a source is:
+
+- A fair coin: $H = \log 2 \approx 0.69$ nats (1 bit) — maximal for two outcomes
+- A coin with $p(\text{heads}) = 0.99$: $H \approx 0.056$ nats — almost no uncertainty
+- A uniform die: $\log 6$ — uniform distributions maximize entropy, certainty minimizes it
+
+Entropy is also a *compression limit*: you cannot losslessly encode samples from $p$ in fewer than $H(p)$ nats per symbol on average. You met entropy already as a split criterion in [decision trees](/courses/knn-decision-trees/02-decision-trees) — information gain is just entropy reduction.
+
+## Cross-entropy: paying for the wrong codebook
+
+Suppose data really comes from $p$, but you model it with $q$. Your average surprise is the **cross-entropy**:
+
+$$
+H(p, q) = -\sum_x p(x) \log q(x)
+$$
+
+This is exactly the classification loss: the data distribution puts probability 1 on the true label, so the sum collapses to $-\log q(\text{true label})$ — the log-loss of your model's predicted probability. Minimizing cross-entropy = maximizing [log-likelihood](/courses/probability-statistics/03-maximum-likelihood-estimation). Same math, two vocabularies.
+
+## KL divergence: the gap between them
+
+Cross-entropy splits into two parts:
+
+$$
+H(p, q) = H(p) + \underbrace{D_{\mathrm{KL}}(p \,\|\, q)}_{\text{your modeling penalty}}
+$$
+
+$$
+D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x) \log \frac{p(x)}{q(x)}
+$$
+
+KL divergence is the *extra* surprise you suffer for using $q$ when the truth is $p$. Three properties to internalize:
+
+1. $D_{\mathrm{KL}} \ge 0$, with equality only when $p = q$ — it behaves like a distance from the truth
+2. It is **not symmetric**: $D_{\mathrm{KL}}(p\|q) \ne D_{\mathrm{KL}}(q\|p)$, and the difference matters
+3. If $q(x) = 0$ where $p(x) > 0$, the divergence is **infinite** — never assign zero probability to something that can happen (the same lesson as Laplace smoothing in [Naive Bayes](/courses/probabilistic-models/03-naive-bayes))
+
+```python
+import numpy as np
+
+p = np.array([0.7, 0.2, 0.1])          # truth
+q = np.array([0.5, 0.3, 0.2])          # model
+
+H_p  = -(p * np.log(p)).sum()          # entropy of the truth
+H_pq = -(p * np.log(q)).sum()          # cross-entropy of model on truth
+kl   = (p * np.log(p / q)).sum()       # KL divergence
+
+print(f"H(p) = {H_p:.4f}, H(p,q) = {H_pq:.4f}, KL = {kl:.4f}")
+print(f"identity check: H(p) + KL = {H_p + kl:.4f}")   # equals H(p,q)
+```
+
+<Callout type="info" title="Which direction? Mode-seeking vs mean-covering">
+  Minimizing $D_{\mathrm{KL}}(p\|q)$ (forward, used by MLE) forces $q$ to **cover** everywhere $p$ has mass — spread out, or pay infinite penalty. Minimizing $D_{\mathrm{KL}}(q\|p)$ (reverse, used by variational inference and [VAEs](/courses/generative-models/03-variational-autoencoders)) lets $q$ **lock onto one mode** of $p$ and ignore the rest. Same formula, opposite personalities.
+</Callout>
+
+## Where you'll meet these again
+
+- **Cross-entropy loss** — every softmax classifier and language model (perplexity is just exponentiated cross-entropy, as in [t-SNE's perplexity](/courses/pca-dimensionality/02-t-sne-and-umap))
+- **KL terms in objectives** — the VAE's regularizer, policy-constraint terms in RLHF (keeping the fine-tuned model close to the base model)
+- **Information gain** — entropy reduction as a tree-split criterion
+
+<Exercise id="prob-kl-asymmetry" />
+
+## Key takeaways
+
+- Entropy = expected surprise $-\sum p \log p$: uniform maximizes it, certainty zeroes it
+- Cross-entropy = entropy + KL: training on log-loss minimizes the KL between data and model
+- KL is non-negative, zero only at equality, asymmetric, and infinite when the model says "impossible" about something real
+- Forward KL covers all modes; reverse KL picks one — the choice shapes generative models
+
+## Related concepts
+
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — minimizing cross-entropy is MLE in disguise
+- [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — information gain is entropy reduction
+- [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders) — reverse-KL at work in the ELBO
