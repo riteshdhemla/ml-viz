@@ -51,6 +51,7 @@ import { PerplexityViz } from "@/components/visualizations/Perplexity/Perplexity
 import { PolicyGradientViz } from "@/components/visualizations/PolicyGradient/PolicyGradientViz";
 import { BiasVarianceViz } from "@/components/visualizations/BiasVariance/BiasVarianceViz";
 import { RegularizationPathViz } from "@/components/visualizations/RegularizationPath/RegularizationPathViz";
+import { SoftMarginViz } from "@/components/visualizations/SoftMargin/SoftMarginViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -108,4 +109,5 @@ export const mdxComponents: MDXComponents = {
   PolicyGradientViz,
   BiasVarianceViz,
   RegularizationPathViz,
+  SoftMarginViz,
 };

@@ -46,9 +46,9 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **RegularizationPathViz** — Ridge (closed form) vs Lasso (coordinate
       descent) paths over a log-λ grid, λ slider, non-zero-weight counter;
       wired into `linear-regression/03-regularization.mdx` (PR #41)
-- [ ] **SoftMarginViz** — 2D points with margin band; C slider reshapes
-      boundary/margin; highlight violators (ξ > 0) and misclassified (ξ > 1).
-      Wire into `svm/03-soft-margins.mdx`
+- [x] **SoftMarginViz** — hinge-loss SVM retrained per C value (log slider);
+      margin band, violator/misclassified rings, margin-width and Σξ stats;
+      wired into `svm/03-soft-margins.mdx` (PR #42)
 - [ ] **BoostingShrinkageViz** — staged boosting fit on 1D sine data; sliders
       for η and number of trees; train vs test error curves. Wire into
       `ensemble-methods/03-xgboost.mdx`
