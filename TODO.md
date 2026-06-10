@@ -19,9 +19,12 @@ fully, verify, ship, check it off. One item per iteration.
 - [x] **DistributionViz fixed y-scale + axis labels** — pinned y-domain per
       distribution (area-stays-1 now visible), x/y labels, ticks, gridlines,
       live uniform-height stat (PR #36)
-- [ ] **Axis labels audit (all viz)** — every plot-style viz gets x/y axis
-      labels (and ticks where meaningful). Audit all ~40 components in
-      `src/components/visualizations/`.
+- [x] **Axis labels audit (all viz)** — audited all components; added x/y
+      labels to 12 chart-style viz (ActivationFunction, FunctionTangent, MLE,
+      Bayes, KNNBoundary, DecisionBoundary, KMeans, PCA, Margin, BiasVariance,
+      GMM, Perplexity). GradientDescent/LinearRegression/VanishingGradient/
+      Distribution already had them; diagram-style viz (networks, pipelines,
+      grids) intentionally unlabeled (PR #40)
 - [x] **Probability course intro lesson** — added 01 "Thinking in
       Probabilities" (sample spaces, axioms, conditional probability, random
       variables, expectation) + notebook + exercise; renumbered lessons,

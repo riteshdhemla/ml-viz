@@ -350,6 +350,8 @@ export function GMMResponsibilityViz({ className }: { className?: string }) {
             </text>
           );
         })}
+        <text x={W - M.right - 4} y={H - M.bottom - 6} fill={VIZ.text} fontSize={10} textAnchor="end" opacity={0.85}>feature x₁</text>
+        <text x={M.left + 6} y={M.top + 14} fill={VIZ.text} fontSize={10} opacity={0.85}>feature x₂</text>
       </svg>
 
       <div className="flex items-center gap-3 mt-3 flex-wrap">

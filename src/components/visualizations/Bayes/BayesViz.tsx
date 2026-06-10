@@ -64,6 +64,7 @@ export function BayesViz({ className }: { className?: string }) {
         <line x1={M.left} y1={H - M.bottom} x2={W - M.right} y2={H - M.bottom} stroke={VIZ.axis} strokeWidth={1} />
         <line x1={M.left} y1={M.top} x2={M.left} y2={H - M.bottom} stroke={VIZ.axis} strokeWidth={1} />
         <text x={(M.left + W - M.right) / 2} y={H - 6} fill={VIZ.text} fontSize={11} textAnchor="middle">bias θ (0 → 1)</text>
+        <text x={M.left + 6} y={M.top + 10} fill={VIZ.text} fontSize={11}>density</text>
 
         {/* prior */}
         <path d={toPath(prior)} fill="none" stroke={VIZ.brandLight} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.7} />

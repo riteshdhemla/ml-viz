@@ -66,6 +66,8 @@ export function FunctionTangentViz({ className }: { className?: string }) {
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`Tangent to ${fn.name}`}>
         <line x1={M.left} y1={sy(0)} x2={W - M.right} y2={sy(0)} stroke={VIZ.axis} strokeWidth={1} />
         <line x1={sx(0)} y1={M.top} x2={sx(0)} y2={H - M.bottom} stroke={VIZ.axis} strokeWidth={1} />
+        <text x={W - M.right} y={sy(0) - 6} fill={VIZ.text} fontSize={11} textAnchor="end">x</text>
+        <text x={sx(0) + 6} y={M.top + 10} fill={VIZ.text} fontSize={11}>f(x)</text>
 
         {/* tangent */}
         <line x1={sx(tx0)} y1={sy(clampY(ty0))} x2={sx(tx1)} y2={sy(clampY(ty1))} stroke={VIZ.yellow} strokeWidth={1.5} strokeDasharray="4 3" opacity={0.8} />

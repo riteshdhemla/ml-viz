@@ -109,6 +109,8 @@ export function MarginViz({ className }: { className?: string }) {
             <circle key={i} cx={sx(p.x)} cy={sy(p.y)} r={isSV ? 7 : 5} fill={p.label === 1 ? VIZ.brand : VIZ.teal} stroke={isSV ? VIZ.yellow : "#0f1117"} strokeWidth={isSV ? 2.5 : 1} />
           );
         })}
+        <text x={W - 8} y={H - 8} fill={VIZ.text} fontSize={10} textAnchor="end" opacity={0.85}>feature x₁</text>
+        <text x={8} y={16} fill={VIZ.text} fontSize={10} opacity={0.85}>feature x₂</text>
       </svg>
 
       <div className="mt-3 mb-3">

@@ -129,6 +129,8 @@ export function KMeansViz({ className }: { className?: string }) {
             <line x1={sx(c.x) - 7} y1={sy(c.y) + 7} x2={sx(c.x) + 7} y2={sy(c.y) - 7} />
           </g>
         ))}
+        <text x={W - 8} y={H - 8} fill={VIZ.text} fontSize={10} textAnchor="end" opacity={0.85}>feature x₁</text>
+        <text x={8} y={16} fill={VIZ.text} fontSize={10} opacity={0.85}>feature x₂</text>
       </svg>
 
       <div className="flex items-center gap-4 mt-3">

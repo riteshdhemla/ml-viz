@@ -127,6 +127,8 @@ export function DecisionBoundaryViz({ className }: { className?: string }) {
             />
           );
         })}
+        <text x={W - 8} y={H - 8} fill={VIZ.text} fontSize={10} textAnchor="end" opacity={0.85}>feature x₁</text>
+        <text x={8} y={16} fill={VIZ.text} fontSize={10} opacity={0.85}>feature x₂</text>
       </svg>
 
       <div className="flex items-center gap-4 mt-3">

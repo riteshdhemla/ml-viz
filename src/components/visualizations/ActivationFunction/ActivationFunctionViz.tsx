@@ -78,6 +78,7 @@ export function ActivationFunctionViz({ className }: { className?: string }) {
         <line x1={M.left} y1={sy(0)} x2={W - M.right} y2={sy(0)} stroke={VIZ.axis} strokeWidth={1} />
         <line x1={sx(0)} y1={M.top} x2={sx(0)} y2={H - M.bottom} stroke={VIZ.axis} strokeWidth={1} />
         <text x={W - M.right} y={sy(0) - 6} fill={VIZ.text} fontSize={11} textAnchor="end">z</text>
+        <text x={sx(0) + 6} y={M.top + 10} fill={VIZ.text} fontSize={11}>f(z)</text>
 
         {/* tangent (slope) */}
         <line
