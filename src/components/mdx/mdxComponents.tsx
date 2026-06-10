@@ -4,6 +4,7 @@
  */
 import type { MDXComponents } from "mdx/types";
 import { Callout } from "./Callout";
+import { Details } from "./Details";
 import { CodeBlock } from "./CodeBlock";
 import { Exercise } from "@/components/exercises/Exercise";
 import { GradientDescentViz } from "@/components/visualizations/GradientDescent/GradientDescentViz";
@@ -58,6 +59,7 @@ export const mdxComponents: MDXComponents = {
   pre: CodeBlock,
 
   Callout,
+  Details,
   Exercise,
 
   // Visualizations (pure-SVG client components — see visualizations/viz-kit.tsx)
