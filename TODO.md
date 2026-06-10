@@ -90,8 +90,10 @@ fully, verify, ship, check it off. One item per iteration.
       (surprise → entropy → cross-entropy → KL, forward/reverse asymmetry)
       + notebook (incl. bimodal forward-vs-reverse KL fit) + exercise; quiz
       renumbered to 06, hours 3→4 (PR #53)
-- [ ] **linear-algebra: SVD & matrix decompositions lesson** — SVD geometry,
-      low-rank approximation, relation to eigendecomposition/PCA
+- [x] **linear-algebra: SVD & matrix decompositions lesson** — lesson 04
+      (rotate-stretch-rotate, AᵀA derivation, rank-1 layers, Eckart-Young,
+      compression/recommenders/LoRA) + notebook + exercise; quiz → 05,
+      hours 2.5→3.5 (PR #54)
 - [ ] **calculus-for-ml: Jacobians & Hessians audit** — check lesson 03 depth;
       add explicit Jacobian/Hessian/curvature lesson if thin
 - [ ] **neural-networks: XOR & MLP lesson** — perceptron learning rule, XOR
