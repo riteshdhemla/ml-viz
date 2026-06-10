@@ -9,6 +9,7 @@ import type { LessonMeta } from "@/types/course";
 import { mdxComponents } from "@/components/mdx/mdxComponents";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
+import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
 import { getNotebookUrl } from "@/lib/utils";
 
 interface Props {
@@ -55,6 +56,7 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
           )}
           {notebookUrl && <NotebookLink href={notebookUrl} />}
         </div>
+        <ReadingProgressBar />
       </header>
 
       {/* Content */}
