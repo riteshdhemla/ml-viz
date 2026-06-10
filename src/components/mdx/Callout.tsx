@@ -21,7 +21,7 @@ export function Callout({ type = "info", title, children }: Props) {
   return (
     <div className={cn("not-prose rounded-xl border p-4 my-6 flex gap-3", className)}>
       <Icon size={18} className="mt-0.5 shrink-0" />
-      <div>
+      <div className="min-w-0 flex-1">
         {title && <p className="font-semibold mb-1">{title}</p>}
         <div className="text-sm leading-relaxed opacity-90">{children}</div>
       </div>
