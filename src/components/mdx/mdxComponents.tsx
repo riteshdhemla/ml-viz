@@ -32,6 +32,9 @@ import { KernelViz } from "@/components/visualizations/KernelViz/KernelViz";
 import { LSTMGateViz } from "@/components/visualizations/LSTMGate/LSTMGateViz";
 import { DSeparationViz } from "@/components/visualizations/DSeparation/DSeparationViz";
 import { GridWorldViz } from "@/components/visualizations/GridWorld/GridWorldViz";
+import { DiffusionViz } from "@/components/visualizations/Diffusion/DiffusionViz";
+import { BoostingViz } from "@/components/visualizations/Boosting/BoostingViz";
+import { QTableViz } from "@/components/visualizations/QTable/QTableViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -70,4 +73,7 @@ export const mdxComponents: MDXComponents = {
   LSTMGateViz,
   DSeparationViz,
   GridWorldViz,
+  DiffusionViz,
+  BoostingViz,
+  QTableViz,
 };
