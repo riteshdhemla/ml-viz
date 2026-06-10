@@ -29,6 +29,9 @@ import { MarginViz } from "@/components/visualizations/Margin/MarginViz";
 import { DecisionTreeSplitViz } from "@/components/visualizations/DecisionTreeSplit/DecisionTreeSplitViz";
 import { NeuralNetworkViz } from "@/components/visualizations/NeuralNetwork/NeuralNetworkViz";
 import { KernelViz } from "@/components/visualizations/KernelViz/KernelViz";
+import { LSTMGateViz } from "@/components/visualizations/LSTMGate/LSTMGateViz";
+import { DSeparationViz } from "@/components/visualizations/DSeparation/DSeparationViz";
+import { GridWorldViz } from "@/components/visualizations/GridWorld/GridWorldViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -64,4 +67,7 @@ export const mdxComponents: MDXComponents = {
   DecisionTreeSplitViz,
   NeuralNetworkViz,
   KernelViz,
+  LSTMGateViz,
+  DSeparationViz,
+  GridWorldViz,
 };
