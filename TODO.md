@@ -52,6 +52,10 @@ fully, verify, ship, check it off. One item per iteration.
         PDF, Binomial PMF, Gaussian NLL, Poisson grid-search MLE,
         diagnostic-test posterior, Beta-Bernoulli update, entropy,
         KL divergence + cross-entropy identity (PR #57)
+  - [x] neural-networks — 6 exercises across 3 notebooks: sigmoid
+        neuron equation, perceptron logic gates (XOR impossible), MSE
+        line-fit gradients vs finite differences, momentum step,
+        dense layer, MLP parameter counting (PR #58)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
