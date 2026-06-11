@@ -85,6 +85,10 @@ fully, verify, ship, check it off. One item per iteration.
   - [x] rnns — 6 exercises across 3 notebooks: tanh recurrence step,
         unrolling loop, gradient factor |w|^T, effective horizon,
         LSTM/GRU param counts (4/3 ratio), cell-state highway (PR #66)
+  - [x] graphical-models — 6 exercises across 3 notebooks: CPT param
+        counting, factorized sprinkler joint, Ising agreement
+        (partition function), denoising energy, forward algorithm vs
+        enumeration, Viterbi vs brute force (PR #67)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
