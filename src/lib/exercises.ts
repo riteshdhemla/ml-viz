@@ -2510,6 +2510,52 @@ const allExercises: Exercise[] = [
     ],
   },
 
+  {
+    id: "nn-xor-solution",
+    type: "multiple-choice",
+    question:
+      "A single perceptron cannot solve XOR. What is the simplest architecture that can?",
+    hint: "Think about what a hidden layer adds that a single layer doesn't have.",
+    explanation:
+      "A two-layer MLP with one hidden layer (even just 2 hidden neurons) can solve XOR. The hidden layer learns a new representation where the two XOR=1 points map to the same hidden activation, making the problem linearly separable for the output neuron. No single linear classifier (perceptron) can separate XOR because the two classes are not linearly separable.",
+    options: [
+      { id: "a", label: "A perceptron with more inputs", isCorrect: false },
+      { id: "b", label: "A two-layer MLP with one hidden layer", isCorrect: true },
+      { id: "c", label: "A deeper network with at least 3 layers", isCorrect: false },
+      { id: "d", label: "A perceptron with a different activation function", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-softmax-gradient",
+    type: "multiple-choice",
+    question:
+      "After softmax, a 3-class model outputs probabilities (0.7, 0.2, 0.1). The true label is class 0. What is ∂L/∂z₀, the cross-entropy gradient w.r.t. logit 0?",
+    hint: "For softmax + cross-entropy, ∂L/∂z_k = p̂_k − 1[k=y].",
+    explanation:
+      "The gradient of cross-entropy loss w.r.t. logit k is p̂_k − 1[k=y]. For the correct class (k=0): 0.7 − 1 = −0.3. The negative sign means we push logit 0 up. For incorrect classes: 0.2 − 0 = 0.2 and 0.1 − 0 = 0.1 (push those logits down). The gradients sum to zero: −0.3+0.2+0.1=0.",
+    options: [
+      { id: "a", label: "−0.3", isCorrect: true },
+      { id: "b", label: "0.7", isCorrect: false },
+      { id: "c", label: "0.3", isCorrect: false },
+      { id: "d", label: "−0.7", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-perceptron-update",
+    type: "multiple-choice",
+    question:
+      "A perceptron with w=(1, −1), b=0 sees input x=(2, 3). It predicts 0, but the true label is 1. With learning rate η=1, what are the new weights?",
+    hint: "Perceptron rule: w ← w + η(y − ŷ)x.",
+    explanation:
+      "The perceptron rule adds η(y−ŷ)x to the weights. Since y=1 and ŷ=0, the update is +x=(2,3). New w = (1+2, −1+3) = (3, 2). The bias b also gets η(y−ŷ) = 1 added, so b becomes 1. The new hyperplane is rotated to correctly classify this example.",
+    options: [
+      { id: "a", label: "w = (3, 2)", isCorrect: true },
+      { id: "b", label: "w = (−1, −4)", isCorrect: false },
+      { id: "c", label: "w = (2, −3)", isCorrect: false },
+      { id: "d", label: "w = (1, −1) (no change)", isCorrect: false },
+    ],
+  },
+
   // ── Linear & Logistic Regression course quiz ─────────────────────────
   {
     id: "linreg-quiz-ols",

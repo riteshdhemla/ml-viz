@@ -1,0 +1,197 @@
+---
+title: "XOR, MLPs & Softmax"
+description: "Why a single perceptron can't solve XOR, how a hidden layer fixes it, and how softmax turns raw scores into probabilities."
+order: 4
+type: concept
+estimatedMinutes: 16
+---
+
+# XOR, MLPs & Softmax
+
+A single perceptron draws one straight line. That is all it can ever do. The **XOR problem** is the classic proof that one line is not enough — and solving it forced the invention of the multi-layer perceptron (MLP). Understanding why XOR breaks the perceptron, and how a hidden layer fixes it, gives you the deepest intuition for why depth in neural networks matters.
+
+## The perceptron learning rule
+
+The **perceptron** is a linear classifier: $\hat{y} = \mathbb{1}[\mathbf{w}^\top \mathbf{x} + b > 0]$. It predicts class 1 when the input is on one side of the hyperplane $\mathbf{w}^\top \mathbf{x} + b = 0$, and class 0 otherwise.
+
+The **perceptron learning rule** adjusts weights only when the prediction is wrong:
+
+$$
+\mathbf{w} \leftarrow \mathbf{w} + \eta\,(y - \hat{y})\,\mathbf{x}, \qquad b \leftarrow b + \eta\,(y - \hat{y})
+$$
+
+- If the prediction is correct ($y = \hat{y}$), the update is zero.
+- If the label is 1 but we predicted 0: push $\mathbf{w}$ in the direction of $\mathbf{x}$ (rotate the decision boundary toward the example).
+- If the label is 0 but we predicted 1: push $\mathbf{w}$ away from $\mathbf{x}$.
+
+**Convergence theorem:** If the data is **linearly separable**, the perceptron algorithm converges in a finite number of steps. If not, it loops forever.
+
+### Worked example: learning AND
+
+AND is linearly separable (the two 1-outputs sit in one corner). Starting from $\mathbf{w} = (0, 0)$, $b = 0$:
+
+| Step | Input $(x_1, x_2)$ | Label | Pred | Update |
+|------|--------------------|-------|------|--------|
+| 1 | (1, 1) | 1 | 0 | $\mathbf{w}$ += (1,1), $b$ += 1 → **w=(1,1), b=1** |
+| 2 | (0, 0) | 0 | 1 | $\mathbf{w}$ -= (0,0), $b$ -= 1 → **w=(1,1), b=0** |
+| 3 | (1, 0) | 0 | 1 | $\mathbf{w}$ -= (1,0), $b$ -= 1 → **w=(0,1), b=-1** |
+| 4 | (0, 1) | 0 | 0 | no update |
+| 5 | (1, 1) | 1 | 0 | $\mathbf{w}$ += (1,1), $b$ += 1 → **w=(1,2), b=0** |
+
+After further iterations the perceptron converges to a separating hyperplane. The XOR case never converges.
+
+## The XOR problem
+
+XOR outputs 1 when exactly one input is 1:
+
+| $x_1$ | $x_2$ | XOR |
+|-------|-------|-----|
+| 0 | 0 | 0 |
+| 1 | 0 | 1 |
+| 0 | 1 | 1 |
+| 1 | 1 | 0 |
+
+Plot these four points: the two 0-outputs are at $(0,0)$ and $(1,1)$ (the diagonal), and the two 1-outputs are at $(1,0)$ and $(0,1)$ (the other diagonal). No single straight line separates the two classes.
+
+**Proof by contradiction:** Suppose there exists $\mathbf{w} = (w_1, w_2)$ and $b$ such that:
+
+$$
+w_1 \cdot 0 + w_2 \cdot 0 + b \leq 0 \quad (0,0) \text{ class 0}
+$$
+$$
+w_1 \cdot 1 + w_2 \cdot 0 + b > 0 \quad (1,0) \text{ class 1}
+$$
+$$
+w_1 \cdot 0 + w_2 \cdot 1 + b > 0 \quad (0,1) \text{ class 1}
+$$
+$$
+w_1 \cdot 1 + w_2 \cdot 1 + b \leq 0 \quad (1,1) \text{ class 0}
+$$
+
+Adding the two "class 1" inequalities: $w_1 + w_2 + 2b > 0$. But the "class 0" constraints give $b \leq 0$ and $w_1 + w_2 + b \leq 0$, so $w_1 + w_2 \leq -b \leq 0$, which means $w_1 + w_2 + 2b \leq b \leq 0$. **Contradiction.** No linear separator exists.
+
+<Callout type="info" title="Why XOR matters historically">
+  Minsky and Papert's 1969 book *Perceptrons* proved this limitation and severely cooled AI funding for a decade (the first "AI winter"). The invention of backpropagation and multi-layer networks in the 1980s reignited interest by showing that XOR is trivially solved with one hidden layer.
+</Callout>
+
+## The hidden layer fix
+
+A two-layer MLP for XOR uses a **hidden layer** to first transform the inputs into a new representation where the classes *are* linearly separable, then applies a linear classifier in that transformed space.
+
+**Architecture:** Input $\mathbf{x} \in \mathbb{R}^2$ → hidden layer (2 neurons, ReLU) → output (1 neuron, sigmoid).
+
+One set of weights that solves XOR exactly:
+
+$$
+\mathbf{W}_1 = \begin{bmatrix} 1 & 1 \\ 1 & 1 \end{bmatrix}, \quad
+\mathbf{b}_1 = \begin{bmatrix} 0 \\ -1 \end{bmatrix}, \quad
+\mathbf{W}_2 = \begin{bmatrix} 1 & -2 \end{bmatrix}, \quad
+b_2 = 0
+$$
+
+**Trace through each input:**
+
+| Input | $\mathbf{z}_1 = \mathbf{W}_1\mathbf{x}+\mathbf{b}_1$ | $\mathbf{h} = \text{ReLU}(\mathbf{z}_1)$ | $z_2 = \mathbf{W}_2\mathbf{h}+b_2$ | $\hat{y}$ |
+|-------|------|------|------|------|
+| (0,0) | (0, −1) | (0, 0) | 0 | 0 |
+| (1,0) | (1, 0) | (1, 0) | 1 | 1 |
+| (0,1) | (1, 0) | (1, 0) | 1 | 1 |
+| (1,1) | (2, 1) | (2, 1) | 0 | 0 |
+
+The hidden layer maps $(1,0)$ and $(0,1)$ to the *same* hidden representation $(1, 0)$ — the network has learned that these two different inputs mean the same thing ("exactly one input is on"). The output layer simply classifies this shared representation as class 1.
+
+<Callout type="tip" title="The hidden layer as a learned feature extractor">
+  The hidden layer does not just detect "is $x_1$ on?" or "is $x_2$ on?" — it detects a higher-level feature: "is at least one input on?" (neuron 1) and "are both inputs on?" (neuron 2). The output layer then computes $h_1 - 2h_2$: one-or-both-on minus twice both-on, which equals 1 iff exactly one is on. This is what universal approximation means in practice: depth creates composable feature detectors.
+</Callout>
+
+<NeuralNetworkViz />
+
+## Universal approximation theorem
+
+A neural network with **one hidden layer** of sufficient width can approximate any continuous function on a compact subset of $\mathbb{R}^n$ to arbitrary precision. This is the **universal approximation theorem** (Cybenko 1989, Hornik 1991).
+
+**What it says vs. what it doesn't say:**
+- ✅ There *exists* a network of finite width that approximates any function.
+- ✅ This justifies using neural networks as general-purpose function approximators.
+- ❌ It does not say how *wide* the network needs to be — it could be exponentially large.
+- ❌ It does not say that gradient descent will *find* those weights — the optimization problem may be hard.
+- ❌ It does not say a shallow network is as *efficient* as a deep one — in practice, depth allows exponentially more compact representations.
+
+## Softmax outputs for multi-class classification
+
+For binary classification the output neuron uses a sigmoid: $\hat{y} = \sigma(z) \in (0, 1)$, interpreted as $P(y=1|\mathbf{x})$.
+
+For **$K$-class classification**, replace the sigmoid with **softmax** over $K$ output neurons:
+
+$$
+\hat{p}_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}, \quad k = 1, \ldots, K
+$$
+
+where $z_k = \mathbf{w}_k^\top \mathbf{h} + b_k$ is the $k$-th logit (raw score).
+
+**Properties of softmax:**
+- All outputs are positive: $\hat{p}_k > 0$
+- Outputs sum to one: $\sum_k \hat{p}_k = 1$
+- The largest logit gets the largest probability
+- Probabilities are **sharpened** by large logit differences (high-confidence prediction) and flattened when logits are close (uncertain prediction)
+
+### Worked example: 3-class classification
+
+With logits $\mathbf{z} = (2, 1, -1)$:
+
+$$
+e^{\mathbf{z}} = (e^2, e^1, e^{-1}) \approx (7.389, 2.718, 0.368)
+$$
+
+$$
+\text{sum} = 10.475, \quad \hat{\mathbf{p}} \approx (0.705, 0.259, 0.035)
+$$
+
+The model is 70.5% confident in class 1.
+
+**Temperature scaling:** Dividing all logits by a temperature $T$ before softmax controls sharpness:
+- $T \to 0$: softmax becomes argmax (one-hot)
+- $T = 1$: standard softmax
+- $T \to \infty$: uniform distribution (maximum uncertainty)
+
+Language models use temperature scaling to control the randomness of text generation.
+
+### Training with cross-entropy loss
+
+For a single example with true label $y$ (integer class index), the **cross-entropy loss** is:
+
+$$
+\mathcal{L} = -\log \hat{p}_y = -\log \frac{e^{z_y}}{\sum_k e^{z_k}} = -z_y + \log\sum_k e^{z_k}
+$$
+
+The gradient of this loss w.r.t. the logits has a beautiful form:
+
+$$
+\frac{\partial \mathcal{L}}{\partial z_k} = \hat{p}_k - \mathbb{1}[k = y]
+$$
+
+At the correct class: gradient = $\hat{p}_y - 1$ (push logit up until probability → 1). At all others: gradient = $\hat{p}_k > 0$ (push logit down). The gradients sum to zero, which follows from the probabilities summing to one.
+
+## Common mistakes
+
+1. **Using softmax with only 2 classes** — for binary classification, a single sigmoid output is equivalent and twice as efficient. Softmax of two logits $(z_1, z_2)$ is equivalent to sigmoid of $z_1 - z_2$.
+2. **Applying ReLU before the output layer** — the output layer has no activation function (logits) or uses softmax/sigmoid for classification or linear for regression. ReLU on the output would prevent predicting negative values or probabilities.
+3. **Confusing the perceptron learning rule with gradient descent** — the perceptron rule only fires on misclassified examples and does not use a differentiable loss. Modern networks use gradient descent on a smooth loss everywhere.
+
+## Key takeaways
+
+- **Perceptron = linear classifier** — it converges on linearly separable data; XOR proves it cannot solve all problems.
+- A **hidden layer** transforms inputs into a new representation where the problem becomes linearly separable.
+- **Universal approximation** guarantees one hidden layer is enough in principle; in practice, depth is exponentially more efficient.
+- **Softmax** maps logits to a probability distribution; cross-entropy loss gives a clean gradient: $\hat{p}_k - \mathbb{1}[k=y]$.
+
+## Related concepts
+
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the single-neuron building block
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimizer used to train MLPs
+- [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the matrix form of an MLP layer
+- [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — softmax with one hidden layer is logistic regression on learned features
+
+<Exercise id="nn-xor-solution" />
+<Exercise id="nn-softmax-gradient" />
+<Exercise id="nn-perceptron-update" />
