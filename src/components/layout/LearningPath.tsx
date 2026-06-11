@@ -17,6 +17,7 @@ export interface PathCourse {
   lessonCount: number;
   tier: number;
   order: number;
+  coverColor?: string;
 }
 
 const DIFFICULTY_DOT: Record<Difficulty, string> = {
@@ -98,6 +99,9 @@ export function LearningPath({ courses }: { courses: PathCourse[] }) {
                       <span className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-bold text-white">
                         <MapPin size={10} /> you are here
                       </span>
+                    )}
+                    {c.coverColor && (
+                      <div className={cn("h-0.5 w-8 rounded-full mb-3", c.coverColor)} />
                     )}
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-sm font-semibold text-white leading-snug">{c.title}</h3>
