@@ -74,6 +74,11 @@ fully, verify, ship, check it off. One item per iteration.
   - [x] clustering — 6 exercises across 3 notebooks: k-means assign +
         update (fixed-point check), DBSCAN core points, single vs
         complete linkage, silhouette formula, inertia (PR #63)
+  - [x] pca-dimensionality — 6 exercises across 3 notebooks: covariance
+        matrix, explained-variance ratio + m-for-threshold, perplexity
+        = 2^entropy, binary-search sigma, PCA reconstruction (MSE =
+        discarded eigenvalue), reconstruction-error anomaly
+        detection (PR #64)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
