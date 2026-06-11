@@ -56,6 +56,10 @@ fully, verify, ship, check it off. One item per iteration.
         neuron equation, perceptron logic gates (XOR impossible), MSE
         line-fit gradients vs finite differences, momentum step,
         dense layer, MLP parameter counting (PR #58)
+  - [x] linear-regression — 6 exercises across 3 notebooks: OLS normal
+        equations (residual orthogonality), Ridge closed form, binary
+        cross-entropy, logistic gradient vs finite differences,
+        soft-thresholding, one ISTA step (PR #59)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
