@@ -1,0 +1,219 @@
+---
+title: "Constrained Optimization & KKT"
+description: "Lagrange multipliers, inequality constraints, KKT conditions, and how duality connects back to the SVM."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Constrained Optimization & KKT
+
+Most real ML problems are not unconstrained. SVMs enforce a margin, portfolio optimizers cap risk, and max-entropy models must respect probability normalization. The **Lagrangian framework** converts constrained problems into unconstrained ones — and KKT conditions tell you exactly when you've found the solution.
+
+## Equality constraints — Lagrangians
+
+**Problem:** minimize $f(x)$ subject to $h(x) = 0$.
+
+Introduce the **Lagrangian**:
+
+$$
+\mathcal{L}(x, \lambda) = f(x) + \lambda h(x)
+$$
+
+At the constrained optimum $x^*$, the gradients of $f$ and $h$ must be **parallel** — you cannot move along the constraint surface without increasing $f$. Formally:
+
+$$
+\nabla_x \mathcal{L} = 0 \quad \Longleftrightarrow \quad \nabla f(x^*) = -\lambda \nabla h(x^*)
+$$
+
+The scalar $\lambda$ (the **Lagrange multiplier**) measures how much the optimal value of $f$ would improve if the constraint were relaxed.
+
+### Worked example
+
+**Minimize** $f(x, y) = x^2 + y^2$ **subject to** $x + y = 1$.
+
+Form the Lagrangian:
+
+$$
+\mathcal{L}(x, y, \lambda) = x^2 + y^2 + \lambda(x + y - 1)
+$$
+
+Stationarity conditions:
+
+$$
+\frac{\partial \mathcal{L}}{\partial x} = 2x + \lambda = 0 \implies x = -\tfrac{\lambda}{2}
+$$
+$$
+\frac{\partial \mathcal{L}}{\partial y} = 2y + \lambda = 0 \implies y = -\tfrac{\lambda}{2}
+$$
+$$
+\frac{\partial \mathcal{L}}{\partial \lambda} = x + y - 1 = 0
+$$
+
+From the first two: $x = y$. Substituting into the constraint: $2x = 1 \implies x = y = 0.5$.
+
+**Solution:** $x^* = y^* = 0.5$, $\lambda^* = -1$, with $f(x^*) = 0.5$.
+
+**Geometric check:** the level curves of $f(x,y) = c$ are circles centered at the origin. The constraint is the line $x+y=1$. The smallest circle that touches the line is tangent to it — tangency means $\nabla f \parallel \nabla h$, exactly the stationarity condition.
+
+```python
+from scipy.optimize import minimize
+import numpy as np
+
+# scipy verification
+res = minimize(
+    fun=lambda v: v[0]**2 + v[1]**2,
+    x0=[0.0, 0.0],
+    constraints={'type': 'eq', 'fun': lambda v: v[0] + v[1] - 1}
+)
+print(f"x* = {res.x.round(4)}, f* = {res.fun:.4f}")
+# x* = [0.5, 0.5], f* = 0.5
+```
+
+## Inequality constraints
+
+**Problem:** minimize $f(x)$ subject to $g_i(x) \leq 0$ for $i = 1, \ldots, m$.
+
+Generalize the Lagrangian with **dual variables** $\mu_i \geq 0$:
+
+$$
+\mathcal{L}(x, \mu) = f(x) + \sum_{i=1}^m \mu_i g_i(x)
+$$
+
+The sign of $\mu_i$ must be **non-negative** because we want the Lagrangian penalty to push $x$ toward the feasible region (where $g_i \leq 0$), not away from it.
+
+### Active vs inactive constraints
+
+At the optimum:
+
+- **Active constraint:** $g_i(x^*) = 0$ — the boundary is reached; $\mu_i$ can be positive.
+- **Inactive constraint:** $g_i(x^*) < 0$ — the constraint is slack; $\mu_i = 0$ (it doesn't bind).
+
+This "on/off" behavior is captured by the **complementary slackness** condition.
+
+## KKT conditions
+
+The **Karush-Kuhn-Tucker (KKT)** conditions are necessary (and under convexity, sufficient) for optimality. For the problem $\min_x f(x)$ s.t. $g_i(x) \leq 0$, $h_j(x) = 0$:
+
+| # | Condition | Meaning |
+|---|-----------|---------|
+| 1 | $\nabla_x f(x^*) + \sum_i \mu_i^* \nabla g_i(x^*) + \sum_j \lambda_j^* \nabla h_j(x^*) = 0$ | **Stationarity** — gradient of Lagrangian is zero |
+| 2 | $g_i(x^*) \leq 0$ for all $i$ | **Primal feasibility** — constraints are satisfied |
+| 3 | $\mu_i^* \geq 0$ for all $i$ | **Dual feasibility** — dual variables non-negative |
+| 4 | $\mu_i^* g_i(x^*) = 0$ for all $i$ | **Complementary slackness** — inactive constraints have zero multiplier |
+
+<Callout type="info" title="KKT sufficient conditions">
+  For convex $f$ and convex inequality constraints (convex $g_i$, affine $h_j$), the KKT conditions are also **sufficient** for global optimality. This is why the SVM dual derivation is exact — the primal SVM is convex.
+</Callout>
+
+### Worked LP example
+
+**Minimize** $-2x - y$ **subject to** $x + y \leq 4$, $x \leq 3$, $y \leq 3$, $x, y \geq 0$.
+
+Rewrite constraints as $g_i \leq 0$: $g_1 = x+y-4$, $g_2 = x-3$, $g_3 = y-3$, $g_4 = -x$, $g_5 = -y$.
+
+At the vertex $(3, 1)$: $g_2 = 0$ (active), $g_4 = g_5 = g_3 < 0$ (inactive) — but is it optimal?
+
+At the vertex $(1, 3)$: $g_3 = 0$ (active), objective $= -2-3 = -5$.
+
+At the vertex $(3, 1)$: objective $= -6-1 = -7$ — better. Check the last vertex: $(3, 1)$ has $g_1 = 0$ as well (both $g_1$ and $g_2$ active).
+
+**Optimal point:** $(3, 1)$. Verify KKT stationarity: $\nabla(-2x-y) = (-2,-1)$, so we need $\mu_1 \cdot (1,1) + \mu_2 \cdot (1,0) = (2,1)$, giving $\mu_1 = 1 \geq 0$, $\mu_2 = 1 \geq 0$. ✅ Complementary slackness: $\mu_3 g_3 = 0$ since $g_3 = 1-3 = -2 \neq 0$ forces $\mu_3 = 0$ ✅.
+
+## The SVM dual as KKT
+
+The hard-margin SVM primal:
+
+$$
+\min_{w, b} \frac{1}{2}\|w\|^2 \quad \text{s.t.} \quad y_i(w \cdot x_i + b) \geq 1 \quad \forall i
+$$
+
+Write constraints as $g_i = 1 - y_i(w \cdot x_i + b) \leq 0$ and form the Lagrangian:
+
+$$
+\mathcal{L}(w, b, \alpha) = \frac{1}{2}\|w\|^2 - \sum_{i=1}^n \alpha_i \bigl[y_i(w \cdot x_i + b) - 1\bigr]
+$$
+
+with $\alpha_i \geq 0$. Stationarity:
+
+$$
+\frac{\partial \mathcal{L}}{\partial w} = w - \sum_i \alpha_i y_i x_i = 0 \implies w = \sum_i \alpha_i y_i x_i
+$$
+$$
+\frac{\partial \mathcal{L}}{\partial b} = -\sum_i \alpha_i y_i = 0 \implies \sum_i \alpha_i y_i = 0
+$$
+
+Substituting back into $\mathcal{L}$ eliminates $w$ and $b$, yielding the **dual problem**:
+
+$$
+\max_\alpha \sum_{i=1}^n \alpha_i - \frac{1}{2}\sum_{i=1}^n \sum_{j=1}^n \alpha_i \alpha_j y_i y_j\, x_i \cdot x_j
+$$
+$$
+\text{s.t.} \quad \sum_i \alpha_i y_i = 0, \quad \alpha_i \geq 0
+$$
+
+**KKT complementary slackness:**
+
+$$
+\alpha_i \bigl[y_i(w \cdot x_i + b) - 1\bigr] = 0
+$$
+
+This means either $\alpha_i = 0$ (the point is not a support vector) or $y_i(w \cdot x_i + b) = 1$ (the point lies exactly on the margin — it *is* a support vector). The weight vector is determined entirely by the support vectors:
+
+$$
+w = \sum_{i:\, \alpha_i > 0} \alpha_i y_i x_i
+$$
+
+<Callout type="success" title="Why the dual matters">
+  The dual objective depends on data only through inner products $x_i \cdot x_j$. Replacing these with a kernel $k(x_i, x_j)$ extends SVMs to non-linear boundaries without ever computing high-dimensional feature maps — the **kernel trick**.
+</Callout>
+
+## Duality gap
+
+The **weak duality** theorem says the dual optimal value is always ≤ the primal optimal value:
+
+$$
+d^* \leq p^*
+$$
+
+**Strong duality** ($d^* = p^*$) holds when **Slater's condition** is satisfied: there exists a strictly feasible point ($g_i(x) < 0$ for all inequality constraints).
+
+The hard-margin SVM has $n$ constraints $g_i(x) = 1 - y_i(w \cdot x_i + b) \leq 0$. Slater's condition holds whenever the data is linearly separable — which is the problem's premise. Therefore:
+
+$$
+d^*_\text{SVM} = p^*_\text{SVM}
+$$
+
+Solving the dual is exactly equivalent to solving the primal. The dual is often easier because it has $n$ variables ($\alpha_i$) with simple box constraints, regardless of the input dimension.
+
+## Applications beyond SVM
+
+**Elastic net as dual of group lasso.** The elastic net penalty $\lambda_1 \|w\|_1 + \frac{\lambda_2}{2}\|w\|^2$ can be derived as the dual of a group-sparse regularizer — the Lagrange multiplier connects the two perspectives.
+
+**Maximum entropy.** Finding the distribution $p$ that maximizes $H(p) = -\sum_i p_i \log p_i$ subject to moment constraints $\sum_i p_i f_k(x_i) = \mu_k$ is a constrained convex problem. Its KKT conditions give the **Gibbs/Boltzmann** distribution $p_i \propto \exp(-\sum_k \lambda_k f_k(x_i))$.
+
+**Portfolio optimization.** Markowitz mean-variance: maximize expected return subject to variance $\leq \sigma^2$ and weights summing to 1. KKT gives the efficient frontier in closed form.
+
+## Common mistakes
+
+1. **Forgetting the sign of $\mu$.** For $g_i \leq 0$ constraints, the multiplier must satisfy $\mu_i \geq 0$. Flipping the constraint direction flips the sign requirement.
+2. **Applying KKT to non-convex problems.** KKT conditions are necessary for any smooth optimum, but only sufficient under convexity. A non-convex problem can satisfy KKT at a saddle point or local minimum that is not global.
+3. **Ignoring complementary slackness.** This condition is the one that tells you which constraints are active — skipping it leaves the system underdetermined.
+4. **Assuming strong duality always holds.** Slater's condition is the most common check. Without it (e.g., constraints that only touch but never strictly satisfy), the duality gap may be positive.
+
+## Key takeaways
+
+- The Lagrangian $\mathcal{L} = f + \lambda h$ converts equality-constrained problems into unconstrained ones; stationarity means $\nabla f \parallel \nabla h$ at the optimum.
+- Inequality constraints introduce dual variables $\mu_i \geq 0$ with complementary slackness: inactive constraints have $\mu_i = 0$.
+- KKT conditions (stationarity, primal feasibility, dual feasibility, slackness) are necessary + sufficient for convex problems.
+- The SVM dual follows directly from KKT: $w = \sum \alpha_i y_i x_i$; only support vectors ($\alpha_i > 0$) matter.
+- Strong duality (Slater's condition) guarantees solving the dual is equivalent to solving the primal.
+
+## Related concepts
+
+- [**Maximum Margin Classification**](/courses/svm/01-maximum-margin) — the SVM primal and support vectors
+- [**Convex Optimization**](/courses/optimization-ml/02-convex-optimization) — why convexity makes KKT sufficient
+
+<Exercise id="opt-lagrange-multiplier" />
+<Exercise id="opt-kkt-slackness" />
+<Exercise id="opt-svm-dual" />
