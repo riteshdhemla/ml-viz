@@ -1,0 +1,165 @@
+---
+title: "Validation Strategies"
+description: "Train/test splits, k-fold CV, data leakage, and bootstrapping — getting reliable generalization estimates."
+order: 2
+type: concept
+estimatedMinutes: 14
+---
+
+# Validation Strategies
+
+A model that scores 98% on its training data might generalize at 60% — or the reverse. The only way to measure true generalization is to test on data the model never saw during training. But that simple principle hides a minefield of ways to accidentally peek at test data.
+
+## The fundamental goal
+
+We want to estimate **expected loss on unseen data** from a distribution $\mathcal{D}$:
+
+$$
+L_{\text{gen}} = \mathbb{E}_{(x, y) \sim \mathcal{D}}[\ell(f(x), y)]
+$$
+
+The training loss $L_{\text{train}}$ is a biased (optimistic) estimate — the model was fit to minimize it. The question is: how do we estimate $L_{\text{gen}}$ from our finite dataset without holding back too much data from training?
+
+## Simple train/test split
+
+The simplest strategy: reserve 20% as a held-out test set, train on 80%.
+
+**Stratified split** — for classification, preserve the class distribution in both splits. Without stratification, random chance might put all rare-class examples in one set.
+
+**When it's sufficient:** large datasets (>10k samples). With enough data, the 20% test set is large enough that the estimate has low variance.
+
+**When it fails:** small datasets. A single 80/20 split on 100 samples leaves 20 test examples — the estimated test accuracy has high variance (~3-5% standard deviation).
+
+<Callout type="warning" title="Never touch the test set during development">
+  The test set must only be used **once** — after all model development is done. If you tune hyperparameters based on test performance, you are implicitly fitting the test set and the estimate is no longer unbiased. Use a validation set for development; the test set is for the final evaluation only.
+</Callout>
+
+## k-Fold Cross-Validation
+
+Partition the dataset into $k$ equal folds. For each fold $i$, train on the other $k-1$ folds and evaluate on fold $i$. Repeat for all folds and average the scores.
+
+$$
+\hat{L}_{\text{CV}} = \frac{1}{k} \sum_{i=1}^k L_{\text{val}_i}
+$$
+
+**Choosing k:**
+
+| k | Bias | Variance | Cost |
+|---|------|----------|------|
+| 2 | High (trains on 50%) | Low | Cheap |
+| 5 | Medium | Medium | Moderate |
+| 10 | Low | Low-medium | 10× training cost |
+| n (LOO) | Very low | High | n× training cost |
+
+**k=5 or k=10** is the standard recommendation: low bias (trains on 80-90% of data) with manageable compute.
+
+**Stratified k-fold** preserves class ratios in each fold — always use for classification.
+
+```python
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+
+skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+scores = cross_val_score(model, X, y, cv=skf, scoring='f1')
+print(f"CV F1: {scores.mean():.3f} ± {scores.std():.3f}")
+```
+
+## Leave-One-Out (LOO)
+
+LOO is k-fold with $k = n$: train on $n-1$ samples and test on the one held-out sample, repeated $n$ times.
+
+**Advantages:** nearly unbiased estimate (trains on almost all the data).
+
+**Disadvantages:** $n$ separate model fits (expensive); the $n$ validation estimates are highly correlated (each fold differs by just one sample), giving the LOO estimate **high variance**.
+
+Use LOO only when your dataset is very small ($n < 50$) and compute is cheap.
+
+## Bootstrapping
+
+**Bootstrap sampling:** draw $n$ samples with replacement from the $n$-sample dataset. Each bootstrap sample is used for training; the samples not drawn (**out-of-bag**, OOB) form the validation set.
+
+**OOB fraction:** the probability that a specific sample is never chosen in $n$ draws is $(1-1/n)^n \to e^{-1} \approx 0.368$ as $n \to \infty$. About 36.8% of the original data is OOB per bootstrap sample — equivalent to a roughly 63/37 train/test split.
+
+The **.632 estimator** corrects the bootstrap's slight optimism:
+
+$$
+\hat{L}_{0.632} = 0.368 \cdot L_{\text{train}} + 0.632 \cdot L_{\text{OOB}}
+$$
+
+**Random Forest OOB error:** Random Forest builds each tree on a bootstrap sample, so it automatically has OOB samples for each tree — a free, unbiased generalization estimate with no extra training.
+
+## Time-series cross-validation
+
+Standard k-fold **randomly shuffles** the data — catastrophic for time series where future data cannot inform past predictions.
+
+**Walk-forward validation:** train on $[1, t]$, validate on $[t+1, t+h]$, then expand the window and repeat.
+
+```
+Train [────────]  Val [──]
+Train [──────────]  Val [──]
+Train [────────────]  Val [──]
+```
+
+**Expanding window** (above): always train on all past data. **Rolling window**: use a fixed-length training window, useful when concept drift makes old data less relevant.
+
+<Callout type="warning" title="Never shuffle time-series data">
+  Random k-fold on time-series data produces optimistic estimates because models see future information during training. A model predicting stock prices using tomorrow's prices as a feature would look great on shuffled CV but fail catastrophically in production.
+</Callout>
+
+## Data leakage
+
+Data leakage is any process that allows information from the validation or test set to influence the training pipeline. It produces optimistic estimates that fail in production.
+
+**Three common types:**
+
+**1. Train-test leakage (preprocessing leakage):**
+```python
+# WRONG — scaler sees test statistics during fit
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X_all)   # X_all includes test!
+X_train, X_test = train_test_split(X_scaled)
+
+# CORRECT — scaler only sees training data
+X_train, X_test = train_test_split(X_all)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test  = scaler.transform(X_test)       # transform only, not fit
+```
+
+**2. Temporal leakage:** a feature like "days since last fraud in account" computed over the entire dataset uses future fraud events to describe past transactions. Must compute using only data up to each timestamp.
+
+**3. Target leakage:** a feature that encodes the label. Example: including "treatment prescribed" as a feature when predicting "disease diagnosed" — the prescription was made because of the diagnosis.
+
+<Callout type="tip" title="Use sklearn Pipeline to prevent leakage">
+  Wrapping preprocessing in a `Pipeline` ensures every transformer is fit only on the training fold during CV — no leakage possible.
+  ```python
+  from sklearn.pipeline import Pipeline
+  pipe = Pipeline([('scaler', StandardScaler()), ('clf', LogisticRegression())])
+  cross_val_score(pipe, X, y, cv=5)  # scaler fit per fold automatically
+  ```
+</Callout>
+
+## Common mistakes
+
+1. **Tuning hyperparameters on the test set** — even reading the test set error once to decide something is leakage. Use a separate validation set or CV.
+2. **Not stratifying splits on imbalanced data** — all rare-class examples in one fold causes wildly unstable CV estimates.
+3. **Applying k-fold to time series** — shuffled CV inflates performance on temporal data.
+4. **Feature selection before splitting** — selecting features based on correlation with labels computed on all data (including test) is leakage. Feature selection must happen inside each CV fold.
+5. **Reporting mean CV score without standard deviation** — the mean alone hides variance between folds; always report mean ± std.
+
+## Key takeaways
+
+- Training loss is always an optimistic estimate of generalization; validation on held-out data is essential.
+- k-fold CV with k=5 or k=10 balances bias (trains on most data) and variance (averages over multiple splits).
+- LOO is nearly unbiased but has high variance and cost; use for very small datasets.
+- Bootstrap OOB fraction is ≈1/e ≈ 36.8%; the .632 estimator corrects for bootstrapping's slight optimism.
+- Time-series data requires walk-forward validation — never shuffle temporal data.
+- Data leakage (preprocessing, temporal, or target) makes validation estimates optimistic and untrustworthy in production.
+
+## Related concepts
+
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — what to measure once you have a valid split
+- [**Training Techniques**](/courses/model-evaluation/03-training-techniques) — early stopping, hyperparameter search, and augmentation
+
+<Exercise id="eval-kfold-bias" />
+<Exercise id="eval-data-leakage" />
+<Exercise id="eval-bootstrap-oob" />

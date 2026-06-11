@@ -185,11 +185,11 @@ fully, verify, ship, check it off. One item per iteration.
 
 ### Curriculum gaps — new courses
 
-- [ ] **Optimization for ML course** — (1) GD variants: SGD, momentum, RMSprop,
+- [x] **Optimization for ML course** — (1) GD variants: SGD, momentum, RMSprop,
       Adam; (2) convex optimization: convexity and why it matters;
       (3) constrained optimization: Lagrange multipliers, KKT intuition (links
       to SVM dual). + notebooks, exercises, quiz
-- [ ] **Model Evaluation & Validation course** — (1) metrics: accuracy,
+- [x] **Model Evaluation & Validation course** — (1) metrics: accuracy,
       precision/recall/F1, MAE/MSE, ROC-AUC vs PR curves; (2) validation:
       train/test split, k-fold CV, LOO, bootstrapping, data leakage;
       (3) training techniques: early stopping, LR schedules, grid/random/
