@@ -67,6 +67,10 @@ fully, verify, ship, check it off. One item per iteration.
   - [x] svm — 6 exercises across 3 notebooks: hinge loss, margin width
         2/||w||, RBF kernel, quadratic-kernel-equals-feature-map,
         violators + slack, hinge subgradient step (PR #61)
+  - [x] ensemble-methods — 6 exercises across 3 notebooks: bootstrap +
+        1/e OOB fraction, ensemble variance (correlation floor),
+        AdaBoost alpha + half-weight reweighting, shrinkage geometry,
+        early stopping, XGBoost leaf weight/gain (PR #62)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
