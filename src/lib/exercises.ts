@@ -3439,6 +3439,52 @@ const allExercises: Exercise[] = [
     ],
   },
 
+  {
+    id: "transformer-cross-attention",
+    type: "multiple-choice",
+    question:
+      "In encoder-decoder cross-attention (e.g., machine translation), where do the Queries, Keys, and Values come from?",
+    hint: "The decoder wants to 'look up' information from the encoder's output.",
+    explanation:
+      "Queries come from the decoder (what the decoder currently wants to find), while Keys and Values come from the encoder's output (the encoded representation of the input sequence). This lets every decoder position attend to any encoder position, effectively reading the source sequence to guide generation.",
+    options: [
+      { id: "a", label: "Q from decoder, K and V from encoder", isCorrect: true },
+      { id: "b", label: "Q, K, V all from decoder", isCorrect: false },
+      { id: "c", label: "Q from encoder, K and V from decoder", isCorrect: false },
+      { id: "d", label: "Q, K, V all from encoder", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-gqa",
+    type: "multiple-choice",
+    question:
+      "A model with 16 Q-heads uses Grouped-Query Attention (GQA) with 4 KV groups. Compared to Multi-Head Attention (MHA), how large is the KV cache?",
+    hint: "KV cache scales with the number of K/V heads, not Q heads.",
+    explanation:
+      "In MHA, K and V have the same number of heads as Q (16). In GQA with 4 groups, there are only 4 K/V heads shared across the 16 Q-heads. The KV cache therefore shrinks to 4/16 = 1/4 of the MHA size. GQA achieves most of MQA's memory savings while retaining model quality closer to MHA.",
+    options: [
+      { id: "a", label: "The same as MHA (no change)", isCorrect: false },
+      { id: "b", label: "1/4 of MHA", isCorrect: true },
+      { id: "c", label: "1/16 of MHA (one K/V head)", isCorrect: false },
+      { id: "d", label: "1/2 of MHA", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-rope",
+    type: "multiple-choice",
+    question:
+      "What is the key advantage of Rotary Positional Encoding (RoPE) over additive sinusoidal encodings?",
+    hint: "Think about how RoPE encodes position and what property the dot product has.",
+    explanation:
+      "RoPE encodes position by rotating Q and K vectors, so the attention dot product Q_m·K_n depends only on the relative offset (m-n), not on absolute positions. This makes RoPE naturally suited to extrapolating to longer sequences than seen during training, and allows efficient KV-cache extensions like RoPE scaling.",
+    options: [
+      { id: "a", label: "Attention scores depend only on relative position, not absolute", isCorrect: true },
+      { id: "b", label: "It uses fewer parameters than sinusoidal PE", isCorrect: false },
+      { id: "c", label: "It prevents any positional information from being encoded", isCorrect: false },
+      { id: "d", label: "It removes the need for positional encoding entirely", isCorrect: false },
+    ],
+  },
+
   // ── Generative Models course quiz ────────────────────────────────────
   {
     id: "genmodel-quiz-vaeloss",
@@ -3508,6 +3554,52 @@ const allExercises: Exercise[] = [
       { id: "b", label: "Compress images into a discrete codebook", isCorrect: false },
       { id: "c", label: "Distinguish real images from noisy ones", isCorrect: false },
       { id: "d", label: "Map noise directly to images in one step", isCorrect: false },
+    ],
+  },
+
+  {
+    id: "genai-vit-patches",
+    type: "multiple-choice",
+    question:
+      "A Vision Transformer (ViT) processes a 224×224 image with patch size P=16. How many patches (tokens) does it create, and what is the dimension of each flattened patch?",
+    hint: "Divide each spatial dimension by P to get patch grid size; flatten the patch to a vector.",
+    explanation:
+      "Number of patches: (224/16)² = 14² = 196. Each patch is 16×16×3 = 768 pixels, which is flattened to a 768-dimensional vector before a linear projection to d_model. So the transformer sees a sequence of 196 tokens (plus one [CLS] token = 197 total), each of 768 dimensions.",
+    options: [
+      { id: "a", label: "196 patches, each 768-dimensional", isCorrect: true },
+      { id: "b", label: "49 patches, each 3072-dimensional", isCorrect: false },
+      { id: "c", label: "784 patches, each 192-dimensional", isCorrect: false },
+      { id: "d", label: "196 patches, each 3-dimensional (RGB only)", isCorrect: false },
+    ],
+  },
+  {
+    id: "genai-cfg",
+    type: "multiple-choice",
+    question:
+      "Classifier-Free Guidance with scale w=7.5 combines conditioned and unconditioned predictions as: output = (1+w)·model(x,c) − w·model(x,∅). What happens as w increases?",
+    hint: "Think about what happens to the unconditioned component as w grows.",
+    explanation:
+      "As w increases, the conditioned output is amplified and the unconditioned output is subtracted more strongly. The model steers more aggressively toward the text condition, producing outputs that are more faithful to the prompt but less diverse (higher fidelity, lower variety). At w=0 the output is fully unconditioned.",
+    options: [
+      { id: "a", label: "Outputs become more faithful to the prompt but less diverse", isCorrect: true },
+      { id: "b", label: "Outputs become more random and diverse", isCorrect: false },
+      { id: "c", label: "The conditioning is ignored completely", isCorrect: false },
+      { id: "d", label: "Inference becomes faster", isCorrect: false },
+    ],
+  },
+  {
+    id: "genai-cycle-loss",
+    type: "multiple-choice",
+    question:
+      "CycleGAN uses a cycle consistency loss. If G_AB translates domain A→B and G_BA translates B→A, what does the cycle consistency loss enforce?",
+    hint: "What should happen if you translate an image there and back?",
+    explanation:
+      "The cycle consistency loss enforces G_BA(G_AB(x)) ≈ x: translating from domain A to B and then back to A should recover the original image. This constraint prevents the generators from collapsing to one output or ignoring input content, enabling unpaired image-to-image translation without paired training data.",
+    options: [
+      { id: "a", label: "G_BA(G_AB(x)) ≈ x — round-trip translation recovers the original", isCorrect: true },
+      { id: "b", label: "G_AB(x) looks realistic in domain B", isCorrect: false },
+      { id: "c", label: "G_AB and G_BA use the same weights", isCorrect: false },
+      { id: "d", label: "The discriminator cannot tell real from fake", isCorrect: false },
     ],
   },
 
