@@ -194,7 +194,7 @@ fully, verify, ship, check it off. One item per iteration.
       train/test split, k-fold CV, LOO, bootstrapping, data leakage;
       (3) training techniques: early stopping, LR schedules, grid/random/
       Bayesian search, augmentation. + notebooks, exercises, quiz
-- [ ] **NLP course** — (1) text preprocessing: tokenization, stemming/
+- [x] **NLP course** — (1) text preprocessing: tokenization, stemming/
       lemmatization, stop words; (2) word embeddings: Word2Vec (CBOW/
       skip-gram), GloVe, FastText → contextual embeddings; (3) sequence models
       to BERT: why attention replaced RNNs; NER/POS/sentiment/translation

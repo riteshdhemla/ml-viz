@@ -1,0 +1,181 @@
+---
+title: "Sequence Models to BERT"
+description: "From seq2seq with attention to Transformers to BERT — how NLP went from task-specific to universal pre-training."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Sequence Models to BERT
+
+The history of NLP over the last decade is a story of ever more powerful representations of context. This lesson traces the path from RNN-based seq2seq to attention-augmented models to the BERT revolution.
+
+## Seq2seq and the bottleneck
+
+**Sequence-to-sequence (seq2seq)** models (Sutskever et al., 2014) use an encoder RNN to compress the input into a fixed-size **context vector**, then a decoder RNN to generate the output conditioned on that vector:
+
+$$
+\mathbf{c} = \text{Encoder}(x_1, \ldots, x_T), \qquad p(y_t \mid y_{<t}) = \text{Decoder}(\mathbf{c}, y_{t-1})
+$$
+
+**The bottleneck problem:** for a 50-word sentence, all meaning must be compressed into a single vector of perhaps 512 dimensions. Long-range dependencies are lossy — the first word of a long sentence is poorly represented in the final hidden state.
+
+Empirically, seq2seq quality degrades sharply as sentence length exceeds 20–30 words.
+
+## Attention (Bahdanau 2015)
+
+**Attention** solves the bottleneck by allowing the decoder to **look back at all encoder hidden states** at each decoding step:
+
+$$
+e_{t,s} = \mathbf{v}^\top \tanh(\mathbf{W}_h \mathbf{h}_s + \mathbf{W}_s \mathbf{s}_t), \quad \alpha_{t,s} = \text{softmax}(e_{t,s})
+$$
+
+$$
+\mathbf{c}_t = \sum_s \alpha_{t,s} \mathbf{h}_s
+$$
+
+The decoder uses a **different context vector $\mathbf{c}_t$** at each step, formed as a weighted sum of encoder states. The weights $\alpha_{t,s}$ form an **alignment** — which source positions are relevant for generating this target word.
+
+**Effect on translation quality:** attention in seq2seq completely closed the length-dependent quality gap and enabled word-alignment visualization (showing which source word was attended when generating each target word).
+
+<Callout type="info" title="Attention is all you need">
+  Bahdanau attention in seq2seq was the precursor to Transformers. The key insight was that the alignment weights $\alpha_{t,s}$ could be learned end-to-end, and that the decoder could attend to any source position at every step. Transformers generalized this to self-attention over all positions in both encoder and decoder.
+</Callout>
+
+## Transformer for NLP tasks
+
+The original Transformer (Vaswani et al., 2017) was designed for translation: encoder reads the source sentence, decoder generates the target token by token.
+
+**Positional encoding** solves the permutation-invariance of self-attention: since attention is order-agnostic, position signals must be injected explicitly via sinusoidal vectors or learned position embeddings.
+
+**Layer structure:**
+1. Multi-head self-attention (attends to all positions)
+2. Layer norm + residual
+3. Position-wise feed-forward network
+4. Layer norm + residual
+
+With 6 encoder and 6 decoder layers, the Transformer dramatically outperformed RNN-based seq2seq on WMT English-German translation.
+
+## NLP task families
+
+Before BERT, each NLP task required its own architecture:
+
+| Task | Example | Approach |
+|------|---------|----------|
+| **Sentiment analysis** | "This movie is great" → positive | Text classifier |
+| **NER** | "Apple [ORG] is in Cupertino [LOC]" | Sequence labeling (BIO tagging) |
+| **POS tagging** | "The/DT cat/NN runs/VBZ" | Sequence labeling |
+| **Machine translation** | En → Fr | Seq2seq + attention |
+| **Question answering** | Extract answer span from passage | Span extraction |
+| **Text classification** | Topic detection, spam | Classifier on [CLS] |
+
+BERT collapsed most of these into a single pre-trained model with task-specific fine-tuning heads.
+
+## BERT: Bidirectional Encoder Representations from Transformers
+
+BERT (Devlin et al., 2018) introduced large-scale **self-supervised pre-training** of a Transformer encoder on two objectives:
+
+### Masked Language Modeling (MLM)
+
+15% of tokens are randomly masked; the model predicts the original tokens:
+
+$$
+\mathcal{L}_{\text{MLM}} = -\sum_{i \in \text{masked}} \log p(w_i \mid \text{context with } w_i \text{ replaced by } [\text{MASK}])
+$$
+
+Why 15%? Enough signal to learn; not so many that context is too sparse. Of the 15%: 80% replaced with `[MASK]`, 10% replaced with a random token, 10% left unchanged (prevents the model from learning to only predict when it sees `[MASK]`).
+
+**Key:** MLM is **bidirectional** — the model can attend to both left and right context when predicting a masked token. This is why BERT significantly outperforms GPT (which uses causal/left-to-right language modeling) on understanding tasks.
+
+### Next Sentence Prediction (NSP)
+
+Given two sentences A and B, predict whether B follows A in the original corpus:
+
+$$
+p(\text{IsNext} \mid [CLS], A, [SEP], B, [SEP])
+$$
+
+50% of pairs are consecutive (IsNext=true), 50% are random (IsNext=false). This teaches BERT to understand inter-sentence relationships — useful for tasks like question answering and natural language inference.
+
+*Note:* later work (RoBERTa) found NSP to be unhelpful and removed it.
+
+### BERT input representation
+
+```
+[CLS] The cat sat [SEP] The dog ran [SEP]
+```
+
+Three embeddings are summed:
+- **Token embedding:** learned embedding for each wordpiece token
+- **Segment embedding:** 0 for sentence A, 1 for sentence B
+- **Position embedding:** learned position up to 512
+
+## Fine-tuning BERT
+
+Pre-training produces a general-purpose encoder. For each task, add a small task-specific head and fine-tune all or part of the model:
+
+| Task type | Fine-tuning head |
+|-----------|-----------------|
+| Text classification | Linear layer on `[CLS]` token |
+| Token classification (NER, POS) | Linear layer on each token |
+| Question answering | Two linear layers predicting span start/end |
+| Sentence pair tasks | Linear layer on `[CLS]` |
+
+**Why fine-tuning is efficient:**
+- Pre-training encodes syntax, semantics, and world knowledge from hundreds of GB of text
+- Fine-tuning only needs thousands to tens of thousands of labeled examples
+- Even with frozen BERT weights (feature extraction), the representations are useful
+
+```python
+from transformers import BertTokenizer, BertForSequenceClassification
+import torch
+
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+model     = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)
+
+inputs = tokenizer("This film is great!", return_tensors='pt')
+logits = model(**inputs).logits
+pred   = torch.argmax(logits, dim=-1).item()
+print("Positive" if pred == 1 else "Negative")
+```
+
+## The scaling story
+
+BERT-Base: 12 layers, 768 hidden, 12 heads, **110M params**. BERT-Large: 24 layers, 1024 hidden, 16 heads, **340M params**.
+
+The post-BERT landscape scaled aggressively:
+
+| Model | Year | Params | Innovation |
+|-------|------|--------|-----------|
+| GPT-2 | 2019 | 1.5B | Causal LM, zero-shot |
+| RoBERTa | 2019 | 125M | Larger batches, no NSP, more data |
+| XLNet | 2019 | 340M | Permutation LM (no [MASK] artifact) |
+| ALBERT | 2019 | 12M | Parameter sharing, factorized embeddings |
+| T5 | 2019 | 11B | Text-to-text unified framework |
+| GPT-3 | 2020 | 175B | Few-shot in-context learning |
+
+## Common mistakes
+
+1. **Using BERT for generative tasks** — BERT's bidirectional encoder can't generate text autoregressively. Use GPT-style decoder-only models for generation.
+2. **Fine-tuning with too high a learning rate** — BERT is easily "catastrophically forgotten"; use 2e-5 to 5e-5 for fine-tuning (not 1e-3).
+3. **Ignoring the [SEP] token in pair tasks** — sentence pair tasks need the `[SEP]` separator between sentences in the input.
+4. **Not truncating to 512 tokens** — BERT's position embeddings are trained up to 512 tokens; truncate or use a Longformer variant for longer inputs.
+5. **Comparing BERT to a fine-tuned GPT** — BERT (encoder-only, MLM) and GPT (decoder-only, causal LM) are designed for different tasks.
+
+## Key takeaways
+
+- Seq2seq RNNs compress the input into a fixed context vector — a bottleneck that degrades quality for long sequences.
+- Bahdanau attention lets the decoder attend to all encoder hidden states, fixing the bottleneck and enabling word alignment.
+- BERT pre-trains a Transformer encoder on Masked LM (predict masked tokens from both sides) and Next Sentence Prediction.
+- MLM's bidirectionality gives BERT richer representations than causal LM for understanding tasks.
+- Fine-tuning adds a task head to pre-trained BERT and tunes on task-specific labels — efficient because the model already encodes syntax and semantics.
+- The field scaled from BERT's 110M to GPT-3's 175B, adding few-shot learning and generalization across tasks.
+
+## Related concepts
+
+- [**Attention & Transformers**](/courses/transformers/01-self-attention) — the self-attention mechanism BERT is built on
+- [**Word Embeddings**](/courses/nlp/02-word-embeddings) — static embeddings that BERT supersedes
+
+<Exercise id="nlp-rnn-limit" />
+<Exercise id="nlp-bert-mlm" />
+<Exercise id="nlp-finetune" />

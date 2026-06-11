@@ -4150,6 +4150,222 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It removes noisy labels from the training set", isCorrect: false },
     ],
   },
+
+  // ── NLP ─────────────────────────────────────────────────────────────────────
+
+  {
+    id: "nlp-tokenization",
+    type: "multiple-choice",
+    question:
+      "BPE tokenizes the word \"unhappiness\" into subword pieces like [\"un\", \"happi\", \"ness\"]. How would a word-level tokenizer handle an unseen word like \"unhappiness\" at test time?",
+    hint: "Think about what happens when a word isn't in the word-level vocabulary.",
+    explanation:
+      "Word-level tokenizers map every token to a fixed vocabulary built at training time. Any word not in that vocabulary becomes the special [UNK] token — losing all information. BPE avoids this by decomposing rare/unseen words into known subword pieces, so the model still has a meaningful (if approximate) representation even for OOV words.",
+    options: [
+      { id: "a", label: "It would split the word by syllables automatically", isCorrect: false },
+      { id: "b", label: "It would replace the word with the [UNK] token, losing all information", isCorrect: true },
+      { id: "c", label: "It would use character n-grams as a fallback", isCorrect: false },
+      { id: "d", label: "It would look up the word in a dictionary", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-stemming-vs-lemma",
+    type: "multiple-choice",
+    question:
+      "A preprocessing pipeline converts \"better\" → \"good\". Is this stemming or lemmatization, and why?",
+    hint: "Stemming uses heuristic suffix rules; lemmatization uses linguistic knowledge.",
+    explanation:
+      "This is lemmatization. Stemming applies heuristic suffix-stripping rules (remove '-ing', '-ed', '-er') and would produce \"better\" → \"better\" (no suffix to strip) or at most \"bett\". Lemmatization uses a lexicon and morphological analysis — it knows \"better\" is the comparative form of \"good\" and maps it to the base lemma. Only lemmatization can handle irregular forms like better/good, ran/run, or worse/bad.",
+    options: [
+      { id: "a", label: "Stemming — it strips the suffix '-er' from the word", isCorrect: false },
+      { id: "b", label: "Lemmatization — it uses morphological knowledge to find the base form", isCorrect: true },
+      { id: "c", label: "Both would produce the same result for this word", isCorrect: false },
+      { id: "d", label: "Neither — this is vocabulary normalization", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-tfidf",
+    type: "multiple-choice",
+    question:
+      "The word \"the\" appears in every document in a 10,000-document corpus. What is its TF-IDF score?",
+    hint: "IDF = log(N / (1 + df(t))). What happens when df(t) = N?",
+    explanation:
+      "When a term appears in every document, df(t) = N. IDF = log(N / (1 + N)) ≈ log(1) = 0 for large N. Since TF-IDF = TF × IDF and IDF ≈ 0, the score is essentially 0 regardless of how often the term appears in a single document. This is the key property of TF-IDF: stopwords that are ubiquitous across the corpus are automatically down-weighted to zero discriminative value.",
+    options: [
+      { id: "a", label: "Very high — because it appears so frequently in each document", isCorrect: false },
+      { id: "b", label: "Exactly 1 — normalized term frequency", isCorrect: false },
+      { id: "c", label: "Approximately 0 — IDF is near zero for terms in every document", isCorrect: true },
+      { id: "d", label: "It depends on the document length", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-word2vec-skip",
+    type: "multiple-choice",
+    question:
+      "In the Word2Vec skip-gram model, what is the training objective?",
+    hint: "Skip-gram: center → context. CBOW: context → center.",
+    explanation:
+      "Skip-gram takes a center word as input and trains the model to predict the surrounding context words within a window. For example, given \"fox\" with window size 2, the model tries to predict [\"quick\", \"brown\", \"jumps\", \"over\"]. The learned input-embedding matrix becomes the word vectors. This is the opposite of CBOW, which takes context words and predicts the center. Skip-gram is better for rare words; CBOW trains faster.",
+    options: [
+      { id: "a", label: "Predict the center word from its surrounding context words", isCorrect: false },
+      { id: "b", label: "Predict surrounding context words from the center word", isCorrect: true },
+      { id: "c", label: "Predict whether two words appear in the same sentence", isCorrect: false },
+      { id: "d", label: "Minimize the distance between synonyms in vector space", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-analogy",
+    type: "multiple-choice",
+    question:
+      "Word2Vec embeddings satisfy v(king) − v(man) + v(woman) ≈ v(queen). What does this imply about the embedding space?",
+    hint: "What kind of structure allows subtraction and addition to capture semantic relationships?",
+    explanation:
+      "This implies that semantic relationships are encoded as consistent vector offsets (directions) in the embedding space. The direction from \"man\" to \"king\" encodes \"royalty for a male\"; shifting that direction by the gender offset (woman − man) produces \"royalty for a female\" = queen. This linear structure means relationships like country→capital, verb tense, singular→plural are all encoded as parallel vector translations across the vocabulary.",
+    options: [
+      { id: "a", label: "Semantic relationships are random — this is a coincidence", isCorrect: false },
+      { id: "b", label: "Semantic relationships are encoded as consistent vector offsets (directions)", isCorrect: true },
+      { id: "c", label: "The model memorized all pairs from the training data", isCorrect: false },
+      { id: "d", label: "Cosine similarity forces all synonyms to the same point", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-contextual",
+    type: "multiple-choice",
+    question:
+      "The word \"bank\" appears in two sentences: \"She sat by the river bank\" and \"He opened a bank account\". How do static embeddings (Word2Vec) and contextual embeddings (BERT) differ in representing this word?",
+    hint: "Static = one vector per word type. Contextual = one vector per word occurrence.",
+    explanation:
+      "Static embeddings (Word2Vec, GloVe) assign a single fixed vector to each word type regardless of context. The vector for \"bank\" is the same in both sentences — a compromise average of all its senses in the training corpus. Contextual embeddings (BERT, ELMo, GPT) produce a different vector for each token occurrence based on the full surrounding context. BERT's representation of \"bank\" in the river sentence will be geometrically close to \"shore\", while in the financial sentence it will be close to \"account\".",
+    options: [
+      { id: "a", label: "Word2Vec gives different vectors for each sentence; BERT gives the same vector", isCorrect: false },
+      { id: "b", label: "Word2Vec assigns the same vector regardless of context; BERT produces context-dependent vectors", isCorrect: true },
+      { id: "c", label: "Both produce the same vector — word meaning doesn't change with context", isCorrect: false },
+      { id: "d", label: "BERT averages the two senses; Word2Vec separates them into distinct tokens", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-rnn-limit",
+    type: "multiple-choice",
+    question:
+      "In a seq2seq model without attention, the decoder receives a single fixed-size context vector c regardless of input length. What problem does this cause for long sequences?",
+    hint: "The encoder must compress an entire sentence into a single vector of fixed dimensions.",
+    explanation:
+      "The fixed-size context vector creates an information bottleneck: for a 100-word sentence, all meaning — vocabulary, syntax, coreferences, long-range dependencies — must be compressed into perhaps 512 floating-point numbers. Empirically, seq2seq quality degrades sharply beyond 20–30 words: the first words of a long sentence are barely represented in the final hidden state since the encoder RNN progressively overwrites earlier states. Attention solves this by letting the decoder access all encoder hidden states at each step.",
+    options: [
+      { id: "a", label: "The model trains too slowly because it processes words one at a time", isCorrect: false },
+      { id: "b", label: "The fixed context vector can't capture all information from long inputs, causing quality degradation", isCorrect: true },
+      { id: "c", label: "The decoder can't handle variable-length outputs", isCorrect: false },
+      { id: "d", label: "Softmax over the full vocabulary becomes computationally intractable", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-bert-mlm",
+    type: "multiple-choice",
+    question:
+      "BERT's Masked Language Modeling (MLM) objective masks 15% of input tokens. What makes MLM fundamentally different from GPT's standard language modeling objective?",
+    hint: "GPT predicts the next token using only left context. BERT predicts a masked token using...?",
+    explanation:
+      "GPT uses causal (left-to-right) language modeling: each token is predicted from only the preceding tokens. This enforces a unidirectional attention mask. BERT's MLM predicts masked tokens by attending to both left and right context simultaneously — it is bidirectional. This bidirectionality gives BERT richer contextual representations for understanding tasks (classification, NER, QA), because each token's representation encodes its full sentence context. The trade-off: BERT can't generate text autoregressively.",
+    options: [
+      { id: "a", label: "MLM predicts the next token using the previous tokens, just like GPT", isCorrect: false },
+      { id: "b", label: "MLM predicts masked tokens using both left and right context (bidirectional)", isCorrect: true },
+      { id: "c", label: "MLM uses a separate decoder to reconstruct the original sentence", isCorrect: false },
+      { id: "d", label: "MLM only masks punctuation tokens to preserve word representations", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-finetune",
+    type: "multiple-choice",
+    question:
+      "Fine-tuning BERT on a sentiment classification task requires only ~10,000 labeled examples to reach strong performance, whereas training from scratch would need millions. Why is fine-tuning so data-efficient?",
+    hint: "What has pre-training on 3 billion words already given BERT?",
+    explanation:
+      "Pre-training on hundreds of GB of text teaches BERT syntax, semantics, world knowledge, coreference resolution, and linguistic structure — all without any labeled data. Fine-tuning only needs to adapt these general representations to the specific task distribution. The task-specific head (a linear layer on [CLS]) is tiny and easy to fit. Essentially, the pre-training has solved the hard part (representation learning); fine-tuning only solves the easy part (mapping those representations to labels).",
+    options: [
+      { id: "a", label: "BERT uses a smaller architecture that needs less data to train", isCorrect: false },
+      { id: "b", label: "Pre-training encodes general linguistic knowledge; fine-tuning only adapts those representations to the task", isCorrect: true },
+      { id: "c", label: "Fine-tuning freezes all layers so fewer parameters need updating", isCorrect: false },
+      { id: "d", label: "The [CLS] token is pre-trained specifically for classification tasks", isCorrect: false },
+    ],
+  },
+
+  // ── NLP Quiz ─────────────────────────────────────────────────────────────────
+
+  {
+    id: "nlp-quiz-bpe",
+    type: "multiple-choice",
+    question:
+      "Which property of BPE (Byte-Pair Encoding) directly solves the out-of-vocabulary (OOV) problem that word-level tokenization suffers from?",
+    hint: "BPE starts from characters — what can it always fall back to?",
+    explanation:
+      "BPE decomposes any word into a sequence of subword pieces learned from the training corpus, bottoming out at individual characters if necessary. Even a completely unseen word at inference time can be represented as a sequence of familiar subwords (e.g., \"ChatGPT\" → [\"Chat\", \"G\", \"PT\"]). Word-level tokenization cannot do this — unknown words collapse to [UNK]. This is why all modern large language models (GPT, BERT, LLaMA) use BPE or WordPiece.",
+    options: [
+      { id: "a", label: "BPE removes punctuation that confuses word-level models", isCorrect: false },
+      { id: "b", label: "BPE decomposes unseen words into known subword pieces, avoiding [UNK]", isCorrect: true },
+      { id: "c", label: "BPE uses a larger vocabulary than word-level tokenization", isCorrect: false },
+      { id: "d", label: "BPE lowercases all tokens so fewer words appear unknown", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-glove",
+    type: "multiple-choice",
+    question:
+      "GloVe (Global Vectors) trains on a different kind of statistics than Word2Vec. What is GloVe's training signal?",
+    hint: "The 'Global' in GloVe is a clue — it uses the full corpus, not local windows.",
+    explanation:
+      "GloVe trains embeddings to predict the logarithm of word co-occurrence counts across the entire corpus. It builds a global co-occurrence matrix X where X_ij counts how often word j appears in the context of word i, then factorizes this matrix. Word2Vec, by contrast, uses local context windows — it only looks at a small sliding window around each word. GloVe's use of global statistics makes it more parallelizable and arguably more stable, though empirical performance is similar.",
+    options: [
+      { id: "a", label: "Local context windows, predicting adjacent words", isCorrect: false },
+      { id: "b", label: "Global word co-occurrence counts across the entire corpus", isCorrect: true },
+      { id: "c", label: "Character n-gram frequencies within each word", isCorrect: false },
+      { id: "d", label: "Sentence-level coherence, predicting paragraph structure", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-attention",
+    type: "multiple-choice",
+    question:
+      "In a seq2seq model, Bahdanau attention computes a context vector c_t = Σ α_{t,s} h_s at each decoding step. What problem does this directly solve compared to the original seq2seq model?",
+    hint: "The original seq2seq uses a single fixed c for all decoding steps.",
+    explanation:
+      "The original seq2seq model uses a single fixed context vector (the final encoder hidden state) for every decoding step. This creates a bottleneck: all source information must fit into one vector, and the first source tokens are poorly represented. Bahdanau attention computes a different context vector at each decoder step — a weighted sum over all encoder hidden states — where the weights α_{t,s} indicate how relevant each source position s is for generating the current target token at step t. This directly eliminates the information bottleneck and enables the model to 'look at' any part of the source at any time.",
+    options: [
+      { id: "a", label: "It speeds up the encoder by allowing parallel processing of source tokens", isCorrect: false },
+      { id: "b", label: "It eliminates the bottleneck of compressing all source information into one fixed vector", isCorrect: true },
+      { id: "c", label: "It prevents vanishing gradients in the encoder RNN", isCorrect: false },
+      { id: "d", label: "It reduces the vocabulary size needed for translation", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-bert-nsp",
+    type: "multiple-choice",
+    question:
+      "BERT is pre-trained with Next Sentence Prediction (NSP): given two segments A and B, predict whether B follows A in the original text. What was NSP intended to teach BERT, and what did RoBERTa later find?",
+    hint: "NSP's purpose was inter-sentence understanding. RoBERTa's finding was...",
+    explanation:
+      "NSP was designed to teach BERT inter-sentence relationships useful for tasks like question answering (Q+passage) and natural language inference (premise+hypothesis). However, RoBERTa (2019) ablated NSP and found it actually hurt or had no effect on downstream performance. The likely explanation: NSP is too easy — the model can detect random (IsNext=false) pairs using topic cues alone without learning deep semantic relationships. RoBERTa removed NSP and trained longer on more data, consistently outperforming BERT-base.",
+    options: [
+      { id: "a", label: "NSP taught vocabulary; RoBERTa found it improved rare word representations", isCorrect: false },
+      { id: "b", label: "NSP taught inter-sentence relationships; RoBERTa found it unhelpful and removed it", isCorrect: true },
+      { id: "c", label: "NSP taught syntax; RoBERTa found it redundant with MLM", isCorrect: false },
+      { id: "d", label: "NSP taught document structure; RoBERTa replaced it with paragraph prediction", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-transfer",
+    type: "multiple-choice",
+    question:
+      "When fine-tuning BERT for a new task, what is the typical fine-tuning strategy for the model's weights?",
+    hint: "BERT fine-tuning tunes all weights, not just the task head — this is 'full fine-tuning'.",
+    explanation:
+      "The standard approach is to fine-tune all of BERT's weights end-to-end, including the Transformer layers, along with the small task-specific head. A very small learning rate (2e-5 to 5e-5) is used to prevent catastrophic forgetting of the pre-trained representations. This 'full fine-tuning' outperforms feature extraction (frozen BERT + trained head) in most cases because the lower layers can be slightly adapted to the task domain. Techniques like layer-wise learning rate decay (lower LR for earlier layers) and gradual unfreezing further improve fine-tuning stability.",
+    options: [
+      { id: "a", label: "Freeze all BERT weights and only train the task-specific head", isCorrect: false },
+      { id: "b", label: "Fine-tune all weights end-to-end with a small learning rate (2e-5 to 5e-5)", isCorrect: true },
+      { id: "c", label: "Replace the top Transformer layer and train only that new layer", isCorrect: false },
+      { id: "d", label: "Use BERT embeddings as static features and train a separate model on top", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
