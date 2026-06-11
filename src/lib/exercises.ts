@@ -2010,6 +2010,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "η = 1/L² ", isCorrect: false },
     ],
   },
+  {
+    id: "calc-jacobian-shape",
+    type: "multiple-choice",
+    question:
+      "A neural network layer maps an input vector of size 256 to an output vector of size 128. What is the shape of its Jacobian?",
+    hint: "Rows index outputs; columns index inputs.",
+    explanation:
+      "The Jacobian of a function f: R^n → R^m has shape m × n — rows for outputs, columns for inputs. Here n=256 (inputs) and m=128 (outputs), so J ∈ R^{128×256}.",
+    options: [
+      { id: "a", label: "256 × 128", isCorrect: false },
+      { id: "b", label: "128 × 256", isCorrect: true },
+      { id: "c", label: "256 × 256", isCorrect: false },
+      { id: "d", label: "128 × 128", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-jacobian-linear",
+    type: "multiple-choice",
+    question:
+      "For the affine layer y = Wx + b (W ∈ R^{m×n}), what is the Jacobian ∂y/∂x?",
+    hint: "Differentiate each output with respect to each input.",
+    explanation:
+      "Output i is f_i(x) = Σ_k W_{ik} x_k + b_i. The partial ∂f_i/∂x_j = W_{ij}, so the Jacobian is the weight matrix W itself. The bias b has no effect on the Jacobian because it is a constant.",
+    options: [
+      { id: "a", label: "W^T", isCorrect: false },
+      { id: "b", label: "W", isCorrect: true },
+      { id: "c", label: "W^T W", isCorrect: false },
+      { id: "d", label: "Identity matrix", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-vjp",
+    type: "multiple-choice",
+    question:
+      "During backpropagation through y = Wx + b, the upstream gradient is v = ∂L/∂y. What is the gradient ∂L/∂x passed to the previous layer?",
+    hint: "This is the vector-Jacobian product (VJP): v^T J.",
+    explanation:
+      "The VJP is v^T J = v^T W, which equals W^T v as a column vector. This is ∂L/∂x — multiply by the transpose of the weight matrix. This is why the backward pass of a linear layer uses W^T while the forward pass uses W.",
+    options: [
+      { id: "a", label: "Wv", isCorrect: false },
+      { id: "b", label: "W^T v", isCorrect: true },
+      { id: "c", label: "v^T W^T", isCorrect: false },
+      { id: "d", label: "v / W", isCorrect: false },
+    ],
+  },
   // ── Probability & Statistics ────────────────────────────────────
   {
     id: "prob-expectation",
