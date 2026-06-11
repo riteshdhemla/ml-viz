@@ -163,8 +163,11 @@ fully, verify, ship, check it off. One item per iteration.
       chain rule, VJP, condition number) + notebook (3 exercises: softmax
       Jacobian, VJP of affine layer, condition number) + 3 quiz exercises;
       quiz renumbered to 05, estimatedHours 2.5→3
-- [ ] **neural-networks: XOR & MLP lesson** — perceptron learning rule, XOR
-      failure, hidden-layer fix, softmax outputs
+- [x] **neural-networks: XOR & MLP lesson** — perceptron learning rule, XOR
+      failure (proof by contradiction), hidden-layer fix (hand-traced weights),
+      universal approximation, softmax + cross-entropy gradient + temperature;
+      notebook + 3 exercises (perceptron step, softmax, CE gradient);
+      quiz renumbered to 05, estimatedHours 2.5→3
 - [ ] **neural-networks: BatchNorm & Dropout lesson** — training stabilizers;
       dropout's relation to L1/L2 regularization
 - [ ] **cnns: Architectures lesson** — AlexNet→VGG→ResNet→EfficientNet,
