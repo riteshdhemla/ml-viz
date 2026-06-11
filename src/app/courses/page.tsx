@@ -1,78 +1,63 @@
-import { getAllCourses } from "@/lib/content";
-import { CourseCard } from "@/components/lessons/CourseCard";
+import { getAllCourses, getLessonsForCourse } from "@/lib/content";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { CoursesView } from "./CoursesView";
+import { absoluteUrl } from "@/lib/site";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Courses" };
+export const metadata: Metadata = {
+  title: "Courses",
+  description: "Every ML Viz course — browse by topic or follow the prerequisite-ordered learning path.",
+  alternates: { canonical: absoluteUrl("/courses") },
+};
+
+/** Longest prerequisite chain above a course (0 for roots). */
+function computeTiers(courses: { slug: string; prerequisites: string[] }[]): Record<string, number> {
+  const bySlug = new Map(courses.map((c) => [c.slug, c]));
+  const tiers: Record<string, number> = {};
+  const visiting = new Set<string>();
+  const tierOf = (slug: string): number => {
+    if (slug in tiers) return tiers[slug];
+    if (visiting.has(slug)) return 0;
+    visiting.add(slug);
+    const course = bySlug.get(slug);
+    const prereqs = (course?.prerequisites ?? []).filter((p) => bySlug.has(p));
+    tiers[slug] = prereqs.length === 0 ? 0 : 1 + Math.max(...prereqs.map(tierOf));
+    visiting.delete(slug);
+    return tiers[slug];
+  };
+  for (const c of courses) tierOf(c.slug);
+  return tiers;
+}
 
 export default function CoursesPage() {
   const courses = getAllCourses();
+  const tiers = computeTiers(courses);
 
-  // Courses with order < 0 are prerequisite foundations; rest group by difficulty
-  const foundations = courses.filter((c) => (c.order ?? 0) < 0);
-  const byDifficulty = {
-    beginner: courses.filter((c) => (c.order ?? 0) >= 0 && c.difficulty === "beginner"),
-    intermediate: courses.filter((c) => c.difficulty === "intermediate"),
-    advanced: courses.filter((c) => c.difficulty === "advanced"),
-  };
+  const pathCourses = courses
+    .map((c) => ({
+      slug: c.slug,
+      title: c.title,
+      description: c.description,
+      difficulty: c.difficulty,
+      prerequisites: c.prerequisites,
+      estimatedHours: c.estimatedHours,
+      lessonCount: getLessonsForCourse(c.slug).length,
+      tier: tiers[c.slug],
+      order: c.order,
+      coverColor: c.coverColor,
+    }))
+    .sort((a, b) => a.tier - b.tier || a.order - b.order);
 
   return (
     <div className="min-h-screen bg-surface">
       <SiteHeader />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-4xl font-bold text-white mb-2">All Courses</h1>
-        <p className="text-slate-400 mb-12">
-          Interactive visual lessons for every stage of the ML journey.
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h1 className="text-4xl font-bold text-white">Courses</h1>
+        <p className="mt-2 text-slate-400 max-w-2xl">
+          Follow the learning path for a structured journey — or browse all courses by
+          difficulty and jump in wherever your background fits.
         </p>
-
-        {/* Foundations — prerequisite math courses */}
-        {foundations.length > 0 && (
-          <section className="mb-14">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-white flex items-center gap-3">
-                <span className="text-brand-400">◆</span>
-                Foundations
-              </h2>
-              <p className="text-sm text-slate-500 mt-1 ml-7">
-                Essential math before diving into ML algorithms
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {foundations.map((course) => (
-                <CourseCard key={course.slug} course={course} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Courses grouped by difficulty */}
-        {(["beginner", "intermediate", "advanced"] as const).map((level) => {
-          const group = byDifficulty[level];
-          if (group.length === 0) return null;
-          return (
-            <section key={level} className="mb-14">
-              <h2 className="text-xl font-semibold text-white capitalize mb-6 flex items-center gap-3">
-                <span
-                  className={
-                    level === "beginner"
-                      ? "text-accent-teal"
-                      : level === "intermediate"
-                      ? "text-accent-yellow"
-                      : "text-accent-rose"
-                  }
-                >
-                  ●
-                </span>
-                {level}
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {group.map((course) => (
-                  <CourseCard key={course.slug} course={course} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        <CoursesView pathCourses={pathCourses} allCourses={courses} />
       </main>
     </div>
   );
