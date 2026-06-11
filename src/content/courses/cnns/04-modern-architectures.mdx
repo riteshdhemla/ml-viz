@@ -1,0 +1,184 @@
+---
+title: "Modern CNN Architectures"
+description: "1×1 convolutions, bottleneck blocks, residual connections, and the design principles that scale from VGG to EfficientNet."
+order: 4
+type: concept
+estimatedMinutes: 18
+---
+
+# Modern CNN Architectures
+
+Understanding *why* each architecture works — not just that it works — is what separates practitioners who can adapt to new problems from those who can only copy existing recipes. This lesson unpacks the key design decisions from ResNet, MobileNet, and EfficientNet that still dominate computer vision in 2025.
+
+## 1×1 Convolutions: the Swiss army knife
+
+A $1 \times 1$ convolution applies a learned linear combination *across channels* at every spatial position, without looking at neighbouring pixels. For an input of shape $(H, W, C_{in})$ and $C_{out}$ filters of size $1 \times 1 \times C_{in}$:
+
+$$
+\text{output}_{h,w,k} = \sum_{c=1}^{C_{in}} W_{k,c} \cdot \text{input}_{h,w,c} + b_k
+$$
+
+This is mathematically equivalent to applying a fully-connected layer independently to every spatial position's channel vector.
+
+**Three uses for $1 \times 1$ convolutions:**
+
+| Use | Example | Why |
+|-----|---------|-----|
+| **Channel reduction** | $256 \to 64$ before a $3\times3$ | Cuts FLOPs by $4\times$ |
+| **Channel expansion** | $64 \to 256$ after a $3\times3$ | Restores capacity |
+| **Non-linear projection** | Any channel-mixing | Adds expressivity without spatial mixing |
+
+### Worked parameter count
+
+A $3\times3$ convolution mapping 256 input channels to 256 output channels costs:
+
+$$
+\underbrace{3 \times 3}_{\text{spatial}} \times \underbrace{256}_{\text{in}} \times \underbrace{256}_{\text{out}} = 589{,}824 \text{ parameters}
+$$
+
+Replace this with a **bottleneck**: $1\times1$ (256→64) + $3\times3$ (64→64) + $1\times1$ (64→256):
+
+$$
+(1 \times 256 \times 64) + (9 \times 64 \times 64) + (1 \times 64 \times 256) = 16{,}384 + 36{,}864 + 16{,}384 = 69{,}632
+$$
+
+**8.5× fewer parameters** for approximately the same computation at the bottleneck. This is the key to making deep networks practical.
+
+<Callout type="info" title="1×1 convolutions in the wild">
+  You see 1×1 convolutions everywhere: the Inception module (GoogLeNet), ResNet bottleneck blocks, MobileNet's pointwise step, and the projection shortcut in ResNet when dimensions change. They are the dominant tool for controlling the channel-count/computation tradeoff.
+</Callout>
+
+## ResNet: residual connections in depth
+
+### The degradation problem
+
+Before ResNet (2015), adding more layers to a network consistently hurt both training *and* test accuracy beyond a certain depth — not just overfitting, but degradation. A 56-layer network performed *worse* than a 20-layer network even on training data. This is puzzling because the 56-layer network could in principle represent the 20-layer network by learning identity mappings for the extra 36 layers.
+
+The insight: **learning the identity mapping is harder than it should be**. If a layer should output $\mathbf{x}$ (unchanged), its weights must conspire to produce $\mathbf{x}$ from a complicated nonlinear transformation. But if we give the layer a residual formulation — explicitly add $\mathbf{x}$ back to the output — then the layer only needs to learn the *residual* $F(\mathbf{x}) = 0$ (set all weights to zero), which is easy.
+
+### The residual block
+
+$$
+\mathbf{y} = F(\mathbf{x}) + \mathbf{x}
+$$
+
+where $F(\mathbf{x})$ is a stack of layers (convolution → BN → ReLU → convolution → BN). The addition happens **before** the final ReLU.
+
+**Why this works mathematically:** Consider the gradient flowing backward through this block. By the chain rule:
+
+$$
+\frac{\partial \mathcal{L}}{\partial \mathbf{x}} = \frac{\partial \mathcal{L}}{\partial \mathbf{y}} \cdot \frac{\partial \mathbf{y}}{\partial \mathbf{x}} = \frac{\partial \mathcal{L}}{\partial \mathbf{y}} \cdot \left(1 + \frac{\partial F}{\partial \mathbf{x}}\right)
+$$
+
+The constant $1$ is the skip path: even if $\partial F / \partial \mathbf{x} \approx 0$ (dead layers), the gradient still flows. In a 152-layer ResNet, the product of 152 Jacobians that would normally vanish is replaced by a sum of exponentially many paths — most of which go through skip connections and have well-conditioned gradients.
+
+### Bottleneck residual block
+
+For ResNet-50 and deeper, each residual block is a **bottleneck**:
+
+```
+Input (256 ch)
+    ↓ 1×1 conv (256→64)  + BN + ReLU    [channel compression]
+    ↓ 3×3 conv (64→64)   + BN + ReLU    [spatial processing]
+    ↓ 1×1 conv (64→256)  + BN           [channel expansion]
+    ↓ + shortcut (identity)
+    ↓ ReLU
+Output (256 ch)
+```
+
+The $1\times1$ layers bookend the expensive $3\times3$, reducing it to $64$ channels and restoring to $256$ afterward. Compared to two $3\times3$ (256→256) layers, the bottleneck uses $69{,}632$ vs $1{,}179{,}648$ parameters — **17× fewer**.
+
+### Projection shortcut
+
+When the input and output of a block have different shapes (different channels or spatial size), the identity shortcut cannot be added directly. A **projection shortcut** uses a $1\times1$ convolution to match dimensions:
+
+$$
+\mathbf{y} = F(\mathbf{x}) + W_s\,\mathbf{x}
+$$
+
+where $W_s$ is a $1\times1$ convolution that changes channel count and/or applies stride 2 to halve spatial dimensions. This is used at each stage transition in ResNet.
+
+<ConvolutionViz />
+
+## Depthwise Separable Convolutions (MobileNet)
+
+Standard convolution mixes channels and spatial structure simultaneously. **Depthwise separable convolution** (MobileNet, 2017) splits this into two steps:
+
+1. **Depthwise convolution** — apply one $K\times K$ filter per input channel independently (no cross-channel mixing)
+2. **Pointwise convolution** — apply $1\times1$ conv to mix channels
+
+**Parameter comparison** for $K=3$, $C$ input and $C$ output channels:
+
+| | Parameters | FLOPs (per spatial position) |
+|--|-----------|-----|
+| Standard $3\times3$ conv | $9C^2$ | $9C^2$ |
+| Depthwise + pointwise | $9C + C^2$ | $9C + C^2$ |
+| **Reduction** | $\approx 8\times$ (for large $C$) | $\approx 8\times$ |
+
+MobileNet-V1 achieves ImageNet accuracy within ~1% of VGG-16 at 8× fewer FLOPs — the key to running CNNs on mobile devices.
+
+## EfficientNet: compound scaling
+
+Prior to EfficientNet (2019), architecture improvements came from independently scaling:
+- **Width** (more channels per layer) — more features, more parameters
+- **Depth** (more layers) — more complex functions, harder to train
+- **Resolution** (larger input images) — more detail, more computation
+
+EfficientNet (Tan & Le, 2019) showed that these three dimensions must be scaled **jointly** in fixed ratios to be efficient. Their **compound scaling rule**:
+
+$$
+\text{depth:} \ d = \alpha^\phi, \quad \text{width:} \ w = \beta^\phi, \quad \text{resolution:} \ r = \gamma^\phi
+$$
+
+where $\phi$ is the overall scaling coefficient (budget) and $\alpha, \beta, \gamma$ are found by grid search such that $\alpha \cdot \beta^2 \cdot \gamma^2 \approx 2$ (doubling FLOPs per doubling of $\phi$).
+
+The intuition: higher resolution images need deeper networks to capture fine-grained patterns, and wider networks to capture more features at each level. Scaling one dimension alone hits diminishing returns quickly.
+
+| Model | FLOPs (Billion) | Top-1 Accuracy |
+|-------|-----------------|----------------|
+| ResNet-50 | 4.1 | 76.0% |
+| EfficientNet-B0 | 0.39 | 77.1% |
+| EfficientNet-B7 | 37 | 84.4% |
+
+EfficientNet-B0 achieves *better* accuracy than ResNet-50 with $10\times$ fewer FLOPs — purely from better scaling of the same building blocks.
+
+## Architecture design principles
+
+The progression from AlexNet (2012) to modern networks reveals a consistent set of principles:
+
+| Principle | Example | Benefit |
+|-----------|---------|---------|
+| Use small filters stacked | VGG 3×3 | Same RF, fewer params, more ReLUs |
+| Add skip connections | ResNet | Gradient highways, train 100s of layers |
+| Reduce channels before 3×3 | Bottleneck | 8-17× fewer params at same expressivity |
+| Factorize spatial and channel mixing | MobileNet | 8× fewer FLOPs for mobile deployment |
+| Scale width/depth/resolution jointly | EfficientNet | Pareto-efficient accuracy/compute tradeoff |
+| Use BN after every conv | All modern nets | Stable training, higher LR possible |
+
+<Callout type="tip" title="Starting point for new tasks">
+  For a new vision task in 2025: start with EfficientNet-B0 or ResNet-50 pretrained on ImageNet, fine-tune on your data with a small learning rate for the backbone and a larger one for the head. This gets you to a strong baseline in hours, not days.
+</Callout>
+
+## Common mistakes
+
+1. **Building VGG-style networks** — fully-connected heads with hundreds of millions of parameters overfit heavily and are slow. Use Global Average Pooling + one FC layer instead.
+2. **Forgetting projection shortcuts** — when changing channels or stride at a stage transition, the shortcut must also change dimensions. Without this, the residual addition fails with shape mismatch.
+3. **Removing BatchNorm from residual blocks** — BN is critical for stable residual training. Each conv in the block should be followed by BN, but the *shortcut path* should not have BN (it would shift the identity mapping).
+
+## Key takeaways
+
+- **$1\times1$ convolutions** mix channels without spatial processing — the core tool for controlling channel count and FLOP budgets.
+- ResNet's **bottleneck block** uses $1\times1$ → $3\times3$ → $1\times1$ to process deep features with 8-17× fewer parameters.
+- **Skip connections** solve the degradation problem by providing gradient highways and making identity learning easy.
+- **Depthwise separable convolutions** (MobileNet) cut FLOPs 8× by factorizing channel and spatial mixing.
+- **Compound scaling** (EfficientNet) jointly scales depth, width, and resolution for efficient accuracy-compute tradeoffs.
+
+## Related concepts
+
+- [**Pooling & CNN Architectures**](/courses/cnns/02-pooling-and-architectures) — the foundation these architectures build on
+- [**Transfer Learning**](/courses/cnns/03-transfer-learning) — using pretrained ResNets/EfficientNets for new tasks
+- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — normalization used in every modern block
+
+<Exercise id="cnn-1x1-params" />
+<Exercise id="cnn-bottleneck" />
+<Exercise id="cnn-residual-gradient" />

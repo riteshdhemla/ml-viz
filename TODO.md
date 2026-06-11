@@ -173,8 +173,11 @@ fully, verify, ship, check it off. One item per iteration.
       ensemble interpretation, L2 equivalence for linear models; notebook +
       3 exercises (BN forward, inverted dropout, running statistics);
       quiz renumbered to 06, estimatedHours 3→3.5
-- [ ] **cnns: Architectures lesson** — AlexNet→VGG→ResNet→EfficientNet,
-      residual connections, 1x1 convolutions
+- [x] **cnns: Architectures lesson** — 1×1 conv (channel mixing, 8.5× param
+      reduction), bottleneck block (1×1→3×3→1×1 derivation), ResNet skip
+      connection gradient analysis (∂y/∂x = ∂F/∂x+1), depthwise separable
+      (MobileNet, 8× savings), EfficientNet compound scaling; notebook +
+      3 exercises; quiz renumbered to 05, estimatedHours 3→3.5
 - [ ] **transformers: Modern attention lesson** — cross-attention, GQA,
       sliding-window, FlashAttention idea; RoPE, RMSNorm, SwiGLU
 - [ ] **generative-models: ViT & modern GenAI lesson** — ViT, StyleGAN/CycleGAN
