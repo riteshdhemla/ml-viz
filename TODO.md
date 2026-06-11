@@ -36,7 +36,7 @@ fully, verify, ship, check it off. One item per iteration.
       sections with `# TODO(you)` outlines, assert checks, and collapsible
       solutions added to all 3 knn-decision-trees notebooks; convention
       documented in CLAUDE.md (PR #39)
-- [ ] **Exercise notebooks — rollout** — apply the knn-decision-trees scaffold
+- [x] **Exercise notebooks — rollout** — apply the knn-decision-trees scaffold
       pattern to the remaining 16 courses' notebooks (one course per
       iteration is fine)
   - [x] linear-algebra — 8 exercises across 4 notebooks: cosine similarity,
@@ -89,6 +89,19 @@ fully, verify, ship, check it off. One item per iteration.
         counting, factorized sprinkler joint, Ising agreement
         (partition function), denoising energy, forward algorithm vs
         enumeration, Viterbi vs brute force (PR #67)
+  - [x] transformers — 6 exercises across 3 notebooks: scaled
+        dot-product attention, causal masking, sinusoidal positional
+        encoding, MHA parameter count independence, LayerNorm,
+        residual connection identity
+  - [x] generative-models — 10 exercises across 5 notebooks: Gaussian
+        mixture density, linear decoder, MSE loss, ReLU forward +
+        gradient mask, KL divergence closed form, reparameterization
+        trick, discriminator BCE loss, optimal discriminator D*(x),
+        forward diffusion noise level, reverse denoising step
+  - [x] reinforcement-learning — 8 exercises across 4 notebooks:
+        Bellman backup, discounted sum + effective horizon, TD update,
+        epsilon-greedy, DQN target computation, replay buffer,
+        returns-to-go, REINFORCE logit update
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
