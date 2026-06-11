@@ -79,6 +79,9 @@ fully, verify, ship, check it off. One item per iteration.
         = 2^entropy, binary-search sigma, PCA reconstruction (MSE =
         discarded eigenvalue), reconstruction-error anomaly
         detection (PR #64)
+  - [x] probabilistic-models — 6 exercises across 3 notebooks: GMM
+        responsibilities, mixture pdf, M-step weighted updates,
+        BIC vs AIC, Laplace smoothing, log-sum NB classifier (PR #65)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
