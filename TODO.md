@@ -82,6 +82,9 @@ fully, verify, ship, check it off. One item per iteration.
   - [x] probabilistic-models — 6 exercises across 3 notebooks: GMM
         responsibilities, mixture pdf, M-step weighted updates,
         BIC vs AIC, Laplace smoothing, log-sum NB classifier (PR #65)
+  - [x] rnns — 6 exercises across 3 notebooks: tanh recurrence step,
+        unrolling loop, gradient factor |w|^T, effective horizon,
+        LSTM/GRU param counts (4/3 ratio), cell-state highway (PR #66)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
