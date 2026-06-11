@@ -4582,6 +4582,222 @@ const allExercises: Exercise[] = [
       { id: "d", label: "ViT-B/16 — Transformers outperform CNNs when fine-tuned", isCorrect: false },
     ],
   },
+
+  // ── ML in Practice ───────────────────────────────────────────────────────────
+
+  {
+    id: "ml-practice-scaling",
+    type: "multiple-choice",
+    question:
+      "You're training a Random Forest classifier on a dataset with features ranging from [0, 0.001] to [0, 1,000,000]. Do you need to scale the features, and why?",
+    hint: "Random Forest splits on feature thresholds — does the absolute scale matter for threshold selection?",
+    explanation:
+      "Random Forest (and tree-based models in general) do NOT require feature scaling. Each split compares a feature value against a threshold; the relative ordering within a feature matters, not its absolute scale. A feature in [0, 1,000,000] has the same information as one in [0, 1] — the tree simply learns thresholds in the original scale. Scaling is required for algorithms that use Euclidean distances (KNN, SVM with RBF kernel), gradient norms (neural networks, logistic regression with gradient descent), or matrix operations (PCA, LDA).",
+    options: [
+      { id: "a", label: "Yes — unscaled features cause Random Forest to ignore small-scale features", isCorrect: false },
+      { id: "b", label: "No — tree-based models split on ordered thresholds and are scale-invariant", isCorrect: true },
+      { id: "c", label: "Yes — variance normalization prevents overfitting in tree models", isCorrect: false },
+      { id: "d", label: "No — but only if you use StandardScaler, not MinMaxScaler", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-encoding",
+    type: "multiple-choice",
+    question:
+      "A feature 'city' has 5000 unique values. Label encoding maps them to integers 0–4999. Why is label encoding inappropriate here, and what should you use instead?",
+    hint: "Label encoding implies an ordinal relationship. Do cities have an inherent order?",
+    explanation:
+      "Label encoding implies a meaningful numeric order: city_id=4999 would be treated as 'more' than city_id=0 by linear models and distance-based algorithms. Cities have no inherent ordering, so this is wrong for nominal data. One-hot encoding would create 5000 binary columns — too sparse and high-dimensional. The right approaches: (1) Target encoding (replace city with mean target value, using cross-fold encoding to avoid leakage), (2) Frequency encoding (replace with city frequency in training set), or (3) Learned embeddings (trainable dense vector per city, used in deep learning).",
+    options: [
+      { id: "a", label: "Label encoding is fine — integers are just arbitrary indices and models ignore ordering", isCorrect: false },
+      { id: "b", label: "Label encoding implies numeric ordering between cities; use target/frequency encoding or embeddings instead", isCorrect: true },
+      { id: "c", label: "One-hot encoding is always correct for categorical features regardless of cardinality", isCorrect: false },
+      { id: "d", label: "Label encoding should be used but with StandardScaler to normalize the integers", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-leakage",
+    type: "multiple-choice",
+    question:
+      "A fraud detection model achieves 99.8% accuracy in testing but only 62% precision in production (many false positives). A data scientist notices that the feature 'transaction_reversal_count' was included in training. What type of leakage is this?",
+    hint: "Transaction reversals happen AFTER fraud is confirmed. When would this feature be available in production?",
+    explanation:
+      "This is target leakage: the feature 'transaction_reversal_count' is derived from events that happen as a consequence of fraud being detected (the transaction gets reversed). At prediction time (when the fraud decision must be made), this count is 0 for all live transactions — it only becomes non-zero after fraud is confirmed and the transaction is reversed. The model learns a spurious near-perfect signal that doesn't exist at inference time. Rule of thumb: ask 'would this feature value be available at the moment the prediction must be made?' If not, it's leakage.",
+    options: [
+      { id: "a", label: "Data leakage — the test set accidentally contained training samples", isCorrect: false },
+      { id: "b", label: "Target leakage — the feature is only available after the event being predicted", isCorrect: true },
+      { id: "c", label: "Temporal leakage — future transaction data was used to train on past transactions", isCorrect: false },
+      { id: "d", label: "No leakage — transaction reversal count is a valid business feature", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-drift",
+    type: "multiple-choice",
+    question:
+      "A product recommendation model was trained in January. By June, its CTR dropped from 8% to 4%. Investigation shows the input feature distributions are unchanged, but the mapping from features to purchases has shifted (new product categories launched). Which type of drift is this?",
+    hint: "The inputs P(X) are the same; what changed is P(Y|X).",
+    explanation:
+      "This is concept drift: the underlying relationship P(Y|X) between features and the target has changed. Input distributions P(X) are stable, but the model's learned mapping from features to purchases is no longer valid because new product categories changed what drives purchases. Contrast with covariate shift (data drift), where P(X) changes but P(Y|X) stays the same — e.g., a sudden influx of mobile users with different feature distributions. Concept drift is harder to detect because you need labeled ground truth (which may arrive with delay) rather than just monitoring feature distributions.",
+    options: [
+      { id: "a", label: "Data drift (covariate shift) — the feature distributions have changed", isCorrect: false },
+      { id: "b", label: "Concept drift — the relationship P(Y|X) changed due to new product categories", isCorrect: true },
+      { id: "c", label: "Label shift — the distribution of target values P(Y) changed", isCorrect: false },
+      { id: "d", label: "Model decay — the model weights degraded over time due to hardware issues", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-shap",
+    type: "multiple-choice",
+    question:
+      "For a credit scoring model, SHAP assigns the feature 'debt_to_income_ratio' a value of +0.35 for a specific applicant. What does this mean?",
+    hint: "SHAP values represent the marginal contribution of a feature to the prediction.",
+    explanation:
+      "A SHAP value of +0.35 means that the feature 'debt_to_income_ratio' contributed +0.35 to this applicant's log-odds (or probability, depending on the explanation context) compared to the average prediction. It increased the predicted probability (positive sign = pushes toward the positive class, i.e., default risk). SHAP values are additive: the sum of all feature SHAP values equals the deviation of this prediction from the baseline (average prediction). A +0.35 attribution means this applicant's debt-to-income ratio was higher than typical and increased their estimated default risk.",
+    options: [
+      { id: "a", label: "The feature has a correlation of 0.35 with the target variable", isCorrect: false },
+      { id: "b", label: "This feature increased this applicant's predicted risk by 0.35 compared to the baseline prediction", isCorrect: true },
+      { id: "c", label: "The feature is ranked 35th most important globally across all predictions", isCorrect: false },
+      { id: "d", label: "The model's accuracy would drop by 35% if this feature were removed", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-calibration",
+    type: "multiple-choice",
+    question:
+      "A medical diagnosis model outputs P(cancer)=0.8 for 1000 patients. Only 400 of those patients actually have cancer. Is the model well-calibrated, and what does this imply?",
+    hint: "A calibrated model: of all predictions near p, the actual positive rate should be ≈ p.",
+    explanation:
+      "The model is over-confident (poorly calibrated): it predicts 0.8 probability but only 400/1000 = 40% of those patients have cancer. A well-calibrated model would predict ~0.4 for these patients. Poor calibration is serious in medical diagnosis: doctors make treatment decisions based on these probabilities. If they believe the risk is 80% they'll act differently than if they know it's 40%. Platt scaling (fitting a logistic regression to the raw outputs) or isotonic regression can recalibrate the model post-hoc. Note: a model can have high AUC (good ranking) but poor calibration.",
+    options: [
+      { id: "a", label: "Yes, well-calibrated — 80% confidence is a strong positive signal regardless of actual rate", isCorrect: false },
+      { id: "b", label: "No, over-confident — model predicts 0.8 but actual rate is 0.4; needs recalibration", isCorrect: true },
+      { id: "c", label: "Yes, well-calibrated — the 0.8 threshold correctly separates positives from negatives", isCorrect: false },
+      { id: "d", label: "Cannot tell — calibration requires comparing across all probability ranges, not just 0.8", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-scratch-linear-reg",
+    type: "multiple-choice",
+    question:
+      "When implementing linear regression via the normal equation θ = (XᵀX)⁻¹Xᵀy, when does this fail, and what is the fix?",
+    hint: "What matrix property is required for the inverse to exist?",
+    explanation:
+      "The normal equation requires (XᵀX) to be invertible (full rank). It fails when: (1) features are perfectly collinear (one feature is a linear combination of others), (2) more features than samples (p > n). In these cases, XᵀX is singular or nearly singular. The fix is ridge regression: θ = (XᵀX + λI)⁻¹Xᵀy. Adding λI to the diagonal ensures the matrix is always invertible (all eigenvalues become at least λ > 0). The regularization parameter λ controls the bias-variance trade-off. Numerically, you'd use np.linalg.lstsq rather than computing the explicit inverse.",
+    options: [
+      { id: "a", label: "It fails when the learning rate is too large — use gradient descent instead", isCorrect: false },
+      { id: "b", label: "It fails when features are collinear or p > n; fix with ridge regularization (XᵀX + λI)⁻¹Xᵀy", isCorrect: true },
+      { id: "c", label: "It fails for non-linear data — use polynomial features first", isCorrect: false },
+      { id: "d", label: "It always works — the normal equation has a closed-form solution for any dataset", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-scratch-kmeans",
+    type: "multiple-choice",
+    question:
+      "K-Means is initialized with K random centroids. Sometimes it converges to a poor solution. What does K-Means++ do differently, and why does it help?",
+    hint: "K-Means++ spreads out the initial centroids. Why is spreading out good?",
+    explanation:
+      "Standard K-Means can initialize multiple centroids in the same cluster, leading to suboptimal convergence (poor local minima). K-Means++ selects centroids sequentially: the first is chosen randomly, and each subsequent centroid is chosen with probability proportional to D(x)² — the squared distance from the nearest already-chosen centroid. This spreads initial centroids across the data, making it unlikely that two centroids start in the same cluster. Empirically, K-Means++ converges in fewer iterations and to better solutions (lower within-cluster variance). The initialization is O(n·K·d) extra cost, negligible compared to the convergence speedup.",
+    options: [
+      { id: "a", label: "K-Means++ runs K-Means multiple times and keeps the best result", isCorrect: false },
+      { id: "b", label: "K-Means++ selects initial centroids spread across the data, proportional to D(x)² distance", isCorrect: true },
+      { id: "c", label: "K-Means++ uses hierarchical clustering to find good starting centroids", isCorrect: false },
+      { id: "d", label: "K-Means++ randomly permutes the data before selecting the first K samples as centroids", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-scratch-gini",
+    type: "multiple-choice",
+    question:
+      "A decision tree node has 10 samples: 6 class A and 4 class B. What is the Gini impurity, and what does a value of 0 mean?",
+    hint: "Gini = 1 − Σ p_k². For binary: 1 − (p_A² + p_B²).",
+    explanation:
+      "Gini = 1 − (6/10)² − (4/10)² = 1 − 0.36 − 0.16 = 0.48. Gini ranges from 0 (pure node: all samples are one class) to 0.5 for binary classification (50/50 split = maximum impurity). A Gini of 0.48 is close to maximum impurity, indicating this node barely separates the classes. A split is good if it produces two child nodes with much lower Gini. Gini impurity 0 means all samples in the node belong to the same class — the node is pure, and no further splitting is needed (it becomes a leaf).",
+    options: [
+      { id: "a", label: "Gini = 0.24 — split correctly between classes", isCorrect: false },
+      { id: "b", label: "Gini = 0.48 — close to maximum impurity; Gini=0 means a pure node (one class)", isCorrect: true },
+      { id: "c", label: "Gini = 0.60 — weighted by class frequencies", isCorrect: false },
+      { id: "d", label: "Gini = 0.50 — exactly at maximum impurity due to 6/4 imbalance", isCorrect: false },
+    ],
+  },
+
+  // ── ML in Practice Quiz ──────────────────────────────────────────────────────
+
+  {
+    id: "ml-practice-quiz-leakage",
+    type: "multiple-choice",
+    question:
+      "A data scientist fits a StandardScaler on the ENTIRE dataset (train + test) before splitting into train/test. What kind of problem does this introduce?",
+    hint: "What information from the test set is now visible during training?",
+    explanation:
+      "Fitting the StandardScaler on the full dataset introduces data leakage: the scaler computes mean and standard deviation using test set statistics, which are then used when transforming training data. The model training (even indirectly through normalization) has 'seen' information about the test set distribution. This causes overoptimistic evaluation — the model appears to generalize better than it actually does on truly held-out data. The fix: always fit transformers (scalers, encoders, imputers) only on training data, then transform both train and test using training statistics. In sklearn, use Pipeline to guarantee this.",
+    options: [
+      { id: "a", label: "No problem — scaling is a deterministic transformation with no information leakage", isCorrect: false },
+      { id: "b", label: "Data leakage — test set statistics influence training normalization, causing overoptimistic evaluation", isCorrect: true },
+      { id: "c", label: "Target leakage — the target variable affects the scaling", isCorrect: false },
+      { id: "d", label: "No problem if the test set is from the same distribution", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-drift",
+    type: "multiple-choice",
+    question:
+      "A model monitors feature distributions and detects that the 'age' feature has shifted from mean=35 to mean=42 over 6 months, while model accuracy on labeled samples remains the same. What type of shift is this, and should you retrain?",
+    hint: "The inputs changed but the accuracy didn't — what does that tell you about P(Y|X)?",
+    explanation:
+      "This is covariate shift (data drift): P(X) changed (age distribution shifted), but P(Y|X) remained the same (the relationship between age and the target is still valid, just the age values are different). Accuracy remaining stable confirms P(Y|X) is unchanged. Whether to retrain depends on: how far the distribution shifted (if very out-of-range, predictions become extrapolations), whether the shift is expected to continue, and business requirements. If accuracy is stable, the model may be robust. But if the shift continues, predictions for ages outside the training range may degrade. Monitor confidence intervals and retrain preemptively.",
+    options: [
+      { id: "a", label: "Concept drift — the relationship between age and the target has changed", isCorrect: false },
+      { id: "b", label: "Covariate shift — P(X) changed but P(Y|X) is stable; retrain may be preemptive but not urgent", isCorrect: true },
+      { id: "c", label: "Label shift — the distribution of outcomes P(Y) has changed", isCorrect: false },
+      { id: "d", label: "Model decay — the model weights need to be refreshed regardless of accuracy", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-scaling",
+    type: "multiple-choice",
+    question:
+      "Which of these algorithms REQUIRES feature scaling for correct results, not just for faster convergence?",
+    hint: "Think about which algorithm's core computation is directly affected by feature magnitude (not just convergence speed).",
+    explanation:
+      "KNN requires feature scaling for correct results, not just speed: KNN computes Euclidean distance between samples. A feature with range [0, 1000] dominates the distance calculation compared to a feature with range [0, 1], making the latter irrelevant. Without scaling, KNN essentially ignores small-scale features regardless of their predictive value. SVM with RBF kernel has the same issue. Neural networks and logistic regression technically work without scaling (assuming any learning rate works) but converge much faster and more stably with scaling. Decision trees and Random Forest are truly scale-invariant.",
+    options: [
+      { id: "a", label: "Decision trees — Gini impurity depends on absolute feature values", isCorrect: false },
+      { id: "b", label: "KNN — Euclidean distance is dominated by high-magnitude features without scaling", isCorrect: true },
+      { id: "c", label: "Neural networks — gradients become NaN without normalized inputs", isCorrect: false },
+      { id: "d", label: "Random Forest — ensemble voting requires equal-scale features", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-shap",
+    type: "multiple-choice",
+    question:
+      "A SHAP summary plot shows that 'income' has both large positive and large negative SHAP values depending on the sample. What does this tell you about how the model uses this feature?",
+    hint: "Positive SHAP = pushes toward positive class; negative = pushes toward negative class. Both extremes for the same feature means...?",
+    explanation:
+      "The feature 'income' has a nonlinear (or complex) effect on the prediction: for some samples it increases the predicted probability, for others it decreases it. This could mean: (1) high income reduces loan default risk (negative SHAP for high income → lowers default probability) while very low income increases it (positive SHAP → increases default risk); or (2) there are interaction effects with other features. In contrast, a feature with only positive SHAP values uniformly increases the prediction regardless of its value. The wide spread of both positive and negative values indicates income is an important but nonlinearly-acting feature.",
+    options: [
+      { id: "a", label: "The feature has no predictive power — positive and negative effects cancel out", isCorrect: false },
+      { id: "b", label: "The feature has a complex/nonlinear effect — it increases predictions for some values and decreases for others", isCorrect: true },
+      { id: "c", label: "SHAP values are unstable — the model should be retrained", isCorrect: false },
+      { id: "d", label: "Income is positively correlated with the target for some samples and negatively for others", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-calibration",
+    type: "multiple-choice",
+    question:
+      "A weather forecast model predicts 90% chance of rain on 100 days. It rains on 90 of those days. A loan default model predicts 90% default probability for 100 loans; 90 default. Which model is better calibrated?",
+    hint: "Calibration compares predicted probability to observed frequency across many predictions.",
+    explanation:
+      "Both models are equally well-calibrated at the 90% threshold: both predicted 0.90 probability and 90% of the events occurred (90/100 = 90%). Calibration is not about accuracy — it's about whether the predicted probability matches the empirical frequency. A perfectly calibrated model forms a diagonal line on a reliability diagram: among all predictions of probability p, exactly fraction p should be positive. Both models here lie on the diagonal at p=0.9. Note: well-calibrated doesn't mean accurate — a model that always predicts 50% for a 50/50 base-rate problem is perfectly calibrated but useless.",
+    options: [
+      { id: "a", label: "The weather model — meteorological models are inherently better calibrated", isCorrect: false },
+      { id: "b", label: "Both are equally well-calibrated — both predict 90% and observe 90% frequency", isCorrect: true },
+      { id: "c", label: "The loan model — financial models have more ground truth labels", isCorrect: false },
+      { id: "d", label: "Neither — calibration requires at least 1000 samples to be meaningful", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

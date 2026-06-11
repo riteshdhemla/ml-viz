@@ -203,7 +203,7 @@ fully, verify, ship, check it off. One item per iteration.
       vs SSD, anchors, NMS; (2) segmentation: semantic vs instance vs
       panoptic, U-Net, RoI pooling; (3) backbones in practice: ResNet,
       MobileNet, EfficientNet. + notebooks, exercises, quiz
-- [ ] **ML in Practice course** — (1) feature engineering: scaling, encoding,
+- [x] **ML in Practice course** — (1) feature engineering: scaling, encoding,
       interactions, leakage traps; (2) deployment pitfalls: overfitting in
       prod, data/label leakage, drift, interpretability; (3) algorithms from
       scratch: interview-style notebook drills. + notebooks, exercises, quiz

@@ -1,0 +1,267 @@
+---
+title: "Feature Engineering"
+description: "How to scale, encode, and combine raw features for model-ready data — plus the leakage traps that silently corrupt your evaluation."
+order: 1
+type: concept
+estimatedMinutes: 16
+---
+
+# Feature Engineering
+
+Raw data is almost never model-ready. A CSV of house prices has dollar amounts spanning six orders of magnitude, city names as free strings, and a "garage" column that is 80% null. Feature engineering is the craft of transforming that raw data into the numerical matrix a model can actually learn from.
+
+**Why it matters by model type.** Tree-based models (Random Forest, XGBoost) split on thresholds, so they are scale-invariant and handle categories as integers naturally. Linear models, SVMs, and neural networks all operate on dot products — so the scale and encoding of inputs directly affect the geometry of the optimization landscape and the quality of learned representations.
+
+## Numerical feature scaling
+
+Most learning algorithms converge faster and behave more consistently when features occupy similar numerical ranges. Three scalers cover nearly every use case.
+
+**StandardScaler** (z-score normalization) subtracts the mean and divides by the standard deviation:
+
+$$
+z = \frac{x - \mu}{\sigma}
+$$
+
+The output has zero mean and unit variance. This is the default choice for logistic regression, SVMs, PCA, and neural networks.
+
+**MinMaxScaler** maps the range of the training data to $[0, 1]$:
+
+$$
+z = \frac{x - x_{\min}}{x_{\max} - x_{\min}}
+$$
+
+Useful when you need a bounded output (e.g., feeding into a sigmoid activation). Sensitive to outliers — a single extreme value compresses all other values toward 0 or 1.
+
+**RobustScaler** uses the median and interquartile range (IQR) instead of mean and standard deviation:
+
+$$
+z = \frac{x - \text{median}(x)}{\text{IQR}(x)}
+$$
+
+where $\text{IQR} = Q_3 - Q_1$. Because neither the median nor the IQR is influenced by extremes, this scaler is robust to outliers — the right choice when your data contains measurement errors or heavy-tailed distributions.
+
+**When to scale.** Always scale for linear models, SVMs, neural networks, and KNN (which uses raw distances). Never required for tree-based models — decision trees split on ranked order, not magnitude.
+
+**Log transform** for right-skewed distributions (income, house prices, word counts):
+
+$$
+z = \log(1 + x)
+$$
+
+The $+1$ prevents $\log(0)$. This compresses the long right tail and often makes the distribution approximately normal, which benefits linear models.
+
+```python
+import numpy as np
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+
+# StandardScaler
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)   # fit on train only
+X_test_scaled  = scaler.transform(X_test)        # reuse training stats
+
+# Log transform for skewed features
+X_train['income_log'] = np.log1p(X_train['income'])
+X_test['income_log']  = np.log1p(X_test['income'])
+```
+
+| Scaler | Center | Scale | Outlier robust | When to use |
+|--------|--------|-------|---------------|-------------|
+| StandardScaler | Mean | Std dev | No | Default for most algorithms |
+| MinMaxScaler | Min | Range | No | Bounded input needed |
+| RobustScaler | Median | IQR | Yes | Heavy tails, outliers present |
+| Log transform | — | — | Yes | Right-skewed count/amount data |
+
+## Categorical encoding
+
+Models require numbers. Turning "city" or "product_category" into numbers without accidentally imposing an unintended ordering is the central challenge of categorical encoding.
+
+**One-hot encoding** creates a binary column for each category:
+
+$$
+\text{"cat"} \to [1, 0, 0], \quad \text{"dog"} \to [0, 1, 0], \quad \text{"fish"} \to [0, 0, 1]
+$$
+
+No ordinal relationship is implied. Best for **nominal** categories (no inherent order) with **low cardinality** (fewer than ~20 distinct values). Drop one column (the "dummy" column) to avoid perfect multicollinearity in linear models.
+
+**Label encoding** maps each category to an integer: `low → 0`, `medium → 1`, `high → 2`. This is only meaningful for **ordinal** features where the ordering is real and the model should exploit it. Never use label encoding for nominal features with tree-based models either — while trees can handle any integer, the ordering implied by `red=0, green=1, blue=2` is arbitrary and forces the tree to make splits that respect that fictitious order.
+
+**Target encoding** replaces each category with the mean target value for that category:
+
+$$
+\hat{c}_k = \frac{1}{|S_k|} \sum_{i \in S_k} y_i
+$$
+
+where $S_k$ is the set of training rows with category $k$. This captures rich signal for high-cardinality categories (thousands of zip codes, product IDs) but introduces target leakage if computed on the full training set. The safe variant is **cross-fold target encoding**: compute the encoding for fold $i$ using only the other folds, just like cross-validation.
+
+**Frequency encoding** replaces each category with its count (or proportion) in the dataset. Fast to compute, no target leakage, and preserves some information about how common a category is. Useful when rare categories should be treated differently from common ones.
+
+**Embeddings** are learnable dense vectors, typically used in neural networks for high-cardinality categories (cities, users, products). The embedding lookup table is trained jointly with the rest of the model:
+
+$$
+e_k = \mathbf{E}[k] \in \mathbb{R}^d
+$$
+
+where $d \ll |C|$ and $|C|$ is the number of categories. This lets the model discover semantic similarity between categories — cities in the same region end up with similar embedding vectors.
+
+```python
+import pandas as pd
+from sklearn.preprocessing import OneHotEncoder
+
+# One-hot (low cardinality, nominal)
+enc = OneHotEncoder(drop='first', sparse_output=False)
+X_train_ohe = enc.fit_transform(X_train[['color']])
+
+# Frequency encoding
+freq = X_train['city'].value_counts(normalize=True)
+X_train['city_freq'] = X_train['city'].map(freq)
+X_test['city_freq']  = X_test['city'].map(freq).fillna(0)
+```
+
+## Feature interactions
+
+A linear model with features $x_1$ and $x_2$ can only express $w_1 x_1 + w_2 x_2$. If the true effect depends on the *product* of two features, no amount of weight tuning fixes that — the model needs new features.
+
+**Polynomial features** expand a feature set by adding squared terms and cross-products:
+
+$$
+(x_1, x_2) \;\to\; (x_1,\; x_2,\; x_1^2,\; x_2^2,\; x_1 x_2)
+$$
+
+This lets a linear model fit curved decision boundaries without changing the model class — but the number of features grows as $O(d^2)$ for degree-2 and $O(d^k)$ for degree $k$, so regularization becomes critical.
+
+**Cross features** combine two categorical features into a single joint category. For example, `country × device_type` produces features like `"US_mobile"` and `"DE_desktop"`. This lets the model learn different effects per combination — the click-through rate for mobile users in the US may differ substantially from mobile users in Germany, even if the individual effects of `country` and `device_type` are each small.
+
+**Binning / discretization** converts a continuous feature into discrete bins. A model may struggle to learn that `age` affects churn differently in the 18–25 range versus 26–35 versus 65+ — but a set of binary "age bucket" features makes those piecewise effects directly learnable by a linear model.
+
+```python
+from sklearn.preprocessing import PolynomialFeatures
+import numpy as np
+
+poly = PolynomialFeatures(degree=2, include_bias=False)
+X_poly = poly.fit_transform(X_train[['x1', 'x2']])
+# output: [x1, x2, x1^2, x1*x2, x2^2]
+
+# Manual cross feature
+X_train['country_device'] = X_train['country'] + '_' + X_train['device_type']
+
+# Binning
+age_bins = [0, 18, 25, 35, 50, 65, 120]
+X_train['age_bucket'] = pd.cut(X_train['age'], bins=age_bins, labels=False)
+```
+
+## Feature selection
+
+Adding more features is not always better. Irrelevant features add noise, increase training time, and hurt generalization in linear models. High-dimensional spaces also cause problems for distance-based algorithms (KNN, SVM with RBF kernel).
+
+**Variance threshold** removes near-constant features. A binary feature that is 1 in 99.9% of rows carries almost no information:
+
+$$
+\text{remove feature } j \text{ if } \text{Var}(x_j) < \epsilon
+$$
+
+**Correlation filter** removes redundant features. If two features have $|\rho| > 0.95$, keeping both adds noise without adding information. Remove the one with lower correlation to the target.
+
+**Univariate selection (SelectKBest)** scores each feature independently using a statistical test (F-statistic for regression, $\chi^2$ or mutual information for classification) and keeps the top $k$. Fast but ignores interactions between features.
+
+**Model-based selection** uses the feature importances from a fitted tree model (mean decrease in impurity, or the more reliable permutation importance) to rank and prune features.
+
+**Recursive Feature Elimination (RFE)** fits the model, ranks features by importance, removes the weakest features, and repeats until $k$ features remain. More expensive but considers feature interactions that univariate methods miss.
+
+```python
+from sklearn.feature_selection import SelectKBest, f_classif, RFE
+from sklearn.ensemble import RandomForestClassifier
+
+# Univariate
+selector = SelectKBest(f_classif, k=10)
+X_train_sel = selector.fit_transform(X_train, y_train)
+
+# RFE
+rfe = RFE(RandomForestClassifier(n_estimators=50), n_features_to_select=10)
+X_train_rfe = rfe.fit_transform(X_train, y_train)
+```
+
+## Leakage traps
+
+Leakage is the silent killer of ML projects. A model with leakage may look excellent in evaluation and fail completely in production.
+
+**Target leakage** occurs when a feature is derived from the target or is only known *after* the prediction would be made in production. Example: using `total_charges` to predict `customer_churn` when total charges accumulate over time — a churned customer has a different total charges pattern precisely *because* they churned. Including it lets the model "predict" using future information.
+
+<Callout type="warning" title="The most dangerous leakage">
+  The most dangerous leakage is target leakage — the feature you're including is only known after the prediction would be made in production. Target leakage inflates evaluation metrics dramatically but produces a model that cannot function at inference time. Ask of every feature: "Would I know this value at the moment I need to make the prediction?"
+</Callout>
+
+**Data leakage (preprocessing leakage)** happens when the test set's statistics influence the training pipeline. Fitting a scaler on the entire dataset — train and test together — means the training data's scaler parameters incorporate information about test values. The resulting model has indirectly "seen" the test set.
+
+```python
+# WRONG — scaler sees test statistics
+scaler = StandardScaler()
+X_all_scaled = scaler.fit_transform(X_all)      # leaks test stats into scaler
+X_train_s, X_test_s = train_test_split(X_all_scaled)
+
+# CORRECT — scaler only sees training data
+X_train, X_test = train_test_split(X_all)
+scaler = StandardScaler()
+X_train_s = scaler.fit_transform(X_train)       # fit on train only
+X_test_s  = scaler.transform(X_test)            # transform with training stats
+```
+
+**Temporal leakage** occurs in time-series problems when you use future information to predict the past. A feature like "rolling 7-day average spend" computed using the transaction history *after* the date being predicted contains future data. Always compute time-based features using only data up to the point in time of each row.
+
+## The sklearn Pipeline — the correct pattern
+
+A `Pipeline` chains transformers and a final estimator, ensuring that `.fit()` on each transformer is called only on the training fold — not the validation fold. This is the single most effective safeguard against preprocessing leakage.
+
+```python
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+
+pipe = Pipeline([
+    ('scaler', StandardScaler()),
+    ('clf', LogisticRegression())
+])
+pipe.fit(X_train, y_train)  # scaler fits on X_train only
+pipe.score(X_test, y_test)  # scaler transforms X_test using training stats
+```
+
+When used with `cross_val_score`, the pipeline re-fits the scaler on each training fold independently — no leakage across folds. The same pattern extends to imputers, encoders, and any other transformer.
+
+```python
+from sklearn.model_selection import cross_val_score
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.linear_model import LogisticRegression
+
+num_pipe = Pipeline([('impute', SimpleImputer(strategy='median')),
+                     ('scale', StandardScaler())])
+cat_pipe = Pipeline([('impute', SimpleImputer(strategy='most_frequent')),
+                     ('ohe', OneHotEncoder(handle_unknown='ignore'))])
+
+preprocessor = ColumnTransformer([
+    ('num', num_pipe, num_cols),
+    ('cat', cat_pipe, cat_cols),
+])
+
+full_pipe = Pipeline([('prep', preprocessor), ('clf', LogisticRegression())])
+scores = cross_val_score(full_pipe, X, y, cv=5, scoring='roc_auc')
+```
+
+## Key takeaways
+
+- Raw data requires preprocessing before it reaches a model; the right transformations depend on the model family — scale for linear models, SVMs, KNNs, and neural nets; trees are scale-invariant.
+- StandardScaler produces zero-mean unit-variance output; RobustScaler is preferred when outliers are present; MinMaxScaler bounds the range to $[0, 1]$.
+- One-hot encoding is for low-cardinality nominal categories; label encoding is only valid for ordinal features; target encoding is powerful but requires cross-fold computation to avoid leakage.
+- Polynomial features and cross features let linear models capture nonlinear interactions at the cost of a quadratically larger feature space.
+- Feature selection (variance threshold, correlation filter, RFE) reduces noise, training time, and overfitting — especially important in high dimensions.
+- Always fit transformers on training data only; use a sklearn `Pipeline` to enforce this automatically and prevent preprocessing leakage in cross-validation.
+
+## Related concepts
+
+- [**Regularization**](/courses/linear-regression/03-regularization) — L1 and L2 penalties that make linear models robust to high-dimensional feature spaces
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — train/test splits, k-fold CV, and the mechanics of preventing data leakage
+
+<Exercise id="ml-practice-scaling" />
+<Exercise id="ml-practice-encoding" />
+<Exercise id="ml-practice-leakage" />
