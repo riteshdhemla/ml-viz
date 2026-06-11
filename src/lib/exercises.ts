@@ -3722,6 +3722,220 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Impossible to compress without losing important structure", isCorrect: false },
     ],
   },
+
+  // ── Optimization for ML ─────────────────────────────────────────
+  {
+    id: "opt-sgd-noise",
+    type: "multiple-choice",
+    question:
+      "Why does the gradient noise in mini-batch SGD often help generalization compared to full-batch gradient descent?",
+    hint: "Think about the geometry of the loss landscape near flat vs. sharp minima.",
+    explanation:
+      "SGD noise acts as implicit regularization: it escapes sharp minima (narrow, high-curvature basins) that tend to generalize poorly, and settles into flat minima (wide basins) that generalize better. Full-batch GD converges more precisely to sharp local minima because the gradient is exact. Flat minima are preferred because a small perturbation of the weights causes less change in test loss.",
+    options: [
+      { id: "a", label: "Noise prevents overfitting by randomly zeroing weights each step", isCorrect: false },
+      { id: "b", label: "Noise escapes sharp minima and settles into flat, better-generalizing minima", isCorrect: true },
+      { id: "c", label: "Noise reduces the number of parameters the model must learn", isCorrect: false },
+      { id: "d", label: "Noise reduces the effective learning rate, acting like L2 regularization", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-momentum-ema",
+    type: "multiple-choice",
+    question:
+      "Momentum maintains velocity v_t = β·v_{t-1} + (1-β)·g_t. With β=0.9, how many recent gradient steps does this exponential moving average effectively average over?",
+    hint: "The effective window of an EMA with factor β is approximately 1/(1-β).",
+    explanation:
+      "With β=0.9, the effective window is 1/(1-β) = 1/0.1 = 10 steps. Gradients from 10+ steps ago have weight (0.9)^10 ≈ 0.35, which is still significant, but the effective average is dominated by roughly the last 10 steps. This smooths out oscillations while still following the dominant gradient direction.",
+    options: [
+      { id: "a", label: "1 step (just the current gradient)", isCorrect: false },
+      { id: "b", label: "About 10 steps", isCorrect: true },
+      { id: "c", label: "About 90 steps", isCorrect: false },
+      { id: "d", label: "All steps equally", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-adam-bias",
+    type: "multiple-choice",
+    question:
+      "Adam initializes m_0 = v_0 = 0 and uses bias-corrected estimates m̂_t = m_t / (1-β₁^t). Why is this correction needed at early timesteps?",
+    hint: "What does m_0 = 0 imply about m_1 if β₁ = 0.9 and the true gradient is g?",
+    explanation:
+      "At t=1: m_1 = β₁·0 + (1-β₁)·g = 0.1·g. Without correction, m_1 is 10× smaller than the true gradient — the estimate is biased toward zero. Dividing by (1-β₁^1) = 0.1 recovers g. The bias decays exponentially: by t=100, β₁^100 ≈ 0.00003, making the correction negligible.",
+    options: [
+      { id: "a", label: "Zero initialization biases early estimates toward zero; dividing by (1-β^t) corrects this", isCorrect: true },
+      { id: "b", label: "To normalize the gradient scale across all parameters", isCorrect: false },
+      { id: "c", label: "To ensure the learning rate is always positive", isCorrect: false },
+      { id: "d", label: "To prevent gradient explosion during the first few steps", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-convex-definition",
+    type: "multiple-choice",
+    question:
+      "Which of the following functions is convex?",
+    hint: "A function is convex if the line segment between any two points on its graph lies above or on the graph.",
+    explanation:
+      "f(x) = x² is convex (bowl-shaped, second derivative ≥ 0 everywhere). f(x) = -x² is concave. f(x) = x³ is neither (second derivative changes sign). f(x) = sin(x) is neither over [0, 2π] (it curves up then down). Convexity requires f(λx + (1-λ)y) ≤ λf(x) + (1-λ)f(y) for all λ ∈ [0,1].",
+    options: [
+      { id: "a", label: "f(x) = −x²", isCorrect: false },
+      { id: "b", label: "f(x) = x²", isCorrect: true },
+      { id: "c", label: "f(x) = x³", isCorrect: false },
+      { id: "d", label: "f(x) = sin(x) over [0, 2π]", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-global-min",
+    type: "multiple-choice",
+    question:
+      "For a convex function, what does finding a point where the gradient equals zero guarantee?",
+    hint: "Consider what it means for a convex function to have a local minimum.",
+    explanation:
+      "For a convex function, every local minimum is a global minimum. This is the key property that makes convex optimization tractable: once you find a stationary point (∇f = 0), you are guaranteed it is globally optimal. Non-convex functions may have many local minima, saddle points, and the gradient-zero condition doesn't imply global optimality.",
+    options: [
+      { id: "a", label: "It's a local minimum but may not be the global one", isCorrect: false },
+      { id: "b", label: "It's a global minimum (for convex functions, local = global)", isCorrect: true },
+      { id: "c", label: "It's a saddle point", isCorrect: false },
+      { id: "d", label: "Nothing — gradient can be zero at inflection points", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-sgd-convex",
+    type: "multiple-choice",
+    question:
+      "For a convex loss with Lipschitz gradient (L-smooth), what step size η = 1/L guarantees about gradient descent convergence?",
+    hint: "Think about what the Lipschitz condition says about how fast the gradient can change.",
+    explanation:
+      "For L-smooth convex functions, gradient descent with η = 1/L converges at rate O(1/T) in the function value gap f(x_T) - f(x*). This is the Polyak-Łojasiewicz guarantee. The step size 1/L is optimal without additional curvature information (strong convexity) — using η > 2/L can cause divergence.",
+    options: [
+      { id: "a", label: "Convergence at rate O(1/T) in function value gap", isCorrect: true },
+      { id: "b", label: "Convergence at rate O(1/T²) — subgradient method speed", isCorrect: false },
+      { id: "c", label: "Linear (exponential) convergence rate", isCorrect: false },
+      { id: "d", label: "No guarantee — must also be strongly convex", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-lagrange-multiplier",
+    type: "multiple-choice",
+    question:
+      "At a constrained optimum, the Lagrange condition ∇f(x*) = λ∇g(x*) says what geometrically?",
+    hint: "The gradient of a function at a point is perpendicular to its level curves.",
+    explanation:
+      "The gradient of f and the gradient of the constraint g are parallel (pointing in the same direction or opposite). This means the level curves of f and the constraint surface are tangent at x*. If they weren't tangent, you could move along the constraint and decrease f — contradicting optimality. The multiplier λ is the rate at which the optimal value changes per unit tightening of the constraint.",
+    options: [
+      { id: "a", label: "The objective gradient and constraint gradient are perpendicular at x*", isCorrect: false },
+      { id: "b", label: "The objective gradient and constraint gradient are parallel at x*", isCorrect: true },
+      { id: "c", label: "The objective value equals the constraint value at x*", isCorrect: false },
+      { id: "d", label: "The step size is proportional to the constraint violation", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-kkt-slackness",
+    type: "multiple-choice",
+    question:
+      "KKT complementary slackness: μᵢ·gᵢ(x*) = 0 for each inequality constraint gᵢ(x) ≤ 0. If μᵢ > 0 at the solution, what does this imply about the constraint?",
+    hint: "If the product is zero and one factor is non-zero, what must the other be?",
+    explanation:
+      "If μᵢ > 0, then gᵢ(x*) = 0 — the constraint is active (tight, binding). An active constraint is one the optimal solution sits exactly on. If a constraint were inactive (gᵢ(x*) < 0), the optimal solution would be in the interior relative to that constraint and it wouldn't influence the optimum, so μᵢ = 0. This makes intuitive sense: only active constraints push back against the objective.",
+    options: [
+      { id: "a", label: "The constraint is inactive (gᵢ(x*) < 0)", isCorrect: false },
+      { id: "b", label: "The constraint is active (gᵢ(x*) = 0)", isCorrect: true },
+      { id: "c", label: "The constraint is violated (gᵢ(x*) > 0)", isCorrect: false },
+      { id: "d", label: "Nothing — μᵢ and gᵢ are independent", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-svm-dual",
+    type: "multiple-choice",
+    question:
+      "In the SVM dual, why do only support vectors (points on the margin boundary) have non-zero dual variables αᵢ?",
+    hint: "Apply complementary slackness to the SVM margin constraints.",
+    explanation:
+      "The SVM dual has constraints αᵢ ≥ 0 and complementary slackness: αᵢ(yᵢ(w·xᵢ+b) - 1) = 0. For points strictly inside the margin (yᵢ(w·xᵢ+b) > 1), the bracket is non-zero so αᵢ = 0. Only for support vectors where yᵢ(w·xᵢ+b) = 1 (on the margin) can αᵢ > 0. The weight vector w = Σαᵢyᵢxᵢ is therefore determined entirely by support vectors — the sparse representation that makes SVMs efficient.",
+    options: [
+      { id: "a", label: "Support vectors have the largest gradients, so they get more weight", isCorrect: false },
+      { id: "b", label: "Complementary slackness forces αᵢ=0 for non-margin points", isCorrect: true },
+      { id: "c", label: "Points inside the margin violate the constraint and are excluded", isCorrect: false },
+      { id: "d", label: "It's a design choice; any subset of points could be support vectors", isCorrect: false },
+    ],
+  },
+
+  // ── Optimization for ML — Quiz ───────────────────────────────────
+  {
+    id: "opt-quiz-adam-update",
+    type: "multiple-choice",
+    question:
+      "Adam uses β₁=0.9, β₂=0.999, ε=1e-8 by default. What is the role of ε in the update θ_t = θ_{t-1} − η·m̂_t/(√v̂_t + ε)?",
+    hint: "What happens when v̂_t ≈ 0 (parameter never received a significant gradient)?",
+    explanation:
+      "ε prevents division by zero when the second moment estimate v̂_t is very small (e.g., for parameters that have rarely received gradients). Without ε, a near-zero v̂ would cause a huge, destabilizing update. The value 1e-8 is small enough not to interfere when v̂ is substantial but large enough to prevent numerical instability.",
+    options: [
+      { id: "a", label: "It sets the maximum allowed step size", isCorrect: false },
+      { id: "b", label: "It prevents division by zero when the second moment is near zero", isCorrect: true },
+      { id: "c", label: "It scales the learning rate by the gradient magnitude", isCorrect: false },
+      { id: "d", label: "It controls the momentum decay rate", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-quiz-convex-ce",
+    type: "multiple-choice",
+    question:
+      "Is the cross-entropy loss L(w) = -log σ(yᵀw) convex in the weight vector w (for binary logistic regression)?",
+    hint: "Compute the Hessian of L with respect to w and check its sign.",
+    explanation:
+      "Yes, the binary cross-entropy loss for logistic regression is convex in w. The Hessian is H = σ(yᵀw)(1-σ(yᵀw))·yyᵀ, which is positive semi-definite (outer product scaled by a non-negative scalar). This convexity guarantees that gradient descent converges to the global optimum — there are no local minima to get trapped in for logistic regression.",
+    options: [
+      { id: "a", label: "No — sigmoid introduces non-convexity", isCorrect: false },
+      { id: "b", label: "Yes — the Hessian is PSD, so the loss is convex in w", isCorrect: true },
+      { id: "c", label: "Only when the data is linearly separable", isCorrect: false },
+      { id: "d", label: "It depends on the learning rate used", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-quiz-kkt-conditions",
+    type: "multiple-choice",
+    question:
+      "Which of the following is NOT one of the KKT necessary conditions for a constrained optimization problem?",
+    hint: "The KKT conditions include stationarity, primal feasibility, dual feasibility, and complementary slackness.",
+    explanation:
+      "The four KKT conditions are: (1) Stationarity: ∇f + Σλᵢ∇hᵢ + Σμᵢ∇gᵢ = 0; (2) Primal feasibility: hᵢ(x*)=0, gᵢ(x*)≤0; (3) Dual feasibility: μᵢ≥0; (4) Complementary slackness: μᵢgᵢ(x*)=0. 'The Hessian must be positive definite at x*' is a second-order sufficiency condition for a local minimum, not a KKT condition.",
+    options: [
+      { id: "a", label: "Stationarity: ∇L = 0 at the optimal point", isCorrect: false },
+      { id: "b", label: "Complementary slackness: μᵢ·gᵢ(x*) = 0", isCorrect: false },
+      { id: "c", label: "Dual feasibility: μᵢ ≥ 0 for inequality constraints", isCorrect: false },
+      { id: "d", label: "The Hessian must be positive definite at x*", isCorrect: true },
+    ],
+  },
+  {
+    id: "opt-quiz-lr-decay",
+    type: "multiple-choice",
+    question:
+      "Cosine annealing decays the learning rate as η_t = η_min + ½(η_max - η_min)(1 + cos(πt/T)). What is the learning rate at t = T (the end of training)?",
+    hint: "Compute cos(π·T/T) = cos(π).",
+    explanation:
+      "At t=T: η_T = η_min + ½(η_max - η_min)(1 + cos(π)) = η_min + ½(η_max - η_min)(1 + (-1)) = η_min + 0 = η_min. The schedule smoothly decays from η_max (at t=0, cos(0)=1) to η_min (at t=T). This warm restart variant cycles multiple times — each cycle resets t to 0 and optionally increases T to allow longer warm-up phases.",
+    options: [
+      { id: "a", label: "η_max (back to the initial learning rate)", isCorrect: false },
+      { id: "b", label: "η_min (the minimum learning rate)", isCorrect: true },
+      { id: "c", label: "(η_max + η_min) / 2", isCorrect: false },
+      { id: "d", label: "0 (always decays to zero)", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-quiz-saddle-point",
+    type: "multiple-choice",
+    question:
+      "At a saddle point of a loss function, what can you say about the eigenvalues of the Hessian?",
+    hint: "A saddle point is neither a local min nor a local max — it goes down in some directions, up in others.",
+    explanation:
+      "At a saddle point, the Hessian has both positive and negative eigenvalues (it is indefinite). Positive eigenvalues correspond to directions of upward curvature (rising away from the saddle), negative eigenvalues to directions of downward curvature (descending). A local minimum has all positive eigenvalues (PD Hessian); a local maximum has all negative eigenvalues (ND Hessian). Saddle points are common in high-dimensional neural network loss surfaces.",
+    options: [
+      { id: "a", label: "All eigenvalues are positive (positive definite)", isCorrect: false },
+      { id: "b", label: "All eigenvalues are negative (negative definite)", isCorrect: false },
+      { id: "c", label: "Both positive and negative eigenvalues (indefinite Hessian)", isCorrect: true },
+      { id: "d", label: "All eigenvalues are zero (flat region)", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
