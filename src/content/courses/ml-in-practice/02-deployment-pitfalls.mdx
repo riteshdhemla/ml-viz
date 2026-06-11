@@ -1,0 +1,194 @@
+---
+title: "Deployment Pitfalls"
+description: "Train-serve skew, data drift, monitoring, calibration, and interpretability — everything that goes wrong after the notebook closes."
+order: 2
+type: concept
+estimatedMinutes: 15
+---
+
+# Deployment Pitfalls
+
+A model that performs beautifully in your notebook can fail silently in production. The reasons are rarely algorithmic — they are almost always about the gap between the controlled conditions of experimentation and the messy, evolving reality of a live system. This lesson catalogues the most common failure modes and the practices that prevent them.
+
+## Train-serve skew
+
+Train-serve skew is the family of bugs where the training pipeline and the inference pipeline diverge. The model is trained on one version of a feature and served with a different version — often without anyone noticing until accuracy degrades weeks later.
+
+<Callout type="warning" title="The notebook-to-production gap">
+  Train-serve skew is the most common cause of "my model works in the notebook but fails in production." The notebook and the production service compute features from the same raw data, but through different code paths — and those paths inevitably diverge.
+</Callout>
+
+**Different computation logic.** Training computes the `days_since_last_login` feature with a pandas `groupby` on a historical DataFrame. The serving system computes the same feature with a SQL query against a live database. A subtle difference in how each handles missing timestamps — pandas fills with `NaT`, SQL returns `NULL`, and the downstream cast behaves differently — produces systematically different feature values at inference time.
+
+**Missing value handling.** During training, the imputer replaces `NaN` in `age` with the training-set median (34). The serving code that was written separately uses `0` as a default. The model was trained expecting values around 34; it receives 0 for every user whose age is unknown in production.
+
+**Stale models.** A model trained on data from six months ago is deployed and never retrained. The user demographics have shifted (new geographic markets), the product has changed (new categories), and the relationship between features and outcomes has evolved. The model's performance slowly degrades — but because there is no monitoring, no one notices until a business review.
+
+**Prevention.** Serialize the entire preprocessing pipeline (not just the model weights) with the model artifact. Use the same pipeline object — the same code path — at both training time and serving time. Tools like `joblib.dump` for sklearn pipelines and ONNX for neural network preprocessing make this concrete.
+
+```python
+import joblib
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import GradientBoostingClassifier
+
+pipe = Pipeline([('scaler', StandardScaler()),
+                 ('clf', GradientBoostingClassifier())])
+pipe.fit(X_train, y_train)
+
+# Serialize the whole pipeline — scaler parameters included
+joblib.dump(pipe, 'model_v1.joblib')
+
+# At serving time, load and call .predict() — same logic guaranteed
+pipe = joblib.load('model_v1.joblib')
+prediction = pipe.predict(X_new)
+```
+
+## Overfitting in production
+
+A model that scores 98% accuracy on the test set but drops to 70% in production is not overfit to the training data in the classical sense — it is overfit to the *evaluation setup*.
+
+**Test set contamination.** If the test set was selected by sampling at random from a dataset where the same real-world entity appears multiple times (e.g., the same customer ID across many rows), train and test sets share the same entity — the model has effectively seen the "test" entity during training. Performance on that test set is a deeply optimistic estimate. Always split at the entity level for grouped data.
+
+**Temporal leakage at evaluation time.** A model predicting customer churn that was evaluated on a test set drawn from the same time period as the training set has seen the future in the cross-sectional correlation structure. Walk-forward validation (train on months 1–8, test on months 9–10) is the correct evaluation method for temporal problems.
+
+**Proxy metrics diverging from business metrics.** Optimizing a model for click-through rate (CTR) may increase short-term clicks while reducing user satisfaction and long-term retention. Business value is not always reducible to a single offline metric. Validate that the metric you optimize correlates with what you actually care about — ideally confirmed through an A/B test with real users.
+
+## Data drift and concept drift
+
+Models are trained on a snapshot of the world. The world keeps changing.
+
+**Data drift (covariate shift)** occurs when the input distribution $P(X)$ changes but the conditional distribution $P(Y \mid X)$ stays the same. Seasonal patterns cause drift: user behaviour in December differs from June. New user demographics (expanding into a new country) shift the distribution of age, language, and device type. The model's mappings from features to labels are still valid — the problem is that the inputs the model receives have moved out of the region it was trained on.
+
+**Concept drift** occurs when the underlying relationship $P(Y \mid X)$ itself changes. The Covid-19 pandemic is the canonical example: every prediction model — for travel demand, consumer spending, hospital occupancy — had the relationship between its features and its target fundamentally altered in a matter of weeks. No amount of more data from before March 2020 helps; the model must be retrained on post-pandemic data.
+
+**Label shift** occurs when the output distribution $P(Y)$ changes. If a new product category is launched, the fraction of transactions in that category grows from 0% to 20% — the prior shifts, and a model that calibrated its outputs on the old prior will be systematically miscalibrated.
+
+**Detecting drift.** The Population Stability Index (PSI) is a standard industry metric for measuring how much a feature distribution has shifted:
+
+$$
+\text{PSI} = \sum_{k=1}^{K} \left( p_k^{\text{serve}} - p_k^{\text{train}} \right) \ln \frac{p_k^{\text{serve}}}{p_k^{\text{train}}}
+$$
+
+where $p_k$ is the fraction of values in bin $k$. PSI $< 0.1$ indicates no significant shift; $0.1$–$0.2$ warrants investigation; $> 0.2$ is a retraining signal. The Kolmogorov-Smirnov (KS) test provides a hypothesis-testing alternative for continuous features. For output drift, monitoring the distribution of model scores (predicted probabilities) is often the earliest available signal — it does not require ground truth labels.
+
+## Model monitoring
+
+**Data quality checks** catch problems before they reach the model. Track null rates, cardinality (number of unique values) for categorical features, and value ranges for numerical features. A sudden spike in null rate for a critical feature (e.g., `user_age` going from 3% null to 40% null) usually indicates an upstream data pipeline failure, not a drift in user behaviour.
+
+**Feature distribution monitoring** compares the distribution of each feature in the serving window to its training distribution. A PSI $> 0.2$ on any feature in the top-10 by importance triggers an investigation. Aggregated drift scores across all features can be combined into a single "data health" metric.
+
+**Prediction distribution monitoring** tracks the distribution of model outputs. If the model normally outputs scores around 0.15 for a rare-class problem and the rolling average score suddenly doubles to 0.30, that is a drift signal that does not require waiting for ground truth labels. This is especially valuable when true labels arrive with a long delay.
+
+**Ground truth latency.** In fraud detection, the true label (was this transaction actually fraudulent?) may not arrive for days or weeks while the dispute is investigated. In credit default prediction, the true label arrives in 12–36 months. Monitoring strategies must account for the lag: use leading indicators (early label proxies), evaluate performance only on cohorts where ground truth is available, and design the retraining schedule around the label availability window.
+
+## Interpretability
+
+Understanding *why* a model made a prediction matters for debugging, auditing, and building user trust — especially in regulated settings.
+
+**Feature importance (tree models)** ranks features by their mean decrease in node impurity (Gini importance) across all trees. Fast to compute but biased toward high-cardinality features. **Permutation importance** is more reliable: for each feature, shuffle its values, measure the drop in validation score, and repeat. A large drop means the feature was important.
+
+**SHAP (SHapley Additive Explanations)** provides a theoretically grounded attribution based on cooperative game theory. The SHAP value $\phi_i(f, x)$ measures the marginal contribution of feature $i$ to the prediction for instance $x$, averaged over all possible orderings of features:
+
+$$
+\phi_i = \sum_{S \subseteq F \setminus \{i\}} \frac{|S|!\;(|F| - |S| - 1)!}{|F|!} \left[ f(S \cup \{i\}) - f(S) \right]
+$$
+
+SHAP values sum to the difference between the prediction and the model's mean prediction:
+
+$$
+f(x) = \mathbb{E}[f(X)] + \sum_{i=1}^{d} \phi_i
+$$
+
+This additivity makes SHAP values interpretable as the unique fair allocation of the prediction gap among features. Tree-based SHAP (`shap.TreeExplainer`) runs in $O(TLD^2)$ time (where $T$ is the number of trees, $L$ leaves, $D$ depth) — fast enough for production use.
+
+**LIME (Local Interpretable Model-agnostic Explanations)** fits a simple linear model on a neighborhood of synthetic perturbed samples around each prediction. The local linear model's coefficients describe how much each feature influenced the model in that region. Unlike SHAP, LIME is model-agnostic and works for images and text, but explanations are less stable and can vary significantly with different random seeds.
+
+**Partial Dependence Plots (PDP)** show the marginal effect of one feature on the predicted outcome, averaged over the marginal distribution of all other features:
+
+$$
+\hat{f}_S(x_S) = \mathbb{E}_{X_C}\left[ f(x_S, X_C) \right] \approx \frac{1}{n} \sum_{i=1}^{n} f(x_S, x_C^{(i)})
+$$
+
+PDPs are useful for global understanding — is the relationship between `age` and predicted churn monotone, U-shaped, or flat? They assume feature independence, which can be misleading when features are correlated.
+
+**When interpretability matters.** In credit scoring, regulatory requirements (FCRA in the US, GDPR in Europe) may legally require that any adverse decision be explainable to the affected individual. In medical diagnosis, a clinician needs to understand what is driving a model's recommendation before acting on it. Even in non-regulated settings, unexpected SHAP patterns (e.g., a feature that should not matter showing up as the most important) are often the first signal of a data bug or leakage.
+
+```python
+import shap
+
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X_test)
+
+# Summary plot — global feature importance
+shap.summary_plot(shap_values, X_test)
+
+# Waterfall plot for a single prediction
+shap.waterfall_plot(shap.Explanation(
+    values=shap_values[0],
+    base_values=explainer.expected_value,
+    data=X_test.iloc[0]
+))
+```
+
+## Calibration
+
+A well-calibrated model is one where predicted probabilities match empirical frequencies: if the model predicts `P(fraud) = 0.9`, then roughly 90% of such predictions should actually be fraud. Many powerful models — particularly gradient boosted trees — are not well calibrated out of the box.
+
+**Reliability diagram (calibration curve).** Bin predictions into deciles, compute the actual fraction positive in each bin, and plot predicted probability vs observed fraction. A perfectly calibrated model lies on the diagonal.
+
+**Platt scaling** fits a logistic regression on top of the model's raw scores using a held-out calibration set:
+
+$$
+P(y=1 \mid s) = \frac{1}{1 + e^{-(as + b)}}
+$$
+
+where $s$ is the model score and $a$, $b$ are fitted parameters. Works well when the calibration curve is approximately sigmoid-shaped.
+
+**Isotonic regression** is a more flexible non-parametric method that fits a piecewise-constant monotone function mapping scores to probabilities. Better than Platt scaling when the miscalibration is non-sigmoid, but requires more calibration data.
+
+**When calibration matters.** If model outputs are used as rankings only (e.g., "show the top-100 most likely churners"), calibration is irrelevant — relative order is all that matters. But whenever the raw probability is used directly — a fraud threshold of $P > 0.8$ triggers a manual review, a medical risk score above 0.6 triggers additional testing — the model must be calibrated. An uncalibrated model may systematically over-predict or under-predict, making the threshold meaningless.
+
+```python
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+import matplotlib.pyplot as plt
+
+# Calibrate a gradient boosted model using isotonic regression
+calibrated = CalibratedClassifierCV(gbm, method='isotonic', cv=5)
+calibrated.fit(X_train, y_train)
+
+# Plot calibration curve
+prob_true, prob_pred = calibration_curve(y_test,
+                                         calibrated.predict_proba(X_test)[:, 1],
+                                         n_bins=10)
+plt.plot(prob_pred, prob_true, marker='o', label='Calibrated')
+plt.plot([0, 1], [0, 1], 'k--', label='Perfect calibration')
+```
+
+## Common deployment mistakes
+
+**Not versioning models and data together.** A model artifact without the exact training dataset and preprocessing code that produced it is partially unauditable. When a live model behaves unexpectedly, you need to be able to reproduce the training run. Use an experiment tracker (MLflow, W&B) to link every model version to its training data snapshot, code commit, and hyperparameters.
+
+**No rollback plan.** A bad model deployment can be worse than no model at all. Before any production deployment, define the rollback procedure: which model version to fall back to, how quickly it can be reactivated, and what threshold of degradation triggers the rollback. Blue-green deployment (route traffic to new model, keep old model running) enables instant rollback.
+
+**Backtesting with features computed on full history.** When simulating historical model performance, computing "rolling 30-day average" over the full dataset means that for any row in January, the rolling average includes February and March data. This inflates backtesting performance and will not reproduce in live operation.
+
+**Skipping A/B testing.** Offline evaluation (holdout accuracy, AUC) does not capture causal effects on user behavior or business outcomes. A model that scores higher on AUC may produce lower revenue in production. Always gate significant model changes behind an A/B test before full rollout.
+
+## Key takeaways
+
+- Train-serve skew is caused by diverging feature computation logic between training and serving; prevent it by serializing and reusing the entire preprocessing pipeline.
+- High test-set accuracy that drops in production usually indicates test-set contamination — temporal leakage, entity overlap, or evaluation on the wrong time horizon.
+- Data drift (input distribution shifts), concept drift (the $P(Y \mid X)$ relationship changes), and label shift ($P(Y)$ changes) each require different detection and remediation strategies.
+- Monitor data quality (null rates, value ranges), feature distributions (PSI), and prediction distributions continuously; do not wait for ground truth labels to detect problems.
+- SHAP values provide theoretically grounded, additive attributions of each feature's contribution to individual predictions; calibration ensures predicted probabilities match empirical frequencies.
+- Version models with their training data and code, define rollback plans before deploying, and validate significant changes with A/B tests before full rollout.
+
+## Related concepts
+
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — train/test splits, k-fold CV, temporal validation, and data leakage detection
+- [**Training Techniques**](/courses/model-evaluation/03-training-techniques) — early stopping, hyperparameter search, and regularization strategies
+
+<Exercise id="ml-practice-drift" />
+<Exercise id="ml-practice-shap" />
+<Exercise id="ml-practice-calibration" />
