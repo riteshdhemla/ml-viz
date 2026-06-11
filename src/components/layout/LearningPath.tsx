@@ -18,6 +18,7 @@ export interface PathCourse {
   tier: number;
   order: number;
   coverColor?: string;
+  cluster: string;
 }
 
 const DIFFICULTY_DOT: Record<Difficulty, string> = {
@@ -26,18 +27,32 @@ const DIFFICULTY_DOT: Record<Difficulty, string> = {
   advanced: "bg-accent-rose",
 };
 
-const TIER_LABELS = [
-  "Foundations",
-  "Core methods",
-  "Going deeper",
-  "Advanced",
-  "Frontier",
+// Canonical cluster display order
+const CLUSTER_ORDER = [
+  "Math Foundations",
+  "Classical ML",
+  "Deep Learning",
+  "Unsupervised & Probabilistic",
+  "Applied ML",
+  "Reinforcement Learning",
 ];
 
+const CLUSTER_STYLES: Record<string, { accent: string; badge: string }> = {
+  "Math Foundations":          { accent: "text-accent-teal",   badge: "bg-accent-teal/15 text-accent-teal" },
+  "Classical ML":              { accent: "text-brand-300",     badge: "bg-brand-500/15 text-brand-300" },
+  "Deep Learning":             { accent: "text-accent-orange", badge: "bg-accent-orange/15 text-accent-orange" },
+  "Unsupervised & Probabilistic": { accent: "text-accent-rose", badge: "bg-accent-rose/15 text-accent-rose" },
+  "Applied ML":                { accent: "text-accent-yellow", badge: "bg-accent-yellow/15 text-accent-yellow" },
+  "Reinforcement Learning":    { accent: "text-brand-400",     badge: "bg-brand-400/15 text-brand-400" },
+};
+
+const DEFAULT_STYLE = { accent: "text-slate-400", badge: "bg-slate-500/15 text-slate-400" };
+
 /**
- * Prerequisite-ordered course map with live progress and a "you are here"
- * marker: the first course (in path order) that's started but unfinished,
- * else the first untouched course whose prerequisites are all complete.
+ * Prerequisite-ordered course map grouped by logical cluster.
+ * Within each cluster courses are sorted by prerequisite depth so the
+ * natural study order is preserved. Progress, lock state, and "you are here"
+ * markers are all live from the Zustand store.
  */
 export function LearningPath({ courses }: { courses: PathCourse[] }) {
   const lessons = useProgress((s) => s.lessons);
@@ -63,26 +78,32 @@ export function LearningPath({ courses }: { courses: PathCourse[] }) {
       null;
   }
 
-  const tiers = [...new Set(courses.map((c) => c.tier))].sort((a, b) => a - b);
+  // Group by cluster, preserving CLUSTER_ORDER; unknown clusters appended last
+  const allClusters = [...new Set([...CLUSTER_ORDER, ...courses.map((c) => c.cluster)])];
+  const grouped = allClusters
+    .map((cluster) => ({
+      cluster,
+      courses: courses
+        .filter((c) => c.cluster === cluster)
+        .sort((a, b) => a.tier - b.tier || a.order - b.order),
+    }))
+    .filter((g) => g.courses.length > 0);
 
   return (
-    <div className="mt-10 space-y-12">
-      {tiers.map((tier) => (
-        <section key={tier}>
-          <div className="flex items-center gap-3 mb-4">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/20 text-brand-300 text-xs font-bold">
-              {tier + 1}
-            </span>
-            <h2 className="text-lg font-semibold text-white">
-              {TIER_LABELS[tier] ?? `Tier ${tier + 1}`}
-            </h2>
-            <div className="h-px flex-1 bg-surface-border" />
-          </div>
+    <div className="mt-10 space-y-10">
+      {grouped.map(({ cluster, courses: group }) => {
+        const style = CLUSTER_STYLES[cluster] ?? DEFAULT_STYLE;
+        return (
+          <section key={cluster}>
+            {/* Cluster header */}
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className={cn("text-base font-semibold", style.accent)}>{cluster}</h2>
+              <div className="h-px flex-1 bg-surface-border" />
+              <span className="text-xs text-slate-600">{group.length} course{group.length !== 1 ? "s" : ""}</span>
+            </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {courses
-              .filter((c) => c.tier === tier)
-              .map((c) => {
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.map((c) => {
                 const progress = pct(c);
                 const here = c.slug === hereSlug;
                 const locked = mounted && progress === 0 && !c.prerequisites.every(isDone);
@@ -140,9 +161,10 @@ export function LearningPath({ courses }: { courses: PathCourse[] }) {
                   </Link>
                 );
               })}
-          </div>
-        </section>
-      ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

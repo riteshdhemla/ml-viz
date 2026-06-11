@@ -45,6 +45,7 @@ export default function CoursesPage() {
       tier: tiers[c.slug],
       order: c.order,
       coverColor: c.coverColor,
+      cluster: c.cluster,
     }))
     .sort((a, b) => a.tier - b.tier || a.order - b.order);
 

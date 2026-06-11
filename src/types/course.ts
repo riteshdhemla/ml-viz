@@ -10,6 +10,7 @@ export interface CourseMeta {
   prerequisites: string[]; // course slugs
   order: number;
   coverColor: string; // tailwind gradient class
+  cluster: string;
 }
 
 export interface LessonMeta {
