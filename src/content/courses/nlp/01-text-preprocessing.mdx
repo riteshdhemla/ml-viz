@@ -1,0 +1,164 @@
+---
+title: "Text Preprocessing"
+description: "Tokenization, BPE, stemming, lemmatization, TF-IDF — turning raw text into model-ready representations."
+order: 1
+type: concept
+estimatedMinutes: 14
+---
+
+# Text Preprocessing
+
+Before any model can process text, raw strings must become numbers. The decisions made at this stage — how to split words, how to handle morphology, how to weigh term importance — affect everything downstream.
+
+## Tokenization
+
+**Tokenization** splits text into discrete units (tokens) that the model processes. There are three common granularities:
+
+| Granularity | Example | Pros | Cons |
+|-------------|---------|------|------|
+| **Character** | "cat" → ['c','a','t'] | Handles any word | Very long sequences |
+| **Word** | "cats ran" → ["cats","ran"] | Intuitive | OOV words; huge vocabulary |
+| **Subword** | "unhappy" → ["un","happy"] | Balanced | Requires training |
+
+**Out-of-vocabulary (OOV)** is the core problem with word-level tokenization: unseen words at test time become `[UNK]` tokens with no meaningful representation.
+
+### Byte-Pair Encoding (BPE)
+
+BPE, used by GPT and many modern models, starts with a character vocabulary and iteratively merges the most frequent adjacent pair:
+
+```
+Initial: ["l","o","w","e","r"] frequency 5, ["l","o","w"] frequency 2
+Step 1: merge most frequent pair ('l','o') → "lo"
+Step 2: merge ('lo','w') → "low"
+Step 3: merge ('low','e') → "lowe"
+...
+```
+
+**Result:** the vocabulary learns meaningful subwords. "unhappiness" might tokenize as `["un", "happi", "ness"]` — familiar subwords even if the full word was rare in training. Common words become single tokens; rare words are decomposed into known subwords.
+
+**WordPiece** (used by BERT) is similar but merges based on language model likelihood improvement rather than raw frequency, producing tokens prefixed with `##` for continuation: "unhappiness" → `["un", "##happi", "##ness"]`.
+
+```python
+# Minimal BPE illustration
+vocab = {" ".join(word) + " </w>": freq
+         for word, freq in [("low", 5), ("lower", 2), ("newest", 6)]}
+
+def get_pairs(vocab):
+    pairs = {}
+    for word, freq in vocab.items():
+        symbols = word.split()
+        for i in range(len(symbols) - 1):
+            pair = (symbols[i], symbols[i+1])
+            pairs[pair] = pairs.get(pair, 0) + freq
+    return pairs
+
+pairs = get_pairs(vocab)
+best = max(pairs, key=pairs.get)
+print(f"Most frequent pair: {best}, count={pairs[best]}")
+```
+
+## Stopwords and normalization
+
+**Stopwords** are high-frequency words with low discriminative value ("the", "is", "a"). Removing them reduces vocabulary size and noise for bag-of-words models. However, for sequence models (RNNs, Transformers), stopwords carry grammatical structure and should usually be kept.
+
+**Case normalization:** lowercase all text. "Apple" and "apple" refer to the same concept in most contexts.
+
+**Punctuation removal:** "Hello!" → "Hello". Keep punctuation for sentiment analysis (exclamation marks carry signal) or named entity recognition.
+
+## Stemming vs Lemmatization
+
+Both reduce words to a common base form, but differently:
+
+**Stemming** applies heuristic rules to strip suffixes. Fast but approximate:
+- "running" → "run"
+- "happiness" → "happi" (incorrect English but consistent)
+- "studies" → "studi"
+
+**Lemmatization** uses morphological analysis and a lexicon. Correct but slower:
+- "running" → "run" (same result)
+- "happiness" → "happiness" (not a conjugation, no change)
+- "better" → "good" (knows this is comparative of "good")
+
+<Callout type="info" title="When to use which">
+  Use **stemming** for information retrieval tasks where approximate matching is fine and speed matters (search engines). Use **lemmatization** when you need linguistically correct base forms, or when working with morphologically rich languages. For deep learning models that use subword tokenization, neither is usually necessary.
+</Callout>
+
+## TF-IDF
+
+**TF-IDF** (Term Frequency–Inverse Document Frequency) weights terms by how distinctive they are to a document relative to the corpus.
+
+$$
+\text{TF}(t, d) = \frac{\text{count of } t \text{ in } d}{\text{total terms in } d}
+$$
+
+$$
+\text{IDF}(t) = \log\!\left(\frac{N}{1 + \text{df}(t)}\right)
+$$
+
+$$
+\text{TF-IDF}(t, d) = \text{TF}(t, d) \times \text{IDF}(t)
+$$
+
+where $N$ is the number of documents and $\text{df}(t)$ is the number of documents containing term $t$.
+
+**Key properties:**
+- A term appearing in every document has IDF = log(N/N) = 0 → TF-IDF = 0 (stopword behavior)
+- A rare term appearing once has high IDF → high TF-IDF
+- Frequent terms in a document are boosted by TF, but only if they're not ubiquitous across the corpus
+
+**Worked example:** 3 documents, word "machine" appears in 1 of them, 3 times in that document (50 words total):
+
+$$
+\text{TF} = 3/50 = 0.06, \quad \text{IDF} = \log(3/2) = 0.405, \quad \text{TF-IDF} = 0.024
+$$
+
+```python
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+corpus = [
+    "the quick brown fox",
+    "the fox jumped over the dog",
+    "machine learning is fascinating",
+]
+vec = TfidfVectorizer()
+X = vec.fit_transform(corpus)
+print(vec.get_feature_names_out())
+print(X.toarray().round(3))
+```
+
+## Sentence and document representations
+
+Beyond individual tokens, you often need a fixed-size vector for an entire sentence or document:
+
+| Method | Description | Strength |
+|--------|-------------|----------|
+| **Bag of Words (BoW)** | Count vector over vocabulary | Interpretable, fast |
+| **TF-IDF vector** | Weighted BoW | Better signal than raw counts |
+| **Average word embeddings** | Mean of word vectors | Cheap, surprisingly effective |
+| **[CLS] token (BERT)** | Transformer representation | Rich context-aware |
+| **Sentence-BERT** | Siamese network fine-tuned for similarity | Best for semantic similarity |
+
+## Common mistakes
+
+1. **Lowercasing before NER** — "Apple" (company) and "apple" (fruit) are different; lowercase only after entity extraction.
+2. **Removing stopwords for sequence models** — "not happy" vs "happy" differ only in the stopword "not". Sequence models need stopwords.
+3. **Fitting TF-IDF on the entire dataset before splitting** — IDF should be computed only on the training set to avoid leakage.
+4. **Applying stemming to already-tokenized subwords** — BPE subwords like "##ness" will be incorrectly stripped.
+5. **Ignoring tokenizer vocabulary mismatch** — the tokenizer used at inference must match the one used during fine-tuning exactly.
+
+## Key takeaways
+
+- Tokenization granularity trades off vocabulary size vs sequence length; BPE subword tokenization is the modern standard.
+- BPE handles OOV by decomposing rare words into known subword pieces; WordPiece does the same for BERT.
+- Stemming is fast/approximate; lemmatization is slow/correct; neither is usually needed with subword models.
+- TF-IDF weights terms by local frequency × global rarity; stopwords effectively have zero TF-IDF.
+- For sequence models (RNNs, Transformers), skip stopword removal and stemming — they use raw subword tokens.
+
+## Related concepts
+
+- [**Word Embeddings**](/courses/nlp/02-word-embeddings) — turning tokens into dense vectors
+- [**Attention & Transformers**](/courses/transformers/01-self-attention) — models that process token sequences
+
+<Exercise id="nlp-tokenization" />
+<Exercise id="nlp-stemming-vs-lemma" />
+<Exercise id="nlp-tfidf" />
