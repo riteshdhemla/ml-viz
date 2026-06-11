@@ -178,9 +178,9 @@ fully, verify, ship, check it off. One item per iteration.
       connection gradient analysis (∂y/∂x = ∂F/∂x+1), depthwise separable
       (MobileNet, 8× savings), EfficientNet compound scaling; notebook +
       3 exercises; quiz renumbered to 05, estimatedHours 3→3.5
-- [ ] **transformers: Modern attention lesson** — cross-attention, GQA,
+- [x] **transformers: Modern attention lesson** — cross-attention, GQA,
       sliding-window, FlashAttention idea; RoPE, RMSNorm, SwiGLU
-- [ ] **generative-models: ViT & modern GenAI lesson** — ViT, StyleGAN/CycleGAN
+- [x] **generative-models: ViT & modern GenAI lesson** — ViT, StyleGAN/CycleGAN
       taxonomy, Stable Diffusion pipeline overview
 
 ### Curriculum gaps — new courses
