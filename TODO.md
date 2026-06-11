@@ -64,6 +64,9 @@ fully, verify, ship, check it off. One item per iteration.
         valid conv2d (identity/edge kernels), 2x2 max pool
         (translation tolerance), receptive-field growth (3x 3x3 = 7x7),
         discriminative LRs, frozen-backbone trainable fraction (PR #60)
+  - [x] svm — 6 exercises across 3 notebooks: hinge loss, margin width
+        2/||w||, RBF kernel, quadratic-kernel-equals-feature-map,
+        violators + slack, hinge subgradient step (PR #61)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
