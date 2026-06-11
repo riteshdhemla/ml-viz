@@ -47,6 +47,11 @@ fully, verify, ship, check it off. One item per iteration.
         differences, 1D gradient descent (incl. lr>1 divergence), chain
         rule vs numerical gradient, dead-ReLU backprop, worked-example
         gradient, Hessian-eigenvalue critical-point test (PR #56)
+  - [x] probability-statistics — 10 exercises across 5 notebooks:
+        conditional probability by counting, E/Var from PMF, Gaussian
+        PDF, Binomial PMF, Gaussian NLL, Poisson grid-search MLE,
+        diagnostic-test posterior, Beta-Bernoulli update, entropy,
+        KL divergence + cross-entropy identity (PR #57)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
