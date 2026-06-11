@@ -1,0 +1,349 @@
+---
+title: "Gradient Descent Variants"
+description: "SGD, momentum, RMSprop, and Adam — how the optimizer zoo evolved and when to use each."
+order: 1
+type: concept
+estimatedMinutes: 15
+---
+
+# Gradient Descent Variants
+
+Every neural network you have ever used was trained with gradient descent — or, more accurately, with one of its modern descendants. The core idea is simple: follow the negative gradient downhill. The subtleties in *how* you follow it gave rise to the optimizer zoo: SGD, Momentum, RMSprop, Adam, and a dozen others. This lesson traces the lineage, derives each update rule from scratch, and ends with practical guidance on when to reach for each one.
+
+## The gradient descent family
+
+The fundamental update is always the same:
+
+$$
+\theta \leftarrow \theta - \eta \cdot \nabla_\theta L
+$$
+
+What differs between variants is **how $\nabla_\theta L$ is estimated** and **how the step is scaled or smoothed**.
+
+### Full-batch, stochastic, and mini-batch
+
+With $n$ training examples, the true loss gradient is the average over the whole dataset. But computing that average requires a forward and backward pass through all $n$ examples — expensive when $n$ is in the millions.
+
+| Variant | Examples per step | Gradient quality | Practical cost |
+|---------|-------------------|-----------------|----------------|
+| **Full-batch GD** | All $n$ | Exact | 1 update per epoch; memory-heavy |
+| **Stochastic (SGD)** | 1 | Noisy | $n$ updates per epoch; each is fast |
+| **Mini-batch SGD** | 32–512 | Low-variance estimate | $n/B$ updates per epoch |
+
+Mini-batch is the practical sweet spot for two reasons:
+
+1. **GPU vectorization.** A GPU executes a batch of $B$ examples in nearly the same wall-clock time as a single example, so you get $B$ gradient samples essentially for free. Below $B \approx 32$ the GPU sits idle; above $B \approx 512$ memory bandwidth becomes the bottleneck.
+2. **Noise is a feature.** The stochasticity in mini-batch gradients acts as implicit regularization: it pushes the optimizer out of sharp minima (which generalize poorly) and toward flat minima (which generalize well).
+
+<Callout type="info" title="Epoch vs. step">
+  One **epoch** is one full pass over the training set. With batch size $B$ and
+  dataset size $n$, one epoch consists of $\lceil n/B \rceil$ **steps** (parameter
+  updates). Most schedules are measured in epochs; most optimizers tune per step.
+</Callout>
+
+## SGD with momentum
+
+Plain mini-batch SGD bounces back and forth across the walls of narrow ravines — directions where the loss curvature is large — while advancing slowly along the floor where curvature is small. Momentum fixes this by keeping a running **velocity** that accumulates past gradients.
+
+### The update rule
+
+$$
+v_t = \beta \cdot v_{t-1} + (1-\beta) \cdot \nabla L_t
+$$
+
+$$
+\theta_t = \theta_{t-1} - \eta \cdot v_t
+$$
+
+$\beta \in [0, 1)$ is the **momentum coefficient** (typically $0.9$). The velocity $v_t$ is an **exponential moving average (EMA)** of past gradients. Expanding the recursion:
+
+$$
+v_t = (1-\beta)\sum_{k=0}^{t} \beta^k \,\nabla L_{t-k}
+$$
+
+The weight on the gradient from $k$ steps ago decays as $\beta^k$, so recent gradients dominate. The **effective window** of the EMA is approximately:
+
+$$
+\text{effective window} \approx \frac{1}{1-\beta}
+$$
+
+With $\beta = 0.9$ this is $\approx 10$ steps: momentum smooths over about 10 past gradients at once.
+
+### Worked example: 2 steps with $\beta = 0.9$
+
+Consider minimizing $L(\theta) = \theta^2$ (gradient $= 2\theta$) starting at $\theta_0 = 3.0$, with $\eta = 0.1$ and $v_0 = 0$.
+
+**Step 1:**
+
+$$
+g_1 = 2(3.0) = 6.0
+$$
+
+$$
+v_1 = 0.9 \cdot 0 + 0.1 \cdot 6.0 = 0.6
+$$
+
+$$
+\theta_1 = 3.0 - 0.1 \cdot 0.6 = 2.94
+$$
+
+**Step 2:**
+
+$$
+g_2 = 2(2.94) = 5.88
+$$
+
+$$
+v_2 = 0.9 \cdot 0.6 + 0.1 \cdot 5.88 = 0.54 + 0.588 = 1.128
+$$
+
+$$
+\theta_2 = 2.94 - 0.1 \cdot 1.128 = 2.827
+$$
+
+Plain SGD (no momentum) would give $\theta_1 = 3.0 - 0.1 \cdot 6.0 = 2.4$ and $\theta_2 \approx 1.92$. Momentum is slower here because it takes a few steps to build velocity — but on a ravine with oscillating gradients, the cancellations in the EMA eliminate the oscillation while the consistent component accumulates.
+
+### Why momentum helps: the Rosenbrock function
+
+The Rosenbrock "banana" function is a classic stress test for optimizers:
+
+$$
+f(x, y) = (1 - x)^2 + 100\,(y - x^2)^2
+$$
+
+Its minimum is at $(1, 1)$ but it lies inside a long curved valley. Plain SGD follows the steep walls in tiny zig-zags and barely advances along the valley floor. With $\beta = 0.9$, the cross-valley oscillations cancel in the EMA while the along-valley component accumulates — momentum slides efficiently toward $(1, 1)$.
+
+<Callout type="tip" title="Ball rolling downhill">
+  Momentum behaves exactly like a ball rolling down a hill: it picks up speed
+  on long consistent slopes and isn't deflected much by small bumps
+  (high-frequency gradient noise).
+</Callout>
+
+## RMSprop
+
+Momentum attacks one problem (oscillation); RMSprop attacks a different one: **parameters that receive sparse updates**. In an embedding layer, most gradient entries are zero most of the time — a word that never appears in a batch gets zero gradient. Using a single global learning rate means the rare-but-important features get the same (often too-small) step as the dense ones.
+
+### Per-parameter adaptive learning rates
+
+RMSprop maintains a per-parameter **exponential moving average of squared gradients**:
+
+$$
+G_t = \rho \cdot G_{t-1} + (1-\rho) \cdot (\nabla L_t)^2
+$$
+
+The update then divides by $\sqrt{G_t + \varepsilon}$:
+
+$$
+\theta_t = \theta_{t-1} - \frac{\eta}{\sqrt{G_t + \varepsilon}} \cdot \nabla L_t
+$$
+
+Here $\rho \approx 0.9$ and $\varepsilon \approx 10^{-8}$ (prevents division by zero). The effect is:
+
+- **Large $G_t$** (parameter updated frequently with large gradients): effective step $\approx \eta / \sqrt{G_t}$ is small — the optimizer is cautious about parameters that already move a lot.
+- **Small $G_t$** (parameter updated rarely or with small gradients): effective step is large — the optimizer takes a bigger step for sparse features.
+
+This is exactly what you want for sparse inputs: infrequent updates arrive with larger effective learning rates and can catch up.
+
+<Callout type="info" title="RMSprop vs. AdaGrad">
+  AdaGrad accumulates squared gradients without discounting, so the effective
+  learning rate shrinks to near zero over long training runs. RMSprop replaces
+  the cumulative sum with an EMA (controlled by $\rho$), keeping the effective
+  learning rate from decaying to zero.
+</Callout>
+
+## Adam
+
+Adam (*Adaptive Moment Estimation*) combines momentum's first moment with RMSprop's second moment, and adds **bias correction** to fix the underestimation at early timesteps.
+
+### The full update
+
+**First moment (momentum):**
+
+$$
+m_t = \beta_1 \cdot m_{t-1} + (1-\beta_1) \cdot \nabla L_t
+$$
+
+**Second moment (squared gradient EMA):**
+
+$$
+v_t = \beta_2 \cdot v_{t-1} + (1-\beta_2) \cdot (\nabla L_t)^2
+$$
+
+**Bias-corrected estimates:**
+
+$$
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \qquad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}
+$$
+
+**Parameter update:**
+
+$$
+\theta_t = \theta_{t-1} - \frac{\eta}{\sqrt{\hat{v}_t} + \varepsilon} \cdot \hat{m}_t
+$$
+
+Default hyperparameters: $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$.
+
+### Why bias correction matters
+
+Both $m$ and $v$ are initialized to **zero**. At $t = 1$ with $\beta_1 = 0.9$:
+
+$$
+m_1 = 0.9 \cdot 0 + 0.1 \cdot g = 0.1\,g
+$$
+
+Without correction, $m_1$ is 10× smaller than the true gradient — it is systematically biased toward zero. Dividing by $(1 - \beta_1^1) = 0.1$ recovers $g$ exactly. The bias decays exponentially: by $t = 100$, $\beta_1^{100} \approx 3 \times 10^{-5}$, so the correction becomes negligible.
+
+### Worked example: 2 Adam steps on $L(\theta) = \theta^2$
+
+Start at $\theta_0 = 1.0$, $m_0 = v_0 = 0$, $\eta = 0.001$, defaults $\beta_1 = 0.9$, $\beta_2 = 0.999$, $\varepsilon = 10^{-8}$.
+
+**Step 1** ($t = 1$, $g_1 = 2 \times 1.0 = 2.0$):
+
+$$
+m_1 = 0.9(0) + 0.1(2.0) = 0.2, \quad v_1 = 0.999(0) + 0.001(4.0) = 0.004
+$$
+
+$$
+\hat{m}_1 = \frac{0.2}{1 - 0.9} = 2.0, \quad \hat{v}_1 = \frac{0.004}{1 - 0.999} = 4.0
+$$
+
+$$
+\theta_1 = 1.0 - \frac{0.001}{\sqrt{4.0} + 10^{-8}} \cdot 2.0 = 1.0 - \frac{0.002}{2.0} = 1.0 - 0.001 = 0.999
+$$
+
+**Step 2** ($t = 2$, $g_2 = 2 \times 0.999 = 1.998$):
+
+$$
+m_2 = 0.9(0.2) + 0.1(1.998) = 0.18 + 0.1998 = 0.3798
+$$
+
+$$
+v_2 = 0.999(0.004) + 0.001(1.998^2) = 0.003996 + 0.003992 = 0.007988
+$$
+
+$$
+\hat{m}_2 = \frac{0.3798}{1 - 0.81} = \frac{0.3798}{0.19} \approx 1.999, \quad \hat{v}_2 = \frac{0.007988}{1 - 0.998001} \approx 3.998
+$$
+
+$$
+\theta_2 = 0.999 - \frac{0.001}{\sqrt{3.998} + 10^{-8}} \cdot 1.999 \approx 0.999 - 0.001 = 0.998
+$$
+
+Notice that $\hat{m}$ and $\hat{v}$ stay close to their "true" values (gradient $\approx 2$, squared gradient $\approx 4$) even at $t = 2$ — that is the bias correction doing its job.
+
+```python
+import numpy as np
+
+def adam_step(theta, grad, m, v, t,
+              lr=0.001, b1=0.9, b2=0.999, eps=1e-8):
+    """One Adam update. Returns (new_theta, new_m, new_v)."""
+    m = b1 * m + (1 - b1) * grad         # first moment EMA
+    v = b2 * v + (1 - b2) * grad**2      # second moment EMA
+    m_hat = m / (1 - b1**t)              # bias correction
+    v_hat = v / (1 - b2**t)
+    theta = theta - lr * m_hat / (np.sqrt(v_hat) + eps)
+    return theta, m, v
+
+# Run 5 steps on L(θ) = θ², grad = 2θ
+theta, m, v = 1.0, 0.0, 0.0
+for t in range(1, 6):
+    g = 2 * theta
+    theta, m, v = adam_step(theta, g, m, v, t)
+    m_hat = m / (1 - 0.9**t)
+    v_hat = v / (1 - 0.999**t)
+    print(f"t={t}: θ={theta:.6f}  m={m:.6f}  v={v:.8f}  m̂={m_hat:.4f}  v̂={v_hat:.4f}")
+```
+
+<Callout type="warning" title="Adam does not always generalize best">
+  Adam converges faster than SGD in most settings, but on image classification
+  benchmarks, well-tuned SGD + momentum often achieves 1–2% lower test error.
+  The hypothesis: Adam's adaptive step sizes let it memorize training data more
+  effectively, including noise. When generalization is the top priority and you
+  have compute budget to tune, try both.
+</Callout>
+
+## Learning rate schedules
+
+A fixed learning rate is rarely optimal. Too large at the end causes the optimizer to bounce around a minimum without settling; too small throughout slows early progress. **Schedules** vary $\eta$ over the course of training.
+
+### Step decay
+
+Halve (or multiply by some factor $\gamma$) the learning rate every $k$ epochs:
+
+$$
+\eta_t = \eta_0 \cdot \gamma^{\lfloor t / k \rfloor}
+$$
+
+Simple and effective for standard vision tasks. The discontinuous drops can cause temporary loss spikes that smooth out quickly.
+
+### Cosine annealing
+
+Smoothly decay $\eta$ from $\eta_\text{max}$ to $\eta_\text{min}$ over $T$ epochs following a half cosine:
+
+$$
+\eta_t = \eta_\text{min} + \frac{1}{2}(\eta_\text{max} - \eta_\text{min})\!\left(1 + \cos\!\left(\frac{\pi t}{T}\right)\right)
+$$
+
+At $t = 0$: $\eta_t = \eta_\text{max}$ (cosine = 1). At $t = T$: $\eta_t = \eta_\text{min}$ (cosine = −1). The cosine shape naturally slows the decay near the minimum, giving the optimizer time to settle.
+
+**Warm restarts** (SGDR) periodically reset $t \leftarrow 0$, restarting the cosine from $\eta_\text{max}$. Each restart can escape a local minimum and explore a new region of the loss surface. Restart intervals are typically doubled after each cycle.
+
+### Warm-up phase
+
+Transformers and other large models require a **linear warm-up**: start from near-zero learning rate and ramp up to $\eta_\text{max}$ over the first few hundred to few thousand steps, then apply cosine decay.
+
+$$
+\eta_t = \eta_\text{max} \cdot \min\!\left(\frac{t}{t_\text{warmup}},\; 1\right) \quad\text{(warm-up)}
+$$
+
+Why? At initialization, the model's weights are random and its gradient estimates are unreliable. A large initial learning rate can cause catastrophic parameter updates before the gradient signal stabilizes. The warm-up gives the optimizer a few steps to build up accurate first- and second-moment estimates before taking large steps.
+
+<Callout type="info" title="Adam + cosine is the standard transformer recipe">
+  The original Transformer paper used Adam with $\beta_1=0.9$, $\beta_2=0.98$,
+  and a warm-up over $4{,}000$ steps followed by decay proportional to
+  $t^{-0.5}$. Most modern LLM recipes use Adam (or AdamW) with linear warm-up
+  followed by cosine annealing to $\sim 10\%$ of $\eta_\text{max}$.
+</Callout>
+
+## When to use what
+
+| Optimizer | Best for | Caveat |
+|-----------|----------|--------|
+| **SGD + momentum** | Computer vision (ResNets, ConvNets), when generalization matters | Requires more tuning of $\eta$ and momentum; slow on NLP |
+| **Adam** | NLP / transformers, fast prototyping, any model with sparse gradients | May generalize slightly worse than SGD on vision |
+| **AdamW** | Large pre-trained models (GPT, BERT) | Adam + decoupled weight decay; prefer over Adam when $\lambda > 0$ |
+| **RMSprop** | RNNs and LSTMs | Non-stationary gradients from backprop-through-time suit the EMA; Adam is usually at least as good |
+| **Adagrad** | Sparse feature problems (old NLP, recommendation) | Effective learning rate shrinks to zero over long runs; replaced by RMSprop / Adam |
+
+<Callout type="tip" title="Practical default">
+  Start with **Adam** at $\eta = 10^{-3}$ and default $\beta_1, \beta_2, \varepsilon$. If
+  training a vision model that you plan to run for a long time and want
+  maximum test accuracy, switch to **SGD + momentum 0.9** with a cosine
+  schedule and spend an extra sweep on $\eta$.
+</Callout>
+
+## Common mistakes
+
+1. **Not decaying the learning rate.** Keeping a constant $\eta$ throughout training leaves the optimizer bouncing around the minimum. Add a schedule — even simple step decay helps.
+2. **Using Adam's default $\varepsilon$ for mixed-precision training.** With float16, gradients are small and $\varepsilon = 10^{-8}$ can dominate the denominator. Increase $\varepsilon$ to $10^{-6}$ or $10^{-7}$ for mixed-precision.
+3. **Forgetting weight decay with Adam.** The standard Adam formulation applies weight decay *inside* the adaptive denominator, which distorts the regularization. Use **AdamW** (`weight_decay` as a separate hyperparameter) whenever you want L2 regularization.
+4. **Tuning momentum when Adam stalls.** Adam stalls are usually a learning rate problem, not a $\beta_1$ problem. Diagnose by plotting the gradient norm: if it explodes, lower $\eta$; if it vanishes, raise $\eta$ or check for dead activations.
+5. **Skipping warm-up for transformers.** Even a 500-step linear warm-up prevents the early instability that causes NaN losses in large models.
+
+## Key takeaways
+
+- **Mini-batch SGD** (batch size 32–512) is the practical foundation: it leverages GPU vectorization while keeping gradient noise that improves generalization.
+- **Momentum** ($\beta \approx 0.9$) maintains a velocity EMA with effective window $1/(1-\beta) \approx 10$ steps, smoothing oscillations in narrow ravines.
+- **RMSprop** normalizes each parameter's update by the EMA of its recent squared gradients, giving large steps to infrequent (sparse) parameters and small steps to frequently-updated ones.
+- **Adam** combines both: first-moment EMA (momentum) and second-moment EMA (RMSprop), with bias correction that compensates for zero initialization in the first few steps.
+- **Learning rate schedules** — especially cosine annealing and warm-up — matter as much as the choice of optimizer; a well-scheduled SGD often beats a poorly-scheduled Adam.
+- Default recipe: **Adam** at $\eta = 10^{-3}$ for fast convergence; **SGD + momentum + cosine** when you need the best generalization on vision tasks.
+
+## Related concepts
+
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — saddle points, the Hessian, and why the loss surface shape drives optimizer design
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the single-parameter derivation and the effect of learning rate before adding momentum or adaptivity
+
+<Exercise id="opt-sgd-noise" />
+<Exercise id="opt-momentum-ema" />
+<Exercise id="opt-adam-bias" />
