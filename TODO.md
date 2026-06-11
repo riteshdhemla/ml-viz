@@ -43,6 +43,10 @@ fully, verify, ship, check it off. One item per iteration.
         projection, rotation matrices, det-as-area, trace/det eigenvalues,
         power iteration, rank-k truncation (Eckart–Young check), SVD
         compression ratio (PR #55)
+  - [x] calculus-for-ml — 6 exercises across 3 notebooks: central
+        differences, 1D gradient descent (incl. lr>1 divergence), chain
+        rule vs numerical gradient, dead-ReLU backprop, worked-example
+        gradient, Hessian-eigenvalue critical-point test (PR #56)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
