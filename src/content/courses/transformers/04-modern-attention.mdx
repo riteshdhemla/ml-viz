@@ -1,0 +1,309 @@
+---
+title: "Modern Attention Mechanisms"
+description: "Cross-attention, grouped-query attention, RoPE, FlashAttention, and the optimizations that make large language models practical."
+order: 4
+type: concept
+estimatedMinutes: 18
+---
+
+# Modern Attention Mechanisms
+
+The original Transformer paper introduced an architecture that worked. The models in production today — LLaMA, Mistral, GPT-4, Claude — are built on that same architecture but with a set of targeted engineering improvements. Each one solves a specific bottleneck: cross-attention extends the design to translation and summarization; MQA/GQA shrink the memory cost of long-context inference; RoPE gives relative position awareness for free; FlashAttention eliminates the quadratic memory wall; and sparse patterns let attention scale to hundreds of thousands of tokens.
+
+## Encoder–decoder cross-attention
+
+The classic Transformer is an **encoder–decoder** model: an encoder reads the source sequence, and a decoder generates the target sequence one token at a time. Connecting them requires a mechanism for the decoder to "look at" the encoded source — that is cross-attention.
+
+**How the queries and keys/values split**
+
+In cross-attention, the queries ($Q$) come from the **decoder** and the keys and values ($K$, $V$) come from the **encoder's output**:
+
+$$
+Q = X_{\text{dec}}\,W_Q, \qquad K = X_{\text{enc}}\,W_K, \qquad V = X_{\text{enc}}\,W_V
+$$
+
+$$
+\text{CrossAttn}(X_{\text{dec}},\,X_{\text{enc}}) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+$$
+
+The result is: each decoder position computes a weighted blend of encoder positions. The attention score $Q_i \cdot K_j$ measures how relevant encoder position $j$ is when generating decoder position $i$.
+
+**Masking strategy**
+
+| Stack | Mask | Why |
+|-------|------|-----|
+| Encoder self-attention | None — bidirectional | Needs full context to understand the source |
+| Decoder self-attention | Causal (lower-triangular) | Autoregressive: can't peek at future targets |
+| Decoder cross-attention | None (over encoder) | All encoder positions are always available |
+
+**Worked example: translating "Hola" → "Hello"**
+
+Suppose the encoder produces representations for ["Hola", `<EOS>`] (2 tokens), and the decoder has generated [`<BOS>`] and is predicting "Hello".
+
+- $K, V$ are fixed: they are the encoder output matrix, shape $(2, d_k)$.
+- The decoder's query for position 0 has shape $(1, d_k)$.
+- The attention score is $s = Q \cdot K^\top / \sqrt{d_k}$, shape $(1, 2)$.
+- After softmax, e.g. $[0.88, 0.12]$ — the decoder attends heavily to "Hola".
+- The context vector is $c = 0.88 \cdot V_{\text{Hola}} + 0.12 \cdot V_{\text{EOS}}$.
+- This context is passed to the FFN to produce the hidden state that is projected to predict "Hello".
+
+<Callout type="tip" title="Cross-attention is the encoder–decoder bridge">
+  In encoder–decoder models every decoder layer has **three** sub-layers: (1) causal self-attention over what has been generated so far, (2) cross-attention over the encoder output, (3) the feed-forward network. If you remove the encoder and the cross-attention you get a decoder-only model (GPT style).
+</Callout>
+
+## Multi-Head Attention variants
+
+**The KV cache problem**
+
+During autoregressive inference, the model generates one token at a time. To avoid recomputing keys and values for all previous tokens at each step, frameworks maintain a **KV cache**: a buffer storing $K$ and $V$ for every past position, for every layer.
+
+KV cache size per layer:
+
+$$
+\text{KV cache} = 2 \times N \times h \times d_k \times \text{bytes per element}
+$$
+
+where $N$ is the current sequence length and $h$ is the number of heads. For LLaMA-2 70B: $h = 64$ heads, $d_k = 128$, $N = 4096$ tokens, bfloat16 (2 bytes) → $2 \times 4096 \times 64 \times 128 \times 2 = 268$ MB **per layer**, times 80 layers ≈ **21 GB** just for the KV cache at max context. Multi-query and grouped-query attention attack this directly.
+
+**Multi-Query Attention (MQA)**
+
+In MQA there is a **single** shared $K$ and $V$ head across all $h$ query heads. Each query head $i$ still has its own $W_{Q_i}$, but all heads share one $W_K$ and one $W_V$:
+
+$$
+Q_i = X\,W_{Q_i}, \quad K = X\,W_K, \quad V = X\,W_V \quad \forall i
+$$
+
+KV cache shrinks by a factor of $h$: instead of storing $h$ copies of $K$ and $V$, you store one. Quality drops slightly; LLaMA-3 70B uses MQA.
+
+**Grouped-Query Attention (GQA)**
+
+GQA generalizes MQA: split the $h$ query heads into $G$ groups ($1 \le G \le h$). Each group shares one $K$ and one $V$ head. $G = 1$ is MQA; $G = H$ is standard MHA.
+
+$$
+\text{GQA with } G \text{ groups:} \quad h_Q = h,\; h_K = h_V = G
+$$
+
+**Worked example: 8 heads, GQA with G = 2**
+
+- 8 Q-heads (independent $W_{Q_1}, \ldots, W_{Q_8}$)
+- 2 K-heads, 2 V-heads (shared within each group of 4)
+- KV cache = $2 \times N \times 2 \times d_k$ — 4× smaller than MHA
+
+| Variant | Q heads | K/V heads | KV cache factor | Notes |
+|---------|---------|-----------|-----------------|-------|
+| **MHA** | $h$ | $h$ | $1\times$ | Original |
+| **GQA** | $h$ | $G$ | $h/G\times$ smaller | Mistral, LLaMA-2/3 |
+| **MQA** | $h$ | $1$ | $h\times$ smaller | Extreme; PaLM |
+
+<Callout type="info" title="GQA in practice">
+  Mistral 7B uses GQA with $h=32$ query heads and $G=8$ KV heads — a 4× KV cache reduction. LLaMA-2 70B uses MQA ($G=1$) for maximum cache savings at large scale. Quality comparisons show GQA with $G \approx h/4$ is nearly indistinguishable from full MHA.
+</Callout>
+
+## Rotary Positional Encoding (RoPE)
+
+**The idea**
+
+Instead of adding a sinusoidal vector to the token embedding (as the original Transformer does), RoPE encodes position by **rotating** the query and key vectors before computing dot products. No extra embedding is needed; position is injected directly into the attention score.
+
+**The rotation**
+
+For a query vector $\mathbf{q} \in \mathbb{R}^d$, group pairs of dimensions $(q_{2i}, q_{2i+1})$ and rotate them by angle $m \theta_i$ where:
+
+- $m$ is the **absolute position** of the token in the sequence
+- $\theta_i = \text{base}^{-2i/d}$, with $\text{base} = 10000$ (following the sinusoidal PE convention)
+
+$$
+\text{RoPE}(\mathbf{q}, m)_{2i,\,2i+1} = \begin{pmatrix} \cos(m\theta_i) & -\sin(m\theta_i) \\ \sin(m\theta_i) & \phantom{-}\cos(m\theta_i) \end{pmatrix} \begin{pmatrix} q_{2i} \\ q_{2i+1} \end{pmatrix}
+$$
+
+The same rotation is applied to $\mathbf{k}$ at position $n$.
+
+**Key property: relative distance**
+
+When you compute the dot product of a rotated query at position $m$ with a rotated key at position $n$:
+
+$$
+\text{RoPE}(\mathbf{q}, m)^\top \cdot \text{RoPE}(\mathbf{k}, n) = \mathbf{q}^\top R(m-n)\, \mathbf{k}
+$$
+
+where $R(m-n)$ is a rotation matrix depending only on the **relative offset** $m - n$. This means attention scores are automatically sensitive to how far apart tokens are, not where they are in absolute terms — a property that improves generalization to sequence lengths not seen during training.
+
+```python
+import numpy as np
+
+def rope_rotate_pair(q2i, q2i1, m, theta_i):
+    """Rotate a pair of query dimensions (q_{2i}, q_{2i+1}) at position m."""
+    cos_t = np.cos(m * theta_i)
+    sin_t = np.sin(m * theta_i)
+    return (cos_t * q2i - sin_t * q2i1,
+            sin_t * q2i + cos_t * q2i1)
+
+d, base = 8, 10000
+thetas = [base ** (-2 * i / d) for i in range(d // 2)]  # θ_0 … θ_{d/2-1}
+
+q = np.array([1.0, 0.5, -0.3, 0.8, 0.1, -0.2, 0.6, 0.4])
+m = 3  # token at position 3
+
+q_rot = np.zeros_like(q)
+for i, theta_i in enumerate(thetas):
+    q_rot[2*i], q_rot[2*i+1] = rope_rotate_pair(q[2*i], q[2*i+1], m, theta_i)
+
+print("original q:", q)
+print("rotated  q:", q_rot.round(4))
+```
+
+<Callout type="tip" title="RoPE is used everywhere modern">
+  RoPE was introduced by Su et al. (2021) and has since been adopted by LLaMA (all versions), Mistral, GPT-NeoX, Falcon, and Qwen. Its relative-distance property also makes it easier to extend context beyond the training length via techniques such as YaRN and NTK-aware scaling.
+</Callout>
+
+## FlashAttention
+
+**The memory wall in standard attention**
+
+Standard attention:
+
+$$
+\text{Attn}(Q,K,V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+$$
+
+requires materializing the $N \times N$ attention score matrix in full. For $N = 8192$ tokens and float16, that is $8192^2 \times 2 \approx 128$ MB **per head per layer** — stored in HBM (the GPU's slow main memory). With multiple heads and layers, this becomes prohibitive and requires many slow round-trips between HBM and the GPU's fast on-chip SRAM.
+
+**Tiled computation**
+
+FlashAttention (Dao et al., 2022) reorders the computation to never store the full $N \times N$ matrix:
+
+1. Split $Q$, $K$, and $V$ into blocks that fit in SRAM (fast on-chip memory).
+2. For each block of $Q$, iterate over all blocks of $K$ and $V$, computing partial softmax values and accumulating the weighted sum of $V$ on-chip.
+3. Use the online softmax trick to maintain a running max and normalizer so the partial results are numerically stable without seeing all scores first.
+
+**Result:** the full $N \times N$ matrix is never written to HBM. Memory scales as $O(N)$ instead of $O(N^2)$. The math is **exactly equivalent** to standard attention — no approximation.
+
+| Metric | Standard attention | FlashAttention |
+|--------|--------------------|----------------|
+| HBM memory | $O(N^2)$ | $O(N)$ |
+| Approximation | Exact | Exact |
+| Speedup | 1× | 2–4× (practical) |
+| Key idea | — | Tile + online softmax |
+
+<Callout type="info" title="Why fewer HBM reads wins">
+  On modern GPUs, compute (FLOPs) is cheap; bandwidth (reading/writing HBM) is expensive. Standard attention is **memory-bandwidth bound**, not compute bound. FlashAttention reads each element of $Q$, $K$, $V$ only once per pass, replacing many slow HBM accesses with fast SRAM operations — that is where the 2–4× wall-clock speedup comes from.
+</Callout>
+
+FlashAttention-2 (2023) and FlashAttention-3 (2024) push further with better work partitioning across thread blocks and tensor-core utilization, but the core idea — tile and keep data in SRAM — is unchanged.
+
+## Sliding-window and sparse attention
+
+**The quadratic wall**
+
+Full self-attention is $O(N^2)$ in both time and memory. For $N = 128{,}000$ tokens (Claude's context), that is $128{,}000^2 = 16.4$ billion attention scores per layer — even with FlashAttention's $O(N)$ memory, the computation is still $O(N^2)$ FLOPs.
+
+**Sliding-window attention**
+
+Each token attends only to the $w$ nearest tokens (a window of size $w$ centered at itself, one-sided for causal models):
+
+$$
+\text{score}(i, j) = \begin{cases} Q_i \cdot K_j / \sqrt{d_k} & |i - j| \le w/2 \\ -\infty & \text{otherwise} \end{cases}
+$$
+
+Complexity: $O(N \cdot w)$ instead of $O(N^2)$. With $w = 4096$ and $N = 128{,}000$ this is a 31× reduction.
+
+**Local + global tokens**
+
+Pure sliding-window loses long-range coherence — position 0 cannot directly influence position $N-1$. Two common fixes:
+
+- **Longformer / BigBird**: a handful of designated "global" tokens (e.g., `[CLS]`) attend to and receive attention from all positions, carrying long-range information.
+- **Mistral 7B**: uses sliding-window attention in lower layers (cheap local features) and full attention in upper layers (long-range integration).
+
+<Callout type="warning" title="Local vs global coherence trade-off">
+  Sliding-window limits each token's receptive field to $w$ tokens. Information from far-away tokens reaches position $i$ only by propagating through many layers — the same limitation RNNs had. For tasks requiring tight long-range dependencies (complex reasoning, document summarization) pure local attention may degrade quality; combining local + global tokens mitigates this.
+</Callout>
+
+## RMSNorm and SwiGLU
+
+Modern LLMs swap out two components of the original Transformer: LayerNorm becomes RMSNorm and the ReLU FFN becomes SwiGLU. Both are small but consistent wins.
+
+**RMSNorm**
+
+Standard LayerNorm centers and scales:
+
+$$
+\text{LayerNorm}(\mathbf{x}) = \boldsymbol{\gamma} \odot \frac{\mathbf{x} - \mu}{\sqrt{\sigma^2 + \epsilon}} + \boldsymbol{\beta}
+$$
+
+RMSNorm drops the mean-centering step entirely, normalizing only by the root mean square:
+
+$$
+\text{RMS}(\mathbf{x}) = \sqrt{\frac{1}{d}\sum_{i=1}^{d} x_i^2}, \qquad \text{RMSNorm}(\mathbf{x}) = \boldsymbol{\gamma} \odot \frac{\mathbf{x}}{\text{RMS}(\mathbf{x})}
+$$
+
+No $\boldsymbol{\beta}$ parameter (the mean shift is dropped). Fewer operations, no mean subtraction, empirically equivalent quality. Used by LLaMA, T5, PaLM.
+
+**SwiGLU**
+
+The original FFN uses two weight matrices and ReLU:
+
+$$
+\text{FFN}_{\text{ReLU}}(\mathbf{x}) = \text{ReLU}(W_1 \mathbf{x} + \mathbf{b}_1)\,W_2 + \mathbf{b}_2
+$$
+
+SwiGLU replaces this with a gated structure using three weight matrices:
+
+$$
+\text{SwiGLU}(\mathbf{x}) = \big(W_1 \mathbf{x} \odot \text{SiLU}(W_3 \mathbf{x})\big)\,W_2
+$$
+
+where $\text{SiLU}(x) = x \cdot \sigma(x) = x / (1 + e^{-x})$ (also called Swish). The gating term $\text{SiLU}(W_3 \mathbf{x})$ acts as a smooth, learned filter on the features produced by $W_1 \mathbf{x}$.
+
+```python
+import numpy as np
+
+def silu(x):
+    return x / (1 + np.exp(-x))   # x * sigmoid(x)
+
+def swiglu(x, W1, W3, W2):
+    gate = silu(x @ W3)            # gating signal
+    hidden = (x @ W1) * gate       # element-wise gating
+    return hidden @ W2             # project back
+
+# Tiny example: d_model=4, d_ff=8 (usually 8/3 * d_model to match param count)
+rng = np.random.RandomState(0)
+d_model, d_ff = 4, 8
+W1 = rng.randn(d_model, d_ff) * 0.1
+W3 = rng.randn(d_model, d_ff) * 0.1
+W2 = rng.randn(d_ff, d_model) * 0.1
+x = rng.randn(3, d_model)          # 3 tokens
+out = swiglu(x, W1, W3, W2)
+print("SwiGLU output shape:", out.shape)  # (3, 4) — same as input
+```
+
+<Callout type="tip" title="SwiGLU's extra weight matrix">
+  SwiGLU adds a third projection matrix $W_3$ compared to the standard FFN. To keep total parameter count the same, the hidden dimension is reduced: instead of $d_{ff} = 4\,d_{\text{model}}$, SwiGLU uses $d_{ff} = \tfrac{8}{3}\,d_{\text{model}}$ (rounded up to a multiple of 64 for hardware efficiency). LLaMA uses this ratio throughout.
+</Callout>
+
+## Common mistakes
+
+1. **Cross-attention Q/K/V source confusion** — Q comes from the decoder; K and V come from the encoder. Reversing this makes the decoder unable to query the source.
+2. **Forgetting the causal mask in decoder self-attention** — the decoder's self-attention still needs a causal mask; only the cross-attention step attends to the full encoder output without a causal constraint.
+3. **Expecting MQA/GQA to improve quality** — these are inference optimizations. They reduce KV cache size at a small quality cost; they don't improve perplexity and shouldn't be chosen for quality reasons.
+4. **Thinking FlashAttention changes the result** — FlashAttention is numerically identical to standard attention. If outputs differ, it's a precision or implementation bug, not an intentional trade-off.
+5. **Applying RoPE only to Q** — RoPE must be applied to both $Q$ **and** $K$ for the relative-distance property to hold. Rotating only Q breaks the math.
+6. **Confusing SwiGLU's $d_{ff}$** — the SwiGLU FFN uses $d_{ff} \approx \tfrac{8}{3}\,d_{\text{model}}$ (not $4\times$) to match parameter counts with the two-matrix ReLU FFN.
+
+## Key takeaways
+
+- **Cross-attention** bridges encoder and decoder: Q from decoder, K/V from encoder; no causal mask on the cross-attention step.
+- **MQA/GQA** reduce KV cache memory at inference by sharing K/V heads across query head groups — GQA with $G = h/4$ is the current sweet spot.
+- **RoPE** injects relative position into attention scores by rotating Q and K vectors; the dot product then depends only on position difference, not absolute position.
+- **FlashAttention** tiles the attention computation to avoid materializing the $N \times N$ matrix, achieving exact attention with $O(N)$ memory and 2–4× wall-clock speedup.
+- **Sliding-window attention** reduces attention complexity from $O(N^2)$ to $O(N \cdot w)$ for long contexts; global tokens preserve long-range connectivity.
+- **RMSNorm** drops mean-centering from LayerNorm; **SwiGLU** adds learned gating to the FFN — both are small, consistent quality improvements used in all major modern LLMs.
+
+## Related concepts
+
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — the MHA foundation that MQA/GQA extend
+- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — residuals, LayerNorm, encoder/decoder families
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the core QKV mechanism
+
+<Exercise id="transformer-cross-attention" />
+<Exercise id="transformer-gqa" />
+<Exercise id="transformer-rope" />

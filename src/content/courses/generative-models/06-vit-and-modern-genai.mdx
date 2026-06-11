@@ -1,0 +1,337 @@
+---
+title: "ViT & Modern Generative AI"
+description: "Vision Transformers, StyleGAN, CycleGAN, and the Stable Diffusion pipeline — how generative models scaled to photorealistic synthesis."
+order: 6
+type: concept
+estimatedMinutes: 18
+---
+
+# ViT & Modern Generative AI
+
+The past five years brought a wave of architectural innovations that pushed generative models from toy demos to photorealistic, billion-parameter systems. This lesson covers four of the most influential ideas: the **Vision Transformer**, **Classifier-Free Guidance**, **StyleGAN**, **CycleGAN**, and the **Stable Diffusion latent pipeline**.
+
+---
+
+## 1. Vision Transformer (ViT)
+
+Transformers dominated NLP. The natural question was: can the same architecture handle images? The answer turned out to be yes — if you have enough data.
+
+### Patch embedding
+
+A raw image can't be fed as a single sequence token — it's too large. ViT's solution: chop the image into non-overlapping square patches, flatten each patch, and project it linearly into a token embedding.
+
+**Worked example:** Take a 224×224 RGB image with patch size $P = 16$.
+
+- Number of patches: $(224 / 16)^2 = 14^2 = 196$
+- Pixels per patch: $16 \times 16 \times 3 = 768$ raw values
+- Each patch is projected by a learned weight matrix $\mathbf{W}_E \in \mathbb{R}^{768 \times d}$ to a $d$-dimensional embedding (ViT-B uses $d = 768$)
+
+So the entire image becomes a sequence of 196 tokens, each of dimension 768. That's an input matrix of shape $196 \times 768$ — a standard Transformer can process it directly.
+
+```python
+import numpy as np
+
+def patch_embed(image, patch_size, d_model):
+    """
+    image: (H, W, C) numpy array
+    Returns: (num_patches, d_model) token matrix
+    """
+    H, W, C = image.shape
+    P = patch_size
+    assert H % P == 0 and W % P == 0
+
+    # Extract patches
+    patches = image.reshape(H // P, P, W // P, P, C)
+    patches = patches.transpose(0, 2, 1, 3, 4)       # (n_h, n_w, P, P, C)
+    n_h, n_w = H // P, W // P
+    patches = patches.reshape(n_h * n_w, P * P * C)  # (196, 768)
+
+    # Linear projection (random init for illustration)
+    rng = np.random.default_rng(0)
+    W_E = rng.normal(0, 0.02, (P * P * C, d_model))
+    return patches @ W_E  # (196, 768)
+
+image = np.random.randn(224, 224, 3)
+tokens = patch_embed(image, patch_size=16, d_model=768)
+print(f"Token matrix shape: {tokens.shape}")  # (196, 768)
+```
+
+### [CLS] token and positional embeddings
+
+Two additions are prepended/added before passing tokens to the Transformer encoder:
+
+1. **[CLS] token** — a learned vector prepended to the sequence. After all encoder layers, only this token's representation is used for classification (it aggregates global information via attention).
+2. **Positional embeddings** — learnable 1D vectors of shape $(197, d)$ added element-wise to the 196 patch tokens plus the CLS token. Unlike the sinusoidal embeddings in NLP Transformers, ViT's positional embeddings are **fully learned** from data.
+
+$$
+\mathbf{z}_0 = [\mathbf{x}_{cls};\; \mathbf{x}^1_p \mathbf{E};\; \mathbf{x}^2_p \mathbf{E};\; \ldots;\; \mathbf{x}^{196}_p \mathbf{E}] + \mathbf{E}_{pos}
+$$
+
+where $\mathbf{E} \in \mathbb{R}^{768 \times 768}$ is the patch projection and $\mathbf{E}_{pos} \in \mathbb{R}^{197 \times 768}$ is the learnable positional embedding table.
+
+### Encoder and classification head
+
+The sequence passes through $L$ standard Transformer encoder blocks (self-attention + MLP, with LayerNorm). There is **no causal mask** — every patch can attend to every other patch bidirectionally.
+
+Finally, the [CLS] token's output vector goes into a small MLP head:
+
+$$
+\hat{y} = \text{MLP}(\mathbf{z}_L^0)
+$$
+
+where $\mathbf{z}_L^0$ is the CLS position at the final layer $L$.
+
+### Scale comparison
+
+| Variant | Patch size | Layers | Heads | $d$ | Params |
+|---------|-----------|--------|-------|-----|--------|
+| ViT-B/16 | 16×16 | 12 | 12 | 768 | 86 M |
+| ViT-L/16 | 16×16 | 24 | 16 | 1024 | 307 M |
+| ViT-H/14 | 14×14 | 32 | 16 | 1280 | 632 M |
+
+<Callout type="info" title="Data requirements">
+  CNNs bake in two inductive biases: **locality** (nearby pixels matter) and **translation equivariance** (a cat anywhere in the image is still a cat). ViT has neither — it must learn spatial relationships from scratch. On small datasets like ImageNet-1k, CNNs outperform ViT. But trained on JFT-300M (300 million images), ViT matches or beats the best CNNs. **Data is the inductive bias at scale.**
+</Callout>
+
+---
+
+## 2. Classifier-Free Guidance (CFG)
+
+Conditional generation (e.g., "generate a golden retriever") requires the model to follow a text or class prompt faithfully while still producing diverse, high-quality samples. **Classifier-Free Guidance** achieves this without an external classifier.
+
+### Training
+
+Train the model jointly on two modes by randomly dropping the conditioning signal during training:
+
+- With probability $p = 0.9$: condition on the real label/text $c$
+- With probability $p = 0.1$: replace $c$ with a null token $\emptyset$ (the "unconditional" case)
+
+The model therefore learns both $p(x \mid c)$ and $p(x \mid \emptyset)$ with one set of weights.
+
+### Inference
+
+At generation time, run the model **twice** per denoising step — once with and once without the condition — then interpolate:
+
+$$
+\hat{\boldsymbol{\epsilon}}_\theta(\mathbf{x}_t, c, w) = (1 + w) \cdot \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c) \;-\; w \cdot \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, \emptyset)
+$$
+
+where $w$ is the **guidance scale**:
+
+| $w$ | Effect |
+|-----|--------|
+| 0 | Fully unconditional — pure model diversity, ignores prompt |
+| 1 | Conditional without any boost |
+| 7.5 | Strong guidance — high prompt fidelity, less diversity (Stable Diffusion default) |
+| 15+ | Very strong — may over-saturate colors and lose realism |
+
+**Intuition:** The term $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c) - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, \emptyset)$ is the direction in noise-space that leads toward images matching the condition $c$. Amplifying it by $w$ steers sampling more aggressively toward the prompt.
+
+```python
+def cfg_output(cond_output, uncond_output, guidance_scale):
+    """Combine conditional and unconditional model outputs with CFG."""
+    w = guidance_scale
+    return (1 + w) * cond_output - w * uncond_output
+
+import numpy as np
+cond   = np.array([0.8, -0.2, 0.5])
+uncond = np.array([0.1,  0.1, 0.1])
+
+print(cfg_output(cond, uncond, w=0))    # → [0.1  0.1  0.1]  (uncond only)
+print(cfg_output(cond, uncond, w=7.5))  # → [6.35 -1.85  3.65]  (strong pull toward cond)
+```
+
+<Callout type="warning" title="CFG costs 2× compute">
+  Each denoising step requires two forward passes. This doubles inference cost. Some modern systems (e.g., SDXL Turbo, Stable Diffusion 3) use distillation to bake guidance into a single forward pass.
+</Callout>
+
+---
+
+## 3. StyleGAN
+
+Standard GANs feed a latent vector $\mathbf{z}$ directly to the generator. This couples all aspects of style into a single vector, making it hard to control individual attributes like pose, color, and fine texture independently. StyleGAN's insight: **disentangle style from structure** with a mapping network and adaptive instance normalization.
+
+### Mapping network
+
+Instead of feeding $\mathbf{z}$ directly to the generator, first pass it through a small 8-layer MLP:
+
+$$
+\mathbf{w} = f(\mathbf{z}), \quad f: \mathcal{Z} \to \mathcal{W}
+$$
+
+The $\mathcal{W}$-space is less entangled than $\mathcal{Z}$-space because the mapping network can learn to spread features apart. A vector in $\mathcal{W}$ is often replicated and injected at every scale of the generator.
+
+### AdaIN (Adaptive Instance Normalization)
+
+At each generator layer, the feature map is normalized and then shifted/scaled by style vectors derived from $\mathbf{w}$:
+
+$$
+\text{AdaIN}(\mathbf{x}_i, \mathbf{y}) = \mathbf{y}_{s,i} \cdot \frac{\mathbf{x}_i - \mu(\mathbf{x}_i)}{\sigma(\mathbf{x}_i)} + \mathbf{y}_{b,i}
+$$
+
+where $\mathbf{y}_{s,i}$ and $\mathbf{y}_{b,i}$ are per-channel scale and bias derived from $\mathbf{w}$ via a learned affine transform. Each scale receives a different projection of $\mathbf{w}$, allowing independent control at each resolution.
+
+### Progressive growing
+
+Generation starts at 4×4 resolution, with new layers added progressively (4→8→16→32→64→…→1024) during training. This stabilizes training: the network first learns gross structure, then progressively refines detail.
+
+**What the W-space gives you:** By linearly interpolating between two $\mathbf{w}$ vectors injected at coarse vs. fine layers, you can mix styles — e.g., take the pose from one face and the color/texture from another.
+
+---
+
+## 4. CycleGAN
+
+Paired image translation (photo → sketch where every photo has a matching sketch) is simple. **CycleGAN** handles the harder case: **unpaired** translation, where you only have a collection of domain-A images and a separate collection of domain-B images, with no correspondence.
+
+### Architecture
+
+Two generator–discriminator pairs:
+- $G_{AB}$: translates A → B; $D_B$: tries to distinguish real B from generated B
+- $G_{BA}$: translates B → A; $D_A$: tries to distinguish real A from generated A
+
+### Cycle consistency loss
+
+The key insight: if we translate an image from A to B and then back to A, we should recover the original:
+
+$$
+\mathcal{L}_{cyc}(G_{AB}, G_{BA}) = \mathbb{E}_x \left[ \|G_{BA}(G_{AB}(x)) - x\|_1 \right] + \mathbb{E}_y \left[ \|G_{AB}(G_{BA}(y)) - y\|_1 \right]
+$$
+
+This L1 cycle loss prevents the generators from freely hallucinating irrelevant content in the target domain — they must produce translations that can be inverted.
+
+```python
+def cycle_consistency_loss(x, G_AB, G_BA):
+    """Compute L1 cycle consistency loss for a batch x from domain A."""
+    x_in_B = G_AB(x)           # translate A → B
+    x_reconstructed = G_BA(x_in_B)  # translate back B → A
+    return np.mean(np.abs(x_reconstructed - x))
+```
+
+### Total loss
+
+$$
+\mathcal{L} = \mathcal{L}_{GAN}(G_{AB}, D_B) + \mathcal{L}_{GAN}(G_{BA}, D_A) + \lambda \cdot \mathcal{L}_{cyc}(G_{AB}, G_{BA})
+$$
+
+where $\lambda = 10$ is the cycle consistency weight. The GAN losses push generators to produce realistic samples in the target domain; the cycle loss preserves content.
+
+**Classic applications:** horse → zebra, photo → Monet painting, summer → winter, day → night.
+
+<Callout type="tip" title="Why L1 and not L2?">
+  L1 loss produces sharper results than L2 (which tends to blur) because L1 penalizes all deviations equally rather than heavily penalizing outliers. This matters for preserving edge structure across domains.
+</Callout>
+
+---
+
+## 5. Stable Diffusion: Latent Diffusion
+
+Pixel-space diffusion (DALL-E 2, original DDPM) runs the denoising U-Net on full-resolution images. A 512×512×3 image has 786,432 values — every denoising step processes all of them. **Stable Diffusion** moves the diffusion process into a compressed **latent space**, making it orders of magnitude cheaper.
+
+### The three-component pipeline
+
+**Step 1 — VAE encoder (compress):**
+
+$$
+\mathbf{z} = \mathcal{E}(x), \quad x \in \mathbb{R}^{512 \times 512 \times 3} \;\longrightarrow\; \mathbf{z} \in \mathbb{R}^{64 \times 64 \times 4}
+$$
+
+The VAE compresses the image by a factor of 8 in each spatial dimension, reducing the tensor from 786 K values to 16 K values — a **49× reduction**. The VAE is pre-trained separately and frozen during diffusion training.
+
+**Step 2 — Latent diffusion (denoise):**
+
+The U-Net denoiser now operates in $\mathbf{z}$-space. It is conditioned on text via **cross-attention** at every U-Net block:
+
+- Text is encoded by a frozen CLIP text encoder: $\mathbf{c} = \text{CLIP}(\text{prompt}) \in \mathbb{R}^{77 \times 768}$
+- Each U-Net block has a cross-attention layer where queries come from image features and keys/values come from $\mathbf{c}$
+
+Inference loop (DDIM, 20–50 steps):
+
+```
+z_T ~ N(0, I)                   # start from latent noise
+for t in [T, T-1, ..., 1]:
+    eps_hat = U-Net(z_t, t, c)  # predict noise (conditioned on text c)
+    z_{t-1} = DDIM_step(z_t, eps_hat, t)
+x = VAE_decoder(z_0)            # decode final latent to pixels
+```
+
+**Step 3 — VAE decoder (decompress):**
+
+$$
+\hat{x} = \mathcal{D}(\mathbf{z}_0), \quad \mathbf{z}_0 \in \mathbb{R}^{64 \times 64 \times 4} \;\longrightarrow\; \hat{x} \in \mathbb{R}^{512 \times 512 \times 3}
+$$
+
+### Tensor shapes through the pipeline
+
+```python
+# Illustrative shapes — no real model needed
+import numpy as np
+
+prompt_tokens = (77,)           # CLIP max token length
+text_emb      = (77, 768)       # CLIP text embedding
+latent_noise  = (1, 4, 64, 64)  # z_T ~ N(0,I)  [B, C, H, W]
+unet_output   = (1, 4, 64, 64)  # predicted noise, same shape as latent
+final_latent  = (1, 4, 64, 64)  # z_0 after DDIM sampling
+decoded_image = (1, 3, 512, 512)# VAE decoder output
+
+print(f"Text embedding:  {text_emb}")
+print(f"Latent noise:    {latent_noise}")
+print(f"U-Net output:    {unet_output}")
+print(f"Decoded image:   {decoded_image}")
+print(f"Compression ratio: {512*512*3 / (64*64*4):.0f}×")  # → 49×
+```
+
+### Why latent space works
+
+The VAE is trained with a perceptual loss — it learns to preserve visually important structure (edges, textures) while discarding imperceptible high-frequency noise. The diffusion model only needs to learn the distribution of **perceptually meaningful** latents, not raw pixel values. This separation of concerns is the key architectural insight of Stable Diffusion.
+
+<Callout type="success" title="Summary of the pipeline">
+  **Encode** (VAE) → **Denoise** (U-Net conditioned by CLIP) → **Decode** (VAE). The middle step runs in a 49× smaller space, so each denoising step is ~49× cheaper than pixel-space diffusion at the same resolution.
+</Callout>
+
+---
+
+## GAN vs VAE vs Diffusion — Side-by-side
+
+| Property | GAN | VAE | Diffusion |
+|----------|-----|-----|-----------|
+| **Sample quality** | Very good | Good | Best |
+| **Sample diversity** | Risk of mode collapse | Good | Excellent |
+| **Training stability** | Unstable (adversarial) | Stable | Stable |
+| **Inference speed** | Fast (1 forward pass) | Fast (1 forward pass) | Slow (20–1000 steps) |
+| **Likelihood estimate** | None | Lower bound (ELBO) | Lower bound |
+| **Conditioning** | Conditional GAN (tricky) | Simple (concat/AdaIN) | CFG (flexible, costly) |
+| **Key failure mode** | Mode collapse / training instability | Posterior collapse / blurry outputs | Slow generation |
+| **Flagship system** | StyleGAN3 | Stable Diffusion VAE | Stable Diffusion, DALL-E 3 |
+
+---
+
+## Common mistakes
+
+1. **Feeding raw pixels to ViT without enough data** — ViT has no locality bias, so it needs large datasets. Use a pre-trained checkpoint for fine-tuning; don't train ViT-B from scratch on ImageNet-1k alone.
+2. **Setting CFG guidance too high** — $w > 12$ causes over-saturation and artifact-heavy images. The sweet spot is typically $w \in [6, 10]$ for photorealistic prompts.
+3. **Confusing Z-space and W-space in StyleGAN** — Only $\mathcal{W}$-space interpolations give semantically smooth transitions. Interpolating in $\mathcal{Z}$ passes through the non-linear mapping network and produces inconsistent results.
+4. **Forgetting both cycle directions in CycleGAN** — The loss must enforce $G_{BA}(G_{AB}(x)) \approx x$ AND $G_{AB}(G_{BA}(y)) \approx y$. Omitting either direction lets one generator collapse.
+5. **Treating Stable Diffusion as pixel-space diffusion** — The U-Net operates on 64×64 latents, not 512×512 pixels. Interventions like inpainting or ControlNet operate in latent space and must be decoded only at the end.
+
+---
+
+## Key takeaways
+
+- **ViT** treats an image as a sequence of patch tokens. With enough data it matches CNN performance — but inductive biases matter at small data scales.
+- **Classifier-Free Guidance** trains one model for both conditional and unconditional generation; at inference it amplifies the direction toward the condition by guidance scale $w$.
+- **StyleGAN** uses a mapping network ($\mathcal{Z} \to \mathcal{W}$) and AdaIN to disentangle style at each scale, enabling fine-grained image attribute control.
+- **CycleGAN** enables unpaired image translation via cycle consistency: translating there and back must recover the original.
+- **Stable Diffusion** runs diffusion in a VAE latent space (~49× smaller than pixel space), with CLIP-conditioned cross-attention in the U-Net, making high-resolution synthesis tractable.
+
+---
+
+## Related concepts
+
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the denoising foundation Stable Diffusion builds on
+- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks) — the adversarial training framework StyleGAN and CycleGAN use
+- [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders) — the VAE component inside Stable Diffusion
+- [**Attention & Transformers**](/courses/transformers/01-self-attention) — the self-attention mechanism ViT inherits
+
+<Exercise id="genai-vit-patches" />
+<Exercise id="genai-cfg" />
+<Exercise id="genai-cycle-loss" />
