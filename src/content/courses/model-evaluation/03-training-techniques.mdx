@@ -1,0 +1,211 @@
+---
+title: "Training Techniques & Hyperparameter Search"
+description: "Early stopping, learning rate schedules, grid/random/Bayesian search, and data augmentation."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Training Techniques & Hyperparameter Search
+
+A model's architecture is only one part of the story. The learning rate schedule, when to stop training, how aggressively to search the hyperparameter space, and what data transformations to apply during training often determine whether you get 80% or 95% accuracy.
+
+## Early stopping
+
+**The problem:** neural networks can overfit as training continues — training loss keeps decreasing while validation loss plateaus and then rises.
+
+**Early stopping:** monitor validation loss after each epoch; stop training when validation loss hasn't improved for `patience` consecutive epochs; restore the weights from the best validation epoch.
+
+```python
+best_val_loss = float('inf')
+best_weights  = None
+patience_count = 0
+
+for epoch in range(max_epochs):
+    train_model(model)
+    val_loss = evaluate(model, val_data)
+
+    if val_loss < best_val_loss:
+        best_val_loss  = val_loss
+        best_weights   = copy_weights(model)
+        patience_count = 0
+    else:
+        patience_count += 1
+        if patience_count >= patience:
+            break
+
+restore_weights(model, best_weights)
+```
+
+**Worked example:** training a network on a noisy dataset. Optimal stopping is at epoch 50 — after that, the model memorizes training-set noise.
+
+| Epoch | Train loss | Val loss |
+|-------|-----------|----------|
+| 10 | 0.80 | 0.82 |
+| 30 | 0.55 | 0.57 |
+| **50** | **0.40** | **0.42** (best) |
+| 80 | 0.20 | 0.55 |
+| 100 | 0.10 | 0.70 |
+
+**Regularization equivalence:** for gradient descent on quadratic loss, early stopping is exactly equivalent to L2 regularization — the number of training steps plays the role of $1/\lambda$.
+
+<Callout type="tip" title="Setting patience">
+  Patience of 5–20 epochs is typical. Too small → stop before the model has converged past a plateau. Too large → waste compute waiting for a recovery that won't come. For transformers, 3–5 validations is often enough; for CNNs, 10–20 epochs.
+</Callout>
+
+## Learning rate schedules
+
+A fixed learning rate is rarely optimal throughout training. Common schedules:
+
+**Step decay:** reduce $\eta$ by a factor $\gamma$ every $M$ epochs.
+
+$$
+\eta_t = \eta_0 \cdot \gamma^{\lfloor t / M \rfloor}
+$$
+
+Simple and effective; $\gamma = 0.1$, $M = 30$ is a common ResNet default.
+
+**Cosine annealing:** smoothly decays from $\eta_{\max}$ to $\eta_{\min}$:
+
+$$
+\eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\!\left(\frac{\pi t}{T}\right)\right)
+$$
+
+At $t=0$: $\eta = \eta_{\max}$. At $t=T$: $\eta = \eta_{\min}$. The smooth curve avoids abrupt drops that can destabilize training.
+
+**Cosine annealing with warm restarts (SGDR):** after reaching $\eta_{\min}$, reset to $\eta_{\max}$ and restart the cycle — each restart is a "fresh start" that can escape local minima.
+
+**Warm-up + decay:** linearly increase $\eta$ from 0 to $\eta_{\max}$ over the first $W$ steps, then decay:
+
+$$
+\eta_t = \begin{cases} \eta_{\max} \cdot t / W & t \leq W \\ \text{decay schedule} & t > W \end{cases}
+$$
+
+Warm-up is essential for Transformers trained with Adam: at $t=1$, Adam's second-moment estimate $\hat{v}_t \approx 0$, making the effective step size unstable. Warm-up gives the optimizer time to accumulate reliable statistics.
+
+| Schedule | Best for | Key parameter |
+|----------|---------|---------------|
+| Step decay | ResNets, CNNs | γ and M |
+| Cosine annealing | General deep learning | T, η_min |
+| Warm-up + cosine | Transformers, BERT, ViT | warmup_steps |
+| Reduce on plateau | When you don't know T | patience, factor |
+
+## Grid search
+
+**Exhaustive enumeration** of a hyperparameter grid. For $k$ hyperparameters with $n$ values each, cost is $O(n^k)$.
+
+```python
+from sklearn.model_selection import GridSearchCV
+
+param_grid = {
+    'lr':      [1e-4, 1e-3, 1e-2],
+    'dropout': [0.1, 0.3, 0.5],
+}
+# 3 × 3 = 9 combinations
+gs = GridSearchCV(model, param_grid, cv=5)
+gs.fit(X_train, y_train)
+```
+
+Grid search works well for 1–2 hyperparameters with a small, known range. Beyond 3 dimensions, the exponential cost makes it impractical.
+
+<Callout type="info" title="Use log-scale grids for learning rate">
+  Learning rate effects are multiplicative, not additive. A grid of `[0.001, 0.01, 0.1]` (log-spaced) is more informative than `[0.001, 0.034, 0.067, 0.1]` (linearly-spaced). Same principle applies to regularization strength λ.
+</Callout>
+
+## Random search
+
+**Randomly sample** hyperparameter configurations from specified distributions. Each trial is independent.
+
+```python
+from sklearn.model_selection import RandomizedSearchCV
+from scipy.stats import loguniform
+
+param_dist = {
+    'lr':      loguniform(1e-5, 1e-1),
+    'dropout': [0.0, 0.1, 0.2, 0.3, 0.5],
+}
+rs = RandomizedSearchCV(model, param_dist, n_iter=50, cv=5)
+```
+
+**Why random search beats grid search:** if you run 25 trials on a 5×5 grid, each hyperparameter gets only 5 distinct values. With random search, each of the 25 trials samples the learning rate independently — you explore 25 distinct learning rate values. Since important hyperparameters (like learning rate) vary rapidly across the performance landscape and unimportant ones (like batch size) don't, more coverage of the important axes wins.
+
+| Strategy | Evaluations covering each dim | Best for |
+|----------|------|---------|
+| Grid search (5×5) | 5 per dim | ≤2 hyperparams, known range |
+| Random search (25) | 25 per dim | ≥3 hyperparams, uncertain ranges |
+| Bayesian opt (25) | 25 but informed | Expensive evaluations |
+
+## Bayesian optimization
+
+When each model training run costs hours, random search wastes evaluations on bad regions. **Bayesian optimization** uses a probabilistic surrogate model to guide the search.
+
+**Algorithm:**
+
+1. Evaluate a few initial random configurations
+2. Fit a **Gaussian Process** (GP) surrogate to all observed (config, loss) pairs
+3. Use an **acquisition function** (e.g., Expected Improvement) to pick the next config — it trades off **exploitation** (near known good points) vs. **exploration** (uncertain regions)
+4. Evaluate the selected config; update the GP; repeat
+
+$$
+\text{EI}(x) = \mathbb{E}[\max(f^* - f(x), 0)]
+$$
+
+where $f^*$ is the best observed value so far. EI is high where the GP predicts improvement or has high uncertainty.
+
+**Sample efficiency:** Bayesian optimization typically needs 3–5× fewer evaluations than random search to find an equivalently good configuration. Tools: Optuna, Ax, HyperOpt.
+
+## Successive halving and Hyperband
+
+For neural networks, you don't need a full training run to know a configuration is bad. **Successive halving** exploits this:
+
+1. Start with $n$ configurations, give each $r$ resources (epochs)
+2. Keep the top half; give each $2r$ resources
+3. Repeat until one configuration remains
+
+**Hyperband** runs multiple successive-halving brackets in parallel, balancing aggressive early elimination against thorough evaluation. It's the basis of modern AutoML systems (KerasTuner, Ray Tune, ASHA scheduler).
+
+## Data augmentation
+
+**Data augmentation** creates new training examples by applying label-preserving transformations to existing ones:
+
+**Image augmentation:**
+- Random crops (crop 224×224 from a 256×256 image)
+- Horizontal flip (label-invariant for most tasks)
+- Color jitter (brightness, contrast, saturation, hue)
+- Mixup: $\tilde{x} = \lambda x_i + (1-\lambda) x_j$, $\tilde{y} = \lambda y_i + (1-\lambda) y_j$
+- CutMix: replace rectangular patches with pixels from another image
+
+**Text augmentation:** synonym replacement, back-translation, random deletion/swap.
+
+**Regularization effect:** augmentation forces the model to learn features invariant to the applied transforms. It's equivalent to enlarging the training set and preventing memorization of specific pixel values.
+
+<Callout type="warning" title="Apply augmentation only during training">
+  Augmentation is applied only to the training set. Applying random crops or flips at test time (except for Test-Time Augmentation / TTA where you average predictions over multiple augmented copies) would introduce noise and reduce accuracy.
+</Callout>
+
+**Test-Time Augmentation (TTA):** at inference, apply multiple augmentations to each test image and average the predictions. This can add 0.5–2% accuracy at the cost of k× inference time.
+
+## Common mistakes
+
+1. **Monitoring training loss instead of validation loss for early stopping** — training loss always decreases; you need validation loss to detect overfitting.
+2. **Over-tuning on the test set** — if you run 100 hyperparameter configurations and select the one with the best test score, you've effectively fitted the test set.
+3. **Fixed patience too small** — some models plateau for 10-20 epochs before improving; 2-3 patience can stop training prematurely.
+4. **Forgetting augmentation at test time (accidentally)** — if your data loader applies augmentation by default, make sure to switch to eval mode or disable augmentation during testing.
+5. **Grid search with linearly spaced LR values** — learning rate effects are multiplicative; always use log-spaced grids.
+
+## Key takeaways
+
+- Early stopping monitors validation loss and restores best weights; it is equivalent to L2 regularization for quadratic losses.
+- Learning rate schedules (cosine annealing, warm-up + decay) improve convergence; warm-up is essential for Transformers.
+- Random search outperforms grid search when some hyperparameters matter more than others — it covers more distinct values per important dimension.
+- Bayesian optimization uses a GP surrogate and acquisition function to focus evaluations on promising regions; best for expensive training runs.
+- Data augmentation enforces label-invariant transforms during training, acting as regularization and preventing memorization.
+
+## Related concepts
+
+- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — learning rate schedules applied to optimizers
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — how to avoid leakage during hyperparameter search
+
+<Exercise id="eval-early-stopping" />
+<Exercise id="eval-lr-schedule" />
+<Exercise id="eval-random-search" />

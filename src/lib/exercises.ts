@@ -3936,6 +3936,220 @@ const allExercises: Exercise[] = [
       { id: "d", label: "All eigenvalues are zero (flat region)", isCorrect: false },
     ],
   },
+
+  // ── Model Evaluation & Validation ───────────────────────────────
+  {
+    id: "eval-precision-recall",
+    type: "multiple-choice",
+    question:
+      "A classifier has 90 true positives, 10 false positives, and 30 false negatives. What is its F1 score?",
+    hint: "Precision = TP/(TP+FP), Recall = TP/(TP+FN), F1 = 2·P·R/(P+R).",
+    explanation:
+      "Precision = 90/(90+10) = 0.9. Recall = 90/(90+30) = 0.75. F1 = 2×0.9×0.75/(0.9+0.75) = 1.35/1.65 ≈ 0.818. F1 is the harmonic mean of precision and recall, penalizing extreme imbalance between the two.",
+    options: [
+      { id: "a", label: "0.75", isCorrect: false },
+      { id: "b", label: "0.818", isCorrect: true },
+      { id: "c", label: "0.825", isCorrect: false },
+      { id: "d", label: "0.90", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-f1-tradeoff",
+    type: "multiple-choice",
+    question:
+      "For a rare-disease screening test (1% prevalence), why is accuracy a misleading metric and what should you use instead?",
+    hint: "What accuracy does a classifier that always predicts 'healthy' achieve?",
+    explanation:
+      "A classifier that always predicts 'healthy' achieves 99% accuracy on a 1% prevalence dataset — useless but high accuracy. For imbalanced problems, use precision/recall, F1, or PR-AUC instead. These metrics focus on performance on the minority (positive) class, which is usually what matters medically.",
+    options: [
+      { id: "a", label: "Accuracy is always appropriate; F1 is only for multi-class problems", isCorrect: false },
+      { id: "b", label: "A always-negative classifier gets 99% accuracy; use precision/recall/F1 instead", isCorrect: true },
+      { id: "c", label: "Accuracy is fine; the 1% prevalence just means the dataset is too small", isCorrect: false },
+      { id: "d", label: "Use MSE instead of accuracy for imbalanced problems", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-roc-vs-pr",
+    type: "multiple-choice",
+    question:
+      "You have a highly imbalanced binary dataset (0.5% positive rate). Should you use ROC-AUC or PR-AUC to compare two classifiers, and why?",
+    hint: "ROC uses true negative rate; PR does not — which one can a classifier 'game' by exploiting the large negative class?",
+    explanation:
+      "PR-AUC is preferred for severe class imbalance. ROC-AUC uses TPR vs FPR, and FPR = FP/(FP+TN) is small even for many false positives when the negative class is huge. A classifier can look good on ROC while producing many false positives relative to the tiny positive class. PR-AUC directly focuses on precision among predicted positives vs recall, which reflects real-world utility when positives are rare.",
+    options: [
+      { id: "a", label: "ROC-AUC — it's threshold-independent and always the right choice", isCorrect: false },
+      { id: "b", label: "PR-AUC — ROC is optimistic under imbalance because FPR ignores abundant negatives", isCorrect: true },
+      { id: "c", label: "Both are equivalent for binary classification", isCorrect: false },
+      { id: "d", label: "Neither — use accuracy with class weights instead", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-kfold-bias",
+    type: "multiple-choice",
+    question:
+      "You run 5-fold CV on a small dataset of 100 samples. Compared to leave-one-out CV (LOO), what is the tradeoff of 5-fold?",
+    hint: "LOO trains on n-1 samples; 5-fold trains on 80. Which has higher bias and which has higher variance?",
+    explanation:
+      "5-fold trains on 80% of data (80 samples) vs LOO which trains on 99. Training on fewer samples means 5-fold estimates are slightly more pessimistic (higher bias — slightly underestimates performance). But LOO's n=100 separate models produce highly correlated estimates (each fold differs by just 1 sample), causing high variance of the CV estimate. 5-fold is the practical sweet spot: lower variance than LOO, lower bias than 2-fold.",
+    options: [
+      { id: "a", label: "5-fold has lower bias and lower variance than LOO", isCorrect: false },
+      { id: "b", label: "5-fold has slightly higher bias but lower variance than LOO", isCorrect: true },
+      { id: "c", label: "5-fold has lower bias but higher variance than LOO", isCorrect: false },
+      { id: "d", label: "5-fold and LOO have the same bias-variance tradeoff", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-data-leakage",
+    type: "multiple-choice",
+    question:
+      "Which of these pipelines contains data leakage?",
+    hint: "Leakage occurs when information from the validation/test set influences the training process.",
+    explanation:
+      "Fitting a StandardScaler on the entire dataset (train + test) before splitting leaks test set statistics (mean, std) into the training pipeline. The scaler's fit should only use the training portion. The other options avoid leakage: fitting on train then transforming test is correct; scaling after splitting is correct; computing baseline on train accuracy is fine.",
+    options: [
+      { id: "a", label: "Scaling features using StandardScaler fitted on all data before the train/test split", isCorrect: true },
+      { id: "b", label: "Fitting StandardScaler on train set then transforming both train and test", isCorrect: false },
+      { id: "c", label: "Using k-fold CV where each fold's scaler is fit on that fold's training portion", isCorrect: false },
+      { id: "d", label: "Computing the majority-class baseline accuracy on the training set", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-bootstrap-oob",
+    type: "multiple-choice",
+    question:
+      "In bootstrap sampling (sampling n points with replacement from n), approximately what fraction of original samples will NOT be included in a given bootstrap sample (the out-of-bag fraction)?",
+    hint: "The probability that a specific sample is not chosen in any of n draws is (1 - 1/n)^n. What does this converge to?",
+    explanation:
+      "P(sample i not selected in one draw) = 1 - 1/n. P(not selected in any of n draws) = (1-1/n)^n → e⁻¹ ≈ 0.368 as n→∞. About 36.8% of samples are OOB. This makes bootstrap OOB error a nearly unbiased estimate of generalization error — equivalent to roughly 2-fold CV, which is why Random Forest uses OOB error as a free validation metric.",
+    options: [
+      { id: "a", label: "About 50%", isCorrect: false },
+      { id: "b", label: "About 36.8% (≈ 1/e)", isCorrect: true },
+      { id: "c", label: "About 20%", isCorrect: false },
+      { id: "d", label: "About 63.2% (≈ 1 - 1/e)", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-early-stopping",
+    type: "multiple-choice",
+    question:
+      "Early stopping monitors validation loss during training and stops when it stops decreasing. What regularization effect does this have?",
+    hint: "Think about what early stopping prevents the optimizer from doing to the weights.",
+    explanation:
+      "Early stopping prevents the optimizer from reducing weight norms to near-zero (or growing them too large) in pursuit of lower training loss. For gradient descent on quadratic loss, it is equivalent to L2 (ridge) regularization — the number of training steps controls the effective regularization strength. Stopping early keeps weights in a region of parameter space where the model hasn't fully fit the training noise.",
+    options: [
+      { id: "a", label: "It acts like L1 regularization, sparsifying weights", isCorrect: false },
+      { id: "b", label: "It is equivalent to L2 regularization for quadratic losses", isCorrect: true },
+      { id: "c", label: "It prevents overfitting by randomly dropping weights each epoch", isCorrect: false },
+      { id: "d", label: "It has no regularization effect; it only saves compute", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-lr-schedule",
+    type: "multiple-choice",
+    question:
+      "Transformer models typically use a learning rate warm-up phase followed by decay. Why is warm-up necessary for Adam with Transformers?",
+    hint: "Think about Adam's second moment estimate at t=1 vs. t=1000.",
+    explanation:
+      "At the start of training, Adam's second moment estimate v_t is near zero (initialized to 0), making the adaptive denominator √v̂_t very small. Combined with the bias correction (which amplifies early gradients), the effective step size can be very large and unstable at t=1. Warm-up linearly increases the learning rate from near-zero, giving Adam time to accumulate reliable second-moment statistics before taking large steps.",
+    options: [
+      { id: "a", label: "To prevent the model from memorizing the first few batches", isCorrect: false },
+      { id: "b", label: "Adam's early second-moment estimates are unreliable, causing large unstable steps without warm-up", isCorrect: true },
+      { id: "c", label: "Warm-up is only used for CNNs, not Transformers", isCorrect: false },
+      { id: "d", label: "To match the cosine annealing schedule shape", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-random-search",
+    type: "multiple-choice",
+    question:
+      "A model has 2 hyperparameters: learning rate (important) and batch size (relatively unimportant). You can afford 25 evaluations. Why does random search typically beat grid search here?",
+    hint: "In grid search, how many distinct values does each hyperparameter get when you use 25 evaluations?",
+    explanation:
+      "With 25 evaluations on a 5×5 grid, each hyperparameter gets only 5 distinct values. With random search, each evaluation independently samples the learning rate — over 25 trials you explore 25 distinct learning rates. Since learning rate matters more, you want more coverage of that dimension. Random search exploits the fact that not all hyperparameters contribute equally to performance.",
+    options: [
+      { id: "a", label: "Random search uses a smarter sampling distribution than grid search", isCorrect: false },
+      { id: "b", label: "With 25 trials, random search covers 25 learning rate values vs. only 5 in a 5×5 grid", isCorrect: true },
+      { id: "c", label: "Grid search cannot handle continuous hyperparameters at all", isCorrect: false },
+      { id: "d", label: "Random search automatically avoids bad regions of the search space", isCorrect: false },
+    ],
+  },
+
+  // ── Model Evaluation — Quiz ─────────────────────────────────────
+  {
+    id: "eval-quiz-confusion-matrix",
+    type: "multiple-choice",
+    question:
+      "A confusion matrix shows: TP=80, FP=20, FN=40, TN=860. What is the precision of the positive class?",
+    hint: "Precision = TP / (TP + FP).",
+    explanation:
+      "Precision = TP/(TP+FP) = 80/(80+20) = 80/100 = 0.80. Recall = TP/(TP+FN) = 80/120 ≈ 0.667. Accuracy = (TP+TN)/(total) = 940/1000 = 0.94. The high accuracy is partly misleading here — the dataset has 900 negatives and only 120 positives (imbalanced).",
+    options: [
+      { id: "a", label: "0.667 (recall)", isCorrect: false },
+      { id: "b", label: "0.80 (precision)", isCorrect: true },
+      { id: "c", label: "0.94 (accuracy)", isCorrect: false },
+      { id: "d", label: "0.727 (F1 score)", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-cv-estimate",
+    type: "multiple-choice",
+    question:
+      "In k-fold cross-validation, which estimate is a nearly unbiased estimate of the model's generalization error?",
+    hint: "Think about what 'held-out' data the model never saw during that fold's training.",
+    explanation:
+      "The validation (held-out fold) loss averaged over all k folds is the nearly unbiased estimate of generalization error. The training loss in each fold is biased downward (models fit to training data). The test loss on a final held-out set is also unbiased but uses data not involved in CV. The k-fold validation loss is the standard cross-validation estimate.",
+    options: [
+      { id: "a", label: "The average training loss across all folds", isCorrect: false },
+      { id: "b", label: "The average validation (held-out fold) loss across all folds", isCorrect: true },
+      { id: "c", label: "The loss on the fold that had the highest training loss", isCorrect: false },
+      { id: "d", label: "The minimum validation loss across all folds", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-leakage",
+    type: "multiple-choice",
+    question:
+      "A fraud detection model is trained on transactions from Jan–Jun and tested on Jul–Dec. The feature 'days_since_last_fraud_in_account' is computed using the entire dataset. What type of data leakage is this?",
+    hint: "The feature uses future information to compute a 'past' feature for earlier transactions.",
+    explanation:
+      "This is temporal/future leakage: the feature 'days_since_last_fraud_in_account' for a Jan transaction would use fraud events from Feb–Dec when computed on the full dataset. The model sees information from the future during training. This must be computed using only data up to each transaction's timestamp. Temporal datasets require time-based splitting, not random splitting.",
+    options: [
+      { id: "a", label: "No leakage — the feature only uses per-account history", isCorrect: false },
+      { id: "b", label: "Temporal leakage — future fraud events influence the feature for past transactions", isCorrect: true },
+      { id: "c", label: "Label leakage — the target variable influences a feature", isCorrect: false },
+      { id: "d", label: "Train-test leakage — the scaler was fit on both sets", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-bayesian-opt",
+    type: "multiple-choice",
+    question:
+      "Bayesian hyperparameter optimization outperforms random search for expensive objectives. What does it use to guide the search?",
+    hint: "It models the unknown objective function probabilistically.",
+    explanation:
+      "Bayesian optimization maintains a probabilistic surrogate model (typically a Gaussian Process) of the objective function. After each evaluation, it updates the GP posterior and uses an acquisition function (e.g., Expected Improvement) to choose the next hyperparameter configuration — trading off exploring uncertain regions vs. exploiting known good areas. This is much more sample-efficient than random search when each evaluation is expensive (e.g., training a large model).",
+    options: [
+      { id: "a", label: "A pre-trained neural network that predicts hyperparameter performance", isCorrect: false },
+      { id: "b", label: "A probabilistic surrogate model (e.g., Gaussian Process) updated after each evaluation", isCorrect: true },
+      { id: "c", label: "Evolutionary strategies that mutate the best configurations", isCorrect: false },
+      { id: "d", label: "A cached lookup table of all previous configurations tried by other users", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-augmentation",
+    type: "multiple-choice",
+    question:
+      "In image classification, random horizontal flipping, cropping, and color jitter are applied during training but not at test time. What regularization effect does this provide?",
+    hint: "The model sees different transformed versions of each image — what does this increase?",
+    explanation:
+      "Data augmentation effectively expands the training set by generating transformed variants of each example. This acts as regularization: it prevents the model from memorizing exact pixel values, forces invariances (horizontal flip → mirror symmetry), and improves generalization. It's analogous to adding noise or dropout — the model must learn robust features rather than overfitting to specific training images.",
+    options: [
+      { id: "a", label: "It acts like L2 regularization by penalizing large weights", isCorrect: false },
+      { id: "b", label: "It prevents overfitting by making the model learn invariant, robust features", isCorrect: true },
+      { id: "c", label: "It reduces the learning rate effectively during each epoch", isCorrect: false },
+      { id: "d", label: "It removes noisy labels from the training set", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
