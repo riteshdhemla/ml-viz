@@ -71,6 +71,9 @@ fully, verify, ship, check it off. One item per iteration.
         1/e OOB fraction, ensemble variance (correlation floor),
         AdaBoost alpha + half-weight reweighting, shrinkage geometry,
         early stopping, XGBoost leaf weight/gain (PR #62)
+  - [x] clustering — 6 exercises across 3 notebooks: k-means assign +
+        update (fixed-point check), DBSCAN core points, single vs
+        complete linkage, silhouette formula, inertia (PR #63)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
