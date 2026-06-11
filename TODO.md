@@ -89,6 +89,10 @@ fully, verify, ship, check it off. One item per iteration.
         counting, factorized sprinkler joint, Ising agreement
         (partition function), denoising energy, forward algorithm vs
         enumeration, Viterbi vs brute force (PR #67)
+  - [x] transformers — 6 exercises across 3 notebooks: scaled
+        dot-product attention, causal masking, MHA param bill,
+        sinusoidal PE, LayerNorm, encoder-layer budget (FFN
+        majority) (PR #68)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
