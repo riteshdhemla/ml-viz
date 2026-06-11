@@ -35,48 +35,163 @@
 ---
 
 ### linear-algebra/02-matrices-and-transformations
-*(pending — agent 1 still running)*
+**Viz issues:**
+- `<MatrixTransformViz />` is placed at line 31 (in the "What is a matrix?" intro section) but the determinant section at line 120 says "The interactive figure above shows the determinant updating as you change the matrix." The viz is ~90 lines above the determinant discussion, in a separate conceptual block — the "above" reference is misleading. The viz should be moved to (or duplicated at) the determinant section, or the text reference removed.
+
+**Worked example gaps:** none — matrix multiplication is fully worked numerically.
+
+**ML mixing (should be separate section):** Line 29 mentions "Neural network layer" inline during the definition of matrix multiplication — brief and acceptable as a contextual example, but ideally in a dedicated section.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### linear-algebra/03-eigenvalues-and-eigenvectors
-*(pending — agent 1 still running)*
+**Viz issues:** `<EigenvectorViz />` placed at the start of the lesson to introduce the core concept — appropriate intuition-first ordering. No mismatch.
+
+**Worked example gaps:** none — characteristic equation fully solved, eigenvectors derived by back-substitution.
+
+**ML mixing (should be separate section):** Intro front-loads PCA, PageRank, neural network stability as examples. Line 98 has a dedicated "Connection to PCA" subsection — good structure. Intro examples are at an acceptable hook level.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### linear-algebra/04-svd-and-low-rank
-*(pending — agent 1 still running)*
+**Viz issues:** No visualization component. SVD geometry (singular vectors as rotations, singular values as scaling) would benefit from a diagram similar to `EigenvectorViz`.
+
+**Worked example gaps:** none — Eckart-Young theorem proven algebraically; Python example verifies the error formula.
+
+**ML mixing (should be separate section):** ML applications (image compression, recommender systems, LoRA, denoising) are woven throughout the Eckart-Young explanation rather than housed in a dedicated section. Inconsistent with lessons that have an "Applications" section.
+
+**Missing algorithms:** none.
+
+**Other:** none.
 
 ---
 
 ## Calculus for ML
 
 ### calculus-for-ml/01-derivatives-and-gradients
-*(pending — agent 1 still running)*
+**Viz issues:** `<FunctionTangentViz />` placed early to visualize the derivative concept — appropriate. No mismatch.
+
+**Worked example gaps:** none — sigmoid derivative fully derived; numerical gradient example complete.
+
+**ML mixing (should be separate section):** Intro mentions "every neural network trained with backpropagation, every optimizer (SGD, Adam)" as framing. Acceptable level of hook.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### calculus-for-ml/02-chain-rule-and-backpropagation
-*(pending — agent 1 still running)*
+**Viz issues:** `<ComputationalGraphViz />` placed at line 53 but the "Computational graphs" section heading comes immediately after it (line 55) — viz appears before its section header. Slightly awkward; heading should precede the viz.
+
+**Worked example gaps:** none — squared-error example and one-hidden-layer MLP example both carry through all gradient computations step-by-step.
+
+**ML mixing (should be separate section):** Intro frames backpropagation as context ("the algorithm that trains every deep neural network") — appropriate motivation.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### calculus-for-ml/03-multivariable-optimization
-*(pending — agent 1 still running)*
+**Viz issues:** `<GradientFieldViz />` at line 198, placed between Newton's method section and the Convexity section. Acceptable placement.
+
+**Worked example gaps:** none — critical points, Hessian computation, eigenvalue classification, Newton's method, and convexity test all worked with full algebra.
+
+**ML mixing (should be separate section):** Intro cites "hyperparameter tuning landscapes, SVM convex optimization" as examples — framing level, acceptable.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### calculus-for-ml/04-jacobians
-*(pending — agent 1 still running)*
+**Viz issues:** `<ComputationalGraphViz />` at line 163, placed after the "The vector chain rule" section begins (line 147). Acceptable — viz illustrates a concept already introduced.
+
+**Worked example gaps:** none — affine layer, ReLU, and softmax Jacobian derivations all fully worked with numerical check.
+
+**ML mixing (should be separate section):** Intro mentions "backpropagation through softmax/batch-norm" — appropriate motivation.
+
+**Missing algorithms:** none.
+
+**Other:** none.
 
 ---
 
 ## Probability & Statistics
 
 ### probability-statistics/01-thinking-in-probabilities
-*(pending — agent 1 still running)*
+**Viz issues:** No visualization component. Conceptual intro lesson; acceptable.
+
+**Worked example gaps:** none — coin flip and die roll examples kept intentionally simple; LLN demonstrated with Python code.
+
+**ML mixing (should be separate section):** Brief "Why ML cares about E" reference at end — acceptable framing.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### probability-statistics/02-probability-distributions
-*(pending — agent 1 still running)*
+**Viz issues:** `<DistributionViz />` at line 66 placed immediately after the "Key distributions in ML" section header but before any distribution is defined. Viz appears as preview before its content — awkward for beginners who haven't seen the distributions yet.
+
+**Worked example gaps:** none — Bernoulli expectation/variance and Gaussian normalisation/mean/variance all worked algebraically.
+
+**ML mixing (should be separate section):** Intro front-loads classification/generative model applications. Line 218 has a dedicated "From distributions to ML: the likelihood" section — good structure.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### probability-statistics/03-maximum-likelihood-estimation
-*(pending — agent 1 still running)*
+**Viz issues:** `<MLEViz />` at line 53, after the "why we maximise the log-likelihood" section and before the first worked derivation — good intuition-first order.
+
+**Worked example gaps:** none — Gaussian MLE (mean and variance) and Bernoulli MLE both fully derived; connection to cross-entropy fully justified.
+
+**ML mixing (should be separate section):** Intro cites "fitting linear regression, training logistic classifier" — framing level, acceptable.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### probability-statistics/04-bayesian-inference
-*(pending — agent 1 still running)*
+**Viz issues:** `<BayesViz />` at line 42, placed after Bayes' theorem and before the worked medical-test example — appropriate ordering.
+
+**Worked example gaps:** none — medical test example and Beta-Bernoulli posterior derivation both fully worked; MAP vs MLE comparison worked with numbers.
+
+**ML mixing (should be separate section):** Line 196 has a dedicated "L2 regularization is MAP with a Gaussian prior" subsection — well-structured.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ### probability-statistics/05-entropy-and-kl-divergence
-*(pending — agent 1 still running)*
+**Viz issues:** No visualization. Entropy/KL bar chart or distribution comparison diagram would help intuition.
+
+**Worked example gaps:** none — entropy, cross-entropy, and KL divergence each defined with code-verified numerical examples.
+
+**ML mixing (should be separate section):** Dedicated "Where you'll meet these again" subsection lists applications (cross-entropy loss, VAE KL term, information gain) — correctly separated.
+
+**Missing algorithms:** none.
+
+**Other:** none.
 
 ---
 
@@ -495,56 +610,613 @@
 ---
 
 ## CNNs
-*(pending — agent 3 still running)*
+
+### cnns/01-convolution-operation
+**Viz issues:** `<ConvolutionViz />` placed after key-concepts section — correctly positioned. No mismatch.
+
+**Worked example gaps:** none — convolution derivation and output-size formula both complete; hand calculation and Python code cross-validate.
+
+**ML mixing (should be separate section):** Intro lists image classification, face detection, medical imaging — acceptable motivation hook.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### cnns/02-pooling-and-architectures
+**Viz issues:** `<PoolingViz />` correctly placed after pooling explanation. No mismatch.
+
+**Worked example gaps:** none — pooling worked example and skip-connection ResNet code are complete.
+
+**ML mixing (should be separate section):** none — architectures are the application.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### cnns/03-transfer-learning
+**Viz issues:** `<TransferLearningViz />` at line 179. No mismatch.
+
+**Worked example gaps:** none — ResNet-50 parameter counts for each strategy worked numerically; full medical-imaging fine-tuning example provided.
+
+**ML mixing (should be separate section):** Whole lesson is applied; appropriate.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
 
 ## SVMs
-*(pending — agent 3 still running)*
+
+### svm/01-maximum-margin
+**Viz issues:** `<MarginViz />` placed after complete worked example — correctly positioned. No mismatch.
+
+**Worked example gaps:** none — margin formula $2/\|\mathbf{w}\|$ derived geometrically with hand calculation and Python validation.
+
+**ML mixing (should be separate section):** Intro motivation at acceptable hook level.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### svm/02-kernel-trick
+**Viz issues:** `<KernelViz />` placed at line 89 with interactive "switch between kernels" description — correct position. No mismatch.
+
+**Worked example gaps:** none — polynomial kernel's explicit vs kernel computation cross-checked numerically; RBF circles-dataset demo provided.
+
+**ML mixing (should be separate section):** Gene expression, image recognition in intro — acceptable.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### svm/03-soft-margins
+**Viz issues:** `<SoftMarginViz />` correctly placed with "drag the C slider" description — appropriate.
+
+**Worked example gaps:**
+- No concrete numerical worked example of slack variable arithmetic. No "at C=1 these points violate the margin by this amount → these slack values → this total penalty" walkthrough. The visualization compensates but a beginner cannot verify without numbers.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Practical C-tuning procedure not given (grid search / cross-validation strategy absent).
+
+**Other:** none.
+
+---
 
 ## Ensemble Methods
-*(pending — agent 3 still running)*
+
+### ensemble-methods/01-bagging-and-random-forests
+**Viz issues:** `<BaggingViz />` placed after bagging description — correctly positioned.
+
+**Worked example gaps:** none — variance reduction formula derived; OOB estimate derived ($e^{-1} \approx 0.368$); feature-importance (MDI + permutation) both explained.
+
+**ML mixing (should be separate section):** Intro lists credit scoring, churn, medical diagnosis — acceptable hook.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### ensemble-methods/02-boosting
+**Viz issues:** `<BoostingViz />` placed after misclassified-point weighting description — correct position.
+
+**Worked example gaps:**
+- AdaBoost: one complete round worked with numbers — good.
+- Gradient boosting section is brief and purely conceptual. No numerical worked example showing residuals computed across iterations.
+
+**ML mixing (should be separate section):** Intro lists search ranking, Kaggle competitions — acceptable.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### ensemble-methods/03-xgboost
+**Viz issues:** `<BoostingShrinkageViz />` with "drag η" instruction — correct position.
+
+**Worked example gaps:**
+- Entire lesson is conceptual/intuitive. Regularized objective explained but no hand-worked numerical example of how regularisation penalises a specific tree. No concrete demonstration of shrinkage effect on error.
+
+**ML mixing (should be separate section):** "Why trees still beat neural nets on tables" section is good standalone comparison.
+
+**Missing algorithms:** none.
+
+**Other:** Lesson is noticeably shorter than others. "Sane starting configuration" callout (parameters table) is helpful but lesson would benefit from a worked demo.
+
+---
 
 ## Clustering
-*(pending — agent 3 still running)*
+
+### clustering/01-k-means
+**Viz issues:** `<KMeansViz />` placed after algorithm section and before Elbow method — correctly positioned.
+
+**Worked example gaps:** none — full 5-point K=2 example carried through two iterations with all distance calculations; K-Means++ steps described.
+
+**ML mixing (should be separate section):** Intro mentions customer segmentation, document clustering — acceptable hook.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### clustering/02-hierarchical-and-dbscan
+**Viz issues:** `<DendrogramViz />` placed after dendrogram explanation — correctly positioned.
+
+**Worked example gaps:** none — hierarchical example works through distance matrix with three linkage methods; DBSCAN example classifies all points (core/border/noise) step by step.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### clustering/03-evaluating-clusters
+**Viz issues:** `<SilhouetteViz />` with "Move k and watch the bars" description — correct position.
+
+**Worked example gaps:**
+- Silhouette coefficient formula stated and table of interpretations given, but no step-by-step numerical calculation shown (no "for point $i$, $a=2.1$, $b=5.3$, so $s=0.60$" walkthrough).
+- Stability evaluation via resampling described conceptually with no concrete example.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Adjusted Rand index and NMI mentioned (for labeled ground truth) but not explained.
+
+**Other:** none.
 
 ## Generative Models
-*(pending — agent 5 still running)*
+
+### generative-models/01-what-are-generative-models
+**Viz issues:** none.
+
+**Worked example gaps:** Gaussian density example computed but the connection to how a GAN relates to this density is not traced numerically — minor.
+
+**ML mixing (should be separate section):** Applications naturally integrated in intro for a survey lesson — appropriate.
+
+**Missing algorithms:** none.
+
+**Other:** Comparison table of generative model types is well-placed.
+
+---
+
+### generative-models/02-autoencoders
+**Viz issues:** none.
+
+**Worked example gaps:** none — anomaly-detection workflow is complete; "holes in latent space" intuition well-explained.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### generative-models/03-variational-autoencoders
+**Viz issues:** `<LatentSpaceViz />` placed after KL divergence explanation — correctly ordered.
+
+**Worked example gaps:**
+- Reparameterisation trick section explains the formula $\mathbf{z} = \boldsymbol{\mu} + \boldsymbol{\sigma} \odot \boldsymbol{\epsilon}$ but never shows a worked numerical example of **why** the original $\mathbf{z} \sim \mathcal{N}(\mu, \sigma^2)$ sampling is non-differentiable. A reader cannot verify the claim without working it themselves.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none.
+
+**Other:** β-VAE section concise but adequate.
+
+---
+
+### generative-models/04-generative-adversarial-networks
+**Viz issues:** `<GANTrainingViz />` placed after training dynamics table — correctly positioned.
+
+**Worked example gaps:**
+- Mode collapse section describes the phenomenon ("generator learns only a few types because discriminator is too strong") but no worked example shows how this failure mode emerges or how any mitigation (gradient penalty, minibatch discrimination) prevents it.
+
+**ML mixing (should be separate section):** Intro lists StyleGAN, pix2pix, super-resolution in an appropriate intro section.
+
+**Missing algorithms:** none.
+
+**Other:** DCGAN and WGAN sections well explained; comparison table helpful.
+
+---
+
+### generative-models/05-diffusion-models
+**Viz issues:** `<DiffusionViz />` placed after forward process description — correctly ordered.
+
+**Worked example gaps:**
+- Noise-schedule section gives the cosine formula in a table but no numerical comparison of linear vs cosine schedules on actual timesteps. "Linear adds noise too fast" is asserted without concrete values.
+
+**ML mixing (should be separate section):** Intro applications correctly in intro section.
+
+**Missing algorithms:**
+- DDIM algorithm: update equation given but no step-by-step pseudocode showing how to skip timesteps or choose $\Delta t$ values in practice.
+
+**Other:** none.
+
+---
 
 ## Graphical Models
-*(pending — agent 5 still running)*
+
+### graphical-models/01-bayesian-networks
+**Viz issues:** `<DSeparationViz />` placed after d-separation patterns are explained — correctly ordered.
+
+**Worked example gaps:** none — Sprinkler network fully worked; parameter counts derived; code example complete.
+
+**ML mixing (should be separate section):** Intro cites real-world examples appropriately.
+
+**Missing algorithms:**
+- Variable elimination and junction tree are named at line 106 ("sum out non-query variables in a smart order") but no pseudocode or procedure given for either algorithm.
+
+**Other:** none.
+
+---
+
+### graphical-models/02-markov-random-fields
+**Viz issues:** none.
+
+**Worked example gaps:**
+- 2-node Ising model fully worked with table and code — good.
+- Image-denoising sketch names "data term" and "smoothness term" but gives no actual potential functions or energy formula — hand-wavy.
+
+**ML mixing (should be separate section):** Intro applications correctly placed.
+
+**Missing algorithms:**
+- Graph cuts and loopy belief propagation both named but no procedure given for either.
+
+**Other:** Partition function discussion is conceptually clear.
+
+---
+
+### graphical-models/03-hidden-markov-models
+**Viz issues:** `<HMMViterbiViz />` placed after Viterbi algorithm and worked example — correct.
+
+**Worked example gaps:** none — Viterbi backpointer table worked step-by-step; forward algorithm clearly described.
+
+**ML mixing (should be separate section):** Intro cites applications appropriately.
+
+**Missing algorithms:**
+- Baum-Welch EM learning algorithm named with E-step/M-step mentioned but no update equations or algorithm steps provided.
+
+**Other:** Log-space computation note is practical and well-placed.
+
+---
 
 ## Reinforcement Learning
-*(pending — agent 5 still running)*
+
+### reinforcement-learning/01-markov-decision-processes
+**Viz issues:** `<GridWorldViz />` placed after value iteration is introduced — correctly ordered.
+
+**Worked example gaps:** none — value iteration fully implemented with concrete MDP and step-by-step code output.
+
+**ML mixing (should be separate section):** Intro applications correctly placed.
+
+**Missing algorithms:** none.
+
+**Other:** Bellman equations clearly presented; discount factor intuition good.
+
+---
+
+### reinforcement-learning/02-q-learning
+**Viz issues:** `<QTableViz />` placed after temporal-difference update introduction — correctly ordered.
+
+**Worked example gaps:** none — full Q-learning algorithm given as steps; one complete update worked numerically.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none.
+
+**Other:** On-policy vs off-policy table is clear.
+
+---
+
+### reinforcement-learning/03-deep-q-networks
+**Viz issues:** none.
+
+**Worked example gaps:** none — DQN training step with concrete numbers and full arithmetic is one of the strongest worked examples in the course.
+
+**ML mixing (should be separate section):** Intro applications correctly placed.
+
+**Missing algorithms:** none — experience replay and target network both clearly explained.
+
+**Other:** Double DQN well-integrated.
+
+---
+
+### reinforcement-learning/04-policy-gradient
+**Viz issues:** `<PolicyGradientViz />` placed after REINFORCE baseline section — correctly ordered.
+
+**Worked example gaps:**
+- Advantage sign calculation (A = +2) is shown but the lesson does not make explicit **why** a positive advantage means "increase probability" — the connection back to the policy gradient theorem (from the derivation earlier in the lesson) is asserted rather than traced.
+
+**ML mixing (should be separate section):** Intro applications correctly placed.
+
+**Missing algorithms:** none — REINFORCE, actor-critic, and modern methods table all covered.
+
+**Other:** none.
 
 ## Optimization for ML
-*(pending — agent 6 still running)*
+
+### optimization-ml/01-gradient-descent-variants
+**Viz issues:** none.
+
+**Worked example gaps:** none — momentum and Adam worked examples complete with full running computations.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none — SGD, Momentum, RMSprop, and Adam all have complete update rules.
+
+**Other:** Learning-rate schedules section is well-integrated here.
+
+---
+
+### optimization-ml/02-convex-optimization
+**Viz issues:** none.
+
+**Worked example gaps:** none — logistic regression Hessian proof and log-sum-exp lower bound both fully derived.
+
+**ML mixing (should be separate section):** Cross-entropy application appropriately placed.
+
+**Missing algorithms:** none.
+
+**Other:** none.
+
+---
+
+### optimization-ml/03-constrained-optimization
+**Viz issues:** none.
+
+**Worked example gaps:**
+- LP worked example identifies the optimal vertex $(3,1)$ and states the objective value but skips the KKT verification arithmetic. "Verify KKT stationarity" appears as a heading but the solving for $\mu_1, \mu_2$ is asserted rather than shown.
+
+**ML mixing (should be separate section):** SVM dual derivation is an appropriate application section.
+
+**Missing algorithms:** none — KKT conditions and Lagrangian are fully specified.
+
+**Other:** SVM dual section is a standout application.
+
+---
 
 ## Model Evaluation
-*(pending — agent 6 still running)*
+
+### model-evaluation/01-classification-metrics
+**Viz issues:** none.
+
+**Worked example gaps:** none — confusion matrix, precision/recall/F1 all worked with concrete numbers.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none.
+
+**Other:** Multi-class metrics section concise but sufficient.
+
+---
+
+### model-evaluation/02-validation-strategies
+**Viz issues:** none.
+
+**Worked example gaps:**
+- Walk-forward validation for time series shows the concept diagram but provides no numerical example with specific fold indices and train/test sizes.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** none.
+
+**Other:** Data leakage section with real code examples is strong.
+
+---
+
+### model-evaluation/03-training-techniques
+**Viz issues:**
+- Early-stopping section includes a train/val loss table (lines 40–48) but no visualization component. A viz of the overfitting curve would be expected here.
+
+**Worked example gaps:**
+- Early stopping table shows epoch-by-epoch loss but the stopping decision ("stop at epoch 50") is asserted without showing the patience countdown explicitly.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Hyperband named as a hyperparameter optimization method but no algorithm steps or pseudocode provided — only a brief description of how it differs from successive halving.
+
+**Other:** Data augmentation section is well-placed and practical.
+
+---
 
 ## NLP
-*(pending — agent 6 still running)*
+
+### nlp/01-text-preprocessing
+**Viz issues:** none.
+
+**Worked example gaps:**
+- BPE worked example shows a toy merge sequence but does not trace the full algorithm with a concrete vocabulary frequency table. The Python code shows `get_pairs` defined but the full merge loop is not shown.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- BPE algorithm: merge loop (iteratively merge top pair) is illustrated but not given as a complete procedure.
+- WordPiece named as alternative tokenization strategy but no algorithm provided.
+
+**Other:** TF-IDF example is solid.
+
+---
+
+### nlp/02-word-embeddings
+**Viz issues:** none.
+
+**Worked example gaps:**
+- Word2Vec analogy "king − man + woman ≈ queen" asserted without showing embedding values or cosine similarity scores.
+- CBOW described in a brief table with no loss formula or training procedure.
+
+**ML mixing (should be separate section):**
+- Contextual embeddings section (ELMo and BERT) would benefit from a clearer subsection header to signal the transition from static to contextual representations.
+
+**Missing algorithms:**
+- GloVe: co-occurrence matrix construction and factorization algorithm not explained — only the loss formula is given.
+- CBOW: no loss formula or update procedure.
+
+**Other:** Evaluation section covers analogy and similarity benchmarks; adequate.
+
+---
+
+### nlp/03-sequence-models-to-bert
+**Viz issues:** none.
+
+**Worked example gaps:**
+- BERT input representation shows `[CLS] The cat sat [SEP]` but does not walk through what the three embeddings (token + segment + positional) look like before summing — definition only, no concrete numbers.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Seq2seq encoder-decoder architecture described but no pseudocode or detailed forward-pass steps.
+
+**Other:** Historical narrative and scaling table are valuable context.
+
+---
 
 ## Computer Vision
-*(pending — agent 6 still running)*
+
+### computer-vision/01-object-detection
+**Viz issues:**
+- Anchor boxes section describes the grid layout ($20 \times 20 \times 9$) and 9 box shapes but provides no diagram. A visual showing the 9 anchors tiled over a feature map would be expected here.
+
+**Worked example gaps:**
+- IoU definition given algebraically but no numerical example ("for boxes with coordinates A and B, IoU = 0.5").
+- NMS algorithm lists 6 steps but no worked trace through a concrete set of box scores and IoU values.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- RPN (Region Proposal Network): described at high level but the head architecture (convolutional head with two output branches) and the loss for each branch not specified.
+
+**Other:** mAP explanation is detailed and correct.
+
+---
+
+### computer-vision/02-segmentation
+**Viz issues:**
+- U-Net architecture described with channel counts but no diagram of the encoder/decoder/bottleneck symmetric structure. For an architecture lesson this is a significant gap.
+
+**Worked example gaps:**
+- Dice loss formula given but no worked example showing the calculation for concrete predicted and ground-truth masks.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- FCN variants (FCN-32s, FCN-16s, FCN-8s) named and described at high level but the skip-connection + upsampling mechanism not fully specified — no pseudocode or diagram for "fuse medium-level features before 16× upsampling."
+
+**Other:** Panoptic Quality formula and RoI Align explanation are both clear.
+
+---
+
+### computer-vision/03-backbones-in-practice
+**Viz issues:** none.
+
+**Worked example gaps:** none — layer-wise learning rate decay example is concrete and clear; compound-scaling table shows results.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:** Depthwise separable convolution is well-explained with cost reduction formula.
+
+**Other:** Practical guidance on choosing backbones is excellent; input normalization callout is crucial and well-placed.
+
+---
 
 ## ML in Practice
-*(pending — agent 6 still running)*
+
+### ml-in-practice/01-feature-engineering
+**Viz issues:** none.
+
+**Worked example gaps:**
+- Target encoding: formula given but no numerical worked example showing the exact encoding value computed for a specific category.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Recursive Feature Elimination (RFE): described as "fits model, ranks features, removes weakest, repeats" but no pseudocode or step-by-step procedure.
+
+**Other:** Leakage section and Pipeline section are strong and practical.
 
 ---
 
-## Summary of Common Patterns
+### ml-in-practice/02-deployment-pitfalls
+**Viz issues:** none.
 
-| Pattern | Count (so far) | Impact |
-|---------|---------------|--------|
-| ML applications dropped in first paragraph | ~12 lessons | High — confuses beginners |
-| No dedicated "Connection to ML" section | Most lessons | High |
-| Viz placed in wrong section / instructions point to wrong viz | ~8 lessons | Medium |
-| Missing worked-example algebra steps | ~10 lessons | High |
-| Missing algorithms (procedure named but not given) | ~15 lessons | High |
-| Missing visualization entirely | 26 lessons | Medium |
+**Worked example gaps:**
+- PSI formula given but no numerical example calculating PSI for two concrete distributions.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Platt scaling: sigmoid formula given but no procedure for fitting the logistic regression calibrator.
+- Isotonic regression mentioned as alternative but no procedure.
+
+**Other:** Train-serve skew opening callout and SHAP explanation are both strong.
+
+---
+
+### ml-in-practice/03-algorithms-from-scratch
+**Viz issues:** none.
+
+**Worked example gaps:** none — linear regression and logistic regression implementations are thorough.
+
+**ML mixing (should be separate section):** none.
+
+**Missing algorithms:**
+- Decision tree: Gini impurity and information gain defined but the exhaustive search procedure ("evaluate every feature and threshold") is only mentioned, not specified algorithmically.
+- K-Means++: initialization probability weighting described informally; no worked calculation of selection probabilities.
+
+**Other:** Outstanding lesson overall — implementations are production-quality.
+
+---
+
+## Summary of Common Patterns (complete — all 78 lessons reviewed)
+
+| Pattern | Affected lessons | Impact |
+|---------|-----------------|--------|
+| ML applications dropped in first paragraph (no dedicated section) | ~15 lessons (neural-networks, linear-regression, knn, rnns, svm, clustering…) | High — confuses beginners |
+| Viz placement mismatch or "above" reference broken | linear-algebra/01, linear-algebra/02, calculus-for-ml/02, knn/02, rnns/02, pca/02 | Medium |
+| Visualization absent where one is clearly needed | linear-algebra/04, prob-stats/05, neural-networks/05, transformers/04, computer-vision/02, model-evaluation/03, all NLP lessons | Medium |
+| Worked-example algebra cut short / hand-wavy | neural-networks/04, probabilistic-models/02, svm/03, ensemble/02, ensemble/03, clustering/03, generative/03, generative/04, generative/05, optimization/03, model-eval/02, nlp/01, nlp/02, computer-vision/01, computer-vision/02, ml-in-practice/01, ml-in-practice/02 | High |
+| Algorithm named but no procedure given | linear-algebra/01 (rank), knn/02 (pruning), probabilistic-models/03 (Gaussian NB), graphical/01 (variable elimination), graphical/02 (graph cuts, loopy BP), graphical/03 (Baum-Welch), diffusion/05 (DDIM), nlp/01 (BPE, WordPiece), nlp/02 (GloVe, CBOW), computer-vision/01 (RPN), computer-vision/02 (FCN skip), ml-in-practice/02 (Platt, isotonic), ml-in-practice/03 (decision tree split, K-Means++) | High |
+| Missing "Related concepts" section | 7 lessons (all lesson-03 files: pca/03, ensemble/03, clustering/03, knn/03, linear-regression/03, svm/03, probabilistic-models/03) | Low |
 | Lessons with only 1 exercise | 10 lessons | Medium |
-| Missing "Related concepts" section | 7 lessons | Low |
+
+## Priority Fix List
+
+**P1 — Structural (quick wins, high beginner impact):**
+1. Move ML application hooks out of concept sections and into a "Connection to ML" section in ~15 lessons
+2. Fix viz placement mismatches (linear-algebra/01 projection reference, linear-algebra/02 determinant reference, knn/02 viz before vocabulary)
+
+**P2 — Completeness (missing steps):**
+3. Add Baum-Welch update equations to graphical-models/03
+4. Add variable elimination pseudocode to graphical-models/01
+5. Add BPE merge-loop procedure to nlp/01
+6. Add GloVe co-occurrence construction to nlp/02
+7. Add DDIM step-by-step pseudocode to generative-models/05
+8. Add RPN head architecture/loss to computer-vision/01
+
+**P3 — Worked examples (numerical concreteness):**
+9. Add slack-variable arithmetic to svm/03
+10. Add gradient-boosting residual iteration example to ensemble-methods/02
+11. Add silhouette step-by-step calculation to clustering/03
+12. Add reparameterisation numerical example to generative-models/03
+13. Add NMS worked trace to computer-vision/01
+14. Add PSI numerical example to ml-in-practice/02
 
 ---
 
-*File updated incrementally as review agents complete. Remaining sections marked "pending" will be filled in.*
+*Review complete — all 78 non-quiz lessons audited.*
