@@ -2817,6 +2817,52 @@ const allExercises: Exercise[] = [
     ],
   },
 
+  {
+    id: "cnn-1x1-params",
+    type: "multiple-choice",
+    question:
+      "A 1×1 convolution takes a (H, W, 256) feature map and outputs (H, W, 64). How many learnable parameters does it have (ignoring bias)?",
+    hint: "A 1×1 conv is equivalent to a fully-connected layer applied at each spatial position independently.",
+    explanation:
+      "A 1×1 convolution with C_in=256 input channels and C_out=64 output channels has weight shape (1, 1, 256, 64) = 256×64 = 16,384 parameters. It applies the same linear projection at every spatial position, mixing channels without looking at neighbours.",
+    options: [
+      { id: "a", label: "256", isCorrect: false },
+      { id: "b", label: "16,384 (256×64)", isCorrect: true },
+      { id: "c", label: "64", isCorrect: false },
+      { id: "d", label: "4,096 (64×64)", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-bottleneck",
+    type: "multiple-choice",
+    question:
+      "A ResNet bottleneck block processes a (H, W, 256) input with: 1×1 conv (256→64), 3×3 conv (64→64), 1×1 conv (64→256). Approximately how many parameters does this use vs. a naive 3×3 conv (256→256)?",
+    hint: "Count parameters for each layer: kernel_h × kernel_w × C_in × C_out.",
+    explanation:
+      "Bottleneck: (1×1×256×64) + (3×3×64×64) + (1×1×64×256) = 16,384 + 36,864 + 16,384 = 69,632. Naive 3×3: 3×3×256×256 = 589,824. The bottleneck uses ~8.5× fewer parameters for a similar effective computation.",
+    options: [
+      { id: "a", label: "The same — same receptive field, same capacity", isCorrect: false },
+      { id: "b", label: "About 8× fewer parameters", isCorrect: true },
+      { id: "c", label: "About 2× more parameters", isCorrect: false },
+      { id: "d", label: "About 64× fewer parameters", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-residual-gradient",
+    type: "multiple-choice",
+    question:
+      "In a residual block y = F(x) + x, what is ∂y/∂x?",
+    hint: "Differentiate both the residual path F(x) and the skip path x.",
+    explanation:
+      "By the chain rule, ∂y/∂x = ∂F/∂x + 1. The constant 1 comes from the skip connection (identity path). Even if ∂F/∂x ≈ 0 (e.g. dead ReLUs), the gradient of the loss still flows back through the skip path unchanged. This is why residual connections solve the vanishing gradient problem in very deep networks.",
+    options: [
+      { id: "a", label: "∂F/∂x", isCorrect: false },
+      { id: "b", label: "∂F/∂x + 1", isCorrect: true },
+      { id: "c", label: "2 · ∂F/∂x", isCorrect: false },
+      { id: "d", label: "0 when F(x) = 0", isCorrect: false },
+    ],
+  },
+
   // ── SVM course quiz ──────────────────────────────────────────────────
   {
     id: "svm-quiz-sv",
