@@ -1,0 +1,219 @@
+---
+title: "Jacobians & Vector Calculus"
+description: "Extending derivatives to vector-valued functions — the Jacobian matrix, the chain rule for layers, and how backpropagation really works."
+order: 4
+type: concept
+estimatedMinutes: 15
+---
+
+# Jacobians & Vector Calculus
+
+Every layer in a neural network is a vector-valued function: it takes a vector input and produces a vector output. The gradient tools from earlier lessons — the derivative for scalars, the gradient for scalar-output functions — do not directly apply here. The right generalization is the **Jacobian matrix**.
+
+**Real-world examples:** Backpropagation through a softmax layer, computing gradients through a batch-norm layer, understanding why narrow layers can bottleneck information flow, and analysing training stability all require Jacobian reasoning.
+
+## The Jacobian matrix
+
+Let $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^m$ be a vector-valued function. Its **Jacobian** at a point $\mathbf{x}$ is the $m \times n$ matrix of all first-order partial derivatives:
+
+$$
+\mathbf{J}_{\mathbf{f}}(\mathbf{x}) =
+\begin{bmatrix}
+\dfrac{\partial f_1}{\partial x_1} & \cdots & \dfrac{\partial f_1}{\partial x_n} \\[6pt]
+\vdots & \ddots & \vdots \\[4pt]
+\dfrac{\partial f_m}{\partial x_1} & \cdots & \dfrac{\partial f_m}{\partial x_n}
+\end{bmatrix}
+$$
+
+Entry $(i, j)$ answers: *how much does output $i$ change when input $j$ changes?*
+
+**Special cases that you already know:**
+- $m = 1$: $\mathbf{J}$ is a $1 \times n$ row vector — the gradient $\nabla f^\top$.
+- $n = 1$: $\mathbf{J}$ is an $m \times 1$ column vector — the ordinary derivative $d\mathbf{f}/dx$.
+- $m = n = 1$: $\mathbf{J}$ is a scalar — the familiar derivative $f'(x)$.
+
+The Jacobian linearly approximates $\mathbf{f}$ near $\mathbf{x}_0$:
+
+$$
+\mathbf{f}(\mathbf{x}_0 + \boldsymbol{\delta}) \approx \mathbf{f}(\mathbf{x}_0) + \mathbf{J}\,\boldsymbol{\delta}
+$$
+
+Think of $\mathbf{J}$ as the *best linear map* from input perturbations to output perturbations.
+
+## Worked example: affine (linear) layer
+
+The simplest layer is the affine map $\mathbf{f}(\mathbf{x}) = \mathbf{W}\mathbf{x} + \mathbf{b}$, where $\mathbf{W} \in \mathbb{R}^{m \times n}$.
+
+Output $i$ is $f_i(\mathbf{x}) = \sum_k W_{ik} x_k + b_i$. Taking the partial derivative:
+
+$$
+\frac{\partial f_i}{\partial x_j} = W_{ij}
+$$
+
+So the Jacobian is exactly the weight matrix:
+
+$$
+\mathbf{J}_{\mathbf{f}} = \mathbf{W} \quad \in \mathbb{R}^{m \times n}
+$$
+
+This is constant — it does not depend on $\mathbf{x}$. The affine map is its own linear approximation everywhere.
+
+<Callout type="info" title="Shape intuition">
+  The Jacobian always has shape (**outputs** × **inputs**). For a layer mapping $n$ inputs to $m$ outputs: $\mathbf{J} \in \mathbb{R}^{m \times n}$. For a fully-connected layer with weight matrix $\mathbf{W}^{m \times n}$, $\mathbf{J} = \mathbf{W}$.
+</Callout>
+
+## Worked example: element-wise function (ReLU)
+
+For an element-wise function $\mathbf{f}(\mathbf{x}) = (f(x_1), \ldots, f(x_n))$ where the same scalar function $f$ is applied independently to each component, output $i$ only depends on input $i$:
+
+$$
+\frac{\partial f_i}{\partial x_j} = f'(x_i) \cdot \mathbb{1}[i = j]
+$$
+
+The Jacobian is a **diagonal matrix** with the pointwise derivatives on the diagonal:
+
+$$
+\mathbf{J}_{\mathbf{f}}(\mathbf{x}) = \operatorname{diag}(f'(x_1), \ldots, f'(x_n))
+$$
+
+For ReLU, $f'(x_i) = \mathbb{1}[x_i > 0]$ (1 where active, 0 where inactive), so:
+
+$$
+\mathbf{J}_{\text{ReLU}}(\mathbf{x}) = \operatorname{diag}\!\big(\mathbb{1}[x_1 > 0],\ \ldots,\ \mathbb{1}[x_n > 0]\big)
+$$
+
+A neuron that is inactive (pre-activation ≤ 0) contributes a zero column *and* a zero row to the Jacobian — it passes no gradient signal during backpropagation. This is the dying ReLU problem viewed through the Jacobian.
+
+## Worked example: softmax Jacobian
+
+The softmax function $\sigma: \mathbb{R}^n \to \mathbb{R}^n$ is defined by $\sigma_i(\mathbf{x}) = e^{x_i} / \sum_k e^{x_k}$.
+
+Outputs are *coupled* — changing $x_j$ changes every output simultaneously. The cross-partial derivatives are:
+
+$$
+\frac{\partial \sigma_i}{\partial x_j} =
+\begin{cases}
+\sigma_i(1 - \sigma_i) & i = j \quad \text{(diagonal)} \\
+-\sigma_i \sigma_j & i \neq j \quad \text{(off-diagonal)}
+\end{cases}
+$$
+
+In matrix form, writing $\boldsymbol{\sigma}$ for the softmax output:
+
+$$
+\mathbf{J}_{\sigma}(\mathbf{x}) = \operatorname{diag}(\boldsymbol{\sigma}) - \boldsymbol{\sigma}\boldsymbol{\sigma}^\top
+$$
+
+The outer-product term $\boldsymbol{\sigma}\boldsymbol{\sigma}^\top$ captures the coupling between outputs: increasing one logit raises one output probability but *lowers all the others*, because probabilities must sum to 1.
+
+### Numerical check
+
+For a two-class softmax with logits $(1, 0)$:
+
+$$
+\boldsymbol{\sigma} = \frac{1}{1 + e^{-1}}\begin{bmatrix} e \\ 1 \end{bmatrix} \approx \begin{bmatrix} 0.731 \\ 0.269 \end{bmatrix}
+$$
+
+$$
+\mathbf{J} =
+\begin{bmatrix} 0.731 & 0 \\ 0 & 0.269 \end{bmatrix}
+-
+\begin{bmatrix} 0.731 \\ 0.269 \end{bmatrix}
+\begin{bmatrix} 0.731 & 0.269 \end{bmatrix}
+=
+\begin{bmatrix} 0.197 & -0.197 \\ -0.197 & 0.197 \end{bmatrix}
+$$
+
+The rows and columns each sum to zero — a necessary consequence of the probabilities summing to one.
+
+## The vector chain rule
+
+When two vector-valued functions are composed, $\mathbf{h} = \mathbf{g} \circ \mathbf{f}$, the chain rule says the Jacobian of the composition is the **product** of Jacobians:
+
+$$
+\mathbf{J}_{\mathbf{h}}(\mathbf{x}) = \mathbf{J}_{\mathbf{g}}(\mathbf{f}(\mathbf{x})) \cdot \mathbf{J}_{\mathbf{f}}(\mathbf{x})
+$$
+
+For a two-layer network with weight matrices $\mathbf{W}_1, \mathbf{W}_2$ and element-wise activations $\phi$:
+
+$$
+\mathbf{J}_{\text{net}}(\mathbf{x}) = \mathbf{W}_2 \cdot \operatorname{diag}(\phi'(\mathbf{z}_1)) \cdot \mathbf{W}_1
+$$
+
+where $\mathbf{z}_1 = \mathbf{W}_1 \mathbf{x} + \mathbf{b}_1$. This is the matrix product that backpropagation computes — the "credit assignment" chain.
+
+<ComputationalGraphViz />
+
+## VJPs and backpropagation
+
+Computing the full $m \times n$ Jacobian has cost $O(mn)$ — too expensive when $m$ and $n$ are millions. In ML we never need the full Jacobian. We need to compute
+
+$$
+\mathbf{v}^\top \mathbf{J} \quad \text{(a vector-Jacobian product, or VJP)}
+$$
+
+where $\mathbf{v}$ is the **upstream gradient** (the gradient of the loss w.r.t. the output of the current layer). The VJP has the same shape as the input $\mathbf{x}$ — it is the gradient of the loss w.r.t. $\mathbf{x}$.
+
+**Why VJPs instead of full Jacobians?**
+
+| Operation | Cost | What it computes |
+|-----------|------|-----------------|
+| Full Jacobian | $O(mn)$ | All partial derivatives |
+| VJP $\mathbf{v}^\top \mathbf{J}$ | $O(n)$ per layer | Gradient of loss w.r.t. inputs |
+| JVP $\mathbf{J}\mathbf{u}$ | $O(m)$ per layer | Gradient of output w.r.t. direction $\mathbf{u}$ |
+
+Backpropagation is **reverse-mode** automatic differentiation: it computes VJPs from the output layer backwards. Forward-mode autodiff computes JVPs and is efficient when $n \ll m$ (few inputs, many outputs) — for example, in scientific simulation.
+
+### VJP of the affine layer
+
+For $\mathbf{y} = \mathbf{W}\mathbf{x} + \mathbf{b}$, the Jacobian is $\mathbf{W}$. The VJP with upstream gradient $\mathbf{v} \in \mathbb{R}^m$ is:
+
+$$
+\mathbf{v}^\top \mathbf{J} = \mathbf{v}^\top \mathbf{W} \quad \Longrightarrow \quad \frac{\partial \mathcal{L}}{\partial \mathbf{x}} = \mathbf{W}^\top \mathbf{v}
+$$
+
+This is the backward pass formula you see in every backprop derivation: multiply by the *transpose* of the weight matrix.
+
+<Callout type="tip" title="Transposing in backprop">
+  The transpose in $\mathbf{W}^\top \mathbf{v}$ is not an accident — it is the definition of the VJP. Forward pass: multiply by $\mathbf{W}$. Backward pass: multiply by $\mathbf{W}^\top$. This follows directly from the Jacobian being $\mathbf{W}$.
+</Callout>
+
+## Condition number and training stability
+
+The **condition number** of the Jacobian $\kappa(\mathbf{J}) = \sigma_{\max} / \sigma_{\min}$ (ratio of largest to smallest singular value) measures how much the layer *stretches or squishes* different directions of the input.
+
+| Condition number | Effect on training |
+|-----------------|-------------------|
+| $\kappa \approx 1$ | Well-conditioned; gradients flow evenly |
+| $\kappa \gg 1$ | Ill-conditioned; some directions vanish, others explode |
+| $\kappa \to \infty$ | Jacobian is near-singular; layer is an information bottleneck |
+
+For a sequence of layers the condition number of the composition can grow exponentially — the deeper the network, the more critical initialization and normalization become. BatchNorm and LayerNorm both aim to keep the Jacobian of the normalized layer well-conditioned.
+
+<Callout type="warning" title="Vanishing and exploding gradients">
+  The norm of the product of Jacobians $\|\mathbf{J}_L \cdots \mathbf{J}_1\|$ grows or shrinks exponentially with depth. When each factor's spectral norm is below 1, the product vanishes; above 1, it explodes. Careful weight initialization (Xavier, He) targets spectral norm ≈ 1 at initialization.
+</Callout>
+
+## Common mistakes
+
+1. **Confusing Jacobian shape** — the Jacobian of $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^m$ is $m \times n$, not $n \times m$. Rows index outputs, columns index inputs.
+2. **Assuming diagonal Jacobians for all element-wise functions** — this is true when each output depends on exactly one input. Softmax is element-wise in the sense of being a fixed formula per output, but outputs are coupled through the normalizer, making the Jacobian dense.
+3. **Computing full Jacobians in code** — `torch.autograd.functional.jacobian` is useful for debugging but O(mn) in time. In production, only VJPs (the backward pass) are needed.
+
+## Key takeaways
+
+- The **Jacobian** $\mathbf{J} \in \mathbb{R}^{m \times n}$ generalises the gradient to vector-valued functions.
+- Affine layer: $\mathbf{J} = \mathbf{W}$. Element-wise activation: $\mathbf{J} = \operatorname{diag}(\phi'(\mathbf{x}))$. Softmax: $\mathbf{J} = \operatorname{diag}(\boldsymbol{\sigma}) - \boldsymbol{\sigma}\boldsymbol{\sigma}^\top$.
+- The **vector chain rule** chains Jacobians by matrix multiplication — this is what backpropagation implements.
+- Backprop computes **VJPs** (not full Jacobians) — the upstream gradient times the Jacobian transpose.
+- Condition number $\kappa(\mathbf{J})$ governs gradient flow: ill-conditioned Jacobians cause vanishing/exploding gradients.
+
+## Related concepts
+
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the scalar version of the same idea
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — the Hessian, the second-order Jacobian
+- [**SVD & Matrix Decompositions**](/courses/linear-algebra/04-svd-and-matrix-decompositions) — singular values determine the Jacobian's condition number
+
+<Exercise id="calc-jacobian-shape" />
+<Exercise id="calc-jacobian-linear" />
+<Exercise id="calc-vjp" />

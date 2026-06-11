@@ -157,8 +157,12 @@ fully, verify, ship, check it off. One item per iteration.
       (rotate-stretch-rotate, AᵀA derivation, rank-1 layers, Eckart-Young,
       compression/recommenders/LoRA) + notebook + exercise; quiz → 05,
       hours 2.5→3.5 (PR #54)
-- [ ] **calculus-for-ml: Jacobians & Hessians audit** — check lesson 03 depth;
-      add explicit Jacobian/Hessian/curvature lesson if thin
+- [x] **calculus-for-ml: Jacobians & Hessians audit** — lesson 03 covers
+      Hessians & curvature fully; added new lesson 04 "Jacobians & Vector
+      Calculus" (Jacobian definition, affine/ReLU/softmax examples, vector
+      chain rule, VJP, condition number) + notebook (3 exercises: softmax
+      Jacobian, VJP of affine layer, condition number) + 3 quiz exercises;
+      quiz renumbered to 05, estimatedHours 2.5→3
 - [ ] **neural-networks: XOR & MLP lesson** — perceptron learning rule, XOR
       failure, hidden-layer fix, softmax outputs
 - [ ] **neural-networks: BatchNorm & Dropout lesson** — training stabilizers;
