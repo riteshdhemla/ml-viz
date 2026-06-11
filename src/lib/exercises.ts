@@ -2511,6 +2511,51 @@ const allExercises: Exercise[] = [
   },
 
   {
+    id: "nn-batchnorm-step",
+    type: "multiple-choice",
+    question:
+      "A mini-batch has pre-activations [1, 3, 5, 7] for one feature. After BatchNorm (with γ=1, β=0), what is the normalized value of 7?",
+    hint: "Compute the batch mean and standard deviation first.",
+    explanation:
+      "Mean = (1+3+5+7)/4 = 4. Variance = ((1-4)²+(3-4)²+(5-4)²+(7-4)²)/4 = (9+1+1+9)/4 = 5. Std = √5 ≈ 2.236. Normalized 7: (7-4)/√5 ≈ 3/2.236 ≈ 1.342. With γ=1, β=0 the output is ≈ 1.342.",
+    options: [
+      { id: "a", label: "≈ 1.342", isCorrect: true },
+      { id: "b", label: "7", isCorrect: false },
+      { id: "c", label: "0.75", isCorrect: false },
+      { id: "d", label: "≈ 0.447", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-dropout-inverted",
+    type: "multiple-choice",
+    question:
+      "With inverted dropout (rate p=0.5), a surviving neuron's activation is multiplied by:",
+    hint: "Inverted dropout keeps expected activation magnitude constant.",
+    explanation:
+      "With dropout rate p, only (1-p) fraction of neurons survive. To keep the expected sum the same as without dropout, survivors are scaled by 1/(1-p). For p=0.5: scale = 1/0.5 = 2. This means no scaling is needed at inference time — a key advantage of inverted dropout.",
+    options: [
+      { id: "a", label: "0.5", isCorrect: false },
+      { id: "b", label: "1 (no scaling)", isCorrect: false },
+      { id: "c", label: "2 (i.e., 1/(1-p))", isCorrect: true },
+      { id: "d", label: "4", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-regularizer-type",
+    type: "multiple-choice",
+    question:
+      "A network achieves 98% training accuracy but only 72% validation accuracy. Which technique is most likely to help?",
+    hint: "Think about what each technique addresses: optimization vs. overfitting.",
+    explanation:
+      "The large gap between training and validation accuracy is a classic sign of overfitting — the network has memorized the training data. Dropout reduces overfitting by forcing the network to learn redundant, generalizable features. BatchNorm helps with training instability and speed, not overfitting per se.",
+    options: [
+      { id: "a", label: "BatchNorm — to stabilize training", isCorrect: false },
+      { id: "b", label: "Dropout — to reduce overfitting", isCorrect: true },
+      { id: "c", label: "A higher learning rate — to escape local minima", isCorrect: false },
+      { id: "d", label: "Removing BatchNorm — it is causing the gap", isCorrect: false },
+    ],
+  },
+  {
     id: "nn-xor-solution",
     type: "multiple-choice",
     question:

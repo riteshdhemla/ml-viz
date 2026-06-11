@@ -168,8 +168,11 @@ fully, verify, ship, check it off. One item per iteration.
       universal approximation, softmax + cross-entropy gradient + temperature;
       notebook + 3 exercises (perceptron step, softmax, CE gradient);
       quiz renumbered to 05, estimatedHours 2.5→3
-- [ ] **neural-networks: BatchNorm & Dropout lesson** — training stabilizers;
-      dropout's relation to L1/L2 regularization
+- [x] **neural-networks: BatchNorm & Dropout lesson** — internal covariate
+      shift, BN forward (worked example + train/eval mode), inverted dropout,
+      ensemble interpretation, L2 equivalence for linear models; notebook +
+      3 exercises (BN forward, inverted dropout, running statistics);
+      quiz renumbered to 06, estimatedHours 3→3.5
 - [ ] **cnns: Architectures lesson** — AlexNet→VGG→ResNet→EfficientNet,
       residual connections, 1x1 convolutions
 - [ ] **transformers: Modern attention lesson** — cross-attention, GQA,
