@@ -39,6 +39,10 @@ fully, verify, ship, check it off. One item per iteration.
 - [ ] **Exercise notebooks — rollout** — apply the knn-decision-trees scaffold
       pattern to the remaining 16 courses' notebooks (one course per
       iteration is fine)
+  - [x] linear-algebra — 8 exercises across 4 notebooks: cosine similarity,
+        projection, rotation matrices, det-as-area, trace/det eigenvalues,
+        power iteration, rank-k truncation (Eckart–Young check), SVD
+        compression ratio (PR #55)
 
 ### Visualizations for the 7 new lessons (one per iteration)
 
