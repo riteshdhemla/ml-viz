@@ -126,6 +126,24 @@ $$
 
 The rows and columns each sum to zero — a necessary consequence of the probabilities summing to one.
 
+```python
+import numpy as np
+
+def softmax(x):
+    e = np.exp(x - x.max())
+    return e / e.sum()
+
+def softmax_jacobian(x):
+    s = softmax(x)
+    return np.diag(s) - np.outer(s, s)
+
+x = np.array([1.0, 0.0])
+J = softmax_jacobian(x)
+print("Softmax Jacobian:")
+print(J.round(3))
+print("Row sums:", J.sum(axis=1).round(8))  # all zero
+```
+
 ## The vector chain rule
 
 When two vector-valued functions are composed, $\mathbf{h} = \mathbf{g} \circ \mathbf{f}$, the chain rule says the Jacobian of the composition is the **product** of Jacobians:
@@ -212,7 +230,7 @@ For a sequence of layers the condition number of the composition can grow expone
 
 - [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the scalar version of the same idea
 - [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — the Hessian, the second-order Jacobian
-- [**SVD & Matrix Decompositions**](/courses/linear-algebra/04-svd-and-matrix-decompositions) — singular values determine the Jacobian's condition number
+- [**SVD & Low-Rank Approximations**](/courses/linear-algebra/04-svd-and-low-rank) — singular values determine the Jacobian's condition number
 
 <Exercise id="calc-jacobian-shape" />
 <Exercise id="calc-jacobian-linear" />
