@@ -199,7 +199,7 @@ fully, verify, ship, check it off. One item per iteration.
       skip-gram), GloVe, FastText → contextual embeddings; (3) sequence models
       to BERT: why attention replaced RNNs; NER/POS/sentiment/translation
       overview. + notebooks, exercises, quiz
-- [ ] **Computer Vision course** — (1) object detection: YOLO vs Faster R-CNN
+- [x] **Computer Vision course** — (1) object detection: YOLO vs Faster R-CNN
       vs SSD, anchors, NMS; (2) segmentation: semantic vs instance vs
       panoptic, U-Net, RoI pooling; (3) backbones in practice: ResNet,
       MobileNet, EfficientNet. + notebooks, exercises, quiz

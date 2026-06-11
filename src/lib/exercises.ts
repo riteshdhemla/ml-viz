@@ -4366,6 +4366,222 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Use BERT embeddings as static features and train a separate model on top", isCorrect: false },
     ],
   },
+
+  // ── Computer Vision ──────────────────────────────────────────────────────────
+
+  {
+    id: "cv-anchor-iou",
+    type: "multiple-choice",
+    question:
+      "An anchor box has area 100×100 pixels and a ground-truth box has area 80×80 pixels. They overlap with an intersection area of 4000 pixels². What is the IoU, and is this anchor positive (IoU > 0.5)?",
+    hint: "IoU = intersection / (A + B − intersection). Union = area_A + area_B − intersection.",
+    explanation:
+      "Union = 100×100 + 80×80 − 4000 = 10000 + 6400 − 4000 = 12400. IoU = 4000/12400 ≈ 0.32. Since 0.32 < 0.5, this anchor is negative (background) in Faster R-CNN / YOLO training. An anchor with IoU > 0.5 with any ground-truth box is assigned as a positive sample; IoU < 0.3 is negative; 0.3–0.5 is ignored. This threshold selection critically affects what the model learns to detect.",
+    options: [
+      { id: "a", label: "IoU ≈ 0.50 — positive anchor (borderline)", isCorrect: false },
+      { id: "b", label: "IoU ≈ 0.32 — negative anchor (below 0.5 threshold)", isCorrect: true },
+      { id: "c", label: "IoU ≈ 0.63 — positive anchor (above threshold)", isCorrect: false },
+      { id: "d", label: "IoU = 4000/10000 = 0.40 — negative anchor", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-nms-algorithm",
+    type: "multiple-choice",
+    question:
+      "Non-Maximum Suppression (NMS) is applied to 5 detected boxes for 'cat', sorted by confidence: [0.95, 0.88, 0.72, 0.61, 0.45]. The IoU threshold is 0.5. Box 1 (0.95) has IoU > 0.5 with boxes 2 and 3. What does NMS output?",
+    hint: "NMS keeps the highest-confidence box, removes overlapping boxes, then repeats on the remaining set.",
+    explanation:
+      "NMS: (1) Keep box 1 (0.95 — highest confidence). (2) Remove boxes 2 and 3 (IoU > 0.5 with box 1). (3) Remaining: boxes 4 (0.61) and 5 (0.45). If boxes 4 and 5 have IoU ≤ 0.5 with each other, both survive. Final output: boxes 1, 4, 5. NMS prevents the model from outputting multiple overlapping detections for the same object — a common artifact of anchor-based detection.",
+    options: [
+      { id: "a", label: "Only box 1 (0.95) — NMS keeps only the single best box", isCorrect: false },
+      { id: "b", label: "Boxes 1, 4, 5 — box 1 kept; 2 and 3 suppressed (IoU > 0.5 with box 1)", isCorrect: true },
+      { id: "c", label: "Boxes 1, 2, 3, 4, 5 — all boxes kept, NMS only applies to different classes", isCorrect: false },
+      { id: "d", label: "Boxes 1 and 4 — NMS removes the lowest two confidence scores", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-yolo-output",
+    type: "multiple-choice",
+    question:
+      "YOLOv1 divides a 448×448 image into a 7×7 grid. Each cell predicts B=2 bounding boxes and C=20 class probabilities. What is the shape of the output tensor?",
+    hint: "Each cell outputs: B boxes × 5 values (x, y, w, h, confidence) + C class probabilities.",
+    explanation:
+      "Each grid cell predicts B=2 boxes, each with 5 values: (center_x, center_y, width, height, objectness_confidence). Plus C=20 class probability scores per cell. Total per cell = 2×5 + 20 = 30. Output tensor shape = 7 × 7 × 30. Note that in YOLOv1, the class probabilities are shared across the B=2 boxes per cell — not per box. YOLOv3+ uses per-box class predictions and predicts at 3 scales instead of one.",
+    options: [
+      { id: "a", label: "7 × 7 × 20 — grid cells × class scores only", isCorrect: false },
+      { id: "b", label: "7 × 7 × 25 — each cell predicts 1 box (5 values) + 20 classes", isCorrect: false },
+      { id: "c", label: "7 × 7 × 30 — 2 boxes × 5 values + 20 class probabilities per cell", isCorrect: true },
+      { id: "d", label: "49 × 30 — flattened grid × values", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-unet-skip",
+    type: "multiple-choice",
+    question:
+      "U-Net uses skip connections that concatenate encoder feature maps to the decoder at matching spatial resolutions. What problem would arise without these skip connections?",
+    hint: "The encoder bottleneck compresses the spatial resolution significantly — 512×512 → 32×32 (5 downsampling stages).",
+    explanation:
+      "Without skip connections, the decoder receives only the bottleneck representation (e.g., 32×32 feature map for a 512×512 input). The upsampling process would have to reconstruct fine spatial details (edges, texture, precise boundaries) purely from this heavily compressed representation. Skip connections provide the decoder with high-resolution feature maps from the encoder at each scale, allowing it to recover object boundaries and fine-grained structure. This is especially critical for medical image segmentation where precise pixel-level boundaries matter.",
+    options: [
+      { id: "a", label: "The model would train slower due to missing gradient paths", isCorrect: false },
+      { id: "b", label: "The decoder would lose fine spatial details, producing blurry segmentation masks", isCorrect: true },
+      { id: "c", label: "The encoder would overfit since gradients can't flow back through the skip paths", isCorrect: false },
+      { id: "d", label: "The output would have incorrect class labels but correct object boundaries", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-dice-loss",
+    type: "multiple-choice",
+    question:
+      "The Dice loss is defined as L_Dice = 1 − 2|A∩B| / (|A| + |B|). Why is Dice loss preferred over pixel-wise binary cross-entropy for segmentation tasks with very small objects?",
+    hint: "Think about class imbalance: in a 512×512 image, a small tumor might occupy 100 out of 262,144 pixels.",
+    explanation:
+      "Binary cross-entropy treats each pixel independently. With severe class imbalance (e.g., 100 foreground pixels vs 262,044 background pixels), the model can achieve ~99.96% pixel accuracy by predicting all background — BCE loss is dominated by the easy background class. Dice loss directly measures the overlap between predicted and ground truth masks, regardless of absolute pixel counts. It's class-balance-agnostic: even a tiny object gets equal weight in the Dice computation. In practice, combining BCE + Dice gives both stability (BCE) and balance (Dice).",
+    options: [
+      { id: "a", label: "Dice loss is differentiable; BCE is not", isCorrect: false },
+      { id: "b", label: "Dice loss focuses on overlap and handles class imbalance; BCE is dominated by background pixels", isCorrect: true },
+      { id: "c", label: "Dice loss penalizes false positives; BCE penalizes false negatives", isCorrect: false },
+      { id: "d", label: "Dice loss requires no threshold; BCE requires a fixed 0.5 threshold", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-instance-vs-semantic",
+    type: "multiple-choice",
+    question:
+      "An image contains 3 sheep standing in a field. Semantic segmentation labels every sheep pixel as 'sheep'. Instance segmentation labels them as 'sheep_1', 'sheep_2', 'sheep_3'. Which task is harder and why?",
+    hint: "Think about what additional capability instance segmentation requires beyond knowing pixel classes.",
+    explanation:
+      "Instance segmentation is harder: it requires detecting each object as a distinct instance, not just classifying pixels. If two sheep are touching or overlapping, semantic segmentation merges them (all pixels labeled 'sheep'). Instance segmentation must separate them into distinct objects — requiring a detection component to find each instance plus a per-instance mask. Mask R-CNN addresses this with RoI Align: it first detects bounding boxes, then predicts a binary mask within each box. Semantic segmentation models (FCN, U-Net) have no mechanism to separate instances.",
+    options: [
+      { id: "a", label: "Semantic segmentation is harder — it must classify every single pixel in the image", isCorrect: false },
+      { id: "b", label: "Instance segmentation is harder — it must separate each object into distinct instances", isCorrect: true },
+      { id: "c", label: "Both have equal difficulty — they share the same architecture", isCorrect: false },
+      { id: "d", label: "Instance segmentation is easier — it only needs to detect bounding boxes", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-resnet-residual",
+    type: "multiple-choice",
+    question:
+      "A ResNet residual block computes F(x) + x, where F is two 3×3 conv layers with BN+ReLU. How do residual connections help train very deep networks (50+ layers)?",
+    hint: "Without skip connections, gradients must pass through every multiplication. What problem does this cause?",
+    explanation:
+      "Without skip connections, gradients must pass through all the nonlinear transformations in the deep network. Each layer multiplies gradients by the Jacobian; with many layers, gradients either shrink to zero (vanishing) or explode. Residual connections provide an identity shortcut path: gradients can flow directly from loss to early layers through the shortcut ∂(F(x)+x)/∂x = ∂F/∂x + I. The identity term I guarantees gradients are at least as large as 1 regardless of depth. This is why ResNet-152 (152 layers) can be trained while plain 56-layer networks perform worse than 20-layer ones.",
+    options: [
+      { id: "a", label: "They reduce computation by skipping some layers during inference", isCorrect: false },
+      { id: "b", label: "They provide a gradient highway bypassing deep chains of multiplications, preventing vanishing gradients", isCorrect: true },
+      { id: "c", label: "They prevent overfitting by regularizing the model toward the identity function", isCorrect: false },
+      { id: "d", label: "They allow the network to have variable depth at inference time", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-depthwise-cost",
+    type: "multiple-choice",
+    question:
+      "A standard 3×3 convolution on C=256 input channels producing C=256 output channels has cost proportional to 3×3×256×256. A depthwise separable convolution splits this into depthwise (3×3×256) + pointwise (1×1×256×256). What is the approximate cost reduction?",
+    hint: "Compare the total multiply-add operations. Reduction ≈ 1/C_out + 1/K².",
+    explanation:
+      "Standard conv cost: K² × C_in × C_out = 9 × 256 × 256 = 589,824. Depthwise cost: K² × C_in = 9 × 256 = 2,304 (one filter per channel). Pointwise cost: 1 × C_in × C_out = 256 × 256 = 65,536. Total depthwise separable: 2,304 + 65,536 = 67,840. Reduction ratio: 67,840 / 589,824 ≈ 1/8.7. The formula 1/C_out + 1/K² = 1/256 + 1/9 ≈ 0.115 ≈ 1/8.7 matches. This ~9× reduction is why MobileNet can run on mobile devices with comparable accuracy.",
+    options: [
+      { id: "a", label: "~2× reduction — depthwise conv halves the number of filters", isCorrect: false },
+      { id: "b", label: "~9× reduction — cost ratio ≈ 1/C_out + 1/K²", isCorrect: true },
+      { id: "c", label: "~256× reduction — equal to the number of channels", isCorrect: false },
+      { id: "d", label: "No reduction — the two operations combined cost the same as the original", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-efficientnet-scaling",
+    type: "multiple-choice",
+    question:
+      "EfficientNet scales depth by 1.2^φ, width by 1.1^φ, and resolution by 1.15^φ. At φ=2 (EfficientNet-B2), how does the input resolution compare to B0 (φ=0, baseline 224×224)?",
+    hint: "Resolution scale = 1.15^φ. Round to nearest multiple of 32 in practice.",
+    explanation:
+      "Resolution scale at φ=2: 1.15² = 1.3225. New resolution ≈ 224 × 1.3225 ≈ 296 × 296. EfficientNet-B2 actually uses 260×260 (rounded to practical value). Increasing resolution lets the model capture finer details. The compound scaling principle says all three axes (depth, width, resolution) should scale together because they are interdependent: more resolution benefits from more depth (to process the larger feature maps) and more width (to capture more features per spatial location). Scaling just one axis gives diminishing returns.",
+    options: [
+      { id: "a", label: "Same as B0 (224×224) — resolution doesn't change with φ", isCorrect: false },
+      { id: "b", label: "~260×260 — resolution scales by 1.15^2 ≈ 1.32×", isCorrect: true },
+      { id: "c", label: "~448×448 — resolution doubles with each increment of φ", isCorrect: false },
+      { id: "d", label: "~192×192 — B2 uses lower resolution for efficiency", isCorrect: false },
+    ],
+  },
+
+  // ── Computer Vision Quiz ─────────────────────────────────────────────────────
+
+  {
+    id: "cv-quiz-anchor",
+    type: "multiple-choice",
+    question:
+      "In anchor-based object detection (Faster R-CNN, YOLO), why do models predict offsets from anchor boxes rather than predicting absolute bounding box coordinates?",
+    hint: "Think about the scale of the values and what makes learning easier.",
+    explanation:
+      "Predicting small offsets (Δx, Δy, Δw, Δh) from predefined anchors is much easier to learn than predicting absolute pixel coordinates from scratch. Offsets are typically small values near zero, making the regression problem well-conditioned. Anchors encode prior knowledge about typical object shapes at each scale/location: the model only needs to adjust each anchor slightly. Additionally, anchor boxes allow a single grid cell to detect objects of multiple scales and aspect ratios simultaneously by having multiple anchors per location.",
+    options: [
+      { id: "a", label: "Absolute coordinates require more output neurons, increasing model size", isCorrect: false },
+      { id: "b", label: "Predicting small offsets from anchors is easier to learn than absolute coordinates from scratch", isCorrect: true },
+      { id: "c", label: "Absolute coordinates can't represent objects smaller than one grid cell", isCorrect: false },
+      { id: "d", label: "Offsets allow the model to use sigmoid activation instead of linear output", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-quiz-nms",
+    type: "multiple-choice",
+    question:
+      "Standard NMS removes boxes with IoU > threshold relative to the kept box. Soft-NMS replaces this hard suppression with score decay. When is Soft-NMS preferred?",
+    hint: "When would hard removal of a box be a mistake?",
+    explanation:
+      "Soft-NMS is preferred when objects are crowded and may legitimately overlap — like pedestrians in a crowd, cars at a traffic jam, or overlapping items on a shelf. Standard NMS would suppress valid detections of nearby objects if their IoU with the highest-confidence detection exceeds the threshold. Soft-NMS instead reduces the confidence score of overlapping boxes by a Gaussian or linear function: boxes with high IoU get low scores, but are retained with reduced confidence. This allows legitimate overlapping detections to survive if they are distinct enough objects.",
+    options: [
+      { id: "a", label: "When objects are always well-separated — standard NMS is too conservative", isCorrect: false },
+      { id: "b", label: "When objects legitimately overlap (crowded scenes) — hard suppression removes valid detections", isCorrect: true },
+      { id: "c", label: "When the detector uses anchor-free prediction instead of anchor-based", isCorrect: false },
+      { id: "d", label: "Soft-NMS is always better and has replaced standard NMS in all modern detectors", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-quiz-segmentation",
+    type: "multiple-choice",
+    question:
+      "A self-driving car system needs to label every pixel as road/sidewalk/car/pedestrian/sky. Which type of segmentation is this, and which model architecture is appropriate?",
+    hint: "The system needs pixel-level labels but doesn't need to distinguish between individual cars.",
+    explanation:
+      "This is semantic segmentation: every pixel gets a class label (road, car, pedestrian, etc.), but there is no need to identify which specific car is car #1 vs car #2. DeepLab (with atrous/dilated convolutions for multi-scale context), FCN, or a U-Net style encoder-decoder are appropriate. Instance segmentation (Mask R-CNN) would add unnecessary complexity. Panoptic segmentation would be needed if you also wanted instance-level IDs (useful for tracking individual pedestrians), but for basic scene understanding semantic segmentation suffices.",
+    options: [
+      { id: "a", label: "Instance segmentation using Mask R-CNN — identify each car and pedestrian separately", isCorrect: false },
+      { id: "b", label: "Semantic segmentation using FCN/DeepLab/U-Net — classify every pixel without instance IDs", isCorrect: true },
+      { id: "c", label: "Panoptic segmentation — required because the scene has both 'stuff' and 'things'", isCorrect: false },
+      { id: "d", label: "Object detection using YOLO — bounding boxes around each object are sufficient", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-quiz-unet",
+    type: "multiple-choice",
+    question:
+      "U-Net was originally designed for biomedical image segmentation where labeled training data is scarce. Which architectural choice makes U-Net effective with limited training data?",
+    hint: "Think about data augmentation strategy and architectural choices that reduce the number of labeled samples needed.",
+    explanation:
+      "U-Net uses elastic deformations and other aggressive data augmentation to synthetically expand the training set — critical when only dozens of annotated images are available. Architecturally, skip connections help: they allow the network to leverage encoder features directly, reducing what the decoder must learn from scratch. The fully convolutional design (no FC layers) makes the network translation-equivariant and allows it to segment images of arbitrary size. U-Net also uses overlap-tile strategy to segment large images by tiling with mirror padding at borders, maximizing use of every labeled example.",
+    options: [
+      { id: "a", label: "Deeper encoder (more downsampling stages) to learn richer features from few examples", isCorrect: false },
+      { id: "b", label: "Aggressive data augmentation (elastic deformations) + skip connections reducing what must be learned", isCorrect: true },
+      { id: "c", label: "Pre-training on ImageNet classification before fine-tuning on segmentation", isCorrect: false },
+      { id: "d", label: "Using class weights to handle foreground/background imbalance in small datasets", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-quiz-backbone",
+    type: "multiple-choice",
+    question:
+      "You need to deploy an object detector on a smartphone (limited compute, 30 fps required). Which backbone choice is most appropriate and why?",
+    hint: "Consider the compute/accuracy trade-off — not all backbones are created equal.",
+    explanation:
+      "MobileNet (V2 or V3) is purpose-built for mobile deployment: depthwise separable convolutions reduce computation by ~9×, MobileNetV3 adds SE blocks and hard-swish for better accuracy with minimal overhead. MobileNetV3-Large achieves 75.2% ImageNet Top-1 at only 0.22 GFLOPs — versus ResNet-50 at 76% with 4.1 GFLOPs (18× more compute). EfficientNet-B0 is a middle ground. ViT-B/16 at 17.6 GFLOPs is completely impractical. On-device inference typically requires <1 GFLOP models with INT8 quantization for real-time performance.",
+    options: [
+      { id: "a", label: "ResNet-50 — widely used, well-supported, good baseline accuracy", isCorrect: false },
+      { id: "b", label: "MobileNetV3 — depthwise separable convs give ~9× compute reduction for mobile", isCorrect: true },
+      { id: "c", label: "EfficientNet-B7 — best accuracy among EfficientNet family", isCorrect: false },
+      { id: "d", label: "ViT-B/16 — Transformers outperform CNNs when fine-tuned", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

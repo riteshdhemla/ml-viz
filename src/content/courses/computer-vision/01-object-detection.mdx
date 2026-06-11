@@ -1,0 +1,225 @@
+---
+title: "Object Detection"
+description: "Anchor boxes, region proposals, YOLO, Faster R-CNN, FPN, and NMS — the full pipeline for finding and localising objects in images."
+order: 1
+type: concept
+estimatedMinutes: 17
+---
+
+# Object Detection
+
+A classifier answers *"what is in this image?"*. An object detector answers *"what is in this image, where exactly is each one, and how confident are you?"* That additional *where* transforms a single label into a list of bounding boxes, each paired with a class and a confidence score.
+
+## The Detection Problem
+
+Three tasks live on a spectrum of spatial precision:
+
+- **Image classification** — one label for the whole image (e.g. "cat").
+- **Object localisation** — one label plus one bounding box (single dominant object).
+- **Object detection** — multiple labels, each with its own bounding box and confidence score, for every object instance in the scene.
+
+A bounding box is parameterised as $(x, y, w, h)$, where $(x, y)$ is the box centre and $(w, h)$ are its width and height, usually normalised to the image dimensions so values fall in $[0, 1]$.
+
+The detector output for a single image is a variable-length list of tuples:
+
+$$
+\{(x_i,\, y_i,\, w_i,\, h_i,\, c_i,\, p_i)\}_{i=1}^{N}
+$$
+
+where $c_i$ is the predicted class index and $p_i$ is the confidence score.
+
+## Anchor Boxes
+
+Modern detectors do not predict box coordinates from scratch. Instead they predict *offsets* from a set of **anchor boxes** — predefined rectangles of varying scale and aspect ratio tiled across the image grid.
+
+**Why anchors?** Raw coordinate regression is unbounded and unstable to train. Predicting small offsets from a well-chosen prior is a far easier learning problem.
+
+**Typical anchor design:** At each grid cell location, place 3 scales × 3 aspect ratios = **9 anchor boxes**. Common aspect ratios are $\{1:2,\; 1:1,\; 2:1\}$; common scales are $\{32^2,\, 64^2,\, 128^2\}$ pixels (relative to the input image).
+
+For a backbone with output stride 32 on a $640\times640$ image, the feature map is $20\times20$, giving $20\times20\times9 = 3\,600$ anchors in total.
+
+### Intersection over Union (IoU)
+
+To decide whether an anchor matches a ground-truth box, we measure their spatial overlap with **IoU**:
+
+$$
+\text{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|}
+$$
+
+$|A \cap B|$ is the area of the rectangle formed by the intersection of boxes $A$ and $B$; $|A \cup B| = |A| + |B| - |A \cap B|$.
+
+IoU ranges from 0 (no overlap) to 1 (perfect overlap). The standard assignment rule is:
+
+- IoU $> 0.5$ with any ground-truth box → **positive anchor** (foreground, train box regression and class head)
+- IoU $< 0.4$ → **negative anchor** (background, train class head only)
+- $0.4 \leq$ IoU $\leq 0.5$ → **ignored** during training
+
+The model predicts four offsets $(\Delta x, \Delta y, \Delta w, \Delta h)$ that transform the anchor into the predicted box via:
+
+$$
+\hat{x} = x_a + \Delta x \cdot w_a, \quad \hat{w} = w_a \cdot e^{\Delta w}
+$$
+
+(and symmetrically for $y, h$). The exponential ensures width/height stay positive.
+
+## Faster R-CNN — Two-Stage Detection
+
+Faster R-CNN (Ren et al., 2015) is the canonical **two-stage detector**: first propose regions of interest, then classify them.
+
+### Stage 1: Region Proposal Network (RPN)
+
+The RPN is a small convolutional head attached to the backbone. It slides over every location in the backbone feature map and, for each anchor:
+
+1. Predicts an **objectness score** (is there any object here?).
+2. Predicts **box offsets** to refine the anchor into a region proposal.
+
+The RPN outputs ~2 000 candidate regions after filtering by objectness and applying NMS (see below).
+
+### Stage 2: RoI Pooling + Classification Head
+
+Each proposal is cropped from the backbone feature map using **RoI Pooling** (or the smoother RoIAlign variant), which resamples the variable-size proposal into a fixed $7\times7$ feature grid. This fixed-size feature is then fed to:
+
+- A **classification head** predicting one of $C$ classes (plus background).
+- A **regression head** predicting final box offsets per class.
+
+**Speed vs accuracy:** Faster R-CNN runs at roughly 5–10 fps on a GPU — too slow for real-time use — but delivers high accuracy because the two-stage design allows the classification head to focus only on promising regions.
+
+**Training loss:**
+
+$$
+\mathcal{L} = \mathcal{L}_{\text{cls}} + \lambda \cdot \mathcal{L}_{\text{reg}}
+$$
+
+$\mathcal{L}_{\text{cls}}$ is cross-entropy; $\mathcal{L}_{\text{reg}}$ is smooth-$\ell_1$ (Huber) loss on box offsets. $\lambda$ balances the two terms (typically $\lambda = 1$).
+
+<Callout type="info">
+**Objectness vs class confidence in YOLO**
+
+YOLO predicts two distinct scores per box: an **objectness score** $P(\text{object})$ — does any object exist here at all? — and a set of **class probabilities** $P(\text{class} \mid \text{object})$. The final detection confidence is their product: $P(\text{object}) \times P(\text{class} \mid \text{object})$. Faster R-CNN keeps these roles separated between the RPN (objectness) and the classification head (class probabilities). Conflating the two is a common source of confusion when reading detection papers.
+</Callout>
+
+## YOLO — One-Stage Detection
+
+**You Only Look Once** (Redmon et al., 2016) collapses the two stages into a single forward pass, making it fast enough for real-time applications.
+
+### Grid-Based Prediction
+
+YOLO divides the input image into an $S \times S$ grid. Each cell is responsible for detecting objects whose centres fall within it. Each cell predicts $B$ bounding boxes and $C$ class probabilities simultaneously.
+
+The output is a single tensor of shape:
+
+$$
+S \times S \times (B \times 5 + C)
+$$
+
+For YOLOv1 with $S=7$, $B=2$, $C=20$ (PASCAL VOC):
+
+$$
+7 \times 7 \times (2 \times 5 + 20) = 7 \times 7 \times 30
+$$
+
+Each of the $B \times 5$ entries encodes $(x, y, w, h, \text{objectness})$ for one box.
+
+### Multi-Scale Predictions (YOLOv3+)
+
+YOLOv1 and v2 struggle with small and overlapping objects because a single $7\times7$ grid is too coarse. YOLOv3 addresses this by predicting at **three scales** — analogous to an FPN — using feature maps of strides 8, 16, and 32. Larger feature maps (stride 8) detect small objects; smaller maps (stride 32) detect large objects.
+
+**Speed:** YOLOv1 achieves ~45 fps; modern variants (YOLOv8, RT-DETR) push well past 60 fps at competitive accuracy.
+
+## Feature Pyramid Networks (FPN)
+
+A fundamental challenge in detection is **scale invariance**: a stop sign close to the camera occupies thousands of pixels; the same sign far away occupies dozens. A single feature map at one resolution cannot handle both cases well.
+
+**FPN** (Lin et al., 2017) solves this with a two-pathway architecture:
+
+1. **Bottom-up pathway** — the standard backbone forward pass, producing feature maps at strides 4, 8, 16, 32 (denoted C2–C5).
+2. **Top-down pathway** — start from the deepest (most semantic) feature map C5 and upsample 2× at each level, adding lateral connections from the corresponding bottom-up map via $1\times1$ convolutions.
+
+The result is a pyramid of feature maps P2–P5, each with 256 channels, all enriched with both low-level spatial detail and high-level semantic context. Detection heads run independently at each scale.
+
+FPN is now a standard component in Faster R-CNN, Mask R-CNN, RetinaNet, and many other architectures.
+
+## Non-Maximum Suppression (NMS)
+
+After a forward pass, a detector with thousands of anchors will produce thousands of overlapping boxes for the same object. **NMS** prunes duplicates:
+
+1. Collect all predicted boxes with confidence $> $ threshold (e.g. 0.05).
+2. Sort boxes by confidence score, highest first.
+3. Take the top-scoring box; add it to the output list.
+4. Remove all remaining boxes whose IoU with this box exceeds a suppression threshold (typically 0.5).
+5. Repeat from step 3 on the remaining boxes.
+6. Return the output list.
+
+**Soft-NMS** (Bodla et al., 2017) is a gentler variant: instead of hard removal, it decays the confidence of overlapping boxes by a Gaussian function of their IoU. This helps in crowded scenes where two different objects genuinely overlap.
+
+**Class-aware vs class-agnostic NMS:** most detectors run NMS separately per class (class-aware), so a box predicted as "car" does not suppress a nearby box predicted as "person."
+
+## SSD — Single Shot MultiBox Detector
+
+SSD (Liu et al., 2016) is a one-stage detector that, like YOLO, avoids explicit region proposals. Unlike YOLO's single output tensor, SSD attaches detection heads directly to **multiple backbone feature maps** at different resolutions (e.g. 38×38, 19×19, 10×10, 5×5, 3×3, 1×1), placing default boxes (anchors) of 6 different aspect ratios at each location.
+
+This multi-scale strategy is conceptually similar to FPN but uses the raw backbone maps rather than a dedicated top-down pathway. SSD is fast and straightforward to implement; it is less accurate than FPN-based models on small objects because the shallow early feature maps lack semantic richness.
+
+## Two-Stage vs One-Stage: Comparison
+
+| Property | Faster R-CNN | YOLO / SSD |
+|---|---|---|
+| Speed | 5–10 fps | 30–60+ fps |
+| Accuracy (COCO mAP) | Higher | Lower (gap closing) |
+| Proposal mechanism | RPN (explicit) | Grid cells (implicit) |
+| Small objects | Good | Struggles (YOLO v1/v2) |
+| Typical use case | Offline, accuracy-critical | Real-time applications |
+
+The accuracy gap has narrowed considerably with YOLOv7/v8 and one-stage detectors with FPN backbones. For latency-sensitive applications — autonomous vehicles, robotics, live video — one-stage detectors remain the dominant choice.
+
+## Evaluation: Mean Average Precision (mAP)
+
+A single accuracy number is not enough for detection, because you must reward both correct classification *and* correct localisation.
+
+**Precision-Recall curve:** For a given class, vary the confidence threshold. At each threshold, compute:
+
+$$
+\text{Precision} = \frac{TP}{TP + FP}, \qquad \text{Recall} = \frac{TP}{TP + FN}
+$$
+
+A predicted box counts as a true positive (TP) only if its IoU with a ground-truth box of the same class exceeds 0.5, and that ground-truth box has not already been matched.
+
+**Average Precision (AP):** the area under the precision-recall curve for one class. AP$_{50}$ uses IoU threshold 0.5.
+
+**mAP:** mean of AP across all $C$ classes. COCO mAP (written mAP or AP) averages AP over IoU thresholds 0.50, 0.55, …, 0.95 (ten thresholds), weighting precise localisation much more heavily than the simpler VOC metric.
+
+$$
+\text{mAP} = \frac{1}{C} \sum_{c=1}^{C} \text{AP}_c
+$$
+
+## Common Mistakes and Pitfalls
+
+- **Anchors too small for large objects** — always visualise your anchor coverage on a few training images before training. Under-coverage of large objects leads to many missed detections.
+- **Forgetting to normalise bounding box coordinates** — some frameworks expect $(x, y, w, h)$ in pixels; others expect values in $[0, 1]$. Mixing conventions causes boxes to appear wildly wrong.
+- **NMS threshold too aggressive (0.7+) or too lenient (0.3-)** — at 0.7, heavily overlapping duplicates survive; at 0.3, nearby distinct objects are suppressed. 0.45–0.5 is the standard starting point.
+- **Not using multi-scale training** — randomly resizing inputs during training (e.g. between 320 and 608 pixels) dramatically improves robustness to scale at test time.
+- **Ignoring class imbalance in anchors** — in a typical image, 99%+ of anchors are background. Without focal loss (RetinaNet) or hard negative mining (SSD/Faster R-CNN), the background overwhelms the training signal.
+
+---
+
+## Key Takeaways
+
+- Object detection outputs a variable-length list of $(x, y, w, h, \text{class}, \text{confidence})$ tuples — one per detected object instance.
+- Anchor boxes are predefined priors; models predict small offsets from them rather than absolute coordinates, which makes regression stable.
+- IoU measures bounding-box overlap; the standard positive-anchor threshold is IoU $> 0.5$.
+- Faster R-CNN (two-stage) is accurate but slow; YOLO/SSD (one-stage) are fast but historically less accurate on small objects.
+- FPN adds a top-down lateral pathway to backbone features, giving every scale access to high-level semantics — this is the key ingredient for detecting objects across a wide size range.
+- NMS removes duplicate detections by keeping the highest-confidence box and suppressing all boxes with IoU $>$ threshold against it; Soft-NMS is preferred in crowded scenes.
+
+## Related Concepts
+
+- [Convolution Operation](/courses/cnns/01-convolution-operation) — the building block of all detection backbones.
+- [Segmentation](/courses/computer-vision/02-segmentation) — the next step: predicting a class label for every pixel, not just a bounding box.
+
+---
+
+<Exercise id="cv-anchor-iou" />
+
+<Exercise id="cv-nms-algorithm" />
+
+<Exercise id="cv-yolo-output" />

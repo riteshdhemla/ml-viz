@@ -1,0 +1,186 @@
+---
+title: "Segmentation"
+description: "Semantic, instance, and panoptic segmentation — from fully convolutional networks to U-Net and Mask R-CNN."
+order: 2
+type: concept
+estimatedMinutes: 16
+---
+
+Image classification tells you *what* is in an image. Object detection tells you *where* each object is (bounding box). **Segmentation** goes further: it tells you *which pixel belongs to which class or instance*.
+
+## Three Flavors of Segmentation
+
+### Semantic Segmentation
+
+Every pixel in the image is assigned a class label. There is no distinction between separate instances of the same class — all cars share one label, all trees share another.
+
+> "All cars are red. All pedestrians are green."
+
+Output: a single label map of shape $H \times W$, where each entry is a class index.
+
+### Instance Segmentation
+
+Each *individual object* is detected and its pixels are segmented separately. Two cars side-by-side produce two distinct masks.
+
+> "Car 1 is red. Car 2 is blue. Pedestrian 1 is green."
+
+Output: a set of (class, binary mask) pairs — one per detected instance.
+
+### Panoptic Segmentation
+
+Combines both approaches. **Background stuff** classes (sky, road, grass) receive semantic labels only. **Foreground things** (cars, people) receive both a class label and a unique instance ID.
+
+Every pixel is assigned a $(class,\ instance\_id)$ pair, where $instance\_id = 0$ for stuff classes.
+
+---
+
+## Fully Convolutional Networks (FCN)
+
+Classic CNNs end with fully-connected layers that output a fixed-length class vector — useless for dense prediction. **FCN** replaces those FC layers with $1 \times 1$ convolutions, so the network produces a **spatial output map** of size $H' \times W' \times C$ instead of a single vector.
+
+Three variants trade off speed against spatial detail:
+
+- **FCN-32s** — upsamples the final $\frac{H}{32} \times \frac{W}{32}$ feature map back to full resolution in one 32× step. Coarse output.
+- **FCN-16s** — adds a skip connection from the pool4 layer (stride 16), fusing medium-level features before 16× upsampling. Sharper edges.
+- **FCN-8s** — also fuses pool3 (stride 8) before 8× upsampling. Best detail of the three.
+
+The key insight: **skip connections from earlier (higher-resolution) layers** give the decoder access to fine-grained spatial detail that is lost as the network strides deeper.
+
+---
+
+## U-Net Architecture
+
+U-Net was designed for biomedical image segmentation where annotated data is scarce. Its symmetric encoder–decoder with dense skip connections has since become the dominant architecture across all segmentation domains.
+
+### Encoder (Contracting Path)
+
+Four downsampling blocks, each consisting of two $3 \times 3$ convolutions followed by a $2 \times 2$ max-pool. Channels grow at each block:
+
+$$64 \to 128 \to 256 \to 512 \to 1024$$
+
+For a $512 \times 512$ input, the bottleneck is a $32 \times 32 \times 1024$ feature map.
+
+### Bottleneck
+
+The deepest layer at $1024$ channels. The receptive field here spans most of the image — the network "understands" global context but has lost precise spatial coordinates.
+
+### Decoder (Expanding Path)
+
+Four upsampling blocks, each using a **transposed convolution** to double spatial resolution and halve channels:
+
+$$1024 \to 512 \to 256 \to 128 \to 64$$
+
+A final $1 \times 1$ convolution maps 64 channels to the number of output classes.
+
+### Skip Connections
+
+At each decoder resolution, the corresponding encoder feature map is **concatenated** (not added) to the upsampled decoder output before the next convolution. This doubles the channel count at the concatenation point before the subsequent conv reduces it.
+
+<Callout type="info">
+**Why skip connections are essential.** The encoder bottleneck compresses an image into a compact representation — spatial detail (exact edge positions, thin structures) is necessarily discarded. The decoder must reconstruct a full-resolution mask, but it cannot hallucinate fine-grained structure from the bottleneck alone. Skip connections short-circuit that information loss by feeding the decoder the encoder's high-resolution feature maps directly, bypassing the bottleneck entirely.
+</Callout>
+
+### U-Net Loss Function
+
+U-Net is typically trained with a combination of binary cross-entropy and **Dice loss**:
+
+$$\mathcal{L} = \mathcal{L}_{BCE} + \mathcal{L}_{Dice}$$
+
+The Dice coefficient measures the overlap between predicted mask $A$ and ground-truth mask $B$:
+
+$$\text{Dice} = \frac{2 \cdot |A \cap B|}{|A| + |B|}$$
+
+Dice loss is $1 - \text{Dice}$. The sum $|A| + |B|$ equals the total number of predicted positive pixels plus ground-truth positive pixels, so Dice naturally accounts for **class imbalance** — a small foreground object occupying 1% of pixels is not overwhelmed by the large background.
+
+---
+
+## Mask R-CNN (Instance Segmentation)
+
+Mask R-CNN extends Faster R-CNN with a third prediction head dedicated to pixel-level masks.
+
+**Faster R-CNN recap**: a Region Proposal Network (RPN) generates candidate bounding boxes; RoI Pooling crops and resizes each candidate feature; two heads predict class and box refinement.
+
+**Mask R-CNN adds**: a small fully convolutional mask head that operates in parallel with the class and box heads. For each region of interest it outputs a $28 \times 28$ binary mask — one channel per class.
+
+### RoI Align
+
+RoI Pooling performs hard quantization: it rounds region coordinates to integer pixel boundaries before pooling. For a $28 \times 28$ mask output that misalignment accumulates and produces blurry masks.
+
+**RoI Align** uses **bilinear interpolation** at each sampling point instead. No rounding, no quantization. The result is pixel-precise mask boundaries — this detail is critical for instance segmentation quality.
+
+### Decoupled Mask Prediction
+
+The mask head is **class-agnostic per RoI**: it predicts $K$ independent binary masks (one per class) and selects the mask for the predicted class at inference time. Separating mask prediction from classification lets each task specialize — the mask head learns shapes while the classification head learns semantics.
+
+**Summary of Mask R-CNN outputs per detected instance:**
+- Class label (from classification head)
+- Bounding box (from box regression head)
+- $28 \times 28$ binary mask (from mask head, resized to box size)
+
+---
+
+## Panoptic Segmentation
+
+Panoptic segmentation unifies semantic and instance segmentation into a single dense output. Each pixel receives a $(class,\ instance\_id)$ pair:
+
+- **Things** (countable objects: cars, people): assigned a unique $instance\_id \geq 1$
+- **Stuff** (amorphous regions: sky, road, grass): $instance\_id = 0$ (no individuation)
+
+### Panoptic Quality (PQ)
+
+PQ decomposes into two factors:
+
+$$PQ = \underbrace{\frac{\sum_{(p, g) \in TP} IoU(p,g)}{|TP|}}_{\text{Segmentation Quality (SQ)}} \times \underbrace{\frac{|TP|}{|TP| + \frac{1}{2}|FP| + \frac{1}{2}|FN|}}_{\text{Recognition Quality (RQ)}}$$
+
+SQ measures how well matched segments overlap; RQ measures how well the detector finds and avoids false detections. A perfect segmentation with perfect detection gives $PQ = 1$.
+
+---
+
+## Evaluation Metrics
+
+| Task | Metric | Definition |
+|------|--------|------------|
+| Semantic segmentation | **mIoU** | $\frac{1}{C}\sum_c \frac{TP_c}{TP_c + FP_c + FN_c}$ — IoU per class, macro-averaged |
+| Instance segmentation | **AP_mask** | COCO-style AP using mask IoU instead of box IoU, averaged over IoU thresholds 0.5–0.95 |
+| Panoptic segmentation | **PQ** | $SQ \times RQ$ as above |
+
+**mIoU** is the dominant semantic segmentation benchmark. A model with mIoU = 0.80 correctly covers 80% of each class's pixels on average (with appropriate false-positive correction).
+
+---
+
+## Common Mistakes
+
+**Using stride-2 convolutions instead of maxpool + skip.** Strided convolutions subsample without the spatial bookkeeping needed for skip connections. You lose the anchor point for re-injecting encoder features.
+
+**Omitting skip connections in encoder–decoder architectures.** Without them the decoder must infer all edge and texture detail from the bottleneck alone — impossible for thin structures or fine boundaries.
+
+**Treating instance segmentation as semantic segmentation.** Semantic seg cannot separate touching or overlapping instances. If two people overlap, a semantic model produces one merged blob; Mask R-CNN produces two separate masks.
+
+**Using BCE loss alone on class-imbalanced data.** When a small object occupies 0.5% of pixels, a model that predicts all background achieves 99.5% pixel accuracy. Dice loss removes this incentive by normalizing to the size of the positive region.
+
+---
+
+## Key Takeaways
+
+- Semantic segmentation labels every pixel by class; instance segmentation additionally separates individual objects; panoptic segmentation does both simultaneously.
+- FCN replaces fully-connected layers with $1 \times 1$ convolutions, enabling spatial output maps; skip connections from stride-8/16 layers add fine-grained detail.
+- U-Net's encoder–decoder with concatenated skip connections is the standard architecture for dense prediction, especially with limited labeled data.
+- Dice loss normalizes by mask size, making training robust to severe class imbalance between foreground objects and background.
+- Mask R-CNN adds a per-RoI mask head to Faster R-CNN; RoI Align's bilinear interpolation is critical for pixel-precise masks.
+- Segmentation quality is measured by mIoU (semantic), AP_mask (instance), and Panoptic Quality = SQ × RQ (panoptic).
+
+---
+
+## Exercises
+
+<Exercise id="cv-unet-skip" />
+<Exercise id="cv-dice-loss" />
+<Exercise id="cv-instance-vs-semantic" />
+
+---
+
+## Related Concepts
+
+- [Pooling and Architectures](/courses/cnns/02-pooling-and-architectures) — pooling operations and the CNN backbone that underlies FCN and U-Net
+- [Object Detection](/courses/computer-vision/01-object-detection) — bounding-box detection with Faster R-CNN, the foundation of Mask R-CNN
+- [Backbones in Practice](/courses/computer-vision/03-backbones-in-practice) — choosing ResNet, MobileNet, or EfficientNet as the encoder backbone
