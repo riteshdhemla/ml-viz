@@ -37,6 +37,14 @@ Reading the value:
 | ≈ 0 | sitting on the boundary between two clusters |
 | < 0 | closer to a neighboring cluster — likely misassigned |
 
+### Worked example
+
+Five points in 1-D: cluster A = {1, 2, 3}, cluster B = {8, 9}. For point $i = 2$ (in cluster A):
+
+- $a(2)$: mean distance to other A members = $\frac{|2-1| + |2-3|}{2} = \frac{1+1}{2} = 1.0$
+- $b(2)$: mean distance to B members = $\frac{|2-8| + |2-9|}{2} = \frac{6+7}{2} = 6.5$ (nearest other cluster)
+- $s(2) = \frac{6.5 - 1.0}{\max(1.0,\, 6.5)} = \frac{5.5}{6.5} \approx 0.85$ → well inside its cluster ✓
+
 Average $s$ over all points and you get one number per $k$ — pick the $k$ that maximizes it. Even better, look at the **silhouette plot** (per-cluster profiles): a healthy clustering shows clusters of similar width, all above the average line; a bad one shows thin slivers and negative tails.
 
 <Callout type="warning" title="Metrics inherit assumptions">
