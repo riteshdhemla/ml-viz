@@ -1,10 +1,4 @@
-export type ExerciseType =
-  | "multiple-choice"
-  | "slider"
-  | "drag-drop"
-  | "fill-blank"
-  | "code"
-  | "interactive-viz";
+export type ExerciseType = "multiple-choice" | "slider";
 
 export interface BaseExercise {
   id: string;
@@ -28,14 +22,6 @@ export interface SliderExercise extends BaseExercise {
   unit?: string;
 }
 
-export interface FillBlankExercise extends BaseExercise {
-  type: "fill-blank";
-  blanks: { id: string; answer: string; caseSensitive?: boolean }[];
-}
-
-export type Exercise =
-  | MultipleChoiceExercise
-  | SliderExercise
-  | FillBlankExercise;
+export type Exercise = MultipleChoiceExercise | SliderExercise;
 
 export type ExerciseResult = "correct" | "incorrect" | "unanswered";

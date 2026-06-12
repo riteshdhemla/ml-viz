@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { CheckCircle } from "lucide-react";
 import { useProgress } from "@/lib/progress";
 
@@ -10,7 +11,10 @@ interface Props {
 
 export function CourseProgressBar({ courseSlug, totalLessons }: Props) {
   const { getCompletedLessonCount } = useProgress();
-  const completed = getCompletedLessonCount(courseSlug);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
+  const completed = hydrated ? getCompletedLessonCount(courseSlug) : 0;
   if (completed === 0 || totalLessons === 0) return null;
 
   const pct = Math.round((completed / totalLessons) * 100);
