@@ -3,7 +3,7 @@ title: "Hierarchical Clustering & DBSCAN"
 description: "Grouping data without pre-specifying K — agglomerative and density-based methods."
 order: 2
 type: concept
-estimatedMinutes: 20
+estimatedMinutes: 14
 ---
 
 # Hierarchical Clustering & DBSCAN
@@ -25,28 +25,9 @@ How do we measure distance between clusters?
 | **Average** | Mean distance between all pairs | Balanced; most commonly used |
 | **Ward** | Minimizes within-cluster variance | Produces equally-sized clusters |
 
-### Worked example
+For A(1,1), B(2,2), C(8,8), D(9,9), all three linkages produce the same clusters ($\{A,B\}$ and $\{C,D\}$) but at different dendrogram heights: single at 8.49, average at 9.90, complete at 11.31. The structure matches because the blobs are well-separated — linkages disagree on cluster *assignments* only when clusters are elongated, of unequal size, or connected by bridge points. For the full pairwise distance matrix, step-by-step merge trace, Ward linkage derivation, and a comparison on crescents:
 
-Points: A(1,1), B(2,2), C(8,8), D(9,9). Full pairwise (Euclidean) distance matrix:
-
-|   | A | B | C | D |
-|---|---|---|---|---|
-| **A** | 0 | $\sqrt2{=}1.41$ | $\sqrt{98}{=}9.90$ | $\sqrt{128}{=}11.31$ |
-| **B** | | 0 | $\sqrt{72}{=}8.49$ | $\sqrt{98}{=}9.90$ |
-| **C** | | | 0 | $\sqrt2{=}1.41$ |
-| **D** | | | | 0 |
-
-**Merge 1:** smallest entry is $1.41$ (tie A–B and C–D). Merge **A+B** at height $1.41$.
-
-**Merge 2:** next smallest is again $1.41$. Merge **C+D** at height $1.41$.
-
-**Merge 3:** now only two clusters $\{AB\}$ and $\{CD\}$ remain. The height depends on the **linkage** rule (this is exactly where the methods differ):
-
-- **Single** (nearest pair): $\min = d(B,C) = 8.49$
-- **Complete** (farthest pair): $\max = d(A,D) = 11.31$
-- **Average** (mean of all 4 cross-pairs): $\tfrac{1}{4}(9.90{+}11.31{+}8.49{+}9.90) = 9.90$
-
-All three agree on the *structure* $\{A,B\}$ and $\{C,D\}$ — they only disagree on the **height** of the final merge, i.e. how far apart the two blobs are judged to be.
+<WikiLink slug="hierarchical-clustering" title="Hierarchical Clustering Linkage Methods" />
 
 ### Dendrogram
 

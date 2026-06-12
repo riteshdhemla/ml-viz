@@ -1,0 +1,175 @@
+---
+title: "AdaBoost Algorithm"
+description: "The original boosting algorithm — 6-step procedure, deriving the model weight α from exponential loss minimization, and a complete one-round worked trace with weight normalization."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "ensemble-methods/02-boosting"
+estimatedMinutes: 10
+---
+
+# AdaBoost Algorithm
+
+AdaBoost trains a sequence of weak learners (typically depth-1 decision stumps) where each round re-weights the training set so the next stump focuses on the current errors. The final prediction is a weighted vote across all stumps.
+
+## The 6-step procedure
+
+1. Initialize equal weights: $w_i = 1/n$ for all $n$ samples
+2. Train weak learner $h_b$ on the weighted dataset
+3. Compute the weighted error: $\epsilon_b = \dfrac{\sum_{i:\,h_b(\mathbf{x}_i) \neq y_i} w_i}{\sum_i w_i}$
+4. Compute the model weight: $\alpha_b = \dfrac{1}{2}\ln\!\left(\dfrac{1-\epsilon_b}{\epsilon_b}\right)$
+5. Update sample weights: $w_i \leftarrow w_i \cdot \exp\!\left(-\alpha_b\,y_i\,h_b(\mathbf{x}_i)\right)$
+6. Normalize weights: $w_i \leftarrow w_i / \sum_j w_j$ — then repeat from step 2
+
+Final prediction:
+
+$$
+\hat{f}(\mathbf{x}) = \mathrm{sign}\!\left(\sum_{b=1}^{B} \alpha_b\,h_b(\mathbf{x})\right)
+$$
+
+<Callout type="info" title="Labels must be ±1">
+  AdaBoost requires $y_i \in \{-1, +1\}$, not $\{0, 1\}$. The sign in the update rule $\exp(-\alpha_b y_i h_b(\mathbf{x}_i))$ flips between shrinking (correct: $y_i h_b = +1$) and growing (wrong: $y_i h_b = -1$) the weight.
+</Callout>
+
+## Deriving the model weight α
+
+$\alpha_b$ is not arbitrary — it is the exact minimizer of the **exponential loss** after the current stump is fixed. The objective at round $b$ is:
+
+$$
+\min_\alpha \sum_{i=1}^n w_i \exp\!\bigl(-\alpha\,y_i\,h_b(\mathbf{x}_i)\bigr)
+$$
+
+Split the sum into correctly classified ($y_i h_b = +1$) and misclassified ($y_i h_b = -1$) examples. Their total weights are $(1-\epsilon_b)$ and $\epsilon_b$:
+
+$$
+\text{Loss} = (1-\epsilon_b)\,e^{-\alpha} + \epsilon_b\,e^{+\alpha}
+$$
+
+Differentiate with respect to $\alpha$ and set to zero:
+
+$$
+\frac{d\,\text{Loss}}{d\alpha} = -(1-\epsilon_b)\,e^{-\alpha} + \epsilon_b\,e^{+\alpha} = 0
+$$
+
+$$
+e^{2\alpha} = \frac{1-\epsilon_b}{\epsilon_b}
+\;\Longrightarrow\;
+\boxed{\;\alpha_b = \frac{1}{2}\ln\frac{1-\epsilon_b}{\epsilon_b}\;}
+$$
+
+**Interpretation of $\alpha_b$ as a function of $\epsilon_b$:**
+
+| Weighted error $\epsilon_b$ | Model weight $\alpha_b$ | Behavior |
+|:--------------------------:|:-----------------------:|:--------:|
+| $\to 0$ (near-perfect) | $\to +\infty$ | Dominates the ensemble |
+| $= 0.5$ (random) | $= 0$ | Ignored entirely |
+| $> 0.5$ (worse than random) | $< 0$ | Inverted vote |
+
+## Worked example: one complete AdaBoost round
+
+**Setup:** 10 points, uniform weights $w_i = 0.1$. A stump misclassifies exactly **2** of them.
+
+**Step 1 — weighted error:**
+
+$$
+\epsilon_1 = \frac{2 \times 0.1}{10 \times 0.1} = \frac{0.2}{1.0} = 0.2
+$$
+
+**Step 2 — model weight:**
+
+$$
+\alpha_1 = \tfrac{1}{2}\ln\frac{0.8}{0.2} = \tfrac{1}{2}\ln 4 = 0.693
+$$
+
+**Step 3 — reweight.** Correct points multiply by $e^{-0.693} = 0.5$; wrong points multiply by $e^{+0.693} = 2.0$:
+
+| Example type | Count | Old weight | Multiplier | New weight |
+|:------------:|:-----:|:----------:|:----------:|:----------:|
+| Correct | 8 | 0.10 | $e^{-0.693} = 0.5$ | 0.050 |
+| Wrong | 2 | 0.10 | $e^{+0.693} = 2.0$ | 0.200 |
+
+**Step 4 — normalize.** Sum $= 8(0.05) + 2(0.20) = 0.40 + 0.40 = 0.80$. Divide all weights by 0.80:
+
+| Example type | Normalized weight |
+|:------------:|:-----------------:|
+| Correct (8) | $0.050/0.80 = 0.0625$ |
+| Wrong (2) | $0.200/0.80 = 0.2500$ |
+
+**Verification:** $8(0.0625) + 2(0.25) = 0.50 + 0.50 = 1.0$ ✓
+
+**Key identity:** After normalization, the just-trained stump has *exactly* 0.5 weighted error on the new distribution — the two wrong points hold $2(0.25) = 0.50$ of the total weight. This is always true: AdaBoost's $\alpha_b$ is chosen so each completed stump is exactly at chance on the updated weights, forcing the next stump to look elsewhere.
+
+```python
+import numpy as np
+
+def adaboost_one_round(n=10, n_wrong=2):
+    w = np.full(n, 1/n)
+
+    # Simulated stump: first n_wrong examples are misclassified
+    correct = np.ones(n)
+    correct[:n_wrong] = -1  # -1 means y_i * h_b = -1 (wrong)
+
+    epsilon = np.sum(w[correct < 0])   # weighted error
+    alpha   = 0.5 * np.log((1 - epsilon) / (epsilon + 1e-12))
+
+    # Update weights: multiply by exp(-alpha * y_i * h_b)
+    w *= np.exp(-alpha * correct)
+    w /= w.sum()   # normalize
+
+    print(f"ε₁ = {epsilon:.3f},  α₁ = {alpha:.3f}")
+    print(f"Correct weight: {w[correct > 0][0]:.4f} each")
+    print(f"Wrong weight:   {w[correct < 0][0]:.4f} each")
+    print(f"Wrong points total weight: {w[correct < 0].sum():.3f}")  # ≈ 0.5
+
+adaboost_one_round(n=10, n_wrong=2)
+```
+
+## From-scratch AdaBoost (decision stumps)
+
+```python
+import numpy as np
+
+class DecisionStump:
+    def fit(self, X, y, w):
+        n, d = X.shape
+        best = {'err': np.inf}
+        for j in range(d):
+            for thresh in np.unique(X[:, j]):
+                for sign in [1, -1]:
+                    pred = np.where(X[:, j] >= thresh, sign, -sign)
+                    err  = np.dot(w, pred != y)
+                    if err < best['err']:
+                        best = {'err': err, 'j': j, 'thresh': thresh, 'sign': sign}
+        self.__dict__.update(best)
+
+    def predict(self, X):
+        return np.where(X[:, self.j] >= self.thresh, self.sign, -self.sign)
+
+class AdaBoost:
+    def __init__(self, n_rounds=50):
+        self.n_rounds = n_rounds
+
+    def fit(self, X, y):
+        n = len(y)
+        w = np.full(n, 1/n)
+        self.stumps, self.alphas = [], []
+        for _ in range(self.n_rounds):
+            h = DecisionStump()
+            h.fit(X, y, w)
+            pred = h.predict(X)
+            eps   = np.dot(w, pred != y) + 1e-12
+            alpha = 0.5 * np.log((1 - eps) / eps)
+            w    *= np.exp(-alpha * y * pred)
+            w    /= w.sum()
+            self.stumps.append(h)
+            self.alphas.append(alpha)
+
+    def predict(self, X):
+        votes = sum(a * h.predict(X) for a, h in zip(self.alphas, self.stumps))
+        return np.sign(votes)
+```
+
+## Related concepts
+
+- [**Boosting**](/courses/ensemble-methods/02-boosting) — gradient boosting, XGBoost, and the full ensemble lesson
+- [**Decision Tree: Information Gain**](/wiki/decision-tree-information-gain) — the weak learner typically boosted
+- [**Bagging & Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests) — the parallel alternative

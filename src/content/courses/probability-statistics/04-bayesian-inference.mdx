@@ -3,7 +3,7 @@ title: "Bayesian Inference"
 description: "Incorporating prior knowledge into learning — Bayes' theorem, posteriors, conjugate priors, and MAP estimation."
 order: 4
 type: concept
-estimatedMinutes: 18
+estimatedMinutes: 12
 ---
 
 # Bayesian Inference
@@ -97,85 +97,9 @@ A prior is **conjugate** to a likelihood if the posterior is in the same family 
 | Gaussian$(\mu, \sigma^2)$ known $\sigma^2$ | Gaussian$(\mu_0, \tau^2)$ | Gaussian (updated mean/precision) |
 | Categorical$(\boldsymbol{\pi})$ | Dirichlet$(\boldsymbol{\alpha})$ | Dirichlet$(\boldsymbol{\alpha} + \mathbf{n})$ |
 
-### Deriving the Beta-Bernoulli posterior end-to-end
+The update is derived in 5 steps: write the Bernoulli likelihood $p^k(1-p)^{n-k}$, write the Beta prior, multiply the two, collect the exponents of $p$ and $(1-p)$, and recognize the result as another Beta kernel. No integration required — conjugacy does all the work. Starting from $\text{Beta}(2,2)$ with $k=7$ heads in $n=10$ flips, the posterior is $\text{Beta}(9,5)$ with mean $9/14 \approx 0.643$ — pulled toward 0.5 by the prior vs. the MLE of 0.700. For the complete 5-step derivation, the pseudo-count interpretation, and sequential updating animations:
 
-Let's *prove* the first row of the table from scratch. Model: each flip $x_i \sim \text{Bernoulli}(p)$, and the prior on the bias is $p \sim \text{Beta}(\alpha, \beta)$.
-
-**Step 1 — write the likelihood.** Suppose we observe $n$ flips with $k$ heads (so $n - k$ tails). Each flip contributes $p$ if it's a head and $1-p$ if it's a tail:
-
-$$
-p(\mathcal{D} | p) = \prod_{i=1}^n p^{\,x_i}(1-p)^{1-x_i} = p^{\,k}\,(1-p)^{\,n-k}
-$$
-
-**Step 2 — write the prior.** The Beta density is
-
-$$
-p(p) = \frac{1}{B(\alpha, \beta)}\, p^{\,\alpha - 1}(1-p)^{\,\beta - 1}, \qquad B(\alpha,\beta) = \frac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}
-$$
-
-where $B(\alpha,\beta)$ is a constant that does not depend on $p$.
-
-**Step 3 — multiply (Bayes, unnormalized).** Drop every factor that does not contain $p$:
-
-$$
-p(p | \mathcal{D}) \;\propto\; \underbrace{p^{\,k}(1-p)^{\,n-k}}_{\text{likelihood}} \cdot \underbrace{p^{\,\alpha - 1}(1-p)^{\,\beta - 1}}_{\text{prior}}
-$$
-
-**Step 4 — collect exponents.** Add the powers of $p$ and of $(1-p)$:
-
-$$
-p(p | \mathcal{D}) \;\propto\; p^{\,(\alpha + k) - 1}\,(1-p)^{\,(\beta + n - k) - 1}
-$$
-
-**Step 5 — recognize the shape.** This is *exactly* the kernel of a Beta density with parameters $\alpha + k$ and $\beta + n - k$. Since a probability distribution is determined by its kernel, the normalizing constant must be $B(\alpha + k,\ \beta + n - k)$, and therefore:
-
-$$
-\boxed{\,p \mid \mathcal{D} \sim \text{Beta}(\alpha + k,\; \beta + n - k)\,}
-$$
-
-No integral was needed — the conjugacy did the work. Writing $n_1 = k$ heads and $n_0 = n - k$ tails recovers the table entry $\text{Beta}(\alpha + n_1,\ \beta + n_0)$. The posterior mean is
-
-$$
-\mathbb{E}[p | \mathcal{D}] = \frac{\alpha + k}{\alpha + \beta + n}
-$$
-
-$\alpha$ and $\beta$ act like **pseudo-counts** — imaginary prior heads and tails. With $\alpha = \beta = 1$ (uniform prior), the posterior mean is $\frac{k+1}{n+2}$, which approaches the MLE $\frac{k}{n}$ as $n$ grows.
-
-**Numeric instance.** Prior $\text{Beta}(2, 2)$ (a mild "probably fair" belief), then observe $k = 7$ heads in $n = 10$ flips ($n_0 = 3$ tails):
-
-$$
-\alpha_\text{post} = 2 + 7 = 9, \qquad \beta_\text{post} = 2 + 3 = 5
-$$
-
-$$
-\mathbb{E}[p | \mathcal{D}] = \frac{9}{9 + 5} = \frac{9}{14} \approx 0.643, \qquad \hat{p}_\text{MLE} = \frac{7}{10} = 0.700
-$$
-
-The prior pulls the estimate from $0.70$ down toward $0.50$, landing at $0.643$. With more data the pull weakens and the posterior mean converges to the MLE.
-
-```python
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.stats import beta as beta_dist
-
-# Prior: Beta(2, 2) — slight belief coin is fair
-alpha_prior, beta_prior = 2, 2
-
-# Observe 7 heads, 3 tails
-n_heads, n_tails = 7, 3
-alpha_post = alpha_prior + n_heads   # 9
-beta_post  = beta_prior  + n_tails   # 5
-
-# Posterior mean
-posterior_mean = alpha_post / (alpha_post + beta_post)
-print("Posterior mean: {:.3f}".format(posterior_mean))   # 0.643
-print("MLE estimate:   {:.3f}".format(n_heads / (n_heads + n_tails)))  # 0.700
-
-# The prior shrinks us toward 0.5
-p_vals = np.linspace(0, 1, 200)
-prior     = beta_dist.pdf(p_vals, alpha_prior, beta_prior)
-posterior = beta_dist.pdf(p_vals, alpha_post, beta_post)
-```
+<WikiLink slug="beta-bernoulli-posterior" title="Beta-Bernoulli Conjugate Posterior" />
 
 ## MAP estimation
 
@@ -226,6 +150,22 @@ $$
 $$
 
 The MAP estimate sits between the prior mode ($0.5$) and the MLE ($0.7$), pulled toward the prior. Note all three summaries differ: $\hat{p}_\text{MLE} = 0.700$, the posterior **mode** (MAP) $= 0.667$, and the posterior **mean** $= 0.643$. As $n \to \infty$, the $-1$ and $-2$ corrections become negligible and $\hat{p}_\text{MAP} \to \hat{p}_\text{MLE}$ — the data overwhelms the prior.
+
+```python
+alpha_prior, beta_prior = 2, 2
+k, n = 7, 10
+
+alpha_post = alpha_prior + k          # 9
+beta_post  = beta_prior  + (n - k)    # 5
+
+mle = k / n
+map_est  = (alpha_post - 1) / (alpha_post + beta_post - 2)
+mean_est = alpha_post / (alpha_post + beta_post)
+
+print(f"MLE:         {mle:.3f}")   # 0.700
+print(f"MAP (mode):  {map_est:.3f}")   # 0.667
+print(f"Posterior mean: {mean_est:.3f}")   # 0.643
+```
 
 ## Bayesian vs frequentist
 

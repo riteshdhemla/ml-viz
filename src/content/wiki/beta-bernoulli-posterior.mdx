@@ -1,0 +1,172 @@
+---
+title: "Beta-Bernoulli Conjugate Posterior"
+description: "Five-step derivation showing how Beta×Bernoulli produces another Beta — with exponent collection, posterior recognition, and a numeric update from Beta(2,2) with 7 heads in 10 flips."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/04-bayesian-inference"
+estimatedMinutes: 10
+---
+
+# Beta-Bernoulli Conjugate Posterior
+
+The Beta-Bernoulli model is the cleanest example of conjugacy: multiplying a Bernoulli likelihood by a Beta prior produces a Beta posterior. No integration is required — the update reduces to adding counts to the prior's parameters.
+
+## Setup
+
+**Model:** each flip $x_i \in \{0,1\}$ is drawn from $\text{Bernoulli}(p)$, where the bias $p \in [0,1]$ is unknown.
+
+**Prior:** $p \sim \text{Beta}(\alpha, \beta)$, whose density is:
+
+$$
+p(p) = \frac{1}{B(\alpha,\beta)}\,p^{\alpha-1}(1-p)^{\beta-1}
+$$
+
+where $B(\alpha,\beta) = \Gamma(\alpha)\Gamma(\beta)/\Gamma(\alpha+\beta)$ is the Beta function — a constant that does not depend on $p$.
+
+## 5-step derivation
+
+**Step 1 — write the likelihood.** For $n$ independent flips with $k$ heads and $n-k$ tails:
+
+$$
+p(\mathcal{D}\mid p) = \prod_{i=1}^n p^{x_i}(1-p)^{1-x_i} = p^k(1-p)^{n-k}
+$$
+
+**Step 2 — write the prior.**
+
+$$
+p(p) \;\propto\; p^{\alpha-1}(1-p)^{\beta-1}
+$$
+
+(Dropping the normalizing constant $1/B(\alpha,\beta)$ since it does not contain $p$.)
+
+**Step 3 — multiply (unnormalized Bayes).**
+
+$$
+p(p\mid\mathcal{D}) \;\propto\; \underbrace{p^k(1-p)^{n-k}}_{\text{likelihood}} \cdot \underbrace{p^{\alpha-1}(1-p)^{\beta-1}}_{\text{prior}}
+$$
+
+**Step 4 — collect exponents.** Add the powers of $p$ and of $(1-p)$ separately:
+
+$$
+p(p\mid\mathcal{D}) \;\propto\; p^{(\alpha+k)-1}\,(1-p)^{(\beta+n-k)-1}
+$$
+
+**Step 5 — recognize the shape.** This is exactly the kernel of a $\text{Beta}(\alpha+k,\;\beta+n-k)$ density. Since a probability distribution is uniquely determined by its kernel, the normalizing constant must be $B(\alpha+k,\;\beta+n-k)$, and therefore:
+
+$$
+\boxed{\;p\mid\mathcal{D}\;\sim\;\text{Beta}(\alpha+k,\;\beta+n-k)\;}
+$$
+
+No integration was required — conjugacy did the work. Writing $n_1 = k$ (heads) and $n_0 = n-k$ (tails) gives the memorable update rule:
+
+$$
+\text{Beta}(\alpha,\,\beta) \;\xrightarrow{\;+n_1\text{ heads},\;+n_0\text{ tails}}\; \text{Beta}(\alpha+n_1,\;\beta+n_0)
+$$
+
+<Callout type="tip" title="α and β as pseudo-counts">
+  The prior parameters $\alpha$ and $\beta$ act like **imaginary data**: $\alpha-1$ prior heads and $\beta-1$ prior tails (using the mode formula). A $\text{Beta}(1,1)$ prior (uniform) starts with zero pseudo-evidence and lets the data speak entirely. A $\text{Beta}(10,10)$ prior encodes strong belief that $p\approx0.5$ and resists updating until many flips arrive.
+</Callout>
+
+## Numeric instance
+
+**Prior:** $\text{Beta}(2,2)$ — a mild "probably fair coin" belief, peaked at $p=0.5$.
+
+**Observation:** $k=7$ heads, $n-k=3$ tails in $n=10$ flips.
+
+**Posterior update:**
+
+$$
+\alpha_\text{post} = 2 + 7 = 9, \qquad \beta_\text{post} = 2 + 3 = 5
+$$
+
+$$
+p\mid\mathcal{D} \;\sim\; \text{Beta}(9,5)
+$$
+
+**Three summaries of the posterior:**
+
+| Summary | Formula | Value |
+|---------|---------|-------|
+| Mode (MAP estimate) | $(\alpha-1)/(\alpha+\beta-2)$ | $(9-1)/(9+5-2) = 8/12 \approx 0.667$ |
+| Mean (posterior mean) | $\alpha/(\alpha+\beta)$ | $9/14 \approx 0.643$ |
+| MLE (no prior) | $k/n$ | $7/10 = 0.700$ |
+
+The prior pulls the estimate away from the MLE toward $0.5$. As $n\to\infty$ the $+2$ corrections become negligible and all three converge to the MLE.
+
+```python
+import numpy as np
+from scipy.stats import beta as beta_dist
+import matplotlib.pyplot as plt
+
+alpha_prior, beta_prior = 2, 2
+k, n = 7, 10
+n0 = n - k
+
+alpha_post = alpha_prior + k
+beta_post  = beta_prior + n0
+
+print(f"Prior:     Beta({alpha_prior}, {beta_prior})")
+print(f"Posterior: Beta({alpha_post}, {beta_post})")
+print(f"MAP:       {(alpha_post-1)/(alpha_post+beta_post-2):.4f}")
+print(f"Mean:      {alpha_post/(alpha_post+beta_post):.4f}")
+print(f"MLE:       {k/n:.4f}")
+```
+
+## Sequential updating
+
+Because the posterior is a Beta, it becomes the prior for the next observation. After seeing flips one by one, the posterior updates incrementally:
+
+```python
+import numpy as np
+from scipy.stats import beta as beta_dist
+import matplotlib.pyplot as plt
+
+plt.rcParams.update({'figure.facecolor': '#0f1117', 'axes.facecolor': '#1a1d27',
+                     'text.color': '#eee', 'axes.labelcolor': '#ccc'})
+
+flips = [1,1,0,1,1,0,1,0,1,1]  # 7 heads, 3 tails
+alpha, beta_ = 2, 2              # initial prior
+
+p = np.linspace(0, 1, 300)
+fig, axes = plt.subplots(2, 5, figsize=(14, 5))
+axes = axes.ravel()
+
+for i, x in enumerate(flips):
+    alpha += x
+    beta_ += (1 - x)
+    axes[i].fill_between(p, beta_dist.pdf(p, alpha, beta_),
+                         color='#6366f1', alpha=0.7)
+    axes[i].axvline(alpha/(alpha+beta_), color='#ef4444', linestyle='--', lw=1.5)
+    axes[i].set_title(f"After flip {i+1}: Beta({alpha},{beta_})", fontsize=8)
+    axes[i].set_yticks([])
+
+plt.suptitle("Sequential Beta posterior updating", color='#eee')
+plt.tight_layout()
+plt.show()
+```
+
+## The Beta distribution as a model for uncertainty
+
+| Prior $\text{Beta}(\alpha,\beta)$ | Meaning |
+|:---------------------------------:|:-------:|
+| $\text{Beta}(1,1)$ | Uniform — complete ignorance |
+| $\text{Beta}(2,2)$ | Weak belief in fairness |
+| $\text{Beta}(10,10)$ | Strong belief in fairness |
+| $\text{Beta}(0.5,0.5)$ | U-shaped — suspect extreme bias |
+| $\text{Beta}(k+1, n-k+1)$ | Equivalent to $n$ observations with Laplace smoothing |
+
+## Connection to MAP estimation
+
+MAP estimation finds the **mode** of the posterior. For $\text{Beta}(\alpha+k,\,\beta+n-k)$ with $\alpha,\beta > 1$:
+
+$$
+\hat{p}_\text{MAP} = \frac{(\alpha+k) - 1}{(\alpha+k)+(\beta+n-k) - 2} = \frac{\alpha+k-1}{\alpha+\beta+n-2}
+$$
+
+With the uniform prior $\text{Beta}(1,1)$: $\hat{p}_\text{MAP} = k/n = \hat{p}_\text{MLE}$. With an informative prior, MAP pulls the estimate toward the prior mode $(\alpha-1)/(\alpha+\beta-2)$.
+
+## Related concepts
+
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the full lesson: Bayes' theorem, MAP, L2-regularization connection
+- [**MLE for the Gaussian**](/wiki/mle-gaussian) — the frequentist alternative (no prior)
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — Beta, Bernoulli, and the exponential family
