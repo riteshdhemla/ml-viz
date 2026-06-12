@@ -1,0 +1,65 @@
+{
+  "name": "ML Viz",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11",
+      "installTools": true
+    }
+  },
+
+  // Install Python deps for notebook verification after container creation
+  "postCreateCommand": "npm ci && pip install --quiet numpy matplotlib scipy",
+
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": {
+      "label": "Next.js dev server",
+      "onAutoForward": "notify"
+    }
+  },
+
+  "remoteEnv": {
+    "NEXT_PUBLIC_SITE_URL": "http://localhost:3000"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // TypeScript / JavaScript
+        "dbaeumer.vscode-eslint",
+        // Tailwind CSS
+        "bradlc.vscode-tailwindcss",
+        // MDX
+        "unifiedjs.vscode-mdx",
+        // Prettier (formatting)
+        "esbenp.prettier-vscode",
+        // Jupyter notebooks
+        "ms-toolsai.jupyter",
+        // GitLens
+        "eamodio.gitlens"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[typescriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact"],
+        "tailwindCSS.experimental.classRegex": [
+          ["cn\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+          ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
+        ],
+        "files.associations": {
+          "*.mdx": "mdx"
+        }
+      }
+    }
+  }
+}
