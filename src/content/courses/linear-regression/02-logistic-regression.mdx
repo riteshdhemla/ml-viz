@@ -3,7 +3,7 @@ title: "Logistic Regression"
 description: "From regression to classification — the sigmoid, cross-entropy, and decision boundaries."
 order: 2
 type: concept
-estimatedMinutes: 20
+estimatedMinutes: 16
 ---
 
 # Logistic Regression
@@ -202,138 +202,9 @@ print("Cross-entropy loss: {:.3f}".format(cross_entropy(y_true, y_pred)))
 
 ## The gradient: deriving the clean collapse
 
-The headline result is that the gradient of cross-entropy is astonishingly simple:
+The headline result is that the gradient of cross-entropy is $\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})$ — the sigmoid derivative $\hat{y}(1-\hat{y})$ that "should" appear cancels exactly with terms from the cross-entropy derivative, leaving only the prediction error. For the 5-link chain rule derivation, step-by-step algebraic cancellation, and a 2-point numeric gradient step that verifies $\mathbf{w} = [0, 0] \to [0, 0.375]$, see:
 
-$$
-\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
-$$
-
-The factor that "should" appear from $\sigma'$ cancels exactly. Let's see *why*. We work out one example $i$ and one weight $w_j$, then stack the results.
-
-### Step 1 — write the per-example loss
-
-For a single example, with $z_i = \mathbf{w}^T\mathbf{x}_i$ and $\hat{y}_i = \sigma(z_i)$:
-
-$$
-\mathcal{L}_i = -\bigl[\, y_i \log \hat{y}_i + (1 - y_i)\log(1 - \hat{y}_i)\,\bigr]
-$$
-
-### Step 2 — chain rule, in three links
-
-$$
-\frac{\partial \mathcal{L}_i}{\partial w_j}
-= \underbrace{\frac{\partial \mathcal{L}_i}{\partial \hat{y}_i}}_{\text{loss}\to\text{prob}}
-\cdot
-\underbrace{\frac{\partial \hat{y}_i}{\partial z_i}}_{\text{prob}\to\text{score}}
-\cdot
-\underbrace{\frac{\partial z_i}{\partial w_j}}_{\text{score}\to\text{weight}}
-$$
-
-### Step 3 — evaluate each link
-
-**Link 1 — loss with respect to the prediction:**
-
-$$
-\frac{\partial \mathcal{L}_i}{\partial \hat{y}_i}
-= -\left[\frac{y_i}{\hat{y}_i} - \frac{1 - y_i}{1 - \hat{y}_i}\right]
-$$
-
-**Link 2 — the sigmoid derivative we proved earlier:**
-
-$$
-\frac{\partial \hat{y}_i}{\partial z_i} = \sigma'(z_i) = \hat{y}_i\,(1 - \hat{y}_i)
-$$
-
-**Link 3 — the score is linear in the weights:**
-
-$$
-z_i = \sum_k w_k x_{ik} \;\Rightarrow\; \frac{\partial z_i}{\partial w_j} = x_{ij}
-$$
-
-### Step 4 — multiply and watch the cancellation
-
-Multiply Link 1 and Link 2 first:
-
-$$
-\frac{\partial \mathcal{L}_i}{\partial z_i}
-= -\left[\frac{y_i}{\hat{y}_i} - \frac{1 - y_i}{1 - \hat{y}_i}\right]\hat{y}_i(1-\hat{y}_i)
-$$
-
-Distribute $\hat{y}_i(1-\hat{y}_i)$ into the bracket. The first term's $\hat{y}_i$ cancels, the second term's $(1-\hat{y}_i)$ cancels:
-
-$$
-= -\bigl[\, y_i\,(1 - \hat{y}_i) - (1 - y_i)\,\hat{y}_i \,\bigr]
-$$
-
-Expand the bracket:
-
-$$
-= -\bigl[\, y_i - y_i\hat{y}_i - \hat{y}_i + y_i\hat{y}_i \,\bigr] = -\bigl[\, y_i - \hat{y}_i \,\bigr] = \hat{y}_i - y_i
-$$
-
-That is the whole point: $\dfrac{\partial \mathcal{L}_i}{\partial z_i} = \hat{y}_i - y_i$, just the **prediction error**. Now bring in Link 3:
-
-$$
-\frac{\partial \mathcal{L}_i}{\partial w_j} = (\hat{y}_i - y_i)\,x_{ij}
-$$
-
-### Step 5 — average over the dataset and vectorize
-
-Averaging over all $n$ examples:
-
-$$
-\frac{\partial \mathcal{L}}{\partial w_j} = \frac{1}{n}\sum_{i=1}^n (\hat{y}_i - y_i)\,x_{ij}
-$$
-
-Stacking over all features $j$ is exactly a matrix–vector product with the design matrix $X$ (rows are examples, columns are features):
-
-$$
-\boxed{\;\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})\;}
-$$
-
-Identical in form to linear regression's gradient — the only difference is that $\hat{\mathbf{y}} = \sigma(X\mathbf{w})$ instead of $X\mathbf{w}$. Gradient descent then updates:
-
-$$
-\mathbf{w} \leftarrow \mathbf{w} - \eta \cdot \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
-$$
-
-### A tiny worked gradient step
-
-Take two 1-feature examples (with a bias column of 1s, so each row is $[1, x]$):
-
-$$
-X = \begin{bmatrix} 1 & 2 \\ 1 & -1 \end{bmatrix},\quad
-\mathbf{y} = \begin{bmatrix} 1 \\ 0 \end{bmatrix},\quad
-\mathbf{w} = \begin{bmatrix} 0 \\ 0 \end{bmatrix},\quad \eta = 0.5
-$$
-
-**Forward pass.** With $\mathbf{w} = \mathbf{0}$, every score is $z_i = 0$, so $\hat{y}_i = \sigma(0) = 0.5$:
-
-$$
-\hat{\mathbf{y}} = \begin{bmatrix} 0.5 \\ 0.5 \end{bmatrix},\qquad
-\hat{\mathbf{y}} - \mathbf{y} = \begin{bmatrix} 0.5 - 1 \\ 0.5 - 0 \end{bmatrix} = \begin{bmatrix} -0.5 \\ 0.5 \end{bmatrix}
-$$
-
-**Gradient** $\frac{1}{n}X^T(\hat{\mathbf{y}}-\mathbf{y})$ with $n = 2$:
-
-$$
-X^T(\hat{\mathbf{y}} - \mathbf{y}) =
-\begin{bmatrix} 1 & 1 \\ 2 & -1 \end{bmatrix}
-\begin{bmatrix} -0.5 \\ 0.5 \end{bmatrix}
-= \begin{bmatrix} -0.5 + 0.5 \\ -1.0 - 0.5 \end{bmatrix}
-= \begin{bmatrix} 0 \\ -1.5 \end{bmatrix}
-$$
-$$
-\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \tfrac{1}{2}\begin{bmatrix} 0 \\ -1.5 \end{bmatrix} = \begin{bmatrix} 0 \\ -0.75 \end{bmatrix}
-$$
-
-**Update** $\mathbf{w} \leftarrow \mathbf{w} - \eta\,\nabla$:
-
-$$
-\mathbf{w} = \begin{bmatrix} 0 \\ 0 \end{bmatrix} - 0.5\begin{bmatrix} 0 \\ -0.75 \end{bmatrix} = \begin{bmatrix} 0 \\ 0.375 \end{bmatrix}
-$$
-
-The bias stayed at 0 (the two errors cancelled), and the slope moved *positive* — which makes sense: the positive example sits at $x=2$ and the negative at $x=-1$, so a positive slope raises the score for the positive point and lowers it for the negative one.
+<WikiLink slug="logistic-gradient-derivation" title="Logistic Regression: Gradient Derivation" />
 
 ```python
 # Full gradient descent implementation

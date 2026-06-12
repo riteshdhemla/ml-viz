@@ -3,7 +3,7 @@ title: "Maximum Likelihood Estimation"
 description: "How to fit distributions to data — MLE, log-likelihood, and the connection between cross-entropy loss and Gaussian negative log-likelihood."
 order: 3
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 12
 ---
 
 # Maximum Likelihood Estimation
@@ -54,77 +54,9 @@ The recipe for the rest of this lesson is always the same: write $\ell(\theta)$,
 
 ## Worked derivation 1 — Gaussian mean and variance
 
-Model: each $x_i \sim \mathcal{N}(\mu, \sigma^2)$, so the density of a single point is
+The MLE for a Gaussian follows an 8-step recipe: write the log-likelihood, differentiate with respect to $\mu$ (steps 3–5) and with respect to $\sigma^2 = v$ (steps 6–8), set each derivative to zero, and solve. The results are $\hat{\mu} = \bar{x}$ (sample mean) and $\hat{\sigma}^2 = \frac{1}{n}\sum(x_i-\bar{x})^2$ (biased variance with divisor $n$, not $n-1$). For the full algebraic derivation, a numeric verification on $\mathbf{x} = [2,4,4,4,5,5,7,9]$, and an explanation of the bias, see:
 
-$$
-p(x_i \mid \mu, \sigma^2) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp\!\left(-\frac{(x_i - \mu)^2}{2\sigma^2}\right)
-$$
-
-**Step 1 — log a single term.** The $\ln$ cancels the $\exp$:
-
-$$
-\ln p(x_i \mid \mu, \sigma^2) = -\tfrac{1}{2}\ln(2\pi\sigma^2) - \frac{(x_i - \mu)^2}{2\sigma^2}
-$$
-
-**Step 2 — sum over all $n$ points** to get the full log-likelihood:
-
-$$
-\ell(\mu, \sigma^2) = -\frac{n}{2}\ln(2\pi\sigma^2) - \frac{1}{2\sigma^2}\sum_{i=1}^n (x_i - \mu)^2
-$$
-
-### Solving for the mean μ
-
-**Step 3 — differentiate with respect to $\mu$.** The first term has no $\mu$, so only the sum survives. Using the chain rule on $(x_i - \mu)^2$, whose derivative w.r.t. $\mu$ is $-2(x_i-\mu)$:
-
-$$
-\frac{\partial \ell}{\partial \mu} = -\frac{1}{2\sigma^2}\sum_{i=1}^n -2(x_i - \mu) = \frac{1}{\sigma^2}\sum_{i=1}^n (x_i - \mu)
-$$
-
-**Step 4 — set it to zero.** Since $\sigma^2 > 0$, the prefactor cannot make it zero, so the sum must vanish:
-
-$$
-\sum_{i=1}^n (x_i - \mu) = 0 \;\;\Longrightarrow\;\; \sum_{i=1}^n x_i - n\mu = 0
-$$
-
-**Step 5 — solve.** Move $n\mu$ across and divide by $n$:
-
-$$
-\boxed{\;\hat{\mu}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i = \bar{x}\;}
-$$
-
-The MLE for the mean is just the **sample average**.
-
-### Solving for the variance σ²
-
-It is cleanest to treat $v = \sigma^2$ as the variable. Rewrite the log-likelihood:
-
-$$
-\ell(\mu, v) = -\frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln v - \frac{1}{2v}\sum_{i=1}^n (x_i - \mu)^2
-$$
-
-**Step 6 — differentiate with respect to $v$.** Using $\frac{d}{dv}\ln v = \frac{1}{v}$ and $\frac{d}{dv}\,\frac{1}{v} = -\frac{1}{v^2}$:
-
-$$
-\frac{\partial \ell}{\partial v} = -\frac{n}{2v} + \frac{1}{2v^2}\sum_{i=1}^n (x_i - \mu)^2
-$$
-
-**Step 7 — set it to zero and multiply through by $2v^2$:**
-
-$$
--n v + \sum_{i=1}^n (x_i - \mu)^2 = 0
-$$
-
-**Step 8 — solve** for $v$, plugging in $\mu = \hat\mu = \bar x$:
-
-$$
-\boxed{\;\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\;}
-$$
-
-<Callout type="info" title="Why this estimate is biased">
-  Notice the divisor is $n$, not $n-1$. Because we reused the *estimated* mean $\bar x$ (which is itself fit to the data) the squared deviations come out slightly too small, so $\hat\sigma^2_\text{MLE}$ underestimates the true variance on average. The unbiased estimator uses $n-1$. MLE is consistent — the bias vanishes as $n \to \infty$ — but it is not unbiased in finite samples.
-</Callout>
-
-**Insight:** maximizing the Gaussian log-likelihood over $\mu$ is the same as *minimizing* $\sum (x_i - \mu)^2$. So **fitting a model by minimizing squared error (MSE) is exactly MLE under the assumption that the noise is Gaussian.**
+<WikiLink slug="mle-gaussian" title="MLE for the Gaussian" />
 
 ## Worked derivation 2 — Bernoulli p
 

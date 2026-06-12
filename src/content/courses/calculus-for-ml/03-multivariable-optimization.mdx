@@ -3,7 +3,7 @@ title: "Multivariable Optimization"
 description: "Finding minima in high-dimensional landscapes — critical points, convexity, the Hessian, and why most ML losses are non-convex."
 order: 3
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 12
 ---
 
 # Multivariable Optimization
@@ -152,48 +152,9 @@ Each eigendirection contributes $\tfrac{1}{2}\lambda_i$ times the squared distan
 
 ### Newton's method: one step, derived
 
-Newton's method minimizes the quadratic Taylor model exactly in one step. Treat the right-hand side as a function of $\mathbf{s}$ and minimize it. Take the gradient with respect to $\mathbf{s}$ and set it to zero:
+Newton's method minimizes the quadratic Taylor model exactly in one step: taking $\nabla_{\mathbf{s}}[\nabla f^T\mathbf{s} + \tfrac{1}{2}\mathbf{s}^T\mathbf{H}\mathbf{s}] = 0$ gives $\mathbf{s} = -\mathbf{H}^{-1}\nabla f$, so the update is $\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1}\nabla f(\mathbf{x})$. For our $f$ starting at $(0,0)$, this reaches the minimum $(2,-1)$ in exactly one step — compared to dozens of gradient-descent iterations. For the full derivation, the $2\times 2$ inversion ($\det\mathbf{H}=3$), step-by-step numeric verification, and a comparison of Newton vs. GD convergence rates, see:
 
-$$
-\nabla_{\mathbf{s}}\Big[\nabla f(\mathbf{x}_0)^\top \mathbf{s} + \tfrac{1}{2}\mathbf{s}^\top \mathbf{H}\,\mathbf{s}\Big]
-= \nabla f(\mathbf{x}_0) + \mathbf{H}\,\mathbf{s} = \mathbf{0}.
-$$
-
-Solve for the step $\mathbf{s}$:
-
-$$
-\mathbf{H}\,\mathbf{s} = -\nabla f(\mathbf{x}_0)
-\;\Longrightarrow\;
-\mathbf{s} = -\,\mathbf{H}^{-1}\nabla f(\mathbf{x}_0).
-$$
-
-This gives the update
-
-$$
-\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1} \nabla f(\mathbf{x}).
-$$
-
-**Worked single step.** Start at $\mathbf{x}_0 = (0, 0)$ on our $f$. There $\nabla f(0,0) = \begin{bmatrix} 2(0)+0-3 \\ 0+0 \end{bmatrix} = \begin{bmatrix} -3 \\ 0 \end{bmatrix}$.
-
-Invert the (constant) Hessian. For a $2\times2$ matrix, $\mathbf{H}^{-1} = \dfrac{1}{\det \mathbf{H}}\begin{bmatrix} d & -b \\ -c & a \end{bmatrix}$ with $\det \mathbf{H} = 2\cdot2 - 1\cdot1 = 3$:
-
-$$
-\mathbf{H}^{-1} = \frac{1}{3}\begin{bmatrix} 2 & -1 \\ -1 & 2 \end{bmatrix}.
-$$
-
-The Newton step is
-
-$$
-\mathbf{x} = \mathbf{x}_0 - \mathbf{H}^{-1}\nabla f
-= \begin{bmatrix} 0 \\ 0 \end{bmatrix}
-- \frac{1}{3}\begin{bmatrix} 2 & -1 \\ -1 & 2 \end{bmatrix}\begin{bmatrix} -3 \\ 0 \end{bmatrix}
-= -\frac{1}{3}\begin{bmatrix} -6 \\ 3 \end{bmatrix}
-= \begin{bmatrix} 2 \\ -1 \end{bmatrix}.
-$$
-
-Newton's method lands **exactly** on the minimum $(2, -1)$ in a single step. This is the headline property: for a quadratic, Newton is exact because the quadratic Taylor model *is* the function. A plain gradient step $\mathbf{x}_0 - \eta\,\nabla f = (0,0) - \eta(-3,0) = (3\eta, 0)$ only crawls along the $x$-axis and would need many iterations to arrive.
-
-The catch: computing and inverting $\mathbf{H}$ for millions of parameters is infeasible ($O(n^3)$ per step, $O(n^2)$ storage). Adam and other adaptive methods approximate only the *diagonal* of $\mathbf{H}^{-1}$.
+<WikiLink slug="newtons-method" title="Newton's Method for Optimization" />
 
 <GradientFieldViz />
 

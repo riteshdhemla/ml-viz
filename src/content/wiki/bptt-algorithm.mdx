@@ -1,0 +1,174 @@
+---
+title: "Backpropagation Through Time (BPTT)"
+description: "The chain rule unrolled over time — how RNN gradients accumulate across steps and how one step's Jacobian is derived."
+topics: ["sequence-models"]
+relatedLessons:
+  - "rnns/02-bptt-and-vanishing-gradient"
+estimatedMinutes: 12
+---
+
+# Backpropagation Through Time (BPTT)
+
+BPTT is ordinary backpropagation applied to an unrolled RNN. The key challenge: the gradient of a loss at step $T$ with respect to a hidden state at step $k$ requires a **product of $T-k$ Jacobians** — one per intermediate step.
+
+## The chain through time
+
+To update weights using the loss at step $T$, we need $\partial \mathcal{L}_T / \partial \mathbf{h}_k$ for all earlier states $k < T$. The only path from $\mathbf{h}_k$ to $\mathcal{L}_T$ runs forward through every hidden state in between. The chain rule threads through $\mathbf{h}_{k+1}, \ldots, \mathbf{h}_T$:
+
+$$
+\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k}
+= \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}\,
+\frac{\partial \mathbf{h}_T}{\partial \mathbf{h}_{T-1}}\cdots
+\frac{\partial \mathbf{h}_{k+1}}{\partial \mathbf{h}_k}
+= \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}
+\prod_{t=k+1}^{T} \frac{\partial \mathbf{h}_t}{\partial \mathbf{h}_{t-1}}
+$$
+
+The gradient over a gap of $T-k$ steps is a product of $T-k$ Jacobian matrices. Everything hinges on what one of those Jacobians looks like.
+
+## Deriving one step's Jacobian
+
+The recurrence is $\mathbf{h}_t = \tanh(\mathbf{a}_t)$, where the **pre-activation** is:
+
+$$
+\mathbf{a}_t = W_{hh}\mathbf{h}_{t-1} + W_{xh}\mathbf{x}_t + \mathbf{b}
+$$
+
+Differentiate component-by-component. For output unit $i$ and input unit $j$:
+
+$$
+\frac{\partial h_{t,i}}{\partial h_{t-1,j}}
+= \underbrace{\tanh'(a_{t,i})}_{\text{outer: activation}}
+\cdot\underbrace{\frac{\partial a_{t,i}}{\partial h_{t-1,j}}}_{= (W_{hh})_{ij}}
+= \tanh'(a_{t,i})\,(W_{hh})_{ij}
+$$
+
+The $\tanh'(a_{t,i})$ factor depends only on row $i$, so collecting all $i, j$ entries into a matrix puts those factors on a diagonal:
+
+$$
+\boxed{\;\frac{\partial \mathbf{h}_t}{\partial \mathbf{h}_{t-1}}
+= \mathrm{diag}\!\big(\tanh'(\mathbf{a}_t)\big)\,W_{hh}\;}
+$$
+
+In backprop the gradient propagates backward using the transpose:
+
+$$
+\mathbf{d}\mathbf{h}_{t-1} = W_{hh}^{\top}\,\mathrm{diag}(\tanh'(\mathbf{a}_t))\,\mathbf{d}\mathbf{h}_t
+$$
+
+**Each step back multiplies by one copy of $W_{hh}$ and one diagonal of $\tanh'$ values.**
+
+## Full product over a gap
+
+Substituting the Jacobian into the product, the gap-$(T-k)$ gradient is:
+
+$$
+\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k}
+= \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}
+\prod_{t=k+1}^{T} \mathrm{diag}\!\big(\tanh'(\mathbf{a}_t)\big)\,W_{hh}
+$$
+
+This product is the source of both vanishing and exploding gradients. See the companion page for the spectral-norm analysis:
+
+<WikiLink slug="vanishing-gradient-analysis" title="Vanishing & Exploding Gradients: Spectral Analysis" />
+
+## Worked example: a 1-D RNN, three steps
+
+Scalar RNN with $W_{hh} = 0.8$, $W_{xh} = 0.5$, sequence $\mathbf{x} = [1, 0, 1]$, $h_0 = 0$.
+
+**Step 1 — forward pass.** Compute pre-activations, hidden states, and $\tanh'$:
+
+| $t$ | $a_t = 0.8\,h_{t-1} + 0.5\,x_t$ | $h_t = \tanh(a_t)$ | $\tanh'(a_t) = 1 - h_t^2$ |
+|:---:|:--------------------------------:|:-------------------:|:-------------------------:|
+| 1 | $0.8(0) + 0.5(1) = 0.500$ | $0.462$ | $0.787$ |
+| 2 | $0.8(0.462) + 0.5(0) = 0.370$ | $0.354$ | $0.875$ |
+| 3 | $0.8(0.354) + 0.5(1) = 0.783$ | $0.655$ | $0.571$ |
+
+**Step 2 — BPTT from $T=3$ back to $k=1$.** Starting from $\partial \mathcal{L}_3 / \partial h_3 = 1$:
+
+$$
+\frac{\partial h_3}{\partial h_2} = \tanh'(a_3) \cdot W_{hh} = 0.571 \times 0.8 = 0.457
+$$
+
+$$
+\frac{\partial h_2}{\partial h_1} = \tanh'(a_2) \cdot W_{hh} = 0.875 \times 0.8 = 0.700
+$$
+
+$$
+\frac{\partial \mathcal{L}_3}{\partial h_1} = 1 \times 0.457 \times 0.700 = \mathbf{0.320}
+$$
+
+After just 2 steps backward, the gradient is already at 32% of the upstream signal. With $W_{hh} < 1$ and $\tanh' \le 1$, it continues shrinking each step further back.
+
+```python
+import numpy as np
+
+W_hh, W_xh = 0.8, 0.5
+x_seq = [1, 0, 1]
+h = [0.0]
+a_vals = []
+
+for x_t in x_seq:
+    a_t = W_hh * h[-1] + W_xh * x_t
+    a_vals.append(a_t)
+    h.append(float(np.tanh(a_t)))
+
+tanh_prime = [1 - np.tanh(a)**2 for a in a_vals]
+print("h:", [round(v, 3) for v in h])
+print("tanh':", [round(v, 3) for v in tanh_prime])
+
+# BPTT from step 3 back to step 1 (0-indexed: steps 2 and 1)
+grad = 1.0
+for t in reversed(range(1, 3)):   # t = 2, then 1
+    step_grad = tanh_prime[t] * W_hh
+    grad *= step_grad
+    print(f"After back through t={t+1}: per-step={step_grad:.3f}, cumulative grad={grad:.4f}")
+# Output:
+# After back through t=3: per-step=0.457, cumulative grad=0.4571
+# After back through t=2: per-step=0.700, cumulative grad=0.3200
+```
+
+## Why weight-sharing accumulates gradients
+
+Because $W_{hh}$ is reused at every step, its gradient is the **sum of contributions from all steps**:
+
+$$
+\frac{\partial \mathcal{L}}{\partial W_{hh}} = \sum_{t=1}^{T} \frac{\partial \mathcal{L}_t}{\partial W_{hh}}
+$$
+
+Each term $\partial \mathcal{L}_t / \partial W_{hh}$ itself requires back-propagating through all earlier steps to reach $W_{hh}$ — which is exactly the product-of-Jacobians computation above, applied at each $t$.
+
+## PyTorch BPTT
+
+In practice PyTorch handles BPTT automatically through the unrolled computational graph:
+
+```python
+import torch
+import torch.nn as nn
+
+rnn = nn.RNN(input_size=1, hidden_size=4, batch_first=True)
+x = torch.randn(1, 10, 1)  # (batch, seq_len, input)
+h0 = torch.zeros(1, 1, 4)
+
+output, _ = rnn(x, h0)
+loss = output.sum()
+loss.backward()  # BPTT runs automatically
+
+print("W_hh gradient shape:", rnn.weight_hh_l0.grad.shape)  # (4, 4)
+```
+
+For long sequences, detach the hidden state at each chunk boundary to truncate the graph (Truncated BPTT):
+
+```python
+hidden = hidden.detach()  # keep the value, drop the gradient history
+```
+
+<Callout type="tip" title="BPTT = standard backprop on a deep net">
+  Unrolling an RNN over $T$ steps produces a $T$-layer feedforward network with tied weights. BPTT is just backpropagation on that deep net — the only novelty is that the same $W_{hh}$ appears in every layer, so its gradient is accumulated across layers rather than computed once.
+</Callout>
+
+## Related concepts
+
+- [**Vanishing & Exploding Gradients**](/wiki/vanishing-gradient-analysis) — spectral analysis of the Jacobian product
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — gated cells that maintain a near-unit Jacobian over long gaps
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the single-step rule that BPTT extends
