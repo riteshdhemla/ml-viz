@@ -1,0 +1,130 @@
+---
+title: "SVD and the Eckart-Young Theorem"
+description: "Sum-of-rank-1-layers expansion of A=UΣVᵀ, the Eckart-Young best-approximation theorem, Frobenius-norm error bound, and numeric verification with a rank-10 example."
+topics: ["linear-algebra"]
+relatedLessons:
+  - "linear-algebra/04-svd-and-low-rank"
+estimatedMinutes: 10
+---
+
+# SVD and the Eckart–Young Theorem
+
+The singular value decomposition (SVD) factors any matrix into a rotation, a stretch, and another rotation. But its real power is the **Eckart–Young theorem**: discarding the smallest stretches gives the provably best compressed approximation of the original matrix.
+
+## SVD recap
+
+For any $m \times n$ real matrix $A$ of rank $r$:
+
+$$
+A = U \Sigma V^\top
+$$
+
+- $U \in \mathbb{R}^{m \times r}$ — left singular vectors; orthonormal columns; eigenvectors of $AA^\top$
+- $\Sigma = \text{diag}(\sigma_1, \ldots, \sigma_r)$ — singular values, $\sigma_1 \ge \sigma_2 \ge \cdots \ge \sigma_r > 0$
+- $V \in \mathbb{R}^{n \times r}$ — right singular vectors; orthonormal columns; eigenvectors of $A^\top A$
+
+Each $\sigma_i = \sqrt{\lambda_i(A^\top A)}$. $U$ and $V$ are orthogonal, so $U^\top U = I$ and $V^\top V = I$.
+
+## The sum-of-rank-1-layers view
+
+Expanding $U\Sigma V^\top$ column by column gives a sum of rank-1 outer products:
+
+$$
+A = \sum_{i=1}^{r} \sigma_i \, \mathbf{u}_i \mathbf{v}_i^\top
+$$
+
+Each term $\mathbf{u}_i \mathbf{v}_i^\top$ is a rank-1 matrix — the simplest possible structure ($m$ numbers times $n$ numbers). The singular value $\sigma_i$ says how much of $A$ lives in that layer. Because the $\sigma_i$ are sorted, the first few layers carry most of the information.
+
+## Rank-$k$ truncation
+
+Drop all but the first $k$ layers:
+
+$$
+A_k = \sum_{i=1}^{k} \sigma_i \, \mathbf{u}_i \mathbf{v}_i^\top = U_k \Sigma_k V_k^\top
+$$
+
+where $U_k$, $V_k$ keep only the first $k$ columns and $\Sigma_k = \text{diag}(\sigma_1, \ldots, \sigma_k)$.
+
+**Storage trade-off.** A rank-$k$ approximation of an $m \times n$ matrix stores $k(m + n + 1)$ numbers instead of $mn$. For a 512×512 image with $k = 50$: $50 \times 1025 = 51\,250$ vs $512^2 = 262\,144$ — about $5\times$ compression.
+
+## The Eckart–Young theorem
+
+**Theorem.** Among all rank-$k$ matrices $B$, the truncated SVD $A_k$ minimizes the Frobenius norm of the approximation error:
+
+$$
+A_k = \underset{\operatorname{rank}(B) \le k}{\arg\min}\, \lVert A - B \rVert_F
+$$
+
+and the minimum error is exactly the discarded tail:
+
+$$
+\lVert A - A_k \rVert_F = \sqrt{\sum_{i=k+1}^{r} \sigma_i^2}
+$$
+
+**Why.** The Frobenius norm satisfies $\lVert A \rVert_F^2 = \sum_i \sigma_i^2$ (sum of squared singular values). Among all rank-$k$ matrices, the one closest to $A$ in Frobenius norm must retain the $k$ largest singular values unchanged and zero out the rest. Any other rank-$k$ matrix would keep some smaller $\sigma_i$ while discarding a larger one, increasing the sum of dropped terms. $A_k$ keeps exactly the top-$k$ — it is the unique minimizer.
+
+## Numeric verification
+
+```python
+import numpy as np
+
+rng = np.random.default_rng(0)
+A = rng.normal(size=(60, 40)) @ rng.normal(size=(40, 40))  # full-rank 60x40 matrix
+
+U, s, Vt = np.linalg.svd(A, full_matrices=False)
+
+print(f"{'k':>4}  {'actual error':>14}  {'theory (tail)':>14}  {'match':>6}")
+for k in [1, 5, 10, 20, 30]:
+    A_k = U[:, :k] @ np.diag(s[:k]) @ Vt[:k, :]
+    actual = np.linalg.norm(A - A_k, "fro")
+    theory = np.sqrt((s[k:] ** 2).sum())
+    print(f"{k:>4}  {actual:>14.6f}  {theory:>14.6f}  {np.isclose(actual, theory)!s:>6}")
+```
+
+All rows print `True` — the error formula is exact.
+
+## Applications
+
+| Application | How $A_k$ is used |
+|-------------|------------------|
+| Image compression | Keep top $k$ singular values; store $U_k, \Sigma_k, V_k^\top$ instead of the full pixel matrix |
+| Recommender systems | Approximate a sparse user×item ratings matrix; the layers become latent "taste dimensions" |
+| LoRA fine-tuning | Represent each weight update as $\Delta W = B A$ with low-rank $B, A$; reduces parameters from $mn$ to $k(m+n)$ |
+| Noise filtering | Small $\sigma_i \approx$ noise; truncating denoises — same logic as dropping low-variance PCA components |
+
+## Reading the spectrum
+
+<Callout type="tip" title="The scree plot">
+  Plot the singular values $\sigma_1, \sigma_2, \ldots$ in decreasing order. A steep drop followed by a flat "noise floor" means the matrix is effectively low-rank — the elbow is the true number of underlying factors. A completely flat spectrum means no compression is lossless: the matrix genuinely uses all its dimensions.
+</Callout>
+
+```python
+import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+# Low-rank + noise: elbow is visible
+rng2 = np.random.default_rng(1)
+A_lr = rng2.normal(size=(50, 5)) @ rng2.normal(size=(5, 50))  # true rank 5
+A_lr += 0.5 * rng2.normal(size=(50, 50))                      # noise
+s_lr = np.linalg.svd(A_lr, compute_uv=False)
+axes[0].plot(s_lr, marker='o', ms=4)
+axes[0].set_title("Effectively low-rank: elbow at k=5")
+axes[0].set_xlabel("Index i")
+axes[0].set_ylabel("σᵢ")
+
+# Full-rank: no clear elbow
+s_full = np.linalg.svd(A, compute_uv=False)
+axes[1].plot(s_full, marker='o', ms=4)
+axes[1].set_title("Full-rank: no clear elbow")
+axes[1].set_xlabel("Index i")
+
+plt.tight_layout()
+plt.show()
+```
+
+## Related concepts
+
+- [**SVD & Low-Rank Approximation**](/courses/linear-algebra/04-svd-and-low-rank) — the full lesson with the rotate→stretch→rotate geometric view and PCA connection
+- [**Computing Eigenvalues & Eigenvectors**](/wiki/eigenvalue-computation) — the eigenvector problem that generates $U$ and $V$
+- [**PCA in Practice**](/courses/pca-dimensionality/03-pca-in-practice) — choosing rank $k$ from the scree plot, reconstruction error

@@ -3,7 +3,7 @@ title: "K-Nearest Neighbors"
 description: "The simplest ML algorithm — classify by majority vote of nearby points."
 order: 1
 type: concept
-estimatedMinutes: 18
+estimatedMinutes: 14
 ---
 
 # K-Nearest Neighbors (KNN)
@@ -89,54 +89,9 @@ print(knn_predict(X_train, y_train, np.array([3, 4]), k=3))  # 'Red'
 
 ## Distance metrics
 
-Everything in KNN depends on the word **"close."** How do we measure it?
+Everything in KNN depends on the word **"close."** The Euclidean distance ($\sqrt{\sum_i(x_i-y_i)^2}$) is the default for continuous features. The Manhattan distance ($\sum_i|x_i-y_i|$) works better for high-dimensional sparse data. Both are special cases of the **Minkowski distance** $d_p(\mathbf{x},\mathbf{y}) = (\sum_i|x_i-y_i|^p)^{1/p}$, which also covers Chebyshev ($p\to\infty$) and Hamming for categorical features.
 
-| Metric | Formula | When to use |
-|--------|---------|-------------|
-| Euclidean | $\sqrt{\sum_i (x_i - y_i)^2}$ | Default for continuous features |
-| Manhattan | $\sum_i |x_i - y_i|$ | High-dimensional, sparse, or grid-like data |
-| Minkowski | $\left(\sum_i |x_i - y_i|^p\right)^{1/p}$ | Generalizes both above |
-| Hamming | $\frac{1}{d}\sum_i \mathbf{1}[x_i \neq y_i]$ | Categorical features |
-
-The **Minkowski distance** is the master formula. Plug in $p$ and you recover the others:
-
-$$
-d_p(\mathbf{x}, \mathbf{y}) = \left(\sum_{i=1}^{d} |x_i - y_i|^p\right)^{1/p}
-$$
-
-- $p = 1 \Rightarrow$ **Manhattan** (city-block): walk along the grid, no diagonals.
-- $p = 2 \Rightarrow$ **Euclidean** (straight-line): the ruler distance.
-- $p \to \infty \Rightarrow$ **Chebyshev**: the single largest coordinate gap dominates.
-
-### Worked distance computation
-
-Take two points $\mathbf{x} = (1, 2, 3)$ and $\mathbf{y} = (4, 6, 3)$. The per-coordinate gaps are:
-
-$$
-|x_1 - y_1| = |1-4| = 3, \quad |x_2 - y_2| = |2-6| = 4, \quad |x_3 - y_3| = |3-3| = 0
-$$
-
-Now feed those gaps $(3, 4, 0)$ into each metric:
-
-**Manhattan ($p=1$):** just add the gaps.
-
-$$
-d_1 = 3 + 4 + 0 = 7
-$$
-
-**Euclidean ($p=2$):** square, sum, square-root.
-
-$$
-d_2 = \sqrt{3^2 + 4^2 + 0^2} = \sqrt{9 + 16 + 0} = \sqrt{25} = 5
-$$
-
-**Minkowski with $p=3$:** cube the gaps, sum, take the cube root.
-
-$$
-d_3 = \left(3^3 + 4^3 + 0^3\right)^{1/3} = (27 + 64)^{1/3} = 91^{1/3} \approx 4.50
-$$
-
-Notice the ordering $d_1 \ge d_2 \ge d_3$: **larger $p$ shrinks the distance**, because higher powers increasingly let the single biggest gap (here, 4) dominate while small gaps fade out. As $p \to \infty$ the distance approaches $\max(3,4,0) = 4$ exactly (Chebyshev).
+<WikiLink slug="minkowski-distances" title="Minkowski Distance Family" />
 
 <Callout type="warning" title="Feature scaling is critical">
   KNN uses distances, so features with larger ranges dominate. A feature measured in millimeters (range 0-10000) will completely overwhelm one measured in meters (range 0-10). Always normalize or standardize features before applying KNN.

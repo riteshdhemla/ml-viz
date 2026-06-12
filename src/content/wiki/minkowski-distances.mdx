@@ -1,0 +1,127 @@
+---
+title: "Minkowski Distance Family"
+description: "Euclidean, Manhattan, and Minkowski distances defined and contrasted — with a full worked example computing all metrics for (1,2,3)→(4,6,3), and a table of the p-parameter's geometric effect."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "knn-decision-trees/01-knn"
+estimatedMinutes: 8
+---
+
+# Minkowski Distance Family
+
+Every algorithm that relies on "nearness" — KNN, K-Means, hierarchical clustering, kernel methods — needs a formula for distance. The **Minkowski family** unifies the most common metrics under a single parameter $p$, letting you interpolate between Manhattan and Euclidean and beyond.
+
+## The four standard metrics
+
+| Metric | Formula | Typical use |
+|--------|---------|-------------|
+| Euclidean | $\sqrt{\sum_i (x_i - y_i)^2}$ | Default for continuous features |
+| Manhattan | $\sum_i \lvert x_i - y_i\rvert$ | High-dimensional, sparse, or grid-like data |
+| Minkowski ($p$) | $\left(\sum_i \lvert x_i - y_i\rvert^p\right)^{1/p}$ | Generalizes both; choose $p$ via CV |
+| Chebyshev | $\max_i \lvert x_i - y_i\rvert$ | When the largest gap dominates |
+
+## The master formula
+
+$$
+d_p(\mathbf{x}, \mathbf{y}) = \left(\sum_{i=1}^{d} \lvert x_i - y_i\rvert^p\right)^{1/p}
+$$
+
+Special cases:
+- $p = 1$: **Manhattan** — sum the absolute gaps; like walking a city grid, no diagonals.
+- $p = 2$: **Euclidean** — square the gaps, sum, square-root; the ruler distance.
+- $p \to \infty$: **Chebyshev** — only the single largest coordinate gap survives, since $(\sum a_i^p)^{1/p} \to \max_i a_i$.
+
+## Worked example: $(1, 2, 3)$ to $(4, 6, 3)$
+
+Per-coordinate absolute gaps:
+
+$$
+\lvert x_1 - y_1\rvert = \lvert 1 - 4\rvert = 3, \quad
+\lvert x_2 - y_2\rvert = \lvert 2 - 6\rvert = 4, \quad
+\lvert x_3 - y_3\rvert = \lvert 3 - 3\rvert = 0
+$$
+
+Feed gaps $(3, 4, 0)$ into each formula:
+
+**Manhattan ($p = 1$):** add the gaps.
+
+$$
+d_1 = 3 + 4 + 0 = 7
+$$
+
+**Euclidean ($p = 2$):** square, sum, square-root.
+
+$$
+d_2 = \sqrt{3^2 + 4^2 + 0^2} = \sqrt{9 + 16} = \sqrt{25} = 5
+$$
+
+**Minkowski ($p = 3$):** cube the gaps, sum, take the cube root.
+
+$$
+d_3 = \left(3^3 + 4^3 + 0^3\right)^{1/3} = (27 + 64)^{1/3} = 91^{1/3} \approx 4.50
+$$
+
+**Chebyshev ($p \to \infty$):** the maximum gap wins.
+
+$$
+d_\infty = \max(3, 4, 0) = 4
+$$
+
+**Ordering:** $d_1 = 7 \ge d_2 = 5 \ge d_3 \approx 4.50 \ge d_\infty = 4$. Larger $p$ lets the single biggest gap dominate while smaller gaps fade, so the distance decreases toward $\max(3, 4, 0) = 4$ as $p \to \infty$.
+
+## Effect of $p$ on geometry
+
+The **unit ball** — the set of all points at distance 1 from the origin — changes shape with $p$:
+
+| $p$ | Unit ball shape | KNN neighborhood |
+|-----|----------------|------------------|
+| 1 | Diamond (square rotated 45°) | Axis-aligned diamond; gaps in each coordinate count separately |
+| 2 | Circle / sphere | Isotropic; most natural for continuous data without strong axes |
+| $\infty$ | Square / hypercube | Square neighborhood; dominated by the single largest gap |
+
+As $p$ increases from 1 to $\infty$, the ball transitions from diamond to circle to square. Features with the largest individual gap gain more influence relative to the rest.
+
+<Callout type="warning" title="Feature scaling is critical">
+  All Minkowski metrics treat coordinate magnitudes as meaningful. A feature measured in millimeters (range 0–10 000) completely overwhelms one in meters (range 0–10). Always normalize or standardize before computing distances.
+</Callout>
+
+## Python: computing and comparing all metrics
+
+```python
+import numpy as np
+
+x = np.array([1, 2, 3], dtype=float)
+y = np.array([4, 6, 3], dtype=float)
+gaps = np.abs(x - y)  # [3, 4, 0]
+
+d1   = gaps.sum()                          # Manhattan:   7.0
+d2   = np.sqrt((gaps**2).sum())            # Euclidean:   5.0
+d3   = (gaps**3).sum() ** (1/3)            # Minkowski p=3: ~4.497
+dinf = gaps.max()                          # Chebyshev:   4.0
+
+print(f"Manhattan  (p=1):   {d1:.4f}")
+print(f"Euclidean  (p=2):   {d2:.4f}")
+print(f"Minkowski  (p=3):   {d3:.4f}")
+print(f"Chebyshev  (p→∞):   {dinf:.4f}")
+
+# Verify limit: as p grows, Minkowski → Chebyshev
+for p in [1, 2, 3, 5, 10, 50, 100]:
+    dp = (gaps**p).sum() ** (1/p)
+    print(f"  p={p:3d}: d_p = {dp:.6f}  (Chebyshev = {dinf:.6f})")
+```
+
+## Hamming distance (categorical features)
+
+For features that are categories rather than numbers, Euclidean distance is meaningless. The **Hamming distance** counts the fraction of positions where the two vectors disagree:
+
+$$
+d_H(\mathbf{x}, \mathbf{y}) = \frac{1}{d}\sum_{i=1}^d \mathbf{1}[x_i \neq y_i]
+$$
+
+A Hamming distance of 0 means the vectors are identical; a distance of 1 means they differ in every coordinate.
+
+## Related concepts
+
+- [**K-Nearest Neighbors**](/courses/knn-decision-trees/01-knn) — the full lesson that uses these metrics and discusses when to choose each
+- [**K-Means: Full Algorithm**](/wiki/kmeans-algorithm) — another distance-based algorithm (always Euclidean)
+- [**Hierarchical Clustering Linkage Methods**](/wiki/hierarchical-clustering) — single/complete/average linkage all build on pairwise distances
