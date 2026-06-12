@@ -112,13 +112,41 @@ print("log P:", round(logprob, 3))
 
 ## Problem 3 — Baum–Welch (learning)
 
-When you have observation sequences but *no* hidden labels, **Baum–Welch** — an instance of the EM algorithm — estimates $\pi, A, B$:
+When you have observation sequences but *no* hidden labels, **Baum–Welch** — an instance of the EM algorithm — estimates $\pi, A, B$.
 
-- **E-step:** run forward *and* backward passes to get the expected number of times each state and transition was used (the "responsibilities").
-- **M-step:** re-estimate $\pi, A, B$ as normalized expected counts.
-- Repeat until the likelihood converges (to a local optimum).
+### E-step: backward pass + responsibilities
 
-This is the same E-step/M-step loop you saw for Gaussian Mixture Models — HMMs are essentially "GMMs with a Markov chain tying the components across time."
+Run the **backward pass** alongside the forward pass. Define $\beta_t(i) = P(x_{t+1}, \ldots, x_T \mid z_t = i)$:
+
+$$
+\beta_T(i) = 1 \quad \text{(base case)}
+$$
+
+$$
+\beta_t(i) = \sum_{j=1}^N A_{ij}\, b_j(x_{t+1})\, \beta_{t+1}(j)
+$$
+
+Combine with the forward variable $\alpha_t(i)$ to get the **state occupancy** $\gamma_t(i) = P(z_t = i \mid \mathbf{x})$:
+
+$$
+\gamma_t(i) = \frac{\alpha_t(i)\,\beta_t(i)}{\sum_{k=1}^N \alpha_t(k)\,\beta_t(k)}
+$$
+
+And the **transition count** $\xi_t(i,j) = P(z_t=i,\, z_{t+1}=j \mid \mathbf{x})$:
+
+$$
+\xi_t(i,j) = \frac{\alpha_t(i)\, A_{ij}\, b_j(x_{t+1})\, \beta_{t+1}(j)}{\sum_{k,l} \alpha_t(k)\, A_{kl}\, b_l(x_{t+1})\, \beta_{t+1}(l)}
+$$
+
+### M-step: re-estimate parameters
+
+$$
+\hat{\pi}_i = \gamma_1(i), \qquad
+\hat{A}_{ij} = \frac{\displaystyle\sum_{t=1}^{T-1} \xi_t(i,j)}{\displaystyle\sum_{t=1}^{T-1} \gamma_t(i)}, \qquad
+\hat{b}_j(k) = \frac{\displaystyle\sum_{t:\, x_t = k} \gamma_t(j)}{\displaystyle\sum_{t=1}^T \gamma_t(j)}
+$$
+
+Repeat E-step → M-step until log-likelihood converges (to a local optimum). This is the same E-step/M-step loop as Gaussian Mixture Models — HMMs are essentially "GMMs with a Markov chain tying the components across time."
 
 ## HMM as a graphical model
 
