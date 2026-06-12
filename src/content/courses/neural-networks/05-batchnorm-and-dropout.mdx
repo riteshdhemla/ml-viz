@@ -93,7 +93,15 @@ The division by $(1-p)$ is **inverted dropout** — it keeps the expected activa
 
 ### The ensemble interpretation
 
-Dropout is equivalent to training an **ensemble of** $2^N$ **different networks** (where $N$ is the number of dropped neurons) with shared weights. Each forward pass samples a different "thinned network" from this exponentially large ensemble. At test time, using all neurons approximates averaging the predictions of all possible thinned networks.
+Dropout is equivalent to training an **ensemble of** $2^N$ **different networks** (where $N$ is the number of dropped neurons) with shared weights. Each forward pass samples a different "thinned network" from this exponentially large ensemble.
+
+**Why does test-time averaging approximate the ensemble mean?** Consider one neuron with weight $w$ and input $x$. During training with dropout rate $p$, inverted dropout scales active neurons by $1/(1-p)$:
+- With probability $(1-p)$: contribution = $\frac{w}{1-p} \cdot x$
+- With probability $p$: dropped, contribution = $0$
+
+Expected contribution = $(1-p) \cdot \frac{wx}{1-p} = wx$.
+
+At test time all neurons are active and unchanged (no scaling needed) — each contributes $wx$. The test-time output therefore equals the expected training-time output, which is the expectation over all $2^N$ ensemble members.
 
 Ensembles reduce variance — different ensemble members make different errors, and averaging them out reduces overfitting. Dropout achieves this benefit implicitly, at nearly zero additional cost.
 

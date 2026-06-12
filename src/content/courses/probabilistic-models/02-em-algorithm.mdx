@@ -131,6 +131,22 @@ Data $X=\{1,2,4,5\}$, $K=2$, init $\mu=(2,4)$, $\sigma=(1.5,1.5)$, $\pi=(0.5,0.5
 
 **E-step** — responsibilities $\gamma_{i1}=\dfrac{\pi_1\mathcal N(x_i\mid 2,1.5)}{\pi_1\mathcal N(x_i\mid 2,1.5)+\pi_2\mathcal N(x_i\mid 4,1.5)}$:
 
+**Row-by-row check for $x=1$:**
+
+$$
+\mathcal{N}(1 \mid \mu=2, \sigma=1.5) = \frac{1}{1.5\sqrt{2\pi}}\exp\!\left(-\frac{(1-2)^2}{2\times1.5^2}\right) = 0.2660\times e^{-0.222} = 0.2130
+$$
+
+$$
+\mathcal{N}(1 \mid \mu=4, \sigma=1.5) = 0.2660\times e^{-2.0} = 0.0360
+$$
+
+$$
+\gamma_{11} = \frac{0.5\times 0.2130}{0.5\times 0.2130 + 0.5\times 0.0360} = \frac{0.1065}{0.1245} = 0.855 \checkmark
+$$
+
+The same formula applied to all four points gives:
+
 | $x_i$ | $\gamma_{i1}$ | $\gamma_{i2}$ |
 |-------|---------------|---------------|
 | 1 | 0.855 | 0.145 |
