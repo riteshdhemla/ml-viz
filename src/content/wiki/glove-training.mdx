@@ -1,0 +1,67 @@
+---
+title: "GloVe Training Procedure"
+description: "How GloVe learns word vectors from global co-occurrence statistics — matrix construction, weighting function, and the least-squares objective."
+topics: ["nlp"]
+relatedLessons:
+  - "nlp/02-word-embeddings"
+estimatedMinutes: 10
+---
+
+# GloVe Training Procedure
+
+[Word2Vec](/courses/nlp/02-word-embeddings) uses **local context windows**. GloVe (Pennington et al., 2014) instead trains on **global co-occurrence statistics**: it factorizes a corpus-wide count matrix rather than streaming over windows.
+
+## The key insight: ratios carry meaning
+
+The ratio $P(k \mid \text{ice})\, /\, P(k \mid \text{steam})$ is informative about word relationships:
+
+| Probe word $k$ | $P(k \mid \text{ice})$ | $P(k \mid \text{steam})$ | Ratio |
+|---|---|---|---|
+| solid | high | low | **large** |
+| gas | low | high | **small** |
+| water | high | high | ≈ 1 |
+| fashion | low | low | ≈ 1 |
+
+GloVe is designed so that *differences of word vectors* capture these ratios — which is exactly what makes analogies ("king − man + woman ≈ queen") work.
+
+## Training procedure
+
+1. **Build the co-occurrence matrix** $X \in \mathbb{R}^{V \times V}$ over the corpus: $X_{ij}$ counts how often word $j$ appears within a context window of word $i$ (typical window size: 10 words, symmetric). One pass over the corpus; the matrix is sparse.
+
+2. **Downweight frequent pairs** with a capping function:
+
+$$
+f(X_{ij}) = \min\!\left(1,\; (X_{ij}/x_\text{max})^{0.75}\right)
+$$
+
+   (common choice: $x_\text{max} = 100$). This stops extremely common pairs ("the" co-occurring with everything) from dominating the loss, while ignoring pairs that never co-occur ($f(0) = 0$ — those terms vanish entirely).
+
+3. **Learn two embedding matrices** $\mathbf{V}$ (main) and $\tilde{\mathbf{V}}$ (context) plus bias vectors by minimizing the weighted least-squares objective:
+
+$$
+\mathcal{L} = \sum_{i,j=1}^V f(X_{ij})\left(\mathbf{v}_i^\top \tilde{\mathbf{v}}_j + b_i + \tilde{b}_j - \log X_{ij}\right)^2
+$$
+
+   Each term pushes the dot product of two word vectors toward the **log co-occurrence count** — frequent companions get aligned vectors.
+
+4. **Final embedding** = $\mathbf{v}_i + \tilde{\mathbf{v}}_i$ (sum of both matrices for each word). The two matrices are symmetric in the objective, and summing them gives a small but consistent quality boost.
+
+<Callout type="tip" title="Why log counts?">
+  Co-occurrence counts span many orders of magnitude (Zipf's law). Taking the log compresses this range so the least-squares objective isn't dominated by the handful of extremely frequent pairs — and it makes vector *differences* correspond to count *ratios*: $\mathbf{v}_a^\top\tilde{\mathbf{v}}_k - \mathbf{v}_b^\top\tilde{\mathbf{v}}_k \approx \log\frac{X_{ak}}{X_{bk}}$.
+</Callout>
+
+## GloVe vs Word2Vec
+
+| Property | Word2Vec | GloVe |
+|----------|----------|-------|
+| Training objective | Local context window | Global co-occurrence matrix |
+| Computation | Sequential (online SGD) | Can be parallelized |
+| Performance | Similar | Similar |
+| Transfer | Good | Good |
+
+In practice the two produce embeddings of comparable quality; GloVe's batch formulation parallelizes more naturally, while Word2Vec streams over arbitrarily large corpora without materializing a matrix.
+
+## Related concepts
+
+- [**Word Embeddings**](/courses/nlp/02-word-embeddings) — Word2Vec, FastText, and the embedding landscape
+- [**Text Preprocessing**](/courses/nlp/01-text-preprocessing) — tokenization that feeds the co-occurrence counts

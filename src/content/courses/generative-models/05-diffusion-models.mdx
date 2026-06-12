@@ -3,7 +3,7 @@ title: "Diffusion Models"
 description: "State-of-the-art generation by learning to reverse a gradual noising process."
 order: 5
 type: concept
-estimatedMinutes: 24
+estimatedMinutes: 22
 ---
 
 # Diffusion Models
@@ -149,22 +149,9 @@ The noise schedule $\beta_t$ controls how fast noise is added:
 
 ## Accelerated sampling: DDIM
 
-Standard DDPM requires $T=1000$ steps. **DDIM** (Denoising Diffusion Implicit Models) reformulates the process as a deterministic ODE, enabling step-skipping.
+Standard DDPM requires $T=1000$ steps — one network call per noise level. **DDIM** (Denoising Diffusion Implicit Models) reformulates the reverse process as a *deterministic* ODE, which makes step-skipping valid: visit only ~50 of the 1000 timesteps (estimate the clean image, re-noise it to the next visited level, repeat) and still land on a high-quality sample. Because the trajectory is deterministic, the same starting noise always produces the same image — enabling smooth latent-space interpolation. Same trained model, ~20× faster sampling.
 
-**DDIM sampling procedure:**
-
-1. Choose a subsequence $\tau = [\tau_1 > \tau_2 > \cdots > \tau_S]$ of timesteps to visit (e.g. every 20th step for $S=50$).
-2. Start from $\mathbf{x}_{\tau_1} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$.
-3. At each step $s$ (going from $\tau_s$ down to $\tau_{s+1}$):
-   - Run the network to predict noise: $\hat{\boldsymbol{\epsilon}} = \boldsymbol{\epsilon}_\theta(\mathbf{x}_{\tau_s}, \tau_s)$.
-   - Estimate the clean image: $\hat{\mathbf{x}}_0 = \dfrac{\mathbf{x}_{\tau_s} - \sqrt{1-\bar{\alpha}_{\tau_s}}\,\hat{\boldsymbol{\epsilon}}}{\sqrt{\bar{\alpha}_{\tau_s}}}$.
-   - Step to the next timestep:
-$$
-\mathbf{x}_{\tau_{s+1}} = \sqrt{\bar{\alpha}_{\tau_{s+1}}}\,\hat{\mathbf{x}}_0 + \sqrt{1 - \bar{\alpha}_{\tau_{s+1}}}\,\hat{\boldsymbol{\epsilon}}
-$$
-4. Return $\hat{\mathbf{x}}_0$ at $\tau_S = 0$.
-
-This is a single deterministic trajectory through the learned noise field — no randomness at sampling time. Reducing from $T=1000$ to $S=50$ steps gives ~20× speedup with minimal quality loss.
+<WikiLink slug="ddim-sampling" title="DDIM Sampling" />
 
 ## Diffusion vs GAN vs VAE
 

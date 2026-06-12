@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, BookOpen, FileText, X } from "lucide-react";
+import { Search, BookOpen, BookMarked, FileText, X } from "lucide-react";
 import { useSearchStore } from "@/lib/search-store";
 import { cn } from "@/lib/utils";
 import type { SearchItem } from "@/types/search";
@@ -130,7 +130,7 @@ export function CommandPalette({ items }: { items: SearchItem[] }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onInputKeyDown}
-            placeholder="Search courses and lessons…"
+            placeholder="Search courses, lessons, wiki…"
             className="w-full bg-transparent py-3.5 text-sm text-white placeholder:text-slate-500 focus:outline-none"
             aria-label="Search"
           />
@@ -161,6 +161,8 @@ export function CommandPalette({ items }: { items: SearchItem[] }) {
                 >
                   {item.kind === "course" ? (
                     <BookOpen className="w-4 h-4 text-brand-400 shrink-0" />
+                  ) : item.kind === "wiki" ? (
+                    <BookMarked className="w-4 h-4 text-brand-300 shrink-0" />
                   ) : (
                     <FileText className="w-4 h-4 text-slate-500 shrink-0" />
                   )}

@@ -3,7 +3,7 @@ title: "Word Embeddings"
 description: "Word2Vec, GloVe, FastText — how dense vectors capture meaning, and why contextual embeddings supersede them."
 order: 2
 type: concept
-estimatedMinutes: 15
+estimatedMinutes: 13
 ---
 
 # Word Embeddings
@@ -72,30 +72,11 @@ from gensim.models import KeyedVectors
 
 ## GloVe (Global Vectors)
 
-Word2Vec uses **local context windows**. GloVe (Pennington et al., 2014) instead uses **global co-occurrence statistics**.
+Word2Vec uses **local context windows**. GloVe (Pennington et al., 2014) instead uses **global co-occurrence statistics**: it builds a corpus-wide count matrix of which words appear near which, then learns embeddings whose dot products match the *log co-occurrence counts* via weighted least squares. The key insight is that co-occurrence **ratios** carry meaning — $P(k \mid \text{ice}) / P(k \mid \text{steam})$ is large for $k = \text{solid}$ and small for $k = \text{gas}$ — and GloVe's objective makes vector differences capture exactly these ratios.
 
-**Key idea:** the ratio $P(k \mid \text{ice}) / P(k \mid \text{steam})$ is informative about word relationships. For $k = \text{solid}$, this ratio is large (solid is near ice, not steam). For $k = \text{gas}$, the ratio is small.
+In practice GloVe and Word2Vec produce embeddings of similar quality; GloVe's batch formulation parallelizes more naturally.
 
-**How GloVe is trained:**
-
-1. **Build the co-occurrence matrix** $X \in \mathbb{R}^{V \times V}$ over the corpus: $X_{ij}$ counts how often word $j$ appears within a context window of word $i$ (typical window size: 10 words, symmetric).
-2. **Downweight frequent pairs** with a capping function: $f(X_{ij}) = \min\!\left(1, (X_{ij}/x_\text{max})^{0.75}\right)$ (common choice: $x_\text{max} = 100$).
-3. **Learn two embedding matrices** $\mathbf{V}$ (main) and $\tilde{\mathbf{V}}$ (context) plus bias vectors by minimizing:
-
-$$
-\mathcal{L} = \sum_{i,j=1}^V f(X_{ij})\left(\mathbf{v}_i^\top \tilde{\mathbf{v}}_j + b_i + \tilde{b}_j - \log X_{ij}\right)^2
-$$
-
-4. **Final embedding** = $\mathbf{v}_i + \tilde{\mathbf{v}}_i$ (sum of both matrices for each word).
-
-**GloVe vs Word2Vec:**
-
-| Property | Word2Vec | GloVe |
-|----------|----------|-------|
-| Training objective | Local context window | Global co-occurrence matrix |
-| Computation | Sequential (online SGD) | Can be parallelized |
-| Performance | Similar | Similar |
-| Transfer | Good | Good |
+<WikiLink slug="glove-training" title="GloVe Training Procedure" />
 
 ## FastText
 
