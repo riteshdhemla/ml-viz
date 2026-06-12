@@ -76,13 +76,17 @@ Word2Vec uses **local context windows**. GloVe (Pennington et al., 2014) instead
 
 **Key idea:** the ratio $P(k \mid \text{ice}) / P(k \mid \text{steam})$ is informative about word relationships. For $k = \text{solid}$, this ratio is large (solid is near ice, not steam). For $k = \text{gas}$, the ratio is small.
 
-GloVe trains embeddings to predict the log of the co-occurrence count:
+**How GloVe is trained:**
+
+1. **Build the co-occurrence matrix** $X \in \mathbb{R}^{V \times V}$ over the corpus: $X_{ij}$ counts how often word $j$ appears within a context window of word $i$ (typical window size: 10 words, symmetric).
+2. **Downweight frequent pairs** with a capping function: $f(X_{ij}) = \min\!\left(1, (X_{ij}/x_\text{max})^{0.75}\right)$ (common choice: $x_\text{max} = 100$).
+3. **Learn two embedding matrices** $\mathbf{V}$ (main) and $\tilde{\mathbf{V}}$ (context) plus bias vectors by minimizing:
 
 $$
 \mathcal{L} = \sum_{i,j=1}^V f(X_{ij})\left(\mathbf{v}_i^\top \tilde{\mathbf{v}}_j + b_i + \tilde{b}_j - \log X_{ij}\right)^2
 $$
 
-where $X_{ij}$ is the co-occurrence count and $f$ is a capping function that downweights very frequent pairs.
+4. **Final embedding** = $\mathbf{v}_i + \tilde{\mathbf{v}}_i$ (sum of both matrices for each word).
 
 **GloVe vs Word2Vec:**
 
