@@ -150,6 +150,21 @@ After a forward pass, a detector with thousands of anchors will produce thousand
 5. Repeat from step 3 on the remaining boxes.
 6. Return the output list.
 
+### Worked trace
+
+Four candidate boxes for a single "cat" (confidences 0.92, 0.87, 0.61, 0.55; NMS threshold IoU = 0.5):
+
+| Step | Action | Output list | Remaining |
+|------|--------|-------------|-----------|
+| 1 | Sort by confidence | — | [0.92, 0.87, 0.61, 0.55] |
+| 2 | Take 0.92, add to output | [0.92] | [0.87, 0.61, 0.55] |
+| 3 | IoU(0.92, 0.87) = 0.73 > 0.5 → suppress | [0.92] | [0.61, 0.55] |
+| 4 | Take 0.61, add to output | [0.92, 0.61] | [0.55] |
+| 5 | IoU(0.61, 0.55) = 0.28 < 0.5 → keep | [0.92, 0.61] | [0.55] |
+| 6 | Take 0.55, add to output | [0.92, 0.61, 0.55] | — |
+
+Final detections: boxes with confidence 0.92, 0.61, 0.55 (three distinct spatial locations). The 0.87 box was suppressed because it heavily overlapped the highest-scoring box.
+
 **Soft-NMS** (Bodla et al., 2017) is a gentler variant: instead of hard removal, it decays the confidence of overlapping boxes by a Gaussian function of their IoU. This helps in crowded scenes where two different objects genuinely overlap.
 
 **Class-aware vs class-agnostic NMS:** most detectors run NMS separately per class (class-aware), so a box predicted as "car" does not suppress a nearby box predicted as "person."

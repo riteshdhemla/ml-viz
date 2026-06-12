@@ -70,7 +70,17 @@ $$
 \text{PSI} = \sum_{k=1}^{K} \left( p_k^{\text{serve}} - p_k^{\text{train}} \right) \ln \frac{p_k^{\text{serve}}}{p_k^{\text{train}}}
 $$
 
-where $p_k$ is the fraction of values in bin $k$. PSI $< 0.1$ indicates no significant shift; $0.1$–$0.2$ warrants investigation; $> 0.2$ is a retraining signal. The Kolmogorov-Smirnov (KS) test provides a hypothesis-testing alternative for continuous features. For output drift, monitoring the distribution of model scores (predicted probabilities) is often the earliest available signal — it does not require ground truth labels.
+where $p_k$ is the fraction of values in bin $k$. PSI $< 0.1$ indicates no significant shift; $0.1$–$0.2$ warrants investigation; $> 0.2$ is a retraining signal.
+
+**Worked example:** A feature `age` is bucketed into 3 bins. Train distribution: [0.50, 0.30, 0.20]. Serving distribution after 6 months: [0.35, 0.40, 0.25].
+
+| Bin | $p^{\text{train}}$ | $p^{\text{serve}}$ | Diff | $\ln(\text{serve}/\text{train})$ | Term |
+|-----|--------------------|--------------------|------|----------------------------------|------|
+| 1 | 0.50 | 0.35 | −0.15 | ln(0.70) = −0.357 | (−0.15)(−0.357) = **0.054** |
+| 2 | 0.30 | 0.40 | +0.10 | ln(1.33) = +0.288 | (+0.10)(+0.288) = **0.029** |
+| 3 | 0.20 | 0.25 | +0.05 | ln(1.25) = +0.223 | (+0.05)(+0.223) = **0.011** |
+
+PSI = 0.054 + 0.029 + 0.011 = **0.094** → just below the 0.1 warning threshold. Worth monitoring but no retraining signal yet. The Kolmogorov-Smirnov (KS) test provides a hypothesis-testing alternative for continuous features. For output drift, monitoring the distribution of model scores (predicted probabilities) is often the earliest available signal — it does not require ground truth labels.
 
 ## Model monitoring
 
