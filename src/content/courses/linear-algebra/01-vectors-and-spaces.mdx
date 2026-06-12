@@ -30,7 +30,7 @@ $$
 \mathbf{u} + \mathbf{v} = \begin{bmatrix} u_1 + v_1 \\ u_2 + v_2 \end{bmatrix}, \qquad c\mathbf{v} = \begin{bmatrix} cv_1 \\ cv_2 \end{bmatrix}
 $$
 
-These two operations are the building blocks of every linear model. A linear model $f(\mathbf{x}) = \mathbf{w}^\top \mathbf{x} + b$ is just a scaled sum of inputs.
+These two operations are the building blocks of all linear algebra — and of every algorithm in this course.
 
 ### The Euclidean norm
 
@@ -52,8 +52,6 @@ print(f"‖v‖ = {norm}")
 print(f"unit vector: {unit}")
 ```
 
-<VectorViz />
-
 ## The dot product
 
 The dot product is the most fundamental operation in ML:
@@ -64,8 +62,8 @@ $$
 
 where $\theta$ is the angle between the vectors.
 
-<Callout type="tip" title="Why the dot product matters">
-  Every neuron computes a dot product $\mathbf{w}^\top \mathbf{x}$. Cosine similarity — used in word embeddings and recommendation systems — is just the dot product of unit vectors: $\cos\theta = \hat{\mathbf{u}} \cdot \hat{\mathbf{v}}$.
+<Callout type="tip" title="Sign tells direction, magnitude tells similarity">
+  When $\mathbf{u}\cdot\mathbf{v} > 0$ the vectors point roughly the same way; when it equals zero they are perpendicular; when it is negative they diverge. Dividing by both norms gives **cosine similarity** $\cos\theta = \hat{\mathbf{u}}\cdot\hat{\mathbf{v}}$ — a pure angle measure independent of length.
 </Callout>
 
 ### What the dot product measures
@@ -97,16 +95,18 @@ cos_theta = dot / (np.linalg.norm(u) * np.linalg.norm(v))  # ≈ 0.707
 angle_deg = np.degrees(np.arccos(cos_theta))                # ≈ 45°
 ```
 
+<VectorViz />
+
 ### Projection: the dot product's geometric job
 
-The dot product answers *"how much of $\mathbf{b}$ points along $\mathbf{a}$?"* That quantity is the **projection** of $\mathbf{b}$ onto $\mathbf{a}$ (the shadow $\mathbf{b}$ casts on the line through $\mathbf{a}$). Start from $\mathbf{a}\cdot\mathbf{b} = \|\mathbf{a}\|\|\mathbf{b}\|\cos\theta$ and divide by $\|\mathbf{a}\|$:
+The dot product answers *"how much of $\mathbf{b}$ points along $\mathbf{a}$?"* That quantity is the **projection** of $\mathbf{b}$ onto $\mathbf{a}$ — the shadow $\mathbf{b}$ casts on the line through $\mathbf{a}$. Start from $\mathbf{a}\cdot\mathbf{b} = \|\mathbf{a}\|\|\mathbf{b}\|\cos\theta$ and divide by $\|\mathbf{a}\|$:
 
 $$
 \text{scalar proj} = \|\mathbf{b}\|\cos\theta = \frac{\mathbf{a}\cdot\mathbf{b}}{\|\mathbf{a}\|}, \qquad
 \text{vector proj}_{\mathbf{a}}\mathbf{b} = \underbrace{\frac{\mathbf{a}\cdot\mathbf{b}}{\mathbf{a}\cdot\mathbf{a}}}_{\text{how many copies of }\mathbf{a}}\,\mathbf{a}
 $$
 
-The denominator $\mathbf{a}\cdot\mathbf{a} = \|\mathbf{a}\|^2$ rescales by $\mathbf{a}$'s length so the result lands exactly on the line through $\mathbf{a}$. This single formula is the engine behind least-squares regression (project the targets onto the column space) and PCA (project data onto principal directions). Drag the vectors above to watch the projection segment grow and shrink with the angle.
+The denominator $\mathbf{a}\cdot\mathbf{a} = \|\mathbf{a}\|^2$ rescales by $\mathbf{a}$'s length so the result lands exactly on the line through $\mathbf{a}$. Drag the vectors above to watch the projection segment grow and shrink with the angle.
 
 ## Vector spaces and basis
 
@@ -121,7 +121,7 @@ $$
 Every vector is a **linear combination** of basis vectors: $\mathbf{v} = v_1\mathbf{e}_1 + v_2\mathbf{e}_2$.
 
 <Callout type="info" title="Orthogonal bases are special">
-  When basis vectors are mutually orthogonal (all pairwise dot products = 0), projection onto any basis vector is simply the dot product. PCA finds the orthogonal basis of maximum variance — that's why it's so powerful.
+  When basis vectors are mutually orthogonal (all pairwise dot products = 0), projection onto any basis vector is simply the dot product — no cross-term contamination. This makes orthogonal bases computationally clean and geometrically intuitive.
 </Callout>
 
 ## Linear independence and span
@@ -134,10 +134,18 @@ The **span** of a set is all vectors you can reach by linear combination — it 
 
 Take $\mathbf{a} = [1, 2]$ and $\mathbf{b} = [2, 4]$. Notice $\mathbf{b} = 2\mathbf{a}$, so $2\mathbf{a} - \mathbf{b} = \mathbf{0}$ with non-zero coefficients — they are **dependent**. Their span is just the *line* through $\mathbf{a}$; no combination ever leaves it, so they cannot describe a 2D plane.
 
-Now take $\mathbf{a} = [1, 2]$ and $\mathbf{c} = [2, 1]$. The only way $c_1\mathbf{a} + c_2\mathbf{c} = \mathbf{0}$ is $c_1 = c_2 = 0$ (the equations $c_1 + 2c_2 = 0$ and $2c_1 + c_2 = 0$ force it), so they are **independent** and their span is *all* of $\mathbb{R}^2$ — they form a basis.
+Now take $\mathbf{a} = [1, 2]$ and $\mathbf{c} = [2, 1]$. Setting $c_1\mathbf{a} + c_2\mathbf{c} = \mathbf{0}$ gives the system:
 
-<Callout type="tip" title="The rank test">
-  Stack the vectors as columns of a matrix. The number of independent vectors is the matrix **rank**. Full rank (rank = number of vectors) ⇒ independent. In ML, rank-deficient feature matrices cause unstable models — two features that are linear combinations of each other carry no new information.
+$$
+c_1 + 2c_2 = 0 \quad \text{(top row)}, \qquad 2c_1 + c_2 = 0 \quad \text{(bottom row)}
+$$
+
+From the first equation $c_1 = -2c_2$. Substituting into the second: $2(-2c_2) + c_2 = -3c_2 = 0$, so $c_2 = 0$ and therefore $c_1 = 0$. The only solution is the trivial one, so $\mathbf{a}$ and $\mathbf{c}$ are **independent** and their span is *all* of $\mathbb{R}^2$ — they form a basis.
+
+<Callout type="tip" title="Computing rank with row reduction">
+  Stack the vectors as columns of a matrix, then apply Gaussian elimination (row reduction): swap rows, scale rows, and subtract multiples of one row from another to reach **row echelon form**. Count the non-zero rows — that count is the **rank**. Full rank (rank = number of columns) ⇒ all vectors are independent.
+
+  **Example:** $\begin{bmatrix}1&2\\2&4\end{bmatrix}$ → subtract 2×row1 from row2 → $\begin{bmatrix}1&2\\0&0\end{bmatrix}$. One non-zero row → rank 1 → vectors are **dependent** ($\mathbf{b} = 2\mathbf{a}$). ✓
 </Callout>
 
 ## Common mistakes
@@ -152,6 +160,17 @@ Now take $\mathbf{a} = [1, 2]$ and $\mathbf{c} = [2, 1]$. The only way $c_1\math
 - The **dot product** $\mathbf{w}^\top \mathbf{x}$ is the core of every linear model — it measures similarity and projects one vector onto another.
 - **Orthogonal** vectors have zero dot product; orthogonal bases simplify projection.
 - **Norm** measures length; normalizing a vector gives direction without magnitude.
+
+## Connection to ML
+
+The vector operations in this lesson appear at the core of almost every ML algorithm:
+
+- **Linear models** — $f(\mathbf{x}) = \mathbf{w}^\top\mathbf{x} + b$ is a single dot product between the weight vector and the input. The dot product is the prediction.
+- **Neural network neurons** — each neuron computes a dot product $\mathbf{w}^\top\mathbf{x}$ before applying a nonlinearity. A fully-connected layer applies this for every row of the weight matrix simultaneously.
+- **Cosine similarity** — used in word embeddings and recommendation systems to measure how similar two vectors are independent of their length: $\text{sim}(\mathbf{u}, \mathbf{v}) = \hat{\mathbf{u}}\cdot\hat{\mathbf{v}}$.
+- **Least-squares regression** — the OLS solution projects the target vector $\mathbf{y}$ onto the column space of the design matrix $\mathbf{X}$. The projection formula derived above is exactly what $(\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$ computes.
+- **PCA** — finds the orthogonal basis of maximum variance. Projecting data onto principal components is a sequence of dot products with those basis vectors.
+- **Rank deficiency** — if a feature matrix is rank-deficient, two features are linearly dependent. The model gains no new information from the second feature, and OLS becomes unstable.
 
 ## Related concepts
 

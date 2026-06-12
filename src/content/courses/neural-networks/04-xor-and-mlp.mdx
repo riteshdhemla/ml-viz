@@ -154,8 +154,6 @@ The model is 70.5% confident in class 1.
 - $T = 1$: standard softmax
 - $T \to \infty$: uniform distribution (maximum uncertainty)
 
-Language models use temperature scaling to control the randomness of text generation.
-
 ### Training with cross-entropy loss
 
 For a single example with true label $y$ (integer class index), the **cross-entropy loss** is:
@@ -184,6 +182,12 @@ At the correct class: gradient = $\hat{p}_y - 1$ (push logit up until probabilit
 - A **hidden layer** transforms inputs into a new representation where the problem becomes linearly separable.
 - **Universal approximation** guarantees one hidden layer is enough in principle; in practice, depth is exponentially more efficient.
 - **Softmax** maps logits to a probability distribution; cross-entropy loss gives a clean gradient: $\hat{p}_k - \mathbb{1}[k=y]$.
+
+## Connection to ML
+
+- **Temperature scaling in language models** — dividing logits by $T < 1$ makes generations more focused ("greedy"); $T > 1$ makes them more diverse. Every LLM API exposes a `temperature` parameter that wraps exactly this operation.
+- **Universal approximation in practice** — width $\geq 2n+1$ guarantees approximation of any function on $n$ inputs, but this bound is loose. Real networks use much larger layers and rely on depth rather than width to be efficient.
+- **Softmax + cross-entropy everywhere** — this combination is the default output for any multi-class classification network, from image classifiers (ImageNet) to language models (next-token prediction over a vocabulary of 50 000+ tokens).
 
 ## Related concepts
 

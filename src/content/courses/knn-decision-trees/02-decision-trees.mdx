@@ -95,8 +95,6 @@ print(f"Gini:    {gini(labels):.3f}")     # 0.500
 print(f"Entropy: {entropy(labels):.3f}")  # 1.000
 ```
 
-<DecisionTreeSplitViz />
-
 ## Information gain: scoring one split
 
 A split sends the data into a **left** child (rows satisfying the test) and a **right** child (the rest). We score it by how much impurity it removes:
@@ -166,6 +164,8 @@ The tree tries **every candidate threshold** (the midpoints between consecutive 
 | 55.0 | 4 / 5 | 1 / 0 | 0.4444 | 0.0556 |
 
 The winner is **Age ≤ 31.5** with a Gini gain of **0.3333** — exactly the split we worked out above. The tree makes this its root question, then recurses on each child. The general rule is: pick the split with the **lowest weighted impurity** (equivalently, the **highest information gain**).
+
+<DecisionTreeSplitViz />
 
 ```python
 def best_split(X, y):

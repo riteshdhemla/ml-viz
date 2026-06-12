@@ -28,8 +28,6 @@ $$
 
 **Neural network layer:** a layer with weight matrix $\mathbf{W} \in \mathbb{R}^{d_\text{out} \times d_\text{in}}$ computes $\mathbf{W}\mathbf{x} + \mathbf{b}$ — a matrix-vector product.
 
-<MatrixTransformViz />
-
 ## Geometric intuitions
 
 Think of a $2\times 2$ matrix as a transformation of the 2D plane. Common transformations:
@@ -105,6 +103,8 @@ The **rank** of $\mathbf{A}$ is the dimension of its column space — the number
 
 ### The determinant
 
+<MatrixTransformViz />
+
 The **determinant** measures the *signed factor by which a transformation scales area* (volume in higher dimensions). For a $2\times2$ matrix:
 
 $$
@@ -117,7 +117,7 @@ Geometrically, the unit square (area 1) becomes a parallelogram of area $|\det|$
 - $\det < 0$ means the transformation **flips orientation** (a reflection).
 - $\det = 0$ means the square collapses to a line (area 0) — the map squashes 2D down to 1D, throwing away a dimension. You can't undo that, which is exactly why **$\det = 0 \Leftrightarrow$ not invertible**.
 
-The interactive figure above shows the determinant updating as you change the matrix. A square matrix $\mathbf{A}$ is **invertible** iff $\det(\mathbf{A}) \neq 0$, and then $\mathbf{A}^{-1}$ satisfies $\mathbf{A}\mathbf{A}^{-1} = \mathbf{I}$.
+The interactive figure shows the determinant updating as you drag the matrix columns. A square matrix $\mathbf{A}$ is **invertible** iff $\det(\mathbf{A}) \neq 0$, and then $\mathbf{A}^{-1}$ satisfies $\mathbf{A}\mathbf{A}^{-1} = \mathbf{I}$.
 
 <Callout type="warning" title="When matrices are not invertible">
   Rank-deficient matrices map multiple inputs to the same output — information is lost. In ML, this shows up as multicollinear features (OLS fails) or as underdetermined systems (more unknowns than equations).
