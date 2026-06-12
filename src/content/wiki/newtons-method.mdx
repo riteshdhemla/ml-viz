@@ -1,0 +1,161 @@
+---
+title: "Newton's Method for Optimization"
+description: "Minimizing the quadratic Taylor model exactly in one step — deriving the H⁻¹ update and verifying it on a 2D quadratic that lands at the optimum in a single step."
+topics: ["calculus"]
+relatedLessons:
+  - "calculus-for-ml/03-multivariable-optimization"
+estimatedMinutes: 10
+---
+
+# Newton's Method for Optimization
+
+Newton's method minimizes a function by fitting a local quadratic model at the current point and jumping directly to its minimum. For a true quadratic this lands at the global minimum in one step. For non-quadratic functions it converges much faster than gradient descent near a minimum.
+
+## The idea: minimize the quadratic Taylor model
+
+Near a point $\mathbf{x}_0$, any smooth $f$ is approximated by the second-order Taylor expansion:
+
+$$
+f(\mathbf{x}) \approx f(\mathbf{x}_0)
++ \nabla f(\mathbf{x}_0)^{\top}(\mathbf{x}-\mathbf{x}_0)
++ \tfrac{1}{2}(\mathbf{x}-\mathbf{x}_0)^{\top} \mathbf{H}(\mathbf{x}_0)(\mathbf{x}-\mathbf{x}_0)
+$$
+
+where $\mathbf{H}(\mathbf{x}_0) = \nabla^2 f(\mathbf{x}_0)$ is the **Hessian** (matrix of second derivatives).
+
+Write the displacement as $\mathbf{s} = \mathbf{x} - \mathbf{x}_0$. Newton's method minimizes the right-hand side over $\mathbf{s}$, ignoring the constant $f(\mathbf{x}_0)$.
+
+## Deriving the Newton step
+
+Take the gradient of the quadratic model with respect to $\mathbf{s}$ and set it to zero:
+
+$$
+\nabla_{\mathbf{s}}\!\Big[\nabla f(\mathbf{x}_0)^{\top}\mathbf{s}
++ \tfrac{1}{2}\mathbf{s}^{\top}\mathbf{H}\,\mathbf{s}\Big]
+= \nabla f(\mathbf{x}_0) + \mathbf{H}\,\mathbf{s} = \mathbf{0}
+$$
+
+Solve for $\mathbf{s}$:
+
+$$
+\mathbf{H}\,\mathbf{s} = -\nabla f(\mathbf{x}_0)
+\;\Longrightarrow\;
+\mathbf{s} = -\mathbf{H}^{-1}\nabla f(\mathbf{x}_0)
+$$
+
+The Newton update is:
+
+$$
+\boxed{\;\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1}\nabla f(\mathbf{x})\;}
+$$
+
+Compare to gradient descent $\mathbf{x} \leftarrow \mathbf{x} - \eta\,\nabla f(\mathbf{x})$: Newton replaces the scalar learning rate $\eta$ with the inverse Hessian $\mathbf{H}^{-1}$, which **rescales and rotates** the gradient to account for curvature.
+
+<Callout type="info" title="Curvature correction">
+  In a steep direction ($\lambda_i$ large), $\mathbf{H}^{-1}$ shrinks the step — preventing overshoot. In a flat direction ($\lambda_i$ small), it enlarges the step — accelerating progress. Gradient descent uses the same step size everywhere, so it struggles when the loss landscape is elongated (ill-conditioned).
+</Callout>
+
+## Worked single step: $f(x, y) = x^2 + xy + y^2 - 3x$
+
+The function $f(x, y) = x^2 + xy + y^2 - 3x$ has a unique minimum at $(2, -1)$ (verified by the Hessian analysis in the multivariable optimization lesson).
+
+**Gradient and Hessian at $(0, 0)$:**
+
+$$
+\nabla f(0,0)
+= \begin{bmatrix} 2(0) + 0 - 3 \\ 0 + 2(0) \end{bmatrix}
+= \begin{bmatrix} -3 \\ 0 \end{bmatrix}
+$$
+
+$$
+\mathbf{H}
+= \begin{bmatrix} \partial^2 f/\partial x^2 & \partial^2 f/\partial x\partial y \\
+                  \partial^2 f/\partial y\partial x & \partial^2 f/\partial y^2 \end{bmatrix}
+= \begin{bmatrix} 2 & 1 \\ 1 & 2 \end{bmatrix}
+$$
+
+(Constant because $f$ is quadratic.)
+
+**Invert the Hessian.** For a $2 \times 2$ matrix:
+
+$$
+\mathbf{H}^{-1} = \frac{1}{\det\mathbf{H}}
+\begin{bmatrix} d & -b \\ -c & a \end{bmatrix},
+\qquad \det\mathbf{H} = 2\cdot2 - 1\cdot1 = 3
+$$
+
+$$
+\mathbf{H}^{-1} = \frac{1}{3}\begin{bmatrix} 2 & -1 \\ -1 & 2 \end{bmatrix}
+$$
+
+**Newton step from $(0, 0)$:**
+
+$$
+\mathbf{x}_1 = \begin{bmatrix} 0 \\ 0 \end{bmatrix}
+- \frac{1}{3}\begin{bmatrix} 2 & -1 \\ -1 & 2 \end{bmatrix}
+\begin{bmatrix} -3 \\ 0 \end{bmatrix}
+= -\frac{1}{3}\begin{bmatrix} -6 \\ 3 \end{bmatrix}
+= \begin{bmatrix} 2 \\ -1 \end{bmatrix}
+$$
+
+Newton lands **exactly** on the minimum $(2, -1)$ in one step. This is the defining property: for a quadratic, the Taylor model *is* the function, so minimizing the model is the same as minimizing the function.
+
+**Comparison to gradient descent.** A plain gradient step from $(0, 0)$ with learning rate $\eta$:
+
+$$
+\mathbf{x}_1 = \begin{bmatrix} 0 \\ 0 \end{bmatrix} - \eta\begin{bmatrix} -3 \\ 0 \end{bmatrix} = \begin{bmatrix} 3\eta \\ 0 \end{bmatrix}
+$$
+
+This only moves along the $x$-axis regardless of $\eta$ — it never escapes to $y = -1$. Gradient descent would require dozens of iterations (zigzagging due to the off-diagonal coupling in $\mathbf{H}$) to converge to $(2, -1)$.
+
+```python
+import numpy as np
+
+def f(x, y):
+    return x**2 + x*y + y**2 - 3*x
+
+def grad_f(x, y):
+    return np.array([2*x + y - 3, x + 2*y])
+
+H = np.array([[2., 1.], [1., 2.]])
+H_inv = np.linalg.inv(H)
+
+# Newton step from (0, 0)
+x0 = np.array([0., 0.])
+g = grad_f(*x0)
+x1 = x0 - H_inv @ g
+
+print(f"Starting point:  {x0}   f = {f(*x0):.3f}")   # [0., 0.]   f = 0.000
+print(f"Gradient at x0:  {g}")                          # [-3., 0.]
+print(f"Newton step:    {x1}  f = {f(*x1):.3f}")      # [2., -1.]  f = -3.000
+print(f"Gradient at x1: {grad_f(*x1)}")                 # [0., 0.] — we're at the minimum
+
+# Gradient descent for comparison: many steps needed
+lr = 0.1
+xgd = np.array([0., 0.])
+for i in range(50):
+    xgd -= lr * grad_f(*xgd)
+print(f"GD after 50 steps: {xgd.round(3)}  f = {f(*xgd):.3f}")   # ≈ [2., -1.]
+```
+
+## Newton vs. gradient descent: iterations to converge
+
+| Method | Steps to reach $\|\nabla f\| < 10^{-6}$ | Cost per step |
+|--------|:-----------------------------------------:|:-------------:|
+| Gradient descent ($\eta = 0.1$) | $\sim 100$ | $O(d)$ |
+| Newton's method | $1$ (quadratic) | $O(d^3)$ (matrix inversion) |
+
+The $O(d^3)$ cost to compute and invert $\mathbf{H}$ is the main limitation: for a neural network with millions of parameters $d$, this is completely infeasible. Practical approximations:
+
+- **Quasi-Newton (L-BFGS):** builds a low-rank approximation of $\mathbf{H}^{-1}$ from gradient history — $O(d \cdot m)$ per step with $m$ stored vectors.
+- **Diagonal approximation (Adam, RMSProp):** keeps only the diagonal of $\mathbf{H}^{-1}$, one number per parameter — $O(d)$ per step.
+
+<Callout type="tip" title="Adam as an approximate Newton">
+  Adam maintains per-parameter running estimates of the second moment of the gradient, which approximates the diagonal of the Hessian. Dividing the gradient by $\sqrt{\text{second moment}}$ is a diagonal Newton step — which is why Adam converges faster than vanilla SGD on ill-conditioned loss surfaces.
+</Callout>
+
+## Related concepts
+
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — Hessian, critical point classification, convexity, and learning rate bounds
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the simpler first-order method Newton improves upon
+- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — eigenvalues of $\mathbf{H}$ determine Newton step directions

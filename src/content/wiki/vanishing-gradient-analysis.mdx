@@ -1,0 +1,144 @@
+---
+title: "Vanishing & Exploding Gradients: Spectral Analysis"
+description: "Why the product of RNN Jacobians decays or grows exponentially — the spectral norm bound, three regimes table, and numeric decay/growth tables at multiple spectral radii."
+topics: ["sequence-models"]
+relatedLessons:
+  - "rnns/02-bptt-and-vanishing-gradient"
+estimatedMinutes: 10
+---
+
+# Vanishing & Exploding Gradients: Spectral Analysis
+
+Each BPTT step multiplies the gradient by a Jacobian $J_t = \mathrm{diag}(\tanh'(\mathbf{a}_t))\,W_{hh}$. Over a gap of $T-k$ steps the gradient is bounded by $\|J\|^{T-k}$. This one bound explains why gradients either vanish or explode.
+
+For the derivation of the Jacobian itself, see:
+
+<WikiLink slug="bptt-algorithm" title="Backpropagation Through Time (BPTT)" />
+
+## The spectral norm bound
+
+The full gap-$(T-k)$ gradient is:
+
+$$
+\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k}
+= \frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}
+\prod_{t=k+1}^{T} \mathrm{diag}\!\big(\tanh'(\mathbf{a}_t)\big)\,W_{hh}
+$$
+
+Apply the submultiplicativity of norms ($\|AB\| \le \|A\|\,\|B\|$) to every factor. Let:
+
+- $\gamma = \max_z \tanh'(z) = 1$ (achieved at $z = 0$; equals $1 - \tanh^2(z)$)
+- $\lambda = \|W_{hh}\|$ — the **spectral norm** (largest singular value)
+
+Each factor satisfies $\|\mathrm{diag}(\tanh')\,W_{hh}\| \le \gamma \cdot \lambda = \lambda$. Multiplying $T-k$ such bounds:
+
+$$
+\left\|\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_k}\right\|
+\;\le\;
+\left\|\frac{\partial \mathcal{L}_T}{\partial \mathbf{h}_T}\right\|
+\cdot \lambda^{T-k}
+$$
+
+The exponent $T-k$ is the whole story.
+
+## Three regimes
+
+| Spectral norm $\lambda = \|W_{hh}\|$ | Behavior | Effect on training |
+|:------------------------------------:|:--------:|:------------------:|
+| $\lambda < 1$ | Bound $\to 0$ exponentially | **Vanishing**: early steps receive near-zero gradient |
+| $\lambda = 1$ | Bound stays flat | Neutral — but $\tanh' \le 1$ still makes it drift down |
+| $\lambda > 1$ | Bound $\to \infty$ exponentially | **Exploding**: huge updates, NaN loss |
+
+<Callout type="warning" title="tanh' only ever makes vanishing worse">
+  The $\tanh'$ factor satisfies $0 < \tanh'(z) \le 1$, with equality only at $z = 0$. Once any unit is even slightly saturated ($|z| > 1$), $\tanh'(z) < 0.42$. This multiplies the per-step gain below $\lambda$ — it can push a borderline-stable RNN into vanishing, but it can never rescue a vanishing one.
+</Callout>
+
+## Worked example: concrete spectral radii
+
+**Vanishing case — $\lambda = 0.5$.**
+
+Use the diagonal matrix $W_{hh} = \mathrm{diag}(0.5, 0.3)$, whose $n$-th power is $\mathrm{diag}(0.5^n, 0.3^n)$ and whose spectral norm decays like $0.5^n$. Gradient magnitude after $n = T-k$ steps:
+
+| Gap $n$ | Bound $0.5^n$ | % of original signal |
+|:-------:|:-------------:|:--------------------:|
+| 1 | $0.500$ | $50\%$ |
+| 5 | $0.031$ | $3.1\%$ |
+| 10 | $9.8 \times 10^{-4}$ | $0.098\%$ |
+| 20 | $9.5 \times 10^{-7}$ | $0.000095\%$ |
+| 50 | $8.9 \times 10^{-16}$ | $\approx 0$ |
+
+After 20 steps the signal is below $0.0001\%$ of full strength — numerically zero.
+
+**Exploding case — $\lambda = 1.5$.**
+
+Use $W_{hh} = \mathrm{diag}(1.5, 1.2)$, norm grows like $1.5^n$:
+
+| Gap $n$ | Bound $1.5^n$ | Growth factor |
+|:-------:|:-------------:|:-------------:|
+| 1 | $1.5$ | $1.5\times$ |
+| 5 | $7.6$ | $7.6\times$ |
+| 10 | $57.7$ | $57.7\times$ |
+| 20 | $3.3 \times 10^{3}$ | $3300\times$ |
+| 50 | $6.4 \times 10^{8}$ | $640{,}000{,}000\times$ |
+
+**Combined effect of saturated $\tanh'$.**
+
+With a typical saturated unit giving $\tanh' \approx 0.4$, the per-step gain becomes $\lambda \times 0.4$. For $\lambda = 0.5$ this drops to $0.2$ per step:
+
+| Gap $n$ | Effective gain $(0.5 \times 0.4)^n = 0.2^n$ |
+|:-------:|:-------------------------------------------:|
+| 5 | $3.2 \times 10^{-4}$ |
+| 10 | $\approx 10^{-7}$ |
+| 20 | $\approx 10^{-14}$ |
+
+The signal is gone in ten steps when units are saturated.
+
+```python
+import math
+
+def tanh_prime(z):
+    return 1 - math.tanh(z)**2
+
+print(f"max tanh'(z) at z=0:   {tanh_prime(0.0):.4f}")
+print(f"tanh'(1):               {tanh_prime(1.0):.4f}")
+print(f"tanh'(2):               {tanh_prime(2.0):.4f}")
+print()
+
+for radius in [0.5, 1.0, 1.5]:
+    print(f"spectral radius = {radius}")
+    for gap in [1, 5, 10, 20, 50]:
+        print(f"  gap={gap:>2}:  bound = {radius**gap:.3e}")
+    print()
+
+# With saturation: effective per-step gain = 0.5 * 0.4 = 0.2
+effective_gain = 0.5 * 0.4
+print("With tanh'≈0.4 (saturated), effective gain per step:", effective_gain)
+for gap in [5, 10, 20]:
+    print(f"  gap={gap}: {effective_gain**gap:.3e}")
+```
+
+## The spectral radius vs. the spectral norm
+
+The bound above uses the **spectral norm** $\|W_{hh}\|$ (largest singular value) for a worst-case guarantee. For the long-run growth *rate* along the dominant direction, use the **spectral radius** $\rho(W_{hh})$ — the largest eigenvalue magnitude. For a product of the *same* matrix:
+
+$$
+\|W_{hh}^n\| \sim \rho(W_{hh})^n \quad \text{as } n \to \infty
+$$
+
+The condition for vanishing is $\rho(W_{hh}) < 1$; for exploding, $\rho(W_{hh}) > 1$. These are exactly the same regimes — the spectral norm gives the per-step bound, the spectral radius gives the long-run exponent.
+
+## Why gradient clipping fixes explosions but not vanishing
+
+**Gradient clipping** rescales an over-large gradient back to a safe norm:
+
+$$
+\text{if } \|\mathbf{g}\| > c:\quad \mathbf{g} \leftarrow \frac{c}{\|\mathbf{g}\|}\,\mathbf{g}
+$$
+
+This stops $\lambda^{T-k} \to \infty$ from corrupting the update. But it does **nothing** for the $\lambda^{T-k} \to 0$ case — you cannot rescale a signal that has already decayed to zero. Vanishing requires an **architectural** fix: LSTMs and GRUs add an additive cell-state path whose per-step Jacobian is $\approx 1$, keeping the product from shrinking.
+
+## Related concepts
+
+- [**BPTT**](/wiki/bptt-algorithm) — derivation of the per-step Jacobian that is raised to the $(T-k)$-th power here
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — gated cells with near-unit Jacobian
+- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — spectral radius is the dominant eigenvalue magnitude

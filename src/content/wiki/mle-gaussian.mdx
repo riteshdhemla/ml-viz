@@ -1,0 +1,195 @@
+---
+title: "MLE for the Gaussian"
+description: "Eight-step derivation of the maximum-likelihood estimates for Gaussian mean and variance — differentiate, set to zero, solve, and interpret the bias."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/03-maximum-likelihood-estimation"
+estimatedMinutes: 12
+---
+
+# MLE for the Gaussian
+
+Given $n$ i.i.d. observations $x_1, \ldots, x_n$ from a Gaussian $\mathcal{N}(\mu, \sigma^2)$, we want the parameter values that maximize the probability of seeing this exact data. The derivation has eight steps: write the log-likelihood, differentiate, and solve separately for $\mu$ and $\sigma^2$.
+
+## Setup: Gaussian density and log-likelihood
+
+The density of a single observation is:
+
+$$
+p(x_i \mid \mu, \sigma^2)
+= \frac{1}{\sqrt{2\pi\sigma^2}}\exp\!\left(-\frac{(x_i-\mu)^2}{2\sigma^2}\right)
+$$
+
+**Step 1 — log a single term.** The $\ln$ cancels the $\exp$:
+
+$$
+\ln p(x_i \mid \mu, \sigma^2)
+= -\tfrac{1}{2}\ln(2\pi\sigma^2) - \frac{(x_i - \mu)^2}{2\sigma^2}
+$$
+
+**Step 2 — sum over all $n$ points** to get the full log-likelihood:
+
+$$
+\ell(\mu, \sigma^2)
+= -\frac{n}{2}\ln(2\pi\sigma^2)
+  - \frac{1}{2\sigma^2}\sum_{i=1}^n (x_i - \mu)^2
+$$
+
+## Solving for the mean
+
+**Step 3 — differentiate with respect to $\mu$.**
+
+The first term has no $\mu$. The chain rule on $(x_i - \mu)^2$ gives $-2(x_i - \mu)$:
+
+$$
+\frac{\partial \ell}{\partial \mu}
+= -\frac{1}{2\sigma^2}\sum_{i=1}^n -2(x_i - \mu)
+= \frac{1}{\sigma^2}\sum_{i=1}^n (x_i - \mu)
+$$
+
+**Step 4 — set the derivative to zero.**
+
+Since $\sigma^2 > 0$ the prefactor cannot make it zero, so the sum must vanish:
+
+$$
+\sum_{i=1}^n (x_i - \mu) = 0
+\;\Longrightarrow\;
+\sum_{i=1}^n x_i - n\mu = 0
+$$
+
+**Step 5 — solve** for $\mu$:
+
+$$
+\boxed{\;\hat{\mu}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i = \bar{x}\;}
+$$
+
+The MLE for the mean is the **sample average**.
+
+<Callout type="tip" title="Gaussian MLE = OLS">
+  Maximizing $\ell$ over $\mu$ with $\sigma^2$ fixed is the same as minimizing $\sum(x_i - \mu)^2$. So fitting a linear model by **minimizing squared error is exactly MLE under Gaussian noise**. The two derivations — OLS and Gaussian MLE — are the same optimization in disguise.
+</Callout>
+
+## Solving for the variance
+
+It is cleanest to treat $v = \sigma^2$ as the variable.
+
+**Step 6 — rewrite and differentiate with respect to $v$.**
+
+$$
+\ell(\mu, v)
+= -\frac{n}{2}\ln(2\pi) - \frac{n}{2}\ln v - \frac{1}{2v}\sum_{i=1}^n (x_i - \mu)^2
+$$
+
+Using $\frac{d}{dv}\ln v = \frac{1}{v}$ and $\frac{d}{dv}\frac{1}{v} = -\frac{1}{v^2}$:
+
+$$
+\frac{\partial \ell}{\partial v}
+= -\frac{n}{2v} + \frac{1}{2v^2}\sum_{i=1}^n (x_i - \mu)^2
+$$
+
+**Step 7 — set to zero and multiply through by $2v^2$:**
+
+$$
+-nv + \sum_{i=1}^n (x_i - \mu)^2 = 0
+$$
+
+**Step 8 — solve** for $v$, substituting $\mu = \hat{\mu} = \bar{x}$:
+
+$$
+\boxed{\;\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\;}
+$$
+
+## Numerical verification
+
+Take $\mathbf{x} = [2, 4, 4, 4, 5, 5, 7, 9]$ (eight observations from Rice & Nerman's classic example):
+
+$$
+\bar{x} = \frac{2+4+4+4+5+5+7+9}{8} = \frac{40}{8} = 5
+$$
+
+$$
+\hat{\sigma}^2_\text{MLE}
+= \frac{1}{8}\bigl[(2-5)^2+(4-5)^2+(4-5)^2+(4-5)^2+(5-5)^2+(5-5)^2+(7-5)^2+(9-5)^2\bigr]
+$$
+
+$$
+= \frac{1}{8}[9 + 1 + 1 + 1 + 0 + 0 + 4 + 16]
+= \frac{32}{8} = 4
+$$
+
+So $\hat{\mu} = 5$ and $\hat{\sigma}^2 = 4$ (standard deviation $\hat{\sigma} = 2$).
+
+```python
+import numpy as np
+
+x = np.array([2, 4, 4, 4, 5, 5, 7, 9], dtype=float)
+
+mu_mle = x.mean()
+sigma2_mle = ((x - mu_mle) ** 2).mean()   # divisor n (MLE, biased)
+sigma2_unbiased = ((x - mu_mle) ** 2).sum() / (len(x) - 1)  # divisor n-1
+
+print(f"MLE mean:              {mu_mle:.3f}")        # 5.000
+print(f"MLE variance (n):      {sigma2_mle:.3f}")    # 4.000
+print(f"Unbiased variance (n-1): {sigma2_unbiased:.3f}")  # 4.571
+print(f"Numpy default std²:    {x.var(ddof=1):.3f}") # 4.571  (ddof=1 = n-1)
+```
+
+## The bias of the MLE variance
+
+The MLE variance divides by $n$, not $n-1$. Why is it biased?
+
+Because we substituted $\hat{\mu} = \bar{x}$ — an estimate fit to the same data — the squared deviations $(x_i - \bar{x})^2$ come out systematically too small. The true deviations $(x_i - \mu)^2$ would be larger since the true $\mu$ doesn't chase the sample.
+
+Formally, $E[\hat{\sigma}^2_\text{MLE}] = \frac{n-1}{n}\sigma^2 < \sigma^2$.
+
+The **unbiased correction** uses $n-1$ (Bessel's correction):
+
+$$
+s^2 = \frac{1}{n-1}\sum_{i=1}^n (x_i - \bar{x})^2
+$$
+
+MLE is **consistent** — as $n \to \infty$, $\hat{\sigma}^2_\text{MLE} \to \sigma^2$ — but it is not unbiased in finite samples.
+
+## Log-likelihood surface visualization
+
+The log-likelihood is a concave function of $(\mu, v)$, so the unique maximum is the MLE:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+x = np.array([2, 4, 4, 4, 5, 5, 7, 9], dtype=float)
+
+mu_grid = np.linspace(3, 7, 100)
+v_grid = np.linspace(1, 9, 100)
+MU, V = np.meshgrid(mu_grid, v_grid)
+
+# Log-likelihood on grid
+LL = np.zeros_like(MU)
+for xi in x:
+    LL += -0.5 * np.log(2 * np.pi * V) - (xi - MU) ** 2 / (2 * V)
+
+plt.figure(figsize=(7, 5))
+plt.contourf(MU, V, LL, levels=30, cmap='viridis')
+plt.colorbar(label='log-likelihood')
+plt.scatter([x.mean()], [x.var()], color='red', s=100, zorder=5, label='MLE')
+plt.xlabel(r'$\mu$')
+plt.ylabel(r'$\sigma^2$')
+plt.title('Gaussian log-likelihood surface')
+plt.legend()
+plt.tight_layout()
+plt.show()
+```
+
+## Key results at a glance
+
+| Parameter | MLE formula | Notes |
+|-----------|------------|-------|
+| Mean $\mu$ | $\hat{\mu} = \bar{x} = \frac{1}{n}\sum x_i$ | Unbiased |
+| Variance $\sigma^2$ | $\hat{\sigma}^2 = \frac{1}{n}\sum(x_i-\bar{x})^2$ | Biased by factor $\frac{n-1}{n}$ |
+
+## Related concepts
+
+- [**MLE & the Bernoulli**](/courses/probability-statistics/03-maximum-likelihood-estimation) — companion derivation for discrete data; cross-entropy connection
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — adds a prior; posterior mean shifts $\hat{\mu}$ toward the prior
+- [**OLS: The Normal Equation**](/wiki/ols-normal-equation) — minimizing squared error = MLE under Gaussian noise

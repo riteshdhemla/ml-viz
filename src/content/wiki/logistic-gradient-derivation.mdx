@@ -1,0 +1,198 @@
+---
+title: "Logistic Regression: Gradient Derivation"
+description: "Five-link chain rule showing why the cross-entropy + sigmoid gradient collapses to ŷ − y — with a 2-point numeric worked step."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "linear-regression/02-logistic-regression"
+estimatedMinutes: 10
+---
+
+# Logistic Regression: Gradient Derivation
+
+The gradient of binary cross-entropy with respect to the weights is:
+
+$$
+\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n} X^T (\hat{\mathbf{y}} - \mathbf{y})
+$$
+
+The factor that "should" appear from $\sigma'$ cancels exactly. This page shows why.
+
+## Setup
+
+For a single example $i$ with $z_i = \mathbf{w}^T\mathbf{x}_i$ and $\hat{y}_i = \sigma(z_i)$, the per-example loss is:
+
+$$
+\mathcal{L}_i = -\bigl[\,y_i \log \hat{y}_i + (1-y_i)\log(1-\hat{y}_i)\,\bigr]
+$$
+
+We want $\partial \mathcal{L}_i / \partial w_j$ for one weight $w_j$.
+
+## The chain rule, link by link
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial w_j}
+= \underbrace{\frac{\partial \mathcal{L}_i}{\partial \hat{y}_i}}_{\text{link 1: loss} \to \text{prob}}
+\cdot
+\underbrace{\frac{\partial \hat{y}_i}{\partial z_i}}_{\text{link 2: prob} \to \text{score}}
+\cdot
+\underbrace{\frac{\partial z_i}{\partial w_j}}_{\text{link 3: score} \to \text{weight}}
+$$
+
+### Link 1 — loss with respect to the prediction
+
+Differentiate $-[y_i \log \hat{y}_i + (1-y_i)\log(1-\hat{y}_i)]$ with respect to $\hat{y}_i$:
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial \hat{y}_i}
+= -\left[\frac{y_i}{\hat{y}_i} - \frac{1-y_i}{1-\hat{y}_i}\right]
+$$
+
+### Link 2 — the sigmoid derivative
+
+The sigmoid $\sigma(z) = (1+e^{-z})^{-1}$ has the compact derivative:
+
+$$
+\frac{\partial \hat{y}_i}{\partial z_i} = \sigma'(z_i) = \hat{y}_i\,(1-\hat{y}_i)
+$$
+
+### Link 3 — score is linear in weights
+
+$$
+z_i = \sum_k w_k x_{ik}
+\;\Rightarrow\;
+\frac{\partial z_i}{\partial w_j} = x_{ij}
+$$
+
+## The cancellation
+
+Multiply Links 1 and 2:
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial z_i}
+= -\left[\frac{y_i}{\hat{y}_i} - \frac{1-y_i}{1-\hat{y}_i}\right]
+\hat{y}_i(1-\hat{y}_i)
+$$
+
+Distribute $\hat{y}_i(1-\hat{y}_i)$ into the bracket. In the first term, $\hat{y}_i$ cancels; in the second, $(1-\hat{y}_i)$ cancels:
+
+$$
+= -\bigl[\,y_i(1-\hat{y}_i) - (1-y_i)\hat{y}_i\,\bigr]
+$$
+
+Expand the bracket:
+
+$$
+= -\bigl[\,y_i - y_i\hat{y}_i - \hat{y}_i + y_i\hat{y}_i\,\bigr]
+= -\bigl[\,y_i - \hat{y}_i\,\bigr]
+= \hat{y}_i - y_i
+$$
+
+**The sigmoid derivative $\hat{y}_i(1-\hat{y}_i)$ vanishes completely.** Bring in Link 3:
+
+$$
+\frac{\partial \mathcal{L}_i}{\partial w_j} = (\hat{y}_i - y_i)\,x_{ij}
+$$
+
+## Vectorizing over the dataset
+
+Average over $n$ examples:
+
+$$
+\frac{\partial \mathcal{L}}{\partial w_j} = \frac{1}{n}\sum_{i=1}^n (\hat{y}_i - y_i)\,x_{ij}
+$$
+
+Stack over all weights $j$ (rows of $X$ are examples, columns are features):
+
+$$
+\boxed{\;\frac{\partial \mathcal{L}}{\partial \mathbf{w}} = \frac{1}{n}\,X^T(\hat{\mathbf{y}} - \mathbf{y})\;}
+$$
+
+This is the prediction-error vector times the design matrix — the same structure as linear regression's gradient. The only difference is $\hat{\mathbf{y}} = \sigma(X\mathbf{w})$ instead of $X\mathbf{w}$.
+
+## Worked gradient step (2 examples)
+
+Take a 1-feature problem with a bias column:
+
+$$
+X = \begin{bmatrix} 1 & 2 \\ 1 & -1 \end{bmatrix},\quad
+\mathbf{y} = \begin{bmatrix} 1 \\ 0 \end{bmatrix},\quad
+\mathbf{w}_0 = \begin{bmatrix} 0 \\ 0 \end{bmatrix},\quad
+\eta = 0.5
+$$
+
+**Forward pass.** All scores are $z_i = 0$, so $\hat{y}_i = \sigma(0) = 0.5$:
+
+$$
+\hat{\mathbf{y}} = \begin{bmatrix} 0.5 \\ 0.5 \end{bmatrix},
+\qquad
+\hat{\mathbf{y}} - \mathbf{y} = \begin{bmatrix} -0.5 \\ 0.5 \end{bmatrix}
+$$
+
+**Gradient** $\frac{1}{n}X^T(\hat{\mathbf{y}}-\mathbf{y})$ with $n=2$:
+
+$$
+X^T(\hat{\mathbf{y}}-\mathbf{y})
+= \begin{bmatrix} 1 & 1 \\ 2 & -1 \end{bmatrix}
+  \begin{bmatrix} -0.5 \\ 0.5 \end{bmatrix}
+= \begin{bmatrix} -0.5+0.5 \\ -1.0-0.5 \end{bmatrix}
+= \begin{bmatrix} 0 \\ -1.5 \end{bmatrix}
+$$
+
+$$
+\nabla = \tfrac{1}{2}\begin{bmatrix} 0 \\ -1.5 \end{bmatrix}
+= \begin{bmatrix} 0 \\ -0.75 \end{bmatrix}
+$$
+
+**Update** $\mathbf{w} \leftarrow \mathbf{w} - \eta\,\nabla$:
+
+$$
+\mathbf{w}_1 = \begin{bmatrix} 0 \\ 0 \end{bmatrix} - 0.5\begin{bmatrix} 0 \\ -0.75 \end{bmatrix} = \begin{bmatrix} 0 \\ 0.375 \end{bmatrix}
+$$
+
+The bias stays at 0 (the two errors cancelled: example 1 was under-predicted and example 2 was over-predicted, both contributing to the bias gradient equally and opposite). The slope moved positive — which makes sense: the positive example at $x=2$ needs a higher score and the negative example at $x=-1$ needs a lower one, which a positive slope achieves.
+
+```python
+import numpy as np
+
+def sigmoid(z):
+    return 1 / (1 + np.exp(-z))
+
+X = np.array([[1., 2.], [1., -1.]])
+y = np.array([1., 0.])
+w = np.zeros(2)
+eta = 0.5
+
+# One gradient step
+z = X @ w
+y_hat = sigmoid(z)
+error = y_hat - y
+grad = (1 / len(y)) * X.T @ error
+
+print(f"y_hat:    {y_hat}")          # [0.5, 0.5]
+print(f"error:    {error}")          # [-0.5, 0.5]
+print(f"gradient: {grad}")           # [0.   -0.75]
+w -= eta * grad
+print(f"w after:  {w}")              # [0.    0.375]
+
+# Verify numerically with finite differences
+eps = 1e-5
+def loss(w):
+    y_hat = sigmoid(X @ w)
+    y_hat = np.clip(y_hat, 1e-15, 1-1e-15)
+    return -np.mean(y * np.log(y_hat) + (1-y) * np.log(1-y_hat))
+
+w0 = np.zeros(2)
+fd_grad = np.array([(loss(w0 + eps*np.eye(2)[j]) - loss(w0 - eps*np.eye(2)[j])) / (2*eps)
+                    for j in range(2)])
+print(f"Finite-diff grad: {fd_grad.round(5)}")   # matches [0., -0.75]
+```
+
+## Why this matters
+
+The fact that $\sigma'$ cancels is not a coincidence: it is because the sigmoid is the **canonical link** for the Bernoulli distribution in the exponential family. Cross-entropy is derived from the Bernoulli MLE objective, and the canonical link is precisely the function that makes the gradient equal to the prediction error. Any exponential-family model (Gaussian for MSE, Poisson for count regression, etc.) has the same structure: the gradient is always $\hat{y} - y$, scaled by the feature matrix.
+
+## Related concepts
+
+- [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — decision boundary, cross-entropy loss derivation from MLE
+- [**MLE for the Gaussian**](/wiki/mle-gaussian) — same MLE logic applied to a continuous output
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the general chain rule applied here to 3 links
