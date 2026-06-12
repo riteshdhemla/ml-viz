@@ -17,8 +17,8 @@ Agglomerative hierarchical clustering starts with every point in its own cluster
 |--------|---------------------------------------|----------------|
 | **Single** | $\min_{a\in A,\,b\in B} d(a,b)$ — nearest pair | Elongated chains |
 | **Complete** | $\max_{a\in A,\,b\in B} d(a,b)$ — farthest pair | Compact, equally-sized |
-| **Average (UPGMA)** | $\frac{1}{|A||B|}\sum_{a\in A}\sum_{b\in B} d(a,b)$ — mean of all pairs | Balanced; most common |
-| **Ward** | $\Delta\text{Var} = \frac{|A||B|}{|A|+|B|}\,d(\bar{A},\bar{B})^2$ — variance increase | Compact, evenly-sized; best for spherical blobs |
+| **Average (UPGMA)** | $\frac{1}{\lvert A\rvert\lvert B\rvert}\sum_{a\in A}\sum_{b\in B} d(a,b)$ — mean of all pairs | Balanced; most common |
+| **Ward** | $\Delta\text{Var} = \frac{\lvert A\rvert\lvert B\rvert}{\lvert A\rvert+\lvert B\rvert}\,d(\bar{A},\bar{B})^2$ — variance increase | Compact, evenly-sized; best for spherical blobs |
 
 <Callout type="tip" title="Which linkage to use?">
   Ward linkage minimizes within-cluster variance at every merge, so it produces the most compact and evenly-sized clusters. It is the best default for spherical, roughly equal-sized blobs. Single linkage is the only method that can detect elongated "chain" shapes, but it suffers from chaining: one bridge point between two distant blobs can pull them together early. Complete linkage is robust to this but can split large, elongated natural clusters.
