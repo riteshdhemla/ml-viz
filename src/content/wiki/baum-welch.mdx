@@ -1,0 +1,95 @@
+---
+title: "The Baum–Welch Algorithm"
+description: "EM for Hidden Markov Models — forward-backward responsibilities and closed-form parameter re-estimation, derived step by step."
+topics: ["graphical-models"]
+relatedLessons:
+  - "graphical-models/03-hidden-markov-models"
+estimatedMinutes: 12
+---
+
+# The Baum–Welch Algorithm
+
+When you have observation sequences but *no* hidden labels, **Baum–Welch** — an instance of the [EM algorithm](/courses/probabilistic-models/02-em-algorithm) — estimates the HMM parameters $\pi$ (initial distribution), $A$ (transition matrix), and $B$ (emission matrix).
+
+The loop alternates between two steps until the log-likelihood converges:
+
+- **E-step** — given current parameters, compute how *responsible* each hidden state (and each transition) is for the observed data.
+- **M-step** — re-estimate $\pi, A, B$ as normalized expected counts.
+
+## Setup and notation
+
+An HMM with $N$ hidden states emits an observation sequence $\mathbf{x} = (x_1, \ldots, x_T)$. We already have the **forward variable** from the forward algorithm:
+
+$$
+\alpha_t(i) = P(x_1, \ldots, x_t,\, z_t = i)
+$$
+
+Baum–Welch additionally needs a **backward pass**.
+
+## E-step
+
+### The backward pass
+
+Define $\beta_t(i) = P(x_{t+1}, \ldots, x_T \mid z_t = i)$ — the probability of the *future* observations given the current state:
+
+$$
+\beta_T(i) = 1 \quad \text{(base case)}
+$$
+
+$$
+\beta_t(i) = \sum_{j=1}^N A_{ij}\, b_j(x_{t+1})\, \beta_{t+1}(j)
+$$
+
+The recursion runs backwards from $t = T$ to $t = 1$: each state's backward value is a sum over where it could transition next, weighted by the emission probability of the next observation.
+
+### State occupancy γ
+
+Combine forward and backward to get the probability of being in state $i$ at time $t$, given the *whole* sequence:
+
+$$
+\gamma_t(i) = P(z_t = i \mid \mathbf{x}) = \frac{\alpha_t(i)\,\beta_t(i)}{\sum_{k=1}^N \alpha_t(k)\,\beta_t(k)}
+$$
+
+The numerator combines everything before-and-including $t$ ($\alpha$) with everything after $t$ ($\beta$); the denominator normalizes over all states.
+
+### Transition counts ξ
+
+The probability of transitioning $i \to j$ at time $t$:
+
+$$
+\xi_t(i,j) = P(z_t=i,\, z_{t+1}=j \mid \mathbf{x}) = \frac{\alpha_t(i)\, A_{ij}\, b_j(x_{t+1})\, \beta_{t+1}(j)}{\sum_{k,l} \alpha_t(k)\, A_{kl}\, b_l(x_{t+1})\, \beta_{t+1}(l)}
+$$
+
+Read the numerator left to right: arrive at state $i$ by time $t$, take the transition to $j$, emit the next observation from $j$, then account for the rest of the sequence.
+
+## M-step
+
+Re-estimate every parameter as a ratio of expected counts:
+
+$$
+\hat{\pi}_i = \gamma_1(i), \qquad
+\hat{A}_{ij} = \frac{\displaystyle\sum_{t=1}^{T-1} \xi_t(i,j)}{\displaystyle\sum_{t=1}^{T-1} \gamma_t(i)}, \qquad
+\hat{b}_j(k) = \frac{\displaystyle\sum_{t:\, x_t = k} \gamma_t(j)}{\displaystyle\sum_{t=1}^T \gamma_t(j)}
+$$
+
+In words:
+
+- $\hat{\pi}_i$ — expected fraction of sequences starting in state $i$
+- $\hat{A}_{ij}$ — expected number of $i \to j$ transitions, divided by expected number of times in state $i$
+- $\hat{b}_j(k)$ — expected number of times state $j$ emitted symbol $k$, divided by expected time in state $j$
+
+<Callout type="tip" title="It's GMMs with a Markov chain">
+  This is the same E-step/M-step loop as [Gaussian Mixture Models](/courses/probabilistic-models/01-gaussian-mixture-models) — HMMs are essentially "GMMs with a Markov chain tying the components across time." γ plays the role of the GMM responsibilities; the M-step is the same weighted-count normalization.
+</Callout>
+
+## Convergence and pitfalls
+
+- Each iteration **provably increases** the likelihood (the standard EM guarantee) — but only to a **local** optimum. Use multiple random restarts.
+- Multiplying many probabilities underflows fast; real implementations run all recursions in **log space** (or rescale $\alpha_t$, $\beta_t$ at each step). `hmmlearn` handles this for you.
+- With multiple training sequences, sum the expected counts across sequences before normalizing.
+
+## Related concepts
+
+- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — the model Baum–Welch trains
+- [**The EM Algorithm**](/courses/probabilistic-models/02-em-algorithm) — the general framework
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the static-data analogue

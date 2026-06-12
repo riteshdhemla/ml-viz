@@ -1,4 +1,4 @@
-import { getAllCourses, getLessonsForCourse } from "./content";
+import { getAllCourses, getLessonsForCourse, getAllWikiPages } from "./content";
 import type { SearchItem } from "@/types/search";
 
 /**
@@ -8,7 +8,7 @@ import type { SearchItem } from "@/types/search";
 export function buildSearchIndex(): SearchItem[] {
   const courses = getAllCourses();
 
-  return courses.flatMap((course): SearchItem[] => [
+  const courseAndLessonItems = courses.flatMap((course): SearchItem[] => [
     {
       href: `/courses/${course.slug}`,
       title: course.title,
@@ -28,4 +28,17 @@ export function buildSearchIndex(): SearchItem[] {
       })
     ),
   ]);
+
+  const wikiItems = getAllWikiPages().map(
+    (page): SearchItem => ({
+      href: `/wiki/${page.slug}`,
+      title: page.title,
+      description: page.description,
+      courseTitle: "Concept Wiki",
+      kind: "wiki",
+      estimatedMinutes: page.estimatedMinutes,
+    })
+  );
+
+  return [...courseAndLessonItems, ...wikiItems];
 }

@@ -210,6 +210,37 @@ Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
 2. Add lesson MDX files to the same folder
 3. Add corresponding notebooks to `notebooks/[slug]/`
 
+### Adding a wiki page (Concept Wiki)
+
+Deep-dive reference pages live at `/wiki/[slug]` — full algorithm procedures and
+worked traces that would clutter the lesson narrative. Lessons keep a 2–4
+sentence summary and link out with a styled card.
+
+1. Create `src/content/wiki/[slug].mdx` with frontmatter:
+   ```yaml
+   ---
+   title: "..."
+   description: "..."
+   topics: ["graphical-models"]   # first tag = grouping key on /wiki index
+   relatedLessons:                # "courseSlug/lessonSlug" — drives "Referenced by" footer
+     - "graphical-models/03-hidden-markov-models"
+   estimatedMinutes: N
+   ---
+   ```
+2. Create `notebooks/wiki/[slug].ipynb` — from-scratch implementation of the
+   procedure, following the standard notebook structure (back-link to
+   `/wiki/[slug]`, dark matplotlib, "✏️ Your turn" scaffold)
+3. Link from the lesson: keep a short prose summary, then
+   `<WikiLink slug="..." title="..." />` (plain string props — MDX runs with
+   `blockJS: true`, same constraint as `<Exercise id>`)
+4. Everything else is automatic: routing (`/wiki/[slug]`), search index,
+   sitemap, Colab button (`notebooks/wiki/{slug}.ipynb` convention)
+5. Integrity rules enforced by `src/lib/__tests__/wiki-integrity.test.ts`:
+   every `<WikiLink slug>` must resolve, every `relatedLessons` entry must
+   exist, every wiki page needs its notebook
+6. When extracting a section from a lesson, reduce the lesson's
+   `estimatedMinutes` and recompute the course `estimatedHours`
+
 ### Styling rules
 
 - Dark background: `bg-surface` (#0f1117), cards: `bg-surface-card` (#1a1d27)

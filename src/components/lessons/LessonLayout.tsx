@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { MDXRemote } from "next-mdx-remote/rsc";
-import remarkMath from "remark-math";
-import remarkGfm from "remark-gfm";
-import rehypeKatex from "rehype-katex";
-import rehypeHighlight from "rehype-highlight";
 import type { LessonMeta } from "@/types/course";
-import { mdxComponents } from "@/components/mdx/mdxComponents";
+import { MdxContent } from "@/components/mdx/MdxContent";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
@@ -63,28 +58,7 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
       {/* Content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-12">
         <article className="prose-lesson">
-          <MDXRemote
-            source={source}
-            components={mdxComponents}
-            options={{
-              // Lesson MDX must not evaluate JS expressions: exercises are
-              // referenced by id (`<Exercise id="..." />`) and resolved from
-              // the registry in `src/lib/exercises.ts`, never passed inline.
-              // blockJS defaults to true in next-mdx-remote v6; keep it on to
-              // prevent arbitrary code execution from MDX content.
-              blockJS: true,
-              mdxOptions: {
-                remarkPlugins: [remarkMath, remarkGfm],
-                rehypePlugins: [
-                  rehypeKatex,
-                  // detect:false → only highlight blocks with an explicit
-                  // ```lang fence. Plain fences (ASCII diagrams, sample
-                  // output) render as-is instead of being mis-guessed.
-                  [rehypeHighlight, { detect: false, ignoreMissing: true }],
-                ],
-              },
-            }}
-          />
+          <MdxContent source={source} />
         </article>
 
         {isQuiz && (

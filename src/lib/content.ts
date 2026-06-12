@@ -2,8 +2,10 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import type { CourseMeta, LessonMeta, CourseWithLessons } from "@/types/course";
+import type { WikiPageMeta } from "@/types/wiki";
 
 const CONTENT_DIR = path.join(process.cwd(), "src/content/courses");
+const WIKI_DIR = path.join(process.cwd(), "src/content/wiki");
 
 export function getAllCourses(): CourseMeta[] {
   const courseDirs = fs.readdirSync(CONTENT_DIR);
@@ -61,6 +63,35 @@ export async function getLessonContent(
   const { data, content } = matter(raw);
   return {
     meta: { ...data, slug: lessonSlug, courseSlug } as LessonMeta,
+    source: content,
+  };
+}
+
+export function getAllWikiPages(): WikiPageMeta[] {
+  if (!fs.existsSync(WIKI_DIR)) return [];
+  const files = fs
+    .readdirSync(WIKI_DIR)
+    .filter((f) => f.endsWith(".mdx"))
+    .sort();
+
+  return files
+    .map((file) => {
+      const raw = fs.readFileSync(path.join(WIKI_DIR, file), "utf-8");
+      const { data } = matter(raw);
+      return { ...data, slug: file.replace(".mdx", "") } as WikiPageMeta;
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export async function getWikiContent(
+  slug: string
+): Promise<{ meta: WikiPageMeta; source: string } | null> {
+  const filePath = path.join(WIKI_DIR, `${slug}.mdx`);
+  if (!fs.existsSync(filePath)) return null;
+  const raw = fs.readFileSync(filePath, "utf-8");
+  const { data, content } = matter(raw);
+  return {
+    meta: { ...data, slug } as WikiPageMeta,
     source: content,
   };
 }

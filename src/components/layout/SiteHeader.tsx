@@ -8,6 +8,8 @@ import { useSearchStore } from "@/lib/search-store";
 
 const NAV_LINKS = [
   { href: "/courses", label: "Courses" },
+  { href: "/path", label: "Path" },
+  { href: "/wiki", label: "Wiki" },
   { href: "/progress", label: "Progress" },
 ];
 
