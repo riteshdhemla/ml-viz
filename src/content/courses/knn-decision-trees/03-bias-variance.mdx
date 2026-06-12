@@ -3,7 +3,7 @@ title: "The Bias–Variance Tradeoff"
 description: "Why every model choice is a bet between being too rigid and too jumpy — seen through k and tree depth."
 order: 3
 type: concept
-estimatedMinutes: 18
+estimatedMinutes: 10
 ---
 
 # The Bias–Variance Tradeoff
@@ -12,17 +12,9 @@ You've now met two models with an obvious "complexity dial": the $k$ in [K-Neare
 
 ## The decomposition
 
-For squared error, the expected test error at a point splits into three pieces:
+Expected test error splits into three additive pieces: $\text{Bias}^2 + \text{Variance} + \sigma^2$ (irreducible noise). Bias is how far the average prediction is from the truth; variance is how much it swings across different training sets. Total error is minimized somewhere in between — simpler models accept bias to cut variance, complex models do the reverse.
 
-$$
-\mathbb{E}\left[(y - \hat{f}(x))^2\right] = \underbrace{\text{Bias}^2}_{\text{wrong on average}} + \underbrace{\text{Variance}}_{\text{jumpy across datasets}} + \underbrace{\sigma^2}_{\text{irreducible noise}}
-$$
-
-- **Bias** — the error your model makes *on average over many training sets*, because it's too simple to represent the truth. A linear fit to a curved relationship is biased no matter how much data you give it.
-- **Variance** — how much the fitted model *changes* when you redraw the training set. A wiggly model that chases every data point lands somewhere different every time.
-- **Noise** $\sigma^2$ — randomness in the labels themselves. No model escapes it.
-
-The bet: simpler models accept bias to cut variance; complex models accept variance to cut bias. Total error is minimized somewhere in the middle.
+<WikiLink slug="bias-variance-decomposition" title="Bias-Variance Decomposition" />
 
 ## Seeing it in k
 
@@ -41,22 +33,9 @@ The definitions above talk about "many training sets" — an experiment you can 
 
 <BiasVarianceViz />
 
-## Seeing it in tree depth
-
-Tree depth is the same dial wearing different clothes:
-
-- **Depth 1** (a stump): one split, massive bias, near-zero variance
-- **Unbounded depth**: a private leaf for every training point — zero training error, terrible variance
-
-This is exactly why [bagging and Random Forests](/courses/ensemble-methods/01-bagging-and-random-forests) work: deep trees are low-bias/high-variance, and averaging many of them keeps the low bias while canceling the variance.
-
 <Callout type="tip" title="Diagnosing which problem you have">
   Compare training and validation error. **Both high** → bias problem: your model can't even fit the data it has seen — add capacity or features. **Training low, validation high** → variance problem: regularize, simplify, or get more data. More data fixes variance; it never fixes bias.
 </Callout>
-
-<Details summary="Deep dive: the modern footnote — double descent">
-  Classical theory predicts a U-shaped test error curve. Very large neural networks complicate the picture ("double descent"): past the *interpolation threshold* — the point where the model can perfectly memorize the training set — test error can start **falling again** as the model grows further. One intuition: among the many zero-training-error solutions a huge model can reach, optimization tends to find the smoothest one, which behaves as if implicitly regularized. The bias–variance lens is still the right starting intuition — just know its edges are an active research area.
-</Details>
 
 <Exercise id="knntree-bias-variance" />
 

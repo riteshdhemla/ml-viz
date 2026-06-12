@@ -1,0 +1,130 @@
+---
+title: "The Gaussian Integral (Normalization Constant)"
+description: "Full 2-D polar-coordinate proof that ∫e^{−x²/2}dx = √(2π), followed by derivations of E[X]=μ and Var(X)=σ² for the Gaussian using substitution and integration by parts."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/02-probability-distributions"
+estimatedMinutes: 10
+---
+
+# The Gaussian Integral (Normalization Constant)
+
+The Gaussian PDF is $p(x) = \frac{1}{\sigma\sqrt{2\pi}}\,e^{-(x-\mu)^2/2\sigma^2}$. The constant $\frac{1}{\sigma\sqrt{2\pi}}$ is not given — it is derived by demanding that the total area equal 1. Computing it requires one beautiful trick: squaring the integral and switching to polar coordinates.
+
+## The standard Gaussian integral
+
+Call the total area $I$:
+
+$$
+I = \int_{-\infty}^\infty e^{-x^2/2}\, dx.
+$$
+
+There is no elementary antiderivative for $e^{-x^2/2}$. The trick is to compute $I^2$ instead.
+
+**Step 1 — square the integral.** Write it as a product of two copies with different dummy variables:
+
+$$
+I^2 = \left(\int_{-\infty}^\infty e^{-x^2/2}\, dx\right)\!\left(\int_{-\infty}^\infty e^{-y^2/2}\, dy\right) = \int_{-\infty}^\infty\!\!\int_{-\infty}^\infty e^{-(x^2+y^2)/2}\, dx\, dy.
+$$
+
+**Step 2 — switch to polar coordinates** ($x = r\cos\theta$, $y = r\sin\theta$, area element $dx\, dy = r\, dr\, d\theta$):
+
+$$
+I^2 = \int_0^{2\pi}\!\!\int_0^\infty e^{-r^2/2}\, r\, dr\, d\theta.
+$$
+
+The angle integral gives $2\pi$. The radial integral becomes elementary under $u = r^2/2$, $du = r\, dr$:
+
+$$
+\int_0^\infty e^{-r^2/2}\, r\, dr = \int_0^\infty e^{-u}\, du = \Big[-e^{-u}\Big]_0^\infty = 0 - (-1) = 1.
+$$
+
+**Step 3 — conclude.**
+
+$$
+I^2 = 2\pi \cdot 1 = 2\pi \quad\Longrightarrow\quad I = \sqrt{2\pi}.
+$$
+
+## Scaling to general $\mu$ and $\sigma$
+
+For $\mathcal{N}(\mu, \sigma^2)$, substitute $z = (x - \mu)/\sigma$, $dx = \sigma\, dz$:
+
+$$
+\int_{-\infty}^\infty e^{-(x-\mu)^2/2\sigma^2}\, dx = \sigma \int_{-\infty}^\infty e^{-z^2/2}\, dz = \sigma\sqrt{2\pi}.
+$$
+
+Dividing by $\sigma\sqrt{2\pi}$ forces the area to 1 — that is the normalization constant.
+
+## Deriving $\mathbb{E}[X] = \mu$
+
+Use the same substitution $z = (x - \mu)/\sigma$, so $x = \mu + \sigma z$ and $dx = \sigma\, dz$. Let $\phi(z) = \frac{1}{\sqrt{2\pi}}e^{-z^2/2}$ be the standard normal density:
+
+$$
+\mathbb{E}[X] = \int_{-\infty}^\infty x\, \frac{1}{\sigma\sqrt{2\pi}} e^{-(x-\mu)^2/2\sigma^2}\, dx
+= \int_{-\infty}^\infty (\mu + \sigma z)\, \phi(z)\, dz.
+$$
+
+Split:
+
+$$
+= \mu \underbrace{\int_{-\infty}^\infty \phi(z)\, dz}_{= 1} + \sigma \underbrace{\int_{-\infty}^\infty z\,\phi(z)\, dz}_{= 0} = \mu.
+$$
+
+The first integral is 1 (normalization). The second is 0 because $z\,\phi(z)$ is an **odd function** — $g(-z) = -g(z)$ — integrated over the symmetric interval $(-\infty, \infty)$.
+
+## Deriving $\text{Var}(X) = \sigma^2$
+
+$\text{Var}(X) = \mathbb{E}[(X-\mu)^2] = \sigma^2 \int_{-\infty}^\infty z^2 \phi(z)\, dz$. We need the integral to equal 1.
+
+**Integration by parts.** Use $\phi'(z) = -z\,\phi(z)$, so $z\,\phi(z)\, dz = -d\phi$. Set $u = z$, $dv = z\,\phi(z)\, dz$, giving $du = dz$ and $v = -\phi(z)$:
+
+$$
+\int_{-\infty}^\infty z^2 \phi(z)\, dz
+= \Big[-z\,\phi(z)\Big]_{-\infty}^{\infty} + \int_{-\infty}^\infty \phi(z)\, dz.
+$$
+
+The boundary term $\lim_{z \to \pm\infty} z\,\phi(z) = 0$ because the Gaussian decays faster than $z$ grows. The remaining integral is 1. Therefore:
+
+$$
+\text{Var}(X) = \sigma^2 \cdot 1 = \sigma^2.
+$$
+
+## Numerical verification
+
+```python
+import numpy as np
+from scipy import integrate
+
+# Verify I = sqrt(2*pi)
+I_numeric, _ = integrate.quad(lambda x: np.exp(-x**2 / 2), -np.inf, np.inf)
+print(f"Numeric I  = {I_numeric:.10f}")
+print(f"sqrt(2π)   = {np.sqrt(2 * np.pi):.10f}")
+
+# Monte Carlo check: verify E[X] and Var[X] for N(mu, sigma^2)
+rng = np.random.default_rng(0)
+mu, sigma = 3.0, 2.0
+samples = rng.normal(mu, sigma, size=500_000)
+print(f"\nN({mu}, {sigma**2}) via Monte Carlo (N=500k):")
+print(f"  E[X]  = {samples.mean():.5f}  (true: {mu})")
+print(f"  Var[X]= {samples.var():.5f}  (true: {sigma**2:.1f})")
+
+# Gaussian integral approximation error vs number of Monte Carlo samples
+errors = []
+Ns = [100, 1000, 10_000, 100_000]
+for N in Ns:
+    x = rng.normal(0, 1, N)
+    # Estimate I via importance sampling: I = E[e^{x^2/2} * e^{-x^2/2} * sqrt(2pi)] = sqrt(2pi)
+    # Simpler: just verify normalization numerically
+    _, err = integrate.quad(lambda t: np.exp(-t**2 / 2), -10, 10)
+    errors.append(abs(integrate.quad(lambda t: np.exp(-t**2/2), -N/100, N/100)[0] - np.sqrt(2*np.pi)))
+
+print("\nTruncation error of integral over [-N/100, N/100]:")
+for N, e in zip(Ns, errors):
+    print(f"  N={N:>6}: error={e:.2e}")
+```
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the full lesson introducing the Gaussian and its key properties
+- [**MLE for the Gaussian**](/wiki/mle-gaussian) — fitting $\mu$ and $\sigma^2$ from data via maximum likelihood
+- [**Beta-Bernoulli Conjugate Posterior**](/wiki/beta-bernoulli-posterior) — another exact derivation involving normalization constants

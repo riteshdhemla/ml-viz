@@ -1,0 +1,114 @@
+---
+title: "Bias-Variance Decomposition"
+description: "Full algebraic derivation of E[(y−f̂)²] = Bias² + Variance + σ², KNN at k=1 vs k=n, empirical estimation via repeated resampling, and a diagnosis table."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "knn-decision-trees/03-bias-variance"
+estimatedMinutes: 10
+---
+
+# Bias-Variance Decomposition
+
+Every supervised model faces the same trade-off: the more flexible it is, the more it chases training-set noise; the simpler it is, the more it ignores real signal. The **bias-variance decomposition** quantifies this formally, splitting expected test error into three additive components that cannot be reduced independently.
+
+## Setup and notation
+
+Let the true relationship be $y = f(\mathbf{x}) + \varepsilon$, where $\varepsilon$ is zero-mean noise with $\mathbb{E}[\varepsilon] = 0$ and $\text{Var}(\varepsilon) = \sigma^2$. We fit a model $\hat{f}$ on a training set $\mathcal{D}$ drawn from the same distribution. The **expected test error** at a fixed point $\mathbf{x}$ — expectation over many random draws of $\mathcal{D}$ — is:
+
+$$
+\mathbb{E}_\mathcal{D}\!\left[(y - \hat{f}(\mathbf{x}))^2\right]
+$$
+
+## The algebraic decomposition
+
+Let $\mu(\mathbf{x}) = \mathbb{E}_\mathcal{D}[\hat{f}(\mathbf{x})]$ be the mean prediction across training sets. Add and subtract $\mu$:
+
+$$
+y - \hat{f} = \underbrace{(f(\mathbf{x}) - \mu(\mathbf{x}))}_{\text{bias}} + \underbrace{(\mu(\mathbf{x}) - \hat{f}(\mathbf{x}))}_{\text{variation}} + \underbrace{\varepsilon}_{\text{noise}}
+$$
+
+Square and expand. Cross-terms involving $\varepsilon$ vanish because $\varepsilon$ is independent of $\hat{f}$ and $\mathbb{E}[\varepsilon] = 0$. The cross-term between bias and variation vanishes because $\mathbb{E}_\mathcal{D}[\mu - \hat{f}] = 0$ by definition of $\mu$:
+
+$$
+\mathbb{E}\!\left[(y - \hat{f})^2\right]
+= \underbrace{(f(\mathbf{x}) - \mu(\mathbf{x}))^2}_{\text{Bias}^2(\hat{f})}
++ \underbrace{\mathbb{E}\!\left[(\hat{f}(\mathbf{x}) - \mu(\mathbf{x}))^2\right]}_{\text{Variance}(\hat{f})}
++ \underbrace{\sigma^2}_{\text{irreducible noise}}
+$$
+
+The three terms:
+
+- **Bias** $= f(\mathbf{x}) - \mathbb{E}_\mathcal{D}[\hat{f}(\mathbf{x})]$ — the error your model makes *on average*; structural, not fixable with more data if the model family is wrong.
+- **Variance** $= \mathbb{E}_\mathcal{D}\!\left[(\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})])^2\right]$ — how much the prediction swings when you redraw the training set; cured by regularization, ensembling, or more data.
+- $\sigma^2$ — label noise baked into the targets; no model can escape it.
+
+## Interpretation in KNN
+
+For $k$-nearest neighbors, $k$ shifts both terms in opposite directions:
+
+| | $k = 1$ | $k = n$ |
+|---|---|---|
+| Prediction | copy the nearest point | global majority vote |
+| Bias | minimal | maximal — predicts the mean |
+| Variance | huge — one noisy neighbor flips the answer | tiny |
+| Boundary | jagged islands around noise points | nearly flat |
+
+**Total test error** traces a U-shape as $k$ grows: Bias² rises monotonically while Variance falls. The optimal $k$ sits at the bottom of the U, found by cross-validation.
+
+## Estimating Bias² and Variance empirically
+
+Run the model on many resamples and measure the spread vs. the average error:
+
+1. Draw $M$ training sets $\mathcal{D}_1, \ldots, \mathcal{D}_M$ from the data distribution.
+2. Fit $\hat{f}_1, \ldots, \hat{f}_M$; record predictions $\hat{y}_m = \hat{f}_m(\mathbf{x}_0)$ at a fixed test point $\mathbf{x}_0$.
+3. $\bar{y} = \frac{1}{M}\sum_m \hat{y}_m$ — the empirical mean prediction.
+4. $\widehat{\text{Variance}} = \frac{1}{M}\sum_m (\hat{y}_m - \bar{y})^2$.
+5. $\widehat{\text{Bias}^2} = (\bar{y} - f(\mathbf{x}_0))^2$.
+
+```python
+import numpy as np
+from sklearn.neighbors import KNeighborsRegressor
+
+rng = np.random.default_rng(42)
+n_train, M = 50, 500
+x_test = np.array([[0.5]])
+
+def f_true(x): return np.sin(2 * np.pi * x).ravel()
+
+print(f"{'k':>3}  {'Bias²':>8}  {'Var':>8}  {'Total':>8}")
+
+for k in [1, 3, 5, 10, 20, 50]:
+    preds = []
+    for _ in range(M):
+        X = rng.uniform(0, 1, (n_train, 1))
+        y = f_true(X) + rng.normal(0, 0.2, n_train)
+        preds.append(KNeighborsRegressor(n_neighbors=k).fit(X, y).predict(x_test)[0])
+    preds = np.array(preds)
+    bias2 = (preds.mean() - f_true(x_test)[0]) ** 2
+    variance = preds.var()
+    print(f"{k:>3}  {bias2:>8.4f}  {variance:>8.4f}  {bias2+variance:>8.4f}")
+```
+
+## Diagnosing which problem you have
+
+<Callout type="tip" title="Training vs. validation error">
+  Compare training error and validation error. **Both high** → bias problem: the model cannot fit even what it has seen — add capacity, more features, or reduce regularization. **Training low, validation high** → variance problem: regularize, simplify, get more data, or use ensembles. More data cures variance; it never cures bias.
+</Callout>
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| High train error + high val error | High bias | More capacity, fewer constraints |
+| Low train error + high val error | High variance | Regularize, ensemble, more data |
+| Errors decrease with more data | Variance-limited | Collect more data |
+| Errors plateau with more data | Bias-limited | Change model family |
+
+## The modern footnote: double descent
+
+Classical theory predicts a U-shaped test error curve. Very large neural networks add a twist: past the **interpolation threshold** — the point where the model can perfectly memorize training data — test error can fall again as the model grows further. Among the many zero-training-error solutions, gradient descent tends to find the smoothest one, which behaves as if implicitly regularized. The bias–variance lens is still the right starting intuition; just know the edges are an active research area.
+
+## Related concepts
+
+- [**The Bias–Variance Tradeoff**](/courses/knn-decision-trees/03-bias-variance) — the full lesson with interactive KNN visualization
+- [**K-Nearest Neighbors**](/courses/knn-decision-trees/01-knn) — the model used to illustrate the tradeoff
+- [**Regularization: Ridge & Lasso**](/courses/linear-regression/03-regularization) — one dial for reducing variance
+- [**Bagging and Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests) — ensembles that cancel variance while preserving low bias

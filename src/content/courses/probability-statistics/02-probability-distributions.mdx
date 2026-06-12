@@ -3,7 +3,7 @@ title: "Probability Distributions"
 description: "Random variables, expectation, variance, and the key distributions that appear everywhere in machine learning."
 order: 2
 type: concept
-estimatedMinutes: 18
+estimatedMinutes: 14
 ---
 
 # Probability Distributions
@@ -111,45 +111,9 @@ $$
 p(x) = \frac{1}{\sigma\sqrt{2\pi}}\exp\!\left(-\frac{(x-\mu)^2}{2\sigma^2}\right), \quad X \sim \mathcal{N}(\mu, \sigma^2)
 $$
 
-with $\mathbb{E}[X] = \mu$ and $\text{Var}(X) = \sigma^2$. Let's see where each piece comes from.
+with $\mathbb{E}[X] = \mu$ and $\text{Var}(X) = \sigma^2$. The normalization constant $\frac{1}{\sigma\sqrt{2\pi}}$ comes from demanding the total area equal 1, computed via a 2-D polar-coordinate trick. The mean $\mu$ and variance $\sigma^2$ follow from a change of variables and integration by parts.
 
-**Where the $\tfrac{1}{\sigma\sqrt{2\pi}}$ comes from (normalization).** The shape of the bell is the bare exponential $e^{-(x-\mu)^2/2\sigma^2}$; the constant in front is whatever makes the total area equal $1$. We need the famous **Gaussian integral**. Start from the standard case $\mu = 0, \sigma = 1$ and call the unknown total area $I$:
-
-$$
-I = \int_{-\infty}^\infty e^{-x^2/2}\, dx.
-$$
-
-The trick is to compute $I^2$ as a 2-D integral and switch to polar coordinates ($x = r\cos\theta$, $y = r\sin\theta$, $dx\,dy = r\,dr\,d\theta$):
-
-$$
-I^2 = \int_{-\infty}^\infty\!\!\int_{-\infty}^\infty e^{-(x^2+y^2)/2}\, dx\, dy
-= \int_0^{2\pi}\!\!\int_0^\infty e^{-r^2/2}\, r\, dr\, d\theta.
-$$
-
-The inner integral is now elementary — substitute $u = r^2/2$, $du = r\,dr$:
-
-$$
-\int_0^\infty e^{-r^2/2}\, r\, dr = \int_0^\infty e^{-u}\, du = 1, \qquad \text{so}\quad I^2 = \int_0^{2\pi} 1\, d\theta = 2\pi.
-$$
-
-Therefore $I = \sqrt{2\pi}$. Rescaling by $\sigma$ (substitute $z = (x-\mu)/\sigma$, $dx = \sigma\,dz$) multiplies the area by $\sigma$, giving $\sigma\sqrt{2\pi}$. Dividing by exactly that constant forces the area to $1$ — that is the normalization factor.
-
-**Deriving $\mathbb{E}[X] = \mu$.** Substitute $z = (x - \mu)/\sigma$ so $x = \mu + \sigma z$:
-
-$$
-\mathbb{E}[X] = \int_{-\infty}^\infty x\, p(x)\, dx
-= \underbrace{\mu \int_{-\infty}^\infty \phi(z)\, dz}_{=\,\mu\cdot 1} + \underbrace{\sigma \int_{-\infty}^\infty z\,\phi(z)\, dz}_{=\,0},
-$$
-
-where $\phi(z) = \tfrac{1}{\sqrt{2\pi}}e^{-z^2/2}$. The first term is $\mu$ because $\phi$ integrates to $1$; the second term vanishes because $z\,\phi(z)$ is an **odd** function integrated over a symmetric range. So $\mathbb{E}[X] = \mu$.
-
-**Deriving $\text{Var}(X) = \sigma^2$.** With the same substitution, $\text{Var}(X) = \mathbb{E}[(X-\mu)^2] = \sigma^2 \int z^2 \phi(z)\, dz$. Integrating $z^2\phi(z)$ by parts (let $u = z$, $dv = z\phi(z)\,dz$, so $v = -\phi(z)$) gives:
-
-$$
-\int_{-\infty}^\infty z^2 \phi(z)\, dz = \Big[-z\,\phi(z)\Big]_{-\infty}^{\infty} + \int_{-\infty}^\infty \phi(z)\, dz = 0 + 1 = 1.
-$$
-
-The boundary term is $0$ (the Gaussian decays faster than $z$ grows), and the leftover integral is again $1$. Hence $\text{Var}(X) = \sigma^2 \cdot 1 = \sigma^2$.
+<WikiLink slug="gaussian-integral" title="The Gaussian Integral (Normalization Constant)" />
 
 <Callout type="tip" title="Why Gaussian is everywhere">
   The **Central Limit Theorem**: the mean of many independent random variables converges to a Gaussian, regardless of the original distribution. Features in real datasets are often (approximately) Gaussian — gradients of large neural networks are too.

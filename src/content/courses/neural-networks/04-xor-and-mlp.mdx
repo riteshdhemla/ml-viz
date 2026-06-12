@@ -3,7 +3,7 @@ title: "XOR, MLPs & Softmax"
 description: "Why a single perceptron can't solve XOR, how a hidden layer fixes it, and how softmax turns raw scores into probabilities."
 order: 4
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 12
 ---
 
 # XOR, MLPs & Softmax
@@ -24,21 +24,9 @@ $$
 - If the label is 1 but we predicted 0: push $\mathbf{w}$ in the direction of $\mathbf{x}$ (rotate the decision boundary toward the example).
 - If the label is 0 but we predicted 1: push $\mathbf{w}$ away from $\mathbf{x}$.
 
-**Convergence theorem:** If the data is **linearly separable**, the perceptron algorithm converges in a finite number of steps. If not, it loops forever.
+**Convergence theorem:** If the data is **linearly separable**, the perceptron algorithm converges in a finite number of steps. If not, it loops forever. For the 5-step AND convergence trace with exact weight/bias values at every update:
 
-### Worked example: learning AND
-
-AND is linearly separable (the two 1-outputs sit in one corner). Starting from $\mathbf{w} = (0, 0)$, $b = 0$:
-
-| Step | Input $(x_1, x_2)$ | Label | Pred | Update |
-|------|--------------------|-------|------|--------|
-| 1 | (1, 1) | 1 | 0 | $\mathbf{w}$ += (1,1), $b$ += 1 → **w=(1,1), b=1** |
-| 2 | (0, 0) | 0 | 1 | $\mathbf{w}$ -= (0,0), $b$ -= 1 → **w=(1,1), b=0** |
-| 3 | (1, 0) | 0 | 1 | $\mathbf{w}$ -= (1,0), $b$ -= 1 → **w=(0,1), b=-1** |
-| 4 | (0, 1) | 0 | 0 | no update |
-| 5 | (1, 1) | 1 | 0 | $\mathbf{w}$ += (1,1), $b$ += 1 → **w=(1,2), b=0** |
-
-After further iterations the perceptron converges to a separating hyperplane. The XOR case never converges.
+<WikiLink slug="perceptron-learning" title="The Perceptron Learning Algorithm" />
 
 ## The XOR problem
 
@@ -51,24 +39,7 @@ XOR outputs 1 when exactly one input is 1:
 | 0 | 1 | 1 |
 | 1 | 1 | 0 |
 
-Plot these four points: the two 0-outputs are at $(0,0)$ and $(1,1)$ (the diagonal), and the two 1-outputs are at $(1,0)$ and $(0,1)$ (the other diagonal). No single straight line separates the two classes.
-
-**Proof by contradiction:** Suppose there exists $\mathbf{w} = (w_1, w_2)$ and $b$ such that:
-
-$$
-w_1 \cdot 0 + w_2 \cdot 0 + b \leq 0 \quad (0,0) \text{ class 0}
-$$
-$$
-w_1 \cdot 1 + w_2 \cdot 0 + b > 0 \quad (1,0) \text{ class 1}
-$$
-$$
-w_1 \cdot 0 + w_2 \cdot 1 + b > 0 \quad (0,1) \text{ class 1}
-$$
-$$
-w_1 \cdot 1 + w_2 \cdot 1 + b \leq 0 \quad (1,1) \text{ class 0}
-$$
-
-Adding the two "class 1" inequalities: $w_1 + w_2 + 2b > 0$. But the "class 0" constraints give $b \leq 0$ and $w_1 + w_2 + b \leq 0$, so $w_1 + w_2 \leq -b \leq 0$, which means $w_1 + w_2 + 2b \leq b \leq 0$. **Contradiction.** No linear separator exists.
+Plot these four points: the two 0-outputs are at $(0,0)$ and $(1,1)$ (the diagonal), and the two 1-outputs are at $(1,0)$ and $(0,1)$ (the other diagonal). No single straight line separates the two classes — a formal proof by contradiction using the four boundary inequalities shows this is impossible (see the wiki page above).
 
 <Callout type="info" title="Why XOR matters historically">
   Minsky and Papert's 1969 book *Perceptrons* proved this limitation and severely cooled AI funding for a decade (the first "AI winter"). The invention of backpropagation and multi-layer networks in the 1980s reignited interest by showing that XOR is trivially solved with one hidden layer.
