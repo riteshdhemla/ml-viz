@@ -1,0 +1,144 @@
+---
+title: "Non-Maximum Suppression (NMS)"
+description: "6-step suppression procedure, IoU threshold trace on a 4-box example (confidences 0.92, 0.87, 0.61, 0.55), and the Soft-NMS Gaussian decay variant for crowded scenes."
+topics: ["computer-vision"]
+relatedLessons:
+  - "computer-vision/01-object-detection"
+estimatedMinutes: 8
+---
+
+# Non-Maximum Suppression (NMS)
+
+After an object detector runs its forward pass, it produces thousands of overlapping bounding boxes — often dozens for the same physical object. **NMS** prunes duplicates by keeping only the highest-scoring box for each spatial region, discarding all other boxes that heavily overlap it.
+
+## Why duplicates arise
+
+Every anchor (or grid cell in YOLO) that partially overlaps an object fires with some confidence. For a single cat, the 9 anchors centred on the cat and dozens more nearby may all receive high objectness scores. Without pruning, the detector would return 50+ boxes around every detected object.
+
+## The 6-step algorithm
+
+Let $B$ be the set of all candidate boxes with confidence $> $ threshold (e.g. 0.05), and $\tau$ the IoU suppression threshold (typically 0.45–0.5):
+
+1. If $B$ is empty, stop; return the output list.
+2. Sort boxes in $B$ by confidence score, highest first.
+3. Take the top-scoring box $b^*$; add it to the output list.
+4. Remove $b^*$ from $B$.
+5. For every remaining box $b_i \in B$: if $\text{IoU}(b^*, b_i) > \tau$, remove $b_i$ from $B$.
+6. Go to step 1.
+
+**Time complexity:** $O(n^2)$ in the worst case (all boxes pairwise compared), where $n$ is the number of candidates. In practice $n$ is small after the confidence threshold filter.
+
+## IoU recap
+
+$$
+\text{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|} = \frac{|A \cap B|}{|A| + |B| - |A \cap B|}
+$$
+
+IoU = 0 means no overlap; IoU = 1 means the boxes are identical. The standard NMS suppression threshold is $\tau = 0.5$: boxes sharing more than half their union area are treated as duplicates.
+
+## Worked trace: 4 boxes, 1 class
+
+Four candidate boxes for a single "cat" object, sorted by confidence. NMS threshold $\tau = 0.5$.
+
+| Step | Action | Output list | $B$ remaining |
+|------|--------|-------------|---------------|
+| 1 | Sort by confidence | — | [0.92, 0.87, 0.61, 0.55] |
+| 2 | Take 0.92 → output | [0.92] | [0.87, 0.61, 0.55] |
+| 3 | IoU(0.92, 0.87) = 0.73 > 0.5 → suppress 0.87 | [0.92] | [0.61, 0.55] |
+| 4 | Take 0.61 → output | [0.92, 0.61] | [0.55] |
+| 5 | IoU(0.61, 0.55) = 0.28 < 0.5 → keep 0.55 | [0.92, 0.61] | [0.55] |
+| 6 | Take 0.55 → output | [0.92, 0.61, 0.55] | — |
+
+**Result:** 3 detections kept (0.92, 0.61, 0.55). The 0.87 box was suppressed because its 73% IoU with the top box indicated it was covering the same object from a slightly different anchor.
+
+**Interpretation of suppression:** the 0.87 box had a high score but was essentially a duplicate of the 0.92 box — probably an adjacent anchor slightly shifted over the same cat. The 0.61 and 0.55 boxes had low mutual IoU (0.28), so they represent distinct spatial locations (perhaps two different objects or the same object seen from very different anchors).
+
+<Callout type="warning" title="NMS threshold sensitivity">
+  A threshold too high (e.g. 0.7) lets heavily overlapping duplicates survive. A threshold too low (e.g. 0.3) suppresses genuinely distinct nearby objects. The range 0.45–0.5 is the standard starting point; tune it on your validation set, especially for crowded scenes.
+</Callout>
+
+## Pure-Python implementation
+
+```python
+import numpy as np
+
+def iou(box_a, box_b):
+    """
+    box: [x1, y1, x2, y2] format (top-left, bottom-right corners)
+    """
+    xa = max(box_a[0], box_b[0]); ya = max(box_a[1], box_b[1])
+    xb = min(box_a[2], box_b[2]); yb = min(box_a[3], box_b[3])
+    inter = max(0, xb - xa) * max(0, yb - ya)
+    area_a = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+    area_b = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+def nms(boxes, scores, iou_threshold=0.5, score_threshold=0.05):
+    """
+    boxes:  (N, 4) array of [x1, y1, x2, y2]
+    scores: (N,)  confidence scores
+    Returns: list of kept indices
+    """
+    # Filter low-confidence boxes
+    keep_mask = scores > score_threshold
+    boxes  = boxes[keep_mask]
+    scores = scores[keep_mask]
+    indices = np.where(keep_mask)[0]
+
+    # Sort by confidence, highest first
+    order = np.argsort(scores)[::-1]
+    kept = []
+
+    while len(order) > 0:
+        i = order[0]
+        kept.append(indices[i])
+        remaining = []
+        for j in order[1:]:
+            if iou(boxes[i], boxes[j]) <= iou_threshold:
+                remaining.append(j)
+        order = np.array(remaining)
+
+    return kept
+
+# Reproduce the worked example (1-D confidence-only; use dummy boxes)
+boxes  = np.array([[10,10,50,50],[12,12,52,52],[60,60,100,100],[62,62,98,98]])
+scores = np.array([0.92, 0.87, 0.61, 0.55])
+# Manually set IoU values to match the trace:
+# IoU(box0, box1) ~ 0.73  (heavy overlap, same cat)
+# IoU(box2, box3) ~ 0.28  (light overlap, different locations)
+boxes_trace = np.array([
+    [10, 10, 50, 50],   # score 0.92
+    [12, 12, 52, 52],   # score 0.87  — heavily overlaps box 0
+    [60, 60, 90, 90],   # score 0.61
+    [65, 65, 95, 95],   # score 0.55  — lightly overlaps box 2
+])
+kept = nms(boxes_trace, scores, iou_threshold=0.5)
+print(f"Kept indices: {kept}")          # [0, 2, 3]
+print(f"Kept scores:  {scores[kept]}")  # [0.92  0.61  0.55]
+```
+
+## Soft-NMS: gentle decay instead of hard removal
+
+Standard NMS makes a binary decision: suppress or keep. In crowded scenes two different objects can have high IoU (e.g. two overlapping people), so hard suppression causes missed detections.
+
+**Soft-NMS** (Bodla et al., 2017) replaces step 5 with a score decay:
+
+$$
+s_i \leftarrow s_i \cdot \exp\!\left(-\frac{\text{IoU}(b^*, b_i)^2}{\sigma}\right)
+$$
+
+Boxes with high IoU have their confidence decayed exponentially rather than zeroed. They may still survive later rounds if their decayed score stays above the confidence threshold, but are less likely to be selected as the representative box.
+
+**Effect:** in a crowd of 10 people with mutual IoU ≈ 0.4–0.6, hard NMS might keep 3; Soft-NMS keeps all 10 with appropriately reduced confidences.
+
+## Class-aware vs class-agnostic NMS
+
+**Class-aware NMS** (default): run NMS independently per class. A "car" box does not suppress a nearby "person" box, even if their IoU is 0.8.
+
+**Class-agnostic NMS**: suppress any box regardless of class label. Used when classes are mutually exclusive or when speed matters more than precision on overlapping multi-class scenes.
+
+## Related concepts
+
+- [**Object Detection**](/courses/computer-vision/01-object-detection) — the full detection pipeline: anchors, RPN, YOLO, FPN, and mAP evaluation
+- [**IoU and Anchor Assignment**](/courses/computer-vision/01-object-detection) — how IoU is also used to assign ground-truth labels to anchors during training

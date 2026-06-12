@@ -3,7 +3,7 @@ title: "Object Detection"
 description: "Anchor boxes, region proposals, YOLO, Faster R-CNN, FPN, and NMS — the full pipeline for finding and localising objects in images."
 order: 1
 type: concept
-estimatedMinutes: 17
+estimatedMinutes: 14
 ---
 
 # Object Detection
@@ -141,33 +141,9 @@ FPN is now a standard component in Faster R-CNN, Mask R-CNN, RetinaNet, and many
 
 ## Non-Maximum Suppression (NMS)
 
-After a forward pass, a detector with thousands of anchors will produce thousands of overlapping boxes for the same object. **NMS** prunes duplicates:
+After a forward pass, a detector with thousands of anchors will produce thousands of overlapping boxes for the same object. NMS prunes duplicates by iteratively keeping the highest-confidence box and suppressing all boxes whose IoU with it exceeds a threshold (typically 0.5). For the full 6-step algorithm, the 4-box worked trace (confidences 0.92, 0.87, 0.61, 0.55), and the Soft-NMS Gaussian decay variant for crowded scenes:
 
-1. Collect all predicted boxes with confidence $> $ threshold (e.g. 0.05).
-2. Sort boxes by confidence score, highest first.
-3. Take the top-scoring box; add it to the output list.
-4. Remove all remaining boxes whose IoU with this box exceeds a suppression threshold (typically 0.5).
-5. Repeat from step 3 on the remaining boxes.
-6. Return the output list.
-
-### Worked trace
-
-Four candidate boxes for a single "cat" (confidences 0.92, 0.87, 0.61, 0.55; NMS threshold IoU = 0.5):
-
-| Step | Action | Output list | Remaining |
-|------|--------|-------------|-----------|
-| 1 | Sort by confidence | — | [0.92, 0.87, 0.61, 0.55] |
-| 2 | Take 0.92, add to output | [0.92] | [0.87, 0.61, 0.55] |
-| 3 | IoU(0.92, 0.87) = 0.73 > 0.5 → suppress | [0.92] | [0.61, 0.55] |
-| 4 | Take 0.61, add to output | [0.92, 0.61] | [0.55] |
-| 5 | IoU(0.61, 0.55) = 0.28 < 0.5 → keep | [0.92, 0.61] | [0.55] |
-| 6 | Take 0.55, add to output | [0.92, 0.61, 0.55] | — |
-
-Final detections: boxes with confidence 0.92, 0.61, 0.55 (three distinct spatial locations). The 0.87 box was suppressed because it heavily overlapped the highest-scoring box.
-
-**Soft-NMS** (Bodla et al., 2017) is a gentler variant: instead of hard removal, it decays the confidence of overlapping boxes by a Gaussian function of their IoU. This helps in crowded scenes where two different objects genuinely overlap.
-
-**Class-aware vs class-agnostic NMS:** most detectors run NMS separately per class (class-aware), so a box predicted as "car" does not suppress a nearby box predicted as "person."
+<WikiLink slug="nms-algorithm" title="Non-Maximum Suppression (NMS)" />
 
 ## SSD — Single Shot MultiBox Detector
 

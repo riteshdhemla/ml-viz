@@ -1,0 +1,111 @@
+---
+title: "DBSCAN: Core, Border, Noise Classification"
+description: "Formal point-type definitions with neighborhood conditions, 9-point worked example classifying every point at ε=2 and min_samples=3, and the k-distance elbow method for parameter selection."
+topics: ["unsupervised-learning"]
+relatedLessons:
+  - "clustering/02-hierarchical-and-dbscan"
+estimatedMinutes: 8
+---
+
+# DBSCAN: Core, Border, Noise Classification
+
+DBSCAN (Density-Based Spatial Clustering of Applications with Noise) finds clusters as dense connected regions without requiring $K$ in advance. Its key insight: a "cluster" is a maximal set of **core points** and their reachable neighbors, where a core point has at least `min_samples` points within radius $\varepsilon$.
+
+## Two parameters
+
+- **$\varepsilon$ (eps):** radius of the neighborhood around each point
+- **min\_samples:** minimum number of points (including the point itself) to form a dense region
+
+## Point-type definitions
+
+For a point $p$, let $N_\varepsilon(p) = \{q : d(p,q) \le \varepsilon\}$ be its $\varepsilon$-neighborhood, which includes $p$ itself.
+
+| Type | Condition | Role |
+|------|-----------|------|
+| **Core** | $\lvert N_\varepsilon(p)\rvert \ge \text{min\_samples}$ | Anchor of a cluster |
+| **Border** | $\lvert N_\varepsilon(p)\rvert < \text{min\_samples}$ but $\exists$ core $c$ with $d(p,c) \le \varepsilon$ | Fringe of a cluster |
+| **Noise** | Not core, not reachable from any core point | Outlier, labeled $-1$ |
+
+<Callout type="warning" title="min_samples counts the point itself">
+  A point is **core** when $\lvert N_\varepsilon(p)\rvert \ge \text{min\_samples}$ *including itself*. With `min_samples=3`, a core point needs **2 other neighbors** within $\varepsilon$, not 3. This off-by-one is the most common DBSCAN mistake.
+</Callout>
+
+## The clustering algorithm
+
+1. For each unvisited point $p$: mark it visited; compute $N_\varepsilon(p)$.
+2. If $\lvert N_\varepsilon(p)\rvert < \text{min\_samples}$: tentatively label $p$ as noise.
+3. Otherwise: start a new cluster $C$; add all points in $N_\varepsilon(p)$ to $C$.
+4. For each newly added point $q$ that is itself core: expand $C$ by adding all of $N_\varepsilon(q)$.
+5. Continue expanding until no more points can be added; then restart from step 1.
+6. Any point initially labeled noise that was added to a cluster during expansion becomes a **border** point.
+
+## Worked example: 9 points, $\varepsilon = 2$, min\_samples = 3
+
+Points in two tight blobs plus one isolated point:
+
+- **Blob 1:** $A(1,1)$, $B(1,2)$, $C(2,1)$, $D(2,2)$
+- **Blob 2:** $E(8,8)$, $F(8,9)$, $G(9,8)$, $H(9,9)$
+- **Isolated:** $I(5,5)$
+
+**Distance check within Blob 1:** the largest within-blob distance is $d(A,D) = \sqrt{(2-1)^2+(2-1)^2} = \sqrt{2} \approx 1.41 < 2$. So every pair in the blob is a neighbor. The nearest cross-blob distance is $d(D,I) = \sqrt{(5-2)^2+(5-2)^2} = \sqrt{18} \approx 4.24 > 2$. Blob 2 is self-contained by symmetry.
+
+**$N_\varepsilon$ table** (including self):
+
+| Point | Neighbors within $\varepsilon=2$ | $\lvert N_\varepsilon\rvert$ | Type |
+|-------|----------------------------------|-------------------------------|------|
+| $A(1,1)$ | $A, B, C, D$ | 4 ≥ 3 | **core** |
+| $B(1,2)$ | $A, B, C, D$ | 4 ≥ 3 | **core** |
+| $C(2,1)$ | $A, B, C, D$ | 4 ≥ 3 | **core** |
+| $D(2,2)$ | $A, B, C, D$ | 4 ≥ 3 | **core** |
+| $E(8,8)$ | $E, F, G, H$ | 4 ≥ 3 | **core** |
+| $F(8,9)$ | $E, F, G, H$ | 4 ≥ 3 | **core** |
+| $G(9,8)$ | $E, F, G, H$ | 4 ≥ 3 | **core** |
+| $H(9,9)$ | $E, F, G, H$ | 4 ≥ 3 | **core** |
+| $I(5,5)$ | $I$ only | 1 < 3 | **noise** |
+
+**Cluster assignment:**
+1. Visit $A$: $\lvert N_\varepsilon(A)\rvert = 4 \ge 3$ → start Cluster 0; add $B$, $C$, $D$. Each is also core but adds no new points → Cluster 0 = $\{A,B,C,D\}$.
+2. Visit $E$: start Cluster 1; expand to $F$, $G$, $H$ → Cluster 1 = $\{E,F,G,H\}$.
+3. Visit $I$: $\lvert N_\varepsilon(I)\rvert = 1 < 3$; no reachable core → **noise** (label $-1$).
+
+**Result:** Cluster 0 = $\{A,B,C,D\}$, Cluster 1 = $\{E,F,G,H\}$, Noise = $\{I\}$.
+
+```python
+import numpy as np
+from sklearn.cluster import DBSCAN
+
+X = np.array([[1,1],[1,2],[2,1],[2,2],[8,8],[8,9],[9,8],[9,9],[5,5]])
+labels = DBSCAN(eps=2, min_samples=3).fit_predict(X)
+print(f"Labels: {labels}")  # [0 0 0 0 1 1 1 1 -1]
+print(f"Core point mask: {DBSCAN(eps=2, min_samples=3).fit(X).core_sample_indices_}")
+```
+
+## Parameter selection: the k-distance elbow plot
+
+Sort points by their distance to the $k$-th nearest neighbor (where $k$ = min\_samples − 1). The **elbow** — the point where distance starts increasing sharply — is a good estimate for $\varepsilon$:
+
+```python
+from sklearn.neighbors import NearestNeighbors
+import matplotlib.pyplot as plt
+
+k = 2  # min_samples - 1
+nn = NearestNeighbors(n_neighbors=k + 1)  # +1 to exclude self
+nn.fit(X)
+distances, _ = nn.kneighbors(X)
+k_dists = np.sort(distances[:, -1])       # distance to kth neighbor, sorted ascending
+
+plt.figure(figsize=(7, 4))
+plt.plot(k_dists, 'o-', color='#6366f1')
+plt.axhline(2.0, color='#f59e0b', ls='--', label='ε=2 (elbow)')
+plt.xlabel('Points (sorted)'); plt.ylabel(f'{k}-NN distance')
+plt.title('k-Distance plot — choose ε at the elbow')
+plt.legend(); plt.tight_layout(); plt.show()
+```
+
+**Rule of thumb for min\_samples:** ≥ dimensionality + 1 (use ≥ 3 for 2-D); ≥ 2 × dimensions for large datasets. Larger values → fewer but more stable clusters.
+
+## Related concepts
+
+- [**Hierarchical Clustering & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan) — the full lesson with parameter tuning and comparison with K-Means
+- [**Hierarchical Clustering Linkage Methods**](/wiki/hierarchical-clustering) — the agglomerative alternative that also avoids pre-specifying $K$
+- [**K-Means: Full Algorithm**](/wiki/kmeans-algorithm) — the centroid-based alternative

@@ -3,7 +3,7 @@ title: "XOR, MLPs & Softmax"
 description: "Why a single perceptron can't solve XOR, how a hidden layer fixes it, and how softmax turns raw scores into probabilities."
 order: 4
 type: concept
-estimatedMinutes: 12
+estimatedMinutes: 10
 ---
 
 # XOR, MLPs & Softmax
@@ -106,40 +106,9 @@ where $z_k = \mathbf{w}_k^\top \mathbf{h} + b_k$ is the $k$-th logit (raw score)
 - The largest logit gets the largest probability
 - Probabilities are **sharpened** by large logit differences (high-confidence prediction) and flattened when logits are close (uncertain prediction)
 
-### Worked example: 3-class classification
+For the 3-class numeric example ($\mathbf{z} = (2, 1, -1) \Rightarrow \hat{\mathbf{p}} \approx (0.705, 0.259, 0.035)$), the full chain-rule gradient derivation showing $\partial \mathcal{L}/\partial z_k = \hat{p}_k - \mathbb{1}[k=y]$, and finite-difference verification:
 
-With logits $\mathbf{z} = (2, 1, -1)$:
-
-$$
-e^{\mathbf{z}} = (e^2, e^1, e^{-1}) \approx (7.389, 2.718, 0.368)
-$$
-
-$$
-\text{sum} = 10.475, \quad \hat{\mathbf{p}} \approx (0.705, 0.259, 0.035)
-$$
-
-The model is 70.5% confident in class 1.
-
-**Temperature scaling:** Dividing all logits by a temperature $T$ before softmax controls sharpness:
-- $T \to 0$: softmax becomes argmax (one-hot)
-- $T = 1$: standard softmax
-- $T \to \infty$: uniform distribution (maximum uncertainty)
-
-### Training with cross-entropy loss
-
-For a single example with true label $y$ (integer class index), the **cross-entropy loss** is:
-
-$$
-\mathcal{L} = -\log \hat{p}_y = -\log \frac{e^{z_y}}{\sum_k e^{z_k}} = -z_y + \log\sum_k e^{z_k}
-$$
-
-The gradient of this loss w.r.t. the logits has a beautiful form:
-
-$$
-\frac{\partial \mathcal{L}}{\partial z_k} = \hat{p}_k - \mathbb{1}[k = y]
-$$
-
-At the correct class: gradient = $\hat{p}_y - 1$ (push logit up until probability → 1). At all others: gradient = $\hat{p}_k > 0$ (push logit down). The gradients sum to zero, which follows from the probabilities summing to one.
+<WikiLink slug="softmax-cross-entropy" title="Softmax + Cross-Entropy Gradient" />
 
 ## Common mistakes
 
