@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Clock, BarChart2 } from "lucide-react";
 import type { CourseMeta } from "@/types/course";
@@ -18,7 +19,10 @@ const DIFFICULTY_COLORS = {
 
 export function CourseCard({ course }: Props) {
   const { getCourseProgress } = useProgress();
-  const progress = getCourseProgress(course.slug);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
+
+  const progress = hydrated ? getCourseProgress(course.slug) : 0;
   const started = progress > 0;
 
   return (
