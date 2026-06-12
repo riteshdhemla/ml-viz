@@ -41,6 +41,15 @@ $C$ sets how much one unit of slack costs relative to margin width:
 
 As $C \to \infty$ you recover the hard-margin SVM: infinite price means zero tolerance. As $C \to 0$, the margin grows until the data barely matters.
 
+### Worked example: computing the penalty
+
+Suppose after training we find $\|\mathbf{w}\|^2 = 4$ (margin width $2/\|\mathbf{w}\| = 1$) and three points have slack values $\xi_1 = 0$ (safe), $\xi_2 = 0.6$ (inside margin, correct side), $\xi_3 = 1.4$ (misclassified).
+
+- With $C = 0.1$: objective = $\tfrac{1}{2}(4) + 0.1(0 + 0.6 + 1.4) = 2 + 0.2 = 2.2$
+- With $C = 10$: objective = $\tfrac{1}{2}(4) + 10(0 + 0.6 + 1.4) = 2 + 20 = 22$
+
+At $C=10$ the solver would shrink the margin (increase $\|\mathbf{w}\|^2$) or reclassify point 3 to reduce the violation penalty. At $C=0.1$ the penalty barely registers, so the wide margin is worth tolerating both violations.
+
 <Callout type="warning" title="C and γ tune together">
   With an RBF kernel (see [the kernel trick](/courses/svm/02-kernel-trick)), $C$ and $\gamma$ interact: large $\gamma$ + large $C$ is a recipe for memorizing the training set, while small $\gamma$ + small $C$ underfits to a nearly linear, very wide margin. Grid-search them jointly on a log scale (e.g. $C \in 10^{-2} \ldots 10^{3}$, $\gamma \in 10^{-4} \ldots 10^{1}$) with cross-validation.
 </Callout>
