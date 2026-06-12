@@ -1,0 +1,153 @@
+---
+title: "Scaled Dot-Product Attention"
+description: "The Query-Key-Value mechanism with the √d_k variance derivation and a complete 3-token hand-worked example tracking scores, softmax weights, and output."
+topics: ["transformers"]
+relatedLessons:
+  - "transformers/01-self-attention"
+estimatedMinutes: 12
+---
+
+# Scaled Dot-Product Attention
+
+**Scaled dot-product attention** is the single operation that lets every token in a sequence directly look at every other token. This page derives the $1/\sqrt{d_k}$ scaling factor from first principles and works through a complete 3-token example by hand.
+
+## The formula
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
+$$
+
+where $Q \in \mathbb{R}^{n \times d_k}$ (queries), $K \in \mathbb{R}^{n \times d_k}$ (keys), $V \in \mathbb{R}^{n \times d_v}$ (values), and $n$ is sequence length.
+
+## Procedure
+
+1. **Scores** — compute $QK^\top$. Entry $(i,j)$ is the dot product of query $i$ with key $j$: how relevant token $j$ is to token $i$.
+2. **Scale** — divide by $\sqrt{d_k}$ to prevent large magnitudes from saturating the softmax.
+3. **Softmax** — apply row-wise so each row sums to 1 (the attention weights).
+4. **Weighted sum** — multiply by $V$: each output is a blend of all values, weighted by relevance.
+
+## Why divide by $\sqrt{d_k}$?
+
+Take query $\mathbf{q}$ and key $\mathbf{k}$ with components that are i.i.d. with mean 0 and variance 1. Their dot product is:
+
+$$
+\mathbf{q}\cdot\mathbf{k} = \sum_{i=1}^{d_k} q_i k_i
+$$
+
+Each product $q_i k_i$ has:
+- $\mathbb{E}[q_i k_i] = \mathbb{E}[q_i]\,\mathbb{E}[k_i] = 0$ (independence)
+- $\operatorname{Var}(q_i k_i) = \mathbb{E}[q_i^2]\,\mathbb{E}[k_i^2] = 1 \cdot 1 = 1$
+
+Summing $d_k$ independent unit-variance terms:
+
+$$
+\operatorname{Var}(\mathbf{q}\cdot\mathbf{k}) = \sum_{i=1}^{d_k} 1 = d_k
+$$
+
+The typical score magnitude grows like $\sqrt{d_k}$. For large $d_k$ (e.g. $d_k = 64$), raw scores become large, pushing softmax into its saturated region where one weight $\approx 1$ and the rest $\approx 0$ — gradient is nearly zero there, so learning stalls.
+
+Dividing by $\sqrt{d_k}$ rescales the variance back to 1:
+
+$$
+\operatorname{Var}\!\left(\frac{\mathbf{q}\cdot\mathbf{k}}{\sqrt{d_k}}\right) = \frac{d_k}{d_k} = 1
+$$
+
+Empirical check: for $d_k \in \{2, 8, 64\}$, sampling 20,000 random unit-variance $\mathbf{q},\mathbf{k}$ pairs gives $\operatorname{Var} \approx 2.0,\,8.0,\,64$ — matching $d_k$ exactly.
+
+<Callout type="tip" title="The saturation intuition">
+  Think of softmax as a thermostat. When all scores are moderate, the distribution is spread (the model can attend to many tokens). When one score dominates by 10×, softmax assigns ~1.0 to that entry — the model becomes a hard lookup. Large $d_k$ without scaling causes the latter by default, which is why the scale factor is not optional.
+</Callout>
+
+## Worked example: 3 tokens, $d_k = 2$
+
+Given projected vectors directly (each row = one token):
+
+$$
+Q = \begin{bmatrix}2 & 0\\0 & 2\\2 & 2\end{bmatrix}, \quad
+K = \begin{bmatrix}2 & 0\\0 & 2\\1 & 1\end{bmatrix}, \quad
+V = \begin{bmatrix}1 & 0\\0 & 1\\10 & 10\end{bmatrix}
+$$
+
+**Step 1 — Scores $QK^\top$.** Entry $(i,j) = \mathbf{q}_i \cdot \mathbf{k}_j$. Row 1: $[2,0]\cdot[2,0]=4$; $[2,0]\cdot[0,2]=0$; $[2,0]\cdot[1,1]=2$:
+
+$$
+QK^\top = \begin{bmatrix}4 & 0 & 2\\0 & 4 & 2\\4 & 4 & 4\end{bmatrix}
+$$
+
+**Step 2 — Scale by $1/\sqrt{2} \approx 0.707$.** Using $4/\sqrt{2} = 2\sqrt{2} \approx 2.828$ and $2/\sqrt{2} = \sqrt{2} \approx 1.414$:
+
+$$
+\frac{QK^\top}{\sqrt{2}} = \begin{bmatrix}2.828 & 0 & 1.414\\0 & 2.828 & 1.414\\2.828 & 2.828 & 2.828\end{bmatrix}
+$$
+
+**Step 3 — Softmax each row.** Row 1: $e^{2.828}=16.92$, $e^0=1.00$, $e^{1.414}=4.11$, sum $= 22.03$:
+
+$$
+\text{softmax}(\text{row 1}) = \frac{1}{22.03}[16.92,\,1.00,\,4.11] = [0.768,\,0.045,\,0.187]
+$$
+
+Row 3: all three scaled scores equal ($2.828$ each), so softmax is exactly uniform $[\frac{1}{3},\frac{1}{3},\frac{1}{3}]$. Row 2 mirrors row 1: $[0.045,\,0.768,\,0.187]$.
+
+$$
+\text{weights} = \begin{bmatrix}0.768 & 0.045 & 0.187\\0.045 & 0.768 & 0.187\\0.333 & 0.333 & 0.333\end{bmatrix}
+$$
+
+Every row sums to exactly 1.
+
+**Step 4 — Weighted sum $\text{weights}\cdot V$.** Row 1:
+
+$$
+0.768[1,0] + 0.045[0,1] + 0.187[10,10] = [0.768 + 1.870,\; 0.045 + 1.870] = [2.638,\;1.915]
+$$
+
+Row 3 (uniform weights) = average of value rows: $\frac{1}{3}([1,0]+[0,1]+[10,10]) = [3.667,\,3.667]$.
+
+$$
+\text{output} = \begin{bmatrix}2.638 & 1.915\\1.915 & 2.638\\3.667 & 3.667\end{bmatrix}
+$$
+
+Token 1 attends mostly to key 1 (its strongest match), but the high value of token 3 still lifts its output. Token 3, matching all keys equally, returns the plain average of all values.
+
+## Pure Python verification
+
+```python
+import math
+
+def softmax(row):
+    e = [math.exp(s) for s in row]
+    z = sum(e)
+    return [x / z for x in e]
+
+Q = [[2, 0], [0, 2], [2, 2]]
+K = [[2, 0], [0, 2], [1, 1]]
+V = [[1, 0], [0, 1], [10, 10]]
+d_k = 2
+
+scores  = [[sum(q[d]*k[d] for d in range(d_k)) for k in K] for q in Q]
+scaled  = [[s / math.sqrt(d_k) for s in row] for row in scores]
+weights = [softmax(row) for row in scaled]
+out = [[sum(weights[i][j]*V[j][d] for j in range(3)) for d in range(d_k)]
+       for i in range(3)]
+
+print("scores  :", scores)                               # [[4,0,2],[0,4,2],[4,4,4]]
+print("weights :", [[round(w,3) for w in r] for r in weights])
+print("output  :", [[round(o,3) for o in r] for r in out])
+```
+
+## PyTorch one-liner
+
+```python
+import torch, torch.nn.functional as F
+
+Q = torch.tensor([[2.,0],[0,2],[2,2]])
+K = torch.tensor([[2.,0],[0,2],[1,1]])
+V = torch.tensor([[1.,0],[0,1],[10,10]])
+
+out = F.scaled_dot_product_attention(Q.unsqueeze(0), K.unsqueeze(0), V.unsqueeze(0))
+print(out.squeeze(0))  # matches the hand calculation above
+```
+
+## Related concepts
+
+- [**Self-Attention**](/courses/transformers/01-self-attention) — source lesson: QKV intuition, causal masking, comparison with RNNs
+- [**Multi-Head Attention**](/courses/transformers/02-multi-head-and-positional) — running multiple attention heads in parallel to capture different relationships

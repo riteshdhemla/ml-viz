@@ -1,0 +1,195 @@
+---
+title: "The EM Algorithm"
+description: "Expectation-Maximization step by step — the ELBO derivation, monotonic likelihood proof, and a full worked iteration on a 1D Gaussian mixture."
+topics: ["probabilistic-models"]
+relatedLessons:
+  - "probabilistic-models/02-em-algorithm"
+estimatedMinutes: 14
+---
+
+# The EM Algorithm
+
+The **Expectation-Maximization (EM) algorithm** handles models with latent variables by iterating two steps: (1) compute soft responsibilities for the hidden variables given current parameters, and (2) re-estimate parameters as if those responsibilities were the true counts.
+
+## Procedure
+
+For a Gaussian Mixture Model with $K$ components, parameters $\theta = \{\pi_k, \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\}$, and observed data $\{\mathbf{x}_i\}_{i=1}^n$:
+
+**Step 0 — Initialize** $\boldsymbol{\mu}_k$, $\boldsymbol{\Sigma}_k = I$, $\pi_k = 1/K$ (e.g. pick $K$ random data points as initial means).
+
+**Step 1 — E-step.** Compute responsibility of component $k$ for point $i$:
+
+$$
+\gamma_{ik} = \frac{\pi_k^{(t)}\,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k^{(t)}, \boldsymbol{\Sigma}_k^{(t)})}{\displaystyle\sum_{j=1}^K \pi_j^{(t)}\,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j^{(t)}, \boldsymbol{\Sigma}_j^{(t)})}
+$$
+
+This is a posterior probability — soft fractional assignment of point $i$ to cluster $k$.
+
+**Step 2 — M-step.** Re-estimate every parameter using the soft assignments as weights:
+
+$$
+N_k = \sum_{i=1}^n \gamma_{ik}
+$$
+
+$$
+\boldsymbol{\mu}_k^{(t+1)} = \frac{1}{N_k}\sum_{i=1}^n \gamma_{ik}\,\mathbf{x}_i
+$$
+
+$$
+\boldsymbol{\Sigma}_k^{(t+1)} = \frac{1}{N_k}\sum_{i=1}^n \gamma_{ik}\bigl(\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)}\bigr)\bigl(\mathbf{x}_i - \boldsymbol{\mu}_k^{(t+1)}\bigr)^\top
+$$
+
+$$
+\pi_k^{(t+1)} = \frac{N_k}{n}
+$$
+
+**Step 3 — Check convergence.** Compute the log-likelihood
+
+$$
+\ell(\theta) = \sum_{i=1}^n \log\sum_{k=1}^K \pi_k\,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)
+$$
+
+and stop when $|\ell^{(t+1)} - \ell^{(t)}| < \varepsilon$ (e.g. $10^{-6}$). Otherwise return to Step 1.
+
+## Why it works: the ELBO
+
+The two steps look like heuristics, but they are coordinate ascent on a single objective. Introduce *any* distribution $q(z)$ over the latent variable and apply **Jensen's inequality** ($\log$ is concave):
+
+$$
+\log p(\mathbf{x}\mid\theta) = \log \sum_z q(z)\,\frac{p(\mathbf{x},z\mid\theta)}{q(z)}
+\;\ge\; \underbrace{\sum_z q(z)\log\frac{p(\mathbf{x},z\mid\theta)}{q(z)}}_{\text{ELBO}(q,\theta)}.
+$$
+
+The gap between the true log-likelihood and this lower bound is exactly a KL divergence:
+
+$$
+\log p(\mathbf{x}\mid\theta) - \text{ELBO}(q,\theta) = \text{KL}\bigl(q(z)\,\big\|\,p(z\mid\mathbf{x},\theta)\bigr) \ge 0.
+$$
+
+Now both EM steps are *maximizing the ELBO*:
+
+- **E-step** maximizes the ELBO over $q$ with $\theta$ fixed. The KL is minimized (to $0$) by setting $q(z) = p(z\mid\mathbf{x},\theta^{(t)})$ — the posterior responsibilities. The bound becomes **tight**: $\text{ELBO} = \log p(\mathbf{x}\mid\theta^{(t)})$.
+- **M-step** maximizes the ELBO over $\theta$ with $q$ fixed, giving $\theta^{(t+1)}$.
+
+Chaining these two moves proves the log-likelihood **never decreases**:
+
+$$
+\log p(\mathbf{x}\mid\theta^{(t+1)}) \;\ge\; \text{ELBO}(q,\theta^{(t+1)}) \;\ge\; \text{ELBO}(q,\theta^{(t)}) \;=\; \log p(\mathbf{x}\mid\theta^{(t)}).
+$$
+
+The first $\ge$ is Jensen; the second is the M-step's maximization; the $=$ is the E-step making the bound tight. Since the log-likelihood is bounded above, EM must converge — to a **local** optimum.
+
+<Callout type="tip" title="The key insight">
+  Every E-step makes the ELBO bound tight (zero gap). Every M-step pushes the bound up. Since the bound lower-bounds the true likelihood, the likelihood can only go up. This is why you never need to worry about EM diverging — the monotone guarantee is built into the algebra.
+</Callout>
+
+## Worked example: one EM iteration by hand
+
+Data $X = \{1, 2, 4, 5\}$, $K = 2$. Initialize $\mu = (2, 4)$, $\sigma = (1.5, 1.5)$, $\pi = (0.5, 0.5)$.
+
+### E-step — compute responsibilities
+
+For a 1D Gaussian: $\mathcal{N}(x \mid \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}}\exp\!\bigl(-\frac{(x-\mu)^2}{2\sigma^2}\bigr)$.
+
+For $x = 1$, component 1 ($\mu=2, \sigma=1.5$):
+
+$$
+\mathcal{N}(1 \mid 2, 1.5) = \frac{1}{1.5\sqrt{2\pi}}\,e^{-\frac{1}{2\cdot 2.25}} = 0.2660 \times e^{-0.222} = 0.2130
+$$
+
+For $x = 1$, component 2 ($\mu=4, \sigma=1.5$):
+
+$$
+\mathcal{N}(1 \mid 4, 1.5) = 0.2660 \times e^{-\frac{9}{4.5}} = 0.2660 \times e^{-2.0} = 0.0360
+$$
+
+$$
+\gamma_{1,1} = \frac{0.5 \times 0.2130}{0.5 \times 0.2130 + 0.5 \times 0.0360} = \frac{0.1065}{0.1245} = 0.855
+$$
+
+Applying the same formula to all points:
+
+| $x_i$ | $\gamma_{i,1}$ | $\gamma_{i,2}$ |
+|--------|----------------|----------------|
+| 1 | 0.855 | 0.145 |
+| 2 | 0.709 | 0.291 |
+| 4 | 0.291 | 0.709 |
+| 5 | 0.145 | 0.855 |
+
+By symmetry, the table is perfectly antisymmetric around the midpoint $x = 3$. The effective counts are $N_1 = 0.855 + 0.709 + 0.291 + 0.145 = 2.0$ and $N_2 = 2.0$.
+
+### M-step — re-estimate parameters
+
+$$
+\mu_1' = \frac{0.855(1)+0.709(2)+0.291(4)+0.145(5)}{2.0} = \frac{1.664+0.727}{2.0} = \frac{4.163}{2.0} = 2.08
+$$
+
+$$
+\mu_2' = \frac{0.145(1)+0.291(2)+0.709(4)+0.855(5)}{2.0} = 3.92
+$$
+
+The variances (using the updated means):
+
+$$
+(\sigma_1')^2 = \frac{0.855(1-2.08)^2 + 0.709(2-2.08)^2 + 0.291(4-2.08)^2 + 0.145(5-2.08)^2}{2.0} \approx 1.655
+$$
+
+$$
+\sigma_1' \approx 1.286, \quad \sigma_2' \approx 1.286, \quad \pi' = (0.5,\ 0.5)
+$$
+
+### Verify the guarantee
+
+The log-likelihood after one step rose from $-7.514$ to $-7.390$ — exactly the monotonic increase the ELBO argument promises. The means pulled slightly toward the data and the Gaussians tightened.
+
+### How responsibilities shift after the update
+
+Re-running the E-step with the updated parameters $(\mu_1^{(1)} = 2.08, \mu_2^{(1)} = 3.92, \sigma^{(1)} = 1.286)$:
+
+| Point | $\gamma_{i,1}^{(0)}$ (before) | $\gamma_{i,1}^{(1)}$ (after) |
+|-------|-------------------------------|------------------------------|
+| 1 | 0.855 | 0.902 |
+| 2 | 0.709 | 0.753 |
+| 4 | 0.291 | 0.247 |
+| 5 | 0.145 | 0.098 |
+
+Points 1 and 2 now assign more firmly to cluster 1 (the mean moved toward them) while points 4 and 5 shift more firmly to cluster 2 — and the reduced $\sigma$ tightened the Gaussians, amplifying the separation.
+
+## Implementation
+
+```python
+import numpy as np
+from scipy.stats import norm
+
+def em_gmm_1d(X, K=2, max_iter=100, tol=1e-6):
+    n = len(X)
+    # Initialize
+    idx = np.random.choice(n, K, replace=False)
+    mu, sigma, pi = X[idx].copy(), np.ones(K) * X.std(), np.ones(K) / K
+    log_liks = []
+
+    for it in range(max_iter):
+        # E-step
+        gamma = np.array([pi[k] * norm.pdf(X, mu[k], sigma[k]) for k in range(K)]).T
+        gamma /= gamma.sum(axis=1, keepdims=True)
+
+        # M-step
+        N = gamma.sum(axis=0)
+        mu = (gamma * X[:, None]).sum(axis=0) / N
+        sigma = np.sqrt(((gamma * (X[:, None] - mu)**2).sum(axis=0)) / N)
+        pi = N / n
+
+        # Log-likelihood
+        ll = np.log(sum(pi[k] * norm.pdf(X, mu[k], sigma[k]) for k in range(K)) + 1e-300).sum()
+        log_liks.append(ll)
+        if it > 0 and abs(log_liks[-1] - log_liks[-2]) < tol:
+            break
+
+    return mu, sigma, pi, gamma, log_liks
+```
+
+## Related concepts
+
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the model this algorithm fits; the interactive EM visualization lets you step through E/M iterations
+- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — the Baum–Welch algorithm is EM applied to sequences
+- [**The EM Algorithm lesson**](/courses/probabilistic-models/02-em-algorithm) — source lesson with the GMM application and code
