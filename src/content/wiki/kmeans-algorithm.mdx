@@ -1,0 +1,146 @@
+---
+title: "K-Means: Full Algorithm"
+description: "The 4-step assign/update procedure with convergence proof, and a complete 5-point 2-cluster worked iteration showing all distance calculations and centroid updates."
+topics: ["unsupervised-learning"]
+relatedLessons:
+  - "clustering/01-k-means"
+estimatedMinutes: 10
+---
+
+# K-Means: Full Algorithm
+
+K-Means partitions $n$ points into $K$ clusters by minimizing the within-cluster sum of squared distances to centroids:
+
+$$
+J = \sum_{k=1}^{K}\sum_{\mathbf{x}_i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2
+$$
+
+The algorithm alternates two steps, each of which provably decreases $J$.
+
+## Procedure
+
+**Step 0 — Initialize** $K$ centroids $\boldsymbol{\mu}_1, \ldots, \boldsymbol{\mu}_K$ (random pick from data, or K-Means++).
+
+**Step 1 — Assign.** Assign every point to its nearest centroid:
+
+$$
+C_k = \{\mathbf{x}_i : \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2 \le \|\mathbf{x}_i - \boldsymbol{\mu}_j\|^2 \;\forall j \ne k\}
+$$
+
+With centroids fixed, $J$ decomposes into per-point terms; assigning each to the nearest centroid minimizes its term and therefore minimizes $J$ overall.
+
+**Step 2 — Update.** Move each centroid to the mean of its assigned points:
+
+$$
+\boldsymbol{\mu}_k = \frac{1}{|C_k|}\sum_{\mathbf{x}_i \in C_k}\mathbf{x}_i
+$$
+
+With assignments fixed, cluster $k$'s contribution to $J$ is $\sum_{\mathbf{x}_i \in C_k}\|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$. Setting its gradient to zero:
+
+$$
+\nabla_{\boldsymbol{\mu}_k}\sum_{\mathbf{x}_i \in C_k}\|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2 = \sum_{\mathbf{x}_i \in C_k} -2(\mathbf{x}_i - \boldsymbol{\mu}_k) = \mathbf{0}
+\;\Rightarrow\; \boldsymbol{\mu}_k = \frac{1}{|C_k|}\sum_{\mathbf{x}_i \in C_k}\mathbf{x}_i
+$$
+
+The mean is the unique minimizer of within-cluster squared distance — that is *why* the update uses the mean.
+
+**Step 3 — Repeat** Steps 1–2 until no point changes cluster (convergence).
+
+<Callout type="tip" title="Guaranteed convergence, local optimum">
+  Both steps only decrease $J$, and there are finitely many possible assignment configurations, so K-Means must terminate. But it converges to a local minimum — different initializations can give different final clusters. Use K-Means++ and `n_init ≥ 10` in practice.
+</Callout>
+
+## Worked example: 5 points, $K = 2$
+
+Points: $A(1,1)$, $B(1.5,2)$, $C(3,4)$, $D(5,7)$, $E(3.5,5)$.
+
+**Initialize:** $\boldsymbol{\mu}_1 = (1,1)$, $\boldsymbol{\mu}_2 = (3.5,5)$.
+
+### Iteration 1 — Assign
+
+Compute squared Euclidean distance from each point to each centroid (closer one wins):
+
+| Point | $\|\mathbf{x}-\boldsymbol{\mu}_1\|^2$ | $\|\mathbf{x}-\boldsymbol{\mu}_2\|^2$ | Assigned |
+|-------|---------------------------------------|---------------------------------------|----------|
+| $A(1,1)$ | $0$ | $(1-3.5)^2+(1-5)^2=6.25+16=22.25$ | $C_1$ |
+| $B(1.5,2)$ | $0.25+1=1.25$ | $4+9=13$ | $C_1$ |
+| $C(3,4)$ | $4+9=13$ | $0.25+1=1.25$ | $C_2$ |
+| $D(5,7)$ | $16+36=52$ | $2.25+4=6.25$ | $C_2$ |
+| $E(3.5,5)$ | $6.25+16=22.25$ | $0$ | $C_2$ |
+
+$C_1 = \{A, B\}$, $C_2 = \{C, D, E\}$.
+
+Objective with *old* centroids: $J = (0 + 1.25) + (1.25 + 6.25 + 0) = 8.75$.
+
+### Iteration 1 — Update
+
+$$
+\boldsymbol{\mu}_1 = \frac{(1,1)+(1.5,2)}{2} = (1.25,\ 1.5)
+$$
+
+$$
+\boldsymbol{\mu}_2 = \frac{(3,4)+(5,7)+(3.5,5)}{3} = \left(\frac{11.5}{3},\ \frac{16}{3}\right) = (3.83,\ 5.33)
+$$
+
+Recomputing $J$ with new centroids:
+
+$$
+J_{\text{after}} = \bigl[(1.25-1)^2+(1.5-1)^2 + (1.25-1.5)^2+(1.5-2)^2\bigr]
++ \bigl[\cdots\bigr] \approx 7.46
+$$
+
+$7.46 < 8.75$ — the update step lowered $J$ exactly as the derivation guarantees.
+
+### Iteration 2 — Reassign
+
+Check whether any point is closer to the *other* cluster's new centroid:
+
+| Point | $\|\mathbf{x}-\boldsymbol{\mu}_1^{(1)}\|^2$ | $\|\mathbf{x}-\boldsymbol{\mu}_2^{(1)}\|^2$ | Same cluster? |
+|-------|------|------|------|
+| $A(1,1)$ | $0.0625+0.25=0.3125$ | $8.05+19.15=27.2$ | ✓ $C_1$ |
+| $B(1.5,2)$ | $0.0625+0.25=0.3125$ | $5.38+11.09=16.5$ | ✓ $C_1$ |
+| $C(3,4)$ | $3.06+6.25=9.31$ | $0.69+1.78=2.47$ | ✓ $C_2$ |
+| $D(5,7)$ | $13.69+30.25=43.9$ | $1.37+2.79=4.16$ | ✓ $C_2$ |
+| $E(3.5,5)$ | $5.06+12.25=17.3$ | $0.07+0.44=0.51$ | ✓ $C_2$ |
+
+No point changes assignment. **Converged after 2 iterations.**
+
+Final clusters: $C_1 = \{A, B\}$, $C_2 = \{C, D, E\}$.
+
+## NumPy implementation (from scratch)
+
+```python
+import numpy as np
+
+def kmeans(X, K, n_iter=100, seed=42):
+    rng = np.random.default_rng(seed)
+    # Random initialization
+    mu = X[rng.choice(len(X), K, replace=False)]
+
+    for _ in range(n_iter):
+        # Step 1 — assign
+        dists = np.linalg.norm(X[:, None] - mu[None], axis=2)  # (n, K)
+        labels = dists.argmin(axis=1)
+
+        # Step 2 — update
+        new_mu = np.array([X[labels == k].mean(axis=0) for k in range(K)])
+
+        if np.allclose(new_mu, mu):   # converged
+            break
+        mu = new_mu
+
+    J = sum(np.sum((X[labels == k] - mu[k])**2) for k in range(K))
+    return labels, mu, J
+
+X = np.array([[1,1],[1.5,2],[3,4],[5,7],[3.5,5]], dtype=float)
+labels, centroids, inertia = kmeans(X, K=2)
+print("labels   :", labels)       # [0 0 1 1 1]
+print("centroids:", centroids.round(2))
+print("inertia  :", round(inertia, 2))
+```
+
+## Related concepts
+
+- [**K-Means Clustering**](/courses/clustering/01-k-means) — source lesson: elbow method, silhouette score, K-Means++, limitations
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the soft probabilistic version; K-Means is the hard-assignment limit as variance → 0
+- [**Hierarchical Clustering**](/courses/clustering/02-hierarchical-and-dbscan) — an alternative that doesn't require choosing K upfront

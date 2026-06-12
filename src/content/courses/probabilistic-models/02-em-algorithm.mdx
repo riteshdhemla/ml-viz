@@ -3,7 +3,7 @@ title: "The EM Algorithm"
 description: "Iteratively estimating latent variables — the engine behind GMMs, HMMs, and more."
 order: 2
 type: concept
-estimatedMinutes: 22
+estimatedMinutes: 18
 ---
 
 # The Expectation-Maximization Algorithm
@@ -97,91 +97,13 @@ def em_gmm(X, K, max_iter=100, tol=1e-6):
     return labels, means, covs, weights, log_likelihoods
 ```
 
-## Why it works: the ELBO
+## Why it works and worked example
 
-The two steps look like heuristics, but they are coordinate ascent on a single objective. The trick is to introduce *any* distribution $q(z)$ over the latent variable and apply **Jensen's inequality** ($\log$ is concave):
+The E-step and M-step are coordinate ascent on the **ELBO** — an evidence lower bound on the log-likelihood obtained via Jensen's inequality. Each E-step makes the bound tight (zero KL gap); each M-step pushes the bound up. Chaining these two moves proves the log-likelihood never decreases, guaranteeing convergence to a local optimum.
 
-$$
-\log p(\mathbf{x}\mid\theta) = \log \sum_z q(z)\,\frac{p(\mathbf{x},z\mid\theta)}{q(z)}
-\;\ge\; \underbrace{\sum_z q(z)\log\frac{p(\mathbf{x},z\mid\theta)}{q(z)}}_{\text{ELBO}(q,\theta)}.
-$$
+For the full ELBO derivation, the monotonic proof, and a complete one-iteration hand trace on $X=\{1,2,4,5\}$ with $K=2$ (including every responsibility calculation and parameter re-estimate), see:
 
-The gap between the true log-likelihood and this lower bound is exactly a KL divergence:
-
-$$
-\log p(\mathbf{x}\mid\theta) - \text{ELBO}(q,\theta) = \text{KL}\big(q(z)\,\big\|\,p(z\mid\mathbf{x},\theta)\big) \ge 0.
-$$
-
-Now both steps are *maximizing the ELBO*:
-
-- **E-step** maximizes the ELBO over $q$ with $\theta$ fixed. KL is minimized (to $0$) by choosing $q(z)=p(z\mid\mathbf{x},\theta^{(t)})$ — the responsibilities! The bound becomes **tight**: $\text{ELBO}=\log p(\mathbf{x}\mid\theta^{(t)})$.
-- **M-step** maximizes the ELBO over $\theta$ with $q$ fixed, giving $\theta^{(t+1)}$.
-
-Chaining these proves the log-likelihood **never decreases**:
-
-$$
-\log p(\mathbf{x}\mid\theta^{(t+1)}) \;\ge\; \text{ELBO}(q,\theta^{(t+1)}) \;\ge\; \text{ELBO}(q,\theta^{(t)}) \;=\; \log p(\mathbf{x}\mid\theta^{(t)}).
-$$
-
-The first $\ge$ is Jensen, the second is the M-step's maximization, and the $=$ is the E-step making the bound tight. Since the likelihood is bounded above, EM converges — to a **local** optimum.
-
-### Worked example: one EM iteration by hand
-
-Data $X=\{1,2,4,5\}$, $K=2$, init $\mu=(2,4)$, $\sigma=(1.5,1.5)$, $\pi=(0.5,0.5)$.
-
-**E-step** — responsibilities $\gamma_{i1}=\dfrac{\pi_1\mathcal N(x_i\mid 2,1.5)}{\pi_1\mathcal N(x_i\mid 2,1.5)+\pi_2\mathcal N(x_i\mid 4,1.5)}$:
-
-**Row-by-row check for $x=1$:**
-
-$$
-\mathcal{N}(1 \mid \mu=2, \sigma=1.5) = \frac{1}{1.5\sqrt{2\pi}}\exp\!\left(-\frac{(1-2)^2}{2\times1.5^2}\right) = 0.2660\times e^{-0.222} = 0.2130
-$$
-
-$$
-\mathcal{N}(1 \mid \mu=4, \sigma=1.5) = 0.2660\times e^{-2.0} = 0.0360
-$$
-
-$$
-\gamma_{11} = \frac{0.5\times 0.2130}{0.5\times 0.2130 + 0.5\times 0.0360} = \frac{0.1065}{0.1245} = 0.855 \checkmark
-$$
-
-The same formula applied to all four points gives:
-
-| $x_i$ | $\gamma_{i1}$ | $\gamma_{i2}$ |
-|-------|---------------|---------------|
-| 1 | 0.855 | 0.145 |
-| 2 | 0.709 | 0.291 |
-| 4 | 0.291 | 0.709 |
-| 5 | 0.145 | 0.855 |
-
-**M-step** — $N_1=N_2=2.0$, then weighted means/variances:
-
-$$
-\mu_1' = \frac{0.855(1)+0.709(2)+0.291(4)+0.145(5)}{2.0} = 2.08,
-\qquad \mu_2' = 3.92,
-$$
-$$
-\sigma_1' = \sigma_2' = 1.286, \qquad \pi' = (0.5, 0.5).
-$$
-
-**Check the guarantee:** the log-likelihood rose from $-7.514$ to $-7.390$ in this single step — exactly the monotonic increase the ELBO argument promises. The means pulled slightly toward the data and the Gaussians tightened.
-
-### After M-step: how responsibilities shift
-
-Re-running the E-step formula with the updated parameters $\mu_1^{(1)}=2.08$, $\mu_2^{(1)}=3.92$, $\sigma^{(1)}=1.286$ shifts every responsibility:
-
-| Point | $r_{i1}^{(0)}$ (before) | $r_{i1}^{(1)}$ (after) |
-|-------|--------------------------|-------------------------|
-| 1 | 0.855 | 0.902 |
-| 2 | 0.709 | 0.753 |
-| 4 | 0.291 | 0.247 |
-| 5 | 0.145 | 0.098 |
-
-Cluster 1's mean moved from 2.0 to 2.08, pulling it closer to the points at $x=1$ and $x=2$, so those points now have slightly higher responsibility for cluster 1. The borderline points ($x=4,5$) shift in the opposite direction — now assigned even more firmly to cluster 2 — because the two Gaussians have tightened ($\sigma$ dropped from 1.5 to 1.286) and overlapped less.
-
-<Callout type="info" title="Local optima warning">
-  EM converges to a **local** optimum, not necessarily the global one. Different initializations can give different results. Always run EM multiple times and keep the result with the highest log-likelihood.
-</Callout>
+<WikiLink slug="em-algorithm" title="The EM Algorithm" />
 
 ## Worked example: 2D GMM
 

@@ -1,0 +1,132 @@
+---
+title: "OLS: The Normal Equation"
+description: "A four-step algebraic derivation of w* = (XᵀX)⁻¹Xᵀy from first principles, with a complete 3-point hand-worked example."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "linear-regression/01-linear-regression"
+estimatedMinutes: 12
+---
+
+# OLS: The Normal Equation
+
+**Ordinary Least Squares (OLS)** minimizes the sum of squared residuals $\|\mathbf{y} - X\mathbf{w}\|^2$ and has an exact closed-form solution. This page derives that solution step by step and verifies it on a concrete 3-point example.
+
+## The objective
+
+We want the weight vector $\mathbf{w}$ that minimizes:
+
+$$
+\mathcal{L}(\mathbf{w}) = \|\mathbf{y} - X\mathbf{w}\|^2 = (\mathbf{y} - X\mathbf{w})^\top(\mathbf{y} - X\mathbf{w})
+$$
+
+The $\frac{1}{n}$ scaling constant is dropped — it doesn't affect where the minimum is.
+
+## Derivation
+
+**Step 1 — Expand the squared norm.** Use $(\mathbf{a}-\mathbf{b})^\top(\mathbf{a}-\mathbf{b}) = \mathbf{a}^\top\mathbf{a} - 2\mathbf{a}^\top\mathbf{b} + \mathbf{b}^\top\mathbf{b}$ (valid because $\mathbf{y}^\top X\mathbf{w}$ is a scalar, equal to its transpose $\mathbf{w}^\top X^\top\mathbf{y}$):
+
+$$
+\mathcal{L}(\mathbf{w}) = \mathbf{y}^\top\mathbf{y} - 2\,\mathbf{w}^\top X^\top\mathbf{y} + \mathbf{w}^\top X^\top X\,\mathbf{w}
+$$
+
+**Step 2 — Take the gradient with respect to $\mathbf{w}$.** Two standard matrix-calculus identities:
+
+$$
+\nabla_{\mathbf{w}}(\mathbf{w}^\top\mathbf{b}) = \mathbf{b}, \qquad \nabla_{\mathbf{w}}(\mathbf{w}^\top A\mathbf{w}) = 2A\mathbf{w} \quad (A \text{ symmetric})
+$$
+
+$A = X^\top X$ is symmetric. The first term $\mathbf{y}^\top\mathbf{y}$ has no $\mathbf{w}$, so its gradient is $\mathbf{0}$:
+
+$$
+\nabla_{\mathbf{w}}\mathcal{L} = -2X^\top\mathbf{y} + 2X^\top X\,\mathbf{w}
+$$
+
+**Step 3 — Set the gradient to zero.** This is the *normal equation*:
+
+$$
+-2X^\top\mathbf{y} + 2X^\top X\,\mathbf{w} = \mathbf{0}
+\quad\Longrightarrow\quad
+X^\top X\,\mathbf{w} = X^\top\mathbf{y}
+$$
+
+**Step 4 — Solve for $\mathbf{w}$.** Left-multiply both sides by $(X^\top X)^{-1}$:
+
+$$
+\boxed{\;\mathbf{w}^* = (X^\top X)^{-1}X^\top\mathbf{y}\;}
+$$
+
+This is a global minimum (not a saddle point) because the Hessian $\nabla^2_{\mathbf{w}}\mathcal{L} = 2X^\top X$ is positive semi-definite — the loss is convex.
+
+<Callout type="tip" title="When does (XᵀX)⁻¹ exist?">
+  $X^\top X$ is invertible if and only if the columns of $X$ are linearly independent — no feature is a linear combination of the others (no perfect collinearity) and $n \geq d$ (not more features than samples). When this fails, use Ridge regression: $(X^\top X + \lambda I)$ is always invertible for $\lambda > 0$.
+</Callout>
+
+## Worked example: 3-point hand fit
+
+Data: $(x, y) = (1, 2),\,(2, 3),\,(3, 5)$. Fit $\hat{y} = w_0 + w_1 x$.
+
+Add a leading ones column for the bias $w_0$:
+
+$$
+X = \begin{bmatrix}1 & 1\\1 & 2\\1 & 3\end{bmatrix}, \qquad \mathbf{y} = \begin{bmatrix}2\\3\\5\end{bmatrix}
+$$
+
+**Compute $X^\top X$** (a $2\times 2$ matrix):
+
+$$
+X^\top X = \begin{bmatrix}1+1+1 & 1+2+3\\1+2+3 & 1+4+9\end{bmatrix} = \begin{bmatrix}3 & 6\\6 & 14\end{bmatrix}
+$$
+
+**Compute $X^\top\mathbf{y}$:**
+
+$$
+X^\top\mathbf{y} = \begin{bmatrix}2+3+5\\1\cdot2+2\cdot3+3\cdot5\end{bmatrix} = \begin{bmatrix}10\\23\end{bmatrix}
+$$
+
+**Invert $X^\top X$.** For $\begin{bmatrix}a&b\\c&d\end{bmatrix}^{-1} = \frac{1}{ad-bc}\begin{bmatrix}d&-b\\-c&a\end{bmatrix}$. Determinant $= 3\cdot14 - 6^2 = 42 - 36 = 6$:
+
+$$
+(X^\top X)^{-1} = \frac{1}{6}\begin{bmatrix}14 & -6\\-6 & 3\end{bmatrix}
+$$
+
+**Multiply $(X^\top X)^{-1}X^\top\mathbf{y}$:**
+
+$$
+\mathbf{w}^* = \frac{1}{6}\begin{bmatrix}14 & -6\\-6 & 3\end{bmatrix}\begin{bmatrix}10\\23\end{bmatrix}
+= \frac{1}{6}\begin{bmatrix}140-138\\-60+69\end{bmatrix}
+= \frac{1}{6}\begin{bmatrix}2\\9\end{bmatrix}
+= \begin{bmatrix}0.333\\1.5\end{bmatrix}
+$$
+
+**Fitted line:** $\hat{y} = 0.333 + 1.5\,x$.
+
+**Verify:** predictions $\hat{y}_1 = 1.833$, $\hat{y}_2 = 3.333$, $\hat{y}_3 = 4.833$; residuals $0.167, -0.333, 0.167$; $SS_{\text{res}} = 0.167$; $SS_{\text{tot}} = 4.667$; $R^2 = 0.964$. Prediction at $x=4$: $\hat{y} = 6.333$.
+
+## NumPy implementation
+
+```python
+import numpy as np
+
+X = np.array([[1, 1], [1, 2], [1, 3]], dtype=float)  # bias column prepended
+y = np.array([2.0, 3.0, 5.0])
+
+# Normal equation: w = (X^T X)^{-1} X^T y
+w = np.linalg.solve(X.T @ X, X.T @ y)   # solve is more stable than explicit inversion
+print("w:", w.round(3))                   # [0.333, 1.5]
+
+# Or with lstsq (handles rank-deficient X):
+w2, _, _, _ = np.linalg.lstsq(X, y, rcond=None)
+print("lstsq:", w2.round(3))              # same result
+
+# Predictions and R²
+y_hat = X @ w
+ss_res = np.sum((y - y_hat)**2)
+ss_tot = np.sum((y - y.mean())**2)
+print(f"R² = {1 - ss_res/ss_tot:.3f}")   # 0.964
+```
+
+## Related concepts
+
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — source lesson with the full model, Ridge, Lasso
+- [**Ridge Regression**](/courses/linear-regression/03-regularization) — adds $\lambda I$ to make $X^\top X + \lambda I$ always invertible
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the iterative alternative when $d$ is too large for direct inversion

@@ -3,7 +3,7 @@ title: "Linear Regression"
 description: "Fitting a line to data — Ordinary Least Squares, Ridge, and Lasso."
 order: 1
 type: concept
-estimatedMinutes: 20
+estimatedMinutes: 16
 ---
 
 # Linear Regression
@@ -36,84 +36,19 @@ $$
 
 The $\frac{1}{n}$ is just a positive constant — it does not move the location of the minimum, so to keep the algebra clean we minimize the plain sum of squared errors $\| \mathbf{y} - X\mathbf{w} \|^2$ instead. The minimizer is identical.
 
-### Deriving the normal equation, step by step
-
-We want the $\mathbf{w}$ that makes the gradient of the loss zero. Start by expanding the squared norm. Recall that $\|\mathbf{v}\|^2 = \mathbf{v}^\top\mathbf{v}$, so with $\mathbf{v} = \mathbf{y} - X\mathbf{w}$:
-
-$$
-\| \mathbf{y} - X\mathbf{w} \|^2 = (\mathbf{y} - X\mathbf{w})^\top (\mathbf{y} - X\mathbf{w})
-$$
-
-**Step 1 — multiply it out.** Using $(\mathbf{a}-\mathbf{b})^\top(\mathbf{a}-\mathbf{b}) = \mathbf{a}^\top\mathbf{a} - 2\,\mathbf{a}^\top\mathbf{b} + \mathbf{b}^\top\mathbf{b}$ (valid because $\mathbf{y}^\top X\mathbf{w}$ is a scalar, so it equals its own transpose $\mathbf{w}^\top X^\top \mathbf{y}$):
-
-$$
-\mathcal{L}(\mathbf{w}) = \mathbf{y}^\top \mathbf{y} \;-\; 2\,\mathbf{w}^\top X^\top \mathbf{y} \;+\; \mathbf{w}^\top X^\top X \mathbf{w}
-$$
-
-**Step 2 — take the gradient with respect to $\mathbf{w}$.** We use two standard matrix-calculus identities:
-
-$$
-\nabla_{\mathbf{w}} \left( \mathbf{w}^\top \mathbf{b} \right) = \mathbf{b}, \qquad \nabla_{\mathbf{w}} \left( \mathbf{w}^\top A \mathbf{w} \right) = 2 A \mathbf{w} \quad (\text{for symmetric } A)
-$$
-
-Here $A = X^\top X$ is symmetric. The first term $\mathbf{y}^\top\mathbf{y}$ has no $\mathbf{w}$, so its gradient is $\mathbf{0}$:
-
-$$
-\nabla_{\mathbf{w}} \mathcal{L} = \mathbf{0} \;-\; 2 X^\top \mathbf{y} \;+\; 2 X^\top X \mathbf{w}
-$$
-
-**Step 3 — set the gradient to zero.** This is the *normal equation*:
-
-$$
--2 X^\top \mathbf{y} + 2 X^\top X \mathbf{w} = \mathbf{0}
-\quad\Longrightarrow\quad
-X^\top X \,\mathbf{w} = X^\top \mathbf{y}
-$$
-
-**Step 4 — solve for $\mathbf{w}$** by left-multiplying both sides by $(X^\top X)^{-1}$:
+The closed-form minimizer is obtained by expanding the squared norm, taking the gradient, setting it to zero, and solving — a four-step algebra exercise using two standard matrix-calculus identities. The result:
 
 $$
 \boxed{\;\mathbf{w}^* = (X^\top X)^{-1} X^\top \mathbf{y}\;}
 $$
 
-This is a genuine minimum (not a maximum or saddle) because the Hessian $\nabla^2_{\mathbf{w}}\mathcal{L} = 2X^\top X$ is positive semi-definite — the loss is convex, so the single stationary point is the global minimum.
+$(X^\top X)^{-1}$ exists when the feature columns are linearly independent; Ridge regression adds $\lambda I$ to guarantee invertibility. For the full derivation and a complete 3-point hand fit (including the $2\times2$ inversion and $R^2$ calculation), see:
+
+<WikiLink slug="ols-normal-equation" title="OLS: The Normal Equation" />
 
 <Callout type="info" title="Why closed-form matters">
-  Unlike gradient descent, OLS gives you the exact answer in one computation. No learning rate to tune, no convergence to worry about. But it requires $X^\top X$ to be invertible — which fails when features are perfectly correlated (collinearity) or when $d > n$ (more features than samples).
+  Unlike gradient descent, OLS gives the exact answer in one computation — no learning rate to tune, no convergence to monitor. The cost is an $O(d^3)$ matrix inversion, which becomes slow when $d$ is large.
 </Callout>
-
-### A tiny least-squares fit, done entirely by hand
-
-Suppose we have 3 data points: $(x, y) = (1, 2),\ (2, 3),\ (3, 5)$. We fit $\hat{y} = w_0 + w_1 x$. The design matrix $X$ gets a leading column of ones for the bias $w_0$:
-
-$$
-X = \begin{bmatrix} 1 & 1 \\ 1 & 2 \\ 1 & 3 \end{bmatrix}, \quad \mathbf{y} = \begin{bmatrix} 2 \\ 3 \\ 5 \end{bmatrix}
-$$
-
-**Compute $X^\top X$** (a $2\times 2$ matrix). The top-left entry is $1^2+1^2+1^2 = 3$; the off-diagonal is $1\cdot1+1\cdot2+1\cdot3 = 6$; the bottom-right is $1^2+2^2+3^2 = 14$:
-
-$$
-X^\top X = \begin{bmatrix} 3 & 6 \\ 6 & 14 \end{bmatrix}, \qquad
-X^\top \mathbf{y} = \begin{bmatrix} 2+3+5 \\ 1\cdot2 + 2\cdot3 + 3\cdot5 \end{bmatrix} = \begin{bmatrix} 10 \\ 23 \end{bmatrix}
-$$
-
-**Invert $X^\top X$.** For a $2\times2$ matrix $\begin{bmatrix} a & b \\ c & d \end{bmatrix}$ the inverse is $\frac{1}{ad-bc}\begin{bmatrix} d & -b \\ -c & a \end{bmatrix}$. Here the determinant is $3\cdot14 - 6\cdot6 = 42 - 36 = 6$:
-
-$$
-(X^\top X)^{-1} = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix}
-$$
-
-**Multiply** $(X^\top X)^{-1}$ by $X^\top\mathbf{y}$:
-
-$$
-\mathbf{w}^* = \frac{1}{6} \begin{bmatrix} 14 & -6 \\ -6 & 3 \end{bmatrix} \begin{bmatrix} 10 \\ 23 \end{bmatrix}
-= \frac{1}{6} \begin{bmatrix} 14\cdot10 - 6\cdot23 \\ -6\cdot10 + 3\cdot23 \end{bmatrix}
-= \frac{1}{6} \begin{bmatrix} 140 - 138 \\ -60 + 69 \end{bmatrix}
-= \frac{1}{6} \begin{bmatrix} 2 \\ 9 \end{bmatrix}
-= \begin{bmatrix} 0.333 \\ 1.5 \end{bmatrix}
-$$
-
-So the fitted line is $\hat{y} = 0.333 + 1.5\,x$. For a new point with $x = 4$ the prediction is $\hat{y} = 0.333 + 1.5\cdot4 = 6.333$.
 
 ### Residuals and $R^2$ for this fit
 
