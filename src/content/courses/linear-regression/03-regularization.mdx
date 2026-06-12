@@ -3,7 +3,7 @@ title: "Regularization: Ridge & Lasso"
 description: "Taming overfitting by penalizing large weights — and why L1 performs feature selection while L2 doesn't."
 order: 3
 type: concept
-estimatedMinutes: 20
+estimatedMinutes: 12
 ---
 
 # Regularization: Ridge & Lasso
@@ -35,13 +35,9 @@ $$
 
 Squaring means the penalty's gradient is $2\lambda w_j$ — proportional to the weight itself. Big weights feel strong pressure, small weights barely any. The result: Ridge **shrinks all weights smoothly toward zero but almost never exactly to zero**.
 
-Ridge also has a closed-form solution:
+Ridge also has a closed-form solution: $\mathbf{w}^* = (X^\top X + \lambda I)^{-1} X^\top \mathbf{y}$. Adding $\lambda I$ makes the matrix invertible even when features are perfectly correlated — the numerical fix and the statistical fix are the same fix. For the 4-step algebraic derivation, the Lasso sparsity proof via subdifferential calculus, and coefficient path plots across λ:
 
-$$
-\mathbf{w}^* = (X^\top X + \lambda I)^{-1} X^\top \mathbf{y}
-$$
-
-Adding $\lambda I$ makes the matrix invertible even when features are perfectly correlated — the numerical fix and the statistical fix are the same fix.
+<WikiLink slug="ridge-lasso-paths" title="Ridge & Lasso Regularization Paths" />
 
 <Callout type="info" title="Why Ridge loves correlated features">
   Given two nearly identical features, OLS may assign them weights +1000 and −998. Ridge instead splits the weight between them (≈ +1 each): the sum of squares of two halves is smaller than the square of one whole.

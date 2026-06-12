@@ -3,7 +3,7 @@ title: "Eigenvalues and Eigenvectors"
 description: "The special directions a matrix can't rotate — and why they underpin PCA, spectral methods, and the stability of neural networks."
 order: 3
 type: concept
-estimatedMinutes: 20
+estimatedMinutes: 14
 ---
 
 # Eigenvalues and Eigenvectors
@@ -39,47 +39,9 @@ $$
 
 This is the **characteristic equation**. For a $2 \times 2$ matrix, it's a quadratic in $\lambda$.
 
-### Worked example
+For $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$, the characteristic equation $\lambda^2 - 7\lambda + 10 = 0$ gives $\lambda_1 = 5$, $\lambda_2 = 2$. Substituting each eigenvalue back into $(\mathbf{A}-\lambda\mathbf{I})\mathbf{v}=\mathbf{0}$ yields eigenvectors $[1,1]^\top$ and $[1,-2]^\top$. Both rows collapse to one constraint because the matrix is singular by construction — a whole line of solutions exists. For the complete 4-step calculation with null-space derivations, verification checks, and power iteration:
 
-$$
-\mathbf{A} = \begin{bmatrix}4 & 1 \\ 2 & 3\end{bmatrix}
-$$
-
-Characteristic equation:
-$$
-(4-\lambda)(3-\lambda) - 2 = \lambda^2 - 7\lambda + 10 = 0 \implies \lambda_1 = 5,\; \lambda_2 = 2
-$$
-
-Now solve $(\mathbf{A} - \lambda\mathbf{I})\mathbf{v} = \mathbf{0}$ for each $\lambda$ — substitute the eigenvalue, then read off the direction the rows force.
-
-**For $\lambda_1 = 5$:**
-$$
-\mathbf{A} - 5\mathbf{I} = \begin{bmatrix}4-5 & 1 \\ 2 & 3-5\end{bmatrix} = \begin{bmatrix}-1 & 1 \\ 2 & -2\end{bmatrix}
-$$
-The top row gives $-v_x + v_y = 0 \Rightarrow v_y = v_x$, so $\mathbf{v}_1 = [1, 1]^\top$ (any non-zero scaling works).
-
-**For $\lambda_2 = 2$:**
-$$
-\mathbf{A} - 2\mathbf{I} = \begin{bmatrix}2 & 1 \\ 2 & 1\end{bmatrix}
-$$
-The row gives $2v_x + v_y = 0 \Rightarrow v_y = -2v_x$, so $\mathbf{v}_2 = [1, -2]^\top$.
-
-Both rows of each $(\mathbf{A}-\lambda\mathbf{I})$ are multiples of one another — that redundancy (the matrix is singular by construction) is *why* a whole line of eigenvectors exists rather than a single point.
-
-```python
-import numpy as np
-
-A = np.array([[4, 1], [2, 3]])
-eigenvalues, eigenvectors = np.linalg.eig(A)
-
-print("Eigenvalues:", eigenvalues)       # [5., 2.]
-print("Eigenvectors:\n", eigenvectors)  # columns are eigenvectors
-# Verify: A @ v == λ * v
-for i in range(2):
-    v = eigenvectors[:, i]
-    lam = eigenvalues[i]
-    print(f"Av = {A @ v}, λv = {lam * v}")  # should be equal
-```
+<WikiLink slug="eigenvalue-computation" title="Computing Eigenvalues & Eigenvectors" />
 
 ## Eigendecomposition
 

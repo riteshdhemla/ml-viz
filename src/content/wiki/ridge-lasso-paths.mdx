@@ -1,0 +1,175 @@
+---
+title: "Ridge & Lasso Regularization Paths"
+description: "Step-by-step derivation of the Ridge closed-form solution, the Lasso's constant-gradient sparsity mechanism, and how coefficients evolve as λ sweeps from 0 to ∞."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "linear-regression/03-regularization"
+estimatedMinutes: 12
+---
+
+# Ridge & Lasso Regularization Paths
+
+Both Ridge and Lasso add a penalty to OLS to prevent large weights, but the choice of penalty norm leads to fundamentally different behavior: Ridge shrinks everything smoothly, Lasso zeros features out exactly.
+
+## Ridge regression (L2): closed-form derivation
+
+Ridge adds a squared-norm penalty:
+
+$$
+\mathcal{L}_\text{Ridge}(\mathbf{w}) = \|\mathbf{y} - X\mathbf{w}\|^2 + \lambda\|\mathbf{w}\|^2
+$$
+
+**Step 1 — expand the squared norm:**
+
+$$
+= \mathbf{y}^\top\mathbf{y} - 2\mathbf{w}^\top X^\top\mathbf{y} + \mathbf{w}^\top X^\top X\mathbf{w} + \lambda\mathbf{w}^\top\mathbf{w}
+$$
+
+**Step 2 — take the gradient with respect to $\mathbf{w}$:**
+
+$$
+\nabla_\mathbf{w}\mathcal{L} = -2X^\top\mathbf{y} + 2X^\top X\mathbf{w} + 2\lambda\mathbf{w}
+$$
+
+**Step 3 — set to zero:**
+
+$$
+-2X^\top\mathbf{y} + 2(X^\top X + \lambda I)\mathbf{w} = \mathbf{0}
+\;\Longrightarrow\;
+(X^\top X + \lambda I)\mathbf{w} = X^\top\mathbf{y}
+$$
+
+**Step 4 — solve:**
+
+$$
+\boxed{\;\mathbf{w}^*_\text{Ridge} = (X^\top X + \lambda I)^{-1} X^\top\mathbf{y}\;}
+$$
+
+**The $\lambda I$ term does two things simultaneously:**
+1. **Invertibility:** $X^\top X$ may be singular (collinear features), but $X^\top X + \lambda I$ has eigenvalues $\geq\lambda > 0$ — always invertible.
+2. **Shrinkage:** every weight is pulled toward zero proportionally. In the eigenbasis of $X^\top X$ with eigenvalues $\sigma_j^2$, Ridge multiplies each component by $\sigma_j^2/(\sigma_j^2+\lambda)$ — an attenuation that shrinks small-variance directions most aggressively.
+
+<Callout type="info" title="Ridge = MAP with Gaussian prior">
+  Putting a zero-mean Gaussian prior $\mathbf{w} \sim \mathcal{N}(\mathbf{0}, \tau^2 I)$ and taking the MAP estimate recovers exactly the Ridge solution with $\lambda = 1/(2\tau^2)$. A tighter prior (smaller $\tau^2$) corresponds to stronger regularization (larger $\lambda$).
+</Callout>
+
+## Lasso (L1): the constant-gradient sparsity mechanism
+
+Lasso adds an absolute-value penalty:
+
+$$
+\mathcal{L}_\text{Lasso}(\mathbf{w}) = \|\mathbf{y} - X\mathbf{w}\|^2 + \lambda\|\mathbf{w}\|_1
+$$
+
+There is no closed-form solution — the absolute value is non-differentiable at $w_j = 0$. Instead, we use **subdifferential calculus**: the subdifferential of $|w_j|$ at zero is the interval $[-1, +1]$, so the optimality condition becomes:
+
+$$
+\frac{\partial \|\mathbf{y}-X\mathbf{w}\|^2}{\partial w_j} + \lambda\,\mathrm{sign}(w_j) = 0 \quad (w_j \neq 0)
+$$
+
+$$
+\left|\frac{\partial \|\mathbf{y}-X\mathbf{w}\|^2}{\partial w_j}\right| \leq \lambda \quad (w_j = 0)
+$$
+
+The second condition is the key: if the gradient of the data-fit term is small enough (magnitude $\leq\lambda$), the weight stays exactly zero and **never re-enters the model**. The L1 penalty applies a **constant force** of magnitude $\lambda$ toward zero regardless of $|w_j|$; any feature whose signal is weaker than this force gets zeroed out.
+
+**Why L2 doesn't zero things out:** Ridge applies a force of magnitude $2\lambda |w_j|$ — proportional to the weight. As $|w_j| \to 0$, the force also goes to zero, so the weight asymptotically approaches but never reaches zero.
+
+## The geometric picture
+
+Picture the constraint region in weight space:
+
+- **L2 (sphere):** $\|\mathbf{w}\|^2 \leq r^2$ is a circle (in 2D). The loss contours expand until they touch the circle. A circle has no corners — the touching point is almost never on an axis.
+- **L1 (diamond):** $\|\mathbf{w}\|_1 \leq r$ is a diamond. Its corners lie on the axes (where one or more $w_j = 0$). Elliptical loss contours almost always touch the diamond at a corner — producing a sparse solution.
+
+## Coefficient paths as λ varies
+
+As $\lambda$ increases from 0 to $\infty$:
+- **Ridge:** all coefficients shrink smoothly, asymptotically approaching 0 — never exactly 0.
+- **Lasso:** coefficients reach exactly 0 at different λ values (the weaker features die first), producing a piecewise-linear path.
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import Ridge, Lasso
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+
+# Synthetic 10-feature dataset: 3 strong, 2 medium, 2 correlated, 3 noise
+n, p = 200, 10
+X = np.random.randn(n, p)
+X[:, 7] = X[:, 0] + 0.2 * np.random.randn(n)   # correlated echo
+true_w = np.array([3, 2, 1.5, 0, 0, 0.8, 0.5, 0, 0, 0])
+y = X @ true_w + np.random.randn(n)
+
+scaler = StandardScaler()
+X_s = scaler.fit_transform(X)
+
+lambdas = np.logspace(-3, 2, 100)
+
+coefs_ridge = np.array([Ridge(alpha=lam).fit(X_s, y).coef_ for lam in lambdas])
+coefs_lasso = np.array([Lasso(alpha=lam, max_iter=5000).fit(X_s, y).coef_ for lam in lambdas])
+
+colors = ['#6366f1','#20d9d2','#f97316','#ef4444','#a78bfa',
+          '#34d399','#fbbf24','#fb7185','#60a5fa','#94a3b8']
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+for j in range(p):
+    ax1.semilogx(lambdas, coefs_ridge[:, j], color=colors[j], lw=1.5,
+                 label=f'w{j}' if true_w[j] != 0 else None)
+    ax2.semilogx(lambdas, coefs_lasso[:, j], color=colors[j], lw=1.5)
+
+ax1.set_title('Ridge paths: smooth shrinkage, never zero')
+ax1.set_xlabel('λ (log scale)'); ax1.set_ylabel('Coefficient')
+ax1.axhline(0, color='#555', lw=0.5); ax1.grid(True, alpha=0.3)
+
+ax2.set_title('Lasso paths: features die out exactly')
+ax2.set_xlabel('λ (log scale)')
+ax2.axhline(0, color='#555', lw=0.5); ax2.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
+```
+
+## Feature elimination order in Lasso
+
+The **order** in which Lasso zeros features depends on the correlation between each feature and the current residual:
+
+```python
+from sklearn.linear_model import lasso_path
+
+# Lasso path (exact, piecewise-linear)
+alphas, coefs_path, _ = lasso_path(X_s, y, n_alphas=200)
+
+# Find the λ at which each coefficient first goes to zero
+for j in range(p):
+    dead_at = alphas[np.where(coefs_path[j] == 0)[0][0]] if np.any(coefs_path[j] == 0) else None
+    print(f"w{j} (true={true_w[j]:.1f}): zeroed at λ={dead_at:.4f}" if dead_at else f"w{j}: never zeroed")
+```
+
+Strong features (high $|\text{corr}(x_j, r)|$) survive to larger λ; noise features die first. This is the path algorithm's key insight: as λ increases, features drop in order of decreasing relevance.
+
+## Choosing λ: cross-validation
+
+```python
+from sklearn.linear_model import RidgeCV, LassoCV
+
+# Ridge: analytically efficient LOO CV
+ridge_cv = RidgeCV(alphas=np.logspace(-3, 3, 100), cv=5)
+ridge_cv.fit(X_s, y)
+print(f"Ridge best λ: {ridge_cv.alpha_:.4f}")
+
+# Lasso: K-fold CV
+lasso_cv = LassoCV(n_alphas=100, cv=5, max_iter=5000, random_state=42)
+lasso_cv.fit(X_s, y)
+print(f"Lasso best λ: {lasso_cv.alpha_:.4f}")
+print(f"Lasso nonzero features: {np.sum(lasso_cv.coef_ != 0)}")
+```
+
+## Related concepts
+
+- [**Regularization: Ridge & Lasso**](/courses/linear-regression/03-regularization) — overview, geometric picture, and choosing between them
+- [**OLS: The Normal Equation**](/wiki/ols-normal-equation) — the unregularized baseline that Ridge extends
+- [**Beta-Bernoulli Posterior**](/wiki/beta-bernoulli-posterior) — Bayesian view: Ridge = Gaussian prior, Lasso = Laplace prior

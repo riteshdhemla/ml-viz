@@ -1,0 +1,174 @@
+---
+title: "Computing Eigenvalues & Eigenvectors"
+description: "The characteristic equation det(A−λI)=0, solving the 2×2 quadratic, and finding eigenvectors from the null space — worked end-to-end for λ=5 and λ=2."
+topics: ["linear-algebra"]
+relatedLessons:
+  - "linear-algebra/03-eigenvalues-and-eigenvectors"
+estimatedMinutes: 10
+---
+
+# Computing Eigenvalues & Eigenvectors
+
+An eigenvector $\mathbf{v}$ of $\mathbf{A}$ satisfies $\mathbf{A}\mathbf{v} = \lambda\mathbf{v}$ — the matrix only scales it, never rotates it. Finding these special directions is a two-phase procedure: find the **eigenvalues** first from the characteristic polynomial, then find the **eigenvectors** by solving a linear system for each eigenvalue.
+
+## Phase 1: The characteristic equation
+
+Rearrange $\mathbf{A}\mathbf{v} = \lambda\mathbf{v}$ as $(\mathbf{A} - \lambda\mathbf{I})\mathbf{v} = \mathbf{0}$. For this to have a non-zero solution $\mathbf{v}$, the matrix $(\mathbf{A} - \lambda\mathbf{I})$ must be **singular** (not invertible), which means its determinant is zero:
+
+$$
+\det(\mathbf{A} - \lambda \mathbf{I}) = 0
+$$
+
+For a $2\times2$ matrix this gives a quadratic in $\lambda$ (the **characteristic polynomial**); for $n\times n$ it gives a degree-$n$ polynomial.
+
+## Phase 2: The null space for each eigenvalue
+
+Once we have a specific eigenvalue $\lambda_k$, substitute it back into $(\mathbf{A} - \lambda_k\mathbf{I})\mathbf{v} = \mathbf{0}$ and solve. The solution is the **null space** (kernel) of $(\mathbf{A}-\lambda_k\mathbf{I})$ — a whole line of directions (any scalar multiple of the eigenvector is also an eigenvector).
+
+## Worked example: $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$
+
+### Step 1 — set up the characteristic equation
+
+$$
+\det(\mathbf{A} - \lambda\mathbf{I})
+= \det\begin{bmatrix}4-\lambda & 1 \\ 2 & 3-\lambda\end{bmatrix}
+= (4-\lambda)(3-\lambda) - (2)(1) = 0
+$$
+
+Expand:
+
+$$
+12 - 4\lambda - 3\lambda + \lambda^2 - 2 = \lambda^2 - 7\lambda + 10 = 0
+$$
+
+### Step 2 — solve for the eigenvalues
+
+Factor: $(\lambda - 5)(\lambda - 2) = 0$, giving:
+
+$$
+\lambda_1 = 5, \qquad \lambda_2 = 2
+$$
+
+**Check via trace and determinant:**
+- $\text{tr}(\mathbf{A}) = 4 + 3 = 7 = \lambda_1 + \lambda_2 = 5 + 2$ ✓
+- $\det(\mathbf{A}) = 4(3) - 1(2) = 10 = \lambda_1 \cdot \lambda_2 = 5 \cdot 2$ ✓
+
+### Step 3 — eigenvector for $\lambda_1 = 5$
+
+Substitute into $(\mathbf{A} - 5\mathbf{I})\mathbf{v} = \mathbf{0}$:
+
+$$
+\begin{bmatrix}4-5 & 1 \\ 2 & 3-5\end{bmatrix}\begin{bmatrix}v_1\\v_2\end{bmatrix}
+= \begin{bmatrix}-1 & 1 \\ 2 & -2\end{bmatrix}\begin{bmatrix}v_1\\v_2\end{bmatrix} = \mathbf{0}
+$$
+
+Both rows encode the same constraint. Top row: $-v_1 + v_2 = 0 \Rightarrow v_2 = v_1$.
+
+$$
+\mathbf{v}_1 = \begin{bmatrix}1\\1\end{bmatrix} \quad \text{(or any scalar multiple)}
+$$
+
+**Verify:** $\mathbf{A}\mathbf{v}_1 = \begin{bmatrix}4(1)+1(1)\\2(1)+3(1)\end{bmatrix} = \begin{bmatrix}5\\5\end{bmatrix} = 5\begin{bmatrix}1\\1\end{bmatrix}$ ✓
+
+### Step 4 — eigenvector for $\lambda_2 = 2$
+
+Substitute into $(\mathbf{A} - 2\mathbf{I})\mathbf{v} = \mathbf{0}$:
+
+$$
+\begin{bmatrix}2 & 1 \\ 2 & 1\end{bmatrix}\begin{bmatrix}v_1\\v_2\end{bmatrix} = \mathbf{0}
+$$
+
+Both rows: $2v_1 + v_2 = 0 \Rightarrow v_2 = -2v_1$.
+
+$$
+\mathbf{v}_2 = \begin{bmatrix}1\\-2\end{bmatrix}
+$$
+
+**Verify:** $\mathbf{A}\mathbf{v}_2 = \begin{bmatrix}4(1)+1(-2)\\2(1)+3(-2)\end{bmatrix} = \begin{bmatrix}2\\-4\end{bmatrix} = 2\begin{bmatrix}1\\-2\end{bmatrix}$ ✓
+
+### Why both rows collapse to one constraint
+
+When $\lambda$ is an eigenvalue, $(\mathbf{A}-\lambda\mathbf{I})$ is singular by construction ($\det = 0$). A singular $2\times2$ matrix has rank at most 1 — its two rows are proportional. That redundancy is exactly why infinitely many solutions exist (a whole line, i.e. the eigenvector direction).
+
+```python
+import numpy as np
+
+A = np.array([[4., 1.], [2., 3.]])
+eigenvalues, eigenvectors = np.linalg.eig(A)
+
+print("Eigenvalues:", eigenvalues.round(3))   # [5., 2.]
+print("Eigenvectors (columns):\n", eigenvectors.round(3))
+
+# Verify Av = λv for each pair
+for i in range(2):
+    v   = eigenvectors[:, i]
+    lam = eigenvalues[i]
+    lhs = A @ v
+    rhs = lam * v
+    print(f"\nλ={lam:.0f}: Av={lhs.round(3)}, λv={rhs.round(3)}, match={np.allclose(lhs, rhs)}")
+```
+
+## The eigendecomposition
+
+With eigenvectors as columns $\mathbf{V} = [\mathbf{v}_1 | \mathbf{v}_2]$ and eigenvalues on the diagonal:
+
+$$
+\mathbf{A}\,\mathbf{V} = \mathbf{V}\,\boldsymbol{\Lambda}
+\;\Longrightarrow\;
+\mathbf{A} = \mathbf{V}\,\boldsymbol{\Lambda}\,\mathbf{V}^{-1}
+$$
+
+For our example:
+
+$$
+\mathbf{V} = \begin{bmatrix}1 & 1 \\ 1 & -2\end{bmatrix},\quad
+\boldsymbol{\Lambda} = \begin{bmatrix}5 & 0 \\ 0 & 2\end{bmatrix},\quad
+\mathbf{V}^{-1} = \frac{1}{-3}\begin{bmatrix}-2 & -1 \\ -1 & 1\end{bmatrix}
+$$
+
+**Power of $\mathbf{A}$.** The eigendecomposition makes powers trivial: $\mathbf{A}^n = \mathbf{V}\boldsymbol{\Lambda}^n\mathbf{V}^{-1}$, and $\boldsymbol{\Lambda}^n = \mathrm{diag}(5^n, 2^n)$. As $n$ grows, the $5^n$ term dominates — the dominant eigenvector $(1,1)$ captures the "direction" of $\mathbf{A}^n$ for large $n$.
+
+```python
+# Eigendecomposition and power
+V    = eigenvectors
+Lam  = np.diag(eigenvalues)
+V_inv = np.linalg.inv(V)
+
+A_reconstructed = V @ Lam @ V_inv
+print("Reconstructed A:\n", A_reconstructed.round(3))  # should match A
+
+A_cubed_direct = np.linalg.matrix_power(A, 3)
+A_cubed_eigen  = V @ np.diag(eigenvalues**3) @ V_inv
+print("A³ direct:\n", A_cubed_direct)
+print("A³ via eigen:\n", A_cubed_eigen.round(3))
+```
+
+## Power iteration (finding the dominant eigenvector)
+
+For large matrices where we only need the top eigenvector, power iteration is much cheaper than the full eigendecomposition:
+
+```python
+def power_iteration(A, n_iter=100, tol=1e-10):
+    b = np.random.randn(A.shape[1])
+    b /= np.linalg.norm(b)
+    for _ in range(n_iter):
+        b_new = A @ b
+        lam   = np.dot(b, b_new)          # Rayleigh quotient
+        b_new /= np.linalg.norm(b_new)
+        if np.linalg.norm(b_new - b) < tol:
+            break
+        b = b_new
+    return lam, b
+
+lam1, v1 = power_iteration(A)
+print(f"Dominant eigenvalue: {lam1:.4f} (true: 5)")
+print(f"Dominant eigenvector: {(v1/v1[0]).round(4)} (true: [1, 1])")
+```
+
+Power iteration converges at rate $|\lambda_2/\lambda_1|^k$ — the larger the gap between eigenvalues, the faster it converges.
+
+## Related concepts
+
+- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — intuition, PCA connection, SVD generalization
+- [**PCA & Dimensionality Reduction**](/courses/pca-dimensionality/01-pca) — eigenvectors of the covariance matrix
+- [**Vanishing & Exploding Gradients**](/wiki/vanishing-gradient-analysis) — spectral radius is the dominant eigenvalue magnitude

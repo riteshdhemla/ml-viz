@@ -1,0 +1,137 @@
+---
+title: "Hierarchical Clustering Linkage Methods"
+description: "Single, complete, average, and Ward linkage defined and contrasted — with a 4-point distance matrix and step-by-step merge trace for each linkage showing exactly where they agree and disagree."
+topics: ["unsupervised-learning"]
+relatedLessons:
+  - "clustering/02-hierarchical-and-dbscan"
+estimatedMinutes: 10
+---
+
+# Hierarchical Clustering Linkage Methods
+
+Agglomerative hierarchical clustering starts with every point in its own cluster and repeatedly merges the two "closest" clusters. The **linkage rule** defines what "closest" means for two clusters, and that choice changes which clusters form and when.
+
+## The four standard linkage methods
+
+| Method | Distance between clusters $A$ and $B$ | Shape tendency |
+|--------|---------------------------------------|----------------|
+| **Single** | $\min_{a\in A,\,b\in B} d(a,b)$ — nearest pair | Elongated chains |
+| **Complete** | $\max_{a\in A,\,b\in B} d(a,b)$ — farthest pair | Compact, equally-sized |
+| **Average (UPGMA)** | $\frac{1}{|A||B|}\sum_{a\in A}\sum_{b\in B} d(a,b)$ — mean of all pairs | Balanced; most common |
+| **Ward** | $\Delta\text{Var} = \frac{|A||B|}{|A|+|B|}\,d(\bar{A},\bar{B})^2$ — variance increase | Compact, evenly-sized; best for spherical blobs |
+
+<Callout type="tip" title="Which linkage to use?">
+  Ward linkage minimizes within-cluster variance at every merge, so it produces the most compact and evenly-sized clusters. It is the best default for spherical, roughly equal-sized blobs. Single linkage is the only method that can detect elongated "chain" shapes, but it suffers from chaining: one bridge point between two distant blobs can pull them together early. Complete linkage is robust to this but can split large, elongated natural clusters.
+</Callout>
+
+## Worked example: 4 points, 3 linkages
+
+**Points:** A(1,1), B(2,2), C(8,8), D(9,9).
+
+**Step 1 — full pairwise distance matrix** (Euclidean):
+
+|   | **A** | **B** | **C** | **D** |
+|:-:|:-----:|:-----:|:-----:|:-----:|
+| **A** | 0 | 1.41 | 9.90 | 11.31 |
+| **B** | — | 0 | 8.49 | 9.90 |
+| **C** | — | — | 0 | 1.41 |
+| **D** | — | — | — | 0 |
+
+Computations: $d(A,B) = \sqrt{(2-1)^2+(2-1)^2} = \sqrt{2} \approx 1.41$; $d(A,C) = \sqrt{49+49} = \sqrt{98} \approx 9.90$; $d(A,D) = \sqrt{64+64} = \sqrt{128} \approx 11.31$; $d(B,C) = \sqrt{36+36} = \sqrt{72} \approx 8.49$.
+
+**Step 2 — Merge 1 (all linkages agree).** Two ties at 1.41: A–B and C–D. Merge **A+B** at height 1.41 and **C+D** at height 1.41.
+
+**Step 3 — Merge 2: cluster {A,B} vs cluster {C,D}.** This is where linkages diverge:
+
+**Single linkage** — nearest pair:
+
+$$
+d_\text{single}(\{A,B\},\{C,D\}) = \min(d(A,C), d(A,D), d(B,C), d(B,D)) = \min(9.90, 11.31, 8.49, 9.90) = 8.49
+$$
+
+Height = 8.49. The two blobs merge at the smallest inter-cluster gap.
+
+**Complete linkage** — farthest pair:
+
+$$
+d_\text{complete}(\{A,B\},\{C,D\}) = \max(9.90, 11.31, 8.49, 9.90) = 11.31
+$$
+
+Height = 11.31. The two blobs are judged by their most distant representatives.
+
+**Average linkage** — mean of all 4 cross-pairs:
+
+$$
+d_\text{average}(\{A,B\},\{C,D\}) = \frac{9.90 + 11.31 + 8.49 + 9.90}{4} = \frac{39.60}{4} = 9.90
+$$
+
+Height = 9.90.
+
+**Observation:** all three methods produce exactly the same cluster structure — $\{A,B\}$ and $\{C,D\}$ — because the two blobs are extremely well-separated. The only difference is the **height** of the final merge in the dendrogram, which affects where you would "cut" to decide the number of clusters.
+
+```python
+import numpy as np
+from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
+import matplotlib.pyplot as plt
+
+X = np.array([[1,1], [2,2], [8,8], [9,9]])
+labels = ['A','B','C','D']
+
+fig, axes = plt.subplots(1, 3, figsize=(13, 4))
+
+for ax, method in zip(axes, ['single', 'complete', 'average']):
+    Z = linkage(X, method=method)
+    dendrogram(Z, ax=ax, labels=labels)
+    ax.set_title(f'{method.title()} linkage')
+    ax.set_ylabel('Distance (merge height)')
+
+plt.tight_layout()
+plt.show()
+```
+
+## Where linkages give different structures
+
+The 4-point example is too clean — the blobs are far apart. Linkages produce different **cluster assignments** when:
+
+1. **Elongated clusters** → Single linkage chains them together (good); complete/Ward splits them (bad)
+2. **Noisy bridge points** → Single linkage merges distant blobs through one noisy intermediate; complete/Ward resist this
+3. **Unequal cluster sizes** → Ward favors equally-sized clusters; single/average can find a large cluster + many singletons
+
+```python
+from sklearn.datasets import make_blobs, make_moons
+from sklearn.cluster import AgglomerativeClustering
+import matplotlib.pyplot as plt
+
+# Compare linkages on two crescents (non-spherical)
+X_moons, _ = make_moons(n_samples=100, noise=0.05, random_state=42)
+
+fig, axes = plt.subplots(1, 4, figsize=(14, 3))
+
+for ax, method in zip(axes, ['single', 'complete', 'average', 'ward']):
+    labels = AgglomerativeClustering(n_clusters=2, linkage=method).fit_predict(X_moons)
+    ax.scatter(X_moons[:, 0], X_moons[:, 1], c=labels, cmap='coolwarm', s=15)
+    ax.set_title(f'{method}')
+    ax.set_xticks([]); ax.set_yticks([])
+
+plt.suptitle('Linkage methods on two crescents — single finds the right structure')
+plt.tight_layout()
+plt.show()
+```
+
+## Ward linkage: the variance derivation
+
+Ward linkage uses a different formula: instead of computing the distance between two clusters directly, it asks "how much does the within-cluster variance increase if we merge these two clusters?"
+
+For clusters $A$ and $B$ with centroids $\bar{A}$ and $\bar{B}$:
+
+$$
+\Delta\text{Var}(A,B) = \frac{|A|\cdot|B|}{|A|+|B|}\,\|\bar{A} - \bar{B}\|^2
+$$
+
+The prefactor $\frac{|A||B|}{|A|+|B|}$ is the harmonic mean of the cluster sizes — it penalizes merging two large clusters more than merging a small one into a large one. Ward always merges the pair that increases total within-cluster variance the least.
+
+## Related concepts
+
+- [**Hierarchical Clustering & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan) — the full lesson with DBSCAN, parameter selection, and comparison table
+- [**K-Means Clustering**](/courses/clustering/01-k-means) — the centroid-based alternative
+- [**K-Means: Full Algorithm**](/wiki/kmeans-algorithm) — convergence proof and worked trace

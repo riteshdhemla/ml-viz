@@ -3,7 +3,7 @@ title: "Boosting"
 description: "Training weak learners sequentially to correct each other's mistakes."
 order: 2
 type: concept
-estimatedMinutes: 24
+estimatedMinutes: 18
 ---
 
 # Boosting
@@ -47,40 +47,9 @@ Watch AdaBoost reweight the training set — misclassified points grow larger ea
 
 <BoostingViz />
 
-### Where does $\alpha_b$ come from?
+The model weight $\alpha_b$ is the exact minimizer of the exponential loss — differentiating $(1-\epsilon_b)e^{-\alpha}+\epsilon_b e^{\alpha}$ and setting to zero yields $\alpha_b = \frac{1}{2}\ln\frac{1-\epsilon_b}{\epsilon_b}$. After the weight update, a key identity holds: the just-trained stump has *exactly* 0.5 weighted error on the new distribution, forcing the next stump to look elsewhere. For the full derivation, a step-by-step worked trace with weight normalization tables, and a from-scratch Python implementation:
 
-AdaBoost is greedy minimization of the **exponential loss** $\sum_i w_i\exp(-\alpha\, y_i h_b(\mathbf x_i))$. Split the sum into correct ($y_i h_b=+1$) and wrong ($y_i h_b=-1$) terms — their weights are $(1-\epsilon_b)$ and $\epsilon_b$:
-
-$$
-(1-\epsilon_b)e^{-\alpha} + \epsilon_b e^{\alpha}.
-$$
-
-Differentiate w.r.t. $\alpha$ and set to zero: $-(1-\epsilon_b)e^{-\alpha}+\epsilon_b e^{\alpha}=0 \Rightarrow e^{2\alpha}=\frac{1-\epsilon_b}{\epsilon_b}$, giving
-
-$$
-\alpha_b = \tfrac{1}{2}\ln\frac{1-\epsilon_b}{\epsilon_b}.
-$$
-
-A learner better than chance ($\epsilon_b<0.5$) gets $\alpha_b>0$; an accurate learner ($\epsilon_b\to0$) gets a large weight; a coin-flip ($\epsilon_b=0.5$) gets $\alpha_b=0$ — ignored.
-
-### Worked example: one AdaBoost round
-
-10 points, uniform weights $w_i=0.1$. A stump misclassifies **2** of them, so $\epsilon_1 = 2(0.1) = 0.2$.
-
-$$
-\alpha_1 = \tfrac12\ln\frac{0.8}{0.2} = \tfrac12\ln 4 = 0.693.
-$$
-
-**Reweight** $w_i \leftarrow w_i e^{\mp\alpha_1}$: correct points $\times e^{-0.693}=0.5$, wrong points $\times e^{+0.693}=2.0$:
-
-- 8 correct: $0.1\times0.5 = 0.05$ each
-- 2 wrong: $0.1\times2.0 = 0.20$ each
-
-Sum $= 8(0.05)+2(0.20) = 0.8$. **Normalize** (divide by 0.8):
-
-- correct: $0.0625$ each, wrong: $0.25$ each — check $8(0.0625)+2(0.25)=1$ ✓.
-
-Notice the two misclassified points now hold $2(0.25)=\mathbf{0.5}$ of the total weight. This is a general AdaBoost identity: after reweighting, the just-trained stump has *exactly* $0.5$ weighted error on the new distribution — so the next stump is forced to look elsewhere.
+<WikiLink slug="adaboost-algorithm" title="AdaBoost Algorithm" />
 
 ```python
 from sklearn.ensemble import AdaBoostClassifier
