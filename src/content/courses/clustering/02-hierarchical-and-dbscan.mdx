@@ -3,7 +3,7 @@ title: "Hierarchical Clustering & DBSCAN"
 description: "Grouping data without pre-specifying K — agglomerative and density-based methods."
 order: 2
 type: concept
-estimatedMinutes: 14
+estimatedMinutes: 10
 ---
 
 # Hierarchical Clustering & DBSCAN
@@ -66,41 +66,13 @@ print(f"Labels: {labels}")  # [0, 0, 1, 1, 0]
 
 ## DBSCAN (Density-Based Spatial Clustering)
 
-DBSCAN finds clusters of arbitrary shape based on **density** — regions where points are closely packed.
+DBSCAN finds clusters of arbitrary shape based on **density** — regions where points are closely packed. A core point has at least `min_samples` neighbors within radius $\varepsilon$; border points lie within reach of a core point; everything else is noise (label $-1$). For the formal point-type definitions, the complete 9-point worked example classifying every point at $\varepsilon=2$ / `min_samples=3`, and the k-distance elbow method for parameter selection:
 
-### Key parameters
-
-- **$\varepsilon$ (eps):** Radius of the neighborhood around each point
-- **min_samples:** Minimum points required to form a dense region
-
-### Point types
-
-- **Core point:** At least `min_samples` points within distance $\varepsilon$
-- **Border point:** Within $\varepsilon$ of a core point but has fewer than `min_samples` neighbors
-- **Noise point:** Neither core nor border — an outlier
+<WikiLink slug="dbscan-algorithm" title="DBSCAN: Core, Border, Noise Classification" />
 
 <Callout type="info" title="Why DBSCAN is powerful">
   Unlike K-Means, DBSCAN can find clusters of any shape (crescents, rings, blobs). It automatically detects outliers as noise points and doesn't require specifying the number of clusters.
 </Callout>
-
-### Worked example
-
-Points with $\varepsilon = 2$, `min_samples` = 3.
-
-<Callout type="warning" title="min_samples counts the point itself">
-  In scikit-learn, a point is **core** when its $\varepsilon$-neighborhood contains $\ge$ `min_samples` points *including itself*. So with `min_samples=3` a core point needs **2 other neighbors** within $\varepsilon$. This off-by-one trips up almost everyone.
-</Callout>
-
-Bottom-left blob $\{(1,1),(1,2),(2,1),(2,2)\}$ — every pair is within $\varepsilon=2$ (the diagonal $(1,1)\!-\!(2,2)=\sqrt2\approx1.41<2$), so each point sees the other 3:
-
-| point | neighbors within $\varepsilon=2$ (excl. self) | $\|N_\varepsilon\|$ incl. self | type |
-|-------|-----------------------------------------------|--------------------------------|------|
-| $(1,1)$ | $(1,2),(2,1),(2,2)$ | $4 \ge 3$ | **core** |
-| $(2,2)$ | $(1,1),(1,2),(2,1)$ | $4 \ge 3$ | **core** |
-| $(8,8)$ | $(8,9),(9,8),(9,9)$ | $4 \ge 3$ | **core** |
-| $(5,5)$ | — (nearest is $(2,2)$ at $\sqrt{18}\approx4.24$) | $1 < 3$ | **noise** |
-
-The two blobs become two clusters; $(5,5)$ is labeled $-1$ (noise) because it has no neighbor within $\varepsilon$.
 
 ```python
 from sklearn.cluster import DBSCAN

@@ -3,7 +3,7 @@ title: "BatchNorm & Dropout"
 description: "The two training stabilizers every deep network uses — why internal covariate shift kills training, and how dropout acts as an ensemble of networks."
 order: 5
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 12
 ---
 
 # BatchNorm & Dropout
@@ -34,30 +34,9 @@ where $\mu_B = \frac{1}{m}\sum_{i=1}^m x_i$ and $\sigma_B^2 = \frac{1}{m}\sum_{i
 
 **Why two steps?** The normalization step forces zero mean and unit variance. But sometimes the network needs a non-zero mean or non-unit variance for its activations — the learned $\gamma, \beta$ restore that flexibility. At the limit, if $\gamma = \sigma_B$ and $\beta = \mu_B$, the layer has learned to undo the normalization entirely — but in practice this never happens because the smooth optimization landscape encourages smaller, useful values.
 
-### Worked example
+For the 4-element worked example ($\mathbf{x} = (2,4,6,8)$, $\mu_B = 5$, $\sigma^2_B = 5$, output $\mathbf{y} \approx (-1.683, 0.106, 1.894, 3.683)$ with $\gamma=2$, $\beta=1$), the running-statistics EMA for inference, and a NumPy from-scratch implementation:
 
-Mini-batch of $m=4$ pre-activations for one feature: $\mathbf{x} = (2, 4, 6, 8)$.
-
-**Step 1 — compute statistics:**
-$$\mu_B = (2+4+6+8)/4 = 5, \quad \sigma_B^2 = \frac{(−3)^2+(−1)^2+1^2+3^2}{4} = 5$$
-
-**Step 2 — normalize** (with $\epsilon = 0$ for simplicity):
-$$\hat{\mathbf{x}} = \left(\frac{2-5}{\sqrt{5}},\ \frac{4-5}{\sqrt{5}},\ \frac{6-5}{\sqrt{5}},\ \frac{8-5}{\sqrt{5}}\right) \approx (-1.342,\ -0.447,\ 0.447,\ 1.342)$$
-
-**Step 3 — rescale** with $\gamma = 2$, $\beta = 1$:
-$$\mathbf{y} \approx (-1.683,\ 0.106,\ 1.894,\ 3.683)$$
-
-After normalization: mean ≈ 0, variance ≈ 1. After rescaling: mean ≈ 1, variance ≈ 4.
-
-### Inference: running statistics
-
-During training, BatchNorm computes statistics from each mini-batch. At inference time, there is often no mini-batch (single examples), so instead BatchNorm uses **running averages** accumulated during training:
-
-$$
-\mu_{\text{run}} \leftarrow (1 - \alpha)\,\mu_{\text{run}} + \alpha\,\mu_B, \qquad \sigma^2_{\text{run}} \leftarrow (1 - \alpha)\,\sigma^2_{\text{run}} + \alpha\,\sigma_B^2
-$$
-
-where $\alpha \approx 0.1$ is the momentum (confusingly named — it has nothing to do with the optimization momentum). At inference, the network uses $\mu_{\text{run}}$ and $\sigma^2_{\text{run}}$ instead of the batch statistics, making predictions deterministic.
+<WikiLink slug="batchnorm-algorithm" title="Batch Normalization: Forward Pass & Running Stats" />
 
 <Callout type="warning" title="Train vs. eval mode">
   Forgetting to call `model.eval()` in PyTorch before inference is a common bug. In train mode, BatchNorm uses batch statistics (stochastic). In eval mode, it uses running statistics (deterministic). Failing to switch causes random-looking inference errors, especially on single-sample inputs.
