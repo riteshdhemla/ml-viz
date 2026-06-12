@@ -85,14 +85,20 @@ $$
 
 Low energy = high probability. This connects MRFs to statistical physics (the Ising model) and to energy-based models in deep learning (Hopfield nets, Boltzmann machines).
 
-## Image denoising sketch
+## Image denoising
 
-A noisy binary image is the textbook MRF. Two kinds of potentials:
+A noisy binary image is the textbook MRF. Each pixel $x_i \in \{-1, +1\}$ has an observed (noisy) value $y_i$. The energy function is:
 
-- **Data term** — each pixel should stay close to its observed (noisy) value.
-- **Smoothness term** — adjacent pixels should agree.
+$$
+E(\mathbf{x}) = -\eta \sum_{\{i,j\} \in \mathcal{E}} x_i x_j \;-\; \beta \sum_i y_i x_i
+$$
 
-Minimizing the total energy (e.g. with graph cuts or loopy belief propagation) cleans up noise while preserving edges.
+- **Smoothness term** $-\eta \sum_{\{i,j\}} x_i x_j$: assigns low energy when neighbouring pixels agree ($x_i = x_j$ → product $+1$). Larger $\eta$ = stronger smoothing.
+- **Data term** $-\beta \sum_i y_i x_i$: assigns low energy when each pixel matches its observed noisy value. Larger $\beta$ = more faithful to the noisy input.
+
+The denoised image is $\arg\min_\mathbf{x} E(\mathbf{x})$. With $\eta=1.0, \beta=2.0$ a noisy pixel will be "corrected" only if at least 3 of its 4 neighbours disagree with the noisy observation — otherwise the data term wins.
+
+Exact minimization is NP-hard for general graphs. **Graph cuts** find the global optimum in polynomial time for binary MRFs with submodular pairwise potentials (the image denoising case qualifies). **Loopy belief propagation** is an approximate iterative method for higher-order or non-submodular cases.
 
 ## Conditional Random Fields (CRFs)
 
