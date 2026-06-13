@@ -1,0 +1,136 @@
+---
+title: "Walk-Forward Validation"
+description: "Time-series-aware model evaluation — why k-fold leaks the future, the expanding-window and sliding-window schemes, and a worked trace computing CV error on a 12-observation sequence."
+topics: ["time-series"]
+relatedLessons:
+  - "time-series/03-deep-learning-for-time-series"
+estimatedMinutes: 10
+---
+
+# Walk-Forward Validation
+
+Standard k-fold cross-validation randomly shuffles data across folds. For time series this is invalid: a training point at $t = 80$ could end up alongside a validation point at $t = 60$, so the model is trained on data it would never have seen at prediction time. **Walk-forward validation** preserves temporal order by always training on the past and validating on strict future windows.
+
+## Why k-fold leaks the future
+
+Consider a 10-observation series with k-fold k=5 (2 observations per fold):
+
+```
+Fold assignment (random):  4 1 3 2 5 1 4 2 5 3
+Observation:               1 2 3 4 5 6 7 8 9 10
+```
+
+When fold 1 is the validation set, the training set includes fold 3 (observations 3 and 10), fold 4 (1 and 7), fold 5 (5 and 9). The model trained on observations [3, 5, 7, 9, 10] is asked to predict observation [2] — it has seen the *future* of observation 2. Any temporal signal (trends, autocorrelation) gets leaked from future to past.
+
+## The two walk-forward schemes
+
+### Expanding window
+
+Each fold adds one more observation to the training set:
+
+```
+Round 1:  train [1..n₀]       → validate [n₀+1 .. n₀+h]
+Round 2:  train [1..n₀+1]     → validate [n₀+2 .. n₀+h+1]
+Round 3:  train [1..n₀+2]     → validate [n₀+3 .. n₀+h+2]
+…
+```
+
+**Best for:** when more data is always better (most forecasting scenarios). Mimics real deployment: the model sees all available history.
+
+### Sliding window
+
+The training window has fixed size $W$; it slides forward each round:
+
+```
+Round 1:  train [1..W]         → validate [W+1 .. W+h]
+Round 2:  train [2..W+1]       → validate [W+2 .. W+h+1]
+Round 3:  train [3..W+2]       → validate [W+3 .. W+h+2]
+…
+```
+
+**Best for:** when the process is non-stationary and very old data is irrelevant (e.g., financial series where market regimes change). Avoids the training set growing without bound.
+
+## Worked trace: h=1, expanding window
+
+Series (12 observations): $[10, 12, 14, 13, 15, 17, 16, 18, 20, 19, 21, 23]$
+
+Minimum training size $n_0 = 6$. Predictor: **mean of the 3 most recent observations** (simple but concrete).
+
+| Round | Train | Predict $t$ | $\hat{y}_t = \text{mean}(y_{t-1}, y_{t-2}, y_{t-3})$ | $y_t$ (actual) | $|e_t|$ |
+|-------|-------|-------------|------------------------------------------------------|----------------|---------|
+| 1 | 1–6 | 7 | mean(17, 15, 13) = 15.00 | 16 | 1.00 |
+| 2 | 1–7 | 8 | mean(16, 17, 15) = 16.00 | 18 | 2.00 |
+| 3 | 1–8 | 9 | mean(18, 16, 17) = 17.00 | 20 | 3.00 |
+| 4 | 1–9 | 10 | mean(20, 18, 16) = 18.00 | 19 | 1.00 |
+| 5 | 1–10 | 11 | mean(19, 20, 18) = 19.00 | 21 | 2.00 |
+| 6 | 1–11 | 12 | mean(21, 19, 20) = 20.00 | 23 | 3.00 |
+
+$$
+\text{MAE}_\text{CV} = \frac{1+2+3+1+2+3}{6} = \frac{12}{6} = 2.00
+$$
+
+This is the walk-forward estimate of the model's one-step-ahead MAE. Compare to, say, a linear trend predictor to decide which model to deploy.
+
+<Callout type="info" title="Overlap and independence">
+  When the forecast horizon $h = 1$, each validation window touches a different time point — the folds are non-overlapping and the errors are approximately independent. When $h > 1$, adjacent windows share observations (window 1 predicts $t=7$; window 2 predicts $t=7$ and $t=8$), introducing correlation between fold errors. Report the average anyway, but interpret the standard error of CV error cautiously.
+</Callout>
+
+## Choosing the initial training size $n_0$
+
+- At minimum, $n_0$ must be large enough to fit the model (e.g., at least $p + q + d + 1$ observations for ARIMA, or several windows for LSTM).
+- Larger $n_0$ gives more stable first estimates but fewer validation rounds.
+- Common choice: $n_0 = 0.5T$ to $0.7T$, leaving 30–50% of the series for evaluation.
+
+## Python
+
+```python
+import numpy as np
+from typing import Callable
+
+def walk_forward_cv(
+    y: np.ndarray,
+    model_fn: Callable,       # takes y_train, returns a predictor function
+    n0: int = None,           # initial training size
+    h: int = 1,               # forecast horizon
+    window: int = None,       # if set, use sliding window of this size
+) -> dict:
+    """Walk-forward cross-validation for time series."""
+    T = len(y)
+    if n0 is None:
+        n0 = max(T // 2, 10)
+
+    errors = []
+    for t in range(n0, T - h + 1):
+        train_start = max(0, t - window) if window else 0
+        y_train = y[train_start:t]
+        y_val   = y[t : t + h]
+
+        predictor = model_fn(y_train)
+        y_hat = predictor(h)
+        errors.append(np.abs(y_val - y_hat))
+
+    errors = np.array(errors)
+    return {
+        "mae":  errors.mean(),
+        "rmse": np.sqrt((errors**2).mean()),
+        "n_folds": len(errors),
+    }
+
+# Example: naive mean-of-3 predictor
+def naive_mean3(y_train):
+    last3 = y_train[-3:].mean()
+    def predict(h):
+        return np.full(h, last3)
+    return predict
+
+y = np.array([10,12,14,13,15,17,16,18,20,19,21,23], dtype=float)
+result = walk_forward_cv(y, naive_mean3, n0=6, h=1)
+print(f"Walk-forward MAE: {result['mae']:.2f}")   # → 2.00
+print(f"Folds evaluated: {result['n_folds']}")    # → 6
+```
+
+## Related concepts
+
+- [**Deep Learning for Time Series**](/courses/time-series/03-deep-learning-for-time-series) — the full lesson: LSTM, TCN, evaluation metrics
+- [**ARIMA Order Selection**](/wiki/arima-order-selection) — the classical modelling workflow this evaluation supports
+- [**Bias-Variance Decomposition**](/wiki/bias-variance-decomposition) — cross-validation in the context of bias-variance tradeoff

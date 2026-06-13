@@ -1,0 +1,359 @@
+---
+title: "Deep Learning for Time Series"
+description: "When ARIMA isn't enough — LSTMs, TCNs, and Transformers for non-linear multi-step forecasting."
+order: 3
+type: concept
+estimatedMinutes: 22
+---
+
+# Deep Learning for Time Series
+
+ARIMA is powerful, but it rests on two assumptions that many real-world series violate: **linearity** and **univariate structure**. A factory's energy consumption depends non-linearly on temperature, day-of-week, and production volume simultaneously. A stock's next-day price is influenced by thousands of correlated assets. Deep learning drops both assumptions, learning complex, multivariate, non-linear forecasting functions directly from data.
+
+Three architectural families have proved most useful for time series:
+
+- **LSTMs** (and GRUs) — handle long-range dependencies through gated memory
+- **Temporal Convolutional Networks (TCNs)** — parallelizable dilated convolutions with large receptive fields
+- **Transformer-based models** — attention over arbitrary positions; excel at very long sequences
+
+All three share the same input representation: a **sliding window** that converts the raw sequence into a supervised learning problem.
+
+## The sliding window approach
+
+Every deep forecasting model ingests a fixed-length window of past observations and outputs one or more future values. This reframes time series as standard supervised learning.
+
+**Formally:**
+- Input window of length $W$: $\mathbf{x} = [y_{t-W+1},\, y_{t-W+2},\, \ldots,\, y_t]$
+- Forecast horizon $H$: $\mathbf{y} = [y_{t+1},\, y_{t+2},\, \ldots,\, y_{t+H}]$
+
+**Concrete example** with $W = 5$, $H = 1$, series $[1, 2, 3, 4, 5, 6, 7, 8]$:
+
+| Input window | Target |
+|-------------|--------|
+| $[1, 2, 3, 4, 5]$ | $6$ |
+| $[2, 3, 4, 5, 6]$ | $7$ |
+| $[3, 4, 5, 6, 7]$ | $8$ |
+
+Each row is one training sample. For $H > 1$ (multi-step), the target becomes a vector. The dataset has $T - W - H + 1$ samples, so longer windows reduce the number of training examples.
+
+```python
+import numpy as np
+
+def sliding_windows(series: np.ndarray, W: int, H: int):
+    """
+    Convert a 1-D time series into (X, y) arrays for supervised learning.
+    X shape: (n_samples, W)
+    y shape: (n_samples, H)
+    """
+    X, y = [], []
+    n = len(series)
+    for i in range(n - W - H + 1):
+        X.append(series[i : i + W])
+        y.append(series[i + W : i + W + H])
+    return np.array(X), np.array(y)
+
+# Example
+series = np.array([1, 2, 3, 4, 5, 6, 7, 8], dtype=float)
+X, y = sliding_windows(series, W=5, H=1)
+print("X:\n", X)
+# [[1. 2. 3. 4. 5.]
+#  [2. 3. 4. 5. 6.]
+#  [3. 4. 5. 6. 7.]]
+print("y:\n", y)
+# [[6.] [7.] [8.]]
+```
+
+For **multivariate** series with $F$ features at each time step, $\mathbf{x}$ becomes a matrix of shape $(W, F)$ and the same window logic applies independently across features.
+
+## LSTM for time series
+
+LSTMs are covered in depth in the [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) lesson. Here we focus on the forecasting-specific design choices.
+
+**Many-to-one (point forecast):** feed the window through the LSTM, take the last hidden state $h_T$, and map it through a linear layer to predict $H$ future values. Simple and effective for short horizons.
+
+**Sequence-to-sequence (multi-step):** encode the input window, then decode step-by-step. Teacher forcing during training passes ground truth as decoder input; at inference, predictions are fed back.
+
+<Callout type="tip" title="Many-to-one vs many-to-many">
+  For most industrial forecasting tasks — hourly demand for the next 24 hours, daily sales for the next 7 days — a **many-to-one** LSTM that outputs all $H$ steps from the final hidden state is simpler to implement and often just as accurate as a full seq2seq model. Reserve seq2seq for very long horizons ($H > 100$) where the decoder's additional context becomes critical.
+</Callout>
+
+```python
+import torch
+import torch.nn as nn
+
+class LSTMForecaster(nn.Module):
+    """
+    Many-to-one LSTM forecaster.
+    Input:  (batch, W, n_features)
+    Output: (batch, H)
+    """
+    def __init__(self, n_features: int, hidden_size: int, n_layers: int, horizon: int,
+                 dropout: float = 0.1):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size=n_features,
+            hidden_size=hidden_size,
+            num_layers=n_layers,
+            batch_first=True,
+            dropout=dropout if n_layers > 1 else 0.0,
+        )
+        self.head = nn.Linear(hidden_size, horizon)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # x: (batch, W, n_features)
+        output, (h_n, _) = self.lstm(x)
+        # h_n: (n_layers, batch, hidden_size) — take the last layer
+        last_hidden = h_n[-1]               # (batch, hidden_size)
+        return self.head(last_hidden)       # (batch, H)
+
+
+# Quick smoke test
+model = LSTMForecaster(n_features=1, hidden_size=64, n_layers=2, horizon=12)
+x_batch = torch.randn(32, 24, 1)   # batch=32, window=24, univariate
+print(model(x_batch).shape)         # torch.Size([32, 12])
+```
+
+## Temporal Convolutional Networks (TCN)
+
+TCNs replace recurrence with **dilated causal convolutions** — a design that is fully parallelizable (unlike LSTMs, which process steps sequentially) and achieves large receptive fields through exponentially increasing dilation factors.
+
+**Causal convolution:** at time $t$, the output depends only on $y_t, y_{t-1}, \ldots$ — never on the future. This is enforced by left-padding the input.
+
+**Dilation:** a convolution with kernel size $k$ and dilation $d$ skips $d - 1$ positions between kernel elements. At layer $l$ with dilation $2^l$, the effective **receptive field** is:
+
+$$
+\text{RF}(l) = k \cdot 2^l
+$$
+
+Stacking $L$ layers with doubling dilation gives a total receptive field of $k \cdot (2^{L+1} - 1)$. With $k = 3$ and $L = 8$ (9 layers), the receptive field reaches $3 \times (2^9 - 1) = 1533$ time steps — far more than a practical LSTM can handle stably.
+
+**Key advantages over LSTM:**
+- Fully parallelizable: compute all timesteps simultaneously during training
+- Stable gradients: no vanishing gradient through long sequences (residual connections help too)
+- Smaller memory footprint: no hidden state to store and transport
+
+```python
+class TCNBlock(nn.Module):
+    """
+    One residual TCN block: two dilated causal conv layers + residual skip.
+    """
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int,
+                 dilation: int, dropout: float = 0.1):
+        super().__init__()
+        pad = (kernel_size - 1) * dilation           # left-only padding
+        self.net = nn.Sequential(
+            nn.Conv1d(in_channels, out_channels, kernel_size,
+                      padding=pad, dilation=dilation),
+            nn.Chomp1d(pad),                          # remove right-side padding
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Conv1d(out_channels, out_channels, kernel_size,
+                      padding=pad, dilation=dilation),
+            nn.Chomp1d(pad),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+        )
+        self.skip = (nn.Conv1d(in_channels, out_channels, 1)
+                     if in_channels != out_channels else nn.Identity())
+
+    def forward(self, x):
+        return nn.functional.relu(self.net(x) + self.skip(x))
+
+
+class Chomp1d(nn.Module):
+    def __init__(self, chomp_size):
+        super().__init__()
+        self.chomp_size = chomp_size
+
+    def forward(self, x):
+        return x[:, :, :-self.chomp_size].contiguous()
+```
+
+## Transformer-based models
+
+Vanilla Transformers (as in [**Attention & Transformers**](/courses/transformers)) apply full self-attention, whose cost scales quadratically with sequence length — impractical for time series with thousands of steps. Several specialised architectures address this:
+
+**Informer** (Zhou et al. 2021) — introduces *ProbSparse* attention that selects the most informative query-key pairs, reducing complexity from $O(L^2)$ to $O(L \log L)$. Designed specifically for long-sequence forecasting.
+
+**PatchTST** (Nie et al. 2023) — divides the time series into non-overlapping patches (similar to ViT image patches) and applies standard Transformer attention over the patch tokens. Reduces the number of attention computations dramatically while preserving local temporal patterns within each patch.
+
+**Temporal Fusion Transformer (TFT)** (Lim et al. 2021) — combines multi-head attention with gated residual networks and variable selection networks. The variable selection mechanism provides built-in **interpretability**: for each forecast, it identifies which input features (past values, known covariates) contributed most.
+
+<ARIMAForecastViz />
+
+## Evaluation metrics
+
+A model is only as good as the metric you use to judge it. Different metrics emphasise different failure modes:
+
+| Metric | Formula | When to use |
+|--------|---------|-------------|
+| MAE | $\frac{1}{T}\sum_{t=1}^T \lvert y_t - \hat{y}_t \rvert$ | Robust to outliers; same units as the series |
+| RMSE | $\sqrt{\frac{1}{T}\sum_{t=1}^T (y_t - \hat{y}_t)^2}$ | Penalises large errors more; differentiable |
+| MAPE | $\frac{100}{T}\sum_{t=1}^T \frac{\lvert y_t - \hat{y}_t \rvert}{\lvert y_t \rvert}$ | Scale-independent; undefined when $y_t = 0$ |
+| sMAPE | $\frac{200}{T}\sum_{t=1}^T \frac{\lvert y_t - \hat{y}_t \rvert}{\lvert y_t \rvert + \lvert \hat{y}_t \rvert}$ | Bounded $[0, 200\%]$; symmetric |
+
+<Callout type="warning" title="MAPE pitfalls">
+  MAPE is asymmetric: a 50% over-prediction and a 50% under-prediction yield different MAPE values. It also breaks whenever the actual value is zero or near zero — common in demand forecasting (a product not ordered in a particular week). sMAPE mitigates the asymmetry but introduces its own quirks. When in doubt, report both MAE and RMSE.
+</Callout>
+
+## Walk-forward validation
+
+Standard k-fold cross-validation randomly shuffles data, creating training samples that may include observations from the future relative to their validation point — a form of data leakage. Walk-forward (or expanding-window) validation respects the temporal order: train on $[1\ldots t]$, validate on $[t+1\ldots t+h]$, then expand the window and repeat. The reported error is the average across all validation windows.
+
+<WikiLink slug="walk-forward-validation" title="Walk-Forward Validation" />
+
+## Classical vs deep learning decision guide
+
+Choosing between ARIMA and deep learning is a practical engineering decision, not a philosophical one. The table below summarises the key trade-offs:
+
+| Scenario | Recommendation |
+|---------|----------------|
+| Univariate, approximately linear, short series (< 500 points) | ARIMA |
+| Multiple seasonality, interpretable forecasts required | SARIMA / Prophet |
+| Multivariate inputs with complex non-linear interactions | LSTM / TCN |
+| Very long-range dependencies (> 1000 lag steps) | Transformer-based (Informer, PatchTST) |
+| Prediction intervals / probabilistic forecasts | ARIMA (exact) or quantile regression |
+| Hundreds of related series (retail demand, sensor banks) | Global LSTM / TCN trained across all series |
+| Real-time inference with tight latency budget | TCN (parallelizable, no sequential state) |
+
+## Python implementation
+
+```python
+import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
+
+# ── 0. Helpers ─────────────────────────────────────────────────────────────────
+def sliding_windows(series, W, H):
+    X, y = [], []
+    for i in range(len(series) - W - H + 1):
+        X.append(series[i:i+W])
+        y.append(series[i+W:i+W+H])
+    return np.array(X, dtype=np.float32), np.array(y, dtype=np.float32)
+
+def mae(y_true, y_pred):
+    return np.mean(np.abs(y_true - y_pred))
+
+def rmse(y_true, y_pred):
+    return np.sqrt(np.mean((y_true - y_pred)**2))
+
+# ── 1. Generate synthetic series ──────────────────────────────────────────────
+np.random.seed(0)
+T = 500
+t = np.arange(T)
+series = (0.05 * t
+          + 5 * np.sin(2 * np.pi * t / 52)    # annual seasonality
+          + np.random.normal(0, 0.8, T))
+
+# ── 2. Build sliding windows ──────────────────────────────────────────────────
+W, H = 52, 4       # 52-week input window, 4-week forecast horizon
+X, y = sliding_windows(series, W, H)
+
+# ── 3. Train / val / test split (chronological) ───────────────────────────────
+n = len(X)
+n_train = int(0.7 * n)
+n_val   = int(0.15 * n)
+
+X_train, y_train = X[:n_train],          y[:n_train]
+X_val,   y_val   = X[n_train:n_train+n_val], y[n_train:n_train+n_val]
+X_test,  y_test  = X[n_train+n_val:],    y[n_train+n_val:]
+
+# ── 4. PyTorch datasets ───────────────────────────────────────────────────────
+def to_loader(X, y, batch_size=32, shuffle=False):
+    ds = TensorDataset(torch.from_numpy(X).unsqueeze(-1),  # (N, W, 1)
+                       torch.from_numpy(y))
+    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle)
+
+train_dl = to_loader(X_train, y_train, shuffle=True)
+val_dl   = to_loader(X_val,   y_val)
+test_dl  = to_loader(X_test,  y_test)
+
+# ── 5. Model, optimizer, loss ─────────────────────────────────────────────────
+class LSTMForecaster(nn.Module):
+    def __init__(self, n_features, hidden_size, n_layers, horizon, dropout=0.1):
+        super().__init__()
+        self.lstm = nn.LSTM(n_features, hidden_size, n_layers,
+                            batch_first=True,
+                            dropout=dropout if n_layers > 1 else 0.0)
+        self.head = nn.Linear(hidden_size, horizon)
+
+    def forward(self, x):
+        _, (h_n, _) = self.lstm(x)
+        return self.head(h_n[-1])
+
+model     = LSTMForecaster(1, 64, 2, H)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+criterion = nn.MSELoss()
+
+# ── 6. Training loop ──────────────────────────────────────────────────────────
+best_val_loss = float("inf")
+for epoch in range(50):
+    model.train()
+    for xb, yb in train_dl:
+        optimizer.zero_grad()
+        loss = criterion(model(xb), yb)
+        loss.backward()
+        optimizer.step()
+
+    model.eval()
+    with torch.no_grad():
+        val_losses = [criterion(model(xb), yb).item() for xb, yb in val_dl]
+    val_loss = np.mean(val_losses)
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        torch.save(model.state_dict(), "best_lstm.pt")
+
+    if (epoch + 1) % 10 == 0:
+        print(f"Epoch {epoch+1:3d} | val MSE = {val_loss:.4f}")
+
+# ── 7. Evaluate on test set ───────────────────────────────────────────────────
+model.load_state_dict(torch.load("best_lstm.pt"))
+model.eval()
+preds, targets = [], []
+with torch.no_grad():
+    for xb, yb in test_dl:
+        preds.append(model(xb).numpy())
+        targets.append(yb.numpy())
+
+preds   = np.vstack(preds)
+targets = np.vstack(targets)
+print(f"Test MAE:  {mae(targets, preds):.4f}")
+print(f"Test RMSE: {rmse(targets, preds):.4f}")
+
+# ── 8. Walk-forward cross-validation (manual expanding window) ────────────────
+initial_size = 200   # minimum training set size
+step = 10            # expand by 10 observations per fold
+fold_errors = []
+
+for fold_end in range(initial_size + W + H, n + 1, step):
+    X_cv_train = X[:fold_end - H - W]
+    y_cv_train = y[:fold_end - H - W]
+    X_cv_val   = X[fold_end - H - W : fold_end - H - W + 1]
+    y_cv_val   = y[fold_end - H - W : fold_end - H - W + 1]
+    if len(X_cv_val) == 0:
+        continue
+    # (In practice: refit model here; we use a naive last-value baseline)
+    naive_pred = X_cv_val[:, -1:].repeat(H, axis=1)   # repeat last obs
+    fold_errors.append(mae(y_cv_val, naive_pred))
+
+print(f"Walk-forward CV MAE (naive baseline): {np.mean(fold_errors):.4f}")
+```
+
+## Key takeaways
+
+- **Sliding windows** turn any time series into a supervised learning dataset. The window length $W$ controls how far back the model looks; the horizon $H$ controls how far ahead it predicts.
+- **LSTMs** model sequential dependencies through gated memory and are the standard starting point for non-linear univariate and multivariate forecasting.
+- **TCNs** use dilated causal convolutions to achieve large receptive fields with full parallelism — often faster to train than LSTMs with competitive accuracy.
+- **Transformer-based models** (Informer, PatchTST, TFT) handle very long-range dependencies and multivariate inputs but require more data and careful tuning.
+- **Walk-forward validation** is mandatory for honest model comparison — random splits leak future information into the training set.
+
+## Related concepts
+
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — the gated memory architecture that underpins LSTM forecasting
+- [**Attention & Transformers**](/courses/transformers/01-self-attention) — self-attention mechanism used in Informer and PatchTST
+- [**ARIMA Models**](/courses/time-series/02-arima-models) — the classical baseline that deep learning must beat
+- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks) — the simpler predecessor to LSTM
+
+<Exercise id="ts-walk-forward" />
+<Exercise id="ts-dl-sliding-window" />

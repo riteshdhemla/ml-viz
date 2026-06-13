@@ -1,0 +1,247 @@
+---
+title: "ARIMA Models"
+description: "AR, MA, and integrated components — the classical forecasting workhorse with a complete Box-Jenkins worked example."
+order: 2
+type: concept
+estimatedMinutes: 20
+---
+
+# ARIMA Models
+
+The **ARIMA** family is the dominant classical approach to univariate time series forecasting. It is principled, interpretable, well-understood statistically, and often surprisingly competitive with more complex models on short, clean series. Understanding ARIMA also builds the vocabulary — stationarity, autoregression, moving averages, differencing — that underpins every modern forecasting framework.
+
+ARIMA stands for **A**uto**R**egressive **I**ntegrated **M**oving **A**verage. The three letters each correspond to one component of the model, and together they capture the most common structure found in real-world economic, scientific, and engineering time series.
+
+## The three components
+
+### AR(p) — Autoregressive
+
+An AR(p) model expresses the current value as a linear combination of its $p$ most recent values plus white noise:
+
+$$
+y_t = c + \phi_1 y_{t-1} + \phi_2 y_{t-2} + \cdots + \phi_p y_{t-p} + \varepsilon_t
+$$
+
+where $c$ is a constant, $\phi_1, \ldots, \phi_p$ are the **autoregressive coefficients**, and $\varepsilon_t \sim \mathcal{N}(0, \sigma^2)$ is independent white noise. The model is stable (stationary) when the roots of the characteristic polynomial $1 - \phi_1 z - \cdots - \phi_p z^p = 0$ all lie outside the unit circle.
+
+**Intuition:** An AR(1) with $\phi_1 = 0.8$ says "tomorrow is 80% of today plus some noise." The series has a long memory — shocks decay geometrically but never vanish.
+
+### MA(q) — Moving Average
+
+An MA(q) model expresses the current value as the mean plus a linear combination of $q$ past forecast errors:
+
+$$
+y_t = \mu + \varepsilon_t + \theta_1\varepsilon_{t-1} + \theta_2\varepsilon_{t-2} + \cdots + \theta_q\varepsilon_{t-q}
+$$
+
+where $\mu$ is the series mean and $\theta_1, \ldots, \theta_q$ are the **moving-average coefficients**. Unlike AR, an MA model has **finite memory**: a shock $\varepsilon_{t-k}$ only affects $y_t$ directly if $k \le q$. Beyond lag $q$, its influence is exactly zero.
+
+**Intuition:** An MA(1) with $\theta_1 = 0.6$ says "today's value is partly determined by yesterday's forecast error." If we over-predicted yesterday, we correct partly today.
+
+### ARIMA(p, d, q)
+
+The **integrated** part deals with non-stationarity. If the raw series $y_t$ is non-stationary but becomes stationary after differencing $d$ times, we model the $d$-times-differenced series as an ARMA(p, q):
+
+$$
+\underbrace{\Delta^d y_t}_{w_t} = c + \sum_{i=1}^p \phi_i w_{t-i} + \varepsilon_t + \sum_{j=1}^q \theta_j \varepsilon_{t-j}
+$$
+
+The model is written **ARIMA(p, d, q)** where $p$ is the AR order, $d$ is the number of differences (usually 0, 1, or 2), and $q$ is the MA order.
+
+<Callout type="info" title="The memory fingerprint">
+  AR and MA have opposite ACF/PACF signatures — a critical fact for model identification:
+  - **AR(p):** ACF tails off exponentially; PACF cuts off sharply after lag $p$
+  - **MA(q):** ACF cuts off sharply after lag $q$; PACF tails off exponentially
+  - **ARMA(p,q):** both ACF and PACF tail off gradually — neither cuts off cleanly
+</Callout>
+
+## Reading ACF and PACF for model selection
+
+Before fitting any model, inspect the ACF and PACF of the *stationary* (differenced) series. The pattern of significant spikes points directly to the model structure:
+
+| Pattern | Suggests |
+|---------|----------|
+| ACF: exponential decay or damped oscillation; PACF: cuts off after lag $p$ | AR($p$) |
+| ACF: cuts off after lag $q$; PACF: exponential decay or damped oscillation | MA($q$) |
+| Both ACF and PACF tail off gradually | ARMA($p$,$q$) |
+| No significant spikes in either plot | White noise — no model needed |
+| Significant spikes at every lag, slow decay | Non-stationary — difference again |
+| Spikes at lags $s, 2s, 3s, \ldots$ | Seasonal structure — use SARIMA |
+
+<ACFViz />
+
+For the complete step-by-step Box-Jenkins procedure — ADF test → $d$ selection → ACF/PACF reading → model fitting → residual diagnostics:
+
+<WikiLink slug="arima-order-selection" title="ARIMA Order Selection: Box-Jenkins Methodology" />
+
+## Worked example: ARIMA(1,1,1)
+
+Consider 36 monthly observations with a gentle upward trend. After ADF testing, we determine $d = 1$ is sufficient. On the differenced series, the PACF has one significant spike (suggesting AR(1)) and the ACF has one significant spike (suggesting MA(1)), leading to ARIMA(1,1,1).
+
+**The fitted model on the differenced series** $w_t = \Delta y_t$:
+
+$$
+w_t = c + \hat{\phi}\, w_{t-1} + \varepsilon_t + \hat{\theta}\, \varepsilon_{t-1}
+$$
+
+Suppose maximum likelihood estimation yields $\hat{\phi} = 0.45$, $\hat{\theta} = -0.30$, $\hat{\sigma} = 2.1$.
+
+**Computing a 6-step ahead forecast.** Let $T$ be the last observed time point. The one-step forecast is:
+
+$$
+\hat{y}_{T+1|T} = y_T + c + \hat{\phi}\, w_T + \hat{\theta}\, \varepsilon_T
+$$
+
+For $h > 1$, future error terms $\varepsilon_{T+j}$ have expectation zero, so the forecasts collapse toward a linear trend. The forecast confidence interval **widens with the horizon**:
+
+$$
+\text{95\% PI at horizon } h: \quad \hat{y}_{T+h|T} \pm 1.96\,\hat{\sigma}\sqrt{1 + (h-1)\hat{\phi}^2}
+$$
+
+| Horizon $h$ | Point forecast | 95% half-width |
+|-------------|---------------|----------------|
+| 1 | $\hat{y}_{T+1}$ | $1.96 \times 2.1 = 4.12$ |
+| 2 | $\hat{y}_{T+2}$ | $1.96 \times 2.1 \times \sqrt{1 + 0.20} = 4.52$ |
+| 3 | $\hat{y}_{T+3}$ | $1.96 \times 2.1 \times \sqrt{1 + 0.41} = 4.90$ |
+| 6 | $\hat{y}_{T+6}$ | $1.96 \times 2.1 \times \sqrt{1 + 1.01} = 5.84$ |
+
+The growing interval reflects genuine uncertainty: the further ahead we forecast, the less the current data constrains the outcome.
+
+## Model selection: AIC and BIC
+
+When multiple candidate models fit the stationary series adequately, choose among them using an information criterion that balances fit against complexity:
+
+$$
+\text{AIC} = -2\ln(\hat{\mathcal{L}}) + 2k
+$$
+
+$$
+\text{BIC} = -2\ln(\hat{\mathcal{L}}) + k\ln(T)
+$$
+
+where $\hat{\mathcal{L}}$ is the maximised log-likelihood, $k$ is the number of free parameters (including the constant and $\hat{\sigma}^2$), and $T$ is the series length. **Lower is better** for both.
+
+BIC applies a heavier penalty $k \ln T$ versus AIC's $2k$. For $T = 100$, BIC penalises each extra parameter by $\ln(100) \approx 4.6$ versus AIC's $2.0$ — making BIC prefer simpler models, especially in short series.
+
+<Callout type="tip" title="Auto-ARIMA">
+  Searching over all $(p, d, q)$ combinations manually is tedious. The `pmdarima` library's `auto_arima()` function automates the Box-Jenkins search: it steps through candidate orders, fits each by MLE, and returns the winner by AIC or BIC. Use it as a strong baseline, but always inspect its choice with ACF/PACF plots to build intuition.
+</Callout>
+
+## Seasonal ARIMA (SARIMA)
+
+Many real-world series have both a trend component and a **seasonal** component with known period $m$ (e.g. $m = 12$ for monthly data with yearly seasonality, $m = 7$ for daily data with weekly seasonality).
+
+**SARIMA$(p, d, q)(P, D, Q)_m$** adds seasonal autoregressive and seasonal moving-average terms at multiples of the seasonal lag $m$:
+
+$$
+\Phi_P(B^m)\,\phi_p(B)\,\Delta^D_m\,\Delta^d\,y_t = c + \Theta_Q(B^m)\,\theta_q(B)\,\varepsilon_t
+$$
+
+where $B$ is the backshift operator ($B y_t = y_{t-1}$), $\Phi_P$ and $\Theta_Q$ are the seasonal AR and MA polynomials of orders $P$ and $Q$, and $D$ is the number of seasonal differences $\Delta_m y_t = y_t - y_{t-m}$.
+
+<Callout type="info" title="SARIMA notation">
+  The upper-case $(P, D, Q)$ and subscript $m$ characterise the seasonal part; the lower-case $(p, d, q)$ characterise the non-seasonal part. For the classic airline passengers dataset, the benchmark model is SARIMA$(0,1,1)(0,1,1)_{12}$ — known as the "airline model". A single nonseasonal MA term plus a single seasonal MA term captures most of the structure with just two parameters.
+</Callout>
+
+## Python implementation
+
+```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+from statsmodels.tsa.stattools import adfuller
+
+# ── 1. Simulate an ARIMA(1,1,1) series for demonstration ─────────────────────
+np.random.seed(42)
+T = 100
+eps = np.random.normal(0, 1, T)
+
+# Build ARMA(1,1) on differences, then integrate once
+w = np.zeros(T)
+for t in range(1, T):
+    w[t] = 0.45 * w[t-1] + eps[t] - 0.30 * eps[t-1]
+
+# Integrate: y_t = y_{t-1} + w_t  (d=1)
+y = np.cumsum(w) + 50.0       # start around 50
+
+dates = pd.date_range("2015-01", periods=T, freq="MS")
+series = pd.Series(y, index=dates)
+
+# ── 2. Confirm non-stationarity on levels, stationarity on differences ────────
+adf_levels = adfuller(y, autolag="AIC")
+adf_diff   = adfuller(np.diff(y), autolag="AIC")
+print(f"ADF levels  p = {adf_levels[1]:.4f}  (> 0.05 → non-stationary)")
+print(f"ADF diff    p = {adf_diff[1]:.4f}   (< 0.05 → stationary)")
+
+# ── 3. Plot ACF / PACF of differenced series ──────────────────────────────────
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+plot_acf( np.diff(y), lags=20, ax=axes[0], title="ACF of Δy_t")
+plot_pacf(np.diff(y), lags=20, ax=axes[1], title="PACF of Δy_t")
+plt.tight_layout()
+plt.show()
+
+# ── 4. Fit ARIMA(1,1,1) ───────────────────────────────────────────────────────
+model  = ARIMA(series, order=(1, 1, 1))
+result = model.fit()
+print(result.summary())
+
+# ── 5. Forecast 12 steps ahead with confidence intervals ─────────────────────
+forecast = result.get_forecast(steps=12)
+fc_mean  = forecast.predicted_mean
+fc_ci    = forecast.conf_int(alpha=0.05)
+
+plt.figure(figsize=(12, 5))
+plt.plot(series,         label="Observed",         color="steelblue")
+plt.plot(fc_mean,        label="Forecast",          color="darkorange", linestyle="--")
+plt.fill_between(fc_ci.index, fc_ci.iloc[:, 0], fc_ci.iloc[:, 1],
+                 alpha=0.25, color="darkorange", label="95% CI")
+plt.title("ARIMA(1,1,1) — 12-step forecast")
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# ── 6. AIC/BIC comparison across candidate models ────────────────────────────
+candidates = [(1,1,0), (0,1,1), (1,1,1), (2,1,0), (0,1,2)]
+rows = []
+for order in candidates:
+    try:
+        m = ARIMA(series, order=order).fit()
+        rows.append({"order": str(order), "AIC": round(m.aic, 2), "BIC": round(m.bic, 2)})
+    except Exception:
+        pass
+
+print(pd.DataFrame(rows).sort_values("AIC").to_string(index=False))
+
+# ── 7. Seasonal ARIMA via pmdarima (auto_arima) ───────────────────────────────
+# pip install pmdarima
+from pmdarima import auto_arima
+
+auto_model = auto_arima(
+    series,
+    seasonal=True,
+    m=12,                  # monthly seasonality
+    information_criterion="aic",
+    stepwise=True,
+    trace=True,
+)
+print(auto_model.summary())
+```
+
+## Key takeaways
+
+- **AR(p)** models the current value as a weighted sum of the last $p$ values; **MA(q)** as a weighted sum of the last $q$ forecast errors. Together they form **ARMA(p,q)**.
+- The **integrated** step (the $d$ in ARIMA) applies first-differencing to remove non-stationarity before fitting the ARMA part.
+- **ACF and PACF plots** of the stationary series are the primary tools for choosing $p$ and $q$: AR → PACF cuts off; MA → ACF cuts off; ARMA → both tail off.
+- **AIC/BIC** rank competing models; BIC penalises complexity more heavily and favours simpler models in short series.
+- **SARIMA** extends ARIMA with seasonal AR/MA terms at multiples of the seasonal period $m$ — essential for series like monthly retail sales or daily temperature.
+
+## Related concepts
+
+- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals) — stationarity, differencing, and the ACF/PACF tools used here
+- [**Deep Learning for Time Series**](/courses/time-series/03-deep-learning-for-time-series) — when ARIMA is not expressive enough
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — AR coefficients are estimated by a variant of OLS
+
+<Exercise id="arima-acf-pattern" />
+<Exercise id="ts-arima-forecast" />
