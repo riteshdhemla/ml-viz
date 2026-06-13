@@ -18,13 +18,13 @@ The loop alternates between two steps until the log-likelihood converges:
 
 ## Setup and notation
 
-An HMM with $N$ hidden states emits an observation sequence $\mathbf{x} = (x_1, \ldots, x_T)$. We already have the **forward variable** from the forward algorithm:
+An HMM with $N$ hidden states emits an observation sequence $\mathbf{x} = (x_1, \ldots, x_T)$. The **forward variable** from the forward algorithm captures all information up to and including time $t$:
 
 $$
 \alpha_t(i) = P(x_1, \ldots, x_t,\, z_t = i)
 $$
 
-Baum–Welch additionally needs a **backward pass**.
+Its value: the product $\alpha_t(i)\,\beta_t(i)$ (defined below) equals $P(\mathbf{x},\, z_t = i)$ — the joint probability of the full observation sequence and being in state $i$ at time $t$. Normalizing across states $\sum_k \alpha_t(k)\beta_t(k) = P(\mathbf{x})$ gives the state occupancy $\gamma_t(i) = P(z_t=i \mid \mathbf{x})$. Baum–Welch additionally needs a **backward pass**.
 
 ## E-step
 

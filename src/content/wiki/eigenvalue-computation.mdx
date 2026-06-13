@@ -153,7 +153,7 @@ def power_iteration(A, n_iter=100, tol=1e-10):
     b /= np.linalg.norm(b)
     for _ in range(n_iter):
         b_new = A @ b
-        lam   = np.dot(b, b_new)          # Rayleigh quotient
+        lam   = np.dot(b, b_new)          # Rayleigh quotient: b^T A b / (b^T b) = b^T (Ab), since ||b||=1
         b_new /= np.linalg.norm(b_new)
         if np.linalg.norm(b_new - b) < tol:
             break

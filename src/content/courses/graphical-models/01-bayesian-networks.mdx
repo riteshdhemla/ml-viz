@@ -106,6 +106,8 @@ Given a network, we ask queries like $P(\text{Disease} \mid \text{Symptoms})$. A
 - **Exact** — *variable elimination*: set the evidence, then sum out each hidden variable in turn by multiplying the factors that mention it and marginalizing it away. Exact, but exponential in the graph's "treewidth."
 - **Approximate** — sampling (likelihood weighting, Gibbs / MCMC) when exact is intractable.
 
+Variable elimination works by exploiting the factorized structure: instead of summing over all $2^n$ joint assignments, it processes one variable at a time, creating intermediate "factor tables" that cache partial sums. On a chain graph this is $O(K^2 n)$; on a general graph the complexity depends on the elimination ordering. For the complete worked example on the Sprinkler network with explicit CPT values and numeric marginal computation:
+
 <WikiLink slug="variable-elimination" title="Variable Elimination" />
 
 ## Why DAGs? The acyclic rule

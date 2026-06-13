@@ -34,7 +34,9 @@ where $\mu_B = \frac{1}{m}\sum_{i=1}^m x_i$ and $\sigma_B^2 = \frac{1}{m}\sum_{i
 
 **Why two steps?** The normalization step forces zero mean and unit variance. But sometimes the network needs a non-zero mean or non-unit variance for its activations — the learned $\gamma, \beta$ restore that flexibility. At the limit, if $\gamma = \sigma_B$ and $\beta = \mu_B$, the layer has learned to undo the normalization entirely — but in practice this never happens because the smooth optimization landscape encourages smaller, useful values.
 
-For the 4-element worked example ($\mathbf{x} = (2,4,6,8)$, $\mu_B = 5$, $\sigma^2_B = 5$, output $\mathbf{y} \approx (-1.683, 0.106, 1.894, 3.683)$ with $\gamma=2$, $\beta=1$), the running-statistics EMA for inference, and a NumPy from-scratch implementation:
+**Inference mode:** During training, BatchNorm uses mini-batch statistics, which vary each step. At inference time, the batch may contain just one sample, making batch statistics meaningless. Instead, BatchNorm accumulates **running statistics** during training: $\mu_\text{run} \leftarrow 0.9\,\mu_\text{run} + 0.1\,\mu_B$ (exponential moving average). At inference, these fixed running statistics replace $\mu_B$ and $\sigma^2_B$, making predictions deterministic. This is why calling `model.eval()` is essential — it switches the mode.
+
+For the 4-element worked example ($\mathbf{x} = (2,4,6,8)$, $\mu_B = 5$, $\sigma^2_B = 5$, output $\mathbf{y} \approx (-1.683, 0.106, 1.894, 3.683)$ with $\gamma=2$, $\beta=1$), and a NumPy from-scratch implementation:
 
 <WikiLink slug="batchnorm-algorithm" title="Batch Normalization: Forward Pass & Running Stats" />
 

@@ -30,7 +30,7 @@ $$
 
 ## The chain through time
 
-The gradient $\partial \mathcal{L}_T / \partial \mathbf{h}_k$ requires threading the chain rule through every hidden state between $k$ and $T$, producing a **product of $T-k$ Jacobians**. One step's Jacobian is $\partial \mathbf{h}_t/\partial \mathbf{h}_{t-1} = \mathrm{diag}(\tanh'(\mathbf{a}_t))\,W_{hh}$ — each step back multiplies by one copy of $W_{hh}$ and one diagonal of $\tanh'$ values. For the full derivation and a 3-step scalar worked trace (all distances, cumulative products, and numerical verification), see:
+The gradient $\partial \mathcal{L}_T / \partial \mathbf{h}_k$ requires threading the chain rule through every hidden state between $k$ and $T$, producing a **product of $T-k$ Jacobians**. One step's Jacobian is $\partial \mathbf{h}_t/\partial \mathbf{h}_{t-1} = \mathrm{diag}(\tanh'(\mathbf{a}_t))\,W_{hh}$ — where $\tanh'(\mathbf{a}_t)$ is the element-wise derivative of tanh (a vector of values in $[0,1]$), and $\mathrm{diag}(\cdot)$ builds a diagonal matrix from that vector so the multiplication scales each row of $W_{hh}$ independently. Each step back multiplies by one copy of $W_{hh}$ and one diagonal of $\tanh'$ values. For the full derivation and a 3-step scalar worked trace (all distances, cumulative products, and numerical verification), see:
 
 <WikiLink slug="bptt-algorithm" title="Backpropagation Through Time (BPTT)" />
 

@@ -53,7 +53,7 @@ $$
 \frac{e^{-x}}{(1+e^{-x})^2} = \underbrace{\frac{1}{1+e^{-x}}}_{\sigma(x)}\cdot\underbrace{\frac{e^{-x}}{1+e^{-x}}}_{1-\sigma(x)} = \sigma(x)\,(1 - \sigma(x))
 $$
 
-This compact form means a network can reuse the forward value $\sigma(x)$ to get its gradient for free. It also explains **saturation**: near 0 or 1, one of the factors is tiny, so $\sigma'(x) \to 0$ and gradients die.
+This compact form means a network can reuse the forward value $\sigma(x)$ to get its gradient for free. **Numeric check:** at $x=0$, $\sigma(0)=0.5$, so $\sigma'(0)=0.5(1-0.5)=0.25$. At $x=3$, $\sigma(3)\approx0.95$, so $\sigma'(3)\approx0.95(0.05)\approx0.048$ — the gradient is nearly 5× smaller. That's **saturation**: near 0 or 1, one factor is tiny so $\sigma'(x)\to0$ and gradients die.
 
 ## Partial derivatives
 
@@ -129,6 +129,8 @@ D_{\hat{\mathbf{d}}} f = \nabla f \cdot \hat{\mathbf{d}} = \|\nabla f\| \cos\the
 $$
 
 This is maximized when $\hat{\mathbf{d}} = \frac{\nabla f}{\|\nabla f\|}$ — i.e., the gradient direction. This is why the gradient is the steepest ascent direction.
+
+**Numeric example:** If $\nabla f(\mathbf{x}) = [3, 4]$ and we move in direction $\hat{\mathbf{d}} = [0.6, 0.8]$ (a unit vector, since $0.6^2 + 0.8^2 = 1$), then $D_{\hat{\mathbf{d}}} f = 3(0.6) + 4(0.8) = 1.8 + 3.2 = 5.0$. Moving instead in $\hat{\mathbf{d}} = [0, 1]$ gives $D_{\hat{\mathbf{d}}} f = 4$ — less steep. The gradient direction $[3,4]/5 = [0.6, 0.8]$ was already the unit vector that achieves the maximum rate of $\|\nabla f\| = 5$.
 
 <Callout type="info" title="Gradient magnitude and loss landscapes">
   When training neural networks, very large gradient magnitudes indicate steep curvature (exploding gradients). Very small gradients indicate flat regions (vanishing gradients or near-optimal parameters). Gradient clipping and careful initialization manage both.

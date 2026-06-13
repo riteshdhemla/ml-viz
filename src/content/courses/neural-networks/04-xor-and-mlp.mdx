@@ -24,7 +24,9 @@ $$
 - If the label is 1 but we predicted 0: push $\mathbf{w}$ in the direction of $\mathbf{x}$ (rotate the decision boundary toward the example).
 - If the label is 0 but we predicted 1: push $\mathbf{w}$ away from $\mathbf{x}$.
 
-**Convergence theorem:** If the data is **linearly separable**, the perceptron algorithm converges in a finite number of steps. If not, it loops forever. For the 5-step AND convergence trace with exact weight/bias values at every update:
+**Convergence theorem:** If the data is **linearly separable**, the perceptron algorithm converges in a finite number of steps. If not, it loops forever.
+
+**One update, concretely:** Suppose $\mathbf{w} = [0.5, -0.3]$, $b = 0$, and we see input $\mathbf{x} = [1, 0]$ with true label $y = 1$. The score is $0.5(1) + (-0.3)(0) = 0.5 > 0$, so $\hat{y} = 1$ — correct, no update. Now suppose $\mathbf{x} = [0, 1]$ with $y = 1$: score $= 0.5(0) + (-0.3)(1) = -0.3 < 0$, so $\hat{y} = 0$ (wrong). The update pushes the boundary toward this example: $\mathbf{w} \leftarrow [0.5, -0.3] + 1 \cdot [0, 1] = [0.5, 0.7]$, $b \leftarrow 0 + 1 = 1$. For the 5-step AND convergence trace with exact weight/bias values at every update:
 
 <WikiLink slug="perceptron-learning" title="The Perceptron Learning Algorithm" />
 
@@ -106,7 +108,7 @@ where $z_k = \mathbf{w}_k^\top \mathbf{h} + b_k$ is the $k$-th logit (raw score)
 - The largest logit gets the largest probability
 - Probabilities are **sharpened** by large logit differences (high-confidence prediction) and flattened when logits are close (uncertain prediction)
 
-For the 3-class numeric example ($\mathbf{z} = (2, 1, -1) \Rightarrow \hat{\mathbf{p}} \approx (0.705, 0.259, 0.035)$), the full chain-rule gradient derivation showing $\partial \mathcal{L}/\partial z_k = \hat{p}_k - \mathbb{1}[k=y]$, and finite-difference verification:
+The gradient of the cross-entropy loss with respect to each logit $z_k$ takes a remarkably clean form: $\partial \mathcal{L}/\partial z_k = \hat{p}_k - \mathbb{1}[k=y]$. For the true class this is $\hat{p}_y - 1$ (negative — push that logit up); for every other class it is $\hat{p}_k$ (positive — push those logits down). The cleanness comes from a cancellation between the softmax Jacobian and the log in cross-entropy. For the 3-class numeric example ($\mathbf{z} = (2, 1, -1) \Rightarrow \hat{\mathbf{p}} \approx (0.705, 0.259, 0.035)$), the full chain-rule derivation, and finite-difference verification:
 
 <WikiLink slug="softmax-cross-entropy" title="Softmax + Cross-Entropy Gradient" />
 

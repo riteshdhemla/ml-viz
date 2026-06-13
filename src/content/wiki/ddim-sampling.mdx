@@ -17,6 +17,8 @@ DDPM's reverse process is stochastic — each step adds fresh noise, so the traj
 
 ## The sampling procedure
 
+Recall the cumulative noise coefficient $\bar{\alpha}_t = \prod_{s=1}^{t}(1-\beta_s)$, where $\beta_s$ is the noise variance added at step $s$. Because $\beta_s$ is small, $\bar{\alpha}_t$ decreases from $\approx 1$ (clean) to $\approx 0$ (pure noise) as $t$ increases from $0$ to $T$.
+
 1. Choose a subsequence $\tau = [\tau_1 > \tau_2 > \cdots > \tau_S]$ of timesteps to visit (e.g. every 20th step for $S=50$).
 2. Start from pure noise $\mathbf{x}_{\tau_1} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$.
 3. At each step $s$ (going from $\tau_s$ down to $\tau_{s+1}$):

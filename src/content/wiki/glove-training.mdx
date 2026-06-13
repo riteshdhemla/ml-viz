@@ -50,6 +50,24 @@ $$
   Co-occurrence counts span many orders of magnitude (Zipf's law). Taking the log compresses this range so the least-squares objective isn't dominated by the handful of extremely frequent pairs — and it makes vector *differences* correspond to count *ratios*: $\mathbf{v}_a^\top\tilde{\mathbf{v}}_k - \mathbf{v}_b^\top\tilde{\mathbf{v}}_k \approx \log\frac{X_{ak}}{X_{bk}}$.
 </Callout>
 
+## Numeric example: two pairs, $x_\text{max}=100$
+
+**Frequent pair** — "ice" and "solid" co-occur $X_{ij}=100$ times:
+
+$$
+f(100) = \min\!\bigl(1,\,(100/100)^{0.75}\bigr) = 1.0, \quad \log X_{ij} = \log 100 \approx 4.605
+$$
+
+If the current dot product $\mathbf{v}_i^\top\tilde{\mathbf{v}}_j + b_i + \tilde{b}_j = 4.0$, this pair contributes $(4.0 - 4.605)^2 \approx 0.366$ to the loss (weight 1.0, full penalty).
+
+**Rare pair** — "ice" and "fashion" co-occur $X_{ij}=1$ time:
+
+$$
+f(1) = (1/100)^{0.75} = 0.01^{0.75} \approx 0.032, \quad \log X_{ij} = 0
+$$
+
+Even if the predicted dot product is off by 1.0, this pair contributes only $0.032 \times 1.0 \approx 0.032$ — roughly 11× less than the frequent pair. The weighting function deliberately deprioritizes rare co-occurrences whose counts are noisy.
+
 ## GloVe vs Word2Vec
 
 | Property | Word2Vec | GloVe |
