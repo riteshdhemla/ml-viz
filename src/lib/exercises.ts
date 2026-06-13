@@ -4798,6 +4798,97 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Neither — calibration requires at least 1000 samples to be meaningful", isCorrect: false },
     ],
   },
+  // ── Time Series Analysis ────────────────────────────────────────
+  {
+    id: "ts-decomposition",
+    type: "multiple-choice",
+    question:
+      "Monthly airline passenger data shows an upward trend and summer peaks that are much larger in later years than earlier years. Which decomposition model fits best?",
+    hint: "Does the seasonal amplitude stay constant or grow with the trend?",
+    explanation:
+      "When seasonal swings grow proportionally with the trend level (larger summer peaks as passenger counts rise), multiplicative decomposition y = T × S × R fits better than additive y = T + S + R, which assumes constant seasonal amplitude regardless of trend level.",
+    options: [
+      { id: "a", label: "Additive: y = T + S + R", isCorrect: false },
+      { id: "b", label: "Multiplicative: y = T × S × R", isCorrect: true },
+      { id: "c", label: "Either — both fit equally well when the trend is linear", isCorrect: false },
+      { id: "d", label: "Neither — decomposition requires a stationary series first", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-stationarity",
+    type: "multiple-choice",
+    question:
+      "A time series has an upward trend AND variance that increases over time. Which sequence of transformations makes it stationary?",
+    hint: "One transformation stabilizes variance; another removes the trend.",
+    explanation:
+      "Increasing variance requires a log transform first (stabilizes variance by compressing large values). Then first-order differencing removes the resulting linear trend. ADF test after both steps should give p < 0.05.",
+    options: [
+      { id: "a", label: "First-order differencing only", isCorrect: false },
+      { id: "b", label: "Log transform, then first-order differencing", isCorrect: true },
+      { id: "c", label: "Seasonal differencing at lag 12", isCorrect: false },
+      { id: "d", label: "No transformation — the ADF test works on non-stationary series", isCorrect: false },
+    ],
+  },
+  {
+    id: "arima-acf-pattern",
+    type: "multiple-choice",
+    question:
+      "A stationary series has an ACF that cuts off sharply after lag 2 (near-zero for lags 3, 4, 5, …) while the PACF decays gradually. What ARIMA order does this suggest?",
+    hint: "MA processes have finite ACF; AR processes have finite PACF.",
+    explanation:
+      "ACF cutting off at lag q with PACF tailing off is the fingerprint of MA(q). Here ACF cuts at lag 2, so MA(2) is suggested: ARIMA(0, 0, 2). For AR(p), it's the PACF that cuts off after lag p while ACF tails off.",
+    options: [
+      { id: "a", label: "AR(2) — ARIMA(2, 0, 0)", isCorrect: false },
+      { id: "b", label: "MA(2) — ARIMA(0, 0, 2)", isCorrect: true },
+      { id: "c", label: "ARMA(1, 1) — ARIMA(1, 0, 1)", isCorrect: false },
+      { id: "d", label: "AR(1) — the PACF shape matters more", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-arima-forecast",
+    type: "multiple-choice",
+    question:
+      "An ARIMA(1,1,0) model with φ̂ = 0.6 and σ̂ = 5 produces a 1-step ahead forecast of 120. Approximately how wide is the 95% prediction interval at horizon h = 1?",
+    hint: "At h=1 the prediction interval is roughly ±1.96σ.",
+    explanation:
+      "At the 1-step horizon, the forecast error is just the innovation variance σ̂ = 5. The 95% PI is ±1.96 × 5 = ±9.8, giving the interval [110.2, 129.8]. Intervals widen at longer horizons as uncertainty about future innovations compounds.",
+    options: [
+      { id: "a", label: "±3.0 (half-width ≈ σ/√2)", isCorrect: false },
+      { id: "b", label: "±9.8 (half-width ≈ 1.96σ)", isCorrect: true },
+      { id: "c", label: "±16.5 (half-width ≈ 3.3σ)", isCorrect: false },
+      { id: "d", label: "Cannot be computed without the full residual history", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-walk-forward",
+    type: "multiple-choice",
+    question:
+      "You have 5 years of daily stock prices. Why can't you use standard k-fold cross-validation to evaluate a forecasting model?",
+    hint: "What happens when k-fold assigns data from day 1200 to the training fold and day 1000 to the validation fold?",
+    explanation:
+      "k-fold randomly shuffles samples across folds, so a training example from day 1200 may appear alongside a validation example from day 1000 — data the model would never have seen in real deployment. Walk-forward validation always trains on the past and validates on strict future windows, preserving temporal ordering.",
+    options: [
+      { id: "a", label: "k-fold only works for classification, not regression", isCorrect: false },
+      { id: "b", label: "k-fold creates training samples that include future data relative to some validation points, leaking information", isCorrect: true },
+      { id: "c", label: "Stock prices are non-stationary so cross-validation has no meaning", isCorrect: false },
+      { id: "d", label: "k-fold requires i.i.d. data; time series is just too correlated for any CV", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-dl-sliding-window",
+    type: "multiple-choice",
+    question:
+      "From the series [3, 5, 7, 9, 11, 13, 15, 17], how many training samples does a sliding window with W=4 (input length) and H=1 (forecast horizon) produce?",
+    hint: "Count how many complete (window, target) pairs fit in the series.",
+    explanation:
+      "Each sample uses 4 inputs and 1 target. Starting at position 0: inputs=[3,5,7,9], target=11; position 1: [5,7,9,11]→13; position 2: [7,9,11,13]→15; position 3: [9,11,13,15]→17. That's 4 = 8 − 4 − 1 + 1 samples. General formula: n − W − H + 1.",
+    options: [
+      { id: "a", label: "3 samples", isCorrect: false },
+      { id: "b", label: "4 samples", isCorrect: true },
+      { id: "c", label: "5 samples", isCorrect: false },
+      { id: "d", label: "7 samples", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

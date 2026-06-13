@@ -1,0 +1,202 @@
+---
+title: "Time Series Fundamentals"
+description: "Stationarity, autocorrelation, and decomposition — the bedrock concepts before any forecasting model."
+order: 1
+type: concept
+estimatedMinutes: 18
+---
+
+# Time Series Fundamentals
+
+A **time series** is any sequence of observations ordered by time. Stock prices sampled every minute, hourly temperature readings at a weather station, millisecond ECG signals from a heart monitor — all share the same structure: the *order* of observations carries information that cannot be shuffled away.
+
+Formally, we write a time series as $\{y_t\}_{t=1}^T$, where $t$ is a discrete time index and $T$ is the total number of observations. The key difference from an ordinary dataset is that successive values are **not independent**: knowing $y_{100}$ tells you something about $y_{101}$ that you would not know from an arbitrary earlier observation.
+
+This dependence is both the challenge and the opportunity of time series analysis. It means standard i.i.d. assumptions break down — but it also means the past genuinely predicts the future.
+
+## Components of a time series
+
+Real-world time series are rarely pure noise. They carry **structure** that can be separated into four additive (or multiplicative) components:
+
+- **Trend** ($T_t$): the long-run direction of the series — upward, downward, or flat. Slow growth in global average temperature. Rising e-commerce revenue year over year.
+- **Seasonality** ($S_t$): regular, fixed-period oscillations. Retail sales spike every December. Power demand peaks at 6 pm on weekdays. The period is known in advance.
+- **Cyclic** ($C_t$): oscillations with *variable* period, typically spanning multiple years. Business cycles, housing booms and busts. Unlike seasonality, the timing and amplitude are not fixed.
+- **Irregular/Residual** ($R_t$): what is left after the structured components are removed — unexplained noise and one-off shocks.
+
+Two decomposition models capture these components:
+
+**Additive model** — appropriate when the seasonal amplitude stays roughly constant regardless of the trend level:
+
+$$
+y_t = T_t + S_t + R_t
+$$
+
+**Multiplicative model** — appropriate when the seasonal amplitude grows proportionally with the trend (common in economic series):
+
+$$
+y_t = T_t \times S_t \times R_t
+$$
+
+Taking $\log$ of a multiplicative model converts it to additive: $\log y_t = \log T_t + \log S_t + \log R_t$. This is the main practical reason to log-transform a series before fitting an additive model.
+
+<DecompositionViz />
+
+## Stationarity
+
+A time series is **weakly stationary** (also called covariance-stationary) if three conditions hold simultaneously:
+
+1. $\mathbb{E}[y_t] = \mu$ — the mean is constant over time
+2. $\text{Var}(y_t) = \sigma^2$ — the variance is constant over time
+3. $\text{Cov}(y_t, y_{t+k}) = \gamma_k$ — the autocovariance at lag $k$ depends only on $k$, not on where in the series you are
+
+Intuitively, a stationary series looks the same at any point in time: no trending mean, no widening spread, no shifting seasonal amplitude.
+
+**Why does it matter?** Almost every classical forecasting model — ARIMA, exponential smoothing, state-space models — assumes stationarity. Parameter estimates from a non-stationary series are unreliable: the mean computed on the first half of the series will differ from the mean computed on the second half, so any model trained on one period will misfire on another.
+
+### The Augmented Dickey-Fuller (ADF) test
+
+Eyeballing a plot is not sufficient. The **ADF test** provides a formal statistical test for stationarity.
+
+The null hypothesis is that the series has a **unit root** — a specific form of non-stationarity where the series follows a random walk. A p-value below 0.05 lets you reject the null and conclude the series is stationary (at least for the unit-root type of non-stationarity).
+
+<Callout type="tip" title="ADF test in Python">
+```python
+from statsmodels.tsa.stattools import adfuller
+
+result = adfuller(y, autolag="AIC")
+print(f"ADF Statistic: {result[0]:.4f}")
+print(f"p-value:       {result[1]:.4f}")
+print(f"Lags used:     {result[2]}")
+# p < 0.05 → reject null → series is stationary
+# p > 0.05 → fail to reject → evidence of non-stationarity
+```
+</Callout>
+
+<Callout type="warning" title="ADF is not omniscient">
+  The ADF test is designed to detect unit-root non-stationarity. It will not catch structural breaks (a sudden level shift in 2008) or heteroskedasticity (variance changing over time). Always complement the test with a visual inspection.
+</Callout>
+
+## Making a series stationary
+
+Two complementary tools handle the most common sources of non-stationarity.
+
+### Differencing
+
+The **first difference** removes a linear trend:
+
+$$
+\Delta y_t = y_t - y_{t-1}
+$$
+
+If $y_t = \alpha + \beta t + \varepsilon_t$ (a deterministic linear trend), then $\Delta y_t = \beta + (\varepsilon_t - \varepsilon_{t-1})$, which has a constant mean $\beta$.
+
+The **second difference** $\Delta^2 y_t = \Delta y_t - \Delta y_{t-1}$ removes a quadratic trend. In ARIMA notation, $d$ counts the number of differences applied. Most real series need $d = 1$ or $d = 2$.
+
+**Seasonal differencing** — $\Delta_m y_t = y_t - y_{t-m}$ — removes a seasonal pattern of period $m$ (e.g. $m = 12$ for monthly data with yearly seasonality).
+
+### Log transformation
+
+When variance grows proportionally with the level of the series — typical in financial and economic data — a log transform stabilises it:
+
+$$
+z_t = \log(y_t)
+$$
+
+The two transforms combine naturally: apply log first to stabilise variance, then difference to remove trend.
+
+**Worked example.** Suppose $y = [100, 110, 121, 133.1]$ — a series growing at exactly 10% per period. Taking logs: $\log(y) \approx [4.605, 4.700, 4.796, 4.891]$. The first differences of $\log(y)$ are all approximately $\log(1.1) \approx 0.0953$ — a constant series with mean 0.0953 and near-zero variance. The growth rate has been linearised and stabilised in a single step.
+
+## Autocorrelation
+
+The **autocorrelation at lag $k$** measures the linear relationship between $y_t$ and $y_{t-k}$:
+
+$$
+\rho_k = \frac{\text{Cov}(y_t, y_{t-k})}{\text{Var}(y_t)}
+$$
+
+Note $\rho_0 = 1$ always. For a stationary series, $\rho_k = \rho_{-k}$ (symmetry), so we only plot non-negative lags.
+
+Two plots are central to time series analysis:
+
+- **ACF (Autocorrelation Function)**: plots $\rho_k$ versus lag $k$. Captures *all* correlation between $y_t$ and $y_{t-k}$, including the indirect paths through intermediate lags.
+- **PACF (Partial ACF)**: plots the correlation between $y_t$ and $y_{t-k}$ *after removing the linear influence of all lags between them*. Analogous to partial regression coefficients.
+
+Both plots include **significance bands** at $\pm 1.96 / \sqrt{T}$ (the 95% confidence interval under the white-noise null hypothesis). Spikes outside these bands are considered statistically significant.
+
+The ACF and PACF plots are the primary diagnostic tools for identifying AR and MA orders. The ACF measures raw correlation at each lag; the PACF measures the correlation after removing the effect of all shorter lags — analogous to partial regression coefficients. Together they reveal the "fingerprint" of the underlying data-generating process.
+
+<WikiLink slug="acf-pacf-interpretation" title="ACF & PACF: Reading the Correlogram" />
+
+## Python implementation
+
+```python
+import pandas as pd
+import numpy as np
+from statsmodels.tsa.stattools import adfuller
+from statsmodels.tsa.seasonal import seasonal_decompose
+import matplotlib.pyplot as plt
+
+# Load airline passengers (classic benchmark dataset)
+from statsmodels.datasets import get_rdataset
+airline = get_rdataset("AirPassengers").data
+y = airline["value"].values
+dates = pd.date_range("1949-01", periods=len(y), freq="MS")
+
+# ── Step 1: visual inspection ─────────────────────────────────────────────────
+plt.figure(figsize=(12, 4))
+plt.plot(dates, y)
+plt.title("Monthly airline passengers (1949–1960)")
+plt.ylabel("Passengers (thousands)")
+plt.tight_layout()
+plt.show()
+
+# ── Step 2: test for stationarity ────────────────────────────────────────────
+result = adfuller(y, autolag="AIC")
+print(f"ADF Statistic: {result[0]:.4f}")
+print(f"p-value: {result[1]:.4f}")   # >> 0.05 → non-stationary (trend + seasonality)
+
+# ── Step 3: make stationary ───────────────────────────────────────────────────
+log_y = np.log(y)                    # stabilise variance
+diff_log_y = np.diff(log_y)          # remove trend
+
+result2 = adfuller(diff_log_y, autolag="AIC")
+print(f"\nAfter log + first difference:")
+print(f"ADF p-value: {result2[1]:.4f}")  # < 0.05 → stationary
+
+# ── Step 4: decompose the original series ─────────────────────────────────────
+decomp = seasonal_decompose(y, model="multiplicative", period=12)
+
+fig, axes = plt.subplots(4, 1, figsize=(12, 8), sharex=True)
+axes[0].plot(dates, decomp.observed,  label="Observed");  axes[0].set_ylabel("Observed")
+axes[1].plot(dates, decomp.trend,     label="Trend");     axes[1].set_ylabel("Trend")
+axes[2].plot(dates, decomp.seasonal,  label="Seasonal");  axes[2].set_ylabel("Seasonal")
+axes[3].plot(dates, decomp.resid,     label="Residual");  axes[3].set_ylabel("Residual")
+plt.suptitle("Multiplicative decomposition — airline passengers")
+plt.tight_layout()
+plt.show()
+
+# ── Step 5: plot ACF and PACF ─────────────────────────────────────────────────
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+plot_acf(diff_log_y,  lags=24, ax=ax1, title="ACF — log-differenced series")
+plot_pacf(diff_log_y, lags=24, ax=ax2, title="PACF — log-differenced series")
+plt.tight_layout()
+plt.show()
+```
+
+## Key takeaways
+
+- A time series has four components — **trend**, **seasonality**, **cycle**, and **residual**. Decomposing them clarifies which structures are predictable.
+- **Stationarity** (constant mean, variance, and autocovariance) is assumed by most classical models. The ADF test provides a formal check.
+- **Differencing** removes trends; **log-transforming** stabilises variance. Apply log first, then difference.
+- The **ACF** and **PACF** plots reveal how past values correlate with the present and are the primary tools for model identification.
+
+## Related concepts
+
+- [**ARIMA Models**](/courses/time-series/02-arima-models) — the next lesson builds directly on stationarity and the ACF/PACF patterns introduced here
+- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks) — how deep learning approaches the same sequential structure
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — the OLS intuition underpins AR model estimation
+
+<Exercise id="ts-decomposition" />
+<Exercise id="ts-stationarity" />

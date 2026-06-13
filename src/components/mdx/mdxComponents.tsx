@@ -57,6 +57,9 @@ import { BoostingShrinkageViz } from "@/components/visualizations/BoostingShrink
 import { SilhouetteViz } from "@/components/visualizations/Silhouette/SilhouetteViz";
 import { PCAReconstructionViz } from "@/components/visualizations/PCAReconstruction/PCAReconstructionViz";
 import { NaiveBayesVotesViz } from "@/components/visualizations/NaiveBayesVotes/NaiveBayesVotesViz";
+import DecompositionViz from "@/components/visualizations/Decomposition/DecompositionViz";
+import ACFViz from "@/components/visualizations/ACF/ACFViz";
+import ARIMAForecastViz from "@/components/visualizations/ARIMAForecast/ARIMAForecastViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -120,4 +123,7 @@ export const mdxComponents: MDXComponents = {
   SilhouetteViz,
   PCAReconstructionViz,
   NaiveBayesVotesViz,
+  DecompositionViz,
+  ACFViz,
+  ARIMAForecastViz,
 };
