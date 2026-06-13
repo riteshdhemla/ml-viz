@@ -95,10 +95,10 @@ The visualization below shows both the original 2D space (left) and the implicit
 - Cheap kernel: $\mathbf x^\top\mathbf z = 1{\cdot}3 + 2{\cdot}(-1) = 1$, so $(\mathbf x^\top\mathbf z+1)^2 = 2^2 = 4$.
 - Explicit map: $\phi(\mathbf x)=(1,4,2\sqrt2,\sqrt2,2\sqrt2,1)$, $\phi(\mathbf z)=(9,1,-3\sqrt2,3\sqrt2,-\sqrt2,1)$. Their dot product is $9+4-12+6-4+1 = 4$. ✓
 
-Same answer — but the kernel never built the 6-D vectors. For an RBF kernel the equivalent $\phi$ is **infinite-dimensional** (its Taylor expansion has every monomial), yet $K$ is still one cheap exponential.
+Same answer — but the kernel never built the 6-D vectors. For an RBF kernel the equivalent $\phi$ is **infinite-dimensional**: expanding via the Taylor series $e^u = \sum_{n=0}^\infty u^n/n!$ with $u = 2\gamma\,\mathbf{x}^\top\mathbf{z}$ shows that every monomial of every degree appears in the feature map — yet $K$ is still one cheap exponential.
 
 <Callout type="info" title="What makes a function a valid kernel?">
-  Not every $K$ corresponds to some $\phi$. **Mercer's condition:** $K$ is a valid kernel iff for every finite set of points the Gram matrix $K_{ij}=K(\mathbf x_i,\mathbf x_j)$ is symmetric **positive semi-definite**. Linear, polynomial, and RBF all satisfy this; the sigmoid kernel does *not* in general, which is why it can misbehave.
+  Not every $K$ corresponds to some $\phi$. **Mercer's condition:** $K$ is a valid kernel iff for every finite set of points the Gram matrix $K_{ij}=K(\mathbf x_i,\mathbf x_j)$ is symmetric **positive semi-definite** — roughly, the pairwise similarity scores must respect the geometry of a real inner product space (no "impossible" similarity configurations). Linear, polynomial, and RBF all satisfy this; the sigmoid kernel does *not* in general, which is why it can misbehave.
 </Callout>
 
 Now a non-separable dataset where only a kernel can succeed:

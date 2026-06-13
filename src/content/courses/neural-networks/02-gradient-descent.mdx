@@ -201,13 +201,13 @@ The key insight: a mini-batch gradient is an **unbiased estimate** of the full g
 
 ## Beyond vanilla: momentum and Adam
 
-Plain SGD crawls through narrow ravines — directions where the loss is steep one way and nearly flat the other. It bounces back and forth across the steep walls while barely advancing along the flat valley floor. Smarter optimizers fix this:
+Plain SGD crawls through narrow **ravines** — regions where the loss is very steep in one direction (say, along $w_1$) but nearly flat in another (say, along $w_2$). It bounces back and forth across the steep walls while barely advancing along the flat valley floor. Smarter optimizers fix this:
 
 - **Momentum** keeps a running **velocity** $v$ that accumulates past gradients, so consistent downhill directions build up speed while side-to-side oscillations cancel out:
   $$
   v \leftarrow \beta v - \eta\,\nabla L, \qquad w \leftarrow w + v
   $$
-  The decay $\beta$ (typically $0.9$) sets how much past momentum carries over. Think of a ball rolling downhill: it gathers speed on long slopes and isn't deflected by small bumps.
+  The decay $\beta$ (typically $0.9$) sets how much past momentum carries over. **One-step example:** starting from $w=0$, $v=0$, with $\eta=0.1$ and $\nabla L = -2$: first, $v \leftarrow 0.9(0) - 0.1(-2) = 0.2$, then $w \leftarrow 0 + 0.2 = 0.2$. Next step with $\nabla L = -2$ again: $v \leftarrow 0.9(0.2) + 0.2 = 0.38$ — momentum has nearly doubled the effective step size by building on the previous gradient. Think of a ball rolling downhill: it gathers speed on long slopes and isn't deflected by small bumps.
 - **Adam** combines momentum with a **per-parameter adaptive** learning rate — it divides each parameter's step by a running estimate of that parameter's gradient magnitude, so flat directions get larger effective steps and steep directions get smaller ones. This is why Adam handles ravines without manual tuning.
 
 <Callout type="info" title="Which optimizer?">

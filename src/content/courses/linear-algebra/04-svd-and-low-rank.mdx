@@ -22,7 +22,7 @@ Every linear map, no matter how messy, is just *rotate → stretch along perpend
 
 ## Where it comes from
 
-The matrices $A^\top A$ and $A A^\top$ are always symmetric, so the [spectral theorem](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) applies to them even when it doesn't apply to $A$:
+The matrices $A^\top A$ and $A A^\top$ are always symmetric, so the [spectral theorem](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — which guarantees symmetric matrices always have real eigenvalues and mutually orthogonal eigenvectors — applies to them even when it doesn't apply to $A$:
 
 - $V$ = eigenvectors of $A^\top A$
 - $U$ = eigenvectors of $A A^\top$
@@ -32,7 +32,11 @@ This is also exactly the [PCA](/courses/pca-dimensionality/01-pca) connection: f
 
 ## The sum-of-layers view and best rank-$k$ approximation
 
-Rewriting $A = U\Sigma V^\top$ one column at a time gives a sum of rank-1 layers: $A = \sum_i \sigma_i \mathbf{u}_i\mathbf{v}_i^\top$. Truncating to the first $k$ layers gives $A_k$ — and the **Eckart–Young theorem** proves this is the best rank-$k$ approximation in Frobenius norm, with error $\sqrt{\sum_{i>k}\sigma_i^2}$. This fact powers image compression, recommender systems, LoRA fine-tuning, and noise filtering.
+Rewriting $A = U\Sigma V^\top$ one column at a time gives a sum of rank-1 layers: $A = \sum_i \sigma_i \mathbf{u}_i\mathbf{v}_i^\top$. Truncating to the first $k$ layers gives $A_k$ — and the **Eckart–Young theorem** proves this is the best rank-$k$ approximation in Frobenius norm, with error $\sqrt{\sum_{i>k}\sigma_i^2}$.
+
+**Quick numeric example.** Suppose $A$ has singular values $[10, 5, 0.3]$. The full Frobenius norm is $\sqrt{10^2+5^2+0.3^2} = \sqrt{125.09} \approx 11.18$. Keeping only $k=2$ gives error $\sqrt{0.3^2} = 0.3$ — we captured 99.9% of the "signal" in just two layers. Keeping only $k=1$ gives error $\sqrt{5^2+0.3^2} = \sqrt{25.09} \approx 5.01$ — still meaningful structure, but a lot is lost. The singular value spectrum tells you at a glance where to cut.
+
+This fact powers image compression, recommender systems, LoRA fine-tuning, and noise filtering.
 
 <WikiLink slug="svd-low-rank" title="SVD and the Eckart-Young Theorem" />
 

@@ -39,7 +39,7 @@ $$
 
 This is the **characteristic equation**. For a $2 \times 2$ matrix, it's a quadratic in $\lambda$.
 
-For $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$, the characteristic equation $\lambda^2 - 7\lambda + 10 = 0$ gives $\lambda_1 = 5$, $\lambda_2 = 2$. Substituting each eigenvalue back into $(\mathbf{A}-\lambda\mathbf{I})\mathbf{v}=\mathbf{0}$ yields eigenvectors $[1,1]^\top$ and $[1,-2]^\top$. Both rows collapse to one constraint because the matrix is singular by construction — a whole line of solutions exists. For the complete 4-step calculation with null-space derivations, verification checks, and power iteration:
+For $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$, the characteristic equation $\lambda^2 - 7\lambda + 10 = 0$ gives $\lambda_1 = 5$, $\lambda_2 = 2$. Substituting $\lambda_1 = 5$ back into $(\mathbf{A}-5\mathbf{I})\mathbf{v}=\mathbf{0}$ gives $\begin{bmatrix}-1&1\\2&-2\end{bmatrix}\mathbf{v}=\mathbf{0}$; both rows reduce to $v_1 = v_2$, so the eigenvector is any scalar multiple of $[1,1]^\top$. Similarly $\lambda_2 = 2$ yields $[1,-2]^\top$. The set of vectors satisfying $(A-\lambda I)\mathbf{v}=\mathbf{0}$ is called the **null space** of $A-\lambda I$ — finding it is always the last step. For the complete calculation, verification checks, and power iteration for large matrices:
 
 <WikiLink slug="eigenvalue-computation" title="Computing Eigenvalues & Eigenvectors" />
 
@@ -101,7 +101,7 @@ $$
 
 ## Singular Value Decomposition (SVD)
 
-For **any** matrix (not just square or symmetric), SVD generalizes eigendecomposition:
+We used SVD briefly in the PCA connection above — here is the full picture. For **any** matrix (not just square or symmetric), SVD generalizes eigendecomposition:
 
 $$
 \mathbf{A} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^\top

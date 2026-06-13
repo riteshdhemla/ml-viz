@@ -68,11 +68,13 @@ K = \begin{bmatrix}2 & 0\\0 & 2\\1 & 1\end{bmatrix}, \quad
 V = \begin{bmatrix}1 & 0\\0 & 1\\10 & 10\end{bmatrix}
 $$
 
-**Step 1 — Scores $QK^\top$.** Entry $(i,j) = \mathbf{q}_i \cdot \mathbf{k}_j$. Row 1: $[2,0]\cdot[2,0]=4$; $[2,0]\cdot[0,2]=0$; $[2,0]\cdot[1,1]=2$:
+**Step 1 — Scores $QK^\top$.** Entry $(i,j) = \mathbf{q}_i \cdot \mathbf{k}_j$ measures how well token $i$'s query aligns with token $j$'s key — a higher score means "pay more attention here." Row 1: $[2,0]\cdot[2,0]=4$; $[2,0]\cdot[0,2]=0$; $[2,0]\cdot[1,1]=2$:
 
 $$
 QK^\top = \begin{bmatrix}4 & 0 & 2\\0 & 4 & 2\\4 & 4 & 4\end{bmatrix}
 $$
+
+Token 1's query matches key 1 best (score 4), not at all with key 2 (score 0), and moderately with key 3 (score 2). After softmax, this will mean token 1 attends mostly to itself.
 
 **Step 2 — Scale by $1/\sqrt{2} \approx 0.707$.** Using $4/\sqrt{2} = 2\sqrt{2} \approx 2.828$ and $2/\sqrt{2} = \sqrt{2} \approx 1.414$:
 
