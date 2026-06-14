@@ -114,7 +114,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **Lesson 03 — Reward Models** · concepts: preference data (chosen vs rejected), Bradley–Terry objective, scalar reward head, reward hacking · viz: **RewardModelViz** (pairwise preference → reward margin) · ~3 exercises · notebook.
 - [x] **Lesson 04 — Preference Tuning: RLHF & DPO** · concepts: RLHF pipeline (SFT→RM→PPO), KL penalty, DPO as a closed-form alternative, trade-offs · viz: *reuse `PolicyGradientViz`* + a DPO loss curve (optional new **DPOViz**) · ~3 exercises · notebook.
 - [x] **Lesson 05 — Model Merging & Quantization** · concepts: weight averaging/SLERP, task vectors, post-training quantization (INT8/INT4), QAT, accuracy/size trade-off · viz: **QuantizationViz** (bit-width vs accuracy/size) · ~3 exercises · notebook.
-- [ ] **Lesson 06 — Quiz** · 5 quiz exercises spanning the course.
+- [x] **Lesson 06 — Quiz** · 5 quiz exercises spanning the course.
 - [ ] **Bridge lesson in `reinforcement-learning`** — "From Policy Gradient to RLHF (PPO)" · concepts: policy gradient recap → PPO clip objective → RLHF as PPO on an LLM with a reward model · viz: *reuse `PolicyGradientViz`* · ~2 exercises · notebook · (append after current last lesson; keep any quiz last; recompute `estimatedHours`).
 
 ### Phase 3 — LLM internals & evaluation  *(integrate)*

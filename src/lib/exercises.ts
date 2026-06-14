@@ -5390,6 +5390,82 @@ const allExercises: Exercise[] = [
       { id: "d", label: "θ_base − τ_math − τ_tox", isCorrect: false },
     ],
   },
+  // ── Fine-Tuning & Alignment Quiz ─────────────────────────────────
+  {
+    id: "ft-quiz-when-to-finetune",
+    type: "multiple-choice",
+    question:
+      "Which scenario is the *best* fit for supervised fine-tuning rather than prompt engineering or RAG?",
+    hint: "Fine-tuning changes behaviour, not knowledge.",
+    explanation:
+      "Behaviour (tone, structure, response shape) is exactly what SFT changes — and a small carefully curated dataset (~10k examples) is enough. Fresh knowledge → RAG. Improving zero-shot reasoning on a frontier task → prompt engineering. Hourly catalog updates → RAG, not retrain.",
+    options: [
+      { id: "a", label: "Make a chat model always reply in a strict brand voice using 10k curated examples", isCorrect: true },
+      { id: "b", label: "Inject hourly-changing product catalog data into the model's answers", isCorrect: false },
+      { id: "c", label: "Boost zero-shot reasoning on an entirely new benchmark you have no data for", isCorrect: false },
+      { id: "d", label: "Translate the model's tokenizer to a brand-new language at inference time", isCorrect: false },
+    ],
+  },
+  {
+    id: "ft-quiz-lora-params",
+    type: "multiple-choice",
+    question:
+      "A weight matrix is 2048 × 2048. A LoRA adapter of rank r = 16 stores how many parameters, relative to full fine-tuning?",
+    hint: "Full = d². LoRA = 2·d·r.",
+    explanation:
+      "Full FT: 2048² ≈ 4.19M. LoRA: 2 × 2048 × 16 = 65 536 ≈ 65k. Ratio ≈ 1.56 % — single-digit-percent footprint, the whole point of PEFT.",
+    options: [
+      { id: "a", label: "≈ 65k vs ≈ 4.2M — roughly 64× fewer", isCorrect: true },
+      { id: "b", label: "Same number — LoRA just reorganises the parameters", isCorrect: false },
+      { id: "c", label: "≈ 4.2M vs ≈ 65k — LoRA uses more parameters than full FT", isCorrect: false },
+      { id: "d", label: "Exactly 2× fewer, because LoRA stores B and A separately", isCorrect: false },
+    ],
+  },
+  {
+    id: "ft-quiz-bradley-terry",
+    type: "multiple-choice",
+    question:
+      "Why is the Bradley–Terry reward-model loss invariant to adding a constant to both $r_\\theta(x, y_c)$ and $r_\\theta(x, y_r)$?",
+    hint: "Look at what enters the sigmoid.",
+    explanation:
+      "Only the margin $r_c - r_r$ enters $-\\log \\sigma(r_c - r_r)$. Constants cancel in the subtraction, so the reward model is identifiable only up to a per-prompt additive constant — absolute reward values aren't observable from pairwise data.",
+    options: [
+      { id: "a", label: "The loss depends only on the margin (r_c − r_r), which is unchanged by a common shift", isCorrect: true },
+      { id: "b", label: "Because the sigmoid is symmetric around zero", isCorrect: false },
+      { id: "c", label: "Because the reward model is a frozen language model", isCorrect: false },
+      { id: "d", label: "It isn't invariant — shifting both rewards changes the loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "ft-quiz-dpo-vs-rlhf",
+    type: "multiple-choice",
+    question:
+      "Which combination correctly describes how DPO differs from classical RLHF with PPO?",
+    hint: "Think reward model, rollouts, and KL leash.",
+    explanation:
+      "DPO collapses the KL-regularised RL objective into a single classification loss on chosen-vs-rejected log-prob ratios under π_θ and a frozen π_ref. No separate reward model, no PPO rollouts, no value head — yet π_ref still plays the role of the KL leash because divergence from it shows up directly in the ratios.",
+    options: [
+      { id: "a", label: "No separate reward model, no PPO rollouts; π_ref provides the implicit KL leash", isCorrect: true },
+      { id: "b", label: "DPO requires a stronger reward model than PPO does", isCorrect: false },
+      { id: "c", label: "DPO uses on-policy rollouts; PPO is off-policy", isCorrect: false },
+      { id: "d", label: "DPO drops the SFT stage; PPO keeps it", isCorrect: false },
+    ],
+  },
+  {
+    id: "ft-quiz-quantization",
+    type: "multiple-choice",
+    question:
+      "A 13B-parameter model is currently served in FP16 (~26 GB). You quantize the weights to INT4. Roughly how much memory does the quantized model now use?",
+    hint: "INT4 = 0.5 bytes per parameter.",
+    explanation:
+      "13e9 × 0.5 B = 6.5e9 B ≈ 6.05 GB (≈ 6.5 GB rounded). Going FP16 → INT4 is a 4× memory cut — the reason a 13B can run on consumer hardware.",
+    options: [
+      { id: "a", label: "≈ 6.5 GB (a 4× reduction vs FP16)", isCorrect: true },
+      { id: "b", label: "≈ 26 GB (same as FP16 — quantization only changes precision, not size)", isCorrect: false },
+      { id: "c", label: "≈ 52 GB (twice the FP16 footprint)", isCorrect: false },
+      { id: "d", label: "≈ 13 GB (a 2× reduction vs FP16)", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
