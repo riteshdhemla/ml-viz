@@ -1,0 +1,139 @@
+---
+title: "Training Data: Sampling, Labelling, Imbalance"
+description: "How to construct a training set that does not lie to your model: sampling strategies, labelling at scale, and the canonical class-imbalance toolbox."
+order: 6
+type: concept
+estimatedMinutes: 20
+---
+
+# Training Data: Sampling, Labelling, Imbalance
+
+The model is downstream of its training data. Every architecture choice, every hyperparameter search, every clever loss function is rendered useless if the rows the model trains on do not represent the rows it will see at inference, or if the labels attached to those rows are wrong, or if one class dominates so completely that "always predict the majority" beats anything you train. This lesson is the data-construction layer: how to *sample* records into a training set, how to *label* them at scale, and how to handle the brutally common case where one class is rare and the rest are abundant.
+
+Real-world examples: fraud-detection systems where the positive (fraudulent transaction) rate is around 0.1% and a naive 99.9%-accurate model is also 100%-useless; medical-imaging triage where the rare condition is the only thing anyone cares about catching; LLM SFT datasets curated from millions of raw documents through aggressive filtering and quality scoring; Snorkel-style weak supervision pipelines that have powered industrial NLP at Google, Apple, and a dozen unicorns; active-learning loops at content-moderation platforms where a small human-labeller pool decides which of a million flagged posts to review next.
+
+## Sampling strategies
+
+Once the data layer of the previous lesson exists — Parquet partitions, warehouse tables, a feature store — *something* has to choose which subset of those rows is allowed to influence the model. The choice is more consequential than most teams treat it.
+
+### Random (uniform) sampling
+
+Pick each example with equal probability. This is the default, the baseline against which everything else is measured. It is correct *only* when the population you sample from is the population you serve at inference. Uniform sampling fails the moment the class proportions are skewed, the data has hierarchical groups, or your records arrive as a stream of unknown length.
+
+### Stratified sampling
+
+Partition the population by some discrete key — class label, geography, customer segment, language — and sample a fixed quota from each stratum. Stratified sampling is **mandatory** when the classes are unbalanced and you have to split your data into train / validation / test, because a uniform random split on a 1% minority rate routinely produces a test set with *zero* minority examples. A test set without the rare class cannot tell you anything about the rare class. Almost every production ML codebase calls `train_test_split(..., stratify=y)` or equivalent.
+
+### Weighted / importance sampling
+
+Sample each record with a probability proportional to a per-record weight. Used to *oversample* a rare class so the training mini-batches contain more positives than the population would naturally produce, or — equivalently — to reweight the loss so that each positive contributes more gradient than each negative. The two formulations are mathematically equivalent for cross-entropy: oversampling minority examples by factor $k$ is the same as multiplying the minority class's loss by $k$.
+
+### Reservoir sampling
+
+A one-pass algorithm for picking a uniform sample of size $k$ from a stream of unknown length. Useful when training data arrives as a continuous event log (clickstreams, telemetry) and you want a fixed-budget snapshot for offline analysis. The classic algorithm keeps the first $k$ items, then for the $n$-th item ($n > k$) replaces a random one of the reservoir's $k$ items with probability $k / n$. Each item in the stream ends up with the same inclusion probability — without ever needing to know the stream length in advance.
+
+### Cluster / region sampling
+
+When records arrive in *groups* — a user with hundreds of sessions, a hospital with thousands of patients — uniform sampling at the record level leaks information across the train / test boundary: the same user can land in both. Cluster sampling first picks whole users (or hospitals, or sessions) and then takes every record from the chosen clusters. Train and test are now group-disjoint; the leakage is gone. This is the right primitive for almost any model where records are not independent.
+
+### Sampling bias
+
+Every sampling decision is a chance to introduce bias the model will inherit. If you train your fraud model on transactions *that were flagged for review* you have not built a fraud classifier — you have built a "would the existing rules flag this?" classifier. If you train your medical model on the patients who actually walked into the clinic, you cannot infer anything about the patients who could not afford to. Sampling bias is a Phase-5-grade failure mode: it is silent in offline metrics and visible only when the model is deployed against the population it was never shown.
+
+<Callout type="tip" title="Stratify your splits, not just your batches">
+Stratified mini-batches help training converge, but the real damage from imbalance happens at the *split* boundary. A random `train_test_split` with a 1% positive rate may land 0–3 positives in the test set on any given seed — which means your reported recall is whatever number the seed happened to produce. Always stratify the split first, then decide whether to also rebalance batches; the split decision is irreversible once you commit to a model.
+</Callout>
+
+## Labelling at scale
+
+Labels are where money disappears in production ML. A 100 k-row labelled dataset for image classification costs a five-figure annotation budget; a 10 M-row dataset costs a seven-figure one. Most teams cannot afford to hand-label their way out of a hard problem and must reach for cheaper, noisier alternatives.
+
+### Hand-labelling
+
+The gold standard: a trained human annotator labels each example. Slow, expensive, but the most reliable signal you will ever have. Industrial pipelines run examples past **multiple annotators** and measure agreement with **Cohen's κ** — a statistic that subtracts off chance agreement, so a κ near 1 means real consensus and a κ near 0 means the annotators are flipping coins. Anything under κ ≈ 0.6 means the *task* is ill-defined; relabelling will not save you, you have to clarify the schema first.
+
+### Weak supervision (Snorkel-style)
+
+A labelling function is a heuristic — a regex, a keyword list, a rule like "if the message contains a phone number it is spam" — that votes a label on each example with some unknown accuracy and coverage. Weak supervision combines tens or hundreds of these noisy voters through a **label model**: a separate small generative model that learns each function's accuracy from the *pattern of agreements* between functions, without ever seeing a gold label. The output is a probabilistic label per example, which a downstream classifier trains on. Snorkel, the canonical implementation, powered industrial NLP at Google and Apple for years.
+
+### Programmatic / heuristic labels
+
+Cheaper still: write the rule, apply it, train on the result. A regex labelling "all SQL statements that touch the `pii_` schema as sensitive" can label a million queries in a second. This is the floor of label quality and the ceiling of label throughput; for a clear-cut task ("is this string an email?") it is exactly the right tool, and for a fuzzy task ("is this comment toxic?") it will silently encode the regex author's blind spots.
+
+### LLM-as-labeller
+
+Hand a prompt and an example to a strong LLM and ask for a label. Fast, cheap relative to humans, and surprisingly good at the *median* example — but biased toward verbose answers, sycophantic to the prompt's framing, and confidently wrong on edge cases. Useful for cold-start, expansion of a small gold set, or pre-labelling work that humans then review. The bias caveats from AI-as-judge generalise here: see the [LLM evaluation lesson](/courses/model-evaluation/04-llm-evaluation) for the full discussion of why AI-as-judge can systematically mislead.
+
+### Active learning
+
+A meta-strategy that closes the loop. Train an initial classifier on whatever labels you have. Run it over the unlabelled pool. Pick the examples the model is *least confident* about (entropy near the decision boundary, query-by-committee disagreement between an ensemble of models, or expected-model-change for a gradient-based criterion). Send those to a human, label them, retrain, repeat. Active learning routinely matches the accuracy of a randomly-labelled set 5–10× larger because the labels are spent on the examples that move the model most.
+
+## Class imbalance
+
+Class imbalance is the failure mode that breaks more demos than any other. The data layer is fine, the model is fine, the metric is "accuracy" — and the model that always predicts "negative" wins on a 1% positive rate. The fix is partly a metric choice and partly a training-data choice.
+
+### Why accuracy lies
+
+Imagine a 99%-prevalence majority class and a 1%-prevalence minority. A model that predicts "majority" for every input has accuracy 0.99. That is precisely the accuracy of a totally useless model on totally useless data — and yet the dashboards say 99%. Accuracy is the wrong metric the moment the prior is skewed. Use precision, recall, F1, PR-AUC instead; the [classification metrics lesson](/courses/model-evaluation/01-classification-metrics) walks through which metric to reach for in which regime.
+
+### Resampling: oversample, undersample, SMOTE
+
+The simplest fix is to *change the sampled distribution* the model trains on. **Random oversampling** duplicates minority examples until the class counts match — fast, no new examples, but the duplicates encourage overfitting because the same minority points appear many times per epoch. **Random undersampling** drops majority examples until the counts match — fast, no risk of duplicate overfitting, but throws away majority data the model could have learned from. **SMOTE** (Synthetic Minority Oversampling Technique) interpolates between a minority point and one of its $k$ nearest neighbours of the same class to manufacture *new* synthetic minority points. SMOTE works well on low-dimensional structured features and is a *trap* on high-dimensional text or image embeddings (see the callout below).
+
+### Class-weighted loss
+
+Equivalent to oversampling but cheaper at training time. Multiply each example's loss by a class-dependent weight $w_c \propto 1 / n_c$, so the rare class contributes the same total gradient over an epoch as the abundant one. The standard sklearn convention is
+
+$$w_c = \frac{N}{K \cdot n_c}$$
+
+where $N$ is the total number of examples, $K$ the number of classes, and $n_c$ the count of class $c$. The training objective becomes
+
+$$\mathcal{L} = \sum_i w_{y_i} \cdot \ell(f(x_i), y_i)$$
+
+and the gradient computation does not change, so this is a one-line modification to almost any training loop.
+
+### Threshold tuning at inference time
+
+A classifier outputs a *score* $p \in [0, 1]$ and a *decision* "positive if $p > 0.5$". The 0.5 cutoff is a convention, not a law of nature. For an imbalanced problem with a recall-heavy SLA (fraud, cancer screening), shift the threshold downwards — accept lower precision in exchange for higher recall on the rare class. The natural visualisation is the *precision-recall curve*: sweep the threshold from 0 to 1 and plot precision vs recall. Threshold tuning is the cheapest fix on this list; it changes nothing about training, only the operating point.
+
+### Focal loss
+
+For extreme imbalance (1:1000 and worse, e.g. object detection where most of every image is background), even reweighting fails: the gradient signal is still dominated by easy-but-numerous negatives. Focal loss adds a $(1 - p_t)^\gamma$ factor that *down-weights* examples the model already classifies confidently, redirecting gradient toward the hard examples. It was the trick that made RetinaNet competitive with two-stage detectors.
+
+<Callout type="warning" title="SMOTE on high-dim text or image embeddings is a trap">
+SMOTE was designed for low-dimensional structured features (tabular data with tens of columns). On a 768-dimensional BERT embedding or a 2048-dimensional image feature, "interpolating between nearest neighbours" lands the synthetic point in a region of the embedding space that is geometrically valid but semantically nonsense — a manifold tear that the model overfits to. The robust playbook for high-dimensional imbalance is class-weighted loss + threshold tuning, plus collecting more *real* minority data when possible. Save SMOTE for the structured-tabular case where it was designed.
+</Callout>
+
+<Callout type="warning" title="Always evaluate on the natural imbalance">
+Resampling is a *training* trick — the model trains on a 1:1 distribution. Your held-out test set must stay on the *natural* class distribution, because that is what production looks like. Evaluating on a resampled test set produces hallucinated precision and recall numbers that have no relationship to what the model will do on a real day's traffic. The cardinal rule: resample the training set, never the test set.
+</Callout>
+
+## Common mistakes
+
+1. **Random `train_test_split` on a 1% minority rate.** Some seeds produce a test set with zero positives and a precision/recall number that is literally undefined. Always pass `stratify=y` when the classes are unbalanced.
+2. **Treating accuracy as the headline metric on imbalanced data.** A 99%-accurate fraud model that predicts "not fraud" on every transaction has accuracy 99% and recall 0%. Use precision, recall, F1, PR-AUC. The [classification metrics lesson](/courses/model-evaluation/01-classification-metrics) covers which to pick.
+3. **Resampling the test set.** Trains the model on one distribution, evaluates on another, reports numbers that do not generalise. Resample the training set only; the test set stays on the natural prior.
+4. **SMOTE on high-dimensional embeddings.** Synthetic minority points land in semantically broken regions; the model overfits to the synthetic manifold and fails on real minority examples.
+5. **Trusting LLM-as-labeller without spot-checking.** Cheap, biased, and confidently wrong on edge cases. Always sample 100–500 of its labels for human review and measure agreement with the human gold standard before training on the rest.
+6. **Sampling bias from the *flagging* pipeline.** Training on "transactions a human reviewed" is training on the existing rules' priors, not the underlying fraud distribution. You need an unbiased sample of the population, even if that means deliberately reviewing some non-flagged transactions.
+
+## Key takeaways
+
+- **Stratified sampling is the default for imbalanced data.** Stratify the split before stratifying the batches; the split is irreversible once committed.
+- **Labels are the budget.** Hand labels are gold but expensive; weak supervision, programmatic rules, LLM-as-labeller, and active learning all let you spend that budget more efficiently. Inter-annotator agreement (κ) is the diagnostic for whether the task is well-defined at all.
+- **Class imbalance has a standard toolbox.** Class-weighted loss + threshold tuning + the right metric (PR-AUC, F1) fixes most cases. Resampling and SMOTE are options for structured tabular data; focal loss is the tool for extreme imbalance.
+- **Resample training, never the test set.** The test set is your contract with production; it must reflect the deployed class distribution.
+- **Sampling bias is a Phase-5 failure mode.** Every "the population I sampled from is not the population I serve" decision is a chance to ship a model that looks good in offline metrics and fails in deployment.
+
+## Related concepts
+
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — precision, recall, F1, PR-AUC, ROC-AUC. The metrics you must reach for the moment your data is imbalanced.
+- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the storage and pipeline layer this lesson sits on top of. Stratified sampling is implemented in the warehouse query that builds the training table.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — sampling and labelling decisions are upstream of the objective function. Get them wrong here and the napkin diagram does not save you.
+- [**LLM Evaluation**](/courses/model-evaluation/04-llm-evaluation) — AI-as-judge bias is the same bias that contaminates LLM-as-labeller pipelines. Read this before letting a model label your training data.
+
+<SamplingStrategiesViz />
+
+<Exercise id="training-data-stratified" />
+<Exercise id="training-data-imbalance" />
+<Exercise id="training-data-weak-supervision" />
