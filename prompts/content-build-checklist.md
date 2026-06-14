@@ -123,7 +123,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **`nlp` + Decoding & Sampling Strategies** · concepts: greedy, beam, temperature, top-k, top-p; determinism · viz: *reuse `SamplingViz`* · ~3 exercises · notebook.
 - [x] **`nlp` + Topic Modeling (BERTopic)** · concepts: embed→reduce→cluster→c-TF-IDF labels · viz: *reuse `KMeansViz` or `PerplexityViz`* · ~3 exercises · notebook.
 - [x] **`nlp` + Training Embedding Models** · concepts: SBERT, contrastive/triplet loss, hard negatives, TSDAE · viz: **ContrastiveViz** (pull-positive/push-negative in 2D) · ~3 exercises · notebook.
-- [ ] **`model-evaluation` + LLM Evaluation** · concepts: entropy/cross-entropy, perplexity, bits-per-byte, AI-as-a-judge, pairwise/comparative eval, benchmarks · viz: *reuse `PerplexityViz`* · ~3 exercises · notebook.
+- [x] **`model-evaluation` + LLM Evaluation** · concepts: entropy/cross-entropy, perplexity, bits-per-byte, AI-as-a-judge, pairwise/comparative eval, benchmarks · viz: *reuse `PerplexityViz`* · ~3 exercises · notebook.
 - [ ] **`model-evaluation` + Evaluating AI Systems** · concepts: model selection workflow, build-vs-buy, public benchmarks & their limits, cost/latency · viz: *none* · ~3 exercises · notebook.
 
 ### Phase 4 — Multimodal  *(integrate)*
