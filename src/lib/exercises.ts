@@ -5589,6 +5589,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "How many languages does it support?", isCorrect: false },
     ],
   },
+  // ── NLP — Decoding & Sampling Strategies ───────────────────────
+  {
+    id: "decoding-greedy-vs-beam",
+    type: "multiple-choice",
+    question:
+      "You're building a machine-translation system: English source sentences in, German translations out. Which decoder is structurally the right default, and why?",
+    hint: "Translation has essentially one right answer per source sentence, and the best translation is often only identifiable after looking a few tokens ahead.",
+    explanation:
+      "Beam search keeps the top-$k$ partial sequences by length-normalised cumulative log-probability. That matters in translation because the locally-best first word is often not the globally-best one — a small early loss can be made up several tokens later, and only beam can recover from it. Greedy is myopic and gives up that recovery. Sampling (top-p / top-k) is wrong here for the opposite reason: translation does *not* want the diversity that sampling provides; you want the single most likely faithful rendering. High-quality MT systems use beam $k = 4$–$8$ with length normalisation $\\alpha \\approx 0.6$.",
+    options: [
+      { id: "a", label: "Greedy — it's the fastest and one-step argmax is good enough for translation", isCorrect: false },
+      { id: "b", label: "Beam search with length normalisation — keeps several hypotheses and picks the best overall sequence", isCorrect: true },
+      { id: "c", label: "Top-p (nucleus) sampling at $p = 0.9$ — adaptive diversity helps", isCorrect: false },
+      { id: "d", label: "Sampling at high temperature ($T = 1.5$) — covers more of the output space", isCorrect: false },
+    ],
+  },
+  {
+    id: "decoding-top-p-mechanics",
+    type: "slider",
+    question:
+      "A 7-token next-token distribution has probabilities (sorted descending) $[0.40, 0.25, 0.15, 0.10, 0.05, 0.03, 0.02]$. At top-$p = 0.9$, how many tokens are kept in the nucleus?",
+    hint: "Take tokens in order from highest to lowest, accumulating probability, until the running sum first reaches 0.9.",
+    explanation:
+      "Cumulative sums in descending order: $0.40, 0.65, 0.80, 0.90, 0.95, 0.98, 1.00$. The first index where the cumulative sum reaches $0.9$ is index 3 (zero-indexed), so the smallest set whose mass $\\ge p$ contains 4 tokens. Those four are kept, renormalised so they sum to 1, and sampled from; the remaining three are zeroed out. Notice the adaptivity: a peakier distribution (say $[0.95, 0.02, 0.01, ...]$) would have kept *one* token at $p = 0.9$.",
+    min: 1,
+    max: 7,
+    step: 1,
+    correctRange: [4, 4],
+    unit: "tokens",
+  },
+  {
+    id: "decoding-determinism-trap",
+    type: "multiple-choice",
+    question:
+      "Your eval pipeline runs the same prompt against a hosted LLM with `temperature=0` twice — once during a quiet maintenance window, once during peak traffic. The two outputs differ by a single token in the middle of the response. Which root cause is the most likely?",
+    hint: "Temperature 0 fixes the sampling step. It does not fix what happens at the kernel level when batch composition changes.",
+    explanation:
+      "Temperature 0 means sampling reduces to argmax, but the argmax itself is computed in floating-point on GPU kernels whose reduction order depends on batch size, padding, and which kernel the autotuner picked. Non-associative float addition means $(a + b) + c \\neq a + (b + c)$ at the bit level. If the top-1 and top-2 logits are within a few ULPs at some position, two greedy runs can choose different tokens — not because of a bug or a model update, but because the second run was batched differently. The fix in production is to pin batch size, padding, kernel versions, and the model checkpoint; even then, hosted providers usually only promise 'best-effort' reproducibility. (A) and (D) are unrelated to determinism; (C) would change behaviour every step, not at a single token.",
+    options: [
+      { id: "a", label: "The model weights were silently updated between the two runs", isCorrect: false },
+      { id: "b", label: "Non-associative float math + a different batch size at peak traffic changed the argmax at one position", isCorrect: true },
+      { id: "c", label: "`temperature=0` actually samples from the distribution; it never deduplicates", isCorrect: false },
+      { id: "d", label: "Top-p was applied implicitly during the second call", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
