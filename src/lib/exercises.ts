@@ -5345,6 +5345,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Drive $\\pi_\\theta$ to match $\\pi_\\text{ref}$ on both responses", isCorrect: false },
     ],
   },
+  // ── Model Merging & Quantization ──────────────────────────────────
+  {
+    id: "quant-memory",
+    type: "slider",
+    question:
+      "A 7B-parameter model stored in FP16 takes ~13 GB. How many GB does the same model occupy when quantized to INT4?",
+    hint: "INT4 is 4 bits = 0.5 bytes per parameter.",
+    explanation:
+      "7e9 × 0.5 B = 3.5e9 B ≈ 3.26 GB. INT4 cuts FP16 memory by 4× — the reason a 70B model can be served on a single 48 GB GPU after 4-bit quantization.",
+    min: 0,
+    max: 10,
+    step: 0.1,
+    correctRange: [3.0, 3.7],
+    unit: "GB",
+  },
+  {
+    id: "quant-int4-vs-int8",
+    type: "multiple-choice",
+    question:
+      "Which statement best describes the typical accuracy-vs-memory trade-off going from INT8 to INT4 on a modern LLM?",
+    hint: "INT8 is almost free; INT4 starts to bite but is still the production sweet spot.",
+    explanation:
+      "INT8 usually loses less than 1 % on standard benchmarks. INT4 loses a few points (often recoverable with NF4 + double-quantization, AWQ, or QLoRA-style schemes) but cuts memory another 2×. Below INT4 you need QAT or distillation to keep accuracy usable.",
+    options: [
+      { id: "a", label: "INT8 is nearly free; INT4 trades a few accuracy points for another 2× memory cut", isCorrect: true },
+      { id: "b", label: "INT4 is always more accurate than INT8", isCorrect: false },
+      { id: "c", label: "INT4 uses the same memory as INT8 because the model dimension dominates", isCorrect: false },
+      { id: "d", label: "Both INT8 and INT4 fully recover FP16 accuracy without any extra tricks", isCorrect: false },
+    ],
+  },
+  {
+    id: "merge-task-vector",
+    type: "multiple-choice",
+    question:
+      "You have a base model θ_base, a math fine-tune θ_math, and a toxic-chat fine-tune θ_tox. You compute task vectors τ_math = θ_math − θ_base and τ_tox = θ_tox − θ_base. Which merged model gains math skill *and* explicitly removes the toxic-chat behaviour?",
+    hint: "Task-vector arithmetic: add the skill you want, subtract the one you don't.",
+    explanation:
+      "θ_base + τ_math − τ_tox combines two simple operations: adding the math direction adds the skill, subtracting the toxic direction performs task-vector negation (a documented merging trick that suppresses a behaviour without re-training).",
+    options: [
+      { id: "a", label: "θ_base + τ_math − τ_tox", isCorrect: true },
+      { id: "b", label: "θ_base + τ_math + τ_tox", isCorrect: false },
+      { id: "c", label: "θ_math + θ_tox", isCorrect: false },
+      { id: "d", label: "θ_base − τ_math − τ_tox", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

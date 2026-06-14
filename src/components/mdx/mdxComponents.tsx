@@ -64,6 +64,7 @@ import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
 import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
+import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -134,4 +135,5 @@ export const mdxComponents: MDXComponents = {
   RAGRetrievalViz,
   LoRAViz,
   RewardModelViz,
+  QuantizationViz,
 };
