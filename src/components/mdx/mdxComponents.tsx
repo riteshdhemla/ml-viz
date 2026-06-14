@@ -60,6 +60,8 @@ import { NaiveBayesVotesViz } from "@/components/visualizations/NaiveBayesVotes/
 import DecompositionViz from "@/components/visualizations/Decomposition/DecompositionViz";
 import ACFViz from "@/components/visualizations/ACF/ACFViz";
 import ARIMAForecastViz from "@/components/visualizations/ARIMAForecast/ARIMAForecastViz";
+import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
+import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -126,4 +128,6 @@ export const mdxComponents: MDXComponents = {
   DecompositionViz,
   ACFViz,
   ARIMAForecastViz,
+  SamplingViz,
+  RAGRetrievalViz,
 };

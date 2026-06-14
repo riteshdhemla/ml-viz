@@ -337,6 +337,11 @@ surface-border   — borders
 ### Reinforcement Learning
 - [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course + 4 lessons)*
 
+### Applied & Production AI
+- [x] **Building with LLMs** — prompt engineering & in-context learning, decoding/sampling, chain-of-thought & structured output, embeddings & semantic search, RAG, agents & tool use, AI-engineering architecture *(course + 6 lessons + quiz)*
+- [ ] **Fine-Tuning & Alignment** — SFT, instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO *(planned — see Phase 2 of the content roadmap plan)*
+- [ ] **ML Systems & MLOps** — data engineering, deployment patterns, model compression, continual learning & test-in-production, monitoring, MLOps infra *(planned — integrate into `ml-in-practice`, split out if it grows past ~10 lessons)*
+
 ---
 
 ## Visualization Components Built
@@ -397,6 +402,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | SilhouetteViz | `visualizations/Silhouette/` | clustering/03-evaluating-clusters | ✅ |
 | PCAReconstructionViz | `visualizations/PCAReconstruction/` | pca-dimensionality/03-pca-in-practice | ✅ |
 | NaiveBayesVotesViz | `visualizations/NaiveBayesVotes/` | probabilistic-models/03-naive-bayes | ✅ |
+| SamplingViz | `visualizations/Sampling/` | building-with-llms/01-prompt-engineering | ✅ |
+| RAGRetrievalViz | `visualizations/RAGRetrieval/` | building-with-llms/04-retrieval-augmented-generation | ✅ |
 
 ---
 

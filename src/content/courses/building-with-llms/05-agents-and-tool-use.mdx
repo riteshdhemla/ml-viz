@@ -1,0 +1,102 @@
+---
+title: "Agents & Tool Use"
+description: "Letting an LLM act — function calling, the ReAct loop of Thought/Action/Observation, memory, and why agents are powerful but hard to make reliable."
+order: 5
+type: concept
+estimatedMinutes: 18
+---
+
+# Agents & Tool Use
+
+So far the model only produces text. An **agent** lets the model *act*: call a calculator, search the web, query a database, run code, or hit an API — observe the result, and decide what to do next. The model becomes a controller that plans and uses tools to accomplish a goal, rather than answering in a single shot.
+
+**Real-world examples:** coding assistants that run tests, research assistants that browse, customer-service bots that look up and modify orders, data-analysis copilots.
+
+## Tools and function calling
+
+A **tool** is a function the model is allowed to call, described by a name, a docstring, and a typed parameter schema. The model doesn't execute it — it *emits a request* to call it; your runtime executes the function and feeds the result back.
+
+```python
+tools = [{
+    "name": "get_weather",
+    "description": "Current weather for a city.",
+    "parameters": {
+        "type": "object",
+        "properties": {"city": {"type": "string"}},
+        "required": ["city"],
+    },
+}]
+# Model replies: call get_weather(city="Paris")
+# Your code runs it, returns {"tempC": 14}, and the model continues.
+```
+
+This is just **structured output** (from lesson 2) pointed at an action: the schema constrains the model to emit a valid call.
+
+## The ReAct loop
+
+The dominant agent pattern is **ReAct** (Reason + Act). The model iterates:
+
+1. **Thought** — reason about the current state and what's needed next.
+2. **Action** — call a tool with arguments.
+3. **Observation** — read the tool's result.
+4. Repeat until it has enough, then emit a final **Answer**.
+
+```text
+Question: What is the population of the capital of France, divided by 1000?
+Thought: I need the capital of France.        Action: search("capital of France")
+Observation: Paris.
+Thought: Now its population.                   Action: search("population of Paris")
+Observation: ~2,100,000.
+Thought: Divide by 1000.                        Action: calculator("2100000 / 1000")
+Observation: 2100.
+Answer: About 2,100.
+```
+
+Each Observation conditions the next Thought, so the agent can gather information it didn't have and **self-correct** across steps — something a single forward pass can't do.
+
+<Callout type="info" title="Agent vs chain">
+  A **chain** is a fixed, developer-scripted sequence of steps. An **agent** decides at runtime which tool to call next and when to stop. Agents are more flexible but less predictable — prefer a chain when the steps are known in advance, an agent when they aren't.
+</Callout>
+
+## Memory
+
+The context window is finite, so long-running agents need **memory**:
+
+- **Short-term**: the running transcript of the current task (often summarised as it grows).
+- **Long-term**: facts persisted across sessions, usually in a **vector store** and retrieved on demand — i.e. RAG used as the agent's memory.
+
+## Reliability: the hard part
+
+Agents compound errors. If each step is 95% reliable, ten steps are only $0.95^{10} \approx 60\%$ reliable. Make them robust with:
+
+- **Bounded loops** — cap the number of steps so the agent can't spin forever.
+- **Validated tool I/O** — check arguments before executing; handle tool errors gracefully.
+- **Least privilege** — give the agent only the tools (and permissions) it needs.
+- **Human-in-the-loop** — require confirmation for irreversible or costly actions.
+- **Observability** — log every Thought/Action/Observation to debug failures (covered next).
+
+<Callout type="warning" title="Agents widen the attack surface">
+  An agent that browses or reads documents can ingest **malicious instructions** hidden in that content (indirect prompt injection) and then misuse its tools. Treat all tool inputs/outputs as untrusted — we tackle this directly in the next lesson.
+</Callout>
+
+## Common mistakes
+
+1. **Unbounded loops** — runaway cost and latency.
+2. **Over-trusting tool output** — feeding unvalidated, possibly malicious results straight back to the model.
+3. **Too many tools** — a huge tool list confuses tool selection; keep it tight.
+4. **Using an agent where a fixed chain would do** — needless nondeterminism.
+
+## Key takeaways
+
+- An **agent** uses an LLM as a controller that calls **tools** and acts on their results.
+- **Function calling** = structured output that names a tool and its arguments; your runtime executes it.
+- **ReAct** iterates Thought → Action → Observation until a final Answer, enabling multi-step reasoning and self-correction.
+- Reliability needs **bounded loops, validation, least privilege, and human-in-the-loop**; agents also widen the security attack surface.
+
+## Related concepts
+
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the reasoning and the schemas agents are built on
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — guardrails, observability, and serving agents in production
+
+<Exercise id="llm-agent-react" />
+<Exercise id="llm-agent-vs-chain" />

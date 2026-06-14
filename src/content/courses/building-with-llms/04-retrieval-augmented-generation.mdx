@@ -1,0 +1,89 @@
+---
+title: "Retrieval-Augmented Generation"
+description: "Grounding an LLM in your own documents — chunk, embed, retrieve, rerank, and generate — plus where RAG fails and how to evaluate it."
+order: 4
+type: concept
+estimatedMinutes: 20
+---
+
+# Retrieval-Augmented Generation
+
+An LLM only knows what was in its training data, frozen at some cutoff. It can't answer questions about your private wiki, last week's incident, or a document it has never seen — and when it doesn't know, it often **hallucinates** a confident wrong answer. **Retrieval-Augmented Generation (RAG)** fixes this by retrieving relevant text at query time and putting it *in the prompt*, so the model answers from evidence it can see.
+
+**Real-world examples:** "chat with your docs," customer-support assistants, internal knowledge bots, legal/medical research tools, code assistants grounded in a repo.
+
+## The RAG pipeline
+
+RAG has an offline **indexing** phase and an online **query** phase.
+
+**Indexing (once, ahead of time):**
+1. **Chunk** documents into passages (e.g. 200–800 tokens).
+2. **Embed** each chunk with an embedding model.
+3. **Store** the vectors in a vector index.
+
+**Query (per request):**
+1. **Embed** the user's question into the same space.
+2. **Retrieve** the top-$k$ nearest chunks.
+3. **(Optional) Rerank** the candidates with a stronger model.
+4. **Generate**: paste the retrieved chunks into the prompt as context and ask the LLM to answer *using only that context*.
+
+<RAGRetrievalViz />
+
+Notice in the visualisation: when $k$ is small and the query sits inside the right cluster, every retrieved chunk is on-topic. Push $k$ too high and off-topic chunks sneak in — noise the generator must then ignore.
+
+## Why chunking matters
+
+Embed a whole 50-page manual as one vector and it becomes a blurry average of every topic — retrieval can't isolate the relevant paragraph. Chunking gives **precise** retrieval and lets you fit only the relevant passages into a finite context window.
+
+<Callout type="tip" title="Chunking trade-off">
+  Chunks too **small** → context is fragmented, a single idea gets split. Too **large** → each chunk dilutes its embedding and wastes context budget. Overlapping chunks (a sliding window) hedge against splitting a key sentence across a boundary.
+</Callout>
+
+## Reranking
+
+First-stage retrieval (a fast bi-encoder + ANN index) favours recall over precision. A **reranker** — typically a cross-encoder that reads the query and a candidate *together* — re-scores the top, say, 50 candidates and keeps the best 5. It's slower per pair, so you only run it on the shortlist, not the whole corpus.
+
+```text
+Retrieve (fast, top-50)  →  Rerank (accurate, keep top-5)  →  Generate
+```
+
+## Where RAG fails
+
+- **Retrieval miss** — the answer isn't in the top-$k$, so the model can't use it.
+- **Irrelevant context** — off-topic chunks distract the generator (the high-$k$ case above).
+- **Context ignored** — the model falls back on its parametric memory instead of the evidence.
+- **Stale index** — documents changed but the vectors weren't re-embedded.
+- **Lost in the middle** — relevant text buried in a very long context gets underweighted.
+
+## Evaluating RAG
+
+Evaluate the two halves separately, because a bad answer could come from either:
+
+- **Retrieval quality**: recall@k, precision@k, MRR — did we fetch the right chunks?
+- **Generation quality**: **faithfulness** (is the answer supported by the retrieved context?) and **answer relevance** (does it address the question?), often scored by an LLM judge.
+
+<Callout type="info" title="RAG vs fine-tuning">
+  RAG injects *knowledge* at query time and is easy to keep fresh (re-index). Fine-tuning changes *behaviour/skill* and bakes knowledge into weights. They're complementary: RAG for "what does this document say," fine-tuning for "respond in this style/format." Fine-tuning is the subject of the next course.
+</Callout>
+
+## Common mistakes
+
+1. **No retrieval evaluation** — blaming the LLM for what was actually a retrieval miss.
+2. **One giant chunk per document** — destroys retrieval precision.
+3. **Cranking $k$ up** to "be safe" — adds noise and cost, often *lowers* answer quality.
+4. **Never re-indexing** after the source documents change.
+
+## Key takeaways
+
+- RAG grounds an LLM in external/private/fresh documents by **retrieving** relevant chunks and putting them **in the prompt**.
+- Pipeline: **chunk → embed → retrieve → (rerank) → generate**.
+- **Chunk size** and **$k$** trade precision against coverage; reranking boosts precision on a shortlist.
+- Evaluate **retrieval** and **generation (faithfulness)** separately.
+
+## Related concepts
+
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the retrieval engine RAG depends on
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — retrieval as one tool an agent can call
+
+<Exercise id="llm-rag-why" />
+<Exercise id="llm-rag-chunking" />

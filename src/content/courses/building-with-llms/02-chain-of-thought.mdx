@@ -1,0 +1,85 @@
+---
+title: "Chain-of-Thought & Structured Output"
+description: "Two opposite needs: letting the model reason freely across intermediate steps, and forcing its final answer into a schema your code can parse."
+order: 2
+type: concept
+estimatedMinutes: 16
+---
+
+# Chain-of-Thought & Structured Output
+
+A transformer does a fixed amount of computation per token. So if a problem needs several steps of reasoning, the model needs **tokens to think in** before it commits to an answer. Chain-of-thought gives it those tokens. But once the reasoning is done, downstream software usually needs a **clean, structured** answer — not prose. This lesson covers both ends.
+
+**Real-world examples:** math and logic problems, multi-hop question answering, tool/agent planning, extracting structured records from documents.
+
+## Chain-of-thought (CoT)
+
+**Chain-of-thought prompting** asks the model to produce intermediate reasoning steps before the final answer. The classic trigger is literally *"Let's think step by step."*
+
+```text
+Q: A shop has 3 boxes of 12 apples. It sells 20. How many remain?
+A: Let's think step by step.
+   3 boxes × 12 = 36 apples.
+   36 − 20 = 16.
+   The answer is 16.
+```
+
+Why it helps: each intermediate token conditions the next, so the model effectively allocates **more computation** to a hard problem and is less likely to blurt a wrong one-shot guess.
+
+<Callout type="warning" title="CoT is not free">
+  It adds latency and token cost, and it only helps tasks with genuine multi-step structure. For a one-step classification or a lookup, CoT mostly wastes tokens. Match the technique to the task.
+</Callout>
+
+### Self-consistency
+
+A reliability upgrade: sample **several** chains at non-zero temperature, then take a **majority vote** over their final answers. Independent reasoning paths that agree are more likely correct than any single chain. The cost is running the model $k$ times.
+
+<Callout type="info" title="Reasoning models">
+  Newer "reasoning" models internalise CoT — they generate a long hidden reasoning trace before answering, so you no longer prompt for it explicitly. The intuition is identical: spend more test-time computation on harder problems.
+</Callout>
+
+## Structured output
+
+The flip side: your application code needs to *parse* the answer. Three approaches, in increasing order of robustness:
+
+1. **Ask in the prompt** — *"Reply with JSON: `{\"category\": ..., \"confidence\": ...}`"*. Works often, fails unpredictably (stray prose, markdown fences, trailing commas).
+2. **Function calling / tool schemas** — you declare a typed schema; the API returns arguments matching it.
+3. **Constrained decoding** — the decoder is restricted, token by token, to only those tokens that keep the output valid under a JSON schema or grammar. Invalid output becomes *impossible*, not just discouraged.
+
+```python
+# Pydantic-style schema as the contract for structured output
+from pydantic import BaseModel
+
+class TicketLabel(BaseModel):
+    category: str        # "billing" | "bug" | "feature_request"
+    confidence: float    # 0.0 – 1.0
+
+# Many SDKs accept the schema directly and guarantee a conforming object:
+# result = client.responses.parse(..., text_format=TicketLabel)
+```
+
+<Callout type="tip" title="Combine them carefully">
+  CoT and strict structured output can fight: if you constrain the very first tokens to JSON, the model can't reason first. The fix is to let it reason in a free-text field (e.g. a `"reasoning"` property) *before* the answer field, or do reasoning in one call and formatting in another.
+</Callout>
+
+## Common mistakes
+
+1. **Forcing JSON before reasoning** on a hard task — you constrained away the model's room to think.
+2. **Parsing CoT prose with regex** — brittle; use a real structured-output mechanism.
+3. **Using CoT everywhere** — latency and cost with no accuracy gain on simple tasks.
+4. **Trusting one sampled chain** on high-stakes reasoning — use self-consistency.
+
+## Key takeaways
+
+- **Chain-of-thought** gives the model intermediate tokens to compute in — it helps *multi-step* tasks, not simple ones.
+- **Self-consistency** samples several chains and votes for higher reliability.
+- For machine-readable answers, prefer **constrained decoding / function calling** over hoping the prose is valid JSON.
+- Let the model reason *before* the structured answer field, or split reasoning and formatting into separate calls.
+
+## Related concepts
+
+- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering) — the decoding knobs CoT relies on
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — CoT is the reasoning step inside an agent loop
+
+<Exercise id="llm-cot-when" />
+<Exercise id="llm-structured-output" />
