@@ -406,6 +406,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | RAGRetrievalViz | `visualizations/RAGRetrieval/` | building-with-llms/04-retrieval-augmented-generation | ✅ |
 | LoRAViz | `visualizations/LoRA/` | fine-tuning-alignment/02-peft-lora-qlora | ✅ |
 | RewardModelViz | `visualizations/RewardModel/` | fine-tuning-alignment/03-reward-models | ✅ |
+| QuantizationViz | `visualizations/Quantization/` | fine-tuning-alignment/05-model-merging-and-quantization | ✅ |
 
 ---
 

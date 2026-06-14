@@ -1,0 +1,116 @@
+---
+title: "Model Merging & Quantization"
+description: "Two cheap post-training tricks: combining the weights of multiple fine-tunes into one model, and shrinking the model itself by storing each weight in fewer bits."
+order: 5
+type: concept
+estimatedMinutes: 22
+---
+
+# Model Merging & Quantization
+
+Fine-tuning was the expensive part. Once you have trained checkpoints, two near-free operations can make them dramatically more useful: **merging** several fine-tunes into a single model that inherits all their skills, and **quantizing** the weights so the model fits on smaller hardware.
+
+**Real-world examples:** open-source chat models on Hugging Face's leaderboard frequently mix SLERP-merges of a base model with a math fine-tune and an instruction-following fine-tune; `llama.cpp` ships 4-bit GGUF builds of 70B models that run on a laptop; QLoRA fine-tunes a frozen 4-bit base and bolts on full-precision adapters.
+
+## Model merging
+
+Once you have $K$ fine-tunes of the **same base model**, you can combine their weights into a single new model without any further training.
+
+### Weight averaging
+
+The simplest merge is the arithmetic mean of weights:
+
+$$
+\theta_{\text{merge}} = \frac{1}{K} \sum_{k=1}^{K} \theta_k.
+$$
+
+This works *only because the fine-tunes share an initialisation* — they live in the same loss basin, so averaging stays near a minimum. Average two independently pretrained models and you get garbage; average two fine-tunes that diverged from the same base and you often get a usable model that inherits skills from both.
+
+### Task vectors
+
+Reframe each fine-tune as a **task vector** — the displacement from the base:
+
+$$
+\tau_k = \theta_k - \theta_{\text{base}}.
+$$
+
+Then merging becomes algebra: $\theta_{\text{merge}} = \theta_{\text{base}} + \sum_k \alpha_k \tau_k$ for some weights $\alpha_k$. Setting $\alpha_k = 1/K$ recovers plain averaging. Setting $\alpha_k = -1$ for one fine-tune **subtracts** a skill — a "task-vector negation" that, for example, removes a toxic-text fine-tune's effect.
+
+### SLERP
+
+For two models, **spherical linear interpolation** moves along the great-circle arc rather than the chord:
+
+$$
+\theta_{\text{SLERP}}(t) = \frac{\sin((1-t)\Omega)}{\sin\Omega}\theta_1 + \frac{\sin(t\Omega)}{\sin\Omega}\theta_2, \qquad \cos\Omega = \frac{\theta_1 \cdot \theta_2}{\|\theta_1\|\,\|\theta_2\|}.
+$$
+
+When $\theta_1$ and $\theta_2$ have similar norm (typical for fine-tunes of the same base), SLERP keeps the merged model's weight norm closer to the originals than the chord average — empirically this preserves more of each parent's capability.
+
+<Callout type="info" title="Why merging works at all">
+  The loss surface of an over-parameterised model has wide, connected low-loss basins. Fine-tuning a shared base nudges the weights within the same basin, so the line between any two checkpoints often stays at low loss — a phenomenon called **linear mode connectivity**. Merging exploits that geometry, which is why the trick only survives when the parents share an initialisation.
+</Callout>
+
+## Quantization
+
+Pretrained weights are stored in FP32 (32 bits per parameter) or BF16 (16 bits). Inference doesn't need that much precision — most weights end up rounded to nearby values anyway during forward passes. **Quantization** stores each weight in fewer bits.
+
+### Uniform post-training quantization
+
+The simplest scheme: clip the weight tensor to $[-w_{\max}, w_{\max}]$, divide into $2^b$ equal-width bins, replace each weight with the centre of its bin.
+
+$$
+q(w) = \text{round}\!\left(\frac{w}{\Delta}\right)\Delta, \qquad \Delta = \frac{2 w_{\max}}{2^b - 1}.
+$$
+
+At inference the integers are de-quantized on the fly (or kept in integer form for INT8 matmul). The memory savings are exact:
+
+| bits | levels | 7B-model memory |
+|---|---|---|
+| 32 (FP32) | 4.3 B | 26 GB |
+| 16 (FP16/BF16) | 65 K | 13 GB |
+| 8 (INT8) | 256 | 6.5 GB |
+| 4 (INT4 / NF4) | 16 | 3.5 GB |
+| 2 | 4 | 1.7 GB |
+
+<QuantizationViz />
+
+### Quantization-aware training (QAT)
+
+Post-training quantization (PTQ) just rounds the trained weights. **QAT** simulates the rounding *during* training: the forward pass uses quantized weights, the backward pass uses the **straight-through estimator** (the round is treated as the identity for gradients), so the optimiser learns weights that survive rounding. QAT recovers more accuracy than PTQ at very low bit-widths (≤ 4) but costs a full training run.
+
+### The accuracy/size trade-off
+
+Bit-width is the dial.
+
+- **INT8** is essentially free: < 1 % accuracy loss on most LLMs, half the memory of FP16.
+- **INT4** (especially with NF4 + double-quantization, as in QLoRA) loses a few points on the harder benchmarks. Still the sweet spot for consumer GPUs.
+- **INT2 / INT1** are research territory — usually only viable with QAT, knowledge distillation, or carefully chosen scales per layer.
+
+<Callout type="warning" title="QLoRA = quantization + LoRA">
+  QLoRA is the headline application: freeze the base in 4-bit NF4, attach full-precision LoRA adapters, train only the adapters. Memory is dominated by the 4-bit base, so a 65B model fine-tunes on a single 48 GB GPU. The adapters stay full precision because they're tiny and bear all the gradient.
+</Callout>
+
+## Common mistakes
+
+1. **Merging fine-tunes from different base models.** They live in different loss basins; the average is meaningless.
+2. **Using PTQ at INT2/INT1 without QAT.** Accuracy collapses. Either step up to INT4 or pay for QAT.
+3. **Treating quantization as a single global rounding.** Modern schemes quantize per-channel or per-block (NF4 uses 64-element blocks with their own scales), which protects outliers far better than one global scale.
+4. **Forgetting that activations also have precision.** Weight-only quantization is the easy case; activation quantization (W8A8, W4A8) adds calibration steps and clipping decisions.
+5. **Forgetting outliers.** A handful of huge-magnitude weights dominate the dynamic range. Methods like SmoothQuant or AWQ rescale activations to push the dynamic range back onto weights where quantization is easier.
+
+## Key takeaways
+
+- **Merging** combines fine-tunes that share a base by averaging weights, summing task vectors, or SLERPing — exploiting the linear mode connectivity of the shared loss basin.
+- **Task vectors** turn merging into an algebra: add a skill by adding its vector, remove a skill by subtracting it.
+- **Uniform post-training quantization** stores each weight in $b$ bits, mapping it to one of $2^b$ levels. Memory scales linearly with $b$.
+- **INT8 is almost free; INT4 is the QLoRA sweet spot; INT2** and below need QAT or distillation to stay usable.
+- **QAT** uses the straight-through estimator to learn rounding-robust weights at training time, recovering accuracy lost to aggressive PTQ.
+
+## Related concepts
+
+- [**PEFT: LoRA & QLoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — quantization powers the **Q** in QLoRA; this lesson explains the quantization scheme itself.
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — produces the checkpoints that get merged; quantization is applied after training.
+
+<Exercise id="quant-memory" />
+<Exercise id="quant-int4-vs-int8" />
+<Exercise id="merge-task-vector" />
