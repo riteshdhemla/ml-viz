@@ -118,7 +118,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **Bridge lesson in `reinforcement-learning`** — "From Policy Gradient to RLHF (PPO)" · concepts: policy gradient recap → PPO clip objective → RLHF as PPO on an LLM with a reward model · viz: *reuse `PolicyGradientViz`* · ~2 exercises · notebook · (append after current last lesson; keep any quiz last; recompute `estimatedHours`).
 
 ### Phase 3 — LLM internals & evaluation  *(integrate)*
-- [ ] **`transformers` + Foundation Models & Scaling** · concepts: pretraining objectives (causal LM), training data scale, scaling laws, context window, post-training overview · viz: **ScalingLawViz** (loss vs compute/params, log-log) · ~3 exercises · notebook.
+- [x] **`transformers` + Foundation Models & Scaling** · concepts: pretraining objectives (causal LM), training data scale, scaling laws, context window, post-training overview · viz: **ScalingLawViz** (loss vs compute/params, log-log) · ~3 exercises · notebook.
 - [ ] **`nlp` + LLM Model Taxonomy** · concepts: encoder-only (BERT) vs decoder-only (GPT) vs encoder-decoder (T5); what "large" means · viz: *reuse `TransformerBlockViz`* · ~3 exercises · notebook.
 - [ ] **`nlp` + Decoding & Sampling Strategies** · concepts: greedy, beam, temperature, top-k, top-p; determinism · viz: *reuse `SamplingViz`* · ~3 exercises · notebook.
 - [ ] **`nlp` + Topic Modeling (BERTopic)** · concepts: embed→reduce→cluster→c-TF-IDF labels · viz: *reuse `KMeansViz` or `PerplexityViz`* · ~3 exercises · notebook.

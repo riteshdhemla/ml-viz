@@ -1,0 +1,139 @@
+---
+title: "Foundation Models & Scaling Laws"
+description: "How GPT-class models are pretrained, the Chinchilla compute-optimal recipe, what the context window really costs, and where SFT/RLHF fits in."
+order: 5
+type: concept
+estimatedMinutes: 22
+---
+
+# Foundation Models & Scaling Laws
+
+A **foundation model** is a single, large, self-supervised model that is pretrained once on enormous amounts of text and then adapted — by prompting, retrieval, fine-tuning, or alignment — to thousands of downstream tasks. GPT-4-class systems, Claude, Gemini, and the open-weights Llama-3 family are all foundation models. They all share the same basic recipe: a decoder-only Transformer trained to predict the next token on a trillion-scale text corpus, followed by a post-training stage that turns the raw "internet autocomplete" into an instruction-following assistant.
+
+This lesson covers the part of the recipe that is **not** architecture: the **pretraining objective**, the **scale** at which it is done, the **scaling laws** that make that scale predictable, what the **context window** actually costs, and a short forward-link to **post-training** (SFT → RM → RLHF/DPO), which gets its own course.
+
+Real-world examples: GPT-4 / GPT-4o (OpenAI), Claude 3.5 Sonnet (Anthropic), Gemini 1.5 (Google DeepMind), Llama 3.1 (Meta, weights open), Mistral Large, and Qwen 2.5.
+
+## The pretraining objective: causal language modelling
+
+Every modern decoder-only LLM is pretrained with the same single objective: at every position, predict the next token given the prefix so far. The loss is the average **cross-entropy** of the model's predicted distribution against the true token:
+
+$$
+\mathcal{L}(\theta) = -\sum_{t=1}^{T} \log p_\theta(x_t \mid x_{<t})
+$$
+
+This is **causal language modelling** (CLM): position $t$ is allowed to attend only to positions $<t$. The causal mask in the decoder's self-attention is what enforces this — without it, the model could see token $x_t$ when predicting $x_t$ and the objective would collapse to "copy the answer". That information leak is the only thing preventing a degenerate solution.
+
+**Concrete loss value.** Cross-entropy is in nats per token. For a model whose predicted probability of the true next token is on average $0.18$, the per-token loss is $-\ln 0.18 \approx 1.71$ nats. A token-level loss of about $1.9$ on web text corresponds to a perplexity $e^{1.9} \approx 6.7$ — the model behaves as if it had to pick between 6–7 equally likely options at every step.
+
+**Why causal LM and not masked LM (BERT)?** Encoder-only models like BERT use a **masked language modelling** objective: replace 15 % of tokens with `[MASK]` and predict them from bidirectional context. That works great for embeddings and classification but is awkward for generation, because at inference time the model doesn't see masks — it has to produce tokens one at a time. Causal LM matches the inference pattern exactly: every training example is also a valid generation step. That alignment between training and inference is the deepest reason GPT-style models won the generative race.
+
+<Callout type="info" title="Why next-token prediction is enough">
+  Next-token prediction looks like a narrow objective, but it forces the model to learn syntax, world knowledge, arithmetic, code, reasoning chains, and dialogue conventions — because every one of those skills shows up somewhere in the training data, and you cannot predict the next token without modelling them. "Just predict the next token" turns out to be a remarkably general task.
+</Callout>
+
+## Training data scale: the trillion-token regime
+
+The training corpus for a frontier model is dominated by **web text** — Common Crawl, GitHub, books, papers, Wikipedia — heavily filtered and deduplicated. The unit of accounting is the **token** (sub-word piece). For reference:
+
+| Model | Parameters $N$ | Training tokens $D$ | $D / N$ ratio |
+|-------|----------------|---------------------|---------------|
+| GPT-3 (2020) | 175 B | 0.30 T | $\sim$1.7 |
+| Gopher (2021) | 280 B | 0.30 T | $\sim$1.1 |
+| Chinchilla (2022) | 70 B | 1.4 T | 20 |
+| Llama-3 8B (2024) | 8 B | 15 T | $\sim$1900 |
+| Llama-3 70B (2024) | 70 B | 15 T | $\sim$215 |
+
+Note how the $D/N$ ratio jumps after the Chinchilla paper showed that GPT-3 and Gopher were severely **under-trained** for their size. The current frontier ratios (hundreds, even thousands of tokens per parameter) are well **past** Chinchilla-optimal, deliberately so — extra tokens are cheap at inference time and over-trained models pay for themselves in lower serving cost.
+
+## Scaling laws: Kaplan and Chinchilla
+
+The empirical regularity that drives the whole field is that **loss is a smooth, predictable power-law function of model size, dataset size, and compute** — over many orders of magnitude.
+
+**Kaplan et al., 2020.** OpenAI's original scaling laws paper fit independent power laws in $N$ (parameters), $D$ (tokens), and $C$ (compute), each with diminishing returns:
+
+$$
+L(N) \approx \frac{A}{N^{\alpha}}, \qquad L(D) \approx \frac{B}{D^{\beta}}, \qquad L(C) \approx \frac{K}{C^{\gamma}}.
+$$
+
+Kaplan's recommendation was to **scale parameters faster than data** — i.e. spend most of a compute budget on bigger models. GPT-3 was sized accordingly.
+
+**Hoffmann et al. ("Chinchilla"), 2022.** A more careful joint fit gave a different recipe. The two-term form is:
+
+$$
+L(N, D) \approx \frac{A}{N^{\alpha}} + \frac{B}{D^{\beta}} + E
+$$
+
+with rough exponents $\alpha \approx 0.34$ and $\beta \approx 0.28$, and an **irreducible loss** $E$ that the data itself imposes (text has entropy you cannot model away). The key result is that under a fixed compute budget $C = 6 \cdot N \cdot D$ FLOPs, the **compute-optimal allocation** is
+
+$$
+D^* \approx 20 \cdot N^* \qquad \text{(equivalently } N^* = \sqrt{C/120},\; D^* = 20 N^*\text{)}.
+$$
+
+In words: spend roughly **twenty training tokens per parameter**. Earlier models were too big for their data budget. The "Chinchilla 70B" model trained on 1.4 T tokens out-performed the much larger Gopher 280B trained on 0.3 T at the same compute, vindicating the recipe.
+
+<Callout type="tip" title="Chinchilla in one line">
+  For a fixed compute budget, the loss is minimised when every parameter sees about **20 training tokens**. Bigger models train slower; smaller models with more data are cheaper to serve. Hence the modern preference for "over-trained" 8B/70B models with hundreds of tokens per parameter — the inference savings dwarf the small extra training cost.
+</Callout>
+
+<ScalingLawViz />
+
+**Why a sum of two power laws?** Each term in $L(N, D) = A/N^{\alpha} + B/D^{\beta} + E$ captures a separate bottleneck: $A/N^{\alpha}$ is the **model-capacity** floor (a tiny model cannot fit complex regularities no matter how much data you show it), $B/D^{\beta}$ is the **data** floor (you cannot learn what you have never seen), and $E$ is the **irreducible** noise. At any fixed $C$, the optimum balances the first two terms — and the algebra gives $D \propto N$ with the constant set by the exponents, which works out to $\approx 20$ for the fitted values.
+
+## The context window and what it really costs
+
+The **context window** is the maximum number of tokens $L$ the model can attend to in one forward pass. For vanilla self-attention, both compute and memory grow as
+
+$$
+\text{cost}(L) = O(L^2) \cdot d_{\text{model}}
+$$
+
+per layer — the score matrix $QK^\top$ is $L \times L$. Doubling the context quadruples the cost. For $L = 128{,}000$ tokens (Claude's standard window) this is $128{,}000^2 = 1.64 \times 10^{10}$ attention scores **per layer per head** — billions, in a single forward step.
+
+Two families of techniques attack this:
+
+1. **Memory-efficient exact attention** — [FlashAttention](/courses/transformers/04-modern-attention) tiles the computation so the full $L \times L$ matrix is never written to HBM. Compute is still $O(L^2)$, but the memory wall is broken and wall-clock time drops 2–4×.
+2. **Sub-quadratic approximations** — sliding-window attention, sparse global tokens (Longformer, BigBird), and linear-attention variants (Mamba/SSMs, Linformer) all trade some quality for asymptotically lower cost. These are how 1 M-token and 10 M-token windows are achieved in practice.
+
+A third axis is **position generalisation**. RoPE-style positional encodings, with techniques such as YaRN, NTK-aware scaling, or position-interpolation, let a model trained at 4 K tokens be extended to 32 K or 128 K with only light fine-tuning. Without such tricks the model's positional understanding simply degrades past its training length.
+
+<Callout type="warning" title="What 'context window' really costs">
+  A "1 M-token context" headline does not mean attention is free at that length — it means the engineering team paid the $O(L^2)$ cost with FlashAttention plus sparse/linear approximations, plus a position-encoding trick to keep the embeddings sane. Quality on long-context tasks degrades smoothly with $L$ and is best measured directly (needle-in-a-haystack, long-doc QA), not assumed from the advertised window.
+</Callout>
+
+## Post-training, in one paragraph
+
+A freshly pretrained model is a fluent **autocomplete** — it produces plausible web text. Turning it into an assistant requires three short additional training phases, collectively called **post-training** (or **alignment**):
+
+1. **Supervised Fine-Tuning (SFT)** on curated `(prompt, response)` pairs teaches the model the *shape* of a helpful answer — see [Supervised Fine-Tuning](/courses/fine-tuning-alignment/01-supervised-fine-tuning).
+2. **Reward Modelling (RM)** trains a separate scalar head on pairwise preferences (chosen vs rejected responses).
+3. **Preference optimisation** — classical [RLHF with PPO](/courses/fine-tuning-alignment/04-rlhf-and-dpo) (uses the reward model + a KL leash) or **DPO** (a closed-form, RM-free alternative).
+
+Post-training uses orders of magnitude less compute than pretraining — typically a few percent — but is responsible for the dramatic quality jump from "raw GPT-3 base model" to "ChatGPT". It is also where most of the visible behavioural differences between frontier models live; the underlying pretrained Transformers are remarkably similar.
+
+## Common mistakes
+
+1. **Treating $D/N$ as a hyperparameter to tune by intuition.** It is not — Chinchilla's $D \approx 20\,N$ is an empirical optimum under a *fixed compute* constraint. If you instead fix *inference cost*, you should deliberately **over-train** (more tokens per parameter) because cheap inference is worth the extra training tokens.
+2. **Confusing parameters with FLOPs.** Compute is roughly $C \approx 6 \cdot N \cdot D$ for a dense Transformer (forward + backward + activations). A "1 T-parameter MoE" with only 100 B active per token uses much less compute than its parameter count suggests.
+3. **Reading scaling laws as deterministic forecasts.** They predict loss within a regime; capability "jumps" on downstream benchmarks at certain scales are not captured by smooth power laws.
+4. **Assuming bigger context = better.** Attention quality on long contexts is a separate empirical question; a 128 K window doesn't mean uniform recall across all 128 K tokens.
+5. **Skipping the irreducible loss $E$.** It is real and non-zero. Power-law fits that omit it predict zero loss at infinite scale, which is nonsense — text has finite intrinsic entropy.
+
+## Key takeaways
+
+- **Causal language modelling** (next-token cross-entropy with a triangular mask) is the universal pretraining objective for modern LLMs; it matches inference exactly and forces the model to learn everything a generator needs.
+- **Training data scale** is now in the **trillions of tokens**; modern open models train at hundreds to thousands of tokens per parameter — well past Chinchilla-optimal, on purpose, to make inference cheap.
+- **Chinchilla scaling law:** $L(N, D) = A/N^{\alpha} + B/D^{\beta} + E$ with $\alpha \approx 0.34$, $\beta \approx 0.28$. The compute-optimal recipe is $D^* \approx 20\,N^*$, with $N^* = \sqrt{C/120}$ for budget $C = 6ND$ FLOPs.
+- **Context window** costs $O(L^2)$ for vanilla attention; FlashAttention removes the memory wall, sparse and linear variants reduce the compute, and RoPE-scaling tricks extend trained windows.
+- **Post-training** (SFT → RM → RLHF or DPO) is the small but decisive stage that turns a pretrained autocomplete into a usable assistant — covered in the Fine-Tuning & Alignment course.
+
+## Related concepts
+
+- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the decoder-only design every foundation model is built from
+- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention) — FlashAttention and sliding-window patterns that make large context windows tractable
+- [**Supervised Fine-Tuning & Instruction Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the first post-training step that turns a base model into an instruction follower
+- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the alignment step that gives modern assistants their voice
+
+<Exercise id="scaling-chinchilla-recipe" />
+<Exercise id="scaling-context-window-cost" />
+<Exercise id="scaling-compute-budget-optimal" />
