@@ -5634,6 +5634,52 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Top-p was applied implicitly during the second call", isCorrect: false },
     ],
   },
+  // ── NLP — Topic Modeling (BERTopic) ────────────────────────────
+  {
+    id: "bertopic-pipeline-order",
+    type: "multiple-choice",
+    question:
+      "BERTopic is a four-stage pipeline. Which ordering of the stages is correct?",
+    hint: "You can't cluster well in 768 dimensions, and you can't label clusters until they exist.",
+    explanation:
+      "The pipeline is **embed → reduce → cluster → label**. (1) Sentence-BERT turns each document into a 384- or 768-dimensional vector. (2) UMAP projects those vectors down to roughly 5 dimensions so density-based clustering is meaningful — pairwise distances concentrate in high $d$, and HDBSCAN would otherwise return one giant cluster plus noise. (3) HDBSCAN (or KMeans if you need a fixed $K$) discovers the clusters. (4) Class-based TF-IDF treats each cluster as one super-document and ranks terms by how distinctively they appear in that cluster, giving each cluster its top-$k$ label words. Reversing reduce and cluster breaks density estimation; running c-TF-IDF before clustering is incoherent because there are no clusters to label.",
+    options: [
+      { id: "a", label: "cluster → embed → reduce → label", isCorrect: false },
+      { id: "b", label: "embed → cluster → reduce → label", isCorrect: false },
+      { id: "c", label: "embed → reduce → cluster → label", isCorrect: true },
+      { id: "d", label: "embed → reduce → label → cluster", isCorrect: false },
+    ],
+  },
+  {
+    id: "bertopic-c-tfidf",
+    type: "multiple-choice",
+    question:
+      "Why does BERTopic use class-based TF-IDF (c-TF-IDF) for topic labels instead of vanilla per-document TF-IDF?",
+    hint: "What axis do you actually want the IDF term computed across?",
+    explanation:
+      "Vanilla TF-IDF asks: 'which terms distinguish this *document* from all other documents?'. That's the wrong axis for labelling topics — every document's top terms would be its own idiosyncratic vocabulary, not the topic's. c-TF-IDF concatenates all documents in a cluster into one 'super-document', then computes TF-IDF across the clusters. The result ranks terms by how distinctively they appear in one cluster versus the rest, which is exactly the question 'what is this topic about?'. The factor $\\log(1 + \\bar{f} / f_t)$ down-weights words that appear in many clusters (like `the`), even when their per-cluster term frequency is huge. The trick is which axis the IDF term runs across, not the math itself.",
+    options: [
+      { id: "a", label: "c-TF-IDF is faster to compute than vanilla TF-IDF on large corpora", isCorrect: false },
+      { id: "b", label: "It computes the IDF term across *clusters* instead of across documents, so the top terms describe the cluster as a whole rather than individual documents", isCorrect: true },
+      { id: "c", label: "It is the only TF-IDF variant that handles stopwords without an explicit stopword list", isCorrect: false },
+      { id: "d", label: "It requires no term frequency counts, only embeddings", isCorrect: false },
+    ],
+  },
+  {
+    id: "bertopic-vs-lda",
+    type: "multiple-choice",
+    question:
+      "You have 30 000 short customer-support tickets (average length: 25 words) and need to discover the emergent themes. Which approach is structurally a better fit, and why?",
+    hint: "What does LDA need that 25-word tickets don't provide much of?",
+    explanation:
+      "LDA learns topics from word co-occurrence in a bag-of-words representation, and it assumes each document is a Dirichlet mixture over *all* topics. Both assumptions break on short tickets: 25 words give very little co-occurrence signal, and most tickets are about one thing, not a mixture. BERTopic uses sentence embeddings, so semantically similar tickets sit near each other in embedding space even when they share no surface vocabulary ('can't log in' / 'login fails'). It then assigns each document to one cluster (or marks it as noise via HDBSCAN), which matches the actual structure of short text. LDA is still competitive on long documents like Wikipedia articles, but on short noisy text BERTopic wins on essentially every quality metric a human cares about.",
+    options: [
+      { id: "a", label: "LDA — its Bayesian generative model is more principled and short tickets are easy to model with bag-of-words", isCorrect: false },
+      { id: "b", label: "BERTopic — sentence embeddings recover semantic similarity even with no vocabulary overlap, and the one-topic-per-document assumption matches short tickets", isCorrect: true },
+      { id: "c", label: "Neither — topic modeling does not work on documents shorter than 100 words", isCorrect: false },
+      { id: "d", label: "BERTopic — but only because it is faster, not because its topics are higher quality", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

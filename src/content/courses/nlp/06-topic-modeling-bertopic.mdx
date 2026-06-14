@@ -1,0 +1,129 @@
+---
+title: "Topic Modeling with BERTopic"
+description: "How modern topic modeling actually works — embed each document, reduce to a few dimensions, cluster, then label clusters with class-based TF-IDF. The four-stage pipeline that replaced LDA for most production text-mining workloads."
+order: 6
+type: concept
+estimatedMinutes: 20
+---
+
+# Topic Modeling with BERTopic
+
+You have a pile of unlabelled text — 50 000 customer-support tickets, a year of product reviews, ten thousand scientific abstracts — and the question is "what are these about?". Classical topic models like LDA answer that question with a hand-tuned Bayesian model over bag-of-words counts. **BERTopic** answers it with a simple four-stage pipeline that swaps in sentence embeddings, off-the-shelf dimensionality reduction, density-based clustering, and a small twist on TF-IDF. It is the modern default not because the math is novel, but because each stage is now plug-and-play strong.
+
+Real-world examples: analysing **support tickets** to surface emergent themes that aren't in the routing taxonomy yet; clustering **product reviews** to find latent quality issues per category; grouping **scientific abstracts** to map the structure of a research field; segmenting **news corpora** by event rather than by section; powering **BERTopic-based market-research and survey** tools that turn open-ended free-text answers into a readable, ranked list of topics with example documents per topic.
+
+We've already built the components in earlier courses — [sentence embeddings](/courses/building-with-llms/03-embeddings-and-semantic-search), [k-means clustering](/courses/clustering/01-k-means), [UMAP-style nonlinear reduction](/courses/pca-dimensionality/02-t-sne-and-umap), and the BERT-family encoders in [LLM Model Taxonomy](/courses/nlp/04-llm-model-taxonomy). This lesson is the assembly: how those four pieces wire together into a topic model, and what to use when.
+
+## The pipeline in one diagram
+
+BERTopic has four named stages, in strict order. Each stage is replaceable; the pipeline is the contribution.
+
+1. **Embed** each document into a dense vector.
+2. **Reduce** the embedding space to $\approx 5$ dimensions.
+3. **Cluster** the reduced space into topics.
+4. **Label** each cluster with class-based TF-IDF.
+
+The decoupling matters: you can swap a multilingual encoder for the English one, switch HDBSCAN for KMeans if you want a fixed $K$, and replace c-TF-IDF with KeyBERT-style labels — all without touching the other stages.
+
+## Stage 1 · Embed
+
+Encode every document with a **Sentence-BERT** model (or any modern sentence encoder — `all-MiniLM-L6-v2`, `bge-small`, `e5`, OpenAI's `text-embedding-3-small`, etc.). Each document becomes a fixed-size vector $\mathbf{x} \in \mathbb{R}^d$, where $d$ is typically 384 or 768. The corpus is an $n \times d$ dense matrix.
+
+Sentence embeddings encode meaning, not surface form: "*I can't log in to my account*" and "*Login keeps failing*" sit next to each other in embedding space even though they share almost no tokens. That semantic similarity is the whole reason BERTopic outperforms bag-of-words topic models on short, noisy text where vocabulary overlap is sparse.
+
+## Stage 2 · Reduce
+
+You cannot cluster well in 768 dimensions. The **curse of dimensionality** bites hard: pairwise distances concentrate (everything becomes "kind of similar to everything else"), density-based clustering algorithms lose discriminative power, and runtime explodes. BERTopic projects each embedding down to roughly **5 dimensions** with **UMAP** (or PCA, or t-SNE — UMAP is the default because it preserves local *and* global structure and scales linearly).
+
+<Callout type="info" title="Why embed → reduce → cluster works">
+Sentence embeddings are dense and high-dimensional precisely so they can encode many semantic axes. But density-based clustering needs a space where "near" actually means "the same topic". A 5D UMAP projection of a 768D semantic space is the sweet spot: enough room to separate topics, few enough dimensions for density to be meaningful. Skip the reduce step and HDBSCAN will return one giant cluster plus noise.
+</Callout>
+
+The UMAP projection is also useful for **inspection**: a 2D version of the same reduction produces the scatter plot you see on every BERTopic demo — clusters of related documents visibly separated in the plane. That visualisation is purely diagnostic; clustering runs on the 5D version. The trade-off is detailed in [t-SNE & UMAP](/courses/pca-dimensionality/02-t-sne-and-umap).
+
+## Stage 3 · Cluster
+
+Run **HDBSCAN** on the reduced embeddings. HDBSCAN is hierarchical density-based clustering: it builds a tree of clusters by varying the density threshold, then picks the most stable level. It has two properties that matter here:
+
+- It does **not** require you to specify $K$. The number of topics is discovered.
+- It explicitly emits a **noise class** (label `-1`) for documents that don't fit any topic well — a feature, not a bug. Without a noise class, every misfit document gets shoved into the nearest topic and pollutes its label.
+
+Alternatively, you can use **KMeans** if you want a fixed $K$ topics or if your downstream system requires that every document be assigned to *some* topic. KMeans is also a natural fit when topics are roughly equal-sized and round; HDBSCAN dominates when topics have very different sizes or odd shapes.
+
+<KMeansViz />
+
+<Callout type="tip" title="HDBSCAN vs KMeans for topics">
+HDBSCAN finds variable-density topics and is happy to leave noisy documents unassigned. KMeans forces every document into one of $K$ topics. For "what themes are in this corpus?" — HDBSCAN. For "split these 100 000 docs into exactly 20 buckets for routing" — KMeans. The visualisation above is the KMeans branch: notice how the means snap to the centres of dense regions exactly the way a topic centroid does.
+</Callout>
+
+## Stage 4 · Label with class-based TF-IDF
+
+The clusters are sets of documents. What turns them into *topics* is a one-line-per-cluster label — typically the top-5 words that best characterise each cluster. BERTopic's label step is a small twist on TF-IDF: instead of computing TF-IDF per document, compute it **per class**. Concatenate every document in cluster $c$ into a single "super-document", then run TF-IDF *across the clusters*.
+
+The c-TF-IDF score for term $t$ in class $c$ is:
+
+$$
+\text{c-TFIDF}(t, c) \;=\; \mathrm{tf}_{t,c} \cdot \log\!\left(1 + \frac{\bar{f}}{f_t}\right)
+$$
+
+where $\mathrm{tf}_{t,c}$ is the term frequency of $t$ inside class $c$'s super-document, $f_t$ is the total frequency of $t$ across the entire corpus, and $\bar{f}$ is the average number of words per class. The $\log(1 + \bar{f}/f_t)$ factor down-weights terms that appear in many classes (the c-TF-IDF analogue of IDF) and the $+1$ keeps the score non-negative even for very common words.
+
+**Vanilla TF-IDF** ranks terms that distinguish one *document* from the rest. **c-TF-IDF** ranks terms that distinguish one *cluster* from the rest. That single change is what makes the resulting labels read like topic names — `refund`, `delivery`, `defective` — rather than per-document noise.
+
+The label for cluster $c$ is the top-$k$ terms by c-TF-IDF score, typically $k = 5$ or $10$. You can post-process (lowercase, deduplicate, strip stopwords, optionally re-rank with a small LM like KeyBERT for fluency) but the c-TF-IDF ranking is the load-bearing step.
+
+## Worked example: a tiny toy corpus
+
+Imagine 30 short tickets that fall into three obvious topics: billing, shipping, and product quality. After Stages 1–3 you have three clusters of ten documents each. Compute the term frequencies inside each cluster's super-document:
+
+| term | cluster 0 (billing) tf | cluster 1 (shipping) tf | cluster 2 (quality) tf | total $f_t$ |
+|------|--:|--:|--:|--:|
+| refund | 18 | 1 | 2 | 21 |
+| invoice | 12 | 0 | 0 | 12 |
+| delivery | 0 | 16 | 1 | 17 |
+| tracking | 1 | 14 | 0 | 15 |
+| broken | 0 | 2 | 19 | 21 |
+| defective | 0 | 0 | 11 | 11 |
+| the | 60 | 65 | 58 | 183 |
+
+Roughly, $\bar{f}$ (average words per class) is on the order of a few hundred. Plug into the formula and the top scores per cluster fall out as expected: cluster 0 → `refund`, `invoice`; cluster 1 → `delivery`, `tracking`; cluster 2 → `defective`, `broken`. The word `the` appears with huge $\mathrm{tf}$ in every cluster, but its $\log(1 + \bar{f}/f_t)$ collapses to near zero, so it never makes the top-$k$. That is the IDF analogue doing its job at the cluster level.
+
+## How does this compare to LDA?
+
+**Latent Dirichlet Allocation** is the classical topic model: each document is a Dirichlet-distributed mixture over topics, each topic is a Dirichlet-distributed distribution over words, and you fit the posterior with variational inference or collapsed Gibbs sampling. It is mathematically beautiful and was state-of-the-art for over a decade.
+
+It also has three structural weaknesses that BERTopic sidesteps:
+
+- **Bag-of-words only.** LDA throws away word order, sentence structure, and any semantics not captured by co-occurrence statistics. Short, noisy texts (tweets, tickets, reviews) have too little co-occurrence signal for LDA to recover topics.
+- **Mixture-per-document assumption.** LDA assumes every document is a mixture over *all* topics. Most short documents are about one thing.
+- **Hard to tune.** Number of topics $K$, $\alpha$ and $\beta$ Dirichlet priors, vocabulary pruning, stopword removal — all materially change the output. BERTopic moves most of those knobs into well-understood stages (cluster size, min/max df) instead.
+
+BERTopic gives up LDA's generative-model interpretability — there is no posterior, no per-document topic distribution by default — and in return gets dramatically better topic quality on real-world short text. For a corpus of 10 000 tweets, BERTopic usually wins on every metric a human cares about; for a corpus of 200 long Wikipedia articles, LDA can still be competitive.
+
+## Common mistakes
+
+1. **Clustering in the raw 768D embedding space.** Density estimates are unreliable at $d \gtrsim 50$, and HDBSCAN will return one giant cluster plus noise. Always reduce to $\approx 5$D first.
+2. **Demanding $K$ topics with HDBSCAN.** HDBSCAN discovers topics; if you have a hard $K$ requirement, switch to KMeans or post-merge HDBSCAN clusters.
+3. **Treating the noise class as a bug.** Documents labelled $-1$ by HDBSCAN are the ones the model is least confident about. They are useful data — surface them as "uncategorised" rather than force-assigning to the nearest cluster.
+4. **Using vanilla TF-IDF for labels.** It ranks terms within a document, not across clusters; the top words will be document-specific noise. The whole point of c-TF-IDF is the *class* axis.
+5. **Comparing BERTopic to LDA on long, semantically dense documents.** Both perform well; the BERTopic advantage shrinks. Where BERTopic dominates is short text with sparse vocabulary overlap.
+6. **Skipping the UMAP visualisation during development.** The 2D projection is the cheapest sanity check that your embeddings are separating the topics you think they are. Always plot it once before clustering.
+
+## Key takeaways
+
+- BERTopic is a four-stage pipeline: **embed** (Sentence-BERT) → **reduce** (UMAP to $\approx 5$D) → **cluster** (HDBSCAN by default, KMeans as a fixed-$K$ alternative) → **label** (class-based TF-IDF).
+- The reduce stage exists because density-based clustering breaks in high dimensions. Don't skip it.
+- HDBSCAN discovers the number of topics and explicitly marks unclusterable documents as noise; KMeans forces a fixed $K$ and assigns every document. Pick by use case.
+- **c-TF-IDF** is the load-bearing label step: treat each cluster as one "super-document" and compute TF-IDF across clusters. The top terms per cluster become the topic label.
+- Compared to LDA, BERTopic uses semantic embeddings instead of bag-of-words, makes a one-topic-per-document assumption that fits short text better, and exposes fewer knobs that have to be tuned in concert.
+
+## Related concepts
+
+- [**K-Means**](/courses/clustering/01-k-means) — the alternative clusterer when you need a fixed number of topics; the on-page viz above is exactly this algorithm
+- [**t-SNE & UMAP**](/courses/pca-dimensionality/02-t-sne-and-umap) — the dimensionality reduction that makes Stage 2 work
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the same Sentence-BERT family that powers Stage 1
+- [**LLM Model Taxonomy**](/courses/nlp/04-llm-model-taxonomy) — encoder-only models are what produce the sentence embeddings; this is where they sit in the family tree
+
+<Exercise id="bertopic-pipeline-order" />
+<Exercise id="bertopic-c-tfidf" />
+<Exercise id="bertopic-vs-lda" />
