@@ -1,0 +1,92 @@
+---
+title: "Prompt Engineering & In-Context Learning"
+description: "How a frozen model adapts to your task from the prompt alone — zero/few-shot, the anatomy of a prompt, and the decoding knobs that shape every answer."
+order: 1
+type: concept
+estimatedMinutes: 18
+---
+
+# Prompt Engineering & In-Context Learning
+
+A pretrained LLM has fixed weights — yet it can do thousands of tasks it was never explicitly trained for. The trick is **in-context learning**: the model treats your prompt as a worked specification and continues it. Prompt engineering is the craft of writing that specification so the model's *next-token* distribution lands on the answer you want.
+
+**Real-world examples:** customer-support classification, data extraction, drafting and rewriting, code generation, "chat with your data" assistants.
+
+## Zero-shot, few-shot, and in-context learning
+
+The cheapest way to steer a model is to show it what you want — in the prompt, with **no weight updates**.
+
+- **Zero-shot**: describe the task in words. *"Classify the sentiment as positive, negative, or neutral: '...'."*
+- **Few-shot**: prepend a handful of labeled examples. The model infers the pattern (label set, format, edge cases) and applies it to the new input.
+
+<Callout type="tip" title="Why few-shot works">
+  The model isn't learning new weights — it's pattern-matching within the context window. A few examples pin down decisions that prose struggles to convey: your exact label boundaries, the output format, how to handle ambiguity. This is **in-context learning**.
+</Callout>
+
+```text
+Classify the ticket. Categories: billing, bug, feature_request.
+
+Ticket: "I was charged twice this month."      → billing
+Ticket: "The export button does nothing."       → bug
+Ticket: "Can you add dark mode?"                 → feature_request
+Ticket: "My invoice total looks wrong."          →            ← model completes: billing
+```
+
+## The anatomy of a prompt
+
+Most production prompts are assembled from reusable parts:
+
+| Ingredient | Role |
+|---|---|
+| **System prompt** | persona, rules, tone, safety constraints |
+| **Instruction** | the specific task to perform |
+| **Context** | retrieved documents, prior turns, data to operate on |
+| **Examples** | few-shot demonstrations |
+| **Input** | the actual user query |
+| **Output cue** | a format hint, e.g. `Answer (JSON):` |
+
+The skill is ordering and delimiting these so the model never confuses *instructions* with *data* (a theme we return to in [AI-Engineering Architecture](/courses/building-with-llms/06-ai-engineering-architecture) when we discuss prompt injection).
+
+## Decoding: the knobs behind every answer
+
+The model outputs a probability distribution over the next token; **decoding** turns that distribution into actual text. Two knobs dominate:
+
+- **Temperature** $T$ rescales the logits before softmax: $p_i = \mathrm{softmax}(z_i / T)$. Low $T$ sharpens the distribution toward the top token (deterministic, "greedy"); high $T$ flattens it (diverse, "creative").
+- **Top-p (nucleus) sampling** keeps only the smallest set of tokens whose probabilities sum to $p$, discards the long tail, and renormalises — so implausible tokens can never be sampled.
+
+<SamplingViz />
+
+<Callout type="info" title="Picking settings">
+  Extraction, classification, code → **temperature ≈ 0** (reproducible). Brainstorming, copywriting → higher temperature with top-p ≈ 0.9. When you need the *same* answer every time, low temperature matters more than any prompt wording.
+</Callout>
+
+## Practical prompting tactics
+
+1. **Be explicit.** State the format, the allowed labels, and what to do when unsure.
+2. **Show, don't just tell.** One good example often beats a paragraph of rules.
+3. **Separate instructions from data** with clear delimiters (e.g. triple backticks).
+4. **Give the model room** for hard tasks — ask it to reason step by step ([next lesson](/courses/building-with-llms/02-chain-of-thought)).
+5. **Iterate against a small eval set**, not vibes — measure accuracy on 20–50 held-out cases.
+
+## Common mistakes
+
+1. **Cramming instructions and untrusted text together** — the model can't tell a command from content.
+2. **High temperature on a task that needs one right answer** — non-reproducible bugs.
+3. **Few-shot examples that leak the wrong format** — the model copies your formatting mistakes faithfully.
+4. **Tuning prompts on a single example** — looks great, generalises poorly.
+
+## Key takeaways
+
+- In-context learning lets a **frozen** model adapt from the prompt alone — zero-shot or few-shot.
+- A prompt is assembled from system / instruction / context / examples / input parts; keep instructions and data separate.
+- **Temperature** and **top-p** shape the next-token distribution: low for deterministic tasks, higher for creative ones.
+- Iterate prompts against a small eval set.
+
+## Related concepts
+
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — getting the model to reason and to emit parseable output
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the mechanism that reads the whole prompt at once
+
+<Exercise id="llm-zero-vs-few-shot" />
+<Exercise id="llm-temperature" />
+<Exercise id="llm-nucleus-sampling" />
