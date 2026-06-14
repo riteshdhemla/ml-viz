@@ -1,0 +1,156 @@
+---
+title: "Data Engineering Fundamentals"
+description: "Where ML data actually comes from and how it is stored: row vs column formats, OLTP vs OLAP, ETL vs ELT, and batch vs streaming pipelines."
+order: 5
+type: concept
+estimatedMinutes: 20
+---
+
+# Data Engineering Fundamentals
+
+Most "model not working" incidents in production are not model bugs. They are data bugs: a feature pipeline silently dropped 12% of rows yesterday, the warehouse schema changed under a job, the streaming consumer is six hours behind, or training read a row-oriented dump when it should have read a column-oriented one and took eight hours instead of fifteen minutes. This lesson is a tour of the data layer your model sits on top of — sources, storage formats, transactional vs analytical stores, ETL vs ELT, and batch vs streaming — through the lens of an ML engineer who needs the right bytes at the right time.
+
+Real-world examples: Snowflake and BigQuery as columnar OLAP warehouses where training data is queried; Postgres and MySQL as row-oriented OLTP stores backing the live product; Parquet files on S3 as the standard ML training format; Kafka and Kinesis as streaming logs of events; Airflow and dbt orchestrating batch ETL jobs; Flink and Spark Structured Streaming for stateful stream processing; Snowflake, Iceberg, and Delta Lake as the "lakehouse" tables that try to unify warehouse and lake.
+
+## Where ML data actually comes from
+
+A production model sees data from four broad sources, and they behave differently:
+
+- **User-generated.** Clicks, views, scrolls, form submissions, ratings, chat messages. Volume is high, freshness matters (your recommender is reading events from minutes ago), and the schema drifts whenever the product team renames a button.
+- **System-generated.** Server logs, request traces, application metrics, model inference logs. Volume is huge, the schema is structured but verbose, and the data is usually trustworthy — the system has no incentive to lie about its own behaviour.
+- **Third-party.** Vendor APIs, partner feeds, public datasets, scraped sources. Freshness and completeness are now *their* property, not yours. A 500 from the vendor at 03:00 becomes a missing-feature gap in your training set at 04:00.
+- **Internal databases.** The transactional store behind the product: users, orders, subscriptions, inventory. This is your *source of truth* for business state, but it is optimised for the live app, not for training reads, so you copy it into the warehouse first.
+
+Each source carries different freshness, completeness, and governance constraints. A well-designed ML pipeline knows which of its features come from which source and how each one fails — because they fail differently and the monitoring you need is not the same.
+
+## Storage formats: row vs column
+
+The same logical table — `events(user_id, item_id, ts, action, country, device, …)` — can be stored on disk in two fundamentally different ways. The choice is the difference between a query that takes 30 seconds and one that takes 30 minutes.
+
+### Row-oriented storage
+
+Every record's fields are stored together, contiguous on disk. Reading a single row is one seek. Updating a single row is one read + one write. The classics — CSV, JSON-lines, Avro, and the row groups inside Parquet at the byte level — are row-oriented. Postgres and MySQL store their primary heap files in row-major order.
+
+- **Fast.** Point lookups (`WHERE user_id = 42`), single-row updates, full-record reads, serialisation for transport.
+- **Slow.** Column scans (`SELECT AVG(price) FROM orders`), aggregations across millions of rows on a few columns, predicate push-down on one column.
+- **Lives at.** Transactional databases (Postgres, MySQL, DynamoDB), event logs (raw Kafka payloads), single-record APIs.
+
+### Column-oriented storage
+
+Each column's values are stored together, contiguous on disk. Reading one column from a billion-row table reads only that column's bytes. Compression is much better because adjacent values in a column are usually correlated and share a dictionary. Parquet, ORC, and the in-memory layout of Apache Arrow are columnar.
+
+- **Fast.** Aggregations on a few columns, scans with predicates that prune column chunks ("predicate push-down"), columnar compression (10x–30x smaller files), vectorised CPU execution.
+- **Slow.** Single-row updates (rewrites the column chunk), point lookups, mutation-heavy workloads.
+- **Lives at.** Data warehouses (Snowflake, BigQuery, Redshift), data lakes (Parquet on S3), in-memory analytics (Arrow, DuckDB), ML training data.
+
+### Worked example: the 2% read
+
+You have a 100-million-row events table with 10 columns of roughly equal width. Your training job needs only two columns — `user_id` and `ts` — to build session features. What does each layout read off disk?
+
+- **Row store.** Every row is laid out as 10 fields side-by-side. To get *any* two columns you must read *every* row in full, then project two columns in memory. Bytes read: $100\text{M rows} \times 10 \text{ cols} = 1{,}000\text{M field-reads}$ — call it ~100% of the file.
+- **Column store.** Each column is a separate run on disk. You read the `user_id` chunk and the `ts` chunk and skip the other eight. Bytes read: $100\text{M rows} \times 2 \text{ cols} = 200\text{M field-reads}$ — about 20% of the field-reads, and after columnar compression more like **2% of the on-disk bytes** for typical telemetry columns.
+
+This is the single most important reason ML training pipelines store features in Parquet on S3 instead of CSV. A 50x reduction in disk I/O is a 50x reduction in training-data-load time on the same hardware.
+
+<Callout type="tip" title="Why column stores dominate ML training">
+ML training workloads are *the* archetypal columnar workload: scan billions of rows, project a small set of columns, aggregate or shuffle, repeat for many epochs. The disk pattern is exactly what Parquet, ORC, and warehouses are built for. The day a team switches their training reads from CSV to Parquet is usually the day their epochs go from hours to minutes. The flip side: if your workload is single-row updates (a CRUD app), columnar is the wrong tool — every update rewrites a chunk and write throughput collapses.
+</Callout>
+
+## OLTP vs OLAP
+
+The row/column split corresponds to two distinct data-system *purposes*. They are usually different machines, different databases, often different teams.
+
+**OLTP — Online Transaction Processing.** The system of record for the live product. Many small writes and reads against individual rows, ACID guarantees so a payment is never half-charged, normalised relational schemas, latency in milliseconds, sharded for write throughput. Postgres, MySQL, DynamoDB, Spanner. Optimised so a `BEGIN; UPDATE … WHERE id = 42; COMMIT;` is fast and safe.
+
+**OLAP — Online Analytical Processing.** The system you query for analytics, reporting, dashboards, and ML training. Big scans across many rows, denormalised star or wide-table schemas, latency from sub-second to seconds (occasionally minutes), partitioned by date. Snowflake, BigQuery, Redshift, Databricks SQL. Optimised so `SELECT country, SUM(revenue) FROM orders GROUP BY country` on a billion rows comes back before you lose attention.
+
+Real systems separate the two: the OLTP store powers the app, a Change Data Capture (CDC) or batch dump replicates the data into the OLAP warehouse, and analytics and ML read from the warehouse. The separation is intentional — running a heavy `GROUP BY` against the live OLTP store can block the checkout path and take down the product.
+
+**The HTAP middle ground.** A newer class of systems tries to serve both workloads on one engine: ClickHouse for log-scale analytics with low-latency ingest, Apache Druid and Pinot for real-time dashboards, TiDB and SingleStore as "Hybrid Transactional/Analytical" databases. They genuinely work for "operational analytics" use cases (a fraud team needs sub-second analytics over the last 5 minutes of events) but they are not a drop-in replacement for either Postgres or Snowflake at the extremes of their respective workloads.
+
+## ETL vs ELT
+
+Once data exists in source systems, *something* has to move it into the place where models train and analytics happen. Two architectural choices:
+
+**ETL — Extract, Transform, Load.** Pull data out of the source, run cleaning / joining / aggregation in a staging system (Spark, Python, a transformation server), then load the *transformed* result into the warehouse. The classic 2000s-era pipeline. Works well when the warehouse is expensive and inelastic, and when the schema is well-known up front.
+
+**ELT — Extract, Load, Transform.** Pull data out of the source, load it *raw* into the warehouse, then transform in-warehouse with SQL — typically using dbt. The modern default. It became the default because the warehouses themselves (Snowflake, BigQuery) are now cheap to scale and great at SQL, so the cheapest place to do the transform is also the place the data already lives.
+
+Why ELT won for analytics:
+
+- **Reproducibility.** Raw data sits untouched in the warehouse forever. A bug in the transform is a query-rewrite, not a data-loss event.
+- **Discoverability.** Analysts can find the same raw tables and write their own transforms instead of waiting for an ETL ticket.
+- **Cost.** Elastic warehouses scale transform compute to the workload; standing up a separate transform cluster was the most expensive part of ETL.
+
+ETL still wins when the raw data is sensitive (PII you cannot load even to a private warehouse), when you must transform inside the source for compliance, or when the transform requires non-SQL tools (computer vision preprocessing, custom Python).
+
+## Batch vs streaming
+
+Pipelines run in one of two regimes. ML training reads from one; production feature serving usually reads from both.
+
+### Batch
+
+A scheduled job runs over a bounded chunk of data (a day, an hour, a partition) and writes a bounded output. Airflow, Dagster, and Prefect orchestrate the DAG of jobs; Spark, Trino, dbt, and BigQuery do the work.
+
+- **Latency.** Minutes to hours. Yesterday's training data is ready when this morning's training job runs.
+- **Throughput.** High. Reading a partition of Parquet is the cheapest read possible.
+- **Reproducibility.** Strong. The same job over the same partition with the same code produces the same output.
+- **Failure mode.** A failed job blocks downstream jobs but does not corrupt the data — the next retry re-derives the partition.
+
+### Streaming
+
+A long-lived process consumes events from a log (Kafka, Kinesis, Pulsar) and emits derived events or updates state continuously. Flink, Spark Structured Streaming, and Kafka Streams are the runtimes. Latency drops from hours to milliseconds; the price you pay is everything else.
+
+- **Event-time vs processing-time.** An event happened at 12:00:00 but arrived at the consumer at 12:00:08. *Event-time* semantics put the event in the 12:00 window regardless of when it arrived. Implementing this correctly requires *watermarks* — a running estimate of "we've now seen all events whose event-time is before T".
+- **Exactly-once vs at-least-once.** Exactly-once is a famously hard guarantee. At-least-once (the default) means downstream consumers must be *idempotent*: replaying the same event must not double-count.
+- **State.** Stateful operators (a 5-minute rolling count per user) need checkpointed state stores. State recovery on restart is the source of most production streaming bugs.
+- **Backpressure.** A slow consumer falls behind the producer; the topic backs up; eventually upstream blocks. Streaming systems must handle backpressure explicitly.
+
+**Lambda vs Kappa architectures.** Lambda runs *both* a batch pipeline and a streaming pipeline side-by-side: the streaming pipeline produces fast-but-approximate results, the batch pipeline produces slower-but-exact results, and a serving layer reconciles the two. Kappa drops the batch pipeline entirely — everything is streaming, with the option to *replay* the event log from the beginning when you want a recompute.
+
+### For ML specifically
+
+Training is almost always batch. You read a partition of training data from the warehouse or lake, run an offline job for hours or days, and produce a model artefact. The benefits — reproducibility, scale, low cost per byte — outweigh the latency cost because training does not need to be near-real-time.
+
+**Feature serving** for online inference is usually a *mix*. Cheap, slow-moving features (a user's lifetime spend; their tenure; their historical preferences) are precomputed in batch and written to a key-value store (Redis, DynamoDB, Bigtable) keyed by user id. Fast-moving features (the items the user clicked in the last 90 seconds) are computed on the request path, often in a streaming feature service. The model's request handler reads both and concatenates. This is the *online-feature-store* pattern and is the source of most train-serve skew incidents (see the [deployment pitfalls lesson](/courses/ml-in-practice/02-deployment-pitfalls)) — the batch path and the streaming path have to compute *exactly* the same transform on the same inputs.
+
+<Callout type="warning" title="Streaming is hard — only use it where latency justifies the complexity">
+A batch pipeline you understand is worth ten streaming pipelines you do not. Streaming adds event-time semantics, watermarks, checkpointed state, replay, backpressure, and a whole new class of "where exactly is this counter wrong" debugging problems. Adopt it when the *product* genuinely needs sub-minute latency — fraud detection, ad ranking, live recommendations, real-time monitoring — and not because the architecture diagram looks more modern. The default answer for an ML pipeline is still "batch, with one streaming path for the small set of features that truly need it."
+</Callout>
+
+## Data quality and contracts
+
+The single biggest lever on production ML reliability is whether the *upstream* data team and the ML team agree on a contract. The contract specifies:
+
+- **Schema.** Field names, types, nullability. A producer that adds a non-nullable field without coordination breaks downstream parsers.
+- **Null / duplicate policy.** What fraction of nulls is allowed per field. What deduplication key is canonical.
+- **Freshness SLA.** "This table is no more than 30 minutes stale at the 99th percentile." A model whose freshness budget is 30 minutes cannot consume a table whose freshness SLA is 4 hours.
+- **Lineage.** Every downstream consumer of a table is documented, so a producer planning a breaking change knows who to coordinate with.
+
+The drift-detection mechanics in the [deployment pitfalls lesson](/courses/ml-in-practice/02-deployment-pitfalls) all rely on these contracts existing. You cannot meaningfully alert "feature $f$ drifted" if the upstream team is allowed to silently rename the field that produces $f$.
+
+## Common mistakes
+
+1. **Training on a row format and being surprised at the cost.** Reading a CSV or JSON dump of a billion-row training set takes 50x longer than reading the same data in Parquet. The fix is one `df.to_parquet(...)` line; most teams discover it after burning a six-figure cloud bill.
+2. **Pointing the model at the OLTP store directly.** Convenient until the first heavy aggregation locks a table and the live product slows down. Always go through the warehouse or a read replica.
+3. **Reaching for streaming when batch was fine.** A daily-refreshed feature does not need a Kafka topic and a Flink job. The team pays a permanent operational tax for a real-time-ness the model does not consume.
+4. **Skipping the data contract.** The ML team builds against a schema that the upstream service team treats as private. Six weeks later the schema changes and the model silently degrades. Versioned schemas and explicit SLAs would have caught it at the producer.
+5. **Confusing "event time" with "processing time" in streaming.** A late-arriving event that you count in the *processing*-time window puts it in the wrong bucket. Sessionisation, aggregations, and most ML features need *event*-time semantics, which means watermarks and tolerance for late data.
+
+## Key takeaways
+
+- **Column-oriented storage is the format for ML training.** Parquet on S3 (or its lakehouse extensions Iceberg / Delta) is the de facto standard because training is exactly the workload columnar storage is built for: scan many rows, project a few columns, aggregate, repeat.
+- **OLTP and OLAP are different machines for different jobs.** Live product writes go to OLTP (Postgres, DynamoDB); training reads come from OLAP (Snowflake, BigQuery, Databricks). The bridge is replication — CDC for low-latency, nightly dumps for batch.
+- **ELT beat ETL because warehouses got cheap and elastic.** Load raw, transform in-warehouse with dbt. ETL still wins when raw data cannot leave the source.
+- **Batch is the default; streaming is for latency-bound features.** Training is always batch. Feature serving is usually batch-precompute plus a small streaming path for time-sensitive features.
+- **Data contracts decide reliability.** Schema, nulls, freshness SLAs, and lineage between producer and consumer are upstream of every drift alert and every train-serve skew incident.
+
+## Related concepts
+
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and drift are downstream symptoms of the data-contract and batch-vs-stream design decisions in this lesson.
+- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering) — the features your model trains on are computed in *this* infrastructure; whether they reproduce at inference time depends on which storage layer (batch warehouse vs streaming feature store) they came from.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — this lesson is the data-layer detail behind the "sketch the system before training" step. You cannot draw the napkin diagram without knowing what an OLTP-to-OLAP arrow is.
+
+<Exercise id="data-row-vs-column" />
+<Exercise id="data-oltp-vs-olap" />
+<Exercise id="data-batch-vs-stream" />

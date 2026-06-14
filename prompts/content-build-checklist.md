@@ -131,7 +131,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 
 ### Phase 5 — ML Systems / MLOps  *(integrate into `ml-in-practice`; split into a new `ml-systems` course if it passes ~10 lessons)*
 - [x] **`ml-in-practice` + ML Systems Design & Problem Framing** · reliability, scalability, maintainability, objective functions, research-vs-production · viz: *none* · notebook.
-- [ ] **`ml-in-practice` + Data Engineering Fundamentals** · sources, formats, row vs column, OLTP vs OLAP, ETL, batch vs stream · viz: *none* · notebook.
+- [x] **`ml-in-practice` + Data Engineering Fundamentals** · sources, formats, row vs column, OLTP vs OLAP, ETL, batch vs stream · viz: *none* · notebook.
 - [ ] **`ml-in-practice` + Training Data** · sampling strategies, labeling/weak supervision, class imbalance · viz: **SamplingStrategiesViz** (or reuse) · notebook.
 - [ ] **`ml-in-practice` + Experiment Tracking & Versioning** · runs, metrics, artifacts, data/model versioning, reproducibility · viz: *none* · notebook.
 - [ ] **`ml-in-practice` + Deployment Patterns & Model Compression** · batch vs online vs edge; quantization/pruning/distillation · viz: *reuse `QuantizationViz`* · notebook.

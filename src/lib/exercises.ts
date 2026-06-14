@@ -5905,6 +5905,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Ship it behind an A/B test and let live business metrics decide; if revenue holds, the SLO does not matter.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — Data Engineering Fundamentals ────────────
+  {
+    id: "data-row-vs-column",
+    type: "slider",
+    question:
+      "You have a 100M-row events table with 10 equal-width columns. A training job needs only 2 of those columns. Roughly what *fraction* of the field-reads does a columnar storage layout perform compared with a row-oriented layout that has to read every full row? Give your answer as a fraction in $[0, 1]$.",
+    hint: "Row layout reads every field of every row. Column layout reads only the columns you need.",
+    explanation:
+      "A row store stores all 10 fields of each row contiguously, so reading any column forces reading the whole row. Field-reads $= 100\\text{M} \\times 10 = 1{,}000\\text{M}$. A column store stores each column separately and lets you skip the eight you do not need. Field-reads $= 100\\text{M} \\times 2 = 200\\text{M}$. The ratio is $200 / 1000 = 0.2$, i.e. about **20% of the field-reads**. After columnar compression (typical telemetry columns compress 5x–10x), the on-disk-byte ratio is even better — often around 2% — which is why ML training pipelines store features in Parquet, not CSV. The headline rule: column stores win when you read a small subset of columns from a large table, which is *exactly* the ML training workload.",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    correctRange: [0.15, 0.25],
+    unit: "fraction",
+  },
+  {
+    id: "data-oltp-vs-olap",
+    type: "multiple-choice",
+    question:
+      "Your team is starting a fraud-scoring model. The product engineers want you to run training queries directly against the Postgres database that powers the checkout flow ('it's the freshest data, why copy it?'). What is the strongest *operational* objection to that approach?",
+    hint: "What kind of workload is Postgres optimised for, and what happens to the live product if you run a multi-billion-row aggregation against it?",
+    explanation:
+      "Postgres is an OLTP store — row-oriented, normalised, optimised for many small ACID transactions against individual rows. Training queries are the opposite workload: big aggregations across many rows and a few columns. Running a 'SELECT … GROUP BY' over the full orders table can lock tables (or at minimum saturate the I/O budget) on the same machine that the checkout path needs in single-digit milliseconds. The standard fix is *exactly* the OLTP→OLAP separation: replicate the OLTP tables into a columnar warehouse (Snowflake / BigQuery / Redshift) via Change Data Capture or a nightly dump, and run all analytical and training reads against the warehouse. (A) is wrong: read replicas reduce *some* contention but they are still row-oriented and still slow for big aggregations — they buy you safety, not speed. (C) is wrong direction: schemas in OLTP are *too* normalised for analytics, not too denormalised. (D) describes a real concern but freshness is rarely the *binding* constraint — most fraud-training pipelines tolerate one-hour-old data; what they cannot tolerate is degrading the live product.",
+    options: [
+      { id: "a", label: "Switch to a Postgres read replica — that gives you a fresh copy of the data without contention, and the workload pattern becomes identical to a warehouse.", isCorrect: false },
+      { id: "b", label: "Training is an OLAP workload (big scans, few columns, aggregations) and Postgres is an OLTP store (row-oriented, optimised for small ACID transactions). A heavy training query will lock or saturate the checkout database and degrade the live product. Replicate to a columnar warehouse and train from there.", isCorrect: true },
+      { id: "c", label: "Postgres schemas are denormalised relative to a warehouse, so the training reads would silently double-count rows; you have to normalise the data before training.", isCorrect: false },
+      { id: "d", label: "Postgres only retains the last 24 hours of data by default, so training queries would not have enough history to learn fraud patterns.", isCorrect: false },
+    ],
+  },
+  {
+    id: "data-batch-vs-stream",
+    type: "multiple-choice",
+    question:
+      "You are designing the feature pipeline for a real-time recommender. Two features are needed at inference time: (1) the user's *lifetime spend*, which updates roughly weekly, and (2) the *list of items the user has clicked in the last 90 seconds*. What is the *standard* batch-vs-streaming split for these features?",
+    hint: "Match the update cadence of each feature to the pipeline that costs the least operationally while meeting the latency requirement.",
+    explanation:
+      "This is the canonical online-feature-store pattern. Lifetime spend changes on the order of days or weeks, so a daily (or even weekly) *batch* job that recomputes it for every active user and writes the result to a low-latency key-value store (Redis, DynamoDB, Bigtable) keyed by `user_id` is the right answer. The inference path does a single point-read at request time — cheap and reliable. The 90-second click history, by contrast, must reflect events that happened seconds ago; only a *streaming* feature service (Kafka + Flink, or a similar real-time aggregator) can produce it. (A) over-engineers a slow-moving feature into a streaming pipeline — paying a permanent operational tax (event-time semantics, watermarks, state stores, exactly-once vs at-least-once decisions) for a feature that does not need it. (C) under-engineers the time-sensitive feature: a daily batch cannot serve a 90-second window. (D) collapses everything into request-time computation, which is both expensive (recomputing lifetime spend on every request) and may not even be possible if the source tables are not in the request path.",
+    options: [
+      { id: "a", label: "Stream both, since the model is real-time. A streaming pipeline that updates lifetime spend the moment any new charge lands is more accurate than a daily batch.", isCorrect: false },
+      { id: "b", label: "Batch-precompute the lifetime-spend feature daily and write it to a key-value store keyed by user id; compute the 90-second click history in a streaming feature service. Inference reads both and concatenates.", isCorrect: true },
+      { id: "c", label: "Batch both, with a 1-hour cadence. A 1-hour-stale click history is close enough to real-time for most recommender systems, and avoiding streaming reduces operational complexity.", isCorrect: false },
+      { id: "d", label: "Compute both features synchronously at inference time from the OLTP store. Avoids any precomputation and guarantees the freshest possible values.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
