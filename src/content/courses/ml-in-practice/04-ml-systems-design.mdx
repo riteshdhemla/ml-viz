@@ -1,0 +1,140 @@
+---
+title: "ML Systems Design & Problem Framing"
+description: "Before you train a model, frame the problem: reliability, scalability, maintainability, the business objective behind your loss, and the gap between research and production."
+order: 4
+type: concept
+estimatedMinutes: 20
+---
+
+# ML Systems Design & Problem Framing
+
+A model that hits 88% accuracy on a held-out test set is 0% useful if the upstream feature store is stale, the inference path runs at 8 seconds p99, the per-query cost outruns the unit economics, or the metric it optimises is the wrong one. This lesson is the prequel to every other lesson in this course: how to *frame* the ML problem — pick the metric, sketch the system, name the failure modes — before you touch a notebook.
+
+Real-world examples: recommender systems at Netflix and Spotify (the metric is retention, the trainable proxy is click and dwell time); fraud detection at Stripe (a hard latency SLO, with delayed ground truth); YouTube ranking (composite objectives spanning watch time, satisfaction, and ads); ad CTR prediction (low margin per query so cost per inference matters); LLM-powered customer support assistants (build-vs-buy, eval-set design, refusal rate); medical-image triage (calibrated probabilities and a human in the loop are non-negotiable).
+
+## Why "systems design" is different from notebook ML
+
+Notebook ML is a single Jupyter kernel reading a static CSV. Production ML is a graph of services: a feature store reading from a data warehouse, a model server behind an API gateway, a logging pipeline writing back to the warehouse, a monitoring stack reading the logs, a retraining job scheduled against fresh data. Each edge in that graph is a place the system can silently fail.
+
+The failure modes are *silent* — that is the most important property to internalise. A misconfigured feature pipeline does not raise an exception; it produces predictions that look like normal predictions but are systematically wrong. A stale model does not crash; it just degrades over weeks. **You cannot debug what you do not monitor**, and you cannot monitor what you have not designed in advance.
+
+<Callout type="warning" title="Reliability is not accuracy">
+Accuracy measures how often the model is right on a static test set. Reliability measures how often the *whole system* delivers a correct, timely prediction to the caller under real-world conditions: stale features, partial outages, traffic spikes, edge cases the test set never saw. A 95%-accurate model wrapped in a 99%-reliable system has an effective end-to-end correctness around 94%. A 95%-accurate model wrapped in a 90%-reliable system delivers around 85% — and the 5% reliability gap is invisible to your offline metrics.
+</Callout>
+
+## Four properties of production ML systems
+
+Production systems are judged on four properties — borrowed and lightly reframed from Chip Huyen's *Designing Machine Learning Systems*. Notebook ML optimises only the first half of the first one.
+
+### 1. Reliability
+
+The system delivers correct, timely predictions under expected conditions and degrades gracefully under unexpected ones. Define SLOs over both *correctness* (accuracy stays within a band) and *freshness* (features are no more than N minutes old). A "successful response" is a prediction that satisfies both — not just an HTTP 200.
+
+The key insight: most ML failures are silent. Define alerts on second-order signals — null rate per feature, prediction distribution drift, retraining-job exit code — before launch, not after the first incident.
+
+### 2. Scalability
+
+Three independent axes:
+
+- **Model size scaling.** Parameters grow (7B becomes 70B). Memory, GPU, and serving cost grow with them. Inference may need to move from a single server to a multi-GPU setup.
+- **Traffic scaling.** Queries per second grow as the product grows. Capacity planning needs p95 and p99 latency, not the mean.
+- **Data scaling.** Feature count, history length, and label volume grow. Training runs that fit in memory at year 1 fail at year 3.
+
+Each axis has its own bottleneck and its own fix. A team that "scales up" by buying bigger GPUs while their training-data warehouse silently overflows is solving the wrong axis.
+
+### 3. Maintainability
+
+The system can be understood, modified, and rolled back by an engineer who did not write it. Concretely:
+
+- **Versioning** of code, data, and model weights. All three. A model artifact without a pinned training dataset and a pinned code commit is partially unauditable.
+- **Reproducibility.** A training run launched today on the same code, data, and seed produces a model whose offline metrics fall within tolerance of the original.
+- **Rollback.** Any of the three (code, data, model) can be reverted in minutes, not days. This is much harder than it sounds: rolling back the model is easy, rolling back the data schema usually is not.
+
+### 4. Adaptability
+
+Distribution shift is the default state of the world, not the exception. The system must *detect* shift and update — either by retraining on fresh data, or by routing the shifted slice to a fallback. A model that ships in January and is unmonitored by March is a liability, not an asset. This lesson sits upstream of the [drift detection mechanics](/courses/ml-in-practice/02-deployment-pitfalls); here the point is just that adaptability is a *system* property, not a model property.
+
+## Translating a business problem into an ML objective
+
+The hardest part of an ML project is rarely the model. It is the translation between what the business asks for and what a loss function can optimise.
+
+**You cannot train on the metric you actually care about.** A product manager says "increase revenue". You cannot regress directly on revenue: per-user revenue is sparse, lagging, and confounded by everything from ad spend to seasonality. So you pick a *proxy* — click-through rate, dwell time, conversion, retention, satisfaction rating — and train on that. Every modelling pipeline is implicitly making this translation; the question is whether the team has thought about it explicitly.
+
+**Every proxy has a Goodhart failure mode.** Once a measure becomes a target, it ceases to be a good measure. Optimise click-through and you get clickbait. Optimise conversion and you get low-margin upsells. Optimise dwell time and you get rage-bait. Optimise watch time and you get autoplaying long videos. The same dynamic appears in [RLHF reward models](/courses/fine-tuning-alignment/03-reward-models) under the label "reward hacking" — the policy learns to exploit the proxy in ways that diverge from the true objective.
+
+**Composite objectives** let you trade off multiple proxies explicitly. The loss is a weighted combination:
+
+$$
+L = \alpha \cdot L_\text{accuracy} + \beta \cdot L_\text{fairness} + \gamma \cdot L_\text{latency} + \delta \cdot L_\text{cost}
+$$
+
+The weights are **business calls, not statistical calls**. There is no "optimal $\alpha$" — there is only the $\alpha$ that reflects how much accuracy your stakeholders are willing to trade for latency, given the current product priorities. The composite is honest about the trade-off; a single-objective loss hides it inside whichever objective happened to be picked.
+
+<Callout type="tip" title="Pick the metric before the model">
+The sequence matters. First, write down the business outcome. Second, pick the trainable proxy that you believe causally drives it, and name its Goodhart failure mode. Third, define the eval set you will use to score every candidate. Only then pick the model. Teams that pick the model first end up retrofitting whatever metric the model happens to optimise — and then are surprised when shipping the model degrades the business outcome.
+</Callout>
+
+## Research-vs-production gaps
+
+A research project and a production system are different artefacts. The same model architecture, trained on the same data, can win a benchmark and fail in production for reasons that have nothing to do with the model itself.
+
+**Distribution.** Research uses curated, balanced, deduplicated, label-cleaned datasets. Production traffic is live, skewed, duplicated, occasionally adversarial, and unlabeled in real time. A model that hits 95% on the curated set may see 30% of its production traffic in an out-of-distribution regime the curated set never sampled.
+
+**Latency.** Research lets you wait for the best model — beam search, sampling-with-rerank, ensemble of 10 checkpoints. Production has a fixed budget: a 200 ms p95 SLO for an autocomplete UI, a 50 ms budget for ad ranking, a 2 s budget for a chat assistant. Methods that buy +2 points of accuracy at 5x latency are unusable.
+
+**Feedback loops.** Research models are evaluated on a static held-out set. Production model outputs *shape the next training set*: if you only show users the items the model recommended, you have no labels for the items it did not. This is exposure bias / selection bias, and it makes naive retraining make the model *worse* over time. The [deployment pitfalls lesson](/courses/ml-in-practice/02-deployment-pitfalls) covers detection; the framing point here is that this is a *system* failure mode, not a modelling one.
+
+**Code path.** Research models live in a Jupyter notebook calling PyTorch on a big GPU. Production models are pickled or compiled, served behind a thin Go or Python gateway, with batching, caching, and KV-state management bolted on. The code paths *diverge*, and divergence creates train-serve skew.
+
+## A decision framework when starting an ML project
+
+Before you write the first line of training code, walk this checklist:
+
+1. **Can a rule or heuristic solve it?** If a five-line `if` statement gives you 70% of the way there, ship that first. Use the heuristic as a baseline; an ML model that does not beat it does not justify its operational cost.
+2. **If ML, frame the narrow v1 problem.** "Predict churn" is too broad; "predict whether a paying user will cancel within the next 30 days, given their last 90 days of activity" is concrete enough to put a metric on.
+3. **Pick the metric, then the data, then the model — in that order.** Picking the model first locks you into the metric *that model is good at*. Picking the metric first lets you choose the data and the model that serve it.
+4. **Name the failure modes you will monitor before you ship.** Drift on which features? Latency on which percentile? Cost ceiling? Refusal rate? An incident in production is much cheaper if the monitor was already in place.
+5. **Sketch the system before training the model.** What feature store reads what data source? What service serves predictions? Where do labels come from? What is the retraining cadence? If you cannot draw the boxes-and-arrows on a napkin, do not start training.
+
+The [evaluating AI systems lesson](/courses/model-evaluation/05-evaluating-ai-systems) is the downstream complement to step 3 — given that you have a metric, that lesson walks the model-selection workflow. This lesson is the *upstream* prerequisite: how to choose the metric in the first place.
+
+## Anti-patterns
+
+A short tour of the recurring failure modes:
+
+**Chasing benchmark SOTA.** A 0.5% improvement on a public benchmark is rarely a 0.5% improvement on your task — usually it is 0.0%, sometimes negative. Public benchmarks are a starting point for shortlisting models, not the answer. (The [classification metrics lesson](/courses/model-evaluation/01-classification-metrics) covers the right way to evaluate on *your* data.)
+
+**Model-first thinking.** Picking the model because it is cool and then retrofitting a problem onto it. The model is the cheapest piece to swap; pick it last.
+
+**Ignoring inference cost until launch.** A model that takes 2 seconds and $0.03 per query in research is a cost crisis when it goes live at 100 QPS. Profile inference latency and cost on day one, not week 20.
+
+**No eval-set hygiene.** Splitting at random when the data has temporal or entity structure, reusing the test set as a dev set until it bleeds, or treating the public benchmark as the eval set are all variants of the same mistake: the offline number is no longer a believable estimate of production performance.
+
+**No rollback story.** Models are shipped enthusiastically and rolled back painfully. Define the rollback procedure — which version to fall back to, who triggers it, what threshold of degradation justifies it — *before* the deploy, not after.
+
+## Common mistakes
+
+1. **Optimising the proxy instead of the goal.** CTR is not retention. Watch time is not satisfaction. The proxy is a means; do not let it become the end.
+2. **Picking the model before the metric.** This locks in whatever objective that model happens to optimise; the business outcome ends up reverse-engineered from the model, not the other way around.
+3. **Treating reliability and accuracy as the same axis.** A high-accuracy model in a low-reliability system delivers low end-to-end correctness. Both must be monitored separately.
+4. **Conflating the three scaling axes.** Buying bigger GPUs does not solve a data-volume problem; sharding the warehouse does not solve a QPS problem. Diagnose the bottleneck before throwing capacity at it.
+5. **Skipping the napkin sketch.** If you cannot draw the feature store, model server, label pipeline, and retraining trigger on one piece of paper, the system is under-designed regardless of how good the model is.
+
+## Key takeaways
+
+- **A model is one component of a system.** Reliability, scalability, maintainability, and adaptability are properties of the whole system, not the model — and they decide whether the product works.
+- **Pick the metric before the model.** Write down the business outcome, pick a trainable proxy, name its Goodhart failure mode, define the eval set. Then pick the model.
+- **Composite objectives are honest.** When accuracy, fairness, latency, and cost all matter, weight them explicitly. The weights are business calls.
+- **Research and production are different artefacts.** Distribution, latency budget, feedback loops, and code path all diverge in production — design for that gap from day one.
+- **Heuristic first, then ML.** A simple rule that captures 70% of the value is a better v1 than a model that captures 75%, because it is cheaper to operate, easier to debug, and a useful baseline for v2.
+
+## Related concepts
+
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — the *operational* failure modes (train-serve skew, drift, monitoring) that this lesson tells you to design against. This lesson is the *framing* prequel; that one is the *operations* sequel.
+- [**Evaluating AI Systems**](/courses/model-evaluation/05-evaluating-ai-systems) — once you have picked the metric (this lesson), that lesson walks the model-selection workflow: task-specific eval sets, build-vs-buy, cost / latency Pareto.
+- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the *same* Goodhart / proxy-divergence problem that haunts business metrics also haunts RLHF reward models. The vocabulary differs ("reward hacking" vs "metric gaming") but the dynamic is identical.
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — the catalogue of accuracy, precision, recall, ROC, calibration. Picking which one is the right *proxy* for your business objective is the framing decision this lesson is about.
+
+<Exercise id="systems-objective-function" />
+<Exercise id="systems-reliability-budget" />
+<Exercise id="systems-research-vs-prod" />

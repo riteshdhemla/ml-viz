@@ -5860,6 +5860,51 @@ const allExercises: Exercise[] = [
     correctRange: [5.4, 5.7],
     unit: "nats",
   },
+  // ── ML in Practice — ML Systems Design & Problem Framing ──────
+  {
+    id: "systems-objective-function",
+    type: "multiple-choice",
+    question:
+      "Your PM says: 'Build a model that increases revenue on the home feed.' You cannot regress on revenue directly — it's sparse, lagging, and confounded. A teammate proposes training a ranker on click-through rate as the proxy, because CTR is dense, immediate, and well-correlated with revenue in last quarter's logs. What is the strongest *structural* objection to shipping CTR as the trained objective without further work?",
+    hint: "What goes wrong when a measure that *currently* correlates with a goal becomes the *target* the model is trained to maximise?",
+    explanation:
+      "This is the canonical Goodhart failure mode for production ML. CTR correlates with revenue *in the current data* because users who click are also users who buy. Once the model is *trained* to maximise CTR, the ranker's distribution of recommended items shifts: clickbait headlines, exaggerated thumbnails, and low-margin novelty items rise in the ranking because they earn clicks. Those items earn clicks *but lose revenue* — they pull users away from the items that actually convert. The retrained-correlation argument is also wrong: refitting on the new data does not fix the feedback loop, it cements it. The right fix is a composite objective — e.g. CTR penalised by clickbait score, or a multi-task head that also predicts conversion / dwell — combined with an online A/B test that scores the *business* metric, not the proxy. (A) inverts the problem: CTR is *too* dense and immediate; revenue's sparsity is not the binding constraint. (C) confuses calibration with objective design; a well-calibrated CTR model still optimises the wrong thing. (D) is a real engineering concern but is not the *structural* problem with the metric itself.",
+    options: [
+      { id: "a", label: "CTR is too sparse to train on; the model will under-fit because most user sessions have no clicks.", isCorrect: false },
+      { id: "b", label: "Goodhart's law: once CTR becomes the *training target*, the ranker promotes clickbait and low-margin novelty that rank highly on clicks but actively reduce revenue. The current CTR↔revenue correlation will not survive optimisation. Use a composite objective and validate against revenue in an online A/B test.", isCorrect: true },
+      { id: "c", label: "CTR is not calibrated as a probability, so it cannot be used as a loss; switch to Platt-scaled CTR before training.", isCorrect: false },
+      { id: "d", label: "CTR is computed in a separate service from the ranker; the integration cost of fetching it at inference time will dominate the project's engineering budget.", isCorrect: false },
+    ],
+  },
+  {
+    id: "systems-reliability-budget",
+    type: "slider",
+    question:
+      "An ML-powered ranking service has a model with offline accuracy $0.95$ on a held-out test set. The serving system has end-to-end reliability $0.90$ (10% of requests fail or are served stale). Assuming a failed request counts as wrong, what is the **effective end-to-end correctness** the user sees, as a fraction (to two decimal places)?",
+    hint: "End-to-end correctness is approximately accuracy × reliability when failures count as wrong.",
+    explanation:
+      "End-to-end correctness factors over the two independent steps. A request is correct only if (1) the system delivers a prediction, with probability $0.90$, *and* (2) the model's prediction is right, with probability $0.95$. So effective correctness is $0.90 \\times 0.95 = 0.855$, or about $0.86$. This is the key reason reliability and accuracy are tracked separately: a 5-point reliability gap in the system can erase a 5-point accuracy gain in the model. Teams that optimise only the model and treat the serving system as 'someone else's problem' routinely ship gains the user never sees.",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    correctRange: [0.84, 0.87],
+    unit: "fraction",
+  },
+  {
+    id: "systems-research-vs-prod",
+    type: "multiple-choice",
+    question:
+      "A research team has a recommender that beats the production model by $+3$ points on offline NDCG@10. They want to ship it. The production system has a strict 80 ms p95 latency budget, the new model has an 85 ms p50 and a 220 ms p95, and ranking traffic is 8000 QPS. What is the most defensible next step?",
+    hint: "Compare the new model's latency profile to the production SLO at the percentile that matters. What fraction of users feel the tail?",
+    explanation:
+      "The new model violates the SLO at every percentile that matters: p50 alone (85 ms) is over budget, and p95 (220 ms) is nearly 3x the budget — meaning roughly 1 in 20 user requests will exceed it. At 8000 QPS, that is hundreds of slow requests per second. Shipping it would convert a $+3$ NDCG offline win into a reliability regression that users feel directly. The right move is to bring latency under the SLO *before* the offline win is allowed to count as a real win — distillation, quantisation, batch-size tuning, KV-cache reuse, or a routing tier that sends easy queries to the cheap model. (A) inverts the lesson: the offline metric is precisely what *should not* override a system-level SLO violation. (B) ignores the p50 problem — even raising the SLO to 100 ms would not fix the p95 tail. (D) is true in spirit but misapplied: A/B testing is for measuring *business* impact, not for sneaking past a hard latency budget.",
+    options: [
+      { id: "a", label: "Ship the new model. A $+3$-point NDCG win is large enough that the latency regression will be made up by improved user satisfaction.", isCorrect: false },
+      { id: "b", label: "Negotiate a wider latency SLO — raise the budget from 80 ms p95 to 250 ms p95 — and ship.", isCorrect: false },
+      { id: "c", label: "Do not ship the model yet. The p95 violates the SLO by nearly 3x, and at 8000 QPS that means hundreds of slow requests per second. Invest in distillation / quantisation / a routing tier to bring latency under budget *before* claiming the $+3$ NDCG win, because right now the offline gain would ship as a reliability regression.", isCorrect: true },
+      { id: "d", label: "Ship it behind an A/B test and let live business metrics decide; if revenue holds, the SLO does not matter.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
