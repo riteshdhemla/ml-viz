@@ -1,0 +1,168 @@
+---
+title: "Decoding & Sampling Strategies"
+description: "Turning a next-token distribution into actual text — greedy, beam search, temperature, top-k, top-p, repetition penalties, and the limits of determinism."
+order: 5
+type: concept
+estimatedMinutes: 20
+---
+
+# Decoding & Sampling Strategies
+
+A language model does not output text — it outputs a probability distribution over the next token at every position. **Decoding** is the algorithm that turns that distribution into the string you actually see. It is a deployment-time choice that lives entirely *outside* the trained weights, yet it is responsible for whether your model sounds factual, fluent, repetitive, creative, or reproducible. Two production systems with the same checkpoint but different decoders behave like different products.
+
+Real-world examples: **extraction and classification** run at temperature 0 with greedy decoding (one right answer, reproducibility matters); **creative writing and brainstorming** runs at temperature ≈ 0.7 with top-p ≈ 0.9 (diversity beats determinism); **machine translation and structured-output summarisation** historically use **beam search** with $k = 4$–$8$ and length normalisation; **code completion** is almost always greedy or beam, because syntactic errors compound and you want the model's single most confident continuation; **chat assistants** pick per-task defaults — a hidden routing layer flips between greedy and sampling depending on what the user asked for.
+
+We met temperature and top-p briefly in [Prompt Engineering & In-Context Learning](/courses/building-with-llms/01-prompt-engineering). This lesson is the proper NLP-course treatment: every common decoder, the math behind it, the trade-offs, and the determinism caveats that bite production systems.
+
+## Greedy decoding
+
+The simplest possible decoder. At every step, emit the argmax of the next-token distribution:
+
+$$
+x_{t+1} = \arg\max_{i} \; p_\theta(x_{t+1} = i \mid x_{1:t}).
+$$
+
+One forward pass per token, zero hyperparameters, fully deterministic on a fixed kernel path. Greedy is what you want when there is exactly one right answer (classification labels, function-calling JSON, structured extraction). It is also what `beam search with $k = 1$` collapses to, so any beam-search code path with $k = 1$ is, by definition, greedy.
+
+The failure mode is **myopia**. Greedy commits to whichever token has the highest one-step probability and can never recover. A model that knows "the capital of Australia is *Canberra*" with $p = 0.45$ but happens to assign $p = 0.46$ to "the capital of Australia is *Sydney*" will write the wrong answer — even though the rest of the sentence under the *Canberra* branch is far more likely overall. The next decoder fixes exactly this.
+
+## Beam search
+
+Beam search keeps not one but $k$ partial sequences ("beams"). At each step:
+
+1. For every beam, score every possible next token. With $k$ beams and a vocabulary of size $|V|$ that is $k \cdot |V|$ candidates.
+2. Pick the top $k$ candidates by **cumulative log-probability** $\sum_{t} \log p_\theta(x_t \mid x_{<t})$.
+3. Repeat until every beam emits `</s>` or hits a length cap.
+
+This catches the *Canberra* / *Sydney* case: even if "Sydney" wins step 1, both beams are kept; whichever has the higher *cumulative* log-prob after a few more tokens wins. Beam search dominates greedy on tasks with a single right answer that can only be identified a few tokens later — **machine translation**, **extractive summarisation**, **structured generation** with a known target format.
+
+### Length normalisation
+
+Naïve beam search is biased toward short sequences. Each extra token multiplies the joint probability by $p < 1$, so longer beams accumulate larger (more negative) log-prob and lose. The standard fix is **length-normalised** scoring:
+
+$$
+\text{score}(x_{1:L}) \;=\; \frac{1}{L^{\alpha}} \sum_{t=1}^{L} \log p_\theta(x_t \mid x_{<t}),
+$$
+
+with $\alpha \in [0.5, 1.0]$ — typically $\alpha = 0.6$ in MT systems. $\alpha = 1$ averages log-prob per token; $\alpha = 0$ recovers naïve beam.
+
+### Why beam search is wrong for open-ended generation
+
+For chat, story-writing, or any **open-ended** task, beam search **mode-collapses**. Empirically it produces strangely repetitive, low-diversity, unnatural text — a well-documented finding from the Holtzman et al. "nucleus sampling" paper (2019). The reason is that human language is full of locally low-probability choices that make the overall sequence interesting; beam search optimises away exactly those.
+
+> **Rule of thumb.** Beam search is for tasks with one right answer (translation, summarisation, code, JSON). Sampling is for tasks with many acceptable answers (chat, creative writing, brainstorming).
+
+<Callout type="info" title="Beam search vs sampling, in one line">
+Beam search asks "what is the most likely *sequence*?". Sampling asks "give me a typical sequence." On open-ended generation, what you want is "typical", not "most likely" — the most-likely string in natural language is `the the the the the ...`.
+</Callout>
+
+## Temperature
+
+Sampling-based decoders introduce randomness, but raw softmax is usually too peaky (almost greedy) or too flat (gibberish). **Temperature** $T$ rescales logits before softmax:
+
+$$
+p_i \;=\; \mathrm{softmax}\!\left(\frac{z_i}{T}\right) \;=\; \frac{\exp(z_i / T)}{\sum_j \exp(z_j / T)}.
+$$
+
+Two limit cases pin down what $T$ is actually doing:
+
+- **$T \to 0^+$.** All differences $z_i - z_j$ are amplified to $\pm\infty$. The softmax becomes a one-hot vector at the argmax. **Sampling at $T = 0$ is mathematically identical to greedy decoding.**
+- **$T \to \infty$.** All logits collapse to $0/T = 0$ inside softmax. The distribution becomes uniform over the vocabulary — every token equiprobable, output is random noise.
+
+In between, low $T$ (0.1–0.5) sharpens — useful when you want the model "to be itself but a little freer". High $T$ (1.0–1.5) flattens — useful for brainstorming. Temperatures above 1.5–2.0 are rarely useful in practice; they make even very implausible tokens samplable.
+
+<Callout type="warning" title="Temperature does not bound which tokens appear">
+Temperature reshapes the distribution but never *zeroes* it. Even at $T = 2$, the lowest-probability token in a vocabulary of 50 000 still has non-zero probability and can be sampled. This is exactly the problem that top-k and top-p fix.
+</Callout>
+
+## Top-k sampling
+
+Truncation. Sort tokens by probability, keep only the top $k$, renormalise, sample from the survivors:
+
+1. Compute $p$ via softmax (with whatever temperature you chose).
+2. Find the indices of the $k$ largest probabilities $\mathcal{S}_k$.
+3. Set $p_i = 0$ for $i \notin \mathcal{S}_k$ and renormalise so $\sum_{i \in \mathcal{S}_k} p_i = 1$.
+
+$k$ is typically 40–50 for GPT-style models. The intuition is simple: cap the tail. The catch is that $k$ is fixed regardless of the *shape* of the distribution. If the model is very confident ($p_1 = 0.95$), keeping 40 tokens means 39 of them have a combined probability of 0.05 — fine but wasted. If the model is very uncertain (the top 100 tokens each have $p \approx 0.01$), keeping only 40 truncates a lot of perfectly reasonable continuations.
+
+## Top-p (nucleus) sampling
+
+Adaptive truncation. Instead of fixing the *count*, fix the *cumulative probability mass*. Holtzman et al. (2019):
+
+1. Sort tokens in descending probability.
+2. Take the smallest set $\mathcal{S}_p$ whose cumulative probability is $\ge p$.
+3. Renormalise inside $\mathcal{S}_p$ and sample.
+
+A typical setting is $p = 0.9$ — keep the smallest set of tokens that together account for 90 % of the probability mass. The nucleus **grows and shrinks with the distribution's confidence**: peaky distributions might keep only 1–2 tokens (effectively greedy at that step), flat distributions might keep 50 (high diversity). That adaptivity is why nucleus sampling beats top-k on open-ended generation — it matches the truncation to the model's local uncertainty.
+
+<SamplingViz />
+
+<Callout type="tip" title="Why top-p > top-k for open-ended tasks">
+Top-k fixes the count regardless of whether the model is confident. Top-p fixes the *mass* — so when the model is sure of the next token, you essentially get greedy; when the model is genuinely uncertain, you sample from a wide nucleus. That dynamic range is exactly what natural-language generation needs to avoid both repetition and gibberish.
+</Callout>
+
+## Combining the knobs
+
+In practice, samplers compose. The HuggingFace `generate()` default applies them in this order: **repetition penalties → temperature → top-k → top-p → sample**. Common recipes:
+
+| Task | Typical settings |
+|------|------------------|
+| Extraction, classification, JSON | greedy (or $T = 0$) |
+| Code completion | greedy, or beam $k = 4$ |
+| Translation, summarisation | beam $k = 4$–$8$, $\alpha = 0.6$ length-norm |
+| Chat (general) | $T = 0.7$, top-$p$ = 0.9 |
+| Creative writing | $T = 0.8$–$1.0$, top-$p$ = 0.95 |
+| Brainstorming, ideation | $T \approx 1.0$, top-$p$ = 0.95, sometimes top-$k$ = 50 too |
+
+## Repetition control
+
+Vanilla sampling — even with top-p — drifts into repetition because once a phrase appears the model's own context biases it toward emitting that phrase again. Three patches show up everywhere:
+
+- **Repetition penalty** $\rho > 1$ (Keskar et al., 2019). For any token $i$ that has already appeared in the context, divide its logit by $\rho$ before softmax (or multiply if negative). Typical $\rho = 1.1$–$1.3$. Too large and the model can never reuse common words like "the".
+- **No-repeat n-gram constraint.** Hard rule: never emit a token that would complete an $n$-gram already in the context. Common values: $n = 3$ for chat, $n = 4$–$5$ for translation. Cheap, deterministic, brittle on technical text where repetition is correct.
+- **Frequency / presence penalties** (OpenAI API). Two-parameter generalisation: subtract $\alpha_f \cdot \text{count}(i)$ and $\alpha_p \cdot \mathbb{1}[\text{count}(i) > 0]$ from the logit of token $i$. Cleaner than a hard n-gram rule but harder to tune.
+
+Combine sparingly. Stacking aggressive temperature, top-p, repetition penalty *and* no-repeat-ngram is a common cause of weirdly stilted text.
+
+## The determinism caveat
+
+It is tempting to believe that temperature 0 (or greedy decoding) makes generation **bit-exact reproducible**. It does not — at least not in production. Three sources of nondeterminism survive a greedy decoder:
+
+1. **Non-associative floating-point math.** Floating-point addition is not associative: $(a + b) + c \neq a + (b + c)$ at the bit level. GPU kernels reduce sums in parallel using different orderings depending on tile size, batch size, hardware generation, and the specific kernel chosen by the autotuner. Two greedy decodes of the same prompt on the same model can produce *different argmax tokens* if the second-place logit is within a few ULPs of the winner.
+2. **Batch-size sensitivity.** Many inference servers batch concurrent requests for throughput. The same prompt may run in a batch of 1 at 3am and a batch of 64 at peak — different kernels, different reductions, different outputs.
+3. **Mixed precision and kernel selection.** bf16/fp16 weights, fp8 KV caches, and FlashAttention variants all use different summation orders. cuBLAS / cuDNN sometimes autoselect different kernels based on shapes that depend on dynamic batch composition.
+
+The closest you get to bit-exact in practice is: **(a)** fix the random seed and the `seed` parameter (matters only for sampling, not greedy), **(b)** decode greedily (no sampling), **(c)** pin batch size and padding, **(d)** disable autotuning, **(e)** pin the model version, the driver, and the kernel library versions. Production APIs that advertise a `seed` argument generally promise "best-effort reproducibility", not bit-exactness — and explicitly warn that infrastructure changes can shift outputs.
+
+<Callout type="warning" title="Temperature = 0 is not the same as deterministic">
+"Temperature 0" guarantees that *sampling* reduces to argmax. It does **not** guarantee that the argmax itself is identical across machines, batches, or kernel versions. If two of your eval runs give different outputs on the same prompt at $T = 0$, you have not found a bug — you have rediscovered non-associative float math.
+</Callout>
+
+## Common mistakes
+
+1. **Beam search on open-ended generation.** Mode collapse, repetitive output, low diversity. Use sampling. Beam search is for translation/summarisation/code, not chat.
+2. **Treating $T = 0$ as bit-exact reproducibility.** It removes *sampling* randomness, not *kernel-path* nondeterminism. Pin batch size and kernels too if you really need reproducibility.
+3. **Cranking temperature without truncation.** Without top-k or top-p, raising temperature is the fastest way to inject implausible tokens. Always pair $T > 0.7$ with $p \le 0.95$ or $k \le 50$.
+4. **Stacking every knob.** Temperature + top-k + top-p + repetition penalty + no-repeat-ngram + frequency penalty often interact badly. Start from a tested recipe; change one knob at a time.
+5. **Forgetting length normalisation in beam search.** Naïve cumulative log-prob always prefers shorter sequences; you will produce truncated translations and one-sentence summaries.
+6. **Confusing top-k with beam-size $k$.** Top-k controls *sampling* truncation per step. Beam $k$ controls the number of partial *sequences* kept globally. They are unrelated, despite the shared letter.
+
+## Key takeaways
+
+- A decoder is the algorithm that converts the model's next-token distribution into text. It lives outside the weights; changing it changes the product.
+- **Greedy** = argmax per step. Deterministic per kernel path, myopic. Use for extraction, classification, code.
+- **Beam search** keeps $k$ partial sequences scored by length-normalised cumulative log-prob. Use for translation/summarisation/structured generation. Avoid for open-ended chat.
+- **Temperature** $T$ rescales logits: $p_i = \mathrm{softmax}(z_i / T)$. $T \to 0$ is greedy; $T \to \infty$ is uniform.
+- **Top-k** truncates to a fixed count of highest-probability tokens. **Top-p (nucleus)** truncates to the smallest *mass* $\ge p$ — adaptive to the distribution, generally better for open-ended generation.
+- **Repetition control** (penalty, no-repeat-ngram, frequency/presence) patches a known failure mode of sampling. Use sparingly.
+- **Determinism is harder than "temperature 0"** — non-associative float math, dynamic batch sizes, and kernel autotuning all break bit-exactness. The closest production gets is greedy + fixed seed + fixed batch + pinned versions.
+
+## Related concepts
+
+- [**LLM Model Taxonomy**](/courses/nlp/04-llm-model-taxonomy) — which families even *have* a next-token distribution to decode from (decoder-only and encoder-decoder do; encoder-only does not)
+- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering) — the user-facing introduction to temperature and top-p; this lesson is the deeper treatment
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — the pretraining that produces the next-token distribution every decoder operates on
+
+<Exercise id="decoding-greedy-vs-beam" />
+<Exercise id="decoding-top-p-mechanics" />
+<Exercise id="decoding-determinism-trap" />
