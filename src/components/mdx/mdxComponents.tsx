@@ -63,6 +63,7 @@ import ARIMAForecastViz from "@/components/visualizations/ARIMAForecast/ARIMAFor
 import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
 import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
+import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -132,4 +133,5 @@ export const mdxComponents: MDXComponents = {
   SamplingViz,
   RAGRetrievalViz,
   LoRAViz,
+  RewardModelViz,
 };
