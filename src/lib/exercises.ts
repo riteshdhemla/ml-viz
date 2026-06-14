@@ -5163,6 +5163,53 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Add more few-shot examples", isCorrect: false },
     ],
   },
+
+  // ── Fine-Tuning & Alignment ─────────────────────────────────────
+  {
+    id: "sft-when-to-finetune",
+    type: "multiple-choice",
+    question:
+      "Your assistant occasionally cites stale prices because the product catalog changes weekly. Which lever should you reach for first?",
+    hint: "Is the gap knowledge or behaviour?",
+    explanation:
+      "Prices are knowledge that changes faster than any training run. RAG retrieves the current catalog at query time. Fine-tuning bakes in stale facts and forces a retrain every week; prompt engineering can't supply data the model doesn't have.",
+    options: [
+      { id: "a", label: "Retrieval-Augmented Generation (RAG)", isCorrect: true },
+      { id: "b", label: "Supervised fine-tuning on last week's catalog", isCorrect: false },
+      { id: "c", label: "Raise the temperature so the model hedges", isCorrect: false },
+      { id: "d", label: "Add a longer system prompt listing every price", isCorrect: false },
+    ],
+  },
+  {
+    id: "sft-loss-masking",
+    type: "multiple-choice",
+    question:
+      "During SFT on (prompt, response) pairs, which tokens contribute to the cross-entropy loss?",
+    hint: "Think about what the model is being trained to *produce*.",
+    explanation:
+      "Only the response tokens are scored. Including prompt tokens would waste capacity learning to re-emit the user's input and would worsen generation quality — the prompt is conditioning, not a target.",
+    options: [
+      { id: "a", label: "Only the response (target) tokens; the prompt is masked out", isCorrect: true },
+      { id: "b", label: "Only the prompt tokens", isCorrect: false },
+      { id: "c", label: "Both prompt and response tokens equally", isCorrect: false },
+      { id: "d", label: "Only the final token of the response", isCorrect: false },
+    ],
+  },
+  {
+    id: "sft-catastrophic-forgetting",
+    type: "multiple-choice",
+    question:
+      "After fine-tuning a base LLM on 50k legal-summarisation examples for 10 epochs, its general MMLU score drops 12 points. What is the most likely cause?",
+    hint: "Aggressive updates on a narrow distribution.",
+    explanation:
+      "Many epochs at a non-trivial learning rate overwrite general capabilities — classic catastrophic forgetting. Fixes: smaller LR, fewer epochs, parameter-efficient methods (LoRA), or mix in general-purpose data.",
+    options: [
+      { id: "a", label: "Catastrophic forgetting from aggressive updates", isCorrect: true },
+      { id: "b", label: "The base model was too small", isCorrect: false },
+      { id: "c", label: "The chat template was correct, so it can't be that", isCorrect: false },
+      { id: "d", label: "MMLU is unrelated to fine-tuning", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -339,7 +339,7 @@ surface-border   — borders
 
 ### Applied & Production AI
 - [x] **Building with LLMs** — prompt engineering & in-context learning, decoding/sampling, chain-of-thought & structured output, embeddings & semantic search, RAG, agents & tool use, AI-engineering architecture *(course + 6 lessons + quiz)*
-- [ ] **Fine-Tuning & Alignment** — SFT, instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO *(planned — see Phase 2 of the content roadmap plan)*
+- [~] **Fine-Tuning & Alignment** — SFT, instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO *(in progress: course + Lesson 01 shipped; Lessons 02–06 + RL bridge queued in `prompts/content-build-checklist.md`)*
 - [ ] **ML Systems & MLOps** — data engineering, deployment patterns, model compression, continual learning & test-in-production, monitoring, MLOps infra *(planned — integrate into `ml-in-practice`, split out if it grows past ~10 lessons)*
 
 ---

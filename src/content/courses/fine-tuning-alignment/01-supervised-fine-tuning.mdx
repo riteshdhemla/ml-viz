@@ -1,0 +1,99 @@
+---
+title: "Supervised Fine-Tuning & Instruction Tuning"
+description: "When prompting isn't enough: update the model's weights on labeled examples. Loss, instruction datasets, chat templates, and the catastrophic-forgetting trap."
+order: 1
+type: concept
+estimatedMinutes: 22
+---
+
+# Supervised Fine-Tuning & Instruction Tuning
+
+Prompting and retrieval keep the weights frozen. **Supervised fine-tuning (SFT)** actually updates them. You hand the model a dataset of input/output pairs and continue training it with the same next-token cross-entropy loss it was pretrained with — but now on *your* distribution.
+
+**Real-world examples:** a customer-support assistant that always replies in your brand voice; a coding model specialised for your internal framework; a medical-summarisation model trained on de-identified discharge notes; an instruction-tuned chat model built from a base LLM and a curated instruction dataset.
+
+## When to fine-tune vs prompt vs RAG
+
+Fine-tuning is the **most expensive** lever — try the cheaper ones first.
+
+| Lever | Changes weights? | Best for | Cost |
+|---|---|---|---|
+| **Prompt engineering** | No | Steering, formatting, simple tasks | $ |
+| **RAG** | No | Fresh / large knowledge bases | $$ |
+| **Fine-tuning** | Yes | New skills, style, domain language, structured output | $$$ |
+
+<Callout type="tip" title="Rule of thumb">
+  If a careful prompt with 5–10 well-chosen examples gets you to 90 % of where you need to go, fine-tuning is rarely worth it. Reach for SFT when the *behaviour itself* (tone, structure, reasoning steps) needs to change, not the *knowledge*.
+</Callout>
+
+## The SFT loss
+
+For every training pair $(x, y)$ — prompt $x$, target completion $y = (y_1, \dots, y_T)$ — the loss is plain **token-level cross-entropy on the target tokens**:
+
+$$
+\mathcal{L}_{\text{SFT}} = -\sum_{t=1}^{T} \log p_\theta(y_t \mid x,\, y_{<t})
+$$
+
+The prompt tokens are *not* scored; their loss is **masked out**. The model is only penalised for the response it generates, conditioned on the prompt.
+
+<GradientDescentViz />
+
+## Instruction datasets
+
+Pretraining sees raw web text. Instruction tuning shows the model what *helpful* looks like by training on examples of (instruction → desired response). High-quality datasets share a few traits:
+
+- **Coverage** — broad task types (summarisation, extraction, rewriting, Q&A, code).
+- **Diversity** — varied phrasings, lengths, and difficulty so the model doesn't overfit to one template.
+- **Cleanliness** — fewer than 10 000 carefully curated examples often outperform millions of noisy ones (the "less is more" finding from LIMA, Alpaca-cleaned, and similar work).
+
+## Chat templates
+
+A modern chat model expects messages in a structured format with **special tokens** marking role boundaries — typically something like `<|user|>`, `<|assistant|>`, `<|system|>`. The fine-tuning pipeline must apply the **same template** the inference server will apply at runtime, or the model will see a distribution it was never trained on.
+
+```text
+<|system|>You are a helpful, terse assistant.<|end|>
+<|user|>Summarise the email in one sentence: ...<|end|>
+<|assistant|>{response — this is what the loss is computed on}<|end|>
+```
+
+Only the highlighted assistant tokens contribute to the loss; the system + user tokens are masked.
+
+## Catastrophic forgetting
+
+Update every weight aggressively on a narrow dataset and the model **forgets** abilities it had before — fluent reasoning, multilingual coverage, code generation. The classic symptoms:
+
+1. The fine-tuned model nails your task but loses its general chat ability.
+2. Held-out benchmarks (MMLU, HumanEval) drop noticeably from the base model.
+3. The model parrots your training format on inputs that didn't ask for it.
+
+**Mitigations:**
+
+- **Small learning rate** ($10^{-5}$ to $10^{-6}$) — much smaller than pretraining.
+- **Few epochs** (often just 1–3 passes).
+- **Parameter-efficient methods** — train tiny adapters and freeze the base (next lesson: PEFT, LoRA & QLoRA).
+- **Mix in general-purpose data** so the model keeps its old skills.
+
+## Common mistakes
+
+1. **Fine-tuning to inject facts.** Use [RAG](/courses/building-with-llms/04-retrieval-augmented-generation) — fine-tuning is for *behaviour*, not knowledge.
+2. **Forgetting to mask the prompt.** If you train the model to predict its own input, you'll waste capacity and degrade generation.
+3. **Mismatched chat template** between training and serving — silently destroys quality.
+4. **Too many epochs.** 5+ epochs on a small dataset is a one-way ticket to overfitting and forgetting.
+5. **No held-out general-capability eval.** You'll only learn about catastrophic forgetting after deploy.
+
+## Key takeaways
+
+- SFT continues pretraining on (input, target) pairs using the same next-token cross-entropy — but **only on the target tokens**.
+- Pick SFT when **behaviour** must change; prefer prompting + RAG when **knowledge** is what you need.
+- Instruction tuning is just SFT on (instruction → desired response) pairs, with a consistent chat template.
+- Aggressive fine-tuning causes **catastrophic forgetting**: use small learning rates, few epochs, and parameter-efficient methods.
+
+## Related concepts
+
+- [**Gradient descent**](/courses/neural-networks/02-gradient-descent) — the optimiser SFT relies on
+- [**Building with LLMs**](/courses/building-with-llms/01-prompt-engineering) — the cheaper levers (prompting, few-shot) you should try first
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the right tool when the gap is *knowledge*, not *behaviour*
+
+<Exercise id="sft-when-to-finetune" />
+<Exercise id="sft-loss-masking" />
+<Exercise id="sft-catastrophic-forgetting" />
