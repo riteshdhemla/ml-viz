@@ -5210,6 +5210,50 @@ const allExercises: Exercise[] = [
       { id: "d", label: "MMLU is unrelated to fine-tuning", isCorrect: false },
     ],
   },
+  {
+    id: "lora-vs-full-ft",
+    type: "multiple-choice",
+    question:
+      "A LoRA adapter writes the update as ΔW = B·A with B ∈ ℝ^{d×r} and A ∈ ℝ^{r×d}. For d = 4096 and r = 8, how many trainable parameters does LoRA store per weight matrix, compared to full fine-tuning?",
+    hint: "Full FT = d². LoRA = 2·d·r.",
+    explanation:
+      "Full fine-tuning trains all d² = 4096² ≈ 16.8M parameters per matrix. LoRA only trains 2·d·r = 2·4096·8 ≈ 65k — about a 256× reduction. That's why a 7B model can be LoRA-tuned on a single consumer GPU.",
+    options: [
+      { id: "a", label: "≈ 65k LoRA params vs ≈ 16.8M full — roughly 256× fewer", isCorrect: true },
+      { id: "b", label: "≈ 8k LoRA params vs ≈ 4k full — LoRA uses more", isCorrect: false },
+      { id: "c", label: "Both use exactly d² parameters; LoRA just reorganises them", isCorrect: false },
+      { id: "d", label: "LoRA uses 2·d² parameters because it stores B and A separately", isCorrect: false },
+    ],
+  },
+  {
+    id: "lora-rank",
+    type: "slider",
+    question:
+      "A weight matrix is 1024 × 1024. You add a LoRA adapter of rank r = 8. Roughly what fraction (in percent) of the full d² parameters does LoRA store?",
+    hint: "LoRA params = 2·d·r. Compare to d² = 1024² ≈ 1.05M.",
+    explanation:
+      "LoRA params = 2·1024·8 = 16 384. Full = 1024² = 1 048 576. The ratio is 16 384 / 1 048 576 ≈ 1.56 %. The whole point of PEFT: a single-digit-percent footprint while still recovering most of the task gain.",
+    min: 0,
+    max: 10,
+    step: 0.1,
+    correctRange: [1.2, 2.0],
+    unit: "%",
+  },
+  {
+    id: "qlora-quantization",
+    type: "multiple-choice",
+    question:
+      "What does the **Q** in QLoRA add on top of plain LoRA?",
+    hint: "It's about how the frozen base model is stored in memory.",
+    explanation:
+      "QLoRA freezes the base model in 4-bit precision (NF4 quantization) and trains LoRA adapters in higher precision on top. That slashes memory enough to fine-tune a 65B model on a single 48 GB GPU. The adapters themselves are still small full-precision B·A factors — quantization applies to the frozen base, not the adapter.",
+    options: [
+      { id: "a", label: "It quantizes the frozen base model to 4-bit so the whole model fits in less GPU memory", isCorrect: true },
+      { id: "b", label: "It quantizes the LoRA adapters themselves to 1-bit", isCorrect: false },
+      { id: "c", label: "It replaces gradient descent with a quantum optimizer", isCorrect: false },
+      { id: "d", label: "It freezes the adapters and trains only the base model", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

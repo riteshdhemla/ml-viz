@@ -1,0 +1,117 @@
+---
+title: "PEFT: LoRA & QLoRA"
+description: "Parameter-efficient fine-tuning: freeze the base model, learn a low-rank update ΔW = B·A. Add 4-bit quantization (QLoRA) and a 65B model fits on one consumer GPU."
+order: 2
+type: concept
+estimatedMinutes: 24
+---
+
+# PEFT: LoRA & QLoRA
+
+Full fine-tuning updates **every** weight of a 7B-parameter model — that's 14 GB of trainable parameters at FP16, plus another 28 GB of Adam optimizer state. The whole exercise often won't even fit on the GPU you have. **Parameter-Efficient Fine-Tuning (PEFT)** says: most of the model is already great, so freeze it. Only train a tiny new piece on top.
+
+**Real-world examples:** every "fine-tune Llama on my support tickets" tutorial; Stable Diffusion LoRAs that teach a style or a face; a 65B model adapted on a single 48 GB GPU with QLoRA; Hugging Face's `peft` library powering most open-weight community adapters.
+
+## Full FT vs parameter-efficient FT
+
+| | Full fine-tuning | LoRA | QLoRA |
+|---|---|---|---|
+| **Trainable params** | all (e.g. 7B) | a few million | a few million |
+| **Base model precision** | FP16 / BF16 | FP16 / BF16 | **4-bit NF4** |
+| **GPU memory (7B)** | ≈ 60 GB | ≈ 18 GB | ≈ 6 GB |
+| **Stores per task** | full new model | small adapter file | small adapter file |
+| **Speed** | slowest | fast | fast |
+
+The cost gap is so large that PEFT is the default in 2025 — full fine-tuning is reserved for foundation labs and base-model rewrites.
+
+## The low-rank update
+
+LoRA's claim is empirical but powerful: the **weight update** a fine-tune wants to make to a pretrained matrix has very low *intrinsic rank*. So instead of learning a dense update $\Delta W \in \mathbb{R}^{d \times d}$, learn two skinny matrices and multiply them:
+
+$$
+\Delta W \approx B A \quad \text{with} \quad B \in \mathbb{R}^{d \times r}, \; A \in \mathbb{R}^{r \times d}, \; r \ll d.
+$$
+
+The frozen base $W_0$ stays untouched; the forward pass becomes
+
+$$
+h = W_0 x + \frac{\alpha}{r}\, B A\, x.
+$$
+
+At inference you can either keep $B$ and $A$ separate (zero added latency for an attached adapter) or **merge** them into $W_0 + BA$ for a vanilla single matrix multiply.
+
+<LoRAViz />
+
+Counting parameters makes the savings concrete. For a single $4096 \times 4096$ attention projection:
+
+- Full update: $d^2 = 4096^2 \approx 16.8\text{M}$ params.
+- LoRA, rank 8: $2 \cdot d \cdot r = 2 \cdot 4096 \cdot 8 \approx 65\text{k}$ params.
+
+That's a **256× reduction** for *one* matrix; multiplied across all attention/MLP projections in a transformer, you go from "needs a node of A100s" to "fits on one consumer GPU".
+
+## Rank and alpha
+
+LoRA has two knobs you actually tune.
+
+- **Rank `r`** — the bottleneck width. Common values: 4, 8, 16, 32, 64. Higher rank = more capacity, more memory, more risk of overfitting on a small dataset.
+- **Alpha `α`** — a scaling factor. The effective update is $(\alpha/r) \cdot BA$, so changing $r$ doesn't silently change the update magnitude. Treat $\alpha$ as a learning-rate-like knob; a common heuristic is $\alpha = 2r$, but many recipes pin $\alpha = 16$ and only sweep $r$.
+
+<Callout type="tip" title="Where to attach adapters">
+  In transformers, LoRA is most commonly applied to the **attention query and value projections** (`q_proj`, `v_proj`). Adding it to `k_proj`, `o_proj`, and the MLP `up`/`down`/`gate` projections gives a small extra bump but costs proportionally more parameters. Start with `q_proj` + `v_proj`; only widen if you're capacity-bound.
+</Callout>
+
+## Adapters as a deployment story
+
+Because a LoRA adapter is a tiny file (often 10–200 MB), you can:
+
+1. **Hot-swap personas or skills** — one base model in GPU memory, dozens of adapters on disk, load one per request.
+2. **Ship updates without re-downloading the base.**
+3. **Compose** — some serving stacks support multiple adapters merged with weights at inference time.
+
+This is a structural advantage over full fine-tuning, which gives you a fresh multi-GB checkpoint every time.
+
+## QLoRA: the 4-bit twist
+
+Even with LoRA, the *frozen* base still has to live in GPU memory. A 65B-parameter model at FP16 is 130 GB — nothing single-GPU fits it. **QLoRA** adds three ingredients on top of LoRA:
+
+1. **4-bit NF4 quantization** of the frozen base. "NF4" (NormalFloat-4) is a quantization scheme designed for the bell-shaped weight distributions you actually see in language models — it has 16 levels placed at the quantiles of a unit normal, not evenly spaced.
+2. **Double quantization** — the per-block quantization *constants* are themselves quantized, saving an extra ~0.4 bits per parameter.
+3. **Paged optimizer state** — Adam state spills to CPU memory under pressure instead of crashing the run.
+
+Critically, the **LoRA adapters stay in higher precision** (BF16). Quantization compresses the frozen part; the trainable part is small enough that precision doesn't hurt.
+
+$$
+\underbrace{W_0}_{\text{NF4, frozen}} x + \underbrace{B A}_{\text{BF16, trainable}} x
+$$
+
+The result: a 65B model becomes fine-tunable on a **single 48 GB GPU**, with quality on instruction-following benchmarks within 1–2 % of full 16-bit fine-tuning. That's the gap from "lab project" to "your laptop's better GPU".
+
+<Callout type="info" title="Quantization vs the adapter">
+  The frozen base is dequantized on-the-fly during the forward pass back to BF16, multiplied with the activations, and the result is added to the BF16 LoRA path. Only the *storage* is 4-bit; *compute* is still BF16. That's why QLoRA loses very little quality vs full-precision LoRA — the math is the same, only the bookkeeping shrinks.
+</Callout>
+
+## Common mistakes
+
+1. **Setting `r` too high "to be safe."** A rank-64 adapter on a 5k-example dataset will overfit fast. Start at 8 or 16 and only raise if validation loss plateaus.
+2. **Forgetting to scale by `α/r`.** Halving `r` without halving the effective update magnitude silently changes your learning dynamics.
+3. **Attaching LoRA to only one projection.** `q_proj` alone often under-performs `q_proj` + `v_proj`; budget two adapters before adding rank.
+4. **Merging adapters mid-training.** Once you merge $W_0 + BA$, you've baked the adapter into a new dense matrix — the parameter savings are gone until you re-extract.
+5. **Using QLoRA for tiny models.** The 4-bit overhead and dequantization cost only pay off for large bases (≳ 7B). For a 1.3B model, plain LoRA is faster.
+
+## Key takeaways
+
+- LoRA learns a **low-rank update** $\Delta W \approx B A$ on top of frozen base weights, cutting trainable parameters from $d^2$ to $2 d r$.
+- **Rank `r`** controls capacity; **alpha `α`** controls the effective magnitude. Effective update = $(\alpha/r) \cdot BA$.
+- Adapters are small files — hot-swappable, composable, ship-friendly.
+- **QLoRA** quantizes the frozen base to 4-bit NF4 (and only the base — adapters stay in BF16), enabling 65B-model fine-tuning on a single consumer-grade GPU.
+- Reach for full FT only when PEFT clearly underperforms; in 2025 LoRA/QLoRA is the default.
+
+## Related concepts
+
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the loss you're still optimising; LoRA only changes *which* parameters move.
+- [**Gradient descent**](/courses/neural-networks/02-gradient-descent) — the optimiser still drives the (now-tiny) trainable subset.
+- [**Regularization**](/courses/linear-regression/03-regularization) — low-rank constraints are themselves a form of inductive bias against overfitting.
+
+<Exercise id="lora-vs-full-ft" />
+<Exercise id="lora-rank" />
+<Exercise id="qlora-quantization" />
