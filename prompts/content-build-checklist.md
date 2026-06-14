@@ -127,7 +127,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **`model-evaluation` + Evaluating AI Systems** · concepts: model selection workflow, build-vs-buy, public benchmarks & their limits, cost/latency · viz: *none* · ~3 exercises · notebook.
 
 ### Phase 4 — Multimodal  *(integrate)*
-- [ ] **`computer-vision` + Vision-Language Models** · concepts: CLIP contrastive image-text training, shared embedding space, zero-shot classification, BLIP-2 captioning · viz: **CLIPSpaceViz** (image & text points in one embedding space) · ~3 exercises · notebook.
+- [x] **`computer-vision` + Vision-Language Models** · concepts: CLIP contrastive image-text training, shared embedding space, zero-shot classification, BLIP-2 captioning · viz: **CLIPSpaceViz** (image & text points in one embedding space) · ~3 exercises · notebook.
 
 ### Phase 5 — ML Systems / MLOps  *(integrate into `ml-in-practice`; split into a new `ml-systems` course if it passes ~10 lessons)*
 - [ ] **`ml-in-practice` + ML Systems Design & Problem Framing** · reliability, scalability, maintainability, objective functions, research-vs-production · viz: *none* · notebook.

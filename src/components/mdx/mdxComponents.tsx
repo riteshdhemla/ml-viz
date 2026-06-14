@@ -67,6 +67,7 @@ import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardMo
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
 import { ScalingLawViz } from "@/components/visualizations/ScalingLaw/ScalingLawViz";
 import { ContrastiveViz } from "@/components/visualizations/Contrastive/ContrastiveViz";
+import { CLIPSpaceViz } from "@/components/visualizations/CLIPSpace/CLIPSpaceViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -140,4 +141,5 @@ export const mdxComponents: MDXComponents = {
   QuantizationViz,
   ScalingLawViz,
   ContrastiveViz,
+  CLIPSpaceViz,
 };

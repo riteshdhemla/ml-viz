@@ -5815,6 +5815,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A $0.01$ gap on MMLU is within noise, so the team has no information — they should wait for the next model release.", isCorrect: false },
     ],
   },
+  // ── Computer Vision — Vision-Language Models ───────────────────
+  {
+    id: "clip-shared-space",
+    type: "multiple-choice",
+    question:
+      "A teammate ships a CLIP-style retrieval system and reports that the image-to-text similarity scores look reasonable but image-to-image scores 'are dominated by a handful of huge values that don't seem related to content'. You inspect the pipeline and find that the text branch L2-normalises its outputs but the image branch does not. What is the structural fix?",
+    hint: "CLIP is trained on unit-norm vectors. What does cosine similarity reduce to when one side is normalised and the other isn't?",
+    explanation:
+      "CLIP's training objective is symmetric InfoNCE on $\\ell_2$-normalised vectors, which makes the inner product equal to cosine similarity. If one branch skips normalisation, the inner product becomes $\\lVert h_{\\text{img}} \\rVert \\cdot \\cos(\\theta)$ — the magnitude of the image embedding dominates the score, so images with high-norm (often high-frequency or busy) features look 'similar to everything'. The fix is structural: $\\ell_2$-normalise both encoders' outputs before scoring. (B) is wrong — the temperature only changes the softmax peakedness, not the geometry. (C) confuses cause and effect: the model is fine, the *use* of the model is wrong. (D) re-fine-tuning is wildly overkill when a one-line normalisation step fixes the bug.",
+    options: [
+      { id: "a", label: "Add an $\\ell_2$-normalisation step on the image embedding before computing similarity — CLIP is trained with both sides on the unit hypersphere, so missing the normalisation lets magnitude dominate the ranking", isCorrect: true },
+      { id: "b", label: "Lower the temperature $\\tau$ at inference time to compress the score distribution", isCorrect: false },
+      { id: "c", label: "Switch from cosine similarity to Euclidean distance, since the magnitudes are off", isCorrect: false },
+      { id: "d", label: "Re-train the image encoder with a stronger image-side projection head", isCorrect: false },
+    ],
+  },
+  {
+    id: "clip-zero-shot",
+    type: "multiple-choice",
+    question:
+      "You are running zero-shot CLIP classification with 50 class labels. Using a single template `\"a photo of a {label}\"` gives 71.2% top-1 on your eval set. A colleague suggests averaging 8 templates per class instead — `\"a picture of a {label}\"`, `\"a close-up of a {label}\"`, etc. — and re-evaluating. Concretely, *how* should the averaging be done, and what is the structural reason it helps?",
+    hint: "Where in the pipeline does the averaging happen — at the embedding level, the logit level, or the prediction level?",
+    explanation:
+      "The correct recipe is: for each class $c$, encode all 8 templated prompts, $\\ell_2$-normalise each, **mean-pool the unit-norm embeddings**, and then re-normalise to a unit class prototype $\\bar z_c$. Classify each image by $\\arg\\max_c\\ \\cos(z_{\\text{img}}, \\bar z_c)$. The reason this works is the same reason ensembling works in supervised learning: each template injects template-specific noise (camera angle, framing, register) that is orthogonal to the *class direction*. Averaging the embeddings cancels the noise and isolates the part that is consistent across all templates — the class itself. (B) averages on the wrong axis (templates within an image, not across classes), and produces no class prototype. (C) majority-voting at the prediction level is much weaker than averaging in embedding space; you throw away similarity magnitudes. (D) sum of cosine similarities is mathematically equivalent to averaging embeddings *only* when the embeddings are unit-norm and you don't re-normalise — but it's a strictly less general recipe (no class prototype to reuse for downstream retrieval).",
+    options: [
+      { id: "a", label: "Mean-pool the 8 unit-norm text embeddings per class, re-normalise the result to get a class prototype $\\bar z_c$, and use $\\bar z_c$ as the per-class anchor for cosine similarity. Each template injects irrelevant variation that the average cancels out, leaving the class direction.", isCorrect: true },
+      { id: "b", label: "For each image, score it against all 8 × 50 = 400 prompts and average the similarity scores across the 8 templates for the same image", isCorrect: false },
+      { id: "c", label: "Run zero-shot classification 8 times, once per template, and majority-vote the predicted class across the 8 runs", isCorrect: false },
+      { id: "d", label: "Sum (not average) the cosine similarities of the 8 templates per class and pick the class with the largest sum", isCorrect: false },
+    ],
+  },
+  {
+    id: "clip-contrastive-batch",
+    type: "slider",
+    question:
+      "CLIP is trained with symmetric cross-entropy on the $B \\times B$ similarity matrix, with the diagonal as positives. At random initialisation the softmax is uniform across each row and column. For a batch size of $B = 256$, what is the initial value of the loss in **nats** (round to one decimal place)?",
+    hint: "If the softmax is uniform, each diagonal entry has probability $1/B$. Plug that into $-\\log p$ — and remember the symmetric loss is the average of two identical terms.",
+    explanation:
+      "At random init each row of the softmax is uniform, so the diagonal entry has probability $1/B$. The row-cross-entropy is $-\\log(1/B) = \\log B$. The column cross-entropy is identical by symmetry. The symmetric loss is $\\tfrac{1}{2}(\\log B + \\log B) = \\log B$. For $B = 256$, $\\log 256 \\approx 5.545$ nats — so the headline figure to expect at step 0 is about $\\mathbf{5.5}$. As training progresses, the diagonal probability climbs above $1/B$ and the loss drops. This is also why **bigger batches make CLIP harder to train**: a larger $B$ raises the baseline loss because the diagonal classification problem has more distractors, but also means the model has more informative negatives per step. The original paper used $B = 32{,}768$ for exactly this reason.",
+    min: 0.0,
+    max: 8.0,
+    step: 0.1,
+    correctRange: [5.4, 5.7],
+    unit: "nats",
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

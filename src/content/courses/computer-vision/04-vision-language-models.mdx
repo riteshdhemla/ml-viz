@@ -1,0 +1,171 @@
+---
+title: "Vision-Language Models"
+description: "CLIP's contrastive image-text training, the shared embedding space, zero-shot classification, and the BLIP-2 / LLaVA recipe for plugging vision into an LLM."
+order: 4
+type: concept
+estimatedMinutes: 22
+---
+
+Vision-language models (VLMs) close the gap between two previously separate worlds: an image encoder that sees pixels, and a language model that reads text. The trick is to make both sides speak the *same* vector language — a shared embedding space where the picture of a beach and the sentence "a photo of a beach at sunset" land in roughly the same place. Once that space exists you can do zero-shot classification, semantic image search, free-form content moderation, and (with one more stage) captioning and chat about images.
+
+**Real-world examples:** CLIP zero-shot classification on millions of unseen labels, semantic image search inside Google Photos and Apple Photos, BLIP-2 captioning for accessibility / alt-text, LLaVA-style chat assistants that answer questions about uploaded screenshots, multimodal retrieval inside ad systems and recommender systems, and content moderation by free-form text rule (e.g. "flag anything that looks like a knife in a school setting") without ever training a knife-in-school classifier.
+
+---
+
+## CLIP — the two-encoder recipe
+
+CLIP (Contrastive Language–Image Pre-training, Radford et al., 2021) trains two encoders side by side:
+
+- An **image encoder** $f_\theta$ — a ViT or a ResNet — that maps an image to a $d$-dimensional vector. Typical $d = 512$.
+- A **text encoder** $g_\phi$ — a Transformer — that maps a caption to a vector of the same $d$.
+
+Each encoder ends with a linear projection head into the shared $d$-space. The output is then $\ell_2$-normalised:
+
+$$
+z = \frac{h}{\lVert h \rVert_2}
+$$
+
+so every embedding lives on the unit hypersphere. Similarity between any image and any text is then just a dot product (which equals cosine similarity, since the vectors are unit-norm).
+
+This last step is structural, not cosmetic: by living on a sphere the model only has to learn *directions*, not magnitudes, which makes training stable and lets you compare an image against millions of text candidates with a single matrix multiply at inference time.
+
+---
+
+## The contrastive training objective
+
+CLIP trains on a giant pile of (image, caption) pairs scraped from the web — the original paper used 400M pairs. In each training step it pulls a batch of $B$ matched pairs $(x_i, y_i)$, encodes them, and builds the $B \times B$ similarity matrix:
+
+$$
+S_{ij} = \frac{f_\theta(x_i)^\top g_\phi(y_j)}{\tau}
+$$
+
+where $\tau$ is a learnable temperature. The matched pairs sit on the *diagonal* of $S$ and are the positives; every off-diagonal entry is a negative. The loss is a symmetric cross-entropy that pushes the model to put high mass on the diagonal in both directions:
+
+$$
+\mathcal{L} = \tfrac{1}{2}\!\left(\mathrm{CE}(\mathrm{softmax}_{\text{row}}(S),\ I) + \mathrm{CE}(\mathrm{softmax}_{\text{col}}(S),\ I)\right)
+$$
+
+with $I$ the $B \times B$ identity. The first term is "given image $i$, classify which of the $B$ captions matches" (a $B$-way classification problem). The second term is the same task with rows and columns swapped: "given caption $j$, classify which image". Both signals matter — keeping only one direction lets the encoders collapse.
+
+At initialisation the diagonal is no more likely than any other cell, so the loss starts near $\log B$ for batch size $B$. Larger batch sizes give a harder (more informative) classification task, so CLIP-style models scale strongly with batch size; the original paper used batches of 32,768 pairs.
+
+The learnable temperature $\tau$ — initialised at $e^{-2} \approx 0.135$ — controls how peaked the softmax is. The model has every incentive to drive $\tau$ down once it starts winning, so it is clipped in practice to avoid numerical blow-up.
+
+<Callout type="info">
+**InfoNCE in two modalities.** The CLIP loss is just symmetric InfoNCE — the same contrastive objective from sentence-embedding training in [Training Embedding Models](/courses/nlp/07-training-embedding-models). The novelty isn't the loss, it's the *negative pool*: instead of two sentences, the positives and negatives are an image and a caption. Same math, two encoders.
+</Callout>
+
+<CLIPSpaceViz />
+
+---
+
+## The shared embedding space — what you get for free
+
+Once both encoders project into one $d$-dim space, any image and any text get scored by a single inner product. That single property unlocks several previously-separate ML tasks.
+
+### Zero-shot classification
+
+You want to classify images into 1,000 ImageNet labels without ever training a classifier. With CLIP you don't have to:
+
+1. For each candidate label, build a text prompt like `"a photo of a {label}"`. Embed all 1,000 prompts.
+2. For each test image, embed it once.
+3. The prediction is $\arg\max_c\ \cos(z_{\text{img}},\ z_{\text{text}_c})$.
+
+CLIP-ViT-B/32 hits roughly 63% top-1 on ImageNet *without any training on ImageNet labels*. ResNet-50 trained with full supervision on ImageNet hits 76% — a fair comparison only after you remember that CLIP was never told what ImageNet classes exist.
+
+**Prompt engineering for classification.** The exact prompt template matters a lot. `"a photo of a {label}"` beats just `"{label}"` because the text encoder was trained on captions, not bare words. Averaging multiple templates per class — `"a photo of a {label}"`, `"a picture of a {label}"`, `"a {label} in the wild"`, `"a close-up of a {label}"` — beats any single template by several points on ImageNet. The averaging happens *in the embedding space*: build the class prototype by mean-pooling the unit-norm embeddings of each templated prompt, then re-normalise.
+
+<Callout type="tip">
+**Why averaging multiple prompt templates helps.** Each template injects its own irrelevant variation (camera angle, background, framing) that has nothing to do with the class. Averaging cancels that noise and isolates the *class direction* — the part of the embedding that is consistent across all of "a photo of a cat" / "a close-up of a cat" / "a cat in the wild". This is the multimodal twin of the ensembling trick from supervised learning.
+</Callout>
+
+### Semantic image search
+
+The same matmul answers "find the 10 most similar images to this image" *or* "find the 10 most similar images to this sentence" — no per-task model required. Modern systems precompute the image embeddings for the corpus, then do a single approximate-nearest-neighbour lookup at query time. This is the backbone of Google Photos, Pinterest Lens, and most stock-image search products.
+
+### Content moderation by free-form text rule
+
+Want to flag images of "violence in a school setting"? Embed that sentence and compute cosine similarity against every uploaded image. No training data, no labelled dataset, no separate classifier. Set a similarity threshold and you have a working classifier in minutes. Policy changes become string edits.
+
+---
+
+## CLIP's failure modes
+
+CLIP is not magic. Three failure modes show up everywhere it gets deployed:
+
+- **Bag-of-words behaviour on order-sensitive captions.** The text encoder is biased to treat `"the cat on the dog"` and `"the dog on the cat"` similarly — the bag of nouns matters more than the syntax. This breaks composition-heavy tasks.
+- **No reliable text rendering or OCR.** "An image of the word HELLO in red" returns hits for red blobs, not for text. CLIP was not optimised for fine-grained character recognition. This is why downstream systems still bolt on a real OCR model.
+- **Bias to Western web data.** Both training data and prompt templates encode the web's demographic and aesthetic skew, with measurable effects on accuracy across cultural categories.
+
+<Callout type="warning">
+**CLIP cannot read.** Don't deploy CLIP for any task where understanding the *text inside an image* matters — receipts, screenshots of documents, error messages, signage. Use a dedicated OCR model (Tesseract, TrOCR, PaddleOCR) and then optionally feed the extracted text through a language model.
+</Callout>
+
+---
+
+## BLIP-2 and the LLaVA family — using a VLM to generate text
+
+CLIP gives you a great cross-modal *retrieval* model, but it can't actually *say anything* about an image. For captioning and visual question answering you want the LLM's text-generation machinery hooked up to the image encoder. BLIP-2 (Salesforce, 2023) and the LLaVA family (Liu et al., 2023) ship a clean recipe that has become the industry default:
+
+1. **Take a frozen vision encoder** — typically a ViT-L/14 pretrained with CLIP. This is your image feature extractor.
+2. **Take a frozen LLM** — Llama, Mistral, Gemma, or similar. This is your text generator.
+3. **Train a small bridge module** between them. In BLIP-2 this is a **Q-former** — a tiny Transformer with a bank of 32 learnable query tokens that cross-attend to the ViT features and produce 32 "soft prompt" tokens the LLM consumes. In LLaVA the bridge is even simpler: a 2-layer MLP that projects ViT features to the LLM's embedding dimension and concatenates them at the start of the sequence.
+
+The LLM treats these projected image tokens like any other prefix — its self-attention reads them, its language-modelling head decodes a caption or an answer. The training data is image-caption pairs plus instruction-following data with images mixed in (e.g. "describe what is happening" or "what does the sign say").
+
+Because the LLM and the ViT stay frozen, **only the bridge gets trained from scratch**. The bridge is small — a few percent of total parameters — so the recipe is cheap and reuses every dollar already spent on the base LLM and the base ViT. The LLM inherits its reasoning, knowledge, and refusal behaviour into the multimodal setting essentially for free.
+
+Most VLM *fine-tuning* in production is then [PEFT / LoRA](/courses/fine-tuning-alignment/02-peft-lora-qlora) on the bridge plus a few of the LLM's attention layers — keeping the base frozen, learning a small low-rank update for the new task. This is how teams ship in-house VLMs for medical imaging, satellite photos, or document QA without a frontier-lab compute budget.
+
+---
+
+## Multimodal retrieval and content moderation as the killer apps
+
+Most teams shipping VLMs in production aren't building captioning systems — they're building **retrieval and moderation**. The maths is the same as CLIP zero-shot: embed everything in a shared space, do a dot-product lookup, set a threshold.
+
+- **Search ads / recommendations.** Embed the user's query, the product image, and the product title in one space; rank by dot product.
+- **Visual deduplication.** Embed everything in your image library; cluster the embeddings; the near-duplicate detection problem becomes a single nearest-neighbour lookup.
+- **Policy enforcement.** A handful of policy sentences become a handful of vectors; every uploaded image gets compared against them. Adding a new rule is editing a string.
+
+The reason this pattern wins is operational. You ship *one* embedding model, you index *all* of your images once, and then every new product question — search, moderation, dedup, recommendation — turns into a different query against the same index. The marginal cost of a new use case is zero.
+
+---
+
+## Common Mistakes
+
+**Forgetting to L2-normalise embeddings before computing similarity.** CLIP is trained on unit-norm vectors. If you skip the normalisation step at inference, you are using *dot product* instead of *cosine similarity* and your rankings will be dominated by embedding magnitude, not direction. Always normalise both sides.
+
+**Using a single prompt template for zero-shot classification.** A bare `"{label}"` prompt leaves a couple of points of accuracy on the table compared to `"a photo of a {label}"`, and a *multi-template* average leaves a few more. The OpenAI CLIP repo ships an 80-prompt template list for ImageNet for exactly this reason.
+
+**Comparing image and text embeddings from *different* CLIP models.** A CLIP-ViT-B/32 image embedding and a CLIP-ViT-L/14 text embedding live in two completely unrelated spaces — their cosine similarity is meaningless. Always pair an image encoder with its matched text encoder from the same training run.
+
+**Deploying CLIP for OCR tasks.** CLIP's text encoder is a *language* encoder; it has no character-recognition pathway. If your task is "read the text in this image", use a real OCR model and feed its output downstream.
+
+---
+
+## Key Takeaways
+
+- A VLM trains an **image encoder** and a **text encoder** into a *shared* $d$-dim embedding space; $\ell_2$-normalised vectors mean cosine similarity = dot product.
+- The CLIP training loss is **symmetric cross-entropy on the $B \times B$ similarity matrix**, with the diagonal as positives — the same InfoNCE objective from contrastive embedding training, applied across modalities.
+- The shared space gives you **zero-shot classification, semantic search, and free-form content moderation** for free, without any task-specific training.
+- **Prompt engineering matters at inference time** — averaging multiple `"a photo of a {label}"` templates per class is the cheapest way to lift accuracy.
+- CLIP **cannot read text inside images**, behaves as a bag-of-words on order-sensitive captions, and inherits the web's data biases. Pick the right tool for the job.
+- BLIP-2 and LLaVA bridge a **frozen ViT** to a **frozen LLM** with a small **Q-former / MLP projector**; only the bridge trains. This is the cheap, reusable recipe behind almost every production captioning + chat-about-images system.
+
+---
+
+## Exercises
+
+<Exercise id="clip-shared-space" />
+<Exercise id="clip-zero-shot" />
+<Exercise id="clip-contrastive-batch" />
+
+---
+
+## Related Concepts
+
+- [Backbones in Practice](/courses/computer-vision/03-backbones-in-practice) — CLIP uses a ViT or ResNet as its image encoder
+- [Training Embedding Models](/courses/nlp/07-training-embedding-models) — the same InfoNCE / contrastive loss in the single-modality case
+- [Foundation Models and Scaling](/courses/transformers/05-foundation-models-and-scaling) — why the pretraining + frozen-base + bridge recipe became standard
+- [Embeddings and Semantic Search](/courses/building-with-llms/03-embeddings-and-semantic-search) — how the shared embedding space turns into a production search system
+- [PEFT: LoRA and QLoRA](/courses/fine-tuning-alignment/02-peft-lora-qlora) — how most VLM fine-tuning actually happens
