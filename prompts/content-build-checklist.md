@@ -124,7 +124,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **`nlp` + Topic Modeling (BERTopic)** · concepts: embed→reduce→cluster→c-TF-IDF labels · viz: *reuse `KMeansViz` or `PerplexityViz`* · ~3 exercises · notebook.
 - [x] **`nlp` + Training Embedding Models** · concepts: SBERT, contrastive/triplet loss, hard negatives, TSDAE · viz: **ContrastiveViz** (pull-positive/push-negative in 2D) · ~3 exercises · notebook.
 - [x] **`model-evaluation` + LLM Evaluation** · concepts: entropy/cross-entropy, perplexity, bits-per-byte, AI-as-a-judge, pairwise/comparative eval, benchmarks · viz: *reuse `PerplexityViz`* · ~3 exercises · notebook.
-- [ ] **`model-evaluation` + Evaluating AI Systems** · concepts: model selection workflow, build-vs-buy, public benchmarks & their limits, cost/latency · viz: *none* · ~3 exercises · notebook.
+- [x] **`model-evaluation` + Evaluating AI Systems** · concepts: model selection workflow, build-vs-buy, public benchmarks & their limits, cost/latency · viz: *none* · ~3 exercises · notebook.
 
 ### Phase 4 — Multimodal  *(integrate)*
 - [ ] **`computer-vision` + Vision-Language Models** · concepts: CLIP contrastive image-text training, shared embedding space, zero-shot classification, BLIP-2 captioning · viz: **CLIPSpaceViz** (image & text points in one embedding space) · ~3 exercises · notebook.

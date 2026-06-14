@@ -5770,6 +5770,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Replace the judge with a smaller, faster LLM — smaller models have less position bias", isCorrect: false },
     ],
   },
+  // ── Model Evaluation — Evaluating AI Systems ───────────────────
+  {
+    id: "eval-systems-build-vs-buy",
+    type: "multiple-choice",
+    question:
+      "You are picking between a hosted frontier API at $\\$0.03/1\\text{k}$ input + $\\$0.06/1\\text{k}$ output tokens, and self-hosting a 7B open-weights model on a reserved GPU at an amortised $\\$0.0001/1\\text{k}$ input + $\\$0.0003/1\\text{k}$ output. Your traffic averages $T_{\\text{in}} = 800$ and $T_{\\text{out}} = 300$ tokens per query. At $1{,}000$ queries per month, the team needs the system live in two weeks, and the eval-set accuracy gap between the two models on your task is large (frontier $0.92$ vs 7B $0.78$). Which call is best supported by the *systems* trade-off, and why?",
+    hint: "Compute approximate per-query cost on the API at this traffic level. Then weigh that absolute number against the engineering cost of self-hosting and the 14-point accuracy gap. Which side of the trade-off dominates at $1{,}000$ queries / month?",
+    explanation:
+      "At $T_{\\text{in}} = 800$, $T_{\\text{out}} = 300$, the API costs $\\frac{0.03 \\cdot 800}{1000} + \\frac{0.06 \\cdot 300}{1000} = 0.024 + 0.018 = \\$0.042$ per query, so $1{,}000$ queries / month is $\\$42$ / month. Self-hosting a 7B model means at minimum: a GPU reservation (several hundred dollars per month idle), an inference stack to operate, an on-call rotation, and engineering time to integrate — all to save $\\$42$ / month *and* take a $14$-point accuracy hit. The build-vs-buy break-even point $V^{*} = C_{\\text{gpu}} / p_{\\text{tok}}$ sits in the millions of queries per month for this price gap; $1{,}000$ / month is *nowhere near* it. (B) is wrong: $1{,}000$ queries / month is not 'high volume' for a frontier-tier API by any measure, and the accuracy gap actively cuts against self-host. (C) and (D) inflate concerns that do not dominate at this scale; you can revisit the decision once traffic or compliance requirements materially change. Build-vs-buy is fundamentally an economics problem: at low volume + tight deadline + large accuracy gap, the API wins decisively.",
+    options: [
+      { id: "a", label: "Buy (API). At $\\$42$ / month and a 14-point accuracy lift, the API dominates self-host on both cost-per-correct *and* engineering time at this volume; self-host break-even is millions of queries / month away.", isCorrect: true },
+      { id: "b", label: "Build (self-host). $1{,}000$ queries / month is already high enough volume that the per-token-cost advantage of self-host pays back the GPU reservation in the first month.", isCorrect: false },
+      { id: "c", label: "Build (self-host). Any volume of PII-bearing user data justifies the engineering overhead of self-host regardless of cost.", isCorrect: false },
+      { id: "d", label: "Buy (API). The accuracy gap is irrelevant — public benchmark scores are noisy, so the cost difference alone settles it.", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-systems-cost-latency",
+    type: "slider",
+    question:
+      "A frontier API costs $\\$0.03/1\\text{k}$ input + $\\$0.06/1\\text{k}$ output tokens, and on your task-specific eval set it scores accuracy $0.90$. Your average query uses $T_{\\text{in}} = 800$ and $T_{\\text{out}} = 300$ tokens. What is the **cost per correct answer** (in $\\$$, to three decimal places)?",
+    hint: "Compute per-query cost = $\\frac{p_{\\text{in}} \\cdot T_{\\text{in}}}{1000} + \\frac{p_{\\text{out}} \\cdot T_{\\text{out}}}{1000}$, then divide by accuracy.",
+    explanation:
+      "Per-query cost is $\\frac{0.03 \\cdot 800}{1000} + \\frac{0.06 \\cdot 300}{1000} = 0.024 + 0.018 = \\$0.042$. Cost per correct = $0.042 / 0.90 \\approx \\$0.0467$. Notice the $\\sim 11\\%$ inflation over the raw per-query cost: every $10$ queries you pay for, only $9$ are correct, so the *effective* cost of a correct answer is higher than the headline price. This metric is what you should be comparing across candidate models — a cheaper model that is also less accurate can easily *lose* on cost-per-correct because the extra wrong answers either need a retry, a fallback to a more expensive model, or a human in the loop. Always score per-correct, not per-query, when budgeting production LLM systems.",
+    min: 0.0,
+    max: 0.1,
+    step: 0.001,
+    correctRange: [0.045, 0.048],
+    unit: "$ / correct answer",
+  },
+  {
+    id: "eval-systems-benchmark-limits",
+    type: "multiple-choice",
+    question:
+      "Two candidate models have nearly identical MMLU scores ($0.86$ vs $0.85$) on the public leaderboard, and your team is debating which to ship for a customer-support assistant. The lead engineer argues: 'They are essentially tied — pick whichever is cheaper.' What is the strongest *structural* objection to that reasoning?",
+    hint: "What does MMLU actually measure, and how related is it to 'is this a good support assistant for *our* customers'?",
+    explanation:
+      "Public benchmarks mislead in production model selection for four structural reasons: (1) *contamination* — frontier pretraining corpora include benchmark text, so reported scores are systematically inflated; (2) *Goodhart* — once a benchmark is the headline, training pipelines optimise for it directly; (3) *narrow tasks* — MMLU is multiple-choice academic Q&A across 57 subjects, which is essentially uncorrelated with the shape of a real support inbox; and (4) *format brittleness* — small prompt-format changes shift benchmark scores by points. The correct objection is the narrow-task one: a $0.01$ gap on MMLU tells you essentially *nothing* about which model will be better at refunds, account lookups, refusal of unsafe requests, or grounded answers from your knowledge base. Build the $100$-example task-specific eval set, score both candidates on *that*, then decide. (A) inverts the objection — the right answer is to ignore MMLU here, not to demand more public benchmarks. (B) treats benchmark fragility as a calibration problem, when the real problem is that MMLU is the wrong measurement entirely for this product. (D) is wrong: the gap is not 'within noise' on its own (it would be, with a confidence interval), but even a *real* MMLU gap would not translate to a real production gap.",
+    options: [
+      { id: "a", label: "MMLU is one benchmark; the team should also report HellaSwag, GSM8K, and HumanEval averages before deciding.", isCorrect: false },
+      { id: "b", label: "MMLU is format-brittle; rerun both models with the *same* prompt template before claiming they are tied.", isCorrect: false },
+      { id: "c", label: "MMLU measures multiple-choice academic Q&A and is essentially uncorrelated with customer-support quality. Build a task-specific eval set of $50$–$200$ real support tickets, score both candidates on that, and let it pick the model.", isCorrect: true },
+      { id: "d", label: "A $0.01$ gap on MMLU is within noise, so the team has no information — they should wait for the next model release.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
