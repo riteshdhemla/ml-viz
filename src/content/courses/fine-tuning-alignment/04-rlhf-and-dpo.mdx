@@ -1,0 +1,133 @@
+---
+title: "Preference Tuning: RLHF & DPO"
+description: "Two ways to turn a reward signal into an aligned policy: classical RLHF with PPO and a KL leash on the SFT model, or DPO — the same KL-regularised objective collapsed into one closed-form classification loss."
+order: 4
+type: concept
+estimatedMinutes: 24
+---
+
+# Preference Tuning: RLHF & DPO
+
+The reward model from the last lesson is **not the goal** — it's a stepping stone. We still need a policy $\pi_\theta$ (the chat model) that actually produces high-reward responses at inference time. **Preference tuning** is the step that pushes the policy in that direction without letting it run off a cliff. Two recipes dominate in 2025: classical **RLHF with PPO**, and **Direct Preference Optimization (DPO)**, which skips RL entirely and recovers the same objective as a single classification loss.
+
+**Real-world examples:** the original InstructGPT and ChatGPT pipelines (SFT → RM → PPO); Anthropic's RLHF + Constitutional AI loops; LLaMA-2-Chat's two-RM PPO; Zephyr, Tulu-2, Mistral-Instruct, and most modern open chat models trained with **DPO** instead of PPO because it's an order of magnitude cheaper.
+
+## The RLHF pipeline
+
+RLHF is three sequential stages that share one base model.
+
+1. **SFT** — fine-tune the pretrained model on a curated instruction dataset. This is the **reference policy** $\pi_\text{ref}$ for everything that follows.
+2. **Reward model** — train $r_\phi(x, y)$ on chosen-vs-rejected pairs using the Bradley–Terry loss. Initialise from the SFT checkpoint.
+3. **PPO** — treat the LLM as an RL policy. State = prompt + generated prefix, action = next token, reward = $r_\phi(x, y)$ on the full completion. Optimise with [policy gradient](/courses/reinforcement-learning/04-policy-gradient) (PPO clip variant).
+
+The RLHF objective adds a **KL leash** to the SFT model:
+
+$$
+\mathcal{L}_{\text{RLHF}}(\theta) = \mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi_\theta}\big[r_\phi(x,y)\big] - \beta\, \mathrm{KL}\!\left(\pi_\theta(\cdot\mid x)\,\|\,\pi_{\text{ref}}(\cdot\mid x)\right).
+$$
+
+<PolicyGradientViz />
+
+The two terms pull in opposite directions:
+
+- The **reward term** $\mathbb{E}[r_\phi]$ pushes the policy toward responses the RM scores highly.
+- The **KL term** $\beta \cdot \mathrm{KL}(\pi_\theta \,\|\, \pi_\text{ref})$ penalises drifting away from the SFT model. Without it, the policy will gleefully exploit every quirk of the RM (the [reward-hacking trap](/courses/fine-tuning-alignment/03-reward-models) from last lesson).
+
+The hyperparameter $\beta$ is the **KL budget**. Set it too low and the policy reward-hacks until generations look nothing like English; set it too high and PPO barely moves off the SFT distribution.
+
+<Callout type="info" title="Where the KL term actually lives">
+  In implementation, the KL penalty is usually folded into the per-token reward as $r_t = r_\phi \cdot \mathbb{1}[t = T] - \beta \log \frac{\pi_\theta(y_t \mid \cdot)}{\pi_\text{ref}(y_t \mid \cdot)}$. The RM contributes a sparse reward at the final token; the KL contributes a dense per-token penalty. PPO sees one combined reward stream and doesn't need to know they came from different places.
+</Callout>
+
+PPO itself is the same clipped policy-gradient method from RL: importance-sampling ratio $\rho_t = \pi_\theta(y_t)/\pi_{\theta_\text{old}}(y_t)$, clipped to $[1-\epsilon, 1+\epsilon]$, advantages from a value head. The only LLM-specific twist is "the reward arrives at end-of-sequence and the KL leash lives inside the reward."
+
+## Why a closed-form alternative exists
+
+There's a textbook result for the KL-regularised RL objective above: the **optimal policy is known in closed form** as a Boltzmann-weighted version of the reference,
+
+$$
+\pi^*(y \mid x) \;\propto\; \pi_\text{ref}(y \mid x)\,\exp\!\left(\frac{r(x, y)}{\beta}\right).
+$$
+
+That equation says: starting from the SFT model, reweight every possible response by how much reward it earns, with $\beta$ controlling the sharpness. High $\beta$ → mild reweighting, policy stays close to $\pi_\text{ref}$. Low $\beta$ → the reweighting dominates and $\pi^*$ concentrates on the highest-reward responses.
+
+Rearranging gives the reward in terms of the optimal policy:
+
+$$
+r(x, y) = \beta \log \frac{\pi^*(y \mid x)}{\pi_\text{ref}(y \mid x)} + Z(x), \qquad Z(x) = \beta \log \sum_y \pi_\text{ref}(y \mid x)\exp(r(x, y)/\beta).
+$$
+
+The partition function $Z(x)$ only depends on the prompt — not on the response. This is the key observation that DPO leverages.
+
+## DPO: the closed-form loss
+
+Plug the reward parameterisation $r(x, y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_\text{ref}(y \mid x)} + Z(x)$ into the Bradley–Terry preference probability:
+
+$$
+P(y_c \succ y_r \mid x) = \sigma\!\big(r(x, y_c) - r(x, y_r)\big).
+$$
+
+The $Z(x)$ terms **cancel** in the margin — the same partition function appears on both sides of the subtraction. What's left is a classification loss directly on the policy:
+
+$$
+\mathcal{L}_{\text{DPO}}(\theta) = -\,\mathbb{E}_{(x, y_c, y_r) \sim \mathcal{D}}\!\left[\log \sigma\!\left(\beta \log \frac{\pi_\theta(y_c \mid x)}{\pi_\text{ref}(y_c \mid x)} - \beta \log \frac{\pi_\theta(y_r \mid x)}{\pi_\text{ref}(y_r \mid x)}\right)\right].
+$$
+
+That's the entire algorithm. No reward model. No PPO. No rollouts. No value head. Just two log-prob ratios per pair and a sigmoid.
+
+<Callout type="tip" title="What DPO is actually optimising">
+  The bracket inside the sigmoid is an **implicit reward margin**: $\hat{r}(x, y) = \beta \log \frac{\pi_\theta(y \mid x)}{\pi_\text{ref}(y \mid x)}$ plays the role of the reward, and the gradient pushes $\hat{r}(y_c) - \hat{r}(y_r)$ upward on every preference pair. The reference policy plays the role of the KL leash automatically — divergence from $\pi_\text{ref}$ shows up directly in the ratio. So DPO is preference tuning *with the same KL-regularised objective as RLHF*, just rearranged so there's no RL loop and no separate reward model to maintain.
+</Callout>
+
+The training loop is plain supervised learning:
+
+1. Sample a batch of preference pairs $(x, y_c, y_r)$.
+2. Run both $\pi_\theta$ and the **frozen** $\pi_\text{ref}$ on each pair to get the four log-probs.
+3. Compute the loss, backprop, step.
+
+The reference model is queried but never updated; it's typically the SFT checkpoint, cached on the same GPU.
+
+## RLHF vs DPO trade-offs
+
+| | RLHF (PPO) | DPO |
+|---|---|---|
+| **Pipeline** | SFT → RM → PPO (3 stages) | SFT → DPO (2 stages) |
+| **Reward model** | Required (separate network) | None (implicit via $\pi_\theta / \pi_\text{ref}$) |
+| **On-policy samples** | Yes — rollouts during training | No — preference pairs are off-policy |
+| **Memory** | Policy + RM + value head + ref | Policy + frozen ref |
+| **Hyperparameters** | $\beta$, PPO clip $\epsilon$, value-loss coef, GAE $\lambda$… | $\beta$ |
+| **Stability** | Notoriously fiddly; needs careful $\beta$ + clip tuning | Stable; closer to standard supervised fine-tuning |
+| **Ceiling** | Sometimes higher — can explore beyond preference data | Bounded by the preference dataset's coverage |
+| **Compute** | 4–10× a fine-tuning run | ≈ 1× a fine-tuning run |
+
+When does each win? **DPO** is the right default — same objective, far less infrastructure. **RLHF/PPO** still pays off when you have an excellent RM, plenty of compute, and want the policy to discover behaviours that aren't in the preference dataset (the on-policy rollouts let it explore). Most production open-weight chat models from 2024 onward are DPO; the largest closed-frontier models still use full RLHF (and beyond — rejection sampling, iterative DPO, RLAIF, online DPO variants).
+
+<Callout type="warning" title="The β knob is the same — but acts differently">
+  In RLHF, $\beta$ scales an explicit KL penalty added to the reward. In DPO, $\beta$ scales the *implicit* reward margin inside the sigmoid: higher $\beta$ → sharper sigmoid → more weight on each preference pair → faster divergence from $\pi_\text{ref}$. Common DPO values are $\beta \in [0.05, 0.5]$. Set $\beta$ too high and the policy over-fits to the preference pairs and forgets general capability; too low and training barely moves.
+</Callout>
+
+## Common mistakes
+
+1. **Skipping SFT.** Both RLHF and DPO assume a competent reference model. Starting from a base model that hasn't seen instruction data first gives unstable training and weak final quality.
+2. **Forgetting that DPO needs the reference policy at training time.** You must hold $\pi_\text{ref}$ in memory (or recompute it) for every batch — it appears in both the chosen and rejected log-prob ratios.
+3. **Treating $\beta$ as a learning rate.** It's a regularisation strength on divergence from $\pi_\text{ref}$ — orthogonal to the optimiser's learning rate. Tune them separately.
+4. **Pushing PPO until RM score saturates.** Textbook reward hacking. Use the KL budget *and* held-out human eval as joint stopping criteria.
+5. **Comparing DPO and PPO on RM score.** They optimise different surfaces — RM score will favour PPO by construction. Compare on **independent human eval** or on a held-out preference dataset's pairwise accuracy.
+6. **Using DPO without a strong base.** DPO can only sharpen distinctions the model already roughly understands; if the preference signal demands behaviour the model literally can't generate, the loss can't conjure it.
+
+## Key takeaways
+
+- **RLHF = SFT → RM → PPO** with a KL leash to $\pi_\text{ref}$, so the policy doesn't reward-hack the RM. The objective is $\mathbb{E}[r_\phi] - \beta \cdot \mathrm{KL}(\pi_\theta \,\|\, \pi_\text{ref})$.
+- The KL-regularised optimum has a closed form, $\pi^*(y \mid x) \propto \pi_\text{ref}(y \mid x)\exp(r(x, y)/\beta)$. Inverting it shows the reward is the log-ratio $\beta \log (\pi_\theta / \pi_\text{ref})$ plus a prompt-only constant.
+- **DPO** plugs that closed-form reward into Bradley–Terry. The prompt-only constants cancel in the margin, leaving a plain $-\log \sigma(\cdot)$ classification loss with **no reward model and no RL loop**.
+- DPO is cheaper, simpler, more stable, and has only one knob ($\beta$). RLHF can reach higher ceilings via on-policy exploration but pays for it in compute and fiddliness. Modern production chat models lean DPO by default.
+
+## Related concepts
+
+- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the scalar $r_\phi$ that PPO optimises against, and the Bradley–Terry loss that DPO inherits.
+- [**Policy Gradient**](/courses/reinforcement-learning/04-policy-gradient) — the underlying RL method PPO clips and extends; RLHF is policy-gradient on token sequences with a reward model.
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — produces $\pi_\text{ref}$, the reference policy both pipelines hold the new model close to.
+
+<Exercise id="rlhf-kl-penalty" />
+<Exercise id="dpo-vs-rlhf" />
+<Exercise id="dpo-loss-direction" />

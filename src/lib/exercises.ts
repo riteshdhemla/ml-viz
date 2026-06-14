@@ -5299,6 +5299,52 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The reward model is under-fit — train it for more epochs", isCorrect: false },
     ],
   },
+  // ── Preference Tuning: RLHF & DPO ─────────────────────────────────
+  {
+    id: "rlhf-kl-penalty",
+    type: "multiple-choice",
+    question:
+      "In the RLHF objective $\\mathbb{E}[r_\\phi(x,y)] - \\beta \\cdot \\mathrm{KL}(\\pi_\\theta \\| \\pi_\\text{ref})$, what does the KL term protect against?",
+    hint: "Without it, the policy is free to drift arbitrarily far from the SFT model.",
+    explanation:
+      "The KL leash penalises the policy for drifting from $\\pi_\\text{ref}$ (the SFT model). Without it, PPO maximises whatever the reward model rewards — including its quirks and length bias — and the policy reward-hacks until generations stop looking like English. β is the budget that trades off RM gain against staying close to a sane reference.",
+    options: [
+      { id: "a", label: "Reward hacking and drift away from the SFT reference policy", isCorrect: true },
+      { id: "b", label: "Gradient explosion in the value head", isCorrect: false },
+      { id: "c", label: "Tokenizer mismatch between policy and reference", isCorrect: false },
+      { id: "d", label: "Overfitting of the reward model on the preference dataset", isCorrect: false },
+    ],
+  },
+  {
+    id: "dpo-vs-rlhf",
+    type: "multiple-choice",
+    question:
+      "Which component does DPO eliminate compared to classical RLHF with PPO?",
+    hint: "DPO derives its loss from the closed-form optimum of the KL-regularised RL objective.",
+    explanation:
+      "DPO collapses the KL-regularised RL objective into a single classification loss directly on the policy. There is no separate reward model and no PPO rollout loop — only chosen/rejected log-probability ratios under $\\pi_\\theta$ and a frozen $\\pi_\\text{ref}$. SFT is still required (it produces $\\pi_\\text{ref}$); the tokenizer is unrelated.",
+    options: [
+      { id: "a", label: "The separate reward model and the PPO rollout loop", isCorrect: true },
+      { id: "b", label: "The supervised fine-tuning (SFT) stage", isCorrect: false },
+      { id: "c", label: "The reference policy $\\pi_\\text{ref}$", isCorrect: false },
+      { id: "d", label: "The tokenizer", isCorrect: false },
+    ],
+  },
+  {
+    id: "dpo-loss-direction",
+    type: "multiple-choice",
+    question:
+      "The DPO loss is $-\\log \\sigma\\!\\left(\\beta \\log \\frac{\\pi_\\theta(y_c|x)}{\\pi_\\text{ref}(y_c|x)} - \\beta \\log \\frac{\\pi_\\theta(y_r|x)}{\\pi_\\text{ref}(y_r|x)}\\right)$. Minimising it pushes the policy to do what?",
+    hint: "Which log-prob ratio should grow, which should shrink?",
+    explanation:
+      "Minimising $-\\log \\sigma(\\cdot)$ pushes the bracket positive. So $\\log \\pi_\\theta(y_c|x) / \\pi_\\text{ref}(y_c|x)$ should grow (make chosen *more* likely than under the reference) while $\\log \\pi_\\theta(y_r|x) / \\pi_\\text{ref}(y_r|x)$ should shrink. The reference policy acts as the implicit KL leash: divergence from $\\pi_\\text{ref}$ shows up directly in the ratios.",
+    options: [
+      { id: "a", label: "Raise $\\pi_\\theta(y_c|x)$ above $\\pi_\\text{ref}(y_c|x)$ while lowering $\\pi_\\theta(y_r|x)$ below $\\pi_\\text{ref}(y_r|x)$", isCorrect: true },
+      { id: "b", label: "Lower both $\\pi_\\theta(y_c|x)$ and $\\pi_\\theta(y_r|x)$ to match the reference exactly", isCorrect: false },
+      { id: "c", label: "Raise $\\pi_\\theta(y_r|x)$ (the rejected response) above $\\pi_\\text{ref}(y_r|x)$", isCorrect: false },
+      { id: "d", label: "Drive $\\pi_\\theta$ to match $\\pi_\\text{ref}$ on both responses", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
