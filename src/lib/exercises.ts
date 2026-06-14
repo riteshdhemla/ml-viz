@@ -5466,6 +5466,37 @@ const allExercises: Exercise[] = [
       { id: "d", label: "≈ 13 GB (a 2× reduction vs FP16)", isCorrect: false },
     ],
   },
+  // ── Reinforcement Learning — Bridge to RLHF ────────────────────
+  {
+    id: "ppo-clip-objective",
+    type: "multiple-choice",
+    question:
+      "In PPO's clipped surrogate $\\mathcal{L}^{\\text{CLIP}} = \\mathbb{E}[\\min(\\rho_t A_t,\\ \\text{clip}(\\rho_t, 1-\\epsilon, 1+\\epsilon)\\,A_t)]$, what happens to the gradient on a token where $A_t > 0$ and $\\rho_t$ has already grown past $1+\\epsilon$?",
+      hint: "Walk through the `min` for a positive advantage when ρ_t is above the upper band.",
+    explanation:
+      "With $A_t > 0$ and $\\rho_t > 1+\\epsilon$, the unclipped term $\\rho_t A_t$ exceeds the clipped term $(1+\\epsilon) A_t$, so the `min` picks the clipped one. The clipped term has no dependence on θ (the clip flattens it), so its gradient is zero. PPO stops rewarding further increases — that's the trust-region effect, achieved without an explicit KL constraint.",
+    options: [
+      { id: "a", label: "The gradient is zero on that token — the clip flattens the objective, so pushing ρ_t higher is no longer rewarded", isCorrect: true },
+      { id: "b", label: "The gradient is doubled, because both terms inside the min contribute", isCorrect: false },
+      { id: "c", label: "The gradient is reversed in sign, pushing ρ_t back below 1+ε", isCorrect: false },
+      { id: "d", label: "The unclipped term wins, and the gradient is the same as in vanilla policy gradient", isCorrect: false },
+    ],
+  },
+  {
+    id: "rlhf-bridge-token-reward",
+    type: "multiple-choice",
+    question:
+      "In a standard RLHF-with-PPO implementation, how is the reward model's score $r_\\phi(x, y)$ and the KL leash $\\beta\\,\\mathrm{KL}(\\pi_\\theta \\| \\pi_\\text{ref})$ actually delivered to PPO as a per-token reward $r_t$?",
+    hint: "Which piece is sparse (one token) and which is dense (every token)?",
+    explanation:
+      "Standard practice: the RM contributes a single scalar at the final token, while the KL penalty $-\\beta\\,\\log(\\pi_\\theta(y_t\\mid\\cdot)/\\pi_\\text{ref}(y_t\\mid\\cdot))$ is added to every per-token reward. PPO sees one combined stream and doesn't need to know they come from different places. Treating the KL term as a single sequence-level scalar adds high-variance noise; broadcasting the RM score across every token double-counts it.",
+    options: [
+      { id: "a", label: "RM score only at end-of-sequence; KL penalty added at every token", isCorrect: true },
+      { id: "b", label: "RM score broadcast equally to every token; KL penalty only at end-of-sequence", isCorrect: false },
+      { id: "c", label: "Both RM and KL are applied only at end-of-sequence as one combined scalar", isCorrect: false },
+      { id: "d", label: "Both RM and KL are applied at every token (RM evaluated on each prefix)", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
