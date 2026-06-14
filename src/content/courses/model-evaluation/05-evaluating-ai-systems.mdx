@@ -1,0 +1,163 @@
+---
+title: "Evaluating AI Systems"
+description: "The systems-level companion to LLM evaluation: how to pick a production model — task-specific eval sets, build-vs-buy economics, the limits of public benchmarks, and treating cost / latency / calibration as first-class metrics."
+order: 5
+type: concept
+estimatedMinutes: 20
+---
+
+# Evaluating AI Systems
+
+The previous lesson built the *math* of LLM evaluation — cross-entropy, perplexity, bits-per-byte, AI-as-a-judge, and the Bradley–Terry / Elo fit behind Chatbot Arena. This lesson is the *systems* counterpart: given all of those metrics, **how do you actually decide which model to put in your product?** The answer is rarely "the one at the top of the leaderboard". It is the model that scores best on **your task**, under **your cost budget**, with **your latency tail**, on **your privacy constraints**, this quarter.
+
+Real-world examples: deciding between a GPT-4-class API, Claude, Gemini, and a self-hosted Llama-3 70B for a support assistant; building a **routing tier** that sends easy queries to a cheap-fast model and hard ones to an expensive-smart model; the recurring question *"is RAG plus a 7B open-weights model enough, or do I need fine-tuning plus a 70B?"*; cost-aware production assistants where every cent per query matters at scale.
+
+## The model-selection workflow
+
+A surprising number of teams pick a model by reading a leaderboard, signing a contract, and skipping straight to integration. The headline number on a public benchmark is **structurally the wrong input** for that decision — it measures performance on a generic test set, against a fixed prompt, with no awareness of your latency budget or your data. A repeatable, defensible workflow has five steps:
+
+1. **Define your task-specific eval set.** $50$ to $200$ representative held-out examples drawn from your actual product — real support tickets, real user queries, real documents — with the answers you would accept from a human. This is the single highest-leverage artefact a team can build. It is also reusable: every future model swap, prompt change, or fine-tune is scored against the same set.
+2. **Decide the success metric.** Closed-ended tasks: accuracy, pass@k (for code), exact-match (for extraction). Open-ended tasks: AI-judge score (rubric-graded), human-eval Elo (pairwise preference), or a domain-specific composite (e.g. "answer is grounded in the retrieved document"). Whatever you pick, write it down before scoring — choosing the metric after seeing the numbers is how you get fooled.
+3. **Score every candidate model.** Fix the prompt, the decoding settings (temperature, top-p), the system message, and the eval set; then run each candidate. Report per-task numbers, not just the average. A model can crush your "answer factual questions" slice and fail your "refuse unsafe requests" slice — averaging hides that.
+4. **Combine with cost / latency budget to pick.** The candidate that wins on accuracy alone is rarely the right pick once $/$query and p95 latency are factored in. The decision space is **Pareto** — see "Cost & latency as first-class metrics" below.
+5. **Re-evaluate quarterly.** The frontier moves on a roughly six-month cycle: new model versions, sharp price drops, new open-weights releases. A model that was clearly best in Q1 is often a poor pick by Q3. Keep the eval set; rerun every candidate; pick again.
+
+<Callout type="info" title="Your eval set is the product, not the leaderboard">
+A $100$-example task-specific eval set will steer your model selection better than any public benchmark roll-up. It is also one of the few engineering artefacts that **appreciates** in value over time: it survives every model release, every prompt rewrite, and every framework migration. Build it once, well, and reuse it forever.
+</Callout>
+
+## Build-vs-buy
+
+"Buy" means calling a hosted API — OpenAI, Anthropic, Google, Cohere, and so on. "Build" means hosting open-weights models — Llama-3, Mistral, Qwen, DeepSeek — on your own GPUs (or on rented GPUs from a cloud provider). The trade-off is not "API is easy, self-host is hard"; it is a *real* economic and operational trade between two different cost structures.
+
+**Buy (API):**
+
+- Pay per token. Marginal cost per query. No infra cost when traffic is zero.
+- No infrastructure to operate. No GPUs to provision, no on-call rotation for model serving, no autoscaling problems.
+- **Frontier capability out of the box.** The best closed-weights models are typically a step ahead of the best open-weights models on hard tasks at any given moment.
+- You do not control the weights. The provider can change the model under you, deprecate versions, or alter the safety filter. Reproducibility is weaker than self-host.
+- **Data-egress concerns.** Your prompts and outputs leave your network. For PII-, PHI-, or regulated-data workflows, the provider's data-handling terms (zero-retention APIs, BAAs, regional endpoints) become a hard requirement, not a nice-to-have.
+
+**Build (self-host open weights):**
+
+- **Fixed GPU cost.** Whether you serve 10 queries per second or 1000, the GPUs are the same price. At high volume, **per-token cost is dramatically lower**.
+- Full control over the weights — pin a version forever, fine-tune freely, run on-prem for compliance.
+- Better privacy story for regulated data: nothing leaves your VPC.
+- You own latency, scaling, and on-call. Tail-latency control on a busy GPU is a real systems problem. So is autoscaling a 70B model.
+- Frontier gap: at any moment, the very best open-weights model is typically a notch behind the very best closed-weights model on the hardest tasks. The gap closes and reopens every release.
+
+### The break-even calculation
+
+At volume $V$ queries per month, with API price $p$ per query and self-host monthly amortised cost $C$, the break-even point is
+
+$$
+V^* \;=\; \frac{C}{p}.
+$$
+
+Below $V^*$, the API wins on total cost; above, self-host wins. Realistic numbers in 2025–2026: a small open-weights model (7B) at ~$0.0001 per 1k input tokens amortised vs an API at ~$0.003 per 1k tokens makes the API roughly 30x more expensive per query, so the break-even sits at the volume where amortised GPU cost equals (~30x) the API per-query cost — typically *millions* of queries per month. For low-volume features, the API is almost always cheaper end-to-end once you account for engineering time. For high-volume internal tools, self-host wins decisively.
+
+### Hybrid patterns
+
+Most production systems do **both**: a cheap open-weights model handles the easy $80$–$90\%$ of traffic, and a frontier API handles the hard long tail. The routing classifier is itself a small model, and the design lives in the [AI-Engineering Architecture](/courses/building-with-llms/06-ai-engineering-architecture) lesson. The result is API-quality on hard queries with self-host economics on the bulk of traffic.
+
+## Public benchmarks and their limits
+
+Public benchmarks — MMLU, HellaSwag, GSM8K, HumanEval, MT-Bench, Chatbot Arena — are the canonical capability metrics; see [LLM Evaluation](/courses/model-evaluation/04-llm-evaluation) for the math behind each one. They are useful, but they systematically **mislead** when used as the sole input to a model-selection decision. Four reasons:
+
+- **Contamination.** Benchmarks are scraped from the public web. Frontier pretraining runs hoover up the public web. Test questions therefore end up in pretraining data, and the model literally *memorises* the answers. Reported MMLU numbers from models with unfiltered pretraining corpora are systematically optimistic. The defence is contamination-scanning the pretraining set against the test split, and increasingly, **held-out** or **rolling** benchmarks (LiveBench, fresh competition problems) constructed after the model's cutoff.
+- **Overfit / Goodhart.** Once a benchmark is the headline, training pipelines start optimising for it directly. MMLU-tuned models post strong MMLU scores without being broadly better. This is the same failure mode as **reward hacking** in RLHF: the proxy and the true objective diverge, and the model exploits the gap.
+- **Narrow tasks.** Your customer-support inbox is not MMLU. Your code review queue is not HumanEval. Generic benchmarks are at best weakly correlated with the very specific shape of your traffic. A model that wins the leaderboard average can lose on your task.
+- **Format brittleness.** Benchmark scores are sensitive to prompt format, few-shot examples, decoding settings, and even leading whitespace. The number on the leaderboard reflects the benchmark *authors'* prompt — not yours. Two evaluators reporting "MMLU $= 0.85$" on the same model can differ by several points just on format.
+
+<Callout type="warning" title="Public benchmarks are a starting point, not an answer">
+Use benchmark rankings to filter the candidate set down to a shortlist of $3$–$5$ models. **Do not** use them to pick the final model. The final pick is the model that wins on **your** task-specific eval set, under **your** prompt, **your** decoding settings, and **your** cost budget. Per-task eval beats public benchmark every time.
+</Callout>
+
+## Cost & latency as first-class metrics
+
+Accuracy is one axis of a multi-dimensional decision. The others matter just as much in production.
+
+### Per-query cost
+
+API providers price per token, separately for input and output. The expected per-query cost is
+
+$$
+C_{\text{query}} \;=\; \frac{p_{\text{in}} \cdot T_{\text{in}}}{1000} \;+\; \frac{p_{\text{out}} \cdot T_{\text{out}}}{1000},
+$$
+
+with prices $p_i$, $p_o$ in dollars per 1k tokens and $T_i$, $T_o$ the average input and output token counts. Concrete: a GPT-4-class model at \$0.03 per 1k input + \$0.06 per 1k output, with $T_i = 800$ and $T_o = 300$, costs $0.024 + 0.018 = 0.042$ dollars per query. A mid-tier model at \$0.0025 per 1k input + \$0.0075 per 1k output, same token counts, costs $0.002 + 0.0023 = 0.0045$ dollars per query — almost an order of magnitude cheaper.
+
+But the cheapest model is not always cheapest **per correct answer**. Define **cost per correct answer** as
+
+$$
+C_{\text{correct}} \;=\; \frac{C_{\text{query}}}{\text{acc}}.
+$$
+
+A model that is $50\%$ cheaper but $20\%$ less accurate often loses on this metric — you pay twice for the queries you have to retry or hand to a human. The notebook walks through a worked example where the mid-tier model wins on dollars per correct answer even though the frontier model is more accurate and the small model is cheaper per query.
+
+### Tail latency
+
+User-perceived latency is dominated by the **tail**, not the average. The metrics to track:
+
+- **p50 latency:** the median. Used for capacity planning.
+- **p95 / p99 latency:** the slow tail. p99 latency drives perceived unreliability — if 1 in 100 queries takes 8 seconds, users notice.
+- **Time-to-first-token (TTFT):** in a streaming interface, this is what users feel. A 200ms TTFT with slow token-streaming feels faster than a 2s TTFT followed by a flood.
+- **Tokens per second (TPS):** sets the upper bound on streaming throughput once TTFT has fired.
+
+Cheap-fast and expensive-smart models live at different points on the latency curve. A 70B model with a 4-second p95 is unusable for an autocomplete UI no matter how accurate it is.
+
+### Caching
+
+Two caches buy huge cost / latency wins:
+
+- **Prompt-prefix cache.** Providers and inference engines (vLLM, TensorRT-LLM) cache the KV state of common system-prompt prefixes. Subsequent requests that share the prefix skip the prefix's compute. For a 2k-token system prompt and short user turns, this can drop p50 latency by $50\%$+ and per-query cost by 30–80% depending on the provider's discount.
+- **Semantic cache.** For repeated user questions ("how do I reset my password?"), embed the query, look up the top-$k$ nearest historical queries, and if cosine similarity exceeds a threshold, return the cached answer. The query then costs an embedding call instead of a generation call — typically 100x cheaper.
+
+### Routing tiers
+
+A **router** (a small classifier or a cheap LLM call) inspects the query and dispatches it to the right backend. Easy queries go to a cheap model; hard queries to the frontier. This is the dominant cost lever in production LLM systems: routing $80\%$ of traffic to a 30x cheaper model is roughly a 24x cost reduction on that bulk, with a marginal accuracy loss the eval set can quantify. The router is itself an evaluable component — score it on the same eval set with both backends to measure the accuracy / cost Pareto improvement.
+
+<Callout type="tip" title="Per-query cost is not just the model price">
+Headline dollars per 1k tokens is one input to the real cost. The full per-query cost has to fold in: typical input + output token counts, retry rate (failed queries get re-run), prompt-prefix cache hit rate, semantic cache hit rate, router miss rate, and the cost of any backup model the router falls back to. Two providers with identical headline prices can have 2–3x different effective costs once those factors are included.
+</Callout>
+
+## Beyond accuracy
+
+The metrics that matter in production go further than "did the model get the answer right?":
+
+- **Calibration.** Does the model know what it doesn't know? A well-calibrated model says "I'm not sure" on hard queries and is confident on easy ones. Overconfident wrong answers are the most expensive failure mode; calibration curves (predicted probability vs empirical accuracy) and ECE (expected calibration error) quantify this.
+- **Refusal / safety eval.** The rate of correctly-refused unsafe prompts and incorrectly-refused safe ones. Both ends matter — an over-refusing model is unusable; an under-refusing model is a liability.
+- **Hallucination rate against grounded answers.** For RAG and tool-using systems, score how often the model invents facts not present in the retrieved context. The eval set needs a "grounded answer" column.
+- **Robustness to adversarial prompts.** Prompt injection, jailbreaks, and confused-deputy attacks. The defences live in [AI-Engineering Architecture](/courses/building-with-llms/06-ai-engineering-architecture) (input/output guardrails, least-privilege tool access, separation of instructions and untrusted data). The eval is a curated adversarial set against which every candidate model is scored.
+
+A model that wins on accuracy but is poorly calibrated, refuses inappropriately, or is easy to jailbreak is the wrong production pick — and none of those failure modes show up on a generic benchmark leaderboard.
+
+## Common mistakes
+
+1. **Picking the model from the leaderboard.** MMLU-strong is not your-task-strong. Build the $100$-example task-specific eval set first; let it pick the model.
+2. **Comparing dollars per 1k tokens, not dollars per correct answer.** The cheapest model is often the most expensive once you divide by accuracy. Always score cost per correct answer on your eval set.
+3. **Ignoring tail latency.** A model with a great p50 and a brutal p99 is broken for users — 1-in-100 reliability is what they remember. Always report p95 or p99, not just the mean.
+4. **Forgetting cost is dominated by traffic shape.** Per-query cost looks like a small number; multiplied by traffic, it can dwarf engineering payroll. Estimate $V \cdot C_q$ at launch and at 10x launch volume before committing.
+5. **Locking in to one provider.** Frontier models change every six months. Architect the system around a model-agnostic gateway (see the gateway pattern in [AI-Engineering Architecture](/courses/building-with-llms/06-ai-engineering-architecture)) so swapping providers is a config change, not a rewrite.
+6. **Evaluating once and never again.** The eval set is the persistent artefact. Rerun every candidate quarterly; the right pick changes.
+
+## Key takeaways
+
+- **Pick on your task, not the leaderboard.** A $100$-example task-specific eval set beats every public benchmark for production model selection.
+- **Build-vs-buy is an economics problem.** API for low volume / fast iteration / frontier capability. Self-host for high volume / privacy / per-token economics. Hybrid is the dominant production pattern.
+- **Public benchmarks mislead** for production picks: contamination, Goodhart, narrow tasks, format brittleness. Use them only to shortlist.
+- **Per-query cost** is the input-token spend plus output-token spend, normalised per 1k tokens. The metric that matters in production is cost per *correct* answer, not cost per query.
+- **Tail latency, not mean latency** is what users feel. Track p95 / p99 / TTFT / TPS, not just the average.
+- **Routing tiers + caching** are the highest-leverage cost levers in production LLM systems.
+- **Beyond accuracy**: calibration, refusal, hallucination, robustness. None of these show up on a generic leaderboard; all of them matter in production.
+
+## Related concepts
+
+- [**LLM Evaluation**](/courses/model-evaluation/04-llm-evaluation) — the *math* of the metrics this lesson treats as inputs: perplexity, bits-per-byte, AI-as-a-judge biases, Bradley–Terry / Elo. This lesson is the systems-level counterpart.
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — the production architecture in which routing, caching, gateways, and guardrails live. Cost / latency / routing decisions get implemented there.
+- [**Supervised Fine-Tuning & Instruction Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the *"is RAG enough or do I need to fine-tune?"* decision is one of the most expensive build-vs-buy variants. SFT often clears the bar for a smaller open-weights model to replace a frontier API.
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — the underlying capability curves. Scaling laws explain why the gap between frontier and mid-tier models is wide on hard tasks and narrow on easy ones; the router exploits exactly that gap.
+
+<Exercise id="eval-systems-build-vs-buy" />
+<Exercise id="eval-systems-cost-latency" />
+<Exercise id="eval-systems-benchmark-limits" />
