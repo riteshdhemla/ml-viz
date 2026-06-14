@@ -407,6 +407,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | LoRAViz | `visualizations/LoRA/` | fine-tuning-alignment/02-peft-lora-qlora | ✅ |
 | RewardModelViz | `visualizations/RewardModel/` | fine-tuning-alignment/03-reward-models | ✅ |
 | QuantizationViz | `visualizations/Quantization/` | fine-tuning-alignment/05-model-merging-and-quantization | ✅ |
+| ScalingLawViz | `visualizations/ScalingLaw/` | transformers/05-foundation-models-and-scaling | ✅ |
 
 ---
 

@@ -5497,6 +5497,52 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Both RM and KL are applied at every token (RM evaluated on each prefix)", isCorrect: false },
     ],
   },
+  // ── Transformers — Foundation Models & Scaling ────────────────
+  {
+    id: "scaling-chinchilla-recipe",
+    type: "multiple-choice",
+    question:
+      "Under the Chinchilla scaling law, what does the compute-optimal recipe say about how to allocate a fixed training compute budget $C = 6ND$ between model size $N$ and tokens $D$?",
+    hint: "Twenty of something per one of something else.",
+    explanation:
+      "Chinchilla's joint fit found that for a fixed compute budget, loss is minimised when $D \\approx 20 \\cdot N$. Equivalently, $N^* = \\sqrt{C / 120}$ and $D^* = 20 N^*$. Earlier work (Kaplan / GPT-3 / Gopher) scaled $N$ faster than $D$, leaving those models under-trained.",
+    options: [
+      { id: "a", label: "$D \\approx 20 \\cdot N$ — about twenty training tokens per parameter", isCorrect: true },
+      { id: "b", label: "$N \\approx 20 \\cdot D$ — about twenty parameters per token", isCorrect: false },
+      { id: "c", label: "$D = N$ — one token per parameter is optimal", isCorrect: false },
+      { id: "d", label: "Spend the whole budget on $N$; $D$ is irrelevant past a small threshold", isCorrect: false },
+    ],
+  },
+  {
+    id: "scaling-context-window-cost",
+    type: "multiple-choice",
+    question:
+      "For vanilla self-attention in a Transformer, how does the compute cost scale with sequence length $L$, and what is the role of FlashAttention?",
+    hint: "Think about the score matrix $QK^\\top$ — what shape is it?",
+    explanation:
+      "The attention score matrix $QK^\\top$ is $L \\times L$, so both compute and memory are $O(L^2)$. FlashAttention reorders the computation in tiles so the full $L \\times L$ matrix never lives in HBM — memory becomes $O(L)$, but the FLOP count is still $O(L^2)$. The math is exact, not approximate.",
+    options: [
+      { id: "a", label: "$O(L^2)$ compute; FlashAttention removes the $O(L^2)$ memory wall while keeping the math exact", isCorrect: true },
+      { id: "b", label: "$O(L)$ compute already; FlashAttention is just a numerical-stability trick", isCorrect: false },
+      { id: "c", label: "$O(L^2)$ compute; FlashAttention reduces it to $O(L \\log L)$ via an approximation", isCorrect: false },
+      { id: "d", label: "$O(L^3)$ compute; FlashAttention reduces it to $O(L^2)$", isCorrect: false },
+    ],
+  },
+  {
+    id: "scaling-compute-budget-optimal",
+    type: "multiple-choice",
+    question:
+      "You have a training compute budget of $C = 1.2 \\times 10^{23}$ FLOPs. Using the Chinchilla rule $N^* = \\sqrt{C / 120}$, what is the compute-optimal model size $N^*$ (closest answer)?",
+    hint: "Plug in: $N^* = \\sqrt{1.2 \\times 10^{23} / 120} = \\sqrt{10^{21}}$.",
+    explanation:
+      "$N^* = \\sqrt{1.2 \\times 10^{23} / 120} = \\sqrt{10^{21}} = 10^{10.5} \\approx 3.16 \\times 10^{10}$ parameters, i.e. roughly $32$B. The matching token budget is $D^* = 20 N^* \\approx 6.3 \\times 10^{11}$ tokens (~630B), and $6 N D \\approx C$ as expected.",
+    options: [
+      { id: "a", label: "$\\approx 32$ B parameters", isCorrect: true },
+      { id: "b", label: "$\\approx 1$ B parameters", isCorrect: false },
+      { id: "c", label: "$\\approx 300$ B parameters", isCorrect: false },
+      { id: "d", label: "$\\approx 7$ B parameters", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
