@@ -5950,6 +5950,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Compute both features synchronously at inference time from the OLTP store. Avoids any precomputation and guarantees the freshest possible values.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — Training Data ────────────────────────────
+  {
+    id: "training-data-stratified",
+    type: "multiple-choice",
+    question:
+      "Your fraud dataset has a 1% positive rate (10,000 positives in 1,000,000 transactions). You run `train_test_split(X, y, test_size=0.2)` *without* `stratify=y`. A teammate argues this is fine because random splitting is unbiased in expectation. What is the strongest objection?",
+    hint: "What does the *variance* of the minority count in the test set look like for a 0.2× sample of a 1% positive rate, and what does that variance do to your reported recall?",
+    explanation:
+      "The expectation is correct — over many seeds the test set has 2,000 positives on average — but the *variance* is large enough that any single seed produces a test set whose minority count fluctuates by hundreds. Worse, when you start filtering further (per-region slices, time windows, customer segments) you can end up with sub-groups whose test sets have zero or single-digit positives. With zero positives in a slice, recall is literally undefined; with two or three, the reported recall jumps in 33%-50% steps as a single example flips. The fix is `stratify=y`, which guarantees the same 1% rate in train and test by construction. (A) is the textbook *complementary* mistake — stratified *batches* during training are useful, but they do not fix the split-level variance; the test set is still random. (C) confuses the issue: in well-balanced data random splitting is genuinely fine, but the binding constraint here is the rare class, not the abundant one. (D) is conceptually right about test sets reflecting deployment, but the way to *get* that reflection on imbalanced data is to stratify the split, not to oversample the test set.",
+    options: [
+      { id: "a", label: "Switch to oversampling the minority class in every training batch; the split itself does not need to change.", isCorrect: false },
+      { id: "b", label: "The split is unbiased in expectation but high-variance in any single seed; you can get a test set with very few (or zero) positives, making recall undefined or extremely noisy. Use `stratify=y` so the test set has exactly the same 1% positive rate as the population.", isCorrect: true },
+      { id: "c", label: "Random splitting is fine; the problem is that the model has not been trained yet. After training, calibration on the test set will fix the variance.", isCorrect: false },
+      { id: "d", label: "Oversample the minority class in the *test* set to 50% so recall is well-defined and stable across seeds.", isCorrect: false },
+    ],
+  },
+  {
+    id: "training-data-imbalance",
+    type: "slider",
+    question:
+      "You have a 3-class problem with $N = 1{,}000$ total examples and class counts $n_0 = 900$, $n_1 = 80$, $n_2 = 20$. Using the sklearn class-weight convention $w_c = N / (K \\cdot n_c)$ with $K = 3$, what is the weight assigned to the *rarest* class $c = 2$? Round to one decimal place.",
+    hint: "Plug into the formula. The rarest class is class 2 with $n_2 = 20$.",
+    explanation:
+      "Direct substitution: $w_2 = N / (K \\cdot n_2) = 1000 / (3 \\cdot 20) = 1000 / 60 \\approx 16.67$. The other weights are $w_0 = 1000 / (3 \\cdot 900) \\approx 0.37$ and $w_1 = 1000 / (3 \\cdot 80) \\approx 4.17$ — every minority example contributes ~45× the gradient of every majority example, exactly compensating for the count imbalance so the *total* contribution per class over an epoch is equal. This is the cleanest fix for class imbalance because it leaves the training data and the architecture untouched and is a one-line modification (`class_weight='balanced'` in sklearn or a per-example `sample_weight` tensor in a PyTorch loop). It is *not* a substitute for the right evaluation metric — accuracy on imbalanced data still lies regardless of weights. The right metric is precision, recall, F1, or PR-AUC; the weights only fix the *training* objective.",
+    min: 0.0,
+    max: 30.0,
+    step: 0.1,
+    correctRange: [16.0, 17.5],
+    unit: "weight",
+  },
+  {
+    id: "training-data-weak-supervision",
+    type: "multiple-choice",
+    question:
+      "Your team wants to train a sentiment classifier on 5M product reviews. You have 2,000 hand-labelled gold examples and a budget for ~3,000 more. A colleague proposes: write 30 heuristic labelling functions (regex on positive/negative keywords, exclamation-mark counts, emoji rules, vendor rating thresholds), combine them through a Snorkel-style *label model* that learns each function's accuracy from the pattern of agreements between functions, then train the final classifier on the resulting *probabilistic* labels for all 5M examples. What is the most important caveat to flag before adopting this plan?",
+    hint: "A label model can recover accuracies *only* if the labelling functions' errors are not perfectly correlated. What happens to the model's estimates when many of your functions encode the same heuristic?",
+    explanation:
+      "Weak supervision works because the label model can infer each labelling function's accuracy from the *pattern of agreements and disagreements* across functions — but this works only when the functions' errors are not perfectly correlated. If you write 30 functions and 20 of them are minor variations on the same keyword list, the label model treats their agreement as strong evidence when it is really one signal counted twenty times — biasing the inferred labels toward whatever the keyword list happens to capture and silently encoding its blind spots. The standard mitigation is **labelling-function diversity**: a few keyword rules, a few syntactic rules, a few external-source rules (vendor rating, review length), and crucially a *gold validation set* (the 2,000 hand labels) to score the final label model's accuracy. (A) is wrong in spirit — combining noisy functions is exactly the point and the label model handles per-function noise gracefully; the failure mode is *correlated* noise, not noisy functions. (C) is a real concern but not the *most* important — calibrated probabilistic labels work fine as soft targets for a final classifier. (D) misframes the budget: hand-labelling 3,000 more examples is a respectable choice, but for 5M reviews you cannot beat weak supervision on cost — the answer is to deploy it carefully, not to abandon it.",
+    options: [
+      { id: "a", label: "Heuristic functions are too noisy individually to combine; train only on the 5,000 gold labels (existing 2,000 plus 3,000 new) and skip weak supervision.", isCorrect: false },
+      { id: "b", label: "If many of the 30 labelling functions encode the same underlying heuristic (e.g. several keyword-list variants), the label model cannot tell their agreements from independent corroboration and the inferred labels are biased toward that heuristic's blind spots. The fix is *diverse* labelling functions and a gold validation set (your 2,000 hand labels) to score the final label model.", isCorrect: true },
+      { id: "c", label: "Probabilistic labels are not usable by standard classifiers; you must threshold them at 0.5 before training, losing the calibration signal.", isCorrect: false },
+      { id: "d", label: "Snorkel-style weak supervision is dominated by hand-labelling at every budget; spend the entire 3,000-label budget on humans and train on the 5,000 gold labels alone.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

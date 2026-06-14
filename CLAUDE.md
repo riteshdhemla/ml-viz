@@ -404,6 +404,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | NaiveBayesVotesViz | `visualizations/NaiveBayesVotes/` | probabilistic-models/03-naive-bayes | ✅ |
 | SamplingViz | `visualizations/Sampling/` | building-with-llms/01-prompt-engineering | ✅ |
 | RAGRetrievalViz | `visualizations/RAGRetrieval/` | building-with-llms/04-retrieval-augmented-generation | ✅ |
+| SamplingStrategiesViz | `visualizations/SamplingStrategies/` | ml-in-practice/06-training-data | ✅ |
 | LoRAViz | `visualizations/LoRA/` | fine-tuning-alignment/02-peft-lora-qlora | ✅ |
 | RewardModelViz | `visualizations/RewardModel/` | fine-tuning-alignment/03-reward-models | ✅ |
 | QuantizationViz | `visualizations/Quantization/` | fine-tuning-alignment/05-model-merging-and-quantization | ✅ |
