@@ -6085,6 +6085,51 @@ const allExercises: Exercise[] = [
     correctRange: [2.0, 2.5],
     unit: "× extra compression",
   },
+  // ── ML in Practice — Continual Learning & Test in Production ──────
+  {
+    id: "rollout-canary-vs-ab",
+    type: "multiple-choice",
+    question:
+      "Your team has trained a new ranking model and wants to ship it. A teammate says: 'let's skip the canary and go straight to a 50/50 A/B test — it's stronger statistics anyway.' What is the strongest argument *against* skipping the canary?",
+    hint: "What does each pattern *measure*, and what is the cost of finding out the candidate is broken?",
+    explanation:
+      "Canary and A/B answer different questions. **A/B asks 'does the candidate change a user-behaviour metric significantly?'** — it needs balanced power and runs for days. **Canary asks 'is the candidate operationally safe?'** — it watches error rate, latency, crash rate on a small slice of traffic and can be rolled back in minutes. Skipping the canary means the *first* time a serious bug (5xx storm, p99 blow-up, NaN-in-production) shows up is on half your users, not 5 % of them — and you only notice when the A/B's primary metric tanks hours later. The standard playbook is shadow → canary → 50/50 A/B → ramp to 100 %; each gate has objective thresholds and rolls back fast if anything regresses. (A) confuses the two: canary samples are too small for behaviour-level stats and that's the point. (C) is partially true (A/B is 'stronger' statistically for user behaviour) but irrelevant if the candidate corrupts the experience. (D) reverses the trade-off — a 50/50 split exposes *more* users to risk, not fewer.",
+    options: [
+      { id: "a", label: "A 5 % canary has enough statistical power to detect a 1 % effect on the primary metric — skipping it means giving up that statistical strength.", isCorrect: false },
+      { id: "b", label: "Canary and A/B answer different questions. Canary tests *operational* safety (error rate, latency, crash rate) on 5 % of traffic and can be rolled back in minutes; A/B tests *user-behaviour* impact and runs for days. Skipping the canary means the first user-visible exposure of an operational bug is half your traffic instead of 5 %, with hours of damage before the A/B metric reflects it.", isCorrect: true },
+      { id: "c", label: "A/B tests are weaker statistically than canaries — fixed 50/50 splits ignore the conversion-rate prior that an adaptive scheme could exploit.", isCorrect: false },
+      { id: "d", label: "A 50/50 split exposes *fewer* users to risk than a 5 % canary because both arms split the population evenly between baseline and candidate.", isCorrect: false },
+    ],
+  },
+  {
+    id: "rollout-shadow",
+    type: "multiple-choice",
+    question:
+      "Your team mirrors live traffic to a candidate model under a shadow deployment. The candidate's outputs are discarded — users only ever see baseline. After two weeks the team sees the candidate's *offline* metric (cross-entropy on the shadow traffic) is better than the baseline's. They want to promote it straight to 100 %. What is the most important thing the shadow deployment has *not* measured?",
+    hint: "What would change about the user's behaviour if the candidate's outputs were actually served?",
+    explanation:
+      "A shadow deployment buys you operational safety and offline-metric comparison on a representative input distribution, but it observes **zero user behaviour against the candidate's outputs**. Search ranking shifts cause users to click different results, which produces different downstream features (which queries fire next, which sessions extend, which conversions happen). All of that feedback is absent in shadow. Cross-entropy on shadow logs is a *proxy* metric; the real questions — does click-through go up? does session length grow? does revenue per session move? — can only be answered when the candidate actually serves a user and the user responds. The correct next step is a canary, not a 100 % flip. (A) is irrelevant for promotion; shadow already proved the candidate is operationally safe. (C) confuses the comparison: cross-entropy on the *same* input distribution is exactly what shadow gives you — but it's the wrong target. (D) reverses the diagnosis: shadow input distribution is by construction identical to baseline's because it's the same traffic teed off.",
+    options: [
+      { id: "a", label: "Whether the candidate's GPU memory footprint will scale — shadow does not stress the autoscaler the way full traffic would.", isCorrect: false },
+      { id: "b", label: "How users actually behave when the candidate's outputs are served. Shadow observes baseline behaviour and a candidate offline metric on the same inputs, but never a user reacting to a candidate output. Click-through, session length, retention, revenue — all of these can only be measured under a real user-facing exposure (canary, then A/B).", isCorrect: true },
+      { id: "c", label: "Whether the candidate's cross-entropy improvement holds on a held-out distribution — shadow only measures it on the live input distribution.", isCorrect: false },
+      { id: "d", label: "Whether the candidate's input distribution matches what it will see in production — shadow uses a sampled mirror of traffic that may not be representative.", isCorrect: false },
+    ],
+  },
+  {
+    id: "rollout-bandit-regret",
+    type: "slider",
+    question:
+      "You are testing 3 ad creatives with true click-through rates of 5 %, 10 %, and 15 %. A fixed-arm A/B test serves each arm 1000 impressions. An oracle would serve all 3000 impressions to arm 3 and earn $3000 \\cdot 0.15 = 450$ expected clicks. How many *expected clicks are forgone* by the A/B test relative to the oracle? Round to the nearest integer.",
+    hint: "A/B serves 1000 each. Expected clicks: $1000(0.05 + 0.10 + 0.15) = 300$. Oracle earns 450. The regret is the difference.",
+    explanation:
+      "Expected clicks under the fixed A/B test: $1000 \\cdot 0.05 + 1000 \\cdot 0.10 + 1000 \\cdot 0.15 = 50 + 100 + 150 = 300$. The oracle earns $3000 \\cdot 0.15 = 450$. The forgone-clicks (regret) is $450 - 300 = 150$. This is the headline reason to reach for a bandit when traffic is precious: a fixed A/B keeps serving the losing arms at their full share for the entire test window. An $\\varepsilon$-greedy bandit at $\\varepsilon = 0.1$ would burn ~$0.1 \\cdot 3000 / 3 = 100$ impressions on the bottom two arms and put the other ~2700 on arm 3, cutting regret to roughly $100 \\cdot (0.15 - 0.05) + 100 \\cdot (0.15 - 0.10) \\approx 15$. Thompson sampling does even better at scale. The trade-off is that bandit splits are *adaptive*, so the resulting estimates are biased by the policy — running clean confirmatory stats on the winner is harder than on a fixed A/B.",
+    min: 0,
+    max: 300,
+    step: 5,
+    correctRange: [140, 160],
+    unit: "expected clicks forgone",
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

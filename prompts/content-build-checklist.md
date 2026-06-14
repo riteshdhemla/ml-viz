@@ -135,7 +135,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **`ml-in-practice` + Training Data** · sampling strategies, labeling/weak supervision, class imbalance · viz: **SamplingStrategiesViz** (or reuse) · notebook.
 - [x] **`ml-in-practice` + Experiment Tracking & Versioning** · runs, metrics, artifacts, data/model versioning, reproducibility · viz: *none* · notebook.
 - [x] **`ml-in-practice` + Deployment Patterns & Model Compression** · batch vs online vs edge; quantization/pruning/distillation · viz: *reuse `QuantizationViz`* · notebook.
-- [ ] **`ml-in-practice` + Continual Learning & Test in Production** · stateless vs stateful, A/B testing, canary, shadow, bandits · viz: **RolloutViz** (A/B vs canary vs shadow traffic split) · notebook.
+- [x] **`ml-in-practice` + Continual Learning & Test in Production** · stateless vs stateful, A/B testing, canary, shadow, bandits · viz: **RolloutViz** (A/B vs canary vs shadow traffic split) · notebook.
 - [ ] **`ml-in-practice` + Monitoring & Observability** · latency/throughput, degradation, drift recap, alerting · viz: *none / reuse* · notebook.
 - [ ] **`ml-in-practice` + MLOps Infrastructure & Orchestration** · storage/compute, dev env, resource mgmt, orchestrators, ML platform · viz: *none* · notebook.
 - [ ] **`ml-in-practice` + Inference Optimization & Serving** · KV-cache, batching, accelerators, serving (e.g. vLLM), cost/latency · viz: *none* · notebook.

@@ -1,0 +1,144 @@
+---
+title: "Continual Learning & Testing in Production"
+description: "How models stay fresh after launch — stateless vs stateful retraining, distribution shift triggers, and the four canonical traffic-split patterns (shadow, canary, A/B, bandits) for testing changes against live users."
+order: 9
+type: concept
+estimatedMinutes: 22
+---
+
+# Continual Learning & Testing in Production
+
+A trained model is not a one-time artefact. The world the model was trained on drifts — users change behaviour, fraudsters adapt to defences, the product itself changes the input distribution by changing what users *see*. Production ML is the discipline of running that loop: detect when the model is stale, retrain it on fresh data, and — crucially — *test* the new model against live users before letting it serve everyone. Both halves have engineering costs and statistical traps. This lesson is the operational lens: what triggers a retrain, which retraining strategy is appropriate, and which of the four canonical traffic-split patterns to reach for when the candidate is ready to face users.
+
+Real-world examples: Netflix runs hundreds of A/B tests at a time on its homepage and uses the winning rankings to feed back into the recommender; Stripe ships every new fraud-detection model behind a multi-hour canary before flipping to 100 % because a false-positive storm blocks legitimate payments; large ad networks use contextual bandits for creative selection because the volume of impressions makes regret expensive; search teams run candidate rankers in shadow mode for weeks to confirm the *offline* quality numbers hold on live traffic; modern LLM-chat assistants A/B their model swaps using a mix of pairwise human-eval (Elo / Bradley–Terry) and downstream user metrics.
+
+## Stateless vs stateful retraining
+
+There are two ways to keep a model fresh.
+
+**Stateless retraining** rebuilds the model from scratch on the latest data window. The model architecture, training script, and hyperparameters are pinned in source control; the only thing that changes between two retrains is the data window you point the trainer at. Stateless is simple, reproducible (rerun the same script on the same data and get bit-identical weights, given proper data versioning), and easy to reason about — every model is a self-contained snapshot of "what the trainer thinks the world looks like as of date $D$." The cost is compute: a full retrain on a week of LLM-scale data can be hundreds of GPU-hours.
+
+**Stateful continual learning** warm-starts from the previous checkpoint and continues training on the incremental new data. It is much cheaper — minutes or hours instead of days — and it composes: yesterday's model becomes the starting point for today's, which becomes the starting point for tomorrow's. The cost is subtler: training is path-dependent. Errors and biases accumulate across days; the model can *catastrophically forget* old patterns when new data over-represents one class; and a small bug in the incremental pipeline silently poisons every downstream model. Each stateful retrain is also non-reproducible from any single data snapshot — you have to replay the whole chain.
+
+Most production teams run a **hybrid** schedule: a full stateless rebuild monthly (or quarterly), and stateful incremental updates on top hourly or daily. The stateless cadence resets the accumulating-bias clock; the stateful cadence keeps the model warm on the latest distribution.
+
+| Strategy | Cost per retrain | Reproducibility | Bias accumulation | Typical cadence |
+|---|---|---|---|---|
+| **Stateless** | high | strong (replay one snapshot) | none | weekly / monthly |
+| **Stateful** | low | weak (replay the whole chain) | accumulates | hourly / daily |
+| **Hybrid** | mixed | strong at the monthly reset | reset monthly | both |
+
+## Distribution shift triggers retraining
+
+Even on a fixed model and fixed input pipeline, the *distribution* of inputs and outputs drifts over time. The standard taxonomy splits drift into three flavours, based on whether $p(x)$, $p(y)$, or $p(y \mid x)$ moves.
+
+**Covariate shift** — the input distribution $p(x)$ changes, but the conditional $p(y \mid x)$ is the same. A new TikTok-fuelled product category suddenly shows up in your e-commerce traffic; the model has never seen these queries but the relationship between query and category is unchanged. The model is *not wrong*, just under-trained on the new region. Fix: retrain on a window that includes the new data so the model interpolates the new $x$ region.
+
+**Label shift** — the target distribution $p(y)$ changes. Last year 2 % of transactions were fraud; this quarter a new attack pattern has pushed it to 6 %. The boundary between fraud and non-fraud is the same shape, but the prior probability of each class moved. Fix: re-weight or recalibrate the classifier on the new class frequencies.
+
+**Concept shift** — the conditional $p(y \mid x)$ itself changes. Users used to mean "fast" when they searched "Tesla" and now mean "company"; the same query now warrants a different ranking. This is the hardest to detect and the most damaging to leave alone — the model is *systematically wrong* on inputs whose surface form hasn't changed. Fix: retrain on data labelled *after* the shift.
+
+**Detection.** All three flavours show up in monitoring as a divergence between the training distribution and the live distribution. The standard machinery: track input feature distributions (per-feature histograms over rolling windows), prediction distributions (per-class prediction rates), and — when you can — live label feedback (delayed but ground-truth). When a divergence metric like KL divergence or PSI (Population Stability Index) crosses a per-feature threshold for $N$ consecutive windows, trigger a retrain.
+
+<Callout type="info" title="Drift detection alarms are noisy. Threshold per feature, debounce over time.">
+A single PSI spike on one feature is almost always a transient (a deploy ran a backfill, a partner API returned nulls for an hour). Treat individual feature alarms as *signals*, not actions. Most teams require a sustained alarm on multiple features, or a combined alarm + prediction-distribution alarm, before paging anyone or triggering a retrain.
+</Callout>
+
+## Four canonical traffic-split patterns
+
+A retrained model is a *candidate*. Before it gets to serve everyone, you have to test it against live traffic. The four standard patterns each answer a different question and each carries a different risk / measurement-strength trade-off.
+
+### Shadow
+
+The candidate model receives a copy of every live request, runs inference on it, and the result is *discarded* — users still see the baseline's response. Zero user-visible risk. You compare candidate vs baseline on offline metrics (cross-entropy, top-1 agreement) on the live input distribution, and you stress-test the candidate's operational behaviour (latency, error rate, memory footprint) under real load. What you *cannot* measure: any user-behaviour metric. The candidate's outputs were never shown, so the user never reacted. Shadow is the first gate before any user-facing rollout.
+
+### Canary
+
+A small fraction $f$ of users (typically 1–5 %) is routed to the candidate; the rest see the baseline. The candidate's outputs *are* visible to those users. Watch operational metrics — error rate, p99 latency, crash rate — on the canary slice for a few hours. If anything regresses, roll back fast. Canary is for catching operational bugs that shadow couldn't (because shadow's outputs were thrown away and never wired into the downstream pipeline). It is not yet enough sample to drive a behaviour-metric decision; it is a *trip-wire*, not a *measurement*.
+
+### A/B test
+
+Split traffic deterministically (50/50 or any chosen ratio) for a defined window. Both arms are user-visible, both are measured against a pre-registered primary metric, and at the end a statistical test decides the winner. The standard for measuring causal impact on user behaviour. The cost: it runs for days, and the run-time is bounded by *power* (how big an effect you want to detect at what significance level).
+
+### Multi-armed and contextual bandits
+
+Instead of a fixed split, route adaptively: explore each arm enough to estimate its expected reward, then shift traffic toward the winner over time. $\varepsilon$-greedy keeps a fixed exploration probability; UCB picks the arm with the highest upper confidence bound; Thompson sampling draws a posterior sample of each arm's mean and picks the argmax. The headline metric is **regret** — the expected reward you gave up by not always serving the best arm — which is much lower than a fixed A/B for the same total traffic. Contextual bandits extend each arm's reward to depend on per-request features $x$ (LinUCB is the canonical linear version). The catch: the resulting traffic split is biased by the policy, so confirmatory statistics on the eventual winner are harder than for a fixed A/B.
+
+| Pattern | User-visible risk | Measurement quality | Time to decision | Stats complexity |
+|---|---|---|---|---|
+| **Shadow** | none | offline only — no user behaviour | minutes (offline) | trivial |
+| **Canary** | low (5 %) | weak (operational trip-wire) | hours | trivial |
+| **A/B** | equal (50/50) | strong (causal on primary metric) | days | standard |
+| **Bandit** | adaptive | lower regret, biased estimates | continuous | hard |
+
+<RolloutViz />
+
+<Callout type="warning" title="Shadow doesn't measure users — never promote on a shadow win alone.">
+Shadow gives you a delicious-looking offline metric on the live input distribution. It also gives you exactly zero observations of users reacting to the candidate's outputs. A candidate that wins on shadow cross-entropy can still lose on click-through, retention, or revenue once it actually faces a user. The job of the canary and the A/B test is to *measure user response*; shadow's job is to derisk the operational side before that ever happens.
+</Callout>
+
+## A/B testing essentials
+
+A few statistical concepts power every A/B test.
+
+- **Power, significance, MDE.** *Power* is the probability of detecting a real effect of a given size; *significance* ($\alpha$, typically 0.05) is the false-positive rate you accept. *MDE* (minimum detectable effect) is the smallest improvement you could reliably detect at your sample size. Pick two and the third falls out; a *sample-size calculation* turns "I want to detect a 1 % lift at 80 % power" into "I need $N$ users per arm for $D$ days."
+- **The peeking problem.** Checking significance every day and stopping on the first hit inflates the false-positive rate from 5 % to 20–30 %, because you've effectively run multiple tests. The fixes: pre-register a sample size and stick to it, or use sequential tests (mSPRT, always-valid p-values, group-sequential boundaries) that bake the peeking into the math.
+- **Novelty and primacy effects.** Users react differently to the *change* than to the *new state*. A flashy redesign gets clicks just because it's flashy; a slightly worse experience may be tolerated because it's familiar. Mitigation: run long enough for the novelty to wear off (typically 1–2 weeks).
+- **Network effects.** If user A's experience depends on user B's experience (chat, marketplaces, ranking with shared item supply), assigning A and B to different arms violates the independence assumption. Cluster-randomise (assign whole communities or geographies to the same arm).
+
+For pairwise / preference-based eval (LLM A vs LLM B by human judgement, Elo, Bradley–Terry), see the [LLM evaluation lesson](/courses/model-evaluation/04-llm-evaluation).
+
+<Callout type="warning" title="Don't peek at A/B results.">
+The textbook 5 % false-positive guarantee on a t-test assumes you check the result *once*, at the pre-specified sample size. Check every day and stop on the first significant result and you've quietly run a multiple-comparison procedure with no correction — the empirical false-positive rate balloons to 20–30 %. Either pre-register the sample size and stick to it, or use a sequential-test family designed for repeated looks.
+</Callout>
+
+## Bandits in one paragraph
+
+A bandit problem has $K$ arms with unknown reward distributions. At each step, pick an arm, observe its reward, update beliefs. $\varepsilon$-greedy explores randomly with probability $\varepsilon$ and exploits the empirical-best arm with probability $1 - \varepsilon$. UCB picks $\arg\max_a (\hat{\mu}_a + c\sqrt{\log t / n_a})$, so under-explored arms get a confidence bonus. Thompson sampling maintains a posterior over each arm's mean and samples one draw per step, picking the arm with the highest sample. Regret is $\text{Regret}(T) = \sum_{t=1}^{T} (r^*_t - r_t)$ where $r^*_t$ is the oracle reward at step $t$ — i.e. the expected reward you forfeited by not always serving the best arm. Good bandits achieve sub-linear regret: $O(\log T)$ for UCB and Thompson, vs $O(T)$ for the fixed A/B. *Contextual* bandits make each arm's reward depend on a per-request feature vector $x$; LinUCB fits a linear model $r = x^\top \beta_a$ per arm and applies UCB to the predicted mean.
+
+## A practical playbook
+
+The standard rollout sequence:
+
+1. **Shadow** the candidate for $\geq$ 1 day. Pass criteria: candidate offline metric not worse than baseline by more than threshold, p99 latency within budget, error rate at or below baseline, no out-of-memory events.
+2. **Canary** at 1 % for 1 hour, then 5 % for 1–4 hours. Pass criteria: error rate, p99 latency, crash rate all within rolling-window bounds vs baseline.
+3. **50/50 A/B test** for a pre-registered window (typically 7–14 days). Pass criteria: primary metric improvement at $p < 0.05$, no guardrail-metric regression.
+4. **Ramp** to 100 % over a day or two, watching for any second-order effects (downstream system load, search-index size, KV-cache fragmentation).
+
+Each gate has objective thresholds before you opened the candidate; you commit to roll back fast if any criterion is missed. The hardest discipline: do not move the gates after seeing the data. ("Just give it another day, it'll cross the line" is exactly how teams ship bad models.)
+
+## Feedback-loop hazards
+
+Continual learning closes a loop the model is now part of: the *retrained* model's training data is shaped by the *previous* model's outputs. A recommender that ranked item A high last week sees more clicks on A this week — and trains on that data, ranking A even higher next week. Outcomes you never let the previous model show are never observed and so are absent from training data. This selection bias drives popularity collapse, filter bubbles, and slow degradation on the long tail. Standard mitigations: explore via bandits (force some impressions on long-tail items), use randomised baselines (retain a small fraction of uniformly-random traffic as a counterfactual), and *log everything pre-filter* so the next model can in principle learn the parts of the input distribution the current model hid.
+
+## Common mistakes
+
+1. **Treating 'better offline metric' as 'ship it.'** Offline cross-entropy on shadow traffic is a proxy. Users' actual behaviour against the candidate's outputs is the only metric that ground-truths the ship decision.
+2. **Skipping the canary because 'A/B is stronger statistics.'** The two patterns answer different questions. Canary tests operational safety on 5 % of traffic. A/B tests behaviour at 50/50. Skipping the canary means an operational regression hits half your users before the A/B's metric reflects it.
+3. **Peeking at the A/B every day.** The 5 % false-positive guarantee assumes a single look. Repeated looks without a sequential-test correction balloon the false-positive rate by 4–6×.
+4. **Using a stateful chain forever without resetting it.** Six months of incremental updates accumulate bias, catastrophic forgetting on old patterns, and silent pipeline bugs. Periodic full stateless rebuilds reset the chain.
+5. **Counting drift alarms instead of debouncing them.** A single PSI spike on one feature is almost always transient. Require sustained alarms across features before retraining.
+6. **Ignoring feedback-loop selection bias.** If your model picks what users see, the training distribution is whatever your model produced — not the world. Without exploration or random baselines, the next retrain re-confirms the current model's biases.
+
+## Key takeaways
+
+- **Stateless retraining** rebuilds from scratch — reproducible, expensive. **Stateful** warm-starts and is cheap but accumulates bias. Most teams run a **hybrid**: stateless monthly, stateful daily.
+- **Distribution shift** comes in three flavours — covariate ($p(x)$), label ($p(y)$), and concept ($p(y \mid x)$) — and you monitor for each one differently. Use KL or PSI on per-feature distributions, debounce alarms across time and features.
+- **Four traffic-split patterns** — shadow, canary, A/B, bandit — make different risk / measurement trade-offs. Run them in sequence: shadow → canary → A/B → ramp.
+- **Shadow has zero user-visible risk and zero user-behaviour signal.** It's an operational gate and an offline-metric gate, not a measurement of user response.
+- **A/B testing essentials**: pre-register sample size, pick MDE and power up front, do not peek, watch for novelty and network effects.
+- **Bandits cut regret** vs a fixed A/B by routing more traffic to better arms over time, at the cost of biased post-hoc estimates and harder confirmatory statistics.
+- **Continual learning is a feedback loop.** The model shapes the training data the next model will see. Without explicit exploration, retraining re-confirms the current model's biases — popularity collapse, filter bubbles, long-tail blind spots.
+
+## Related concepts
+
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and silent drift are the failure modes this lesson's monitoring is built to detect. The drift taxonomy is shared.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems lens that asks "what happens when something goes wrong." A rollout is a pre-arranged answer to "the candidate model goes wrong"; this lesson is the playbook.
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — once a candidate has passed all four gates and is ramping to 100 %, the serving-pattern and compression choices from that lesson are what determine its $/query and tail latency.
+- [**LLM Evaluation**](/courses/model-evaluation/04-llm-evaluation) — for LLM-shaped products the A/B's primary metric is often pairwise human preference; Bradley–Terry and Elo formalise that comparison and are the dual of the user-behaviour metric this lesson uses.
+
+<Exercise id="rollout-canary-vs-ab" />
+
+<Exercise id="rollout-shadow" />
+
+<Exercise id="rollout-bandit-regret" />

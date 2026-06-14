@@ -411,6 +411,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ScalingLawViz | `visualizations/ScalingLaw/` | transformers/05-foundation-models-and-scaling | ✅ |
 | ContrastiveViz | `visualizations/Contrastive/` | nlp/07-training-embedding-models | ✅ |
 | CLIPSpaceViz | `visualizations/CLIPSpace/` | computer-vision/04-vision-language-models | ✅ |
+| RolloutViz | `visualizations/Rollout/` | ml-in-practice/09-continual-learning-and-test-in-production | ✅ |
 
 ---
 
