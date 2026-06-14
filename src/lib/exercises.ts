@@ -5995,6 +5995,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Snorkel-style weak supervision is dominated by hand-labelling at every budget; spend the entire 3,000-label budget on humans and train on the 5,000 gold labels alone.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — Experiment Tracking & Versioning ────────────
+  {
+    id: "tracking-run-vs-artifact",
+    type: "multiple-choice",
+    question:
+      "Your tracker stores every training run with its hyperparameters and metric curves. Six weeks after a model is in production, an analyst asks 'which run produced *this* serving model, and on which data was it trained?' What is the missing layer your team has not yet implemented?",
+    hint: "A run is a research event. What turns a particular run's checkpoint into the *one* model that serving infra loads?",
+    explanation:
+      "The tracker records what happened during runs; the missing layer is the **model registry** + the **lineage** it enforces. A registry records the promotion of a particular run's checkpoint to a versioned, immutable production model — and stores the back-pointer to the originating run id (and through it, the data snapshot and code SHA). Without that boundary, multiple runs could each have produced a candidate model and there is no single source of truth for *which one is live*. Adding a registry pins the promotion as an auditable event: model version v1.4.2 was produced by run id `abc...`, trained on data snapshot `d8...`, using code SHA `9f...`. (A) is wrong: more metrics do not produce lineage; they produce more data along an axis you already track. (C) confuses runs with releases — even with daily MLflow logs, a checkpoint pushed straight from a notebook into serving has no audit trail. (D) reverses the dependency: the data snapshot is what the run consumes, not what it produces; the registry is what *the run produces* on the production side.",
+    options: [
+      { id: "a", label: "Add more metrics (latency p99, calibration ECE) to every run so the analyst can identify the production model by its metrics.", isCorrect: false },
+      { id: "b", label: "Add a model registry that records each promoted, immutable model version with a back-pointer to its originating run id, data snapshot, and code SHA. The tracker records research; the registry records production promotions.", isCorrect: true },
+      { id: "c", label: "Switch from MLflow to a daily-snapshot scheme so every day's models are queryable by date — promotion is implicit.", isCorrect: false },
+      { id: "d", label: "Replace the tracker with a data versioning system (DVC). Runs are an artifact *of* the data snapshot, so versioning the data is sufficient to identify any model.", isCorrect: false },
+    ],
+  },
+  {
+    id: "tracking-reproducibility",
+    type: "slider",
+    question:
+      "Code, data, and environment are the three axes you must version to reproduce a training run. Suppose you have a $p = 0.9$ chance of correctly pinning each axis independently. Assuming the axes are independent, what is the probability of producing a fully reproducible run? Enter a decimal in [0, 1] rounded to two decimal places.",
+    hint: "All three independent events must succeed: probability is $p \\cdot p \\cdot p$.",
+    explanation:
+      "Independent successes multiply: $0.9 \\times 0.9 \\times 0.9 = 0.729$. The point of the exercise is the *shape* of the answer — a 90% individual rate on each of three axes still drops to ~73% end-to-end. Teams routinely overestimate their reproducibility rate because they think about each axis in isolation; the joint probability is what actually matters and is always lower than any individual axis. Real numbers are even worse: when teams audit irreproducibility incidents in practice, the per-axis success rate is usually closer to 0.7 (mostly because environment pinning is half-done), which gives an end-to-end rate of $0.7^3 \\approx 0.34$ — meaning roughly two-thirds of runs cannot be reproduced exactly. Improving any individual axis to 1.0 (full automation, no human in the loop on that axis) does the most for the joint probability.",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    correctRange: [0.71, 0.75],
+    unit: "probability",
+  },
+  {
+    id: "tracking-data-version",
+    type: "multiple-choice",
+    question:
+      "Your team's tracker stores every run's parameters and the path to its training table: `s3://mybucket/training/v3/`. Two months later, you re-run the same training script with the same git SHA and the same path — and get a model with measurably different test metrics. The team is confused: 'we pinned everything.' What is the most likely root cause?",
+    hint: "Is `s3://mybucket/training/v3/` actually a *version*, or is it just a path that can be overwritten?",
+    explanation:
+      "The path `s3://mybucket/training/v3/` is not a content-addressed version — it is a *mutable pointer* into a bucket where contents can be appended, backfilled, or overwritten without changing the URL. Two months of routine ops (late-arriving events, schema migrations, deletions, partition rewrites) silently changed the bytes the path resolves to. The tracker recorded the *path* but not the *content hash*, so the second run consumed a different dataset under the same name. The fix is content-addressed data versioning: a DVC pointer (hash of the dataset), an S3 object-version id, an Apache Iceberg / Delta Lake table version, or a LakeFS commit id — anything that lets you re-resolve to bit-identical bytes months later. (A) is implausible at this scale — a CUDA driver bump does not usually move metrics that much, and the team said they pinned the environment. (C) reverses the diagnosis: hyperparameters not under git is a real problem in some setups but the question stipulates the same git SHA. (D) is a red herring: a non-deterministic optimizer would also have moved the first run's metrics across reruns; the symptom here is that *the data is different*, not the optimisation path.",
+    options: [
+      { id: "a", label: "The CUDA driver on the training box was upgraded between runs. Float-summation order is non-deterministic across driver versions, which shifted the final test metrics by a measurable amount.", isCorrect: false },
+      { id: "b", label: "`s3://mybucket/training/v3/` is a mutable path, not a content-addressed version. The bytes under that prefix changed between the two runs — backfills, late-arriving events, or schema migrations — and the tracker only logged the *path*, not the data's hash. The fix is content-addressed data versioning (DVC, S3 object-version id, Iceberg / Delta table version).", isCorrect: true },
+      { id: "c", label: "Hyperparameters are stored in a YAML file outside the git repo, so the git SHA does not actually pin them. Move the YAML into the repo so the SHA captures it.", isCorrect: false },
+      { id: "d", label: "The optimiser is non-deterministic across PyTorch minor versions. Pin to an exact patch version of PyTorch and the issue will go away.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
