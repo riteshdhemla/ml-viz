@@ -6040,6 +6040,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The optimiser is non-deterministic across PyTorch minor versions. Pin to an exact patch version of PyTorch and the issue will go away.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — Deployment Patterns & Model Compression ──────
+  {
+    id: "deploy-batch-vs-online",
+    type: "multiple-choice",
+    question:
+      "You are building a system that scores every active user for *churn risk* and pushes the top 1 % into a retention campaign once a day. A teammate proposes deploying the model behind an online HTTP endpoint that the campaign job calls per user. What is the strongest argument *against* this design?",
+    hint: "When does the input to the model actually change? And what does the campaign job need that the request path of an online endpoint does not buy you?",
+    explanation:
+      "Churn risk is computed from features that update on a daily-or-slower cadence (subscription state, last-active-day, monthly engagement). The input does not change per request, so an online endpoint pays the cost of always-on autoscaled GPU/CPU capacity without buying any freshness in return. The right pattern is a nightly *batch* job that scores all users, writes results to a KV store, and lets the campaign job read out the top 1 % with a cheap lookup. Batch amortises compute across the full 24 h and removes the request-path failure modes (queue backpressure, autoscaler cold starts, downstream timeouts). (A) is wrong: batch jobs handle volume *better* than online, not worse — they shard horizontally and run on cheap pre-emptible workers. (C) is partially true (you can absolutely cache an online endpoint), but the cache becomes the source of truth and you have rebuilt batch with extra steps. (D) reverses the trade-off: per-request feature freshness is exactly what churn does *not* need; you only pay for it when the input actually changes.",
+    options: [
+      { id: "a", label: "Online endpoints cannot handle the request volume — 100 M users scored daily would saturate any reasonable autoscaler.", isCorrect: false },
+      { id: "b", label: "Churn features barely change between days, so per-request inference pays for always-on capacity it does not need. A batch job that scores every user overnight and a KV-store lookup at campaign time is cheaper and removes the request-path failure modes.", isCorrect: true },
+      { id: "c", label: "Online endpoints cannot cache predictions, so every campaign run would recompute identical scores for users whose features did not change.", isCorrect: false },
+      { id: "d", label: "Online endpoints provide stale features at request time; only batch jobs can guarantee fresh per-user features when scoring.", isCorrect: false },
+    ],
+  },
+  {
+    id: "deploy-distillation-tradeoff",
+    type: "multiple-choice",
+    question:
+      "Your team needs a 1 B-parameter chat model that fits on a single consumer GPU. Two engineers each propose a path. Engineer A says: 'pretrain a 1 B model from scratch on the same corpus the 7 B was trained on, then SFT.' Engineer B says: 'distil the existing 7 B chat model into a 1 B student using its softmax outputs at temperature $T = 3$.' Both proposals consume the same total compute. Which is likely to be the stronger 1 B model and why?",
+    hint: "What does the teacher's *softened* output distribution carry that a hard label does not?",
+    explanation:
+      "Distillation almost always wins at the small end. The reason is *dark knowledge*: the teacher's softened output distribution encodes the relative probabilities of every alternative class (token) at every input — the runner-up and runner-runner-up tell the student which classes are 'near misses' for this input. Hard labels and a from-scratch run can only encode the argmax. With the same compute budget, the student trained against the teacher's full distribution learns the same input-output structure *faster* and with less data, because every example provides denser supervision than a one-hot label. This is exactly why every production-serving small LLM (Phi, Gemma small, Llama distilled variants) is a distillation, not a from-scratch small pretraining. (A) and (D) misstate the empirical reality; (C) describes a real risk (over-fitting to teacher errors) but it is mitigated in practice by mixing the hard-label CE term ($\\alpha < 1$) and using a held-out evaluation set — and even with that risk, the distilled student still outperforms the from-scratch baseline by a meaningful margin at fixed compute.",
+    options: [
+      { id: "a", label: "From-scratch is stronger; distillation caps the student at the teacher's accuracy, so a from-scratch run can in principle exceed it given enough compute.", isCorrect: false },
+      { id: "b", label: "Distillation is stronger. The teacher's softened logits encode the *full* distribution of plausible next tokens at every input — relative probabilities, runner-up classes, similarity structure — which is denser supervision than a one-hot label. The student learns the input-output map faster and ends up more capable at the same compute.", isCorrect: true },
+      { id: "c", label: "From-scratch is stronger because distillation inherits and amplifies every error the teacher makes, including biases and hallucinations.", isCorrect: false },
+      { id: "d", label: "Distillation and from-scratch are equivalent at equal compute; the choice is purely operational (does the teacher exist yet?).", isCorrect: false },
+    ],
+  },
+  {
+    id: "deploy-edge-budget",
+    type: "slider",
+    question:
+      "You want to ship an LLM-powered keyboard-suggestion model on a mobile device with a hard 1.5 GB memory budget for model weights. The starting checkpoint is a 7 B-parameter model stored in FP16. You will quantize to INT4 (4 bits per weight) using NF4. By what factor must you further compress the model — via distillation and / or structured pruning — to fit the budget? Round to one decimal place.",
+    hint: "First compute the model's size after INT4 quantization, then divide by the 1.5 GB budget. 7 B weights × 4 bits / 8 = bytes; convert to GB.",
+    explanation:
+      "INT4 quantization at 4 bits / weight gives $7\\times10^9 \\cdot 0.5\\,\\text{bytes} = 3.5\\times10^9\\,\\text{bytes} \\approx 3.26\\,\\text{GiB}$ (or ~3.5 GB in decimal units). The budget is 1.5 GB. The required extra compression factor is $3.5 / 1.5 \\approx 2.3\\times$ (or $3.26 / 1.5 \\approx 2.2\\times$ in GiB units — either ~2.2× or ~2.3× falls in the accept band). The point of the exercise is that quantization alone is rarely enough at the edge: you usually also need a distillation step (the dominant lever — a 7 B → 3 B distill multiplies the headroom) and possibly structured pruning on top. This stacking is why every production on-device LLM is a *distilled, quantized, possibly pruned* variant — no single technique closes the gap from a 26 GB FP32 checkpoint to a 1.5 GB phone budget.",
+    min: 1.0,
+    max: 5.0,
+    step: 0.1,
+    correctRange: [2.0, 2.5],
+    unit: "× extra compression",
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
