@@ -69,6 +69,7 @@ import { ScalingLawViz } from "@/components/visualizations/ScalingLaw/ScalingLaw
 import { ContrastiveViz } from "@/components/visualizations/Contrastive/ContrastiveViz";
 import { CLIPSpaceViz } from "@/components/visualizations/CLIPSpace/CLIPSpaceViz";
 import { SamplingStrategiesViz } from "@/components/visualizations/SamplingStrategies/SamplingStrategiesViz";
+import { RolloutViz } from "@/components/visualizations/Rollout/RolloutViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -144,4 +145,5 @@ export const mdxComponents: MDXComponents = {
   ContrastiveViz,
   CLIPSpaceViz,
   SamplingStrategiesViz,
+  RolloutViz,
 };
