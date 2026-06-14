@@ -119,7 +119,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 
 ### Phase 3 — LLM internals & evaluation  *(integrate)*
 - [x] **`transformers` + Foundation Models & Scaling** · concepts: pretraining objectives (causal LM), training data scale, scaling laws, context window, post-training overview · viz: **ScalingLawViz** (loss vs compute/params, log-log) · ~3 exercises · notebook.
-- [ ] **`nlp` + LLM Model Taxonomy** · concepts: encoder-only (BERT) vs decoder-only (GPT) vs encoder-decoder (T5); what "large" means · viz: *reuse `TransformerBlockViz`* · ~3 exercises · notebook.
+- [x] **`nlp` + LLM Model Taxonomy** · concepts: encoder-only (BERT) vs decoder-only (GPT) vs encoder-decoder (T5); what "large" means · viz: *reuse `TransformerBlockViz`* · ~3 exercises · notebook.
 - [ ] **`nlp` + Decoding & Sampling Strategies** · concepts: greedy, beam, temperature, top-k, top-p; determinism · viz: *reuse `SamplingViz`* · ~3 exercises · notebook.
 - [ ] **`nlp` + Topic Modeling (BERTopic)** · concepts: embed→reduce→cluster→c-TF-IDF labels · viz: *reuse `KMeansViz` or `PerplexityViz`* · ~3 exercises · notebook.
 - [ ] **`nlp` + Training Embedding Models** · concepts: SBERT, contrastive/triplet loss, hard negatives, TSDAE · viz: **ContrastiveViz** (pull-positive/push-negative in 2D) · ~3 exercises · notebook.

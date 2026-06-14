@@ -1,0 +1,147 @@
+---
+title: "LLM Model Taxonomy"
+description: "Encoder-only (BERT), decoder-only (GPT), and encoder-decoder (T5) families — what each was built for, and what 'large' actually means."
+order: 4
+type: concept
+estimatedMinutes: 20
+---
+
+# LLM Model Taxonomy
+
+The previous lesson ended on BERT — the canonical encoder-only model. But "Transformer" is a *family*, not a model: by swapping the attention mask and the pretraining objective you get three different architectures with very different jobs. This lesson catalogues those three families, ties each to representative models, and unpacks what people actually mean when they say a model is "large".
+
+Real-world examples: **BERT, RoBERTa, DeBERTa, ModernBERT** (encoder-only, for retrieval and classification); **GPT-4, Llama 3, Mistral, Claude, Gemini** (decoder-only, for chat / code / agents); **T5, BART, FLAN-T5** (encoder-decoder, for translation, summarisation, and instruction-tuned seq2seq).
+
+## Three families, one organising principle
+
+Every modern Transformer-based LLM falls into one of three families, distinguished by **what each token is allowed to condition on** during pretraining:
+
+| Family | Mask shape | Pretraining objective | Built for |
+|--------|-----------|------------------------|-----------|
+| **Encoder-only** | Bidirectional (full) | Masked-LM ($\sim$15% mask, predict original) | Understanding: classification, NER, embeddings, reranking |
+| **Decoder-only** | Causal (lower-triangular) | Next-token prediction (causal LM) | Generation: chat, code, agents, function-calling |
+| **Encoder-decoder** | Bi-dir on encoder + causal on decoder + cross-attention | Span-corruption / seq2seq | Structured input→output: translate, summarise, instruction-tuned |
+
+The same residual block — multi-head self-attention + MLP + LayerNorm + residual — appears in all three. The mathematics of self-attention itself does not change; what changes is which entries of the $L \times L$ score matrix $QK^\top$ are *allowed* to be non-zero.
+
+(For the self-attention derivation itself, see [Self-Attention](/courses/transformers/01-self-attention) — we won't re-derive it here.)
+
+### Attention masks, in words
+
+You can read off the family from the attention mask:
+
+- **Encoder-only (bidirectional).** The mask is the all-ones matrix. Token at position $i$ attends to *every* token in the sequence, including the future. That is why an encoder can build a representation of "bank" that already knows about "river" three words later — and why it cannot generate text left-to-right without a separate decoder.
+
+- **Decoder-only (causal).** The mask is strictly lower-triangular: position $i$ may attend only to positions $j \le i$. Concretely the masked logits are
+  $$
+  \tilde s_{ij} = s_{ij} + M_{ij}, \qquad M_{ij} = \begin{cases} 0 & j \le i \\ -\infty & j > i \end{cases}
+  $$
+  Softmax then sends the upper triangle to zero. This is the single trick that makes "predict the next token" a valid training objective — without it the model would peek at the answer.
+
+- **Encoder-decoder.** Two stacks. The encoder uses the bidirectional mask on the input. The decoder uses the causal mask on the output it has generated so far. They are connected by a **cross-attention** sublayer in every decoder block: the decoder's queries attend to the *encoder's* keys and values, which gives the generator access to the full input without losing its own auto-regressive guarantee.
+
+The notebook below draws all three masks side by side as heatmaps, so you can see the families differ by exactly one bit of bookkeeping.
+
+<TransformerBlockViz />
+
+## Encoder-only: BERT, RoBERTa, DeBERTa, ModernBERT
+
+The encoder family is optimised for **representations**, not generation. A forward pass produces one contextual vector per input token plus, conventionally, a sentence vector at the `[CLS]` position. Those vectors are the *output* of the model — you bolt a small task head (a linear classifier, a span predictor, a similarity head) on top and fine-tune end-to-end.
+
+- **BERT** (2018, 110M / 340M) introduced bidirectional masked-LM + next-sentence prediction.
+- **RoBERTa** (2019, 125M / 355M) showed that BERT was undertrained: drop NSP, train longer, use larger batches and more data, and the same architecture wins by several points.
+- **DeBERTa** (2020, 100M–1.5B) replaced absolute position embeddings with *disentangled* relative position attention, which improved long-range understanding.
+- **ModernBERT** (2024, 150M / 400M) refreshed the recipe with RoPE positions, FlashAttention, GeGLU, and an 8 K context — proof that the encoder family is still useful at frontier engineering standards.
+
+Where they dominate: dense retrieval and reranking (an encoder is what powers `sentence-transformers` and the embedding endpoint your RAG stack is calling — see [Embeddings & Semantic Search](/courses/building-with-llms/03-embeddings-and-semantic-search)), classification (toxicity, sentiment, intent), and structured tagging (NER, POS).
+
+Where they cannot help: free-form generation. There is no "next token" because the model never had to predict one during pretraining — every position saw the whole sentence.
+
+<Callout type="info" title="Bidirectional context is not free">
+  BERT's bidirectionality is the source of both its power and its limitation. Seeing the future during training is great for embeddings — but it forces a training/inference mismatch (you only train on masked positions, so only ~15% of tokens contribute gradient per example) and rules out a clean generation procedure. Decoder-only fixes both at the cost of giving up the bidirectional view.
+</Callout>
+
+## Decoder-only: GPT, Llama, Mistral, Claude, Gemini
+
+The decoder family is what almost everyone now means by "LLM". A single stack of causal-masked Transformer blocks, pretrained on next-token prediction over trillions of tokens, post-trained with SFT and preference optimisation — see [Foundation Models & Scaling Laws](/courses/transformers/05-foundation-models-and-scaling) for the recipe.
+
+The architecture and the inference loop match exactly: at every position the model predicts the next token from the prefix, both during training and during generation. That alignment is the deepest reason decoder-only won the generative race — there is no `[MASK]` at inference time, no separate encoder pass, no two-stage prompting.
+
+Representative sizes:
+
+- **GPT-2** (2019, 124M–1.5B) — first widely-released causal LM.
+- **GPT-3** (2020, 175B) — few-shot in-context learning emerges at scale.
+- **Llama 3** (2024, 8B–405B, open weights) — frontier-grade open model trained on 15T tokens.
+- **Claude / Gemini / GPT-4-class** (2023–) — closed frontier models, decoder-only at the core, scaled to hundreds of billions of (often-MoE) parameters and trained on multi-trillion-token mixtures.
+
+Same family also covers **code models** (Codex, Llama-Code, DeepSeek-Coder), **agent backbones** (anything that does tool-use), and most **multimodal** models — vision and audio enter as additional tokens through a projector, but the backbone is still a causal decoder.
+
+<Callout type="tip" title="Why decoder-only ate the world">
+  Three reinforcing reasons: (1) training matches inference — every example is also a valid generation step; (2) the same model serves *all* generative tasks via prompting, so you can amortise a single very expensive pretraining run; (3) scaling laws ([Foundation Models & Scaling Laws](/courses/transformers/05-foundation-models-and-scaling)) work cleanly on a single objective. Encoder-only and encoder-decoder both fragment the objective and the deployment story.
+</Callout>
+
+## Encoder-decoder: T5, BART, FLAN-T5
+
+The original Transformer (Vaswani et al., 2017) was an encoder-decoder, designed for translation. The family is built around tasks that have a clear **input** and a clear **output** that are both sequences of tokens.
+
+- **T5** (2019, 60M–11B) framed *every* NLP task as text→text ("translate English to German: ...", "summarise: ...") and pretrained with **span corruption**: replace contiguous spans with sentinel tokens, ask the decoder to reproduce the spans.
+- **BART** (2019, 140M / 400M) used a denoising autoencoder objective — corrupt the input with masking, deletion, infilling, and sentence shuffling; reconstruct the original.
+- **FLAN-T5** (2022) added massive multi-task instruction tuning on top of T5, producing a small-but-strong instruction-following encoder-decoder.
+
+Where they dominate: **translation** (cross-attention is structurally well-suited to aligning two sequences), **summarisation** (input and output have very different lengths), and **structured generation** where you want a clean separation between "read the input" and "produce the output". They also tend to be more data-efficient than decoder-only at equal parameter count on these conditional tasks, because cross-attention gives the decoder a direct, non-autoregressive view of the source.
+
+Where decoder-only has eaten their lunch: open-ended chat and agentic tool-use. A prompted decoder ("Summarise the following: ...") is "good enough" for most everyday seq2seq jobs, and the deployment simplicity of one model for everything is hard to beat.
+
+## What "large" actually means
+
+The word "large" in "large language model" is doing four jobs at once. Untangling them is essential to talk about modern LLMs precisely.
+
+1. **Parameter count $N$.** The headline number: GPT-2 had $\sim 10^9$, GPT-3 had $1.75 \times 10^{11}$, modern frontier models are in the $10^{11}$–$10^{12}$ range (and trillion-parameter MoEs activate only a fraction per token). This is the easiest number to compare but also the most overrated — a 70B model trained on 15T tokens routinely beats a 175B model trained on 0.3T tokens.
+
+2. **Training tokens $D$.** The pretraining corpus, measured in tokens. The shift from "tens of billions" (early BERT/GPT-2) to "trillions" (Llama-3, Chinchilla, frontier) is the *other* axis along which models grew. Modern open models train at hundreds to thousands of tokens per parameter.
+
+3. **Training compute $C$.** The product $C \approx 6 N D$ FLOPs is the resource people actually buy. Scaling laws are formulated in $C$ for a reason — at fixed $C$ the optimal split between $N$ and $D$ is Chinchilla's $D \approx 20 N$ ([Foundation Models & Scaling Laws](/courses/transformers/05-foundation-models-and-scaling)).
+
+4. **Emergent capability.** The non-obvious part. Past some threshold (~$10^{22}$ FLOPs or ~$10^{10}$ params, very roughly) capabilities like in-context learning, chain-of-thought, instruction following, and tool use appear that did not exist in smaller models trained on the same data. This is what people *mean* when they reach for "large" — not the parameter count, but the qualitative shift.
+
+A useful test for whether someone is using "LLM" precisely: ask them whether BERT counts. By job description (predict masked tokens, output embeddings) it is a *language model*. By the cultural meaning of "LLM" — instruction-following generative system — it usually is not. The taxonomy in this lesson is the right vocabulary to be clearer.
+
+<Callout type="warning" title="Parameter count without tokens is a vanity metric">
+  A "1 trillion parameter" headline tells you almost nothing on its own. If the model is an MoE with 50 B active per token, the inference cost is set by 50 B, not 1 T. If it was trained on too few tokens for its size, it is *under-trained* and a smaller, longer-trained model will beat it. Always ask for $N$, $D$, and ideally $C$ together — Chinchilla scaling is unforgiving.
+</Callout>
+
+## Picking a family for a task
+
+A practical decision tree before you reach for a model:
+
+- **Need a sentence/document vector, classification, NER, or reranking?** Encoder-only — small, fast, easy to host. A 100 M-parameter MiniLM or ModernBERT will beat a 70 B decoder you prompt for embeddings.
+- **Need free-form generation, chat, code, or agents?** Decoder-only. Almost everything below "frontier" can be done with a 7 B–70 B open-weights model; everything above with a hosted Claude / GPT / Gemini.
+- **Need a clean input→output transformation where both sides are sequences (translate, summarise, structured rewriting, code translation)?** Encoder-decoder *or* a prompted decoder. Encoder-decoder is cleaner and often more data-efficient; prompted decoder is simpler to deploy. The right choice today is "decoder-only with a good prompt unless you have a measurable reason to add the encoder".
+- **Need both — semantic search *and* RAG generation?** Use an *encoder* for the embedding service and a *decoder* for the generator. The two families are complements, not substitutes.
+
+## Common mistakes
+
+1. **Asking BERT to generate text.** It cannot — there is no causal mask, no next-token head, no autoregressive sampling. Use a decoder.
+2. **Using a decoder-only model as a sentence embedder by mean-pooling the last hidden state.** It works passably but is dominated by a properly-trained encoder (or an explicitly instruction-tuned embedding model like `text-embedding-3-large`).
+3. **Treating "large" as a synonym for "billions of parameters".** Under Chinchilla, a 7 B model trained on 15 T tokens is *more capable* than a 175 B model trained on 0.3 T. The right currency is compute or capability, not raw $N$.
+4. **Reaching for an encoder-decoder for chat.** T5 / BART are seq2seq systems — for open-ended dialogue a causal decoder is structurally simpler and almost always better. Encoder-decoder shines when input and output are clearly distinct sequences.
+5. **Confusing "encoder-decoder" with "uses attention twice".** All Transformers use multi-head self-attention multiple times. The defining feature of encoder-decoder is **cross-attention**: the decoder's queries attend to the encoder's keys/values.
+
+## Key takeaways
+
+- Three families: **encoder-only** (bidirectional mask, MLM, embeddings/classification), **decoder-only** (causal mask, next-token, generation), **encoder-decoder** (both stacks + cross-attention, seq2seq).
+- The family is determined by the **attention mask** and the **pretraining objective**, not by the residual block.
+- BERT/RoBERTa/DeBERTa/ModernBERT power retrieval and classification; GPT/Llama/Claude/Gemini power chat and agents; T5/BART/FLAN-T5 power translation and summarisation.
+- "**Large**" is four numbers — parameters $N$, tokens $D$, compute $C \approx 6ND$, and emergent capability. Headline parameter counts without the rest are a vanity metric; Chinchilla says $D \approx 20 N$ is compute-optimal.
+- Pick the family by the task shape: representations → encoder, generation → decoder, structured input→output → encoder-decoder (or a prompted decoder).
+
+## Related concepts
+
+- [**Sequence Models to BERT**](/courses/nlp/03-sequence-models-to-bert) — how the encoder family arrived and what it replaced
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the underlying mechanism every family rearranges
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — what "large" formally means in the decoder-only family
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — encoder-only models in production
+
+<Exercise id="llm-taxonomy-encoder-decoder" />
+<Exercise id="llm-taxonomy-best-fit" />
+<Exercise id="llm-taxonomy-what-large-means" />

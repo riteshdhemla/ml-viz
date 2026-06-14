@@ -5543,6 +5543,52 @@ const allExercises: Exercise[] = [
       { id: "d", label: "$\\approx 7$ B parameters", isCorrect: false },
     ],
   },
+  // ── NLP — LLM Model Taxonomy ───────────────────────────────────
+  {
+    id: "llm-taxonomy-encoder-decoder",
+    type: "multiple-choice",
+    question:
+      "Your team needs to build a system that translates internal documents from English to German and produces short summaries of long reports. Which Transformer family is the most natural architectural fit for both tasks?",
+    hint: "Both tasks have a clear input sequence and a distinct output sequence; one family was literally designed for that shape.",
+    explanation:
+      "Encoder-decoder models (T5, BART, FLAN-T5) are built around an explicit input → output structure: the encoder reads the source with bidirectional attention, the decoder generates the target with causal attention, and a cross-attention sublayer in every decoder block lets the generator look directly at the source. That matches translation and summarisation cleanly. Encoder-only models cannot generate at all, and decoder-only models can do the job via prompting but lose the structural separation between source and target.",
+    options: [
+      { id: "a", label: "Encoder-only (BERT-family)", isCorrect: false },
+      { id: "b", label: "Encoder-decoder (T5 / BART)", isCorrect: true },
+      { id: "c", label: "Decoder-only (GPT-family) — it is structurally the best fit", isCorrect: false },
+      { id: "d", label: "None — Transformers cannot do translation or summarisation", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-taxonomy-best-fit",
+    type: "multiple-choice",
+    question:
+      "You are building a high-volume semantic-search service that needs to embed ~10 million product descriptions into a vector index, then turn user queries into vectors for nearest-neighbour lookup. Cost-per-vector and latency-per-query matter; you do not need to generate any text. Which family should you reach for first?",
+    hint: "You need one fixed-size vector per input — no generation. Which family was built for representations?",
+    explanation:
+      "Encoder-only models (BERT, RoBERTa, ModernBERT, or a sentence-transformer fine-tune of one of them) are designed to produce contextual representations in a single bidirectional forward pass. A 100 M-parameter MiniLM or ModernBERT will out-embed a 70 B decoder-only model that you mean-pool, at orders of magnitude lower cost. Decoder-only models can be coaxed into producing embeddings but are dominated here. Encoder-decoder is overkill for pure representation work.",
+    options: [
+      { id: "a", label: "Decoder-only — mean-pool the last hidden state of a 70B LLM", isCorrect: false },
+      { id: "b", label: "Encoder-decoder — use the encoder half of T5", isCorrect: false },
+      { id: "c", label: "Encoder-only — a sentence-transformer / BERT-family model", isCorrect: true },
+      { id: "d", label: "It does not matter; all three families embed equally well", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-taxonomy-what-large-means",
+    type: "multiple-choice",
+    question:
+      "A press release claims a new model is a '2 trillion parameter LLM'. Which single follow-up question gives you the most signal about whether the model is actually competitive with frontier 70B–400B dense models?",
+    hint: "Chinchilla scaling says compute-optimal training uses about 20 tokens per parameter — and 'parameters' includes inactive MoE experts.",
+    explanation:
+      "Parameter count alone is a vanity metric. Two follow-ups dominate: (1) how many *active* parameters per token (an MoE with 2T total but 50B active is a 50B-class inference model), and (2) how many training tokens $D$ — under Chinchilla, a model trained at far less than $D \\approx 20N$ active tokens per parameter is under-trained and will lose to a smaller, longer-trained model. Training tokens is the single highest-signal follow-up. Context window, release date, and language coverage are real questions but tell you much less about raw capability than $D$.",
+    options: [
+      { id: "a", label: "How many training tokens was it trained on, and how many parameters are active per token?", isCorrect: true },
+      { id: "b", label: "What is its maximum context window in tokens?", isCorrect: false },
+      { id: "c", label: "What month and year was it released?", isCorrect: false },
+      { id: "d", label: "How many languages does it support?", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
