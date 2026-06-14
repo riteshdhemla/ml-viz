@@ -1,0 +1,163 @@
+---
+title: "Deployment Patterns & Model Compression"
+description: "Batch, online, and edge serving — and the compression stack (quantization, pruning, distillation) that makes each pattern affordable in production."
+order: 8
+type: concept
+estimatedMinutes: 22
+---
+
+# Deployment Patterns & Model Compression
+
+A trained model is not yet a product. Two production questions follow training and they are independent: *when does inference run* (batch overnight, online per request, or on the user's own device) and *what does the model weigh* (a 26 GB FP32 checkpoint, an 8-bit quantized variant, a distilled student a tenth the size). Pick the wrong serving pattern and your $/query is off by 100×; pick the wrong compression strategy and your p99 latency is off by 10×. This lesson is the operational lens — the math of quantization is in the fine-tuning course; here we ask which lever to pull, in which order, for which deployment shape.
+
+Real-world examples: Netflix runs recommender scoring as an overnight batch job and serves predictions out of a key-value store; Stripe runs fraud detection as online inference with a strict p99 budget under 100 ms; Apple's speech recognition runs on-device with a distilled transformer; Tesla autopilot is an edge model that ships in the car firmware; vLLM is the high-throughput serving runtime that most managed LLM endpoints use under the hood; FastChat-style routers fan out to several model replicas behind a single chat endpoint.
+
+## Three serving patterns
+
+The first decision is *when* inference happens relative to the user request. Three patterns dominate.
+
+### Batch
+
+Score every user (or every item) overnight, write the predictions to a key-value store, and at request time the online code is a database lookup. Throughput is unbounded — you can shard the batch across as many machines as you can afford — and latency at the request path is whatever a lookup costs (typically a few milliseconds). The cost is **freshness**: a prediction made at 02:00 cannot reflect a click made at 09:00. Batch is the right pattern when inputs barely change minute-to-minute: nightly recommendations, weekly churn risk, daily inventory forecasts.
+
+### Online (real-time)
+
+Features are assembled on the request path, the model is called per request, and the user is waiting. Latency budgets are tight — a typical web tier expects p99 under 100–300 ms end-to-end including network, feature lookup, model call, and post-processing. Online is the right pattern when the input *is* the request: fraud on a payment that just arrived, ad CTR for a query that just landed, the next token in a chat the user is mid-typing. The cost of online over batch is that you cannot amortise compute: peak traffic is what you size capacity for, and the model is running even when traffic is light.
+
+### Edge / on-device
+
+The model ships with the client — a phone, a car, a browser, a watch. There is no server inference cost, the model works offline, and user data never leaves the device. The constraints are hard: tight memory budget (gigabytes on a phone, megabytes on a watch), tight power budget, no GPU on most devices, and updates only ship as fast as the app store accepts new versions. Edge is the right pattern when the user has spare compute, when connectivity is poor, when privacy matters, or when the latency budget is tighter than a network round-trip allows: keyboard prediction, speech recognition, image search on the camera roll.
+
+| Pattern | Latency at request | Input freshness | $/query | Privacy | Hardware |
+|---|---|---|---|---|---|
+| **Batch** | ms (KV lookup) | hours–days stale | very low | server-side | server CPU / GPU |
+| **Online** | tens of ms | per request | medium–high | server-side | server GPU |
+| **Edge** | ms–tens of ms | per request | $0 / query | on-device | phone / car NPU |
+
+## Why compression matters for each pattern
+
+The same model behaves very differently in each pattern, so the *value* of compression also differs.
+
+- **Batch**: throughput is the bottleneck, not latency, and you control the schedule. A 26 GB FP32 model is fine if it finishes the nightly job by morning. Compression is *optional* — usually a cost optimization, not a correctness requirement.
+- **Online**: every gigabyte of model is a gigabyte of GPU RAM you have to pay for at peak QPS. Quantizing a 13 B model from FP16 to INT8 halves memory, fits more replicas per GPU, and cuts $/query roughly 2×. Compression is also a tail-latency lever: smaller models have shorter forward passes.
+- **Edge**: compression is *mandatory*. A FP16 7B model literally will not fit on a phone — you ship the 4-bit GGUF or you do not ship at all.
+
+Said differently: compression buys you back budget in whichever resource is scarce — server cost for online, device memory for edge, schedule slack for batch.
+
+<Callout type="tip" title="Compress for the bottleneck, not for sport">
+Quantization, pruning, and distillation each cost engineering time and a small amount of accuracy. Spend that budget where the resource is actually scarce. A batch job that finishes by 06:00 does not need INT4 weights; an on-device speech model does. Match the technique to the binding constraint.
+</Callout>
+
+## Quantization (recap)
+
+Quantization stores each weight in fewer bits — FP32 → FP16 → INT8 → INT4 → INT2 — by mapping the continuous weight range onto a discrete grid of `2^b` levels. Memory shrinks linearly with bit-width; accuracy degrades non-linearly (cheap from 32 → 8, painful below 4). The math (uniform symmetric quantization, QAT, NF4) is covered in the fine-tuning course; for deployment the take-away is that **INT8 is essentially free** on most LLMs and **INT4 is the sweet spot** for serving on consumer GPUs.
+
+One subtlety that matters for production throughput: **activation quantization** is as important as weight quantization. *Weight-only* (W8 or W4) shrinks the model on disk and in GPU RAM, but the matmul still runs in FP16 on the activations — so peak throughput is bounded by FP16 GEMM. *Weight + activation* (W8A8 or W4A8) lets the matmul run in INT8 / INT4, often 2–4× faster per kernel. The trade-off is calibration: activation quantization needs a small representative dataset to set per-tensor scales without clipping outliers.
+
+<QuantizationViz />
+
+For the underlying math and QLoRA, see the dedicated [Model Merging & Quantization](/courses/fine-tuning-alignment/05-model-merging-and-quantization) lesson.
+
+## Pruning
+
+Pruning removes weights from the trained model. The headline question is *which* weights, and the answer splits the family.
+
+### Unstructured pruning
+
+Zero out individual weights below a magnitude threshold. Disk size shrinks (sparse formats only store the non-zero entries plus their indices), but standard dense matmul kernels on a GPU do not speed up — they still multiply through the zeros. Unstructured pruning pays off when you have sparse-aware hardware (NVIDIA's 2:4 sparsity on Ampere+, custom CPU kernels) or when you only care about model file size.
+
+### Structured pruning
+
+Drop *whole* channels, attention heads, or MLP blocks. The resulting model is dense at a smaller size, so the GEMM speedup is real on standard hardware — a 30 % structured prune is often 1.3–1.4× faster in wall-clock time. The cost is steeper: dropping a whole head removes more capacity than dropping its lowest-magnitude weights, so accuracy degrades faster per parameter removed. The payoff is that the speedup actually shows up in production.
+
+### Magnitude vs movement pruning
+
+- **Magnitude pruning** sorts weights by absolute value once and zeros out the bottom $k$%. One-shot, no retraining required.
+- **Movement / iterative pruning** alternates pruning and fine-tuning — prune 10 %, fine-tune for an epoch, prune 10 % more, fine-tune again. Reaches much higher sparsity (90 %+) at lower accuracy cost than one-shot magnitude pruning, but costs several training passes.
+
+<Callout type="warning" title="Unstructured pruning rarely wins on standard GPUs">
+A 90 % unstructured-pruned model can still take as long as the dense original to run on a vanilla GPU, because the kernel multiplies through the zeros. If your goal is wall-clock speedup, reach for structured pruning or sparse-aware hardware first; if your goal is just disk size, unstructured is fine.
+</Callout>
+
+## Knowledge distillation
+
+Train a small **student** model to mimic the outputs of a large **teacher**. The student is the model you actually deploy; the teacher is the expensive thing you already trained. Distillation works because the teacher's *softened* output distribution carries more information than its hard prediction: the relative probabilities of the runner-up classes — the so-called *dark knowledge* — tell the student which classes are "near misses" for each input, which is signal you could not get from labels alone.
+
+The standard distillation loss with temperature $T$:
+
+$$
+\mathcal{L} = (1-\alpha) \cdot \mathrm{CE}(y_{\text{hard}}, p_{\text{student}}) + \alpha \cdot T^2 \cdot \mathrm{KL}\!\left(\mathrm{softmax}(z_{\text{teacher}}/T) \;\|\; \mathrm{softmax}(z_{\text{student}}/T)\right).
+$$
+
+Two terms: the usual cross-entropy on hard labels, and a KL divergence between teacher and student softmaxes at temperature $T$. The temperature flattens the distributions (higher $T$ → softer), which exposes the relative ordering of low-probability classes. The $T^2$ factor compensates for the gradient scaling that the temperature otherwise introduces. The mixing weight $\alpha$ trades off the two terms — $\alpha = 0$ is plain supervised training on hard labels; $\alpha = 1$ is pure teacher-matching.
+
+LLM distillation has a few flavours that map roughly onto what the student tries to copy:
+
+- **Response distillation.** Generate token sequences with the teacher, train the student on those sequences as if they were labels. Cheapest; the student only sees argmax tokens.
+- **Logit distillation.** Match the full logit distribution at each position. Richer signal, requires teacher logits at training time.
+- **Hidden-state / attention matching** (MiniLM-style). Align the student's intermediate representations to the teacher's. Often the strongest student because the supervision is dense at every layer.
+
+<Callout type="info" title="Distillation beats training the small model from scratch">
+A 100 M student trained from scratch on a labelled dataset will almost always lose to the same 100 M student trained to mimic a 7 B teacher on the same dataset. The teacher's softened outputs encode similarity structure that hard labels cannot — every input now has a *target distribution*, not a single class. This is why every production-serving LLM at the small end (Phi, Gemma small, Llama distilled variants) is built by distillation rather than from-scratch pretraining of a smaller model.
+</Callout>
+
+## The compression stack in production
+
+The three techniques compose. The standard ordering is:
+
+1. **Distill** the large model into a smaller architecture — biggest single win, biggest one-time cost. A 7 B → 1 B distill is a typical 5–7× compression with a small accuracy hit.
+2. **Quantize** the distilled student to INT8 or INT4 — another 2–4× compression at minimal accuracy cost. Cheap to do.
+3. **Optionally prune** structured channels if a hard latency budget still misses — another 1.3–1.5× speedup at a sharper accuracy cost.
+
+Each step is roughly multiplicative: a 7 B FP16 model distilled to 1 B, INT4-quantized, with 30 % structured pruning is on the order of $7 \times 4 \times 1.4 \approx 40\times$ smaller and several times faster than the original. You rarely need all three for online serving; you often need all three for edge.
+
+## Operational concerns
+
+A serving pattern is graded on more than accuracy.
+
+- **Model size.** GB on disk and in GPU RAM. Drives how many replicas fit per host and therefore $/query at peak.
+- **Latency p50 and p99.** Median is what users feel on average; p99 is what the slowest 1 % feel. Tail latency tracks batch size, KV-cache fragmentation, and GC pauses — not just model size.
+- **Throughput (QPS).** Requests per second per host. Scales with batch size and KV-cache efficiency on LLMs.
+- **$/1k requests.** The number the CFO cares about. Roughly `(host $/hr) / (3600 · QPS)` × 1000.
+- **Memory at peak load.** KV cache for LLMs grows with sequence length × batch size and routinely dominates model weights.
+- **Cold start.** Time from "spawn a new replica" to "first request served." Compression usually helps (smaller weights load faster); JIT-compiled kernels often hurt.
+
+## Picking a pattern
+
+A short decision tree, in prose:
+
+1. Does the input change per request? **No** → batch. Score everything overnight, serve out of a KV store.
+2. **Yes**, and you have a strict latency budget (sub-second)? → online. Pay for capacity at peak, compress for $/query.
+3. **Yes**, and the user device has spare compute, or connectivity is bad, or privacy is paramount? → edge. Compression is the entire game.
+4. Hybrid is allowed: cache batch predictions for the 90 % of users whose context rarely changes, fall through to online inference for the long tail.
+
+## Common mistakes
+
+1. **Treating serving pattern and compression as the same decision.** They are not. You can run a small uncompressed model online or a large compressed model in batch. Pick the pattern first, then compress for the resulting bottleneck.
+2. **Weight-only quantizing an online endpoint and expecting a throughput win.** W4 weights with FP16 activations only saves memory; the matmul is still FP16. If you need throughput, go W8A8 or W4A8 (and pay the calibration tax).
+3. **Unstructured pruning to "speed up the model."** On standard GPUs the matmul runs at the dense shape regardless of how many zeros it contains. For speedup, prune *structured* or run on sparse-aware hardware.
+4. **Distilling without the teacher's logits.** Response distillation (train the student on teacher-generated text) is the cheap flavour and leaves capability on the table. If you can afford to log logits during teacher inference, do logit distillation; if you control teacher training, do hidden-state matching.
+5. **Optimising for p50 latency.** Users live in the tail. p99 is the metric that drives complaints; size capacity for it, not for the average.
+6. **Edge-deploying without thinking about the update channel.** A bug in an edge model is fixed only as fast as your users update the app. The fix lives behind an app-store review; plan for that latency in your incident response.
+
+## Key takeaways
+
+- **Three serving patterns** — batch, online, edge — answer *when* inference runs. They differ in latency, freshness, $/query, privacy, and hardware. Pick by asking whether the input changes per request and whether the latency budget exceeds a network round-trip.
+- **Compression buys back the scarcest resource.** Batch: optional cost cut. Online: $/query and tail latency. Edge: it is the entire game.
+- **Quantization recap** — INT8 is nearly free, INT4 is the QLoRA sweet spot. *Activation* quantization (W8A8) is what unlocks GEMM throughput; weight-only saves memory but not wall-clock.
+- **Pruning splits two ways.** Unstructured shrinks disk only on standard GPUs; structured is what actually speeds up matmul. Magnitude pruning is one-shot, movement / iterative pruning reaches higher sparsity at higher training cost.
+- **Distillation makes small models punch above their weight** by training them to match a teacher's softened output distribution — the dark knowledge that labels alone cannot transmit.
+- **The compression stack composes multiplicatively.** Distill → quantize → optionally prune. For online, two are usually enough; for edge, you need all three.
+
+## Related concepts
+
+- [**Model Merging & Quantization**](/courses/fine-tuning-alignment/05-model-merging-and-quantization) — the math of post-training quantization, QAT, and NF4 / QLoRA. This deployment lesson treats compression as a serving-cost lever; that lesson treats it as a fine-tuning recipe.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems lens that asks "what happens when something goes wrong." Picking a serving pattern is one of the first decisions an ML system design has to commit to.
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and silent drift are the failure modes each serving pattern is differently exposed to. Batch hides drift behind a stale prediction; online surfaces it on the request path; edge is the hardest to detect drift on because telemetry has to round-trip through the device.
+- [**Evaluating AI Systems**](/courses/model-evaluation/05-evaluating-ai-systems) — the cost / latency / quality trade-off this lesson operates inside. Picking the pattern and compression stack is what *moves* a model along that Pareto frontier.
+
+<Exercise id="deploy-batch-vs-online" />
+
+<Exercise id="deploy-distillation-tradeoff" />
+
+<Exercise id="deploy-edge-budget" />
