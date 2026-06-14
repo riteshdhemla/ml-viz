@@ -5725,6 +5725,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "BM25 negatives are guaranteed to be true positives mislabelled by the data, which makes the loss converge faster", isCorrect: false },
     ],
   },
+  // ── Model Evaluation — LLM Evaluation ──────────────────────────
+  {
+    id: "eval-cross-entropy",
+    type: "slider",
+    question:
+      "A language model assigns the following next-token probabilities on a 4-token held-out sequence: $0.5, 0.25, 0.25, 0.5$. What is the per-token cross-entropy in bits (i.e. $-\\frac{1}{N}\\sum_i \\log_2 p_i$)?",
+    hint: "Sum $-\\log_2 p_i$ over the four tokens, then divide by $N = 4$. Use $\\log_2 0.5 = -1$ and $\\log_2 0.25 = -2$.",
+    explanation:
+      "Per token: $-\\log_2 0.5 = 1$, $-\\log_2 0.25 = 2$, $-\\log_2 0.25 = 2$, $-\\log_2 0.5 = 1$. Sum $= 6$ bits across 4 tokens, so cross-entropy $H = 6 / 4 = 1.5$ bits per token. The model spends, on average, $1.5$ bits to encode each held-out token — equivalent to a perplexity of $2^{1.5} \\approx 2.83$, i.e. an effective branching factor of roughly 3 alternatives per position. A perfect model that always assigned $p = 1$ would have $H = 0$; a uniform model over a vocabulary of size $2$ would have $H = 1$ exactly. The fact that this model is *between* uniform-over-2 and uniform-over-3 matches its mix of $0.5$ and $0.25$ probabilities.",
+    min: 0.0,
+    max: 3.0,
+    step: 0.01,
+    correctRange: [1.45, 1.55],
+    unit: "bits/token",
+  },
+  {
+    id: "eval-perplexity-bpb",
+    type: "multiple-choice",
+    question:
+      "Model $A$ (32 k BPE vocabulary) reports perplexity $12.0$ on a held-out Wikipedia split. Model $B$ (256 k SentencePiece vocabulary) reports perplexity $8.5$ on the *same* split. Both teams claim 'better language modelling'. Which conclusion is justified, and why?",
+    hint: "What does perplexity normalise by, and is that quantity comparable across the two models?",
+    explanation:
+      "Perplexity is the geometric mean of inverse next-token probabilities, normalised by **token count** $N$. The token count is set by the *tokenizer*: model $A$ chops the same text into many short BPE tokens, model $B$ into fewer, longer SentencePiece tokens. So $N_A \\gg N_B$ on the same passage, and per-token cross-entropy is no longer comparable — coarser tokenizers automatically post smaller PPL even when the underlying language model is no better. The fix is **bits-per-byte (BPB)**: normalise the total $-\\sum \\log_2 p_i$ by the **byte count** $B$ of the raw text instead of by the token count. Bytes are tokenizer-invariant, so BPB is the correct cross-tokenizer comparison metric. Once both teams report BPB on the same corpus, you can finally tell which model is the better language model. (A) is a common misconception — vocabulary size alone determines neither winner nor loser; (C) is wrong because both perplexities are mathematically well-defined, just incomparable; (D) is wrong because BPB is exactly the tokenizer-invariant fix.",
+    options: [
+      { id: "a", label: "Model $B$ is the better language model — perplexity $8.5 < 12.0$ on the same text", isCorrect: false },
+      { id: "b", label: "Neither conclusion is justified — perplexity depends on the tokenizer, so the two numbers are not comparable. Report **bits-per-byte** (normalise by raw byte count) and re-compare.", isCorrect: true },
+      { id: "c", label: "Both perplexity numbers are invalid because they were computed on different vocabularies", isCorrect: false },
+      { id: "d", label: "Bits-per-byte would have the same problem — it also depends on the tokenizer", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-judge-bias",
+    type: "multiple-choice",
+    question:
+      "Your AI-as-a-judge pipeline scores Model $X$ vs Model $Y$ across $1000$ head-to-head pairs. You **always** show Model $X$ first (`Answer A`) and Model $Y$ second (`Answer B`), and report $X$'s win rate. Independent human raters (with order randomised) say the two models are roughly tied. The judge LLM is known to have a $\\approx 65/35$ first-position bias. Which fix would actually correct the systematic skew, and why?",
+    hint: "Position bias acts on whichever model is shown first. If that slot is fixed, the bias adds a constant. If it's randomised per trial, what happens to the expected win rate of a tied model?",
+    explanation:
+      "Position bias means the judge tends to favour the first-shown answer regardless of content. With a fixed order, every comparison is biased toward $X$ by the same amount, so the headline win rate is systematically inflated. **Randomising the A/B slot per trial** turns the bias into noise: half the time $X$ benefits from the first-slot bonus, half the time $Y$ does, and the expected win rate for two genuinely-tied models converges to $50\\%$. (A) verbosity bias is real but unrelated to position bias; suppressing length doesn't fix who is shown first. (C) running each pair twice in the *same* order doubles the data but does not change the systematic skew. (D) replacing the judge with a smaller model usually makes the biases worse, not better — the right answer is the protocol fix, not a model swap. In practice the standard mitigation stack is: randomise order, optionally run each pair twice with the order swapped and only count agreement, ask the judge for a brief chain-of-thought before the verdict, and calibrate against a small human-rated reference set.",
+    options: [
+      { id: "a", label: "Truncate every answer to the same character length to remove verbosity bias", isCorrect: false },
+      { id: "b", label: "Randomise the A/B slot independently for every comparison (or run each pair twice with the order swapped and count agreement)", isCorrect: true },
+      { id: "c", label: "Run each pair twice in the same A/B order to double the sample size", isCorrect: false },
+      { id: "d", label: "Replace the judge with a smaller, faster LLM — smaller models have less position bias", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

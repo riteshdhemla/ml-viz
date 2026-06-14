@@ -1,0 +1,133 @@
+---
+title: "LLM Evaluation"
+description: "Information-theoretic intrinsic metrics (cross-entropy, perplexity, bits-per-byte), capability benchmarks (MMLU, HellaSwag, GSM8K, HumanEval, BIG-bench), and the modern preference-based stack — AI-as-a-judge with its biases, pairwise comparison, and Bradley–Terry / Elo ratings."
+order: 4
+type: concept
+estimatedMinutes: 22
+---
+
+# LLM Evaluation
+
+Classification metrics like precision, recall, and AUC assume there is a single correct label per example. Generative language models break that assumption: there is no single right answer for "summarise this article", "write a Python solution", or "be a helpful assistant". LLM evaluation therefore splits into three layers, each measuring something different: **intrinsic** information-theoretic scores on held-out text, **task-level** capability benchmarks, and **preference-based** comparative evaluation by humans or a judge LLM.
+
+Real-world examples: the **Hugging Face Open LLM leaderboard** (intrinsic + multi-task benchmark roll-up), **MMLU / HellaSwag / GSM8K** (the standard knowledge / commonsense / math suite), **HumanEval / MBPP** (code generation, scored with pass@k), **MT-Bench** (an AI-as-a-judge harness scoring multi-turn chats), and **Chatbot Arena** by LMSYS (the canonical anonymous pairwise human-preference battleground, ranked with Elo).
+
+## Intrinsic: entropy, cross-entropy, perplexity
+
+The most fundamental LLM metric is the model's own next-token probability on held-out text. Given a corpus $x_1, \dots, x_N$, the model assigns each token a probability $p_\theta(x_i \mid x_{<i})$. **Cross-entropy** (in bits) is
+
+$$
+H \;=\; -\frac{1}{N}\sum_{i=1}^N \log_2 p_\theta(x_i \mid x_{<i}),
+$$
+
+i.e. the average number of bits the model spends to encode each token of the held-out corpus. A perfect model that always assigns $p = 1$ to the correct token has $H = 0$; a uniform model over a vocabulary of size $V$ has $H = \log_2 V$.
+
+**Perplexity** is just cross-entropy re-expressed on a multiplicative scale:
+
+$$
+\text{PPL} \;=\; 2^H \;=\; \exp\!\left(-\frac{1}{N}\sum_{i=1}^N \ln p_\theta(x_i \mid x_{<i})\right).
+$$
+
+(The base depends on whether $H$ is in bits or nats; ML libraries usually compute it as $e^H$ from negative log-likelihood in nats. The ratio is what matters.) Perplexity is the **geometric mean of inverse next-token probabilities** — equivalently, the model's "effective branching factor". A perplexity of $20$ means the model is, on average, as uncertain about each next token as if it were choosing uniformly from $20$ options. Strong open-source LLMs on web text now sit in the high single digits.
+
+### Why perplexity is not comparable across tokenizers
+
+Here is the catch that bites every benchmark spreadsheet: **perplexity depends on the tokenizer**. The same English passage tokenized into ~12 GPT-style BPE tokens per word looks completely different from the same passage tokenized into ~4 sentence-piece tokens per word. Each tokenization defines a different $N$, so per-token cross-entropy is no longer comparable. A model with a coarser vocabulary "wins" on perplexity simply because it has fewer, more predictable tokens.
+
+The standard fix is **bits-per-byte (BPB)** — or, less commonly, bits-per-character. Normalise the total information by the number of raw **bytes** in the corpus rather than the number of tokens:
+
+$$
+\text{BPB} \;=\; \frac{-\sum_i \log_2 p_\theta(x_i \mid x_{<i})}{B} \;=\; \frac{N \cdot H}{B},
+$$
+
+where $B$ is the byte count of the underlying text. Bytes are tokenizer-invariant, so BPB is the only fair metric for cross-tokenizer comparison. Modern LLM papers (GPT, Chinchilla, LLaMA, Pythia) all report BPB on shared corpora like The Pile precisely so that results across architectures and tokenizers are directly comparable.
+
+<Callout type="warning" title="Perplexity is not comparable across tokenizers">
+A 7 B model with a 32 k BPE vocabulary and a 7 B model with a 256 k vocabulary can post very different perplexity numbers on the same text without one being a better language model. The 256 k-vocab model usually wins on PPL because it predicts fewer, more informative tokens. If you must compare them, report **bits-per-byte** instead — the byte count is fixed by the corpus, not by the tokenizer.
+</Callout>
+
+<PerplexityViz />
+
+## Capability benchmarks
+
+Intrinsic metrics tell you how well the model predicts text. They do **not** tell you whether it can answer questions, do arithmetic, or write working code. Capability benchmarks fill that gap. Each one is a fixed dataset with a hand-graded right answer (or a checkable proxy) and a deterministic scoring rule. The headline numbers on the Hugging Face Open LLM leaderboard are an average across a half-dozen of these.
+
+- **MMLU** — *Massive Multitask Language Understanding*, $\approx 14{,}000$ four-way multiple-choice questions across $57$ academic subjects (high-school chemistry, US history, professional law, …). Scored as plain MC accuracy. The premier "general knowledge" benchmark; random baseline is $25\%$, the best frontier models clear $90\%$.
+- **HellaSwag / ARC / Winogrande** — commonsense and physical-reasoning multiple-choice. HellaSwag asks the model to pick the most plausible continuation of a short scene; ARC is grade-school science questions; Winogrande is pronoun-resolution Winograd schemas.
+- **GSM8K / MATH** — chain-of-thought math word problems. GSM8K is grade-school arithmetic at sentence level (~$8{,}500$ examples); MATH is competition-level high-school. Both are graded on the final numeric answer, and chain-of-thought prompting (showing reasoning steps) is what makes them tractable for current LLMs.
+- **HumanEval / MBPP** — code generation. The model is given a function signature plus docstring and must produce a body that passes a held-out test suite. The headline metric is **pass@k**: the probability that at least one of $k$ sampled completions passes all tests. Pass@1 is the most quoted number.
+- **BIG-bench / BBH** — *Beyond the Imitation Game*: a long-tail collection of $200+$ diverse tasks (logical reasoning, fact-checking, even chess endgames). BBH is the $23$-task "hard" subset where pre-2022 LLMs underperformed human raters. Useful precisely *because* the tasks are weird and out of distribution.
+
+Each benchmark targets one slice of capability, and a single average can hide huge gaps (a model can be strong on MMLU and weak on GSM8K, or vice versa). The Open LLM leaderboard, MT-Bench, and recent papers all report per-benchmark numbers for that reason.
+
+## AI-as-a-judge
+
+Capability benchmarks have ground-truth labels. Open-ended evaluation — *"is this summary better than this one?"*, *"is this chat response helpful?"* — does not. The modern workaround is **AI-as-a-judge**: use a strong LLM (typically GPT-4-class) to score outputs against a rubric, or to compare two candidate answers and declare a winner. MT-Bench, AlpacaEval, and most internal eval pipelines work this way.
+
+It is enormously cheaper than human raters and scales to tens of thousands of comparisons per night. But the judge LLM has **systematic biases** that make naive use unreliable:
+
+- **Position bias.** When shown two answers side by side as "Answer A" and "Answer B", judge LLMs tend to prefer the first one even when the underlying content is identical. Reported magnitudes range from a small skew to win rates of $60$–$70\%$ for the first slot in some models.
+- **Verbosity bias.** Longer answers are routinely rated higher, regardless of whether the extra length adds substance. A pithy correct answer often loses to a longer one that says the same thing with caveats.
+- **Sycophancy.** If the prompt nudges the judge toward a conclusion ("This answer seems weak, doesn't it?"), the judge tends to comply.
+- **Format / self-preference bias.** Judges tend to prefer outputs that look like their own outputs — markdown bullets, similar opening phrases, the same default tone.
+
+**Mitigations.** Randomise the A/B order per trial and average; or run each pair twice with the order swapped and only count agreement. Calibrate against a small set of human-rated reference comparisons and check that the judge tracks them. Ask the judge to write a brief chain-of-thought rationale before producing the verdict — this measurably reduces position bias. Where the stakes warrant it, ensemble two or three different judges to wash out per-model biases.
+
+<Callout type="info" title="Randomise the order — every time">
+The single most effective fix for position bias is to randomly swap A and B independently for every comparison. If you run $1000$ pairs and the judge has a $60/40$ first-position bias, fixed ordering gives a $60$-point skew; randomised ordering gives an unbiased estimator with the same noise. The notebook for this lesson shows exactly this experiment.
+</Callout>
+
+## Pairwise comparative eval and Elo ratings
+
+Even with bias-corrected judges, **absolute** numeric scores ("rate this answer from 1 to 10") are noisy and drift between raters. The cleaner protocol is **pairwise comparison**: show the rater two candidates from two different models, ask which is better. The output is a sequence of head-to-head wins.
+
+This is exactly the same data structure used to rate chess players, and the same model — **Bradley–Terry** (with the Elo update being its online incarnation) — fits it. Each model $i$ gets a latent skill $\theta_i$, and
+
+$$
+P(i \text{ beats } j) \;=\; \frac{e^{\theta_i}}{e^{\theta_i} + e^{\theta_j}} \;=\; \sigma(\theta_i - \theta_j).
+$$
+
+Fit $\theta$ by maximum likelihood on the win/loss matrix, then convert to Elo points with a linear rescale ($400 / \ln 10$ per natural-log unit, by convention). The math is identical to the **reward model** used in RLHF — see [Reward Models](/courses/fine-tuning-alignment/03-reward-models) — which is not an accident: a reward model *is* a Bradley–Terry model fit to human pairwise preferences.
+
+### Why pairwise beats absolute scoring
+
+Absolute scoring asks raters to anchor their "8/10" to a stable mental rubric across thousands of items — they cannot, and rater drift dominates the signal. Pairwise asks "is this one better than that one?", which is a much easier local comparison. The noise floor lives on **deltas**, not on absolute scales, so a $50$-point Elo gap is meaningful even if the absolute numbers move when new models join the pool. **Chatbot Arena** by LMSYS is the canonical example: anonymous side-by-side comparisons from real users, fit to a Bradley–Terry / Elo rating, and the resulting leaderboard is now the de facto public ranking of chat LLMs.
+
+<Callout type="tip" title="Why pairwise beats absolute scoring">
+Absolute rubric scoring conflates *the model's quality* with *the rater's calibration that day*. Pairwise comparison removes the per-rater intercept — only relative differences matter — and the Bradley–Terry / Elo fit aggregates noisy individual judgements into a stable ranking. This is also why preference-tuned models (RLHF, DPO) are trained on pairwise data, not on absolute scalar scores: the supervisor signal is cleaner.
+</Callout>
+
+## Pitfalls that bite real evaluations
+
+- **Train/test contamination.** Public benchmarks are scraped from the web. When you pretrain a $1$T-token model, a chunk of the test split inevitably ends up in pretraining data, and the model literally memorises the answers. Reported MMLU numbers from models with unfiltered pretraining corpora are systematically optimistic. The defence is contamination-scanning the pretraining set against the test split — and increasingly, **held-out** or **rolling** benchmarks (LiveBench, fresh competition problems) that are constructed after the model's cutoff.
+- **Tokenizer-dependent metrics.** Already covered — if you must compare across architectures, report bits-per-byte, not perplexity.
+- **Goodhart on the proxy.** Once a benchmark becomes the headline metric, training pipelines start optimising for it directly. MMLU-tuned models can post strong MMLU scores without being broadly better at the underlying tasks; reward-model-tuned models can game the reward model without becoming more helpful. This is the same failure mode as **reward hacking** in RLHF — the proxy and the true objective diverge, and the model exploits the gap.
+
+## Common mistakes
+
+1. **Comparing perplexity across tokenizers.** A 256 k-vocab model "winning" on PPL against a 32 k-vocab model often just reflects the tokenization. Use bits-per-byte.
+2. **Trusting a single benchmark.** MMLU-strong does not mean GSM8K-strong, and benchmark averages hide gaps. Report per-task numbers.
+3. **Fixed A/B order with an LLM judge.** Position bias can shift a win rate by $10$–$20$ points. Always randomise the order, or run each comparison twice with the order swapped.
+4. **Treating Elo deltas as significance tests.** A $20$-point Elo gap on $500$ comparisons is well within noise. Report confidence intervals from a bootstrap over the comparison set.
+5. **Forgetting that the test set may be in pretraining.** A model can "memorise" a benchmark literally. Cross-check against a held-out or post-cutoff benchmark before trusting the headline number.
+6. **Optimising the proxy metric.** Tuning the model directly on MMLU multiple-choice or on a judge LLM's verdicts trains the model to game the metric, not to be more helpful. Same Goodhart's law as RLHF reward hacking.
+
+## Key takeaways
+
+- **Cross-entropy** measures average bits per token on held-out text; **perplexity** $= 2^H$ is its multiplicative form, interpretable as effective branching factor.
+- Perplexity is **tokenizer-dependent**. The cross-model comparison metric is **bits-per-byte**, normalised by raw byte count rather than token count.
+- **Capability benchmarks** (MMLU, HellaSwag, GSM8K/MATH, HumanEval/MBPP, BIG-bench/BBH) cover knowledge, commonsense, math, code, and long-tail tasks. Report per-task numbers, not just the average.
+- **AI-as-a-judge** is cheap and scalable but biased — position, verbosity, sycophancy, format. Always randomise order; consider chain-of-thought judging and multi-judge ensembling.
+- **Pairwise comparative evaluation** with a Bradley–Terry / Elo fit (Chatbot Arena, MT-Bench) is the cleanest signal for open-ended quality — the noise floor lives on *deltas*, not absolute scales. The same math drives the RLHF reward model.
+- Two structural risks: **train/test contamination** (the benchmark leaked into pretraining) and **Goodhart** on whatever metric you headline.
+
+## Related concepts
+
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — what evaluation looks like when there *is* a single right answer per example. This lesson is the generalisation when there is not.
+- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the Bradley–Terry / Elo math from this lesson reappears as the RLHF reward model fit on human pairwise preferences.
+- [**Decoding & Sampling Strategies**](/courses/nlp/05-decoding-and-sampling) — perplexity is computed under teacher forcing on the true next token; at inference the same distribution is consumed by a decoder, and the choice of decoder is part of the system you are evaluating.
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — scaling-law curves are fit to held-out cross-entropy / bits-per-byte; without a tokenizer-invariant metric, scaling laws across architectures are not comparable.
+
+<Exercise id="eval-cross-entropy" />
+<Exercise id="eval-perplexity-bpb" />
+<Exercise id="eval-judge-bias" />
