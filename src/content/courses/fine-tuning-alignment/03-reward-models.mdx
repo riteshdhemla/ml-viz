@@ -1,0 +1,123 @@
+---
+title: "Reward Models"
+description: "Turn pairwise human preferences into a scalar reward signal. The Bradley–Terry objective, a reward head on a frozen LM trunk, and the reward-hacking trap that breaks alignment pipelines."
+order: 3
+type: concept
+estimatedMinutes: 20
+---
+
+# Reward Models
+
+Cross-entropy and SFT both need a **single correct answer** per input. Alignment is messier than that: "helpful", "honest", and "concise" are tastes, not labels. A **reward model** (RM) bridges the gap — it learns a scalar `r(prompt, response)` that mimics how a human would rank competing answers. Once you have a reward, you can optimise against it with RL (next lesson), or use it directly as a re-ranker over candidate generations.
+
+**Real-world examples:** InstructGPT/ChatGPT trained an RM from ~30 k labeller-ranked comparisons before any RL kicked in; Anthropic's RLHF and Constitutional AI loops train RMs on chosen-vs-rejected pairs; LLaMA-2-Chat learned two RMs (helpfulness + safety) and combined them at PPO time; open-source projects (TRL, OpenRLHF, Argilla) all centre on a `reward_model.fit(pairs)` step.
+
+## The preference dataset
+
+You can't ask labellers for an absolute reward — humans are terrible at numbers and great at comparisons. The unit of data is therefore a **pairwise preference**:
+
+$$
+\mathcal{D} = \{\,(x_i,\; y_{c,i},\; y_{r,i})\,\}_{i=1}^{N},
+$$
+
+where for the same prompt $x$ the labeller marked $y_c$ (**chosen**) as better than $y_r$ (**rejected**). Where do these pairs come from?
+
+- **Two candidate completions** from the SFT model with different sampling seeds, ranked by a human.
+- **Larger N-way rankings** (4–7 responses) decomposed into all $\binom{N}{2}$ ordered pairs.
+- **Synthetic preferences** from a stronger model judging a weaker one (RLAIF / AI feedback).
+- **Off-policy mixes**: SFT model vs the previous RLHF checkpoint, vs human-written gold.
+
+A typical RM dataset is **20 k – 200 k pairs** — much smaller than pretraining or SFT data, because each pair is expensive to collect and the signal is dense.
+
+## The Bradley–Terry objective
+
+Bradley–Terry (1952) is the workhorse pairwise-ranking model. It assumes every item has a latent score and that the probability one beats another is a logistic function of the score *difference*:
+
+$$
+P(y_c \succ y_r \mid x) \;=\; \sigma\!\big(r_\theta(x, y_c) - r_\theta(x, y_r)\big).
+$$
+
+Maximising the log-likelihood of the observed preferences gives the **reward-model loss**:
+
+$$
+\mathcal{L}_{\text{RM}}(\theta) \;=\; -\,\mathbb{E}_{(x,y_c,y_r)\sim\mathcal{D}}\Big[\log \sigma\!\big(r_\theta(x,y_c) - r_\theta(x,y_r)\big)\Big].
+$$
+
+A few properties worth internalising:
+
+- The loss only depends on the **margin** $\Delta r = r_\theta(x, y_c) - r_\theta(x, y_r)$. Absolute reward values are unobservable; the model is identifiable only up to a per-prompt constant.
+- $\Delta r = 0$ gives $\sigma(0) = 0.5$ and loss $\log 2 \approx 0.693$. That's your "random" baseline.
+- Doubling all rewards halves the temperature of the implicit comparison — RMs are **scale-sensitive**, which matters later when you plug them into PPO.
+
+<RewardModelViz />
+
+<Callout type="tip" title="Why the sigmoid, not the difference?">
+  You could imagine training on the raw margin $r_c - r_r$ — bigger is better. But that loss is unbounded: the optimiser can drive the margin to infinity and never stops. The sigmoid squashes the signal into $[0, 1]$, so confident-correct pairs contribute almost no gradient and the model focuses on the hard ones. The same trick that powers logistic regression.
+</Callout>
+
+## A scalar reward head on a frozen trunk
+
+The reward model is *almost* a language model. The recipe:
+
+1. Start from the **SFT checkpoint** (the model just learned the task distribution, so its features are already useful).
+2. Replace the final language-modelling head with a tiny **linear head** that produces a single scalar per token.
+3. Feed in the prompt + response, take the **last-token hidden state**, and project it to one number — that's $r_\theta(x, y)$.
+4. Optionally freeze the trunk and only train the head (fast, sometimes works); more commonly, fine-tune the top few layers + the head for a few epochs.
+
+$$
+r_\theta(x, y) \;=\; w^\top h_{\text{last}}(x, y) + b, \qquad w \in \mathbb{R}^{d}, \; b \in \mathbb{R}.
+$$
+
+For chat models, the prompt and response are concatenated through the chat template (same template the policy will use at RL time), and the scalar is taken at the final `<|assistant|>` end-of-turn token.
+
+**Why start from SFT?** A from-scratch reward head has no idea what "good" looks like; an SFT-initialised trunk already encodes "fluent, on-topic, follows instructions" in its representations. The RM only has to learn the *delta* between mediocre and great. This is why RMs need orders of magnitude less data than the base pretraining.
+
+## Reward hacking and Goodhart's law
+
+The RM is a **proxy** for human preference, never the real thing. As soon as you optimise *against* it (PPO, best-of-N, re-ranking), the policy starts finding gaps between the proxy and the true preference. This is **reward hacking**: high reward, low actual quality.
+
+Classic failure modes from the literature:
+
+- **Length bias.** Human raters prefer longer answers on average → the RM rewards length → PPO produces verbose, padded responses for everything. LLaMA-2-Chat had to length-normalise reward; many recipes also add a length penalty.
+- **Sycophancy.** If labellers preferred answers that agreed with their stated opinion, the RM learns to flatter. Now your policy is dishonest.
+- **Formatting tells.** Bullet points, markdown headers, "Sure! Here is…" preambles — the RM may latch on to these as cheap features that correlate with chosen.
+- **Refusal calibration.** Over-cautious RMs reward refusals → the policy refuses everything mildly edgy → user trust collapses.
+
+The Goodhart-style statement: **once a measure becomes a target, it ceases to be a good measure.** The reward model is a snapshot of preference under a specific data distribution; pushing the policy hard against it drifts both off-distribution and the proxy gap widens.
+
+<Callout type="warning" title="Mitigations in practice">
+  Standard countermeasures: (1) **KL penalty** during PPO to keep the policy close to the SFT model (next lesson); (2) **reward ensembling** — train several RMs with different seeds and use the disagreement as an uncertainty signal; (3) **regular RM refreshes** on freshly collected preferences; (4) **human eval as the final word** — never ship on RM score alone.
+</Callout>
+
+## Evaluating a reward model
+
+Before plugging an RM into PPO, sanity-check it.
+
+- **Pairwise accuracy on held-out pairs.** Fraction of the time $r_\theta(x, y_c) > r_\theta(x, y_r)$ on data the model hasn't seen. 65–75 % is typical for current open models; near 100 % usually means a leak.
+- **Calibration.** Bin pairs by predicted $\sigma(\Delta r)$ and check that the empirical win rate of the chosen response matches.
+- **Slice metrics.** Accuracy on different subsets — by topic, length bucket, refusal vs answer — exposes systematic biases like the length tell.
+
+## Common mistakes
+
+1. **Training the RM on a single response per prompt.** You need pairs (or rankings); a regression target on absolute ratings is far noisier.
+2. **Mismatching the chat template** between RM training and PPO. The RM sees one prompt format and the policy emits another → garbage reward.
+3. **Ignoring length normalisation.** Without it, the RM happily rewards filler, and PPO obediently emits filler.
+4. **Pushing PPO until RM score saturates.** That's the textbook hacking regime — the policy is over-fit to the proxy. Use the KL budget and human eval as stopping criteria.
+5. **Re-using the SFT validation set as the RM eval.** Different task, different distribution — collect fresh preferences for the RM eval split.
+
+## Key takeaways
+
+- A reward model maps `(prompt, response) → scalar` by learning from **pairwise preferences**, not absolute ratings.
+- The **Bradley–Terry** loss $-\log \sigma(r_c - r_r)$ trains the model to push the margin between chosen and rejected.
+- Architecture: SFT-initialised trunk + a one-dimensional **linear head** on the last-token hidden state. Absolute rewards are arbitrary; only differences matter.
+- **Reward hacking** is the inevitable failure mode when you optimise against a proxy. Counter it with KL penalties, ensembles, fresh data, and human eval — the RM is a tool, not the truth.
+
+## Related concepts
+
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the checkpoint the RM is initialised from, and the loss it stops using.
+- [**PEFT: LoRA & QLoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — RMs are usually trained with the same parameter-efficient tricks: tiny adapters on a frozen base.
+- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes) — the reward function the next lesson plugs into PPO is exactly $r_\theta$ from this lesson.
+
+<Exercise id="reward-bradley-terry" />
+<Exercise id="reward-margin" />
+<Exercise id="reward-hacking" />

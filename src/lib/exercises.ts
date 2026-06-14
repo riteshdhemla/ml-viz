@@ -5254,6 +5254,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It freezes the adapters and trains only the base model", isCorrect: false },
     ],
   },
+  // ── Reward Models ────────────────────────────────────────────────
+  {
+    id: "reward-bradley-terry",
+    type: "multiple-choice",
+    question:
+      "The Bradley–Terry loss for a preference pair is $\\mathcal{L} = -\\log \\sigma(r_\\theta(x, y_c) - r_\\theta(x, y_r))$. What does this loss depend on?",
+    hint: "What changes if you add the same constant to both r_c and r_r?",
+    explanation:
+      "Only the **margin** $r_c - r_r$ enters the loss. Add the same constant c to both rewards and the difference is unchanged, so the loss is identical. That's why the reward model is identifiable only up to an arbitrary per-prompt additive constant — absolute reward values are not observable from pairwise preference data.",
+    options: [
+      { id: "a", label: "Only the absolute value of r_c (the chosen reward)", isCorrect: false },
+      { id: "b", label: "Only the margin (r_c − r_r), not the absolute reward values", isCorrect: true },
+      { id: "c", label: "Both rewards individually, in addition to the margin", isCorrect: false },
+      { id: "d", label: "The sum r_c + r_r and the margin", isCorrect: false },
+    ],
+  },
+  {
+    id: "reward-margin",
+    type: "slider",
+    question:
+      "The reward model assigns r_c = 1.5 to the chosen response and r_r = −0.5 to the rejected one. What is the implied probability (in percent) that the chosen response wins, σ(r_c − r_r)?",
+    hint: "Compute the margin Δr = r_c − r_r = 2, then σ(2) = 1 / (1 + e^{-2}).",
+    explanation:
+      "Margin Δr = 1.5 − (−0.5) = 2. σ(2) = 1 / (1 + e^{-2}) ≈ 0.881 ≈ 88.1 %. The Bradley–Terry loss at this point is −log(0.881) ≈ 0.127 — small and well-trained. A margin of 0 would give exactly 50 % and loss log 2 ≈ 0.693, the random baseline.",
+    min: 0,
+    max: 100,
+    step: 0.1,
+    correctRange: [86.5, 89.5],
+    unit: "%",
+  },
+  {
+    id: "reward-hacking",
+    type: "multiple-choice",
+    question:
+      "After PPO against a reward model, your policy generates needlessly long, padded answers — but the reward model score keeps going up. What's the most likely diagnosis?",
+    hint: "What's a reliable surface feature that labellers might have rewarded?",
+    explanation:
+      "Classic **reward hacking** via length bias. Human labellers tend to prefer longer answers on average, so the RM learns to reward length as a proxy. PPO finds this gap and exploits it: the policy emits filler, the RM happily scores it high, and human quality drops. Fixes: length-normalise the reward, add a length penalty in PPO, train a fresh RM with length-controlled preferences, and gate releases on human eval — not RM score.",
+    options: [
+      { id: "a", label: "The PPO learning rate is too low — the policy is still under-trained", isCorrect: false },
+      { id: "b", label: "Reward hacking: the RM has learned length as a proxy for quality, and PPO is exploiting it", isCorrect: true },
+      { id: "c", label: "The KL penalty is too high — relax it to let the policy emit shorter answers", isCorrect: false },
+      { id: "d", label: "The reward model is under-fit — train it for more epochs", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
