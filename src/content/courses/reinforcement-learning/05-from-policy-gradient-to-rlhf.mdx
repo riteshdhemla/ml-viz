@@ -1,0 +1,108 @@
+---
+title: "From Policy Gradient to RLHF (PPO)"
+description: "How vanilla policy gradient becomes PPO — and how PPO becomes RLHF the moment the policy is a language model."
+order: 5
+type: concept
+estimatedMinutes: 22
+---
+
+# From Policy Gradient to RLHF (PPO)
+
+You just learned [policy gradient](/courses/reinforcement-learning/04-policy-gradient): nudge the log-probability of an action by the advantage that followed. That's the right algorithm in principle but a terrible one in practice — the gradient is so noisy that one unlucky batch can launch the policy into a region it can't recover from. **PPO** fixes that with a single change: clip the update so any individual step is forced to stay close to the old policy. The same recipe — same clipped objective, same KL leash — is what turns a chat model into an aligned one. **RLHF is just PPO with the LLM as the policy and a learned reward model as the environment.**
+
+**Real-world examples:** OpenAI's InstructGPT (the original "GPT-3 + RLHF" paper), ChatGPT-style alignment, Anthropic's Claude RLHF pipeline, Llama-2-Chat, and any modern frontier model that uses on-policy preference tuning.
+
+## Policy gradient — one-paragraph recap
+
+REINFORCE estimates the gradient of expected return as
+
+$$
+\nabla_\theta J(\theta) = \mathbb{E}_{\pi_\theta}\!\left[\nabla_\theta \log \pi_\theta(a\mid s)\, A(s,a)\right],
+$$
+
+where $A(s,a) = G_t - V(s)$ is the **advantage** — how much better this action did than the value baseline. The signal is unbiased but extremely noisy: a single high-magnitude advantage can push some logit by a huge amount, and on the next sample the policy is somewhere completely different. Plain REINFORCE works on toy gridworlds and falls over on anything bigger. Actor-critic helps by replacing the raw return with a low-variance TD estimate, but the **step size** is still a free variable — nothing stops a single update from blowing up the policy.
+
+<PolicyGradientViz />
+
+## PPO — clip the step, not the gradient
+
+PPO (Schulman et al., 2017) doesn't change *what* the gradient is — it changes *how big a step* you're allowed to take. The trick is to keep a snapshot $\pi_{\theta_\text{old}}$ of the policy at the start of the update and write the objective in terms of an **importance-sampling ratio**:
+
+$$
+\rho_t(\theta) \;=\; \frac{\pi_\theta(a_t \mid s_t)}{\pi_{\theta_\text{old}}(a_t \mid s_t)}.
+$$
+
+At $\theta = \theta_\text{old}$, $\rho_t = 1$ and the gradient reduces to the standard policy gradient. As $\theta$ drifts, $\rho_t$ measures **how much more (or less) likely the action is under the new policy than under the snapshot**. PPO maximises the clipped surrogate
+
+$$
+\mathcal{L}^{\text{CLIP}}(\theta) \;=\; \mathbb{E}_t\!\left[\min\!\Big(\rho_t(\theta)\, A_t,\; \text{clip}\big(\rho_t(\theta),\, 1-\epsilon,\, 1+\epsilon\big)\, A_t\Big)\right],
+$$
+
+with a typical $\epsilon = 0.2$. Read it slowly: for each token, take the smaller of (a) the un-clipped surrogate $\rho_t A_t$ and (b) the version where $\rho_t$ is hard-clipped to the band $[1-\epsilon, 1+\epsilon]$.
+
+<Callout type="tip" title="What the clip is actually doing">
+  Think of $A_t > 0$ — a good action. The un-clipped term wants to push $\rho_t$ up without bound. The clipped term caps it at $1+\epsilon$. The `min` picks the smaller of the two, so **once $\rho_t$ exceeds $1+\epsilon$ the objective stops rewarding you for pushing it higher.** The gradient on that token goes to zero. Symmetrically for $A_t < 0$ and the lower bound. The net effect: one optimisation step can shift the policy by at most about $\epsilon$ in importance ratio — a soft trust region that bounds KL drift without a hard constraint to solve.
+</Callout>
+
+This single change is the whole reason PPO replaced TRPO (which solved an explicit KL-constrained problem with a second-order method) as the default deep-RL workhorse. You get a trust-region-like update from plain Adam.
+
+<Callout type="info" title="Reusing data, briefly">
+  Because $\rho_t$ corrects for the difference between $\pi_\theta$ and $\pi_{\theta_\text{old}}$, the same batch of rollouts can drive several gradient steps before the data goes too stale (typical: 3–10 epochs over a batch). Vanilla policy gradient throws each sample away after one update; PPO squeezes more out of every rollout while the clip keeps you honest.
+</Callout>
+
+## RLHF = PPO on a language model
+
+Now stretch one variable: let the policy be a language model $\pi_\theta(y_t \mid x, y_{<t})$. Then the RL setup is
+
+| RL concept | Language-model translation |
+|---|---|
+| State $s_t$ | Prompt $x$ + tokens generated so far $y_{<t}$ |
+| Action $a_t$ | Next token $y_t$ |
+| Episode | One full completion $y$ given prompt $x$ |
+| Reward | Learned reward model $r_\phi(x, y)$ — scored on the *final* sequence |
+| Reference policy | The SFT model $\pi_\text{ref}$ |
+
+The classical RLHF objective is the same KL-regularised return you saw in [the RLHF & DPO lesson](/courses/fine-tuning-alignment/04-rlhf-and-dpo):
+
+$$
+\mathcal{L}_{\text{RLHF}}(\theta) \;=\; \mathbb{E}_{x \sim \mathcal{D},\, y \sim \pi_\theta}\!\big[r_\phi(x,y)\big] \;-\; \beta \cdot \mathrm{KL}\!\left(\pi_\theta(\cdot \mid x)\,\big\|\,\pi_\text{ref}(\cdot \mid x)\right).
+$$
+
+The first term says "score high on the reward model". The second says "don't drift too far from the SFT model". In practice the KL term isn't computed once per completion — it's **distributed across the sequence** as a dense per-token reward. The per-token reward that PPO actually sees is
+
+$$
+r_t \;=\; \underbrace{r_\phi(x, y) \cdot \mathbb{1}[t = T]}_{\text{RM, only at end-of-sequence}} \;-\; \underbrace{\beta\,\log\!\frac{\pi_\theta(y_t \mid \cdot)}{\pi_\text{ref}(y_t \mid \cdot)}}_{\text{KL penalty, every token}}.
+$$
+
+So PPO only ever sees one combined reward signal. The end-of-sequence RM score is the sparse "did the whole completion turn out well?" component; the per-token log-ratio is the dense KL leash that keeps the policy on the manifold of fluent English.
+
+<Callout type="warning" title="One $\beta$, two failure modes">
+  Set $\beta$ too low → the policy reward-hacks the RM: completions look like garbled token sequences that score absurdly high. Set $\beta$ too high → the policy barely moves off $\pi_\text{ref}$ and the RM signal does nothing. The KL term is the only thing keeping RLHF on the rails; pick $\beta$ by watching held-out KL **and** generation quality, not just RM score.
+</Callout>
+
+## The surface DPO collapses
+
+The classical RLHF objective above — $\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(\pi_\theta\|\pi_\text{ref})$ — has a known closed-form optimum, a Boltzmann reweighting of $\pi_\text{ref}$ by the reward. **DPO** (covered in the [fine-tuning lesson](/courses/fine-tuning-alignment/04-rlhf-and-dpo)) reparameterises the reward as a log-ratio of policies and plugs it into the Bradley–Terry preference loss — and the entire PPO loop disappears, leaving a single classification objective. The clip-vs-collapse choice is the central design decision of modern preference tuning, and you now have both endpoints in view.
+
+## Common mistakes
+
+1. **Reading the clip as "clip the gradient".** It's the *objective* that's clipped, not the gradient. The gradient simply becomes zero on tokens where the clip is binding, which is what kills the step there.
+2. **Forgetting that the KL penalty is per token, not per sequence.** Treating it as a single sequence-level scalar adds high-variance noise to the return; folding it into the per-token reward is what makes RLHF stable in practice.
+3. **Treating the reward model as ground truth.** $r_\phi$ is a learned approximation of human preference — push too hard and PPO finds adversarial completions the RM mis-scores. Always cap with the KL leash and a held-out human eval, not just RM score.
+4. **Using a tiny $\epsilon$ to "be safe".** Too-small $\epsilon$ kills every gradient and PPO stops learning. The standard $\epsilon = 0.1$–$0.2$ is small because the LLM has billions of parameters — for a small policy you'd use larger.
+
+## Key takeaways
+
+- **PPO = policy gradient + clipped trust region.** The ratio $\rho_t$ and clip at $[1-\epsilon, 1+\epsilon]$ bound how far any single update can drift from $\pi_{\theta_\text{old}}$.
+- The clip is on the **objective**, not the gradient — it just makes the gradient vanish past the bound, capping per-step KL drift without an explicit constraint.
+- **RLHF = PPO on tokens with a reward model.** State = prompt + prefix, action = next token, reward = RM at end-of-sequence + per-token KL penalty $-\beta \log(\pi_\theta/\pi_\text{ref})$.
+- The classical RLHF objective $\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(\pi_\theta\|\pi_\text{ref})$ is exactly the surface that **DPO** rearranges away via a closed-form reward — same objective, no RL loop.
+
+## Related concepts
+
+- [**Policy Gradient & Actor-Critic**](/courses/reinforcement-learning/04-policy-gradient) — the on-policy estimator PPO clips.
+- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the LLM-specific PPO pipeline and its closed-form alternative.
+- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the $r_\phi$ that PPO optimises against in RLHF.
+
+<Exercise id="ppo-clip-objective" />
+<Exercise id="rlhf-bridge-token-reward" />
