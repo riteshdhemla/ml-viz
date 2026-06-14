@@ -5680,6 +5680,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "BERTopic — but only because it is faster, not because its topics are higher quality", isCorrect: false },
     ],
   },
+  // ── NLP — Training Embedding Models ────────────────────────────
+  {
+    id: "embeddings-contrastive-loss",
+    type: "multiple-choice",
+    question:
+      "You are training a sentence embedder with the InfoNCE loss and in-batch negatives at batch size $N = 256$. Cosine similarities are scaled by a temperature $\\tau$. Why does training a model with $\\tau = 1.0$ usually produce a much weaker embedder than $\\tau = 0.05$?",
+    hint: "What does dividing the logits by τ do to the softmax distribution, and therefore to the gradient signal on a hard negative?",
+    explanation:
+      "The InfoNCE softmax is computed on logits $\\mathrm{sim}(a_i, p_j) / \\tau$. With $\\tau = 0.05$ a small cosine-similarity gap of $0.04$ becomes a logit gap of $0.8$, the softmax assigns nearly all the probability to the closest example, and the gradient pushes hard on whichever negative happens to be closest to the anchor. With $\\tau = 1.0$ that same $0.04$ similarity gap is also a $0.04$ logit gap; the softmax over $256$ in-batch examples is nearly uniform, $-\\log(1/256) \\approx 5.5$ on the positive, and the gradient is barely informative. Tiny $\\tau$ sharpens contrast so hard negatives drive learning; large $\\tau$ flattens the distribution and the model learns slowly. Production embedders sit around $\\tau \\in [0.05, 0.1]$.",
+    options: [
+      { id: "a", label: "$\\tau = 1.0$ disables L2 normalisation of the embeddings, so the loss collapses", isCorrect: false },
+      { id: "b", label: "$\\tau = 1.0$ flattens the softmax over in-batch examples, so the gradient signal on hard negatives is tiny; $\\tau = 0.05$ sharpens it and makes the contrast informative", isCorrect: true },
+      { id: "c", label: "$\\tau = 1.0$ makes the loss numerically unstable; the model diverges", isCorrect: false },
+      { id: "d", label: "$\\tau$ only affects inference-time similarity scores, so the choice cannot affect training quality", isCorrect: false },
+    ],
+  },
+  {
+    id: "embeddings-triplet-margin",
+    type: "slider",
+    question:
+      "Triplet loss is $\\mathcal{L} = \\max(0,\\, \\mathrm{sim}(a, n) - \\mathrm{sim}(a, p) + m)$ with margin $m = 0.2$. For one training triplet, $\\mathrm{sim}(a, p) = 0.71$ and $\\mathrm{sim}(a, n) = 0.65$. What is the loss?",
+    hint: "Plug into the formula: sim(a,n) − sim(a,p) + m. If that is negative, the loss clamps to 0.",
+    explanation:
+      "$\\mathrm{sim}(a, n) - \\mathrm{sim}(a, p) + m = 0.65 - 0.71 + 0.20 = 0.14$. That is positive, so $\\max(0, 0.14) = 0.14$. The triplet is *partially* satisfied — the positive is more similar to the anchor than the negative ($0.71 > 0.65$), but only by $0.06$, which is less than the required margin $m = 0.2$. The loss is the slack: $0.20 - 0.06 = 0.14$. Gradient descent will pull the positive closer and push the negative further until the margin gap is satisfied, at which point this triplet's contribution to the loss becomes zero — the saturation behaviour that makes triplet loss less data-efficient than InfoNCE.",
+    min: 0.0,
+    max: 0.5,
+    step: 0.01,
+    correctRange: [0.13, 0.15],
+    unit: "(loss value)",
+  },
+  {
+    id: "embeddings-hard-negatives",
+    type: "multiple-choice",
+    question:
+      "After training a sentence embedder for an enterprise search system with only random in-batch negatives, the model quickly plateaus around MRR $= 0.41$ on the validation set. Switching to BM25-mined hard negatives lifts MRR to $0.58$ for the same number of training steps. What is the structural reason this works?",
+    hint: "What does the gradient look like on a 'random' in-batch negative once the model can already tell unrelated topics apart?",
+    explanation:
+      "Random in-batch negatives are almost always topically unrelated to the anchor. Once the embedder can separate obviously different topics (which happens in the first few epochs), the softmax probability mass on a random negative is already tiny, so the gradient it produces is tiny. The model keeps training but stops learning anything new. BM25-mined hard negatives are documents that share keywords with the anchor query but are labelled non-relevant — the model gets them *wrong* (or close to wrong) under the current weights, so the softmax mass on them is large, and the gradient is correspondingly large. Each hard negative contributes a meaningful learning signal. This is the single biggest quality lift after the basic InfoNCE loop is in place, which is why MS MARCO-style training pipelines (`bge`, `e5`, `nomic`) all iteratively re-mine negatives with the current model. (A) and (D) are wrong because batch size and learning rate are unchanged here; (B) is a side benefit at best but not the structural reason.",
+    options: [
+      { id: "a", label: "Hard negatives are smaller in number, so the effective batch size is smaller and gradient noise drops", isCorrect: false },
+      { id: "b", label: "Hard negatives lower the effective temperature $\\tau$ of the loss", isCorrect: false },
+      { id: "c", label: "Random negatives produce near-zero gradients once topics are roughly separated; hard negatives sit close to the anchor under the current model, so the softmax puts real probability on them and the gradient is informative", isCorrect: true },
+      { id: "d", label: "BM25 negatives are guaranteed to be true positives mislabelled by the data, which makes the loss converge faster", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

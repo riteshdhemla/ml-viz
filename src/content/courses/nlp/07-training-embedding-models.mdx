@@ -1,0 +1,128 @@
+---
+title: "Training Embedding Models"
+description: "How a generic transformer encoder gets fine-tuned into a sentence embedder — Sentence-BERT, contrastive (InfoNCE) and triplet losses, hard-negative mining, TSDAE for unsupervised pretraining, and Matryoshka embeddings for variable-size vectors."
+order: 7
+type: concept
+estimatedMinutes: 22
+---
+
+# Training Embedding Models
+
+The downstream side of an embedding — semantic search, clustering, deduplication, RAG retrieval — assumes that *similar text lands at nearby points in the vector space*. That assumption is not free. A raw pretrained encoder like BERT does **not** give you good sentence embeddings out of the box. This lesson is about the training objectives that actually shape an embedding space so cosine similarity means what you want it to mean.
+
+Real-world examples: **Sentence-BERT** and the `sentence-transformers` library (the de facto open-source default — the `all-MiniLM-L6-v2`, `bge`, `e5`, `nomic-embed` family); hosted embedding APIs from **OpenAI** (`text-embedding-3-small/large`), **Cohere**, and **Voyage** that power the retrieval half of most RAG systems; the **MTEB leaderboard** that ranks open-source embedders across 50+ tasks; and **domain-tuned embeddings** for legal, medical, and code search, where general-purpose embedders underperform a model fine-tuned on a few hundred thousand in-domain pairs.
+
+## Why off-the-shelf BERT is a bad sentence embedder
+
+BERT was pretrained on token-level objectives (masked language modelling, next-sentence prediction) — both of which are about *local* word usage. The natural way to get one vector per sentence is to mean-pool the contextual token outputs or take the `[CLS]` vector. Empirically the result is dismal: on a benchmark like STS, **cosine similarity between two random English sentences encoded by raw BERT is around 0.6–0.8** — i.e. essentially everything looks similar to everything else. The embedding space is "anisotropic", concentrated in a narrow cone of $\mathbb{R}^d$, and cosine similarity inherits no useful semantic structure.
+
+The fix is not a new architecture but a new **fine-tuning objective**: take a pretrained encoder and continue training it with a loss that explicitly *organises* the embedding space by similarity.
+
+<Callout type="warning" title="Off-the-shelf [CLS] is not an embedding">
+Treating BERT's `[CLS]` vector as a sentence embedding is a tempting shortcut, but the resulting cosine-similarity scores are barely above random for most semantic retrieval tasks. Either use a model trained for sentence embeddings (Sentence-BERT, e5, bge, OpenAI, Cohere) or fine-tune your own with one of the objectives below. Raw BERT for retrieval is a known footgun.
+</Callout>
+
+## Sentence-BERT: a siamese bi-encoder
+
+**Sentence-BERT (SBERT)** is the canonical recipe for turning a Transformer encoder into a sentence embedder. The architecture is a **siamese bi-encoder**: two copies of the same encoder with **shared weights**, each consuming one input sentence, followed by **mean-pooling** over the token outputs to produce a single fixed-size vector. The two output vectors $\mathbf{e}_a$ and $\mathbf{e}_b$ are then compared with cosine similarity, and the loss tells the model whether they were supposed to be similar.
+
+At inference time you only need *one* copy of the encoder: embed each document once, store the vectors, and compare with cosine. That's the property that makes embeddings useful at scale — embedding cost is $O(n)$, retrieval cost is sublinear with an ANN index. Compare to a **cross-encoder**, which takes a *pair* of sentences and outputs one similarity score: more accurate per pair, but $O(n^2)$ to rank a corpus, so cross-encoders are only used as a *reranker* on top of a bi-encoder.
+
+## Contrastive (InfoNCE) loss
+
+The modern default objective is **contrastive learning** with the InfoNCE loss. For a batch of $N$ positive pairs $(a_i, p_i)$ — anchors and their matching positives — every *other* example in the same batch acts as a negative for $a_i$. This is the "in-batch negatives" trick: $N - 1$ negatives per anchor for free, no extra forward passes.
+
+$$
+\mathcal{L} = -\frac{1}{N}\sum_{i=1}^N \log \frac{\exp(\mathrm{sim}(a_i, p_i)/\tau)}{\sum_{j=1}^N \exp(\mathrm{sim}(a_i, p_j)/\tau)}.
+$$
+
+A few details that matter:
+
+- **$\mathrm{sim}$ is cosine similarity** on L2-normalised vectors. Normalising before computing the dot product is what makes the comparison about direction (topic) rather than length (sentence size).
+- **Temperature $\tau$** is a scalar that scales the logits before the softmax. Small $\tau$ (say $0.05$) sharpens the contrast: tiny differences in cosine similarity become huge differences in probability, and the gradient pushes hard. Large $\tau$ (say $1$) flattens the distribution and the gradient barely moves anything. Typical values in production embedders sit around $\tau \in [0.05, 0.1]$.
+- The numerator pulls $\mathrm{sim}(a_i, p_i)$ up. The denominator pulls *every* $\mathrm{sim}(a_i, p_j)$ down (the positive included, but the numerator overpowers that). Net effect: positives in, everything else out.
+
+<Callout type="info" title="In-batch negatives are basically free">
+Each forward pass of a batch of size $N$ computes $N$ embeddings. The InfoNCE loss treats the $N - 1$ *other* embeddings in the batch as negatives for each anchor — so a batch of 256 gives you 255 negatives per anchor, at the cost of one forward pass. This is why state-of-the-art embedding models use very large batches (4096+): more in-batch negatives means harder contrast and better embeddings.
+</Callout>
+
+<ContrastiveViz />
+
+Hit Play and watch the geometry. The positive (blue dot) is pulled toward the anchor (★) with a force proportional to $1 - P(\text{positive})$ — the residual of how confident the model already is. Each negative (rose dot) is pushed outward in proportion to its own softmax probability — i.e. the *harder* a negative looks (closer to the anchor than the positive), the more force the loss applies to it. Drop $\tau$ to $0.05$ and the contrast sharpens until even almost-on-top points get clearly separated; raise it to $1.0$ and the whole space relaxes.
+
+## Triplet loss: the original SBERT objective
+
+The first Sentence-BERT paper used a simpler objective: **triplet loss with margin**. Given an anchor $a$, a positive $p$, and a single negative $n$:
+
+$$
+\mathcal{L} = \max\!\big(0,\, \mathrm{sim}(a, n) - \mathrm{sim}(a, p) + m\big)
+$$
+
+with margin $m$ (often $m = 0.2$ to $0.5$). The loss is zero when $\mathrm{sim}(a, p)$ exceeds $\mathrm{sim}(a, n)$ by at least the margin — the model is "right enough" and the gradient is zero. Otherwise the loss is positive and gradient descent pulls the positive closer and pushes the negative away until the margin is satisfied.
+
+Triplet loss is structurally cleaner (one positive, one negative, an explicit margin) but it has two practical disadvantages compared to InfoNCE:
+
+1. **One negative per anchor.** InfoNCE in a batch of 256 gives 255 negatives per anchor; triplet loss uses one. More negatives = harder contrast = better embeddings (when the negatives are non-trivial).
+2. **It's saturating.** Once the margin is satisfied the gradient is zero, so easy triplets contribute nothing to learning. InfoNCE always has a non-zero gradient (until the softmax is one-hot).
+
+Most modern embedders use InfoNCE; triplet loss survives in face-recognition and metric-learning literature.
+
+## Hard-negative mining
+
+Both InfoNCE and triplet loss have the same failure mode: **most random negatives are too easy**. Pick a random "Refund policy" document and a random "Game-of-Thrones character" document, and any half-decent embedder already puts them far apart. The gradient on those negatives is tiny. The model is not learning anything from them.
+
+The fix is **hard-negative mining** — explicitly find pairs the current model is *wrong* about and feed those in as negatives. Three flavours, in increasing sophistication:
+
+- **BM25-hard negatives.** For each anchor, run BM25 over the corpus and take the top-$k$ documents that share keywords with the anchor but are labelled as not-relevant. These are semantically close on the surface but actually different — classic "hard" cases.
+- **Mined negatives from the current model.** Periodically run the current embedder over the corpus, find for each anchor the nearest neighbours that are *not* its positive, and use those as negatives in the next epoch. This is iterative: the model gets better → harder negatives appear → the model gets better still. The MS MARCO-style training pipelines (used by `bge`, `e5`, `nomic`) all do this.
+- **Semi-hard negatives.** A compromise from face-recognition literature: pick negatives that are closer to the anchor than the positive *but* not too close (avoid pure outliers that destabilise training). Falls between "random" and "hardest possible".
+
+<Callout type="tip" title="Random negatives plateau fast">
+A model trained only on random in-batch negatives quickly learns to separate obviously different topics, then stops improving — almost every batch is "easy". Switching to mined hard negatives (BM25 top-100, filtered for the known positive) is one of the single biggest quality lifts in embedding training. The notebook for this lesson shows a small version of this: triplet loss with semi-hard mining converges to a better top-1 retrieval rate than the random-negative version, on the same data.
+</Callout>
+
+## TSDAE: unsupervised pretraining for embeddings
+
+What if you have a domain-specific corpus (legal contracts, medical notes, internal company docs) but **no labelled similar-pairs** to train on? Buying labels is expensive, generating them with an LLM is plausible but biases the resulting space toward the LLM's notion of similarity.
+
+**TSDAE** — Transformer-based Sequential Denoising AutoEncoder — is a clever unsupervised alternative. The recipe:
+
+1. Take an unlabelled sentence and **corrupt** it (random word deletion / shuffling).
+2. Encode the corrupted sentence with the transformer encoder, **pool to a single vector**, then ask a decoder to reconstruct the *original* sentence from that one vector alone.
+3. Because the decoder must produce the full original sentence from one fixed-size vector, the encoder is forced to pack semantic content into that vector. Embeddings of semantically similar sentences end up geometrically close, even though no similarity labels were used.
+
+TSDAE doesn't beat a model trained on labelled pairs, but it is the standard pretraining step before contrastive fine-tuning on a domain corpus, and it works when you have **just text, no pairs, no labels**. Other unsupervised flavours: SimCSE (treat two dropout-noisy copies of the same sentence as a positive pair), GPL (use a generative LLM to synthesise queries for each document), CT (contrastive tension across two models of the same encoder).
+
+## Matryoshka / nested embeddings
+
+A modern detail worth knowing: many recent embedders (OpenAI `text-embedding-3-*`, Nomic, BGE-M3) ship with **Matryoshka representations**. The training objective adds a constraint: the **first $d'$ dimensions of the embedding must also be a useful embedding**, for several values of $d'$ ($64$, $128$, $256$, …). You can then truncate a 3072-dim vector to 256 dims and the cosine-similarity metric still works — at a small quality cost.
+
+This is the embedding analogue of progressive JPEG. Use the full vector for highest quality, truncate for cheaper storage and faster ANN search. The training cost is a small loss term per truncation level; the inference flexibility is enormous.
+
+## Common mistakes
+
+1. **Using raw `[CLS]` from BERT as a sentence embedding.** Almost always worse than mean-pooled SBERT. Cosine similarity between unrelated sentences is too high, and downstream retrieval is bad.
+2. **Forgetting to L2-normalise.** Cosine similarity assumes unit vectors. Computing dot products on un-normalised embeddings turns sentence *length* into a dominant signal — long sentences will dominate every retrieval list.
+3. **Tiny batch size with InfoNCE.** A batch of 16 gives you 15 negatives per anchor; a batch of 1024 gives you 1023. The difference in final embedding quality is substantial. Use the biggest batch your GPU can hold.
+4. **Training only with random negatives.** Random negatives plateau fast because almost every random pair is trivially separable. Mine hard negatives (BM25 or model-mined) once the model starts to converge.
+5. **Temperature tuning by vibes.** $\tau$ has a real, measurable optimum — typically $0.05$ to $0.1$ for InfoNCE with normalised cosine. Too small and the loss explodes on noisy pairs; too large and the gradient vanishes. Sweep it on a validation set.
+6. **Cross-encoder for first-stage retrieval.** A cross-encoder needs to score the query against every candidate document and is $O(n)$ at query time. Use a bi-encoder for retrieval; use a cross-encoder *only* as a reranker on the top-$k$ from the bi-encoder.
+
+## Key takeaways
+
+- A pretrained BERT is **not** a sentence embedder. Sentence-BERT fine-tunes a siamese bi-encoder with shared weights and mean-pooling so that cosine similarity between outputs encodes semantic similarity.
+- **InfoNCE** with in-batch negatives is the modern default loss. The temperature $\tau$ controls how sharply the model distinguishes the positive from the in-batch crowd; typical values are $0.05$–$0.1$.
+- **Triplet loss** is the original SBERT objective: anchor, positive, negative, with a margin. Cleaner but uses one negative per anchor and stops learning once the margin is satisfied.
+- **Hard-negative mining** is the single biggest quality lift after the basic loss is in place. BM25 hardness or iteratively model-mined negatives both work.
+- **TSDAE** (and friends — SimCSE, GPL) give you unsupervised pretraining when you have a corpus but no pair labels — essential for domain adaptation.
+- **Matryoshka embeddings** let you truncate the vector dimension at inference time and still get a working metric, trading quality for storage / speed.
+
+## Related concepts
+
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the downstream consumer: once you have a good embedder, this is the cosine-similarity retrieval engine that powers RAG. This lesson is one level deeper: how the embedder gets trained.
+- [**Topic Modeling with BERTopic**](/courses/nlp/06-topic-modeling-bertopic) — Stage 1 of BERTopic *is* the sentence embedder trained here; better embeddings give cleaner topic clusters.
+- [**LLM Model Taxonomy**](/courses/nlp/04-llm-model-taxonomy) — the encoder-only branch (BERT, RoBERTa, DeBERTa) is what gets fine-tuned into these sentence embedders.
+
+<Exercise id="embeddings-contrastive-loss" />
+<Exercise id="embeddings-triplet-margin" />
+<Exercise id="embeddings-hard-negatives" />
