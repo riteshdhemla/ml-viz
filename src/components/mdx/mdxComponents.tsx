@@ -44,6 +44,7 @@ import { SamplingDistributionViz } from "@/components/visualizations/SamplingDis
 import { HypothesisTestViz } from "@/components/visualizations/HypothesisTest/HypothesisTestViz";
 import { MessagePassingViz } from "@/components/visualizations/MessagePassing/MessagePassingViz";
 import { MatrixFactorizationViz } from "@/components/visualizations/MatrixFactorization/MatrixFactorizationViz";
+import { GaussianProcessViz } from "@/components/visualizations/GaussianProcess/GaussianProcessViz";
 import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
 import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
 import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbiViz";
@@ -125,6 +126,7 @@ export const mdxComponents: MDXComponents = {
   HypothesisTestViz,
   MessagePassingViz,
   MatrixFactorizationViz,
+  GaussianProcessViz,
   LatentSpaceViz,
   RNNUnrollViz,
   HMMViterbiViz,
