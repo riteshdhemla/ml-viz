@@ -1,0 +1,138 @@
+---
+title: "The Directional Derivative"
+description: "Deriving the directional derivative from its limit definition, connecting it to the gradient via the chain rule, and proving the dot-product formula that makes the gradient the direction of steepest ascent."
+topics: ["calculus"]
+relatedLessons:
+  - "calculus-for-ml/01-derivatives-and-gradients"
+  - "calculus-for-ml/03-multivariable-optimization"
+estimatedMinutes: 9
+---
+
+# The Directional Derivative
+
+A partial derivative answers a narrow question: how fast does $f$ change if I nudge **one** coordinate, holding the rest fixed? The **directional derivative** answers the general one: how fast does $f$ change if I step in an *arbitrary* direction $\mathbf{u}$? Partial derivatives are just the special case where $\mathbf{u}$ is a coordinate axis. This single quantity is what makes "the gradient points in the direction of steepest ascent" a theorem rather than a slogan.
+
+## Limit definition
+
+Fix a point $\mathbf{x} \in \mathbb{R}^n$ and a **unit** direction $\hat{\mathbf{u}}$ ($\|\hat{\mathbf{u}}\| = 1$). Slide along the ray $\mathbf{x} + h\,\hat{\mathbf{u}}$ and measure the per-unit-distance change:
+
+$$
+D_{\hat{\mathbf{u}}} f(\mathbf{x}) = \lim_{h \to 0} \frac{f(\mathbf{x} + h\,\hat{\mathbf{u}}) - f(\mathbf{x})}{h}
+$$
+
+Setting $\hat{\mathbf{u}} = \mathbf{e}_i$ (the $i$-th standard basis vector) recovers the partial derivative $\partial f / \partial x_i$ exactly — so partials are directional derivatives along the axes.
+
+<Callout type="warning" title="The unit-vector requirement is not optional">
+  $D_{\hat{\mathbf{u}}} f$ is a *rate per unit distance*. If $\mathbf{u}$ is not normalized, the limit scales by $\|\mathbf{u}\|$ and you get a rate per unit of $h$ instead — an apples-to-oranges quantity. Always divide by $\|\mathbf{u}\|$ first: $\hat{\mathbf{u}} = \mathbf{u}/\|\mathbf{u}\|$.
+</Callout>
+
+## Deriving the dot-product formula
+
+Define the single-variable restriction $g(h) = f(\mathbf{x} + h\,\hat{\mathbf{u}})$. By the limit definition, $D_{\hat{\mathbf{u}}} f(\mathbf{x}) = g'(0)$. Now differentiate $g$ with the **multivariable chain rule**. Writing the path as $\boldsymbol{\gamma}(h) = \mathbf{x} + h\,\hat{\mathbf{u}}$, we have $\boldsymbol{\gamma}'(h) = \hat{\mathbf{u}}$, so:
+
+$$
+g'(h) = \sum_{i=1}^{n} \frac{\partial f}{\partial x_i}\big(\boldsymbol{\gamma}(h)\big)\,\frac{d\gamma_i}{dh}
+      = \sum_{i=1}^{n} \frac{\partial f}{\partial x_i}\,\hat{u}_i
+      = \nabla f\big(\boldsymbol{\gamma}(h)\big) \cdot \hat{\mathbf{u}}
+$$
+
+Evaluating at $h = 0$ gives the central result:
+
+$$
+\boxed{\;D_{\hat{\mathbf{u}}} f(\mathbf{x}) = \nabla f(\mathbf{x}) \cdot \hat{\mathbf{u}}\;}
+$$
+
+The directional derivative in **any** direction is just the projection of the gradient onto that direction. The gradient packages every directional derivative at once — compute it once, dot it with any $\hat{\mathbf{u}}$ you like.
+
+## Why the gradient is steepest ascent
+
+Expand the dot product geometrically. With $\theta$ the angle between $\nabla f$ and $\hat{\mathbf{u}}$, and $\|\hat{\mathbf{u}}\| = 1$:
+
+$$
+D_{\hat{\mathbf{u}}} f = \nabla f \cdot \hat{\mathbf{u}} = \|\nabla f\|\,\|\hat{\mathbf{u}}\|\cos\theta = \|\nabla f\|\cos\theta
+$$
+
+Since $\cos\theta$ ranges over $[-1, 1]$, the directional derivative is bounded:
+
+$$
+-\|\nabla f\| \;\le\; D_{\hat{\mathbf{u}}} f \;\le\; \|\nabla f\|
+$$
+
+| Direction $\hat{\mathbf{u}}$ | $\theta$ | $D_{\hat{\mathbf{u}}} f$ | Interpretation |
+|---|:---:|:---:|---|
+| Along $\nabla f$ | $0$ | $+\|\nabla f\|$ | **steepest ascent** |
+| Against $\nabla f$ | $\pi$ | $-\|\nabla f\|$ | **steepest descent** |
+| Perpendicular to $\nabla f$ | $\pi/2$ | $0$ | along a **level set** (contour) — $f$ unchanged |
+
+The maximum is attained when $\theta = 0$, i.e. $\hat{\mathbf{u}} = \nabla f / \|\nabla f\|$. This *proves* that the gradient points in the direction of fastest increase, and its magnitude $\|\nabla f\|$ *is* that fastest rate. Gradient descent takes the opposite direction precisely because $\theta = \pi$ minimizes $D_{\hat{\mathbf{u}}} f$.
+
+<Callout type="info" title="Gradients are orthogonal to level sets">
+  The third row explains why $\nabla f$ is always perpendicular to the contour through $\mathbf{x}$: moving along a contour leaves $f$ unchanged, so the directional derivative there is $0$, which forces $\cos\theta = 0$.
+</Callout>
+
+## Worked example
+
+Let $f(x, y) = x^2 + 3xy$ at the point $\mathbf{x} = (1, 2)$.
+
+**Gradient:**
+
+$$
+\nabla f = \begin{bmatrix} 2x + 3y \\ 3x \end{bmatrix}
+\;\Longrightarrow\;
+\nabla f(1, 2) = \begin{bmatrix} 2 + 6 \\ 3 \end{bmatrix} = \begin{bmatrix} 8 \\ 3 \end{bmatrix}
+$$
+
+**Directional derivative toward $\mathbf{v} = (3, 4)$.** First normalize — this is the step beginners skip:
+
+$$
+\|\mathbf{v}\| = \sqrt{3^2 + 4^2} = 5,
+\qquad
+\hat{\mathbf{u}} = \tfrac{1}{5}(3, 4)
+$$
+
+$$
+D_{\hat{\mathbf{u}}} f(1,2) = \nabla f \cdot \hat{\mathbf{u}}
+= \begin{bmatrix} 8 \\ 3 \end{bmatrix} \cdot \tfrac{1}{5}\begin{bmatrix} 3 \\ 4 \end{bmatrix}
+= \frac{8(3) + 3(4)}{5} = \frac{36}{5} = 7.2
+$$
+
+**Sanity check against the extremes.** The steepest possible rate here is $\|\nabla f(1,2)\| = \sqrt{8^2 + 3^2} = \sqrt{73} \approx 8.54$. Our value $7.2 < 8.54$, as it must be — $(3,4)$ is close to but not exactly aligned with $(8, 3)$.
+
+```python
+import numpy as np
+
+def f(x, y):
+    return x**2 + 3*x*y
+
+def grad_f(x, y):
+    return np.array([2*x + 3*y, 3*x])
+
+p = (1.0, 2.0)
+g = grad_f(*p)                      # [8., 3.]
+
+v = np.array([3.0, 4.0])
+u = v / np.linalg.norm(v)           # unit vector [0.6, 0.8]
+Du = g @ u                          # directional derivative
+
+print(f"gradient        ∇f = {g}")
+print(f"unit direction  û  = {u}")
+print(f"D_û f           = {Du:.3f}")          # 7.200
+print(f"steepest rate   = {np.linalg.norm(g):.3f}")  # 8.544 (>= 7.200, as required)
+
+# Finite-difference check of the limit definition
+h = 1e-6
+fd = (f(*(np.array(p) + h*u)) - f(*p)) / h
+print(f"finite-diff     = {fd:.3f}")          # ≈ 7.200
+```
+
+## Common pitfalls
+
+1. **Forgetting to normalize $\mathbf{v}$.** Using a non-unit vector inflates the result by $\|\mathbf{v}\|$. In the example, skipping normalization gives $8(3)+3(4)=36$ instead of $7.2$.
+2. **Assuming partials existing implies the directional derivative exists in every direction.** For non-differentiable functions (e.g. $f(x,y) = \tfrac{xy}{x^2+y^2}$ at the origin) the chain-rule shortcut $\nabla f \cdot \hat{\mathbf{u}}$ can fail; you must fall back to the limit definition. The dot-product formula is guaranteed only where $f$ is differentiable.
+3. **Treating $D_{\hat{\mathbf{u}}} f$ as a vector.** It is a scalar — a rate. The *direction* of fastest change is the vector $\nabla f$.
+
+## Related concepts
+
+- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients) — partial derivatives and the gradient vector this page builds on
+- [**Chain Rule and Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the multivariable chain rule used to derive the dot-product formula
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — where steepest descent and curvature drive optimization
