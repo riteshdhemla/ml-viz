@@ -390,6 +390,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | CoalescingViz | `visualizations/Coalescing/` | gpu-programming/03-memory-and-performance | ✅ |
 | SamplingDistributionViz | `visualizations/SamplingDistribution/` | probability-statistics/06-statistical-inference | ✅ |
 | HypothesisTestViz | `visualizations/HypothesisTest/` | probability-statistics/07-hypothesis-testing | ✅ |
+| MessagePassingViz | `visualizations/MessagePassing/` | graph-neural-networks/02-graph-convolutions | ✅ |
 | TransferLearningViz | `visualizations/TransferLearning/` | cnns/03-transfer-learning | ✅ |
 | PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
 | GMMResponsibilityViz | `visualizations/GMM/` | probabilistic-models/01-gaussian-mixture-models | ✅ |
