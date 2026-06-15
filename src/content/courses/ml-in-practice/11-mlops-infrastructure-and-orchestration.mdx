@@ -1,0 +1,132 @@
+---
+title: "MLOps Infrastructure & Orchestration"
+description: "Storage and compute layers, development environments, resource management, workflow orchestrators (Airflow/Prefect/Dagster, Argo, Kubeflow), and what an ML platform actually buys you."
+order: 11
+type: concept
+estimatedMinutes: 22
+---
+
+# MLOps Infrastructure & Orchestration
+
+The training script that won the offline metric is a tiny fraction of what actually ships an ML system. Around it sit a storage layer that has to hold petabytes of features without losing a row, a compute layer that has to schedule GPUs you only sort of own, a development environment that has to reproduce a run someone made eight months ago, and an orchestrator that has to retry a 14-step pipeline when step 9 fails at 4 a.m. without paging anyone. "MLOps infrastructure" is the name for *that* — the substrate underneath the model that decides whether the team ships once a quarter or once an hour.
+
+Real-world examples: most production ML stacks pick a few canonical pieces from this list — **S3** or **GCS** for object storage and **Snowflake** / **BigQuery** for the warehouse half of the data plane; **Feast** or **Tecton** for the feature store and **MLflow** / **Weights & Biases** for the model registry and experiment tracker; **Airflow** / **Prefect** / **Dagster** for batch DAGs, **Argo Workflows** or **Kubeflow Pipelines** for Kubernetes-native ones, and **Ray** / **SageMaker** for distributed training jobs. The exact picks vary; the shape of the stack — storage + compute + dev env + scheduler + tracker + registry — is remarkably similar across companies.
+
+## Storage and compute: the two halves of the data plane
+
+The first split to internalise is that *storage* and *compute* are separate concerns with separate scaling and cost characteristics, and the cleanest ML platforms keep them deliberately decoupled.
+
+On the storage side, three layers do most of the work:
+
+- **Object storage** — S3, GCS, Azure Blob. Cheap (cents per GB-month), eventually-consistent, slow per-read but massively parallel. This is where the raw training data, model artefacts, and intermediate Parquet/ORC files live. It is the only layer that holds the *truth*; everything else is a derived view.
+- **Feature store** — Feast, Tecton, Hopsworks. A two-tier system: an *offline store* (warehouse-backed, used at training time, optimised for big columnar scans) and an *online store* (Redis/DynamoDB-backed, used at serving time, optimised for sub-millisecond key lookups). The store's job is to ensure the same feature transformation runs in both — train-serve skew (covered in *Deployment Pitfalls*) is what happens when this guarantee breaks.
+- **Model registry** — MLflow, SageMaker Model Registry, Vertex AI Model Registry. Stores trained model artefacts plus the metadata you need to govern them: training run id, dataset version, evaluation metrics, approval status, deployment stage (staging / canary / production). The registry is the thing CI/CD-for-models pipelines pull from.
+
+On the compute side, the relevant axes are *kind* (CPU vs GPU vs accelerator), *availability* (on-demand vs spot/preemptible), and *elasticity* (fixed pool vs autoscaling). A typical mix: a small CPU pool for orchestration and lightweight transforms, a larger spot-CPU pool for batch ETL (savings of roughly 70 % over on-demand, in exchange for the right to be evicted at any moment), and a GPU pool — usually on-demand for training jobs that hold state across hours and on spot for inference replicas that can be replaced without losing work.
+
+<Callout type="info" title="The cardinal rule: keep storage and compute decoupled.">
+A pipeline that writes intermediate state to a local disk on the worker that produced it is a pipeline that cannot survive a worker eviction, cannot be re-run from step 7, and cannot be scaled out by adding workers. The cure is boring: write every intermediate artefact to object storage, addressable by run id and step name. The pipeline is now restartable, parallelisable, and reproducible — three properties you'll be glad to have at 3 a.m.
+</Callout>
+
+## Development environments and reproducibility
+
+Reproducibility is the single most underrated property of an ML codebase. A bug report that says "this trained fine in March" is a bug report you can act on only if the March environment can be reconstructed.
+
+The standard layering, from coarsest to finest:
+
+- **`pip freeze` / `requirements.txt`** — captures the resolved version of every Python package. Necessary, not sufficient: it doesn't pin transitive system libraries (CUDA, libstdc++) and it doesn't pin the Python version itself.
+- **`pyproject.toml` + lockfile** (`poetry.lock`, `uv.lock`, `pdm.lock`) — captures *declared* top-level deps separately from the *resolved* full graph. The lockfile is what gives you bit-for-bit Python-package reproducibility; the `pyproject.toml` is what tells humans what the project actually depends on.
+- **Docker** — captures the OS, CUDA driver/runtime version, Python interpreter, and lockfile-resolved environment in a single hashed artefact. This is the level that survives "the CUDA team upgraded the cluster image last weekend."
+- **Dev containers** (VS Code devcontainer, GitHub Codespaces) — Docker plus an IDE configuration, so that a new contributor's first interaction is "open in container, hit run, the test passes." Reduces the onboarding cliff that kills momentum on real ML teams.
+
+Notebooks deserve their own paragraph. They are unbeatable for exploration and *terrible* for production because they hide cell execution order, fail silently on partially-run state, and produce diffs no human can review. The right pattern is: explore in a notebook, then *promote* the working code into a Python module under version control. Tools like `papermill` (parameterise a notebook and run it as a job) and `nbconvert` (strip the outputs for clean diffs) make this pipeline livable.
+
+<Callout type="warning" title="Pinning Python packages does not pin CUDA.">
+A reproducible-feeling environment with a perfect `poetry.lock` will still break when you move from a host with CUDA 11.8 to one with CUDA 12.4 — `torch` wheels are CUDA-version-specific, and the lock pinned the *wheel name*, not the underlying GPU driver. Docker images with a pinned `nvidia/cuda:<major.minor>-runtime` base image fix this. Treat CUDA versions as part of your dependency graph; don't trust that "the cluster" has a stable one.
+</Callout>
+
+## Resource management: queues, quotas, and GPU sharing
+
+A GPU costs roughly $1.5–$30 an hour depending on tier, and a team of ten can saturate a six-figure budget in a week if no one enforces limits. The job of resource management is to make a shared pool feel like an abundant private pool *without* actually being one.
+
+Three mechanisms do most of the work:
+
+- **Job queues** — Slurm, Kueue (Kubernetes), Ray Job submission. Users submit jobs; the queue places them onto idle resources subject to priority, fair-share between teams, and dependency ordering.
+- **Quotas** — per-team and per-user caps on total GPU-hours and concurrent jobs. The right default is "soft" caps that warn before blocking, plus a hard cap that blocks runaway spend.
+- **GPU sharing** — packing multiple small jobs onto one physical GPU. **MIG** (Multi-Instance GPU) on NVIDIA A100/H100 hardware-partitions a single GPU into up to 7 instances with isolated memory; **time-slicing** lets multiple processes share a GPU at the cost of context-switch overhead; **MPS** (Multi-Process Service) sits in between.
+
+Queueing theory gives a startlingly useful model for *why* a 90 %-utilised cluster feels slow. For an M/M/1 queue with arrival rate $\lambda$ and service rate $\mu$, define utilisation $\rho = \lambda / \mu$. Expected wait time in the queue (before a job starts) is
+
+$$
+W_q = \frac{\rho}{\mu (1 - \rho)}.
+$$
+
+At $\rho = 0.5$, $W_q = 1/\mu$ (one service-time of waiting). At $\rho = 0.9$, $W_q = 9/\mu$ — nine service-times of waiting. At $\rho = 0.99$, $W_q = 99/\mu$. Wait time goes to infinity as utilisation approaches 1; a cluster that is "fully utilised" is a cluster that has no headroom for variance and feels broken to its users even though the dashboard says it is healthy. The classic operational rule of thumb is to keep average utilisation around 70–80 % so the queueing tail stays bounded.
+
+## Workflow orchestration: the DAG model
+
+Once you have data, compute, and a way to share it, you need a thing that *runs* the multi-step pipeline that produces a trained model. That thing is a workflow orchestrator, and the abstraction it gives you is a **directed acyclic graph** (DAG) of tasks with dependencies. The scheduler resolves a topological order, runs tasks in parallel where possible, retries failures, and persists the run state so a failed pipeline can be re-run from the last successful task.
+
+Three properties matter regardless of which orchestrator you pick:
+
+- **Idempotency** — running the same task twice with the same inputs produces the same outputs, no side effects. Without idempotency, retries are dangerous: a failed task that already wrote half its rows to the warehouse will double-count on retry.
+- **Retries with backoff** — transient failures (a network blip, a spot eviction) need automatic retry; deterministic failures (a malformed input) need to surface immediately. Exponential backoff with a cap, plus a small jitter, is the boring default.
+- **Backfills** — when you ship a fixed pipeline you usually want to *re-run* it over historical date partitions. A scheduler that can backfill a year of daily runs with one command saves a week of manual ops work.
+
+The current ecosystem has three batch-DAG schedulers in active use:
+
+- **Airflow** — the elder. Defines DAGs as Python files that the scheduler parses; mature, opinionated, the lingua franca of analytics teams. Showing its age around dynamic DAGs and local development; the upgrade path between major versions has historically been painful.
+- **Prefect** — Python-native, "negative engineering" framing (the framework handles failure modes so you don't write them). DAGs are inferred from function calls; the scheduler is hosted (Prefect Cloud) or self-hosted (Prefect Server). Friendlier dev loop, less battle-tested at extreme scale.
+- **Dagster** — assets-first. Instead of describing *tasks*, you describe the data assets you produce; dependencies between assets define the DAG. The cleanest model for data-heavy pipelines, with the steepest mental shift.
+
+For Kubernetes-native ML pipelines, two other tools dominate: **Argo Workflows** runs each step as a pod and is the substrate underneath **Kubeflow Pipelines**, which adds an ML-aware SDK on top (KFP DSL) and integrates with the rest of the Kubeflow stack (Katib for hyperparameter sweeps, KServe for inference). The Argo/Kubeflow path is what teams pick when they're already deep in Kubernetes; the Airflow/Prefect/Dagster path is what teams pick when their data plane is warehouse-first.
+
+<Callout type="success" title="Retry is the killer feature.">
+The single biggest reason to put a pipeline in an orchestrator instead of a `cron` job is automatic, observable retry with state persistence. A cron job that fails halfway is a cron job whose half-written outputs you now have to clean up by hand. A DAG run that fails halfway can be re-run from the failing step, with all upstream artefacts intact, in one click — provided every step is idempotent.
+</Callout>
+
+## The ML platform: what you're actually buying
+
+An "ML platform" — Vertex AI, SageMaker, Databricks, the in-house thing every large ML org eventually builds — is the union of the layers above plus the integrations that make them feel like one product. The layers, top to bottom:
+
+- **CI/CD for models** — Git push triggers a pipeline that retrains, evaluates against the live model, registers the new artefact, and gates promotion on metrics + manual approval.
+- **Experiment tracker** — every training run logs hyperparameters, metrics, system metadata, and links to the artefact in object storage. MLflow, W&B, Neptune.
+- **Model registry** — the curated set of model versions, each with a deployment stage and a lineage back to the run that produced it.
+- **Serving infrastructure** — the inference layer that pulls from the registry: batch (Spark, Beam) for offline scoring, online (Triton, KServe, vLLM for LLMs) for real-time.
+- **Feature store + offline data warehouse** — the data plane that both training and serving read from.
+- **Workflow orchestrator** — the scheduler that runs the DAGs that produce all of the above.
+- **Storage and compute** — the substrate everything else sits on.
+
+A team's first reflex should be to *integrate* rather than *build*. Most of these layers have credible managed offerings now; the value of building in-house is real only when your scale, security posture, or specialisation makes the off-the-shelf product a bad fit. The teams that go their own way too early typically discover, two years in, that they've built a worse copy of MLflow with a worse copy of Airflow on top of a worse copy of Argo.
+
+## Common mistakes
+
+1. **Local-disk intermediates.** Writing step outputs to the worker's local disk works in dev and dies in prod. Every intermediate artefact belongs in object storage, addressable by run id; this is what makes pipelines restartable and parallelisable.
+2. **Pinning Python without pinning CUDA.** A perfect `poetry.lock` does not save you from a CUDA driver upgrade. Pin the CUDA major.minor in your base Docker image, treat it as part of the dependency graph.
+3. **Running clusters at 95 % utilisation.** Queue wait time explodes as utilisation approaches 1 (Pollaczek–Khinchine: $W_q \propto \rho / (1 - \rho)$). Aim for ~70–80 % steady-state; the cluster will *feel* faster even though it's "less used."
+4. **Non-idempotent tasks.** A task that mutates external state without checking what it already wrote will double-count on retry. Idempotency is what makes automatic retries safe; without it, retries are the bug.
+5. **One huge monolithic DAG.** A 200-task DAG that re-runs from scratch every day is a DAG you can't reason about. Split into sub-pipelines along data-asset boundaries; the orchestrator's job is composing them, not owning all logic.
+6. **Building before integrating.** Every layer above has a credible managed product. Building a worse MLflow on a worse Airflow on a worse Argo is a multi-year detour most teams should not take.
+
+## Key takeaways
+
+- The ML platform is layered: storage + compute + dev env + resource manager + orchestrator + tracker + registry + serving + CI/CD-for-models. Treat each as separable, not monolithic.
+- Storage and compute should stay **decoupled**. Object storage holds truth; every intermediate artefact is addressable so pipelines are restartable and parallelisable.
+- Reproducibility runs in layers: `pip freeze` < `pyproject.toml` + lockfile < Docker < devcontainer. CUDA versions are part of the dependency graph; treat them that way.
+- Queueing dictates utilisation: for $\rho = \lambda / \mu$, wait time scales as $\rho / (1 - \rho)$ — a cluster at 99 % utilisation has roughly 100× the wait of one at 50 %. Keep steady-state at 70–80 %.
+- Orchestrators give you DAGs with **idempotent retries** and **backfills**. Airflow / Prefect / Dagster for warehouse-first stacks; Argo / Kubeflow for Kubernetes-first stacks.
+- A model registry plus an experiment tracker is what makes CI/CD-for-models possible — promotion is "advance this version's stage from staging to production," not "scp a pickle to the box."
+- **Integrate before building.** Most of these layers have credible managed offerings; in-house wins only when scale or specialisation force it.
+
+## Related concepts
+
+- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking) — the tracker and the model registry are the parts of the platform that turn ad-hoc training scripts into a reproducible release process. This lesson is where the *rest* of the platform sits.
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — the serving layer of the ML platform. Whatever pattern you choose (batch, online, edge), the infrastructure described here is what gets the model from the registry to the serving fleet.
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — once the platform is running, monitoring is the feedback loop that tells you whether the pipelines, the data, and the models are healthy. The dashboard sits on top of the storage/compute substrate from this lesson.
+- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the data plane (warehouse, feature store) is the foundation of the ML platform. The orchestrator usually starts its work at the ETL boundary defined there.
+
+<Exercise id="ml-practice-mlops-queue-wait" />
+
+<Exercise id="ml-practice-mlops-orchestrator" />
+
+<Exercise id="ml-practice-mlops-storage-compute" />
