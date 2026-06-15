@@ -1,0 +1,98 @@
+---
+title: "Gaussian Processes"
+description: "Bayesian regression over functions themselves — kernels as covariance, the GP posterior mean and variance, and why a GP gives calibrated uncertainty everywhere without choosing a parametric form."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Gaussian Processes
+
+Bayesian linear regression puts a distribution over *weights*. A **Gaussian process (GP)** goes one level up and puts a distribution directly over *functions* — without ever committing to a parametric form like "a line" or "a degree-3 polynomial." The result is a non-parametric model that fits flexible curves and, crucially, reports honest uncertainty everywhere. GPs are the gold standard when data is scarce and calibrated error bars matter.
+
+**Real-world examples:** Bayesian optimization of expensive experiments and hyperparameters (next lesson), geostatistics ("kriging"), robotics and control with safety guarantees, and small-data scientific modeling.
+
+## A distribution over functions
+
+A GP is defined so that the function values at *any* finite set of input points are **jointly Gaussian**. It's specified by a **mean function** $m(\mathbf{x})$ (usually taken to be 0) and a **covariance / kernel function** $k(\mathbf{x}, \mathbf{x}')$:
+
+$$
+f(\mathbf{x}) \sim \mathcal{GP}\big(m(\mathbf{x}),\; k(\mathbf{x}, \mathbf{x}')\big)
+$$
+
+The kernel is the whole model: $k(\mathbf{x}, \mathbf{x}')$ says how *correlated* the function's values at $\mathbf{x}$ and $\mathbf{x}'$ are. Nearby inputs → highly correlated outputs → smooth functions.
+
+The most common choice is the **RBF (squared-exponential) kernel**:
+
+$$
+k(\mathbf{x}, \mathbf{x}') = \sigma_f^2 \exp\!\left(-\frac{\lVert \mathbf{x} - \mathbf{x}'\rVert^2}{2\ell^2}\right)
+$$
+
+- $\ell$ — the **length-scale**: how far apart inputs must be before their outputs decorrelate (controls wiggliness).
+- $\sigma_f^2$ — the signal variance (vertical scale).
+
+## The GP posterior
+
+Condition the prior on observed data $(\mathbf{X}, \mathbf{y})$ with noise variance $\sigma_n^2$. Because everything is jointly Gaussian, the posterior at test inputs $\mathbf{X}_*$ is Gaussian with closed-form mean and covariance:
+
+$$
+\boldsymbol{\mu}_* = \mathbf{K}_*^{\top}\big(\mathbf{K} + \sigma_n^2\mathbf{I}\big)^{-1}\mathbf{y}
+$$
+
+$$
+\boldsymbol{\Sigma}_* = \mathbf{K}_{**} - \mathbf{K}_*^{\top}\big(\mathbf{K} + \sigma_n^2\mathbf{I}\big)^{-1}\mathbf{K}_*
+$$
+
+where $\mathbf{K} = k(\mathbf{X},\mathbf{X})$, $\mathbf{K}_* = k(\mathbf{X}, \mathbf{X}_*)$, and $\mathbf{K}_{**} = k(\mathbf{X}_*, \mathbf{X}_*)$. The viz plots exactly this — the mean curve and the $\pm 2\sigma$ band:
+
+<GaussianProcessViz />
+
+<Callout type="tip" title="The band pinches at the data, balloons away from it">
+  At an observed point the posterior variance drops to ~the noise level (the model has seen it). Between and beyond observations the variance grows back toward the prior $\sigma_f^2$. That's a GP being honest: "I'm confident here because I have data; I'm unsure there because I don't." The length-scale $\ell$ sets how quickly confidence decays as you move away from a point.
+</Callout>
+
+## The kernel is the prior over functions
+
+Changing the kernel changes what functions are *a priori* plausible — it's how you inject assumptions:
+
+| Kernel | Encodes | Use |
+|---|---|---|
+| RBF / squared-exp | very smooth functions | default, smooth signals |
+| Matérn | rougher, finitely-differentiable | physical processes |
+| Periodic | repeating structure | seasonality |
+| Linear | straight-line trends | recovers Bayesian linear regression |
+
+Kernels **compose**: sum and product of kernels are kernels, so you can build "smooth + periodic + linear trend." The kernel hyperparameters ($\ell$, $\sigma_f^2$, $\sigma_n^2$) are typically fit by maximizing the **marginal likelihood** — the GP's built-in, automatic Occam's razor that balances fit against smoothness.
+
+## Strengths and the big limitation
+
+- ✅ **Calibrated uncertainty everywhere**, exact Bayesian inference in closed form, works with very little data, no architecture to design — just a kernel.
+- ❌ **Cubic cost.** Computing $(\mathbf{K} + \sigma_n^2\mathbf{I})^{-1}$ is $O(N^3)$ in the number of training points and $O(N^2)$ memory. Beyond ~10⁴ points you need **sparse/inducing-point approximations** (e.g. SVGP) or it becomes infeasible.
+
+<Callout type="info" title="GP = Bayesian linear regression with infinite features">
+  A GP with an RBF kernel is equivalent to Bayesian linear regression using *infinitely many* basis functions (the kernel trick — same idea as SVMs). That's why it's non-parametric: the "weights" live in an infinite-dimensional space, but the kernel lets you work with the finite $N\times N$ matrix instead.
+</Callout>
+
+## Common mistakes
+
+1. **Treating the GP as a point predictor.** The variance is the point — using only $\boldsymbol{\mu}_*$ wastes what makes a GP valuable.
+2. **Mis-set length-scale.** Too small → overfits, wild uncertainty between points; too large → oversmooths and ignores real structure. Fit it by marginal likelihood, don't eyeball it.
+3. **Ignoring the $O(N^3)$ wall.** A dense GP silently fails to scale; switch to inducing-point methods for big data.
+4. **Forgetting the noise term $\sigma_n^2$.** Without it the GP interpolates every point exactly (overfitting noisy data) and the kernel matrix can be singular.
+
+## Key takeaways
+
+- A **Gaussian process** is a distribution over functions: any finite set of function values is jointly Gaussian, defined by a **mean** and a **kernel** $k(\mathbf{x},\mathbf{x}')$.
+- The kernel *is* the prior — it sets correlation/smoothness; the **length-scale** $\ell$ controls how fast confidence decays away from data.
+- The **posterior** mean and variance are **closed-form**; the $\pm2\sigma$ band pinches at observations and widens where there's no data.
+- GPs give calibrated uncertainty with little data but cost $O(N^3)$ — use inducing-point approximations at scale.
+
+## Related concepts
+
+- [**Bayesian Linear Regression**](/courses/bayesian-methods/01-bayesian-linear-regression) — the parametric special case; a GP is its infinite-feature limit
+- [**Kernel Trick**](/courses/svm/02-kernel-trick) — the same "work via a kernel instead of explicit features" idea
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the multivariate Gaussian a GP is built from
+
+<Exercise id="bayes-gp-kernel" />
+<Exercise id="bayes-gp-posterior" />
+<Exercise id="bayes-gp-cost" />

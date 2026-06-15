@@ -7240,6 +7240,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It shrinks away from data, not grows", isCorrect: false },
     ],
   },
+  {
+    id: "bayes-gp-kernel",
+    type: "multiple-choice",
+    question:
+      "In a Gaussian process, what does the kernel function k(x, x′) specify?",
+    hint: "It's what makes the GP a *prior over functions*.",
+    explanation:
+      "The kernel specifies the covariance between the function's values at x and x′ — how correlated the outputs are. Nearby inputs (high covariance) produce similar outputs, giving smooth functions. The kernel IS the model: it encodes the prior assumptions (smoothness via the RBF length-scale, periodicity, trends), and choosing it is how you inject domain knowledge.",
+    options: [
+      { id: "a", label: "The covariance between function values at x and x′ — the prior's notion of smoothness/correlation", isCorrect: true },
+      { id: "b", label: "The learning rate of gradient descent", isCorrect: false },
+      { id: "c", label: "The number of training points", isCorrect: false },
+      { id: "d", label: "The observation noise level only", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-gp-posterior",
+    type: "multiple-choice",
+    question:
+      "A GP posterior's ±2σ uncertainty band behaves how, as you move across the input space?",
+    hint: "Where has the model actually seen data?",
+    explanation:
+      "The band pinches toward the noise floor at observed points (the model is confident there) and widens between and beyond them toward the prior variance (it has no data there). This location-dependent, calibrated uncertainty is the defining benefit of a GP over a point predictor.",
+    options: [
+      { id: "a", label: "It pinches small at observations and widens where there's no data", isCorrect: true },
+      { id: "b", label: "It is constant everywhere", isCorrect: false },
+      { id: "c", label: "It is widest exactly at the data points", isCorrect: false },
+      { id: "d", label: "It is zero everywhere once you have any data", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-gp-cost",
+    type: "multiple-choice",
+    question:
+      "What is the main scalability limitation of exact Gaussian process regression with N training points?",
+    hint: "It involves inverting an N×N kernel matrix.",
+    explanation:
+      "Exact GP inference inverts (or factorizes) the N×N kernel matrix K + σ²I, costing O(N³) time and O(N²) memory. This makes dense GPs infeasible much beyond ~10⁴ points, motivating sparse / inducing-point approximations (e.g. SVGP) that summarize the data with far fewer pseudo-points.",
+    options: [
+      { id: "a", label: "O(N³) time and O(N²) memory from inverting the N×N kernel matrix", isCorrect: true },
+      { id: "b", label: "It needs O(N) GPUs", isCorrect: false },
+      { id: "c", label: "It cannot use more than 2 input dimensions", isCorrect: false },
+      { id: "d", label: "It requires the data to be sorted, costing O(N log N)", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
