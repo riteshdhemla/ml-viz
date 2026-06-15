@@ -1,0 +1,104 @@
+---
+title: "Statistical Inference & Confidence Intervals"
+description: "From a sample to a claim about the world — sampling distributions, the standard error, the Central Limit Theorem, and confidence intervals that quantify how sure you can be."
+order: 6
+type: concept
+estimatedMinutes: 16
+---
+
+# Statistical Inference & Confidence Intervals
+
+You never measure the whole population — you measure a *sample* and try to say something about the whole. A model's accuracy on a test set, an A/B test's conversion lift, a poll's support level: each is an estimate from limited data, and each comes with uncertainty. **Statistical inference** is the discipline of turning a sample into a quantified claim about the population. This lesson builds the machinery — sampling distributions, the standard error, and confidence intervals — that the next lesson's hypothesis tests rely on.
+
+**Real-world examples:** reporting a model's accuracy as "92% ± 1.5%"; deciding whether an A/B test's 2-point lift is real or noise; estimating click-through rate from a day's traffic; error bars on every benchmark you've ever trusted.
+
+## Statistic, estimator, and sampling distribution
+
+A **statistic** is any number computed from a sample — the sample mean $\bar{x}$, a proportion $\hat{p}$, a model's measured accuracy. Because the sample is random, the statistic is itself a random variable: draw a different sample and you get a slightly different value.
+
+The distribution of a statistic across all possible samples is its **sampling distribution**. Its spread is what tells you how much your single estimate might wobble.
+
+$$
+\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_i \quad\text{is one draw from the sampling distribution of the mean.}
+$$
+
+## The standard error
+
+The **standard error (SE)** is the standard deviation of a statistic's sampling distribution — how much the estimate varies from sample to sample. For the sample mean of data with population standard deviation $\sigma$:
+
+$$
+\boxed{\;\text{SE}(\bar{x}) = \frac{\sigma}{\sqrt{n}}\;}
+$$
+
+The $\sqrt{n}$ is the central fact of inference: **to halve your uncertainty you need four times the data.** Diminishing returns are baked in.
+
+<Callout type="warning" title="Standard deviation ≠ standard error">
+  $\sigma$ describes the spread of *individual data points*; SE describes the spread of an *estimate computed from $n$ points*. SE is always smaller (by $\sqrt{n}$) and shrinks with more data, while $\sigma$ is a fixed property of the population.
+</Callout>
+
+## The Central Limit Theorem
+
+Why is the normal distribution everywhere in statistics? The **Central Limit Theorem (CLT)**: the sampling distribution of the mean approaches a normal distribution as $n$ grows, **regardless of the population's shape**.
+
+$$
+\bar{x} \;\xrightarrow{\;n\to\infty\;}\; \mathcal{N}\!\left(\mu,\; \frac{\sigma^2}{n}\right)
+$$
+
+The viz below draws samples from a deliberately skewed population. For $n=1$ the means just reproduce that skew; raise $n$ and the histogram of sample means becomes bell-shaped and narrows, tracking the predicted normal — exactly as the CLT promises.
+
+<SamplingDistributionViz />
+
+This is what licenses using normal-based tools (z-scores, confidence intervals, z-tests) even when the underlying data is not normal — as long as $n$ is reasonably large.
+
+## Confidence intervals
+
+A point estimate ("accuracy = 92%") hides its uncertainty. A **confidence interval (CI)** reports a *range* of plausible values. Using the CLT, a $95\%$ CI for the mean is:
+
+$$
+\bar{x} \;\pm\; z^{*}\cdot \text{SE}, \qquad z^{*} = 1.96 \text{ for } 95\%
+$$
+
+The multiplier $z^*$ comes from the normal distribution: $95\%$ of its mass lies within $1.96$ standard deviations of the mean. Common values: $z^* = 1.645$ for $90\%$, $1.96$ for $95\%$, $2.576$ for $99\%$.
+
+<Callout type="info" title="What '95% confidence' actually means">
+  It is a statement about the *procedure*, not about one interval. If you repeated the whole sample-and-compute-interval process many times, about $95\%$ of the resulting intervals would contain the true parameter. It is **not** correct to say "there's a 95% probability the true value is in *this* interval" — the true value is fixed; the interval is what's random.
+</Callout>
+
+**Worked example.** A model scores $88\%$ accuracy on $n = 400$ test examples. Treating each prediction as a Bernoulli trial, $\text{SE} = \sqrt{\hat p(1-\hat p)/n} = \sqrt{0.88\cdot0.12/400} \approx 0.0162$. The $95\%$ CI is $0.88 \pm 1.96(0.0162) = [0.848,\, 0.912]$. So "$88\%$" really means "somewhere around $85$–$91\%$" — and a competitor at $90\%$ may not be meaningfully better.
+
+```python
+import numpy as np
+
+def accuracy_ci(correct, n, z_star=1.96):
+    p_hat = correct / n
+    se = np.sqrt(p_hat * (1 - p_hat) / n)   # SE of a proportion
+    return p_hat, (p_hat - z_star * se, p_hat + z_star * se)
+
+p_hat, (lo, hi) = accuracy_ci(correct=352, n=400)   # 88% on 400 examples
+print(f"accuracy {p_hat:.3f}, 95% CI [{lo:.3f}, {hi:.3f}]")   # [0.848, 0.912]
+# A model reporting 0.90 sits inside this interval — not clearly better.
+```
+
+## Common mistakes
+
+1. **Confusing SE with SD** — error bars on a *mean* use SE ($\sigma/\sqrt{n}$), not the raw $\sigma$.
+2. **Reporting a point estimate with no interval** — "92% accuracy" on 50 examples is far shakier than on 50,000; the CI makes that visible.
+3. **Misreading a CI** — the $95\%$ refers to the long-run procedure, not the probability that one fixed interval caught the value.
+4. **Assuming normality for tiny $n$** — the CLT needs a reasonable sample size; for very small $n$ (and unknown $\sigma$) use the $t$-distribution instead.
+
+## Key takeaways
+
+- A **statistic** computed from a random sample has a **sampling distribution**; its spread is the **standard error**, $\text{SE} = \sigma/\sqrt{n}$.
+- Uncertainty shrinks only as $\sqrt{n}$ — **4× the data for half the error**.
+- The **Central Limit Theorem** makes the sampling distribution of the mean approximately normal regardless of the population's shape, which justifies normal-based inference.
+- A **confidence interval** $\bar{x} \pm z^{*}\,\text{SE}$ reports a plausible range; "95% confidence" describes the procedure's long-run coverage, not a single interval.
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the normal distribution the CLT and CIs rely on
+- [**Hypothesis Testing**](/courses/probability-statistics/07-hypothesis-testing) — turning these intervals and standard errors into formal decisions
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — the point-estimation counterpart to interval estimation
+
+<Exercise id="stats-standard-error" />
+<Exercise id="stats-clt" />
+<Exercise id="stats-confidence-interval" />
