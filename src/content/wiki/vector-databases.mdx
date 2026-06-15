@@ -1,0 +1,92 @@
+---
+title: "Vector Databases & ANN Indexes"
+description: "How vector databases search millions of embeddings in milliseconds — exact kNN vs the approximate-nearest-neighbour index families (IVF, HNSW, product quantization), the recall/latency trade-off, and metadata filtering."
+topics: ["nlp"]
+relatedLessons:
+  - "building-with-llms/03-embeddings-and-semantic-search"
+  - "building-with-llms/04-retrieval-augmented-generation"
+estimatedMinutes: 11
+---
+
+# Vector Databases & ANN Indexes
+
+The [embeddings lesson](/courses/building-with-llms/03-embeddings-and-semantic-search) turns text into vectors and ranks them by cosine similarity. That works fine for a few thousand documents. At a few **million**, scoring the query against every vector — exact $k$-nearest-neighbour — is too slow for an interactive request. A **vector database** is a system built around an **Approximate Nearest Neighbour (ANN)** index that returns *most* of the true neighbours in a fraction of the time, plus the operational machinery (persistence, metadata filtering, updates, sharding) a production retriever needs.
+
+## The cost of exact search
+
+Exact kNN scans all $N$ vectors of dimension $d$:
+
+$$
+\text{cost} = O(N \cdot d) \quad\text{per query}
+$$
+
+At $N = 10^7$ and $d = 768$ that is ~$8\times10^9$ multiply-adds **per query** — tens to hundreds of milliseconds, and it grows linearly with the corpus. ANN indexes break the linear-in-$N$ scan by only looking at a small, cleverly chosen subset of candidates.
+
+<Callout type="warning" title="The fundamental trade-off">
+  ANN returns *most* of the true neighbours, *most* of the time. Every index exposes a knob (cells probed, graph search width) that trades **recall** (fraction of true top-$k$ you actually find) against **latency**. There is no free lunch — you choose the operating point.
+</Callout>
+
+## Distance metrics
+
+The index is built for a specific metric; mixing them silently returns garbage.
+
+| Metric | Formula | When |
+|---|---|---|
+| Cosine | $1 - \frac{\mathbf{a}\cdot\mathbf{b}}{\lVert\mathbf{a}\rVert\lVert\mathbf{b}\rVert}$ | most text embeddings (direction = topic) |
+| Dot product | $-\,\mathbf{a}\cdot\mathbf{b}$ | when magnitude is meaningful (some trained retrievers) |
+| Euclidean ($L_2$) | $\lVert\mathbf{a}-\mathbf{b}\rVert$ | image/spatial embeddings |
+
+**Trick:** if you $L_2$-normalize every vector once at insert time, cosine ranking and dot-product ranking become identical, so the index can use the faster dot product.
+
+## The index families
+
+**Flat (brute force).** No index — scan everything. *Exact* (100% recall), simple, but $O(N)$. The right choice below ~10⁴–10⁵ vectors, and the ground truth you measure other indexes against.
+
+**IVF (Inverted File).** Cluster all vectors into $n_{\text{list}}$ cells with k-means (the cell centroids are a *coarse quantizer*). At query time, find the `nprobe` nearest centroids and search **only** the vectors in those cells:
+
+$$
+\text{candidates} \approx N \cdot \frac{n_{\text{probe}}}{n_{\text{list}}} \;\ll\; N
+$$
+
+`nprobe` is the recall/latency knob: `nprobe = nlist` recovers exact search; `nprobe = 1` is fastest but misses neighbours that fall just across a cell boundary.
+
+**HNSW (Hierarchical Navigable Small World).** A multi-layer proximity graph. Search starts at a sparse top layer, greedily hops toward the query, then descends into denser layers — like a skip-list for geometry. Gives excellent recall at low latency and is the default in most modern vector DBs; the cost is high memory and slower inserts. Knobs: `M` (edges per node) and `efSearch` (candidate-list width during search).
+
+**Product Quantization (PQ).** A *compression* layer, usually combined with IVF (`IVF-PQ`). Split each vector into $m$ sub-vectors, k-means each subspace into 256 centroids, store each sub-vector as a 1-byte centroid id. A 768-dim float32 vector (3072 bytes) shrinks to ~$m$ bytes — ~100× smaller — so billion-scale indexes fit in RAM. Distances are approximated from small lookup tables; recall drops, so PQ is typically used to *shortlist* candidates that are then re-ranked with exact vectors.
+
+| Index | Recall | Latency | Memory | Build/insert |
+|---|:---:|:---:|:---:|:---:|
+| Flat | exact | high | low | trivial |
+| IVF | tunable | low | low | k-means once |
+| HNSW | very high | very low | high | slow |
+| IVF-PQ | lower | very low | very low | k-means ×(m+1) |
+
+## Beyond the index: what a vector DB adds
+
+- **Metadata filtering** — "nearest neighbours *where* `tenant = 42 AND year ≥ 2023`". Naive post-filtering can empty your top-$k$; production engines do *filtered ANN* that respects the predicate during the search.
+- **Hybrid search** — fuse ANN scores with a keyword (BM25) score so exact IDs and rare tokens still match (the embeddings lesson's hybrid search).
+- **CRUD + persistence + sharding** — add/delete/update vectors, snapshot to disk, and scale across machines. HNSW in particular makes deletes awkward, which is a real operational concern.
+
+## Worked intuition: IVF candidate count
+
+$N = 1{,}000{,}000$ vectors, $n_{\text{list}} = 1000$ cells (so ~1000 vectors each). With `nprobe = 10`:
+
+$$
+\text{candidates} \approx 1{,}000{,}000 \cdot \tfrac{10}{1000} = 10{,}000
+$$
+
+You score 10k vectors instead of 1M — a **100× speedup** — at the cost of missing any true neighbour whose vector landed in one of the 990 un-probed cells. Raising `nprobe` to 50 scores 50k vectors and recovers most of that lost recall.
+
+## Common mistakes
+
+1. **Treating ANN as exact.** Always measure recall@k against a flat-index ground truth on a sample before trusting it.
+2. **Index/metric mismatch.** Building for $L_2$ then querying with cosine (or comparing vectors from two different embedding models) returns nonsense.
+3. **Forgetting to normalize** when your similarity assumes unit vectors.
+4. **Post-filtering instead of filtered search.** Retrieving top-$k$ and *then* applying a strict metadata filter can return far fewer than $k$ results; push the filter into the search.
+5. **Re-tuning nothing.** `nprobe`/`efSearch` ship at conservative defaults; the right value depends on your recall target and corpus.
+
+## Related concepts
+
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — where the vectors and cosine similarity come from
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the vector DB is the retriever that feeds an LLM
+- [**Clustering**](/courses/clustering/01-k-means) — k-means is the coarse quantizer inside IVF and PQ
