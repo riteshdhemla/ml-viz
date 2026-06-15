@@ -6130,6 +6130,51 @@ const allExercises: Exercise[] = [
     correctRange: [140, 160],
     unit: "expected clicks forgone",
   },
+  // ── ML in Practice — Monitoring & Observability ──────
+  {
+    id: "monitoring-percentiles",
+    type: "multiple-choice",
+    question:
+      "Your model server's dashboard shows a steady **mean latency of 80 ms** and the alert threshold on the mean is 150 ms. Customer support has been getting complaints all week about the product being 'unusably slow sometimes.' What is the most likely diagnosis, and what should you change about the alerting?",
+    hint: "The mean averages every request together. What kind of distribution can produce an 80 ms mean and a still-unhappy user?",
+    explanation:
+      "The mean smears every request together — 99 % fast responses plus 1 % multi-second timeouts produces an excellent-looking mean and a terrible user experience. A tiny fraction of users hitting the tail represents real complaints; the mean cannot see them. The right metric to alert on is a tail percentile — p95 or p99 — because that is where the slow path lives. The standard SRE move is to set the SLO and alert against p99 (or p99.9 if traffic is large enough that 0.1 % is many users per minute) instead of the mean. (A) misreads the symptom: customer support is reporting real slowness, not anxious users. (C) is true in some setups but the *primary* fix is to change the metric you alert on, not to add a synthetic check. (D) is the opposite of what you want — alerting on the median makes the blind spot worse, not better.",
+    options: [
+      { id: "a", label: "The users are misperceiving normal latency — 80 ms is plenty fast, no change is needed and you should educate customer support.", isCorrect: false },
+      { id: "b", label: "The mean is averaging away a long tail: a small fraction of requests are taking seconds, and those slow requests are exactly the user complaints. Replace the mean-latency alert with a p95 or p99 alert against the SLO so the tail is what triggers the page.", isCorrect: true },
+      { id: "c", label: "The latency metric is correct but the alert is missing a synthetic probe — add a synthetic check that hits the endpoint every minute and alert on its mean.", isCorrect: false },
+      { id: "d", label: "Switch the alert from the mean to the median; the median is more robust to outliers and will give a more accurate picture of user experience.", isCorrect: false },
+    ],
+  },
+  {
+    id: "monitoring-psi",
+    type: "slider",
+    question:
+      "A feature is binned into 4 bins. At training time the bin probabilities were $p = [0.4, 0.3, 0.2, 0.1]$. In production today they are $q = [0.25, 0.25, 0.25, 0.25]$. Compute the **Population Stability Index** $\\mathrm{PSI} = \\sum_i (p_i - q_i) \\log(p_i / q_i)$ using the natural log. Round to two decimal places.",
+    hint: "Sum four terms. For each bin: $(p_i - q_i) \\cdot \\ln(p_i / q_i)$. Most bins will contribute a small positive number; some can contribute zero or be slightly negative cancellations — but PSI as written is always non-negative because $(p - q)$ and $\\log(p/q)$ share a sign.",
+    explanation:
+      "Compute bin by bin: bin 1 contributes $(0.40 - 0.25)\\ln(0.40 / 0.25) = 0.15 \\cdot 0.4700 \\approx 0.0705$; bin 2 contributes $(0.30 - 0.25)\\ln(0.30 / 0.25) = 0.05 \\cdot 0.1823 \\approx 0.0091$; bin 3 contributes $(0.20 - 0.25)\\ln(0.20 / 0.25) = -0.05 \\cdot (-0.2231) \\approx 0.0112$; bin 4 contributes $(0.10 - 0.25)\\ln(0.10 / 0.25) = -0.15 \\cdot (-0.9163) \\approx 0.1374$. Total $\\approx 0.0705 + 0.0091 + 0.0112 + 0.1374 \\approx 0.228$. By the standard rules of thumb (<0.1 stable, 0.1–0.25 watch, >0.25 act) this lands squarely in the **watch zone** — investigate the cause but don't necessarily retrain yet. Note that PSI is always non-negative because the two factors $(p - q)$ and $\\log(p/q)$ share a sign for every bin; that's why the negative-looking bins still contribute positively to the sum.",
+    min: 0.0,
+    max: 1.0,
+    step: 0.01,
+    correctRange: [0.20, 0.26],
+    unit: "PSI",
+  },
+  {
+    id: "monitoring-alert-budget",
+    type: "multiple-choice",
+    question:
+      "Your team has a 99.9 % availability SLO over 30 days. Your on-call gets paged every time the rolling 5-minute error rate exceeds 0.1 % — the raw threshold matching the SLO. After two months the on-call says they're burning out: most pages are transient spikes that recover on their own. What's the standard fix that the Google SRE workbook recommends?",
+    hint: "What you want is to page on incidents that will actually exhaust the error budget, not on noise. Think about *how fast* the budget is being burned and over *what window*.",
+    explanation:
+      "The standard fix is **multi-window, multi-burn-rate** alerts: page only when the burn rate is fast enough that you'll exhaust the monthly error budget within a short period, and use multiple time windows to balance sensitivity against noise. A common pattern: page when the rolling 1-hour error rate is burning the budget at 14× (you'd be out of budget in about 2 days at that rate) AND the rolling 5-minute window confirms it's still elevated; open a ticket (don't page) when the 6-hour rate is at ~1× (steady leak that needs investigation but not a 3 a.m. wake-up). This filters out the transient spikes that recover on their own — they don't sustain a 14× burn rate over an hour — while still catching real incidents quickly. (A) just makes the same alert noisier in the other direction (more missed incidents). (B) ignores the actual SRE principle and replaces signal with sleep deprivation. (D) is a real practice but separate from the SLO/budget question; runbooks help once a page fires but don't fix alert noise.",
+    options: [
+      { id: "a", label: "Lower the threshold from 0.1 % to 0.05 % so the alert fires earlier — earlier alerts give more time to investigate before the budget burns down.", isCorrect: false },
+      { id: "b", label: "Remove the alert entirely on weekends and overnight — the on-call should only respond during business hours, when issues can be triaged.", isCorrect: false },
+      { id: "c", label: "Switch to multi-window, multi-burn-rate alerts: page when the 1-hour burn rate is at 14× (will exhaust the monthly budget in ~2 days) and open a ticket — not a page — when the 6-hour burn rate is at 1× (steady leak, investigate during the day). Transient spikes don't sustain a 14× burn rate over an hour, so they stop paging.", isCorrect: true },
+      { id: "d", label: "Add a runbook to every alert and rotate the on-call schedule; the noise problem is a culture/process issue, not a metrics issue.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
