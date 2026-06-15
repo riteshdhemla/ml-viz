@@ -1,0 +1,99 @@
+---
+title: "Deep & Two-Tower Recommenders"
+description: "Scaling recommendation to billions of items — neural collaborative filtering, the two-tower retrieval architecture, the retrieval-then-ranking funnel, and serving with approximate nearest neighbors."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Deep & Two-Tower Recommenders
+
+Matrix factorization is linear and tied to a fixed set of users and items. Modern industrial recommenders are **neural**: they learn rich embeddings from features, model nonlinear interactions, and — crucially — are built to retrieve from **billions** of items in milliseconds. This lesson covers the architecture that makes web-scale recommendation work: the **two-tower** model, and the **retrieval → ranking** funnel it sits in.
+
+**Real-world examples:** YouTube's candidate generation, Google Play and the TensorFlow Recommenders two-tower models, Pinterest's PinSage, and essentially every large-scale "for you" feed.
+
+## Neural collaborative filtering
+
+The first step beyond matrix factorization: keep the learned user/item **embeddings**, but replace the fixed dot product with a learned function. Concatenate the embeddings (plus any side features) and feed them through an MLP:
+
+$$
+\hat{y}_{ui} = \text{MLP}\big([\,\mathbf{e}_u \,\Vert\, \mathbf{e}_i \,\Vert\, \mathbf{x}_{\text{features}}\,]\big)
+$$
+
+This adds **nonlinearity** (the MLP can model interactions a dot product can't) and lets you fold in **side features** (user demographics, item metadata, context like time of day) — directly softening cold start, since a brand-new item still has features even with no interactions.
+
+<Callout type="warning" title="Expressive, but you can't score billions of items with it">
+  An MLP over the concatenated pair must be evaluated *per candidate item*. Scoring every one of a billion items for every request is impossible in real time. This is the central scaling problem — and why the two-tower architecture exists.
+</Callout>
+
+## The two-tower architecture
+
+A **two-tower** (dual-encoder) model keeps the user and item encoders **separate** so the expensive item work can be done **offline**:
+
+- A **user/query tower** maps the user + context to an embedding $\mathbf{u} \in \mathbb{R}^d$.
+- An **item/candidate tower** maps each item to an embedding $\mathbf{v} \in \mathbb{R}^d$ in the *same* space.
+- The score is a simple **dot product** (or cosine) $s(u,i) = \mathbf{u}^{\top}\mathbf{v}$.
+
+$$
+\mathbf{u} = f_{\theta}(\text{user, context}), \quad \mathbf{v} = g_{\phi}(\text{item}), \quad \text{score} = \mathbf{u}^{\top}\mathbf{v}
+$$
+
+Because the towers don't interact until the final dot product, you can **precompute every item embedding offline** and store them in a vector index. At request time you embed only the user once, then find the nearest item vectors.
+
+<Callout type="tip" title="Two-tower = matrix factorization, generalized">
+  Replace each tower with a plain embedding lookup and the two-tower model *is* matrix factorization. The towers generalize it: they're arbitrary networks over *features*, so they handle cold start and context, while keeping MF's all-important property that scoring is a dot product in a shared space.
+</Callout>
+
+## Training: in-batch negatives
+
+Two-tower retrieval models are trained with a **contrastive** objective: pull a user toward the items they engaged with, push them away from items they didn't. The efficient trick is **in-batch negatives** — for a batch of $B$ positive (user, item) pairs, treat the *other* $B-1$ items in the batch as negatives for each user, via a softmax over in-batch dot products:
+
+$$
+\mathcal{L} = -\sum_{i=1}^{B} \log \frac{\exp(\mathbf{u}_i^{\top}\mathbf{v}_i)}{\sum_{j=1}^{B}\exp(\mathbf{u}_i^{\top}\mathbf{v}_j)}
+$$
+
+This is the same contrastive idea as CLIP/embedding training — one forward pass yields $B$ positives and $B(B-1)$ negatives for free.
+
+## Retrieval then ranking
+
+No single model both scans billions of items *and* scores each one richly. Production recommenders are a **funnel**:
+
+| Stage | Model | Candidates | Goal |
+|---|---|---|---|
+| **Retrieval** | two-tower + ANN | billions → ~hundreds | cheap, high-recall shortlist |
+| **Ranking** | heavy cross-feature model (e.g. NCF / GBDT / DLRM) | hundreds → ~10 | precise ordering of the shortlist |
+| (Re-ranking) | business rules, diversity | ~10 | freshness, dedup, fairness |
+
+Retrieval optimizes **recall** (don't miss good items) cheaply; ranking optimizes **precision/NDCG** (get the order right) expensively, but only on the small shortlist where it's affordable.
+
+## Serving with approximate nearest neighbors
+
+The retrieval step — "find the item vectors closest to this user vector" — is exactly the **ANN search** problem. Item embeddings live in a vector index (HNSW/IVF); a query embedding is matched against them in milliseconds.
+
+<WikiLink slug="vector-databases" title="Vector Databases & ANN Indexes" />
+
+This is why two-tower retrieval and vector databases are inseparable: the architecture is *designed* so retrieval reduces to nearest-neighbor lookup over precomputed item vectors.
+
+## Common mistakes
+
+1. **Using a cross-feature MLP for retrieval.** It can't precompute item embeddings, so it can't scan billions of items — use it for *ranking* the shortlist, not retrieval.
+2. **Forgetting the two towers must share an embedding space.** User and item vectors are only comparable by dot product if trained jointly into the same space.
+3. **Sampling negatives poorly.** All-random negatives are too easy; in-batch (and hard) negatives give a far stronger training signal.
+4. **Skipping the ranking stage.** Retrieval alone gives a high-recall but loosely-ordered list; a ranker is what makes the top few great.
+
+## Key takeaways
+
+- **Neural CF** replaces MF's dot product with an MLP over concatenated embeddings + side features — more expressive and cold-start-friendly, but must be scored per item.
+- The **two-tower** model keeps user and item encoders separate so item embeddings are **precomputed offline** and scoring stays a dot product in a shared space — MF, generalized to features.
+- Train retrieval with a **contrastive in-batch-negative** objective; it's the CLIP-style trick reused for recommendation.
+- Web-scale recsys is a **retrieval (two-tower + ANN, high recall) → ranking (heavy model, high precision)** funnel; retrieval *is* nearest-neighbor search over item vectors.
+
+## Related concepts
+
+- [**Matrix Factorization**](/courses/recommender-systems/02-matrix-factorization) — the linear dot-product model the two towers generalize
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the embedding + ANN retrieval the item tower relies on
+- [**Training Embedding Models**](/courses/nlp/07-training-embedding-models) — the contrastive in-batch-negative objective, shared with two-tower training
+
+<Exercise id="recsys-two-tower" />
+<Exercise id="recsys-retrieval-ranking" />
+<Exercise id="recsys-neural-cf" />

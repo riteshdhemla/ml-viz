@@ -7075,6 +7075,126 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It removes the cold-start problem", isCorrect: false },
     ],
   },
+  {
+    id: "recsys-two-tower",
+    type: "multiple-choice",
+    question:
+      "Why does a two-tower recommender keep the user and item encoders separate, scoring only with a dot product at the end?",
+    hint: "What can you do offline if the towers never interact until the final dot product?",
+    explanation:
+      "Because the towers don't interact until the final dot product, every item's embedding can be computed offline once and stored in a vector index. At request time you embed only the user, then find nearest item vectors — making it feasible to retrieve from billions of items. A model that mixes user and item features early would have to be re-run per candidate item.",
+    options: [
+      { id: "a", label: "So item embeddings can be precomputed offline and retrieval becomes nearest-neighbor search", isCorrect: true },
+      { id: "b", label: "So the model needs no training data", isCorrect: false },
+      { id: "c", label: "So it avoids using embeddings entirely", isCorrect: false },
+      { id: "d", label: "Because dot products are more accurate than any other scorer", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-retrieval-ranking",
+    type: "multiple-choice",
+    question:
+      "Industrial recommenders use a retrieval stage then a ranking stage. What is each stage optimized for?",
+    hint: "Billions → hundreds, then hundreds → ten.",
+    explanation:
+      "Retrieval (two-tower + ANN) cheaply narrows billions of items to a few hundred candidates, optimizing recall — don't miss good items. Ranking then applies a heavier cross-feature model to that small shortlist, optimizing precision/NDCG — get the order right. Splitting the work is what makes web-scale recommendation tractable.",
+    options: [
+      { id: "a", label: "Retrieval = cheap high-recall shortlist; ranking = precise ordering of that shortlist", isCorrect: true },
+      { id: "b", label: "Retrieval = precise ordering; ranking = cheap shortlist", isCorrect: false },
+      { id: "c", label: "Both stages do the same thing for redundancy", isCorrect: false },
+      { id: "d", label: "Retrieval ranks ads; ranking retrieves organic items", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-neural-cf",
+    type: "multiple-choice",
+    question:
+      "Neural collaborative filtering feeds concatenated user/item embeddings (plus side features) through an MLP. What does this add over plain matrix factorization, and what does it cost?",
+    hint: "More expressive — but can you precompute item scores?",
+    explanation:
+      "The MLP adds nonlinearity (interactions a dot product can't capture) and lets you include side features (helping cold start). The cost: the model must be evaluated per candidate item, so it can't precompute item embeddings or scan billions of items — which is why it's used for ranking a shortlist, not for retrieval.",
+    options: [
+      { id: "a", label: "Adds nonlinearity and side features, but must be scored per item (so it's for ranking, not retrieval)", isCorrect: true },
+      { id: "b", label: "Makes the model linear and faster to serve at scale", isCorrect: false },
+      { id: "c", label: "Eliminates the need for any embeddings", isCorrect: false },
+      { id: "d", label: "Removes the need for negative sampling", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-feedback",
+    type: "multiple-choice",
+    question:
+      "Which is an example of IMPLICIT feedback?",
+    hint: "Stated preference vs inferred behavior.",
+    explanation:
+      "A click (or watch, purchase, dwell time) is implicit feedback — preference inferred from behavior, abundant but noisy and lacking true negatives. A star rating, thumbs up, or written review is explicit feedback — a stated preference, clearer but sparser and costlier to collect.",
+    options: [
+      { id: "a", label: "A user clicking and watching a video to completion", isCorrect: true },
+      { id: "b", label: "A user giving a movie 4 out of 5 stars", isCorrect: false },
+      { id: "c", label: "A user writing a product review", isCorrect: false },
+      { id: "d", label: "A user pressing the thumbs-down button", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-cf",
+    type: "multiple-choice",
+    question:
+      "What is the defining characteristic of collaborative filtering compared to content-based filtering?",
+    hint: "What data does it use — item features, or the interaction matrix?",
+    explanation:
+      "Collaborative filtering recommends based on the patterns in the user–item interaction matrix ('users like you also liked X') and uses no item features. Content-based filtering instead uses item features to recommend items similar to ones the user already liked. CF discovers novel cross-domain items but suffers cold start; content-based handles new items but risks filter bubbles.",
+    options: [
+      { id: "a", label: "It uses only the interaction matrix (who liked what), not item features", isCorrect: true },
+      { id: "b", label: "It requires detailed item feature descriptions", isCorrect: false },
+      { id: "c", label: "It never suffers from cold start", isCorrect: false },
+      { id: "d", label: "It can only use explicit ratings", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-ndcg",
+    type: "multiple-choice",
+    question:
+      "What does the logarithmic discount in NDCG accomplish?",
+    hint: "Compare a relevant item at rank 1 vs rank 10.",
+    explanation:
+      "The 1/log2(rank+1) discount makes a relevant item near the top of the list count for much more than the same item lower down, so NDCG rewards good *ordering*, not just presence in the top-k. Normalizing by the ideal DCG puts the score in [0,1]. This matches user experience: the first slot matters far more than the tenth.",
+    options: [
+      { id: "a", label: "It rewards placing relevant items higher in the ranked list", isCorrect: true },
+      { id: "b", label: "It penalizes recommending too many items", isCorrect: false },
+      { id: "c", label: "It converts ratings into clicks", isCorrect: false },
+      { id: "d", label: "It removes the need to know which items are relevant", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-mf",
+    type: "multiple-choice",
+    question:
+      "When training matrix factorization on a sparse rating matrix, why must you fit only the observed entries rather than treating missing entries as 0?",
+    hint: "What does a missing rating actually mean?",
+    explanation:
+      "A missing entry means the rating is unknown, not that the rating is zero. Treating missing as 0 tells the model 'this user dislikes this item,' biasing the learned factors toward predicting low ratings everywhere. Fitting only observed entries (with regularization) lets the low-rank structure correctly interpolate the unknowns.",
+    options: [
+      { id: "a", label: "Missing means unknown, not zero — treating it as 0 biases the factors toward dislike", isCorrect: true },
+      { id: "b", label: "Zeros make the matrix non-invertible", isCorrect: false },
+      { id: "c", label: "Observed entries are always negative", isCorrect: false },
+      { id: "d", label: "It makes training slower with no benefit", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-two-tower",
+    type: "multiple-choice",
+    question:
+      "In a two-tower retrieval model, how is the candidate (item) tower used at serving time?",
+    hint: "When are item embeddings computed relative to the request?",
+    explanation:
+      "Item embeddings are computed offline (in advance) by the item tower and stored in a vector/ANN index. At request time only the user tower runs — once — and its embedding is matched against the precomputed item vectors via nearest-neighbor search. This is what lets retrieval scale to billions of items in milliseconds.",
+    options: [
+      { id: "a", label: "Item embeddings are precomputed offline and stored in an ANN index; only the user tower runs per request", isCorrect: true },
+      { id: "b", label: "Both towers run for every (user, item) pair at request time", isCorrect: false },
+      { id: "c", label: "The item tower runs once per user session", isCorrect: false },
+      { id: "d", label: "The item tower replaces the need for any index", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
