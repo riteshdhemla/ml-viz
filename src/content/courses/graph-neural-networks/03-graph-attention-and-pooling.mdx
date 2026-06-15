@@ -1,0 +1,86 @@
+---
+title: "Graph Attention, Pooling & Over-smoothing"
+description: "Learning which neighbors matter with graph attention, pooling node embeddings into a graph-level prediction, and why deep GNNs collapse — the over-smoothing problem and its fixes."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Graph Attention, Pooling & Over-smoothing
+
+A GCN treats all neighbors equally (up to a degree weight). But not every neighbor is equally informative — a **Graph Attention Network (GAT)** learns *which* neighbors to listen to. This lesson adds attention to message passing, shows how to pool node embeddings into a single **graph-level** prediction, and confronts the failure mode that limits GNN depth: **over-smoothing**.
+
+**Real-world examples:** attention weights highlighting the bonds that make a molecule toxic; graph-level readout classifying whole molecules or scenes; the depth limits that keep production GNNs shallow.
+
+## Graph attention (GAT)
+
+Instead of fixed aggregation weights, GAT computes a **learned attention coefficient** $\alpha_{vu}$ for each neighbor $u$ of node $v$, then aggregates a weighted sum:
+
+$$
+\mathbf{h}_v' = \sigma\Big(\sum_{u \in \mathcal{N}(v)} \alpha_{vu}\, \mathbf{W}\mathbf{h}_u\Big)
+$$
+
+The coefficients come from a small scoring network $a$ over the transformed pair, normalized across the neighborhood with softmax:
+
+$$
+\alpha_{vu} = \frac{\exp\big(\text{LeakyReLU}(a^{\top}[\mathbf{W}\mathbf{h}_v \,\Vert\, \mathbf{W}\mathbf{h}_u])\big)}{\sum_{w \in \mathcal{N}(v)}\exp\big(\text{LeakyReLU}(a^{\top}[\mathbf{W}\mathbf{h}_v \,\Vert\, \mathbf{W}\mathbf{h}_w])\big)}
+$$
+
+This is exactly self-attention (from the transformers course) restricted to the graph's edges — a token attends only to its neighbors instead of all positions.
+
+<Callout type="info" title="GAT vs. GCN in one line">
+  GCN weights a neighbor by a fixed function of degree ($1/\sqrt{d_v d_u}$); GAT weights it by a **learned, content-dependent** $\alpha_{vu}$. Like transformers, GAT uses **multiple attention heads** and concatenates them for stability and expressiveness.
+</Callout>
+
+## Readout: from nodes to a graph
+
+Node-level GNNs output one vector per node. For **graph-level** tasks ("is this molecule toxic?") you need a single vector for the whole graph — a permutation-invariant **readout** (a.k.a. graph pooling) over all node embeddings:
+
+$$
+\mathbf{h}_G = \text{READOUT}\big(\{\mathbf{h}_v : v \in V\}\big) = \text{e.g. } \sum_{v\in V}\mathbf{h}_v \;\text{ or }\; \text{mean}_v\,\mathbf{h}_v
+$$
+
+It must be permutation-invariant (the graph has no node order), so sum/mean/max are the standard choices — sum preserves size information, mean is scale-stable. **Hierarchical** pooling methods (DiffPool, Top-K) instead coarsen the graph in stages, learning to merge nodes into clusters before the final readout.
+
+## Over-smoothing: why GNNs stay shallow
+
+Stack too many message-passing layers and every node ends up aggregating nearly the whole graph; their embeddings converge to **the same vector**, destroying the distinctions you need. This is **over-smoothing**, and it's why most GNNs use only **2–4 layers** — the opposite of the "deeper is better" instinct from CNNs.
+
+$$
+\text{as } k \to \infty:\quad \mathbf{h}_v^{(k)} \to \text{(nearly) the same vector for all } v
+$$
+
+Mitigations:
+
+- **Residual / skip connections** — add the previous layer's representation back, preserving node identity.
+- **Jumping knowledge** — combine representations from *all* layers (not just the last) per node.
+- **Fewer layers** — often the simplest, most effective fix.
+- **Normalization** (PairNorm, etc.) — explicitly keep node embeddings from collapsing together.
+
+<Callout type="warning" title="Receptive field vs. over-smoothing — a real tension">
+  More layers grow the receptive field (good: reach farther neighbors) but worsen over-smoothing (bad: representations collapse). For long-range tasks this tension is fundamental, and is part of why graph **transformers** (global attention without repeated local averaging) have become popular.
+</Callout>
+
+## Common mistakes
+
+1. **Treating GAT attention as global.** It's restricted to each node's neighbors — it does not attend across the whole graph like a transformer.
+2. **Using a non-invariant readout.** Concatenating node embeddings in some order breaks permutation invariance; pool with sum/mean/max.
+3. **Going deep by default.** Beyond ~4 layers, over-smoothing usually hurts; add skip connections or use fewer layers.
+4. **Confusing node- and graph-level outputs.** Graph-level tasks need a readout; forgetting it leaves you with per-node vectors and no graph prediction.
+
+## Key takeaways
+
+- **GAT** learns content-dependent attention weights $\alpha_{vu}$ over neighbors (edge-restricted self-attention), often with multiple heads — vs. GCN's fixed degree weighting.
+- **Readout / graph pooling** turns per-node embeddings into one graph vector with a permutation-invariant op (sum/mean/max) for graph-level tasks.
+- **Over-smoothing** makes node embeddings converge as depth grows, capping practical GNNs at 2–4 layers.
+- Fixes include **skip/residual connections, jumping knowledge, normalization, and simply fewer layers**; the receptive-field-vs-smoothing tension motivates graph transformers.
+
+## Related concepts
+
+- [**Graph Convolutions & GraphSAGE**](/courses/graph-neural-networks/02-graph-convolutions) — the fixed-weight aggregation GAT makes learnable
+- [**Self-Attention**](/courses/transformers/01-self-attention) — the attention mechanism GAT restricts to graph edges
+- [**Pooling and Architectures**](/courses/cnns/02-pooling-and-architectures) — the grid analogue of graph readout/pooling
+
+<Exercise id="gnn-attention" />
+<Exercise id="gnn-readout" />
+<Exercise id="gnn-oversmoothing" />
