@@ -1,0 +1,102 @@
+---
+title: "Bayesian Optimization"
+description: "Optimizing expensive black-box functions in as few evaluations as possible — a GP surrogate, acquisition functions (EI, UCB) that balance exploration and exploitation, and the loop that tunes hyperparameters."
+order: 3
+type: concept
+estimatedMinutes: 16
+---
+
+# Bayesian Optimization
+
+Some functions are brutally expensive to evaluate: training a model to read off its validation accuracy, running a physical experiment, a costly simulation. You can't afford thousands of samples, and you have no gradients. **Bayesian optimization (BO)** finds the optimum of such a black box in as *few* evaluations as possible by being strategic about where to look next — using a probabilistic model of the function to decide. It's the standard tool for hyperparameter tuning and experiment design.
+
+**Real-world examples:** hyperparameter tuning (learning rate, architecture choices), AutoML, optimizing chemical/materials experiments, tuning robotics controllers, and A/B-test design.
+
+## The setup: expensive, black-box, derivative-free
+
+BO targets functions $f(\mathbf{x})$ that are:
+
+- **Expensive** — each evaluation costs minutes/hours/dollars, so you want few.
+- **Black-box** — no formula, just inputs→outputs.
+- **Derivative-free** — no gradients, so gradient descent is out.
+- Often **noisy**.
+
+The strategy: build a cheap *probabilistic model* of $f$ from the few points seen so far, use it to decide the single most promising next point, evaluate there, update, repeat.
+
+## Two ingredients
+
+**1. A surrogate model.** A **Gaussian process** (previous lesson) is the standard surrogate: it predicts $f$ everywhere *with calibrated uncertainty* — exactly what we need to reason about where the optimum might hide. The GP gives a posterior mean $\mu(\mathbf{x})$ and standard deviation $\sigma(\mathbf{x})$ at every candidate point.
+
+<GaussianProcessViz />
+
+**2. An acquisition function.** A cheap function $\alpha(\mathbf{x})$, computed from the surrogate's $\mu$ and $\sigma$, that scores how *worth evaluating* each point is. We optimize the acquisition function (cheap — it's just the GP) to pick the next $\mathbf{x}$, then evaluate the expensive $f$ only there.
+
+## The explore–exploit trade-off
+
+The acquisition function must balance two pulls:
+
+- **Exploitation** — sample where the surrogate mean $\mu(\mathbf{x})$ is already good.
+- **Exploration** — sample where uncertainty $\sigma(\mathbf{x})$ is high, because the optimum might be hiding in an unexplored region.
+
+Pure exploitation gets stuck in a local optimum; pure exploration wastes budget. Common acquisition functions encode the balance differently:
+
+$$
+\text{UCB:}\quad \alpha(\mathbf{x}) = \mu(\mathbf{x}) + \kappa\,\sigma(\mathbf{x})
+$$
+
+Upper Confidence Bound is the simplest: prefer high mean *and* high uncertainty, with $\kappa$ tuning the trade-off (large $\kappa$ → more exploration).
+
+$$
+\text{EI:}\quad \alpha(\mathbf{x}) = \mathbb{E}\big[\max(f(\mathbf{x}) - f^{+},\, 0)\big]
+$$
+
+Expected Improvement scores the *expected amount* by which $\mathbf{x}$ would beat the current best $f^{+}$ — it automatically values both promising means and uncertain regions, and is the most popular default.
+
+<Callout type="info" title="Other acquisition functions">
+  **Probability of Improvement (PI)** scores the chance of beating $f^+$ (but ignores by how much). **Thompson sampling** draws one function from the GP posterior and optimizes that sample. **Entropy search** picks the point that most reduces uncertainty about the *location* of the optimum. EI and UCB dominate in practice for their simplicity and strong performance.
+</Callout>
+
+## The Bayesian optimization loop
+
+```text
+1. Fit the GP surrogate to all (x, f(x)) seen so far.
+2. Maximize the acquisition function α(x) over the surrogate → x_next.
+3. Evaluate the expensive f(x_next).  ← the only costly step
+4. Add (x_next, f(x_next)) to the data. Repeat until budget exhausted.
+```
+
+Each iteration spends one expensive evaluation but lots of cheap surrogate computation — exactly the right trade when evaluations are the bottleneck.
+
+<Callout type="tip" title="Why BO beats grid and random search for HPO">
+  Grid and random search are *non-adaptive*: they ignore everything learned from past trials. BO is **adaptive** — every result reshapes where it looks next, so it finds good hyperparameters in far fewer trials. The catch: BO is sequential (each step needs the last result), so when you can run hundreds of trials fully in parallel, random search or Hyperband can be more practical.
+</Callout>
+
+## Limitations
+
+- **Dimensionality.** Standard BO works best in low dimensions (≲ 20); GP surrogates and acquisition optimization degrade in very high-dimensional spaces.
+- **Sequential.** The basic loop evaluates one point at a time (batch/parallel BO variants exist but are harder).
+- **Surrogate cost.** Inherits the GP's $O(N^3)$ — fine, since BO deliberately uses *few* evaluations.
+
+## Common mistakes
+
+1. **Pure exploitation.** Always sampling the current best-looking point gets trapped in a local optimum; the $\sigma$ term (exploration) is essential.
+2. **Using BO when evaluations are cheap.** If $f$ is fast, random/grid search with thousands of cheap trials can beat BO's sequential overhead.
+3. **Applying it in very high dimensions.** Vanilla BO struggles past ~20 dimensions without specialized variants.
+4. **Ignoring noise.** Set the GP's noise term for noisy objectives, or the surrogate will chase observation noise.
+
+## Key takeaways
+
+- **Bayesian optimization** minimizes/maximizes **expensive, black-box, gradient-free** functions in few evaluations by modeling them probabilistically.
+- It uses a **GP surrogate** (mean + uncertainty) plus an **acquisition function** that's cheap to optimize and picks the next point.
+- Acquisition functions (**UCB** $=\mu+\kappa\sigma$, **EI**) balance **exploitation** (high mean) against **exploration** (high uncertainty).
+- The **loop** — fit surrogate → maximize acquisition → evaluate once → update — makes BO **adaptive**, beating grid/random search for hyperparameter tuning when trials are costly.
+
+## Related concepts
+
+- [**Gaussian Processes**](/courses/bayesian-methods/02-gaussian-processes) — the surrogate model BO is built on
+- [**Bayesian Linear Regression**](/courses/bayesian-methods/01-bayesian-linear-regression) — where the predictive uncertainty BO exploits first appeared
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — the validation scores BO optimizes when tuning hyperparameters
+
+<Exercise id="bayes-bo-surrogate" />
+<Exercise id="bayes-bo-acquisition" />
+<Exercise id="bayes-bo-explore-exploit" />

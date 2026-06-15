@@ -7285,6 +7285,126 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It requires the data to be sorted, costing O(N log N)", isCorrect: false },
     ],
   },
+  {
+    id: "bayes-bo-surrogate",
+    type: "multiple-choice",
+    question:
+      "Why is a Gaussian process the standard surrogate model in Bayesian optimization?",
+    hint: "What does the acquisition function need from the surrogate?",
+    explanation:
+      "BO must decide where to sample next, which requires not just a prediction of the objective but a calibrated *uncertainty* at every candidate point. A GP provides both a posterior mean and standard deviation everywhere, which the acquisition function combines to balance exploration and exploitation. A point predictor (no uncertainty) couldn't drive exploration.",
+    options: [
+      { id: "a", label: "It predicts the objective everywhere with calibrated uncertainty, which the acquisition function needs", isCorrect: true },
+      { id: "b", label: "It is the fastest possible model to train", isCorrect: false },
+      { id: "c", label: "It requires no data to make predictions", isCorrect: false },
+      { id: "d", label: "It directly returns the global optimum", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-bo-acquisition",
+    type: "multiple-choice",
+    question:
+      "What is the role of the acquisition function in Bayesian optimization?",
+    hint: "What does BO optimize cheaply to decide the next expensive evaluation?",
+    explanation:
+      "The acquisition function (e.g. UCB = μ + κσ, or Expected Improvement) is a cheap function of the surrogate's mean and uncertainty that scores how worthwhile each candidate point is. BO maximizes it (cheap, since it only queries the surrogate) to choose the single next point at which to evaluate the expensive objective.",
+    options: [
+      { id: "a", label: "It cheaply scores candidate points from the surrogate to pick the next expensive evaluation", isCorrect: true },
+      { id: "b", label: "It trains the Gaussian process", isCorrect: false },
+      { id: "c", label: "It is the expensive objective function itself", isCorrect: false },
+      { id: "d", label: "It computes the gradient of the objective", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-bo-explore-exploit",
+    type: "multiple-choice",
+    question:
+      "In the UCB acquisition function α(x) = μ(x) + κ·σ(x), what happens as you increase κ?",
+    hint: "Which term gets more weight — mean or uncertainty?",
+    explanation:
+      "Increasing κ up-weights the uncertainty term σ(x), so the acquisition favors high-uncertainty regions — more exploration. Small κ emphasizes the mean μ(x) — more exploitation of currently promising areas. κ is the explore/exploit dial; pure exploitation (κ≈0) risks getting stuck in a local optimum.",
+    options: [
+      { id: "a", label: "More exploration — it favors high-uncertainty regions", isCorrect: true },
+      { id: "b", label: "More exploitation — it ignores uncertainty", isCorrect: false },
+      { id: "c", label: "Nothing — κ has no effect on the choice", isCorrect: false },
+      { id: "d", label: "It guarantees convergence to the global optimum in one step", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-quiz-posterior",
+    type: "multiple-choice",
+    question:
+      "What is the key output of Bayesian linear regression that ordinary least squares does not provide?",
+    hint: "A distribution, not just a point.",
+    explanation:
+      "Bayesian linear regression returns a full posterior distribution over the weights (and hence a predictive variance), quantifying uncertainty. OLS returns only a single point estimate of the weights with no native measure of how uncertain that fit is.",
+    options: [
+      { id: "a", label: "A posterior distribution over weights, giving calibrated predictive uncertainty", isCorrect: true },
+      { id: "b", label: "A lower training error", isCorrect: false },
+      { id: "c", label: "Faster inference", isCorrect: false },
+      { id: "d", label: "The ability to fit nonlinear data without features", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-quiz-ridge",
+    type: "multiple-choice",
+    question:
+      "Bayesian linear regression with a Gaussian prior of precision α and noise precision β has a posterior mean equal to which familiar estimator?",
+    hint: "An L2-penalized regression.",
+    explanation:
+      "The posterior mean equals the ridge regression solution with regularization λ = α/β. The Gaussian prior's precision plays the role of the L2 penalty — so ridge is exactly the MAP (posterior-mode) estimate of this Bayesian model.",
+    options: [
+      { id: "a", label: "Ridge regression with λ = α/β", isCorrect: true },
+      { id: "b", label: "Lasso regression", isCorrect: false },
+      { id: "c", label: "Unregularized OLS", isCorrect: false },
+      { id: "d", label: "k-nearest-neighbors regression", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-quiz-gp-kernel",
+    type: "multiple-choice",
+    question:
+      "In an RBF-kernel Gaussian process, what does the length-scale ℓ control?",
+    hint: "How fast does correlation between two outputs decay with input distance?",
+    explanation:
+      "The length-scale sets how far apart two inputs must be before their function values decorrelate — i.e. the smoothness/wiggliness of the inferred functions. Small ℓ → rapid decorrelation → wiggly functions and uncertainty that grows quickly away from data; large ℓ → smooth, slowly-varying functions.",
+    options: [
+      { id: "a", label: "How quickly correlation decays with input distance — i.e. the smoothness of the functions", isCorrect: true },
+      { id: "b", label: "The number of training points", isCorrect: false },
+      { id: "c", label: "The observation noise variance", isCorrect: false },
+      { id: "d", label: "The dimensionality of the output", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-quiz-uncertainty",
+    type: "multiple-choice",
+    question:
+      "A Gaussian process and a plain neural network are both fit to 8 data points. You query both far outside the data range. What is the qualitative difference?",
+    hint: "Which model signals that it doesn't know?",
+    explanation:
+      "The GP reports large predictive variance far from the data — it signals 'I don't know here.' A plain neural network outputs a confident point prediction with no native uncertainty, extrapolating arbitrarily. Calibrated, location-dependent uncertainty is the GP's defining advantage in low-data regimes.",
+    options: [
+      { id: "a", label: "The GP reports high uncertainty far from data; the plain network gives a confident, unqualified guess", isCorrect: true },
+      { id: "b", label: "Both report identical uncertainty estimates", isCorrect: false },
+      { id: "c", label: "The GP is always more accurate at extrapolation", isCorrect: false },
+      { id: "d", label: "The neural network reports higher uncertainty than the GP", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-quiz-acquisition",
+    type: "multiple-choice",
+    question:
+      "Why does Bayesian optimization typically find good hyperparameters in fewer trials than random or grid search?",
+    hint: "Does it use the results of past trials?",
+    explanation:
+      "BO is adaptive: it fits a surrogate to all past trials and uses it to choose the most promising next point, so each evaluation informs the next. Grid and random search are non-adaptive — they ignore prior results — so they waste evaluations re-exploring uninformative regions. (The trade-off: BO is sequential, while random search parallelizes trivially.)",
+    options: [
+      { id: "a", label: "It is adaptive — each trial's result reshapes where it samples next", isCorrect: true },
+      { id: "b", label: "It evaluates the objective for free", isCorrect: false },
+      { id: "c", label: "It tries every combination exhaustively but faster", isCorrect: false },
+      { id: "d", label: "It does not need a validation set", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
