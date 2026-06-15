@@ -6175,6 +6175,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Add a runbook to every alert and rotate the on-call schedule; the noise problem is a culture/process issue, not a metrics issue.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — MLOps Infrastructure & Orchestration ──────
+  {
+    id: "ml-practice-mlops-queue-wait",
+    type: "slider",
+    question:
+      "A shared training cluster behaves like an M/M/1 queue with service rate $\\mu = 1$ job per hour. The platform team is debating raising the steady-state target utilisation from $\\rho = 0.8$ to $\\rho = 0.95$ to 'use the cluster more.' Using $W_q = \\rho / (\\mu (1 - \\rho))$, by approximately how many *service-times* (units of $1/\\mu$) does the expected queue wait grow? Round to the nearest integer.",
+    hint: "Compute $W_q$ at $\\rho = 0.8$ and at $\\rho = 0.95$. The increase is $W_q(0.95) - W_q(0.8)$.",
+    explanation:
+      "At $\\rho = 0.8$: $W_q = 0.8 / (1 \\cdot 0.2) = 4$ service-times. At $\\rho = 0.95$: $W_q = 0.95 / (1 \\cdot 0.05) = 19$ service-times. The increase is $19 - 4 = 15$ service-times — almost 5× the wait — for a 15-percentage-point bump in 'efficiency.' This is why the operational rule of thumb is 70–80% utilisation, not 95%: the marginal cost of the last 15% of throughput is most of the perceived wait. A cluster sitting at 95% may look great on a dashboard and feel completely broken to users with training jobs stuck in the queue for 19 service-times instead of 4.",
+    min: 0,
+    max: 30,
+    step: 1,
+    correctRange: [14, 16],
+    unit: "service-times",
+  },
+  {
+    id: "ml-practice-mlops-orchestrator",
+    type: "multiple-choice",
+    question:
+      "Your team currently runs a 12-step training pipeline as a single `cron` job that calls a shell script. About one run per week fails halfway, leaving half-written rows in the warehouse that an on-call has to clean up by hand. You're choosing what to move to next. Which option fixes the actual root cause?",
+    hint: "Think about which property of an orchestrator the cron+script setup is missing. The pain isn't 'we don't have a UI.'",
+    explanation:
+      "The right answer is **(B)**. The cron+shell-script setup is failing because it has no concept of step-level state: when step 7 of 12 fails, there's no record of which steps already succeeded and no automatic, idempotent retry mechanism. A workflow orchestrator (Airflow / Prefect / Dagster) addresses both at once — it tracks per-step state, so a failed run can be restarted from the last successful step, and it provides retries with exponential backoff for the transient half of the failure modes. The other answers either treat the symptom or miss the root cause: (A) makes pipelines longer-running with no failure-handling improvement; (C) adds observability but leaves the cleanup problem in place; (D) only helps if every failure is transient — many real failures are data-shape regressions that no amount of retry will fix and which require the *partial-run state* that only an orchestrator tracks.",
+    options: [
+      { id: "a", label: "Rewrite the shell script in Python and run it on a beefier VM so it finishes faster and is less likely to time out mid-run.", isCorrect: false },
+      { id: "b", label: "Move the pipeline to a workflow orchestrator (Airflow, Prefect, or Dagster) so each step is a tracked task with idempotent retries; a half-failed run can be restarted from the failing step rather than from scratch, and the warehouse cleanup problem disappears because failed steps never commit their outputs in the first place.", isCorrect: true },
+      { id: "c", label: "Keep the cron job but add Prometheus metrics and Grafana dashboards so the on-call sees the failure faster and can clean up sooner.", isCorrect: false },
+      { id: "d", label: "Wrap the existing shell script in a bash retry loop (`for i in 1 2 3; do ./run.sh && break; done`) — most production failures are transient anyway.", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-mlops-storage-compute",
+    type: "multiple-choice",
+    question:
+      "A teammate proposes a new training pipeline design: each worker writes its intermediate Parquet outputs to its own local SSD for speed, and the next step's workers SSH into the previous workers' boxes to read the inputs they need. 'It avoids the cost of object storage round-trips.' What is the single most important pushback?",
+    hint: "Think about what happens if a worker is evicted, if the cluster scales up, or if you want to re-run from step 6 next week. None of those are solvable without one specific property of the storage layer.",
+    explanation:
+      "The proposed design tightly *couples* storage to the specific worker that produced it, which breaks every property a production data plane needs. **(C) is correct**: object storage (S3/GCS/Azure Blob) decouples storage from compute, which is the property that makes pipelines restartable (a new worker can read the same artefact), parallelisable (many workers can read the same artefact concurrently), and reproducible (the artefact survives any single worker's death). The 'cost of object-storage round-trips' the teammate is trying to avoid is real but almost always small relative to the operational cost of being unable to restart a 6-hour pipeline from step 4. (A) is true but secondary — security matters, but the design also fails on availability. (B) misreads the trade-off: object storage is *cheap* compared to local SSDs at the petabyte scale, not expensive. (D) is the opposite of reality — local-disk pipelines are *less* portable to Kubernetes and serverless runners, not more.",
+    options: [
+      { id: "a", label: "SSH between workers is a security anti-pattern; you should use an authenticated message bus instead.", isCorrect: false },
+      { id: "b", label: "Object storage is too expensive at scale; the teammate is right that local-disk reads are cheaper.", isCorrect: false },
+      { id: "c", label: "The design couples storage to compute: when a worker is evicted (spot, autoscale-down, hardware fault) the data dies with it, so the pipeline can't be restarted from a failed step, can't scale out by adding workers that read the same intermediate, and can't be reproduced months later. Decoupled storage (object storage addressable by run id) is the only design that survives all three.", isCorrect: true },
+      { id: "d", label: "Local-disk pipelines are inherently less portable to Kubernetes; the team should standardise on Kubernetes-native local storage classes.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
