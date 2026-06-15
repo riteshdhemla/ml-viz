@@ -1,0 +1,91 @@
+---
+title: "Bayesian Linear Regression"
+description: "Regression that knows what it doesn't know — placing a prior over weights, deriving the posterior and predictive distribution, and seeing why uncertainty grows away from the data."
+order: 1
+type: concept
+estimatedMinutes: 16
+---
+
+# Bayesian Linear Regression
+
+Ordinary least squares returns a single best-fit line and a single prediction. But "the line is $y = 2.1x + 0.4$" hides a crucial question: *how sure are we?* **Bayesian linear regression** answers it by treating the weights as a probability distribution rather than a point. Instead of one line, you get a *distribution over lines* — and every prediction comes with a calibrated error bar that widens where you have no data.
+
+**Real-world examples:** any setting where overconfidence is dangerous — scientific modeling with few samples, A/B-test effect sizes, active learning (where to sample next), and as the foundation for Gaussian processes and Bayesian optimization (next lessons).
+
+## From a point estimate to a distribution
+
+OLS finds the weights $\mathbf{w}$ minimizing squared error — one vector. The Bayesian view instead asks for the full **posterior distribution** over $\mathbf{w}$ given the data, via Bayes' rule:
+
+$$
+\underbrace{p(\mathbf{w}\mid \mathbf{X}, \mathbf{y})}_{\text{posterior}} \;\propto\; \underbrace{p(\mathbf{y}\mid \mathbf{X}, \mathbf{w})}_{\text{likelihood}}\;\underbrace{p(\mathbf{w})}_{\text{prior}}
+$$
+
+- **Prior** $p(\mathbf{w}) = \mathcal{N}(\mathbf{0}, \alpha^{-1}\mathbf{I})$ — before seeing data, we believe weights are small (a Gaussian centered at 0).
+- **Likelihood** — assume Gaussian noise: $y = \mathbf{w}^{\top}\mathbf{x} + \epsilon$, $\epsilon \sim \mathcal{N}(0, \beta^{-1})$.
+- **Posterior** — the updated belief after the data.
+
+The same prior → posterior updating you saw for a single parameter, now over the whole weight vector:
+
+<BayesViz />
+
+## The posterior (closed form)
+
+Because the prior is Gaussian and the likelihood is Gaussian, the posterior is **also Gaussian** (the Gaussian is *conjugate* to itself here) — no sampling needed:
+
+$$
+p(\mathbf{w}\mid \mathbf{X}, \mathbf{y}) = \mathcal{N}(\mathbf{w} \mid \mathbf{m}_N, \mathbf{S}_N)
+$$
+
+$$
+\mathbf{S}_N^{-1} = \alpha\mathbf{I} + \beta\,\mathbf{X}^{\top}\mathbf{X}, \qquad \mathbf{m}_N = \beta\,\mathbf{S}_N\,\mathbf{X}^{\top}\mathbf{y}
+$$
+
+<Callout type="info" title="Ridge regression is the MAP estimate">
+  The posterior **mean** $\mathbf{m}_N$ is exactly the **ridge regression** solution with $\lambda = \alpha/\beta$. So Bayesian linear regression *contains* ridge: the Gaussian prior's precision $\alpha$ is the L2 penalty. The difference is that the Bayesian version also gives you $\mathbf{S}_N$ — the full covariance, i.e. the uncertainty — not just the point.
+</Callout>
+
+## The predictive distribution
+
+For a new input $\mathbf{x}_*$, we don't commit to one weight vector — we **average over all of them**, weighted by the posterior. This *marginalization* yields a Gaussian predictive distribution:
+
+$$
+p(y_* \mid \mathbf{x}_*, \mathbf{X}, \mathbf{y}) = \mathcal{N}\big(y_* \mid \mathbf{m}_N^{\top}\mathbf{x}_*,\; \sigma_N^2(\mathbf{x}_*)\big)
+$$
+
+$$
+\sigma_N^2(\mathbf{x}_*) = \underbrace{\beta^{-1}}_{\text{noise}} + \underbrace{\mathbf{x}_*^{\top}\mathbf{S}_N\,\mathbf{x}_*}_{\text{model uncertainty}}
+$$
+
+The predictive variance has two parts: irreducible **observation noise** ($\beta^{-1}$), and **model uncertainty** ($\mathbf{x}_*^{\top}\mathbf{S}_N\mathbf{x}_*$) that depends on *where* you predict.
+
+<Callout type="tip" title="Uncertainty grows away from the data">
+  The model-uncertainty term is small near observed inputs and **large in regions with no data** — extrapolation. This is the headline benefit: a Bayesian model is *honest* about not knowing, instead of confidently extrapolating a single line to infinity. Active learning exploits exactly this: sample where predictive variance is highest.
+</Callout>
+
+## Why marginalize instead of picking the best weights?
+
+Using only the single best $\mathbf{w}$ (MAP) throws away the spread of plausible models. Two weight vectors that fit the data equally well might disagree wildly on a far-away $\mathbf{x}_*$; averaging over the posterior captures that disagreement as predictive variance. Marginalization is what turns "here's a guess" into "here's a guess **and** how much it could be wrong."
+
+## Common mistakes
+
+1. **Reporting only the posterior mean.** That's just (regularized) point regression — the whole point is the variance $\mathbf{S}_N$ and the predictive interval.
+2. **Forgetting the two variance sources.** Predictive variance = noise + model uncertainty; near data, only the noise floor remains.
+3. **Thinking it's unrelated to ridge.** The posterior mean *is* ridge; the prior precision is the L2 penalty.
+4. **Assuming you always need sampling (MCMC).** With Gaussian prior + Gaussian likelihood the posterior is closed-form — sampling is only needed for non-conjugate models.
+
+## Key takeaways
+
+- Bayesian linear regression puts a **prior over weights** and computes the **posterior** $\mathcal{N}(\mathbf{m}_N, \mathbf{S}_N)$ — a distribution over lines, not a single fit.
+- With Gaussian prior + Gaussian noise the posterior is **closed-form**; its **mean equals ridge regression** (prior precision = L2 penalty).
+- The **predictive distribution** marginalizes over the posterior, giving a mean *and* a variance = **noise + model uncertainty**.
+- Predictive **uncertainty grows away from the data**, making the model honest about extrapolation — the basis for active learning, GPs, and Bayesian optimization.
+
+## Related concepts
+
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the prior → posterior machinery this lesson applies to weights
+- [**Regularization**](/courses/linear-regression/03-regularization) — ridge regression, which is the MAP estimate of this model
+- [**Statistical Inference & Confidence Intervals**](/courses/probability-statistics/06-statistical-inference) — the frequentist take on the uncertainty Bayesian methods model directly
+
+<Exercise id="bayes-blr-posterior" />
+<Exercise id="bayes-blr-ridge" />
+<Exercise id="bayes-blr-predictive" />

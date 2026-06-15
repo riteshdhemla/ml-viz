@@ -7195,6 +7195,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The item tower replaces the need for any index", isCorrect: false },
     ],
   },
+  {
+    id: "bayes-blr-posterior",
+    type: "multiple-choice",
+    question:
+      "In Bayesian linear regression with a Gaussian prior over weights and Gaussian observation noise, what is the form of the posterior over the weights?",
+    hint: "The Gaussian is conjugate to itself here.",
+    explanation:
+      "Gaussian prior × Gaussian likelihood gives a Gaussian posterior (conjugacy), so the posterior over weights is itself a Gaussian N(m_N, S_N) available in closed form — no sampling needed. m_N is the posterior mean and S_N the covariance that encodes the remaining uncertainty about the weights.",
+    options: [
+      { id: "a", label: "Another Gaussian, available in closed form (no sampling needed)", isCorrect: true },
+      { id: "b", label: "A uniform distribution over all weight values", isCorrect: false },
+      { id: "c", label: "A single point (there is no distribution)", isCorrect: false },
+      { id: "d", label: "A distribution that can only be approximated with MCMC", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-blr-ridge",
+    type: "multiple-choice",
+    question:
+      "How does the posterior mean of Bayesian linear regression relate to ridge regression?",
+    hint: "What plays the role of the L2 penalty λ?",
+    explanation:
+      "The posterior mean m_N is exactly the ridge regression solution with λ = α/β (prior precision over noise precision). So the Gaussian prior's precision IS the L2 penalty, and ridge is the MAP estimate of this model. The Bayesian version additionally returns the covariance S_N — the uncertainty ridge throws away.",
+    options: [
+      { id: "a", label: "The posterior mean equals the ridge solution with λ = α/β; the prior precision is the L2 penalty", isCorrect: true },
+      { id: "b", label: "They are unrelated — ridge is not Bayesian", isCorrect: false },
+      { id: "c", label: "Ridge equals the posterior variance, not the mean", isCorrect: false },
+      { id: "d", label: "Ridge uses an L1 prior (Laplace), so they never coincide", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-blr-predictive",
+    type: "multiple-choice",
+    question:
+      "The predictive variance in Bayesian linear regression is σ²(x*) = β⁻¹ + x*ᵀ S_N x*. Why does it grow for inputs far from the training data?",
+    hint: "Which term depends on where you predict?",
+    explanation:
+      "The first term β⁻¹ is the constant irreducible observation noise. The second term x*ᵀS_N x* is model uncertainty: it's small near observed inputs and large where the posterior is unsure — i.e. regions with little or no data (extrapolation). So error bars widen away from the data, which is the honest behavior that point estimates lack.",
+    options: [
+      { id: "a", label: "The model-uncertainty term x*ᵀS_N x* is large where there's little data (extrapolation)", isCorrect: true },
+      { id: "b", label: "The noise term β⁻¹ increases with distance from the data", isCorrect: false },
+      { id: "c", label: "Predictive variance is actually constant everywhere", isCorrect: false },
+      { id: "d", label: "It shrinks away from data, not grows", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
