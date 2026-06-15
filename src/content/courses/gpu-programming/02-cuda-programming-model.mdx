@@ -1,0 +1,122 @@
+---
+title: "The CUDA Programming Model"
+description: "Writing code for the GPU — kernels, the grid/block/thread indexing that maps threads to data, host vs device memory, the launch/copy/execute lifecycle, and the grid-stride loop pattern."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# The CUDA Programming Model
+
+A GPU can't do anything on its own — the CPU (the **host**) orchestrates the GPU (the **device**): allocate device memory, copy inputs over, launch a **kernel**, copy results back. The programming model's central job is letting you say "run *this* function across *these* million data elements in parallel." This lesson shows how a kernel maps thousands of threads onto an array, using CUDA C syntax — but the *mental model* is what transfers to PyTorch, Triton, or any GPU framework.
+
+**Real-world examples:** every `torch.add`, `torch.matmul`, or custom CUDA/Triton kernel; the fused attention kernels in FlashAttention; the element-wise ops in any training step all follow exactly this launch-and-index pattern under the hood.
+
+## A kernel: the per-thread program
+
+A **kernel** is a function that runs once *per thread*. You write it from the point of view of a single thread; the runtime launches thousands of copies. The canonical example is **vector addition**, $C = A + B$:
+
+```cpp
+__global__ void vecAdd(const float* A, const float* B, float* C, int n) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;   // this thread's global index
+    if (i < n)                                        // guard against over-launch
+        C[i] = A[i] + B[i];                           // one element, one thread
+}
+```
+
+`__global__` marks a function that runs on the device but is launched from the host. There is no loop over `n` — the parallelism *is* the loop. Thread `i` computes output element `i`.
+
+## Mapping threads to data: the index formula
+
+Threads don't know "which element am I" automatically — you compute it from three built-in variables:
+
+- `threadIdx.x` — the thread's index *within its block*
+- `blockIdx.x` — the block's index *within the grid*
+- `blockDim.x` — the number of threads per block
+
+$$
+\boxed{\;i = \text{blockIdx.x} \times \text{blockDim.x} + \text{threadIdx.x}\;}
+$$
+
+This flattens the 2-level (block, thread) hierarchy into one global index. With 256 threads per block, thread 5 of block 3 is element $3 \times 256 + 5 = 773$.
+
+<Callout type="info" title="Why the bounds check?">
+  You launch a *whole number* of blocks, so the last block usually overshoots `n`. For $n = 1000$ with 256-thread blocks you launch $\lceil 1000/256 \rceil = 4$ blocks = 1024 threads — the final 24 threads must do nothing, hence `if (i < n)`. Forgetting this guard reads/writes out of bounds.
+</Callout>
+
+## Launching a kernel
+
+The host launches with the triple-angle-bracket syntax `<<<gridDim, blockDim>>>`, choosing how many blocks and how many threads each:
+
+```cpp
+int threads = 256;
+int blocks  = (n + threads - 1) / threads;   // ceil(n / threads)
+vecAdd<<<blocks, threads>>>(d_A, d_B, d_C, n);
+```
+
+`blockDim` is usually a multiple of the warp size (32) — 128/256/512 are typical. The launch is **asynchronous**: control returns to the host immediately while the GPU works.
+
+## Host vs device memory
+
+The CPU and GPU have *separate* address spaces. Data must be explicitly allocated on the device and copied across the PCIe/NVLink bus:
+
+```cpp
+float *d_A, *d_B, *d_C;
+cudaMalloc(&d_A, n * sizeof(float));            // allocate on device
+cudaMemcpy(d_A, h_A, bytes, cudaMemcpyHostToDevice);   // copy CPU -> GPU
+// ... launch kernel ...
+cudaMemcpy(h_C, d_C, bytes, cudaMemcpyDeviceToHost);   // copy GPU -> CPU
+cudaFree(d_A);
+```
+
+<Callout type="warning" title="The transfer tax">
+  Host↔device copies cross a relatively slow bus and are a classic bottleneck. The rule: **move data to the GPU once and keep it there** across many kernels, rather than ping-ponging each operation. A kernel that's faster on the GPU can still lose overall if you pay the copy every call. (Frameworks hide this behind `.to("cuda")`, but the cost is real.)
+</Callout>
+
+## The grid-stride loop
+
+Hard-coding one element per thread couples your launch size to `n`. The robust, reusable pattern is the **grid-stride loop**: each thread handles multiple elements, striding by the total number of threads in the grid.
+
+```cpp
+__global__ void vecAdd(const float* A, const float* B, float* C, int n) {
+    int stride = blockDim.x * gridDim.x;          // total threads in the grid
+    for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; i += stride)
+        C[i] = A[i] + B[i];
+}
+```
+
+This decouples the launch configuration from the data size (any grid size is correct), improves reuse of warm state, and is the idiomatic way to write a kernel that works for any `n`.
+
+## It's the same model everywhere
+
+You rarely hand-write CUDA C today — but the abstraction is identical one level up:
+
+- **PyTorch** dispatches your `a + b` to a pre-written CUDA kernel doing exactly this.
+- **Triton** lets you write kernels in Python with `program_id`/block-level tiles — the same index math, friendlier syntax.
+- **CuPy/Numba** expose `blockIdx`/`threadIdx` directly from Python.
+
+Understanding "thread → global index → one element" is what lets you reason about *all* of them.
+
+## Common mistakes
+
+1. **Forgetting the `if (i < n)` bounds guard** — out-of-bounds access on the last (over-launched) block.
+2. **Re-copying data every call** — paying the host↔device transfer tax instead of keeping data resident.
+3. **Block size not a multiple of 32** — wastes lanes in the final warp of each block.
+4. **Assuming the kernel finished** — launches are async; you must synchronize (or copy results, which synchronizes) before reading on the host.
+
+## Key takeaways
+
+- A **kernel** is a per-thread program; the parallelism replaces the loop.
+- A thread finds its data via $i = \text{blockIdx.x} \cdot \text{blockDim.x} + \text{threadIdx.x}$, with a bounds check for over-launch.
+- Host and device have **separate memory**; explicit copies cost real time, so keep data on the GPU.
+- The **grid-stride loop** decouples launch size from data size and is the idiomatic kernel shape — and the same indexing model underlies PyTorch, Triton, and friends.
+
+## Related concepts
+
+- [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture) — the warps and SMs these threads actually run on
+- [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance) — how the *access pattern* of your indexing decides real speed
+- [**Algorithms from Scratch**](/courses/ml-in-practice/03-algorithms-from-scratch) — the same "express the math, then make it fast" mindset
+
+<Exercise id="gpu-cuda-global-index" />
+<Exercise id="gpu-cuda-blocks-needed" />
+<Exercise id="gpu-cuda-transfer" />

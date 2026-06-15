@@ -39,6 +39,7 @@ import { BaggingViz } from "@/components/visualizations/Bagging/BaggingViz";
 import { BoostingViz } from "@/components/visualizations/Boosting/BoostingViz";
 import { QTableViz } from "@/components/visualizations/QTable/QTableViz";
 import { PoolingViz } from "@/components/visualizations/Pooling/PoolingViz";
+import { CoalescingViz } from "@/components/visualizations/Coalescing/CoalescingViz";
 import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
 import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
 import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbiViz";
@@ -115,6 +116,7 @@ export const mdxComponents: MDXComponents = {
   BoostingViz,
   QTableViz,
   PoolingViz,
+  CoalescingViz,
   LatentSpaceViz,
   RNNUnrollViz,
   HMMViterbiViz,

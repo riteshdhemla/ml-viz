@@ -1,0 +1,108 @@
+---
+title: "GPU Architecture & the Execution Model"
+description: "Why a GPU trains a network 10–100× faster than a CPU — throughput vs latency, the SIMT execution model, threads/warps/blocks/grids, the memory hierarchy, and how massive parallelism hides memory latency."
+order: 1
+type: concept
+estimatedMinutes: 15
+---
+
+# GPU Architecture & the Execution Model
+
+A CPU is a *latency* machine: a handful of powerful cores, big caches, and deep out-of-order pipelines that race a single thread to the finish line. A GPU is a *throughput* machine: thousands of simple cores that get enormous total work done by running tens of thousands of threads at once. Training a neural network is overwhelmingly parallel — the same multiply-add applied to millions of numbers — so it maps onto the throughput machine almost perfectly. This lesson is the mental model the rest of the course builds on.
+
+**Real-world examples:** every large model is trained on GPUs (or TPUs); PyTorch/TensorFlow dispatch your matrix ops to CUDA kernels; inference servers like vLLM squeeze throughput out of GPU memory bandwidth; even your phone's NPU borrows the same SIMT idea.
+
+## CPU vs GPU: two different bets
+
+|  | CPU | GPU |
+|---|---|---|
+| Cores | few (4–64), complex | thousands, simple |
+| Optimized for | latency (finish one task fast) | throughput (finish many tasks/sec) |
+| Caches | large per core | small; huge register file instead |
+| Hides memory stalls by | out-of-order execution, prefetch | **switching to other threads** |
+| Best at | branchy, sequential logic | regular, data-parallel arithmetic |
+
+The GPU spends its transistor budget on **arithmetic units** rather than control logic and cache. That only pays off when you can keep those units fed with independent work — which is exactly what a matrix multiply or an element-wise activation provides.
+
+## SIMT: Single Instruction, Multiple Threads
+
+The GPU executes threads in lock-step groups called **warps** (32 threads on NVIDIA hardware). All 32 threads in a warp run the *same instruction* at the same time, each on its own data — Single Instruction, Multiple Threads. This is how one instruction-decode unit drives 32 lanes of arithmetic.
+
+<Callout type="warning" title="Warp divergence">
+  Because a warp shares one program counter, a data-dependent branch where some threads take the `if` and others the `else` forces the warp to execute **both** paths serially, masking off the inactive lanes:
+
+  $$\text{cost}(\text{divergent branch}) \approx \text{cost}(\text{if-body}) + \text{cost}(\text{else-body})$$
+
+  Divergence within a warp is one of the most common silent performance killers. Branch on data that aligns with warp boundaries, or make the work branch-free.
+</Callout>
+
+## The thread hierarchy
+
+CUDA organizes parallelism in three nested levels:
+
+- **Thread** — one execution lane; computes typically one output element.
+- **Block** (thread block) — a group of threads (up to 1024) that run on the same **Streaming Multiprocessor (SM)**, can synchronize with a barrier (`__syncthreads()`), and share fast **shared memory**.
+- **Grid** — all the blocks launched by one kernel; blocks are independent and may run in any order (which is what lets the same code scale from a small GPU to a big one).
+
+```text
+Grid  ─────────────────────────────────────────────
+  Block(0,0)   Block(1,0)   Block(2,0)   ...
+  ┌────────┐   ┌────────┐   ┌────────┐
+  │ warp 0 │   │ warp 0 │   │ warp 0 │   each warp = 32 threads
+  │ warp 1 │   │ warp 1 │   │ warp 1 │   running in lock-step (SIMT)
+  │  ...   │   │  ...   │   │  ...   │
+  └────────┘   └────────┘   └────────┘
+```
+
+Warps are scheduled onto an SM; when one warp stalls waiting on memory, the SM instantly switches to another ready warp. With enough warps resident, the arithmetic units never idle.
+
+## The memory hierarchy
+
+Performance on a GPU is usually a *memory* story, not a *compute* story. From fastest/smallest to slowest/largest:
+
+| Memory | Scope | Latency | Notes |
+|---|---|---|---|
+| Registers | per thread | ~1 cycle | the register file is huge (e.g. 64K 32-bit registers per SM) |
+| Shared memory / L1 | per block | ~20–30 cycles | programmer-managed scratchpad; key to tiling (Lesson 3) |
+| L2 cache | whole GPU | ~200 cycles | shared across SMs |
+| Global (HBM) | whole GPU | ~400–800 cycles | tens of GB, hundreds of GB/s–TB/s bandwidth |
+
+Global memory is plentiful but *slow*. The whole art of GPU optimization is moving data up this hierarchy and reusing it before it falls back down.
+
+## Latency hiding: the core trick
+
+A single global-memory access costs hundreds of cycles. A CPU hates this; a GPU shrugs. Because warp context (registers) stays resident, the SM swaps to another warp **for free** the moment one stalls:
+
+$$
+\text{warps needed to hide latency} \approx \frac{\text{memory latency (cycles)}}{\text{cycles of independent work per warp}}
+$$
+
+This is **Little's Law** applied to the GPU: keep enough independent work *in flight* and the long memory latency is completely covered by useful arithmetic on other warps. "Occupancy" (Lesson 3) measures how many warps you keep resident, and it exists precisely to enable this hiding.
+
+## Why this matters for ML
+
+The dominant operation in deep learning — matrix multiplication — is a sea of independent multiply-adds with a regular access pattern. It saturates the arithmetic units, has abundant parallelism to hide latency, and reuses data well. That is the *ideal* GPU workload, which is why a GPU can outrun a CPU by one to two orders of magnitude on training. The flip side: ops that are branchy, sequential, or memory-bound (Lesson 4) leave the hardware starved.
+
+## Common mistakes
+
+1. **Thinking "more cores = always faster."** Throughput only materializes with enough *independent* work to fill the machine and hide latency; a tiny workload barely uses a GPU.
+2. **Ignoring warp divergence.** Data-dependent branches inside a warp serialize both paths.
+3. **Treating global memory as free.** It's hundreds of cycles away; reuse beats re-fetch.
+4. **Confusing a thread block with a warp.** A block is a programming unit (up to 1024 threads); a warp (32 threads) is the hardware scheduling/execution unit.
+
+## Key takeaways
+
+- A CPU optimizes **latency** with few complex cores; a GPU optimizes **throughput** with thousands of simple ones.
+- GPUs execute threads in **warps** of 32 under **SIMT** — one instruction, many data lanes; divergent branches serialize.
+- Parallelism is structured as **threads → blocks → grid**; blocks map to SMs and own fast shared memory.
+- The **memory hierarchy** (registers → shared → L2 → global) dominates performance; massive parallelism **hides** global-memory latency by swapping stalled warps for ready ones.
+
+## Related concepts
+
+- [**The CUDA Programming Model**](/courses/gpu-programming/02-cuda-programming-model) — how you actually write code for this hierarchy
+- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the matrix multiplies that make ML the ideal GPU workload
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — exploiting GPU throughput and memory bandwidth in production
+
+<Exercise id="gpu-arch-throughput-latency" />
+<Exercise id="gpu-arch-warp-divergence" />
+<Exercise id="gpu-arch-hierarchy" />

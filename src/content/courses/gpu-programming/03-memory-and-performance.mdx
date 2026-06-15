@@ -1,0 +1,113 @@
+---
+title: "Memory & Performance Optimization"
+description: "Where GPU performance is actually won — memory coalescing, shared-memory tiling, occupancy, and the roofline model that tells you whether you're compute-bound or memory-bound."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# Memory & Performance Optimization
+
+A correct kernel and a *fast* kernel can differ by 10×. The gap is almost always **memory**: how threads touch global memory, how much data you reuse before discarding it, and how many warps you keep in flight. This lesson covers the four levers that decide real-world GPU performance.
+
+**Real-world examples:** FlashAttention's whole point is tiling attention into shared memory to avoid materializing a huge matrix in slow global memory; cuBLAS GEMM is a master class in coalescing + tiling; "why is my custom kernel slow?" is, nine times out of ten, a coalescing or occupancy problem.
+
+## Memory coalescing
+
+Global memory is delivered in wide **transactions** (e.g. 128-byte cache lines), not one float at a time. When the 32 threads of a warp access *consecutive* addresses, the hardware **coalesces** them into a single transaction — maximum bandwidth. When they access scattered or strided addresses, each thread may trigger its own transaction, wasting most of the bytes fetched.
+
+<CoalescingViz />
+
+$$
+\text{efficiency} = \frac{\text{bytes your threads actually use}}{\text{bytes the hardware transferred}}
+$$
+
+A stride-1 (coalesced) access is ~100% efficient; a stride-$k$ access can be as low as $1/k$. This is why **data layout matters**: storing a batch of vectors row-major and having thread $i$ read column $j$ across rows is a coalescing disaster; transpose the layout so consecutive threads read consecutive addresses.
+
+<Callout type="warning" title="Coalescing is the #1 lever">
+  Before tuning anything else, make sure consecutive threads read consecutive memory. A non-coalesced load pattern can cut effective bandwidth by 8–32×, dwarfing every other optimization. Often the fix is a layout change, not a code change.
+</Callout>
+
+## Shared memory and tiling
+
+**Shared memory** is a small (~48–228 KB/SM), fast, *programmer-managed* scratchpad shared by a block. The strategy: cooperatively load a **tile** of data from global memory into shared memory *once*, then have all the threads in the block reuse it many times.
+
+The classic case is matrix multiply. Naively, computing $C = AB$ re-reads each element of $A$ and $B$ from global memory $N$ times. Tiling loads a $T \times T$ block of each into shared memory and reuses it, cutting global-memory traffic by a factor of $T$:
+
+$$
+\text{global reads (naive)} = O(N^3)
+\qquad
+\text{global reads (tiled)} = O\!\left(\frac{N^3}{T}\right)
+$$
+
+```cpp
+__shared__ float Asub[T][T], Bsub[T][T];   // per-block scratchpad
+// each thread loads one element of the tile, then:
+__syncthreads();                            // wait until the whole tile is loaded
+for (int k = 0; k < T; ++k)                 // reuse the tile T times
+    acc += Asub[ty][k] * Bsub[k][tx];
+__syncthreads();                            // wait before overwriting the tile
+```
+
+The `__syncthreads()` barriers are essential: a thread must not read the tile before its neighbors have finished writing it.
+
+## Occupancy
+
+**Occupancy** is the ratio of active warps on an SM to the hardware maximum. It matters because resident warps are what *hide memory latency* (Lesson 1) — when one stalls, the SM runs another.
+
+$$
+\text{occupancy} = \frac{\text{active warps per SM}}{\text{max warps per SM}}
+$$
+
+Each SM has a fixed budget of registers and shared memory. A kernel that uses many registers per thread, or a lot of shared memory per block, lets fewer warps fit — lowering occupancy. The tension: tiling *wants* shared memory, but too much shared memory *starves* occupancy.
+
+<Callout type="info" title="Higher occupancy isn't always faster">
+  Occupancy is a means (latency hiding), not an end. Past the point where latency is fully hidden, more occupancy does nothing — and a low-occupancy kernel with heavy per-thread reuse (lots of registers) can beat a high-occupancy one. Measure; don't maximize occupancy blindly.
+</Callout>
+
+## The roofline model
+
+The roofline model answers the key diagnostic question: *is my kernel limited by compute or by memory?* Define **arithmetic intensity** as FLOPs performed per byte of memory moved:
+
+$$
+I = \frac{\text{FLOPs}}{\text{bytes from memory}} \quad (\text{FLOP/byte})
+$$
+
+Achievable performance is capped by the lower of two ceilings:
+
+$$
+\text{Perf} \le \min\big(\underbrace{P_{\max}}_{\text{compute roof}},\; \underbrace{I \times BW}_{\text{memory roof}}\big)
+$$
+
+- **Memory-bound** (low $I$, left of the ridge): performance $= I \times BW$, limited by bandwidth. Element-wise ops, vector add, and activations live here.
+- **Compute-bound** (high $I$, right of the ridge): performance $= P_{\max}$, limited by arithmetic throughput. Large matrix multiplies live here.
+
+The **ridge point** $I^* = P_{\max}/BW$ is the intensity where the two ceilings meet. Optimizing a memory-bound kernel means raising its intensity (fuse ops, reuse data via tiling) or improving its bandwidth (coalesce); throwing more FLOPs at it does nothing.
+
+## Putting it together
+
+A fast kernel typically: (1) coalesces global accesses, (2) tiles into shared memory to raise arithmetic intensity and cut global traffic, (3) keeps enough warps resident to hide whatever latency remains. The roofline tells you *which* of these to chase first.
+
+## Common mistakes
+
+1. **Strided/scattered global access** — the single biggest bandwidth killer; fix the layout so consecutive threads hit consecutive addresses.
+2. **Skipping `__syncthreads()` around shared-memory tiles** — a race where threads read a tile before it's fully written.
+3. **Maximizing occupancy for its own sake** — it only helps until latency is hidden; per-thread reuse can be worth lower occupancy.
+4. **Optimizing compute on a memory-bound kernel** — adding FLOPs to something capped by bandwidth changes nothing; raise arithmetic intensity instead.
+
+## Key takeaways
+
+- **Coalescing** — consecutive threads must read consecutive memory; non-coalesced access can waste 8–32× of bandwidth.
+- **Tiling** into **shared memory** reuses data and cuts global traffic by the tile factor (the heart of fast GEMM and FlashAttention).
+- **Occupancy** = resident warps ÷ max; it exists to hide latency, and more isn't always better.
+- The **roofline model** classifies a kernel as **memory-bound** or **compute-bound** via arithmetic intensity $I = \text{FLOPs}/\text{byte}$, telling you what to optimize.
+
+## Related concepts
+
+- [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture) — the memory hierarchy and latency hiding these techniques exploit
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — applying coalescing, tiling, and the roofline to real ML kernels
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — when memory and bandwidth limits drive compression choices
+
+<Exercise id="gpu-mem-coalescing" />
+<Exercise id="gpu-mem-tiling-traffic" />
+<Exercise id="gpu-mem-roofline" />

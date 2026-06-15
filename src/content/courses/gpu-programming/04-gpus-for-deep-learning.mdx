@@ -1,0 +1,94 @@
+---
+title: "GPUs for Deep Learning"
+description: "How neural-network computation maps onto the GPU — why matrix multiply dominates, GEMM and tensor cores, mixed precision, kernel fusion, and the memory-bound vs compute-bound divide that shapes real training and inference."
+order: 4
+type: concept
+estimatedMinutes: 16
+---
+
+# GPUs for Deep Learning
+
+Everything in the first three lessons exists to make one thing fast: the arithmetic of neural networks. This lesson connects the hardware to the workload — why training is dominated by matrix multiplication, the specialized units that accelerate it, and the techniques (mixed precision, fusion) that frameworks use to keep the GPU's arithmetic units fed.
+
+**Real-world examples:** the matmuls inside every linear layer and attention block; tensor cores doing the heavy lifting in mixed-precision training; `torch.compile` and FlashAttention fusing kernels to dodge memory traffic; batching at inference time to push a memory-bound decode into a more efficient regime.
+
+## Why matrix multiply dominates
+
+A forward pass through a linear layer is $\mathbf{Y} = \mathbf{X}\mathbf{W}$ — a matrix multiply. Attention is a stack of matrix multiplies. Convolutions are lowered to matrix multiplies (im2col) or implemented as specialized GEMMs. Across a real model, **the overwhelming majority of FLOPs are matrix multiplies (GEMM — General Matrix Multiply)**.
+
+This is a gift, because GEMM is the *ideal* GPU workload from Lesson 1: massively parallel (every output element is independent), high arithmetic intensity (each loaded value is reused $O(N)$ times), and a regular, coalescable access pattern. GPU vendors therefore pour enormous effort into one routine — and you inherit it through cuBLAS/cuDNN.
+
+$$
+\text{matmul } (M\times K)\cdot(K\times N): \quad \text{FLOPs} = 2MNK, \qquad \text{bytes} \approx 4(MK + KN + MN)
+$$
+
+For large $M, N, K$ the FLOPs ($\propto N^3$) grow faster than the bytes ($\propto N^2$), so arithmetic intensity rises — GEMM is firmly **compute-bound**, exactly where the GPU is strongest.
+
+## Tensor cores
+
+Modern GPUs add **tensor cores**: units that compute a small **matrix multiply-accumulate** ($\mathbf{D} = \mathbf{A}\mathbf{B} + \mathbf{C}$ on, say, 16×16 tiles) in a single operation, rather than one scalar multiply-add per ALU. They deliver many times the throughput of the general-purpose cores — *for matmul-shaped work* in supported precisions.
+
+<Callout type="info" title="Tensor cores want the right shapes and types">
+  Tensor cores engage for GEMM-like operations in reduced precision (FP16/BF16/TF32/FP8). To use them well, matrix dimensions should be multiples of the tile size (e.g. 8 or 16) and data should be in a supported low-precision format. A matmul with awkward dimensions or in FP32 may fall back to the slower general cores — which is why padding to "nice" shapes can speed a model up.
+</Callout>
+
+## Mixed precision
+
+Training in pure FP32 wastes the tensor cores and doubles memory traffic. **Mixed-precision training** keeps a master copy of the weights in FP32 but does the matmuls in 16-bit (FP16 or BF16):
+
+- **Half the memory and bandwidth** for activations and gradients — and bandwidth is often the limit.
+- **Tensor cores engage**, multiplying throughput.
+- **Numerics are managed**: FP16 has a narrow range, so frameworks use **loss scaling** to keep small gradients from underflowing to zero; BF16 has FP32's exponent range and usually needs no scaling.
+
+The accumulation is still done in FP32 inside the tensor core, so accuracy is preserved while the expensive multiplies run in 16-bit.
+
+## Kernel fusion
+
+Each kernel launch reads its inputs from global memory and writes its outputs back. A chain of small element-wise ops — `bias → activation → dropout` — pays that round-trip *every step*, even though each op does almost no arithmetic. These ops are **memory-bound** (low arithmetic intensity from Lesson 3).
+
+**Kernel fusion** merges them into one kernel: load once, do all the arithmetic in registers, write once.
+
+$$
+\text{global trips (unfused, } k \text{ ops)} = 2k
+\qquad
+\text{global trips (fused)} = 2
+$$
+
+For memory-bound chains this is a near-$k\times$ speedup. This is exactly what `torch.compile`, XLA, and TensorRT do automatically, and what **FlashAttention** does by hand — fusing the attention softmax-and-matmul so the giant $N \times N$ score matrix never touches global memory.
+
+## Compute-bound vs memory-bound: the practical divide
+
+| Operation | Bound | Why | Lever |
+|---|---|---|---|
+| Large matmul / conv | compute | high arithmetic intensity | tensor cores, low precision |
+| Element-wise (activation, bias, norm) | memory | ~1 FLOP/byte | **fusion** |
+| Attention (long sequence) | memory (naive) | materializes $N^2$ scores | **fusion + tiling** (FlashAttention) |
+| LLM decode (batch 1) | memory | re-reads all weights per token | **batching**, KV-cache |
+
+<Callout type="warning" title="Inference is often memory-bound">
+  Generating one token at a time with batch size 1 re-reads the entire weight matrix to produce a single column of output — tiny arithmetic intensity, so it's bandwidth-limited and leaves the compute units idle. **Batching** many requests reuses each loaded weight across many tokens, pushing the operation toward compute-bound and dramatically raising throughput. This is the core reason inference servers batch.
+</Callout>
+
+## Common mistakes
+
+1. **Training in FP32 by default** — leaves tensor cores and half your bandwidth on the table; use BF16/FP16 mixed precision.
+2. **Ignoring kernel fusion for element-wise chains** — paying $k$ memory round-trips for ops that should be one; let the compiler fuse, or fuse by hand.
+3. **Awkward matmul dimensions** — shapes that aren't multiples of the tile size can miss tensor cores entirely.
+4. **Serving at batch size 1 and blaming the GPU** — decode is memory-bound; batch to convert idle bandwidth waste into throughput.
+
+## Key takeaways
+
+- **Matrix multiply (GEMM)** dominates deep-learning FLOPs and is the ideal compute-bound GPU workload.
+- **Tensor cores** accelerate matmul-shaped work in reduced precision; feed them nice shapes and low-precision data.
+- **Mixed precision** (FP16/BF16 matmuls, FP32 accumulation, loss scaling) halves bandwidth and engages tensor cores with managed numerics.
+- **Kernel fusion** collapses memory-bound op chains from $2k$ to $2$ global round-trips; **batching** rescues memory-bound inference by reusing loaded weights.
+
+## Related concepts
+
+- [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance) — the roofline and tiling ideas this lesson applies to ML kernels
+- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the matrix multiplies at the heart of every network
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — batching, KV-cache, and serving the memory-bound decode
+
+<Exercise id="gpu-dl-matmul-flops" />
+<Exercise id="gpu-dl-mixed-precision" />
+<Exercise id="gpu-dl-fusion" />

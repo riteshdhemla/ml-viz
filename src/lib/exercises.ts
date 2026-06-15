@@ -6386,6 +6386,260 @@ const allExercises: Exercise[] = [
       { id: "d", label: "All three can be enforced jointly by adjusting the decision threshold per group", isCorrect: false },
     ],
   },
+
+  // ── GPU Programming ─────────────────────────────────────────────
+  {
+    id: "gpu-arch-throughput-latency",
+    type: "multiple-choice",
+    question:
+      "A CPU has a few complex cores with large caches; a GPU has thousands of simple cores. What design goal does the GPU prioritize, and what does that require from a workload?",
+    hint: "Finish one task fast, or finish many tasks per second?",
+    explanation:
+      "A GPU is a throughput machine: it maximizes total work per second by running tens of thousands of threads. That only pays off when the workload has abundant independent, data-parallel work to fill the machine and hide memory latency — which matrix multiply provides. A CPU instead optimizes latency, racing a single thread to completion.",
+    options: [
+      { id: "a", label: "Throughput — it needs lots of independent, data-parallel work to fill the cores and hide latency", isCorrect: true },
+      { id: "b", label: "Latency — it finishes any single thread faster than a CPU", isCorrect: false },
+      { id: "c", label: "Lower power — it always uses less energy than a CPU", isCorrect: false },
+      { id: "d", label: "Larger caches — it relies on big per-core caches like a CPU", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-arch-warp-divergence",
+    type: "multiple-choice",
+    question:
+      "Inside one warp of 32 threads, an `if/else` branches on per-thread data so 16 threads take the `if` and 16 take the `else`. What happens?",
+    hint: "All 32 threads in a warp share a single program counter.",
+    explanation:
+      "Because a warp executes in lock-step (SIMT) with one shared program counter, a divergent branch runs BOTH paths serially — first the `if`-body with the else-threads masked off, then the `else`-body with the if-threads masked off. Cost ≈ cost(if) + cost(else). This warp divergence is a common silent performance killer.",
+    options: [
+      { id: "a", label: "Both branches execute serially, with inactive threads masked off on each path", isCorrect: true },
+      { id: "b", label: "The two halves run truly in parallel with no penalty", isCorrect: false },
+      { id: "c", label: "The kernel crashes — warps cannot contain branches", isCorrect: false },
+      { id: "d", label: "Only the `if` branch runs; the `else` threads are dropped", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-arch-hierarchy",
+    type: "multiple-choice",
+    question:
+      "Which statement correctly distinguishes a thread block from a warp?",
+    hint: "One is a programming abstraction; the other is the hardware execution unit.",
+    explanation:
+      "A block is a programming-level group of up to 1024 threads that run on one SM, can synchronize with __syncthreads(), and share fast shared memory. A warp (32 threads on NVIDIA) is the hardware scheduling and execution unit — the granularity at which threads actually run in lock-step. A block is composed of multiple warps.",
+    options: [
+      { id: "a", label: "A block (up to 1024 threads, shares shared memory) is a programming unit; a warp (32 threads) is the hardware execution unit", isCorrect: true },
+      { id: "b", label: "A warp can hold up to 1024 threads; a block is always exactly 32 threads", isCorrect: false },
+      { id: "c", label: "They are two names for the same thing", isCorrect: false },
+      { id: "d", label: "A block runs in lock-step; a warp's threads each run a different instruction", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-cuda-global-index",
+    type: "slider",
+    question:
+      "With 256 threads per block, what global element index does thread 5 of block 3 compute? (i = blockIdx·blockDim + threadIdx)",
+    hint: "3 × 256 + 5.",
+    explanation:
+      "The global index flattens the (block, thread) hierarchy: i = blockIdx.x × blockDim.x + threadIdx.x = 3 × 256 + 5 = 773.",
+    min: 0,
+    max: 1024,
+    step: 1,
+    correctRange: [773, 773],
+    unit: "",
+  },
+  {
+    id: "gpu-cuda-blocks-needed",
+    type: "slider",
+    question:
+      "You launch a vector-add kernel over n = 1000 elements with 256 threads per block. How many blocks must you launch?",
+    hint: "ceil(n / threadsPerBlock) — you must cover all elements.",
+    explanation:
+      "blocks = ceil(1000 / 256) = 4 (launching 1024 threads). The final 24 threads overshoot n, which is exactly why the kernel needs an `if (i < n)` bounds guard.",
+    min: 1,
+    max: 12,
+    step: 1,
+    correctRange: [4, 4],
+    unit: "blocks",
+  },
+  {
+    id: "gpu-cuda-transfer",
+    type: "multiple-choice",
+    question:
+      "Your GPU kernel is faster than the CPU version, yet the end-to-end program is slower on the GPU. What is the most likely culprit?",
+    hint: "Host and device have separate memory.",
+    explanation:
+      "Host↔device memory copies cross a relatively slow bus and are a classic bottleneck. If you copy data to the GPU and back on every operation, the transfer tax can swamp the kernel's speedup. The fix is to move data to the GPU once and keep it resident across many kernels.",
+    options: [
+      { id: "a", label: "Repeated host↔device memory transfers cost more than the kernel saves", isCorrect: true },
+      { id: "b", label: "The GPU cannot run the same arithmetic as the CPU", isCorrect: false },
+      { id: "c", label: "Kernels always run slower than reported", isCorrect: false },
+      { id: "d", label: "The bounds check `if (i < n)` dominates the runtime", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-mem-coalescing",
+    type: "multiple-choice",
+    question:
+      "Why is it important that the 32 threads of a warp read consecutive global-memory addresses?",
+    hint: "Global memory is delivered in wide transactions, not single floats.",
+    explanation:
+      "Global memory arrives in wide transactions (e.g. 128-byte cache lines). When consecutive threads access consecutive addresses, the hardware coalesces them into a single transaction at full bandwidth efficiency. Scattered or strided access can trigger a separate transaction per thread, wasting most fetched bytes — cutting effective bandwidth by 8–32×.",
+    options: [
+      { id: "a", label: "So the accesses coalesce into one wide transaction, using full memory bandwidth", isCorrect: true },
+      { id: "b", label: "So threads avoid warp divergence on the load", isCorrect: false },
+      { id: "c", label: "Because shared memory requires consecutive addresses", isCorrect: false },
+      { id: "d", label: "It does not matter; the GPU reorders accesses optimally regardless", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-mem-tiling-traffic",
+    type: "multiple-choice",
+    question:
+      "In a tiled matrix multiply, threads cooperatively load a T×T tile into shared memory before computing. What does this primarily achieve?",
+    hint: "How many times is each loaded value reused before being discarded?",
+    explanation:
+      "Tiling loads a block of data from slow global memory into fast shared memory once, then reuses it many times across the threads in the block. This cuts global-memory traffic by roughly a factor of T (from O(N³) naive reads toward O(N³/T)), raising arithmetic intensity — the core of fast GEMM and FlashAttention.",
+    options: [
+      { id: "a", label: "It reuses each value from fast shared memory, cutting slow global-memory traffic by ~T×", isCorrect: true },
+      { id: "b", label: "It eliminates the need for __syncthreads() barriers", isCorrect: false },
+      { id: "c", label: "It guarantees 100% occupancy on every SM", isCorrect: false },
+      { id: "d", label: "It converts the matmul into an element-wise operation", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-mem-roofline",
+    type: "multiple-choice",
+    question:
+      "A kernel has very low arithmetic intensity (few FLOPs per byte moved), e.g. an element-wise activation. The roofline model classifies it as memory-bound. What will speed it up?",
+    hint: "Adding FLOPs to something limited by bandwidth does nothing.",
+    explanation:
+      "A memory-bound kernel is capped at I × BW, so its performance is limited by memory bandwidth, not compute. Throwing more arithmetic at it changes nothing. The levers are: raise arithmetic intensity (fuse ops, reuse data via tiling) or improve effective bandwidth (coalesce accesses). Fusing element-wise op chains is the canonical fix.",
+    options: [
+      { id: "a", label: "Raising arithmetic intensity (e.g. kernel fusion) or improving bandwidth (coalescing)", isCorrect: true },
+      { id: "b", label: "Adding more floating-point operations per element", isCorrect: false },
+      { id: "c", label: "Switching to a GPU with more compute (FLOPs) but the same bandwidth", isCorrect: false },
+      { id: "d", label: "Lowering occupancy so each thread does less work", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-dl-matmul-flops",
+    type: "slider",
+    question:
+      "Multiplying two square N×N matrices with N = 100 costs 2·N³ FLOPs. How many million FLOPs is that?",
+    hint: "2 × 100³ = 2 × 1,000,000.",
+    explanation:
+      "A matmul of (M×K)·(K×N) costs 2MNK FLOPs. For N = 100 square: 2 × 100³ = 2,000,000 = 2.0 million FLOPs. Because FLOPs grow as N³ while bytes grow as N², large matmuls are compute-bound — the GPU's strong suit.",
+    min: 0,
+    max: 10,
+    step: 0.1,
+    correctRange: [2, 2],
+    unit: "M FLOPs",
+  },
+  {
+    id: "gpu-dl-mixed-precision",
+    type: "multiple-choice",
+    question:
+      "Why does mixed-precision training (FP16/BF16 matmuls with FP32 accumulation) speed up deep learning?",
+    hint: "Think bandwidth and specialized hardware units.",
+    explanation:
+      "16-bit data halves memory and bandwidth for activations/gradients (often the limit) and lets tensor cores engage, multiplying matmul throughput. Accumulation stays in FP32 inside the tensor core to preserve accuracy; FP16's narrow range is handled with loss scaling, while BF16 keeps FP32's exponent range and usually needs none.",
+    options: [
+      { id: "a", label: "16-bit halves bandwidth and engages tensor cores, while FP32 accumulation preserves accuracy", isCorrect: true },
+      { id: "b", label: "It increases the number of FLOPs the model must perform", isCorrect: false },
+      { id: "c", label: "It removes the need to keep weights in memory at all", isCorrect: false },
+      { id: "d", label: "It works by lowering occupancy to hide latency", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-dl-fusion",
+    type: "multiple-choice",
+    question:
+      "A chain of k small element-wise ops (bias → activation → dropout) is memory-bound. Fusing them into one kernel changes the number of global-memory round-trips from 2k to what, and why does it help?",
+    hint: "Load once, compute everything in registers, write once.",
+    explanation:
+      "Each unfused op reads its input from global memory and writes its output back (2 trips each, 2k total). Fusion loads the data once, does all k ops in registers, and writes once — 2 trips total. For memory-bound chains that approaches a k× speedup, which is exactly what torch.compile, XLA, and FlashAttention exploit.",
+    options: [
+      { id: "a", label: "To 2 round-trips — load once, compute all ops in registers, write once (near k× faster)", isCorrect: true },
+      { id: "b", label: "To 4k round-trips — fusion adds overhead and is usually slower", isCorrect: false },
+      { id: "c", label: "It stays 2k — fusion only affects compute-bound kernels", isCorrect: false },
+      { id: "d", label: "To 0 — fused kernels never touch global memory", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-quiz-simt",
+    type: "multiple-choice",
+    question:
+      "What does SIMT (Single Instruction, Multiple Threads) mean for the 32 threads of a warp?",
+    hint: "One instruction stream, many data lanes.",
+    explanation:
+      "Under SIMT, all threads in a warp execute the same instruction at the same time, each on its own data — one decode unit drives 32 arithmetic lanes. The consequence is warp divergence: a data-dependent branch that splits the warp forces both paths to run serially.",
+    options: [
+      { id: "a", label: "They all execute the same instruction simultaneously, each on its own data", isCorrect: true },
+      { id: "b", label: "Each thread runs a completely different instruction at the same time", isCorrect: false },
+      { id: "c", label: "Only one thread is active at a time; the rest wait", isCorrect: false },
+      { id: "d", label: "Threads share the same data but run different instructions", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-quiz-index",
+    type: "multiple-choice",
+    question:
+      "A vector-add kernel is launched over n elements that is not a multiple of the block size. Why must the kernel include `if (i < n)`?",
+    hint: "You can only launch a whole number of blocks.",
+    explanation:
+      "Because you launch ceil(n / blockDim) whole blocks, the last block almost always contains threads whose global index i ≥ n. Without the bounds guard, those extra threads read and write out of bounds. The guard makes them do nothing.",
+    options: [
+      { id: "a", label: "The last block over-launches threads with i ≥ n, which must be prevented from accessing out of bounds", isCorrect: true },
+      { id: "b", label: "To avoid warp divergence in the first block", isCorrect: false },
+      { id: "c", label: "To synchronize threads across different blocks", isCorrect: false },
+      { id: "d", label: "It is optional and only affects performance, not correctness", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-quiz-coalescing",
+    type: "multiple-choice",
+    question:
+      "Two kernels do identical arithmetic, but kernel A has consecutive threads read consecutive addresses while kernel B has each thread read with a large stride. What is the likely outcome?",
+    hint: "Coalesced vs scattered global access.",
+    explanation:
+      "Kernel A's coalesced accesses combine into wide single transactions at near-full bandwidth efficiency. Kernel B's strided accesses waste most of each fetched cache line, cutting effective bandwidth many-fold. Same FLOPs, very different speed — coalescing is usually the first thing to fix, often via a data-layout change.",
+    options: [
+      { id: "a", label: "Kernel A is much faster because its accesses coalesce; B wastes most of its memory bandwidth", isCorrect: true },
+      { id: "b", label: "They run at identical speed since the arithmetic is the same", isCorrect: false },
+      { id: "c", label: "Kernel B is faster because striding spreads load across memory banks", isCorrect: false },
+      { id: "d", label: "The difference only matters for shared memory, not global memory", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-quiz-roofline",
+    type: "multiple-choice",
+    question:
+      "On a roofline plot, a large matrix multiply sits to the right of the ridge point (high arithmetic intensity). What does this tell you?",
+    hint: "Which ceiling — compute or memory — is binding?",
+    explanation:
+      "Right of the ridge point means the kernel is compute-bound: its performance is capped by the GPU's peak arithmetic throughput, not memory bandwidth. Large GEMMs reuse each loaded value O(N) times, giving high FLOP/byte — which is why they're the ideal GPU workload and benefit most from tensor cores.",
+    options: [
+      { id: "a", label: "It is compute-bound — limited by arithmetic throughput, and a great fit for tensor cores", isCorrect: true },
+      { id: "b", label: "It is memory-bound — limited by bandwidth", isCorrect: false },
+      { id: "c", label: "It is using too much shared memory", isCorrect: false },
+      { id: "d", label: "It has low occupancy and cannot hide latency", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-quiz-fusion",
+    type: "multiple-choice",
+    question:
+      "Why is generating one token at a time with batch size 1 (LLM decode) typically memory-bound, and what fixes it?",
+    hint: "How much arithmetic happens per byte of weights loaded?",
+    explanation:
+      "Decoding a single token re-reads the entire weight matrix to produce one column of output — extremely low arithmetic intensity, so it's limited by memory bandwidth while the compute units sit idle. Batching many requests reuses each loaded weight across many tokens, raising arithmetic intensity toward compute-bound and greatly increasing throughput. This is why inference servers batch.",
+    options: [
+      { id: "a", label: "Each token re-reads all weights for tiny arithmetic; batching reuses loaded weights across tokens to raise intensity", isCorrect: true },
+      { id: "b", label: "Decode is compute-bound; the fix is a faster clock", isCorrect: false },
+      { id: "c", label: "It is limited by warp divergence; the fix is removing branches", isCorrect: false },
+      { id: "d", label: "It is limited by host↔device transfer; the fix is more PCIe lanes", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
