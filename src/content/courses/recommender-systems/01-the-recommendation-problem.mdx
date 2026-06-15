@@ -1,0 +1,99 @@
+---
+title: "The Recommendation Problem"
+description: "Predicting what a user will want — explicit vs implicit feedback, content-based vs collaborative filtering, the cold-start problem, and the ranking metrics (recall@k, NDCG) that judge a recommender."
+order: 1
+type: concept
+estimatedMinutes: 15
+---
+
+# The Recommendation Problem
+
+Every feed, store, and streaming service answers the same question millions of times a second: *of all the items, which few should I show this user now?* **Recommender systems** are the ML behind that choice, and they're among the highest-value ML applications in industry. This lesson frames the problem, contrasts the two classic families of solution, and defines how we actually measure a recommendation.
+
+**Real-world examples:** Netflix's "Top picks," Amazon's "Customers also bought," Spotify's Discover Weekly, YouTube's up-next, and the ranking of any social feed.
+
+## The setup
+
+You have a set of **users** $U$ and **items** $I$, and a sparse record of past interactions. The goal is to predict, for a user, the items they'd most likely engage with — and surface a short ranked list.
+
+The interaction data is a **user–item matrix** $\mathbf{R}$, where $R_{ui}$ is user $u$'s response to item $i$. Crucially, this matrix is **extremely sparse**: a user has touched a tiny fraction of all items, so most entries are *unknown* (not zero). Recommendation is, at heart, filling in those unknowns.
+
+## Explicit vs. implicit feedback
+
+| | Explicit | Implicit |
+|---|---|---|
+| Signal | ratings, thumbs, reviews | clicks, watches, purchases, dwell time |
+| Meaning | stated preference | inferred preference |
+| Volume | sparse, costly | abundant, cheap |
+| Negatives | a low rating is real dislike | a non-click is **ambiguous** (unseen? disliked?) |
+
+<Callout type="warning" title="Implicit feedback has no true negatives">
+  A user not clicking an item usually means they never saw it — not that they dislike it. So you can't treat un-interacted items as confirmed negatives. Implicit-feedback models use techniques like negative *sampling* and confidence weighting (interactions are positive signals of varying strength) rather than assuming missing = negative.
+</Callout>
+
+## Two classic families
+
+**Content-based filtering** recommends items *similar to ones the user liked*, using item features (genre, text, tags). Build a profile vector from a user's history, then rank items by feature similarity (e.g. cosine).
+
+- ✅ Works for brand-new items (uses their features) and needs no other users.
+- ❌ Stuck in a "filter bubble" (only ever recommends more of the same); needs good item features.
+
+**Collaborative filtering (CF)** recommends *what similar users liked*, using only the interaction matrix — no item features at all. "Users who liked what you liked also liked X."
+
+- ✅ Discovers surprising cross-domain recommendations; no feature engineering.
+- ❌ Suffers **cold start**: a brand-new user or item has no interactions to learn from.
+
+<Callout type="info" title="Memory-based vs. model-based CF">
+  Early CF was **memory-based**: find the *k* nearest users (or items) by interaction overlap and average their preferences — essentially KNN on the rating matrix. Modern CF is **model-based**: learn low-dimensional latent factors that *generate* the matrix (matrix factorization, next lesson). Production systems usually **hybridize** content + collaborative signals to get the best of both and soften cold start.
+</Callout>
+
+## The cold-start problem
+
+Collaborative filtering can't recommend for entities with no interaction history:
+
+- **New user** — no history to find similar users. Mitigate with onboarding questions, popularity defaults, or content/context features.
+- **New item** — no one has interacted with it. Mitigate with content-based features until interactions accumulate.
+
+Cold start is *the* reason pure CF is rarely deployed alone.
+
+## Measuring a recommender: ranking metrics
+
+A recommender outputs a *ranked list*, so accuracy-style metrics miss the point — what matters is whether relevant items appear **near the top**. The standard top-$k$ metrics:
+
+- **Precision@k** — fraction of the top-$k$ recommendations that are relevant.
+- **Recall@k** — fraction of all relevant items that appear in the top-$k$.
+- **NDCG@k** (Normalized Discounted Cumulative Gain) — rewards putting relevant items *higher*, with a logarithmic position discount:
+
+$$
+\text{DCG@}k = \sum_{i=1}^{k} \frac{\text{rel}_i}{\log_2(i+1)}, \qquad \text{NDCG@}k = \frac{\text{DCG@}k}{\text{IDCG@}k}
+$$
+
+where $\text{IDCG}$ is the DCG of the ideal (perfectly sorted) ranking, so NDCG $\in [0,1]$. **MRR** (mean reciprocal rank) and **MAP** are also common.
+
+<Callout type="tip" title="Why position-aware metrics?">
+  Two recommenders can have identical recall@10 yet very different user experience if one puts the relevant item at rank 1 and the other at rank 10. NDCG and MRR capture that the *order* within the list matters — the top slot is worth far more than the tenth.
+</Callout>
+
+## Common mistakes
+
+1. **Treating missing implicit feedback as a negative.** A non-click is ambiguous; use negative sampling, not "missing = dislike."
+2. **Evaluating with RMSE only.** Rating-prediction error ignores ranking quality; report top-$k$ ranking metrics (recall@k, NDCG).
+3. **Ignoring cold start.** A pure-CF demo looks great offline but fails the moment a new user or item arrives.
+4. **Leaking the future.** Splitting interactions randomly lets the model "see" later behavior; split by **time** to mimic deployment.
+
+## Key takeaways
+
+- Recommendation = filling in a **sparse user–item matrix** and surfacing a short ranked list.
+- **Explicit** feedback (ratings) is sparse but clear; **implicit** feedback (clicks) is abundant but has **no true negatives**.
+- **Content-based** filtering uses item features (handles new items, risks filter bubbles); **collaborative** filtering uses the interaction matrix (discovers novel items, suffers **cold start**). Production systems hybridize.
+- Judge recommenders with **position-aware ranking metrics** — recall@k, **NDCG@k**, MRR — not plain accuracy or RMSE.
+
+## Related concepts
+
+- [**SVD & Low-Rank Approximation**](/courses/linear-algebra/04-svd-and-low-rank) — the low-rank factorization behind model-based collaborative filtering (next lesson)
+- [**KNN**](/courses/knn-decision-trees/01-knn) — the nearest-neighbor idea behind memory-based collaborative filtering
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — precision/recall, which the top-k ranking metrics extend
+
+<Exercise id="recsys-feedback" />
+<Exercise id="recsys-cold-start" />
+<Exercise id="recsys-ndcg" />

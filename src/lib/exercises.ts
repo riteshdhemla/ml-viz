@@ -6985,6 +6985,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Normalization such as PairNorm", isCorrect: false },
     ],
   },
+  {
+    id: "recsys-feedback",
+    type: "multiple-choice",
+    question:
+      "You train a recommender on click logs (implicit feedback). Why is it wrong to treat every item a user did NOT click as a negative example?",
+    hint: "Did the user even see those items?",
+    explanation:
+      "A non-click usually means the user never saw the item, not that they dislike it — implicit feedback has no true negatives. Treating all un-clicked items as negatives floods training with false negatives. Instead, models use negative sampling and confidence weighting, treating interactions as positive signals of varying strength.",
+    options: [
+      { id: "a", label: "A non-click is ambiguous — usually the item was never seen, not disliked", isCorrect: true },
+      { id: "b", label: "Clicks are always noise and should be discarded", isCorrect: false },
+      { id: "c", label: "Implicit feedback cannot be used to train recommenders", isCorrect: false },
+      { id: "d", label: "Un-clicked items are guaranteed dislikes", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-cold-start",
+    type: "multiple-choice",
+    question:
+      "Pure collaborative filtering cannot make good recommendations for a brand-new item with no interactions. What is this problem called, and a standard fix?",
+    hint: "It also affects brand-new users.",
+    explanation:
+      "This is the cold-start problem: collaborative filtering needs interaction history, which new items (and new users) lack. A standard fix is to fall back on content-based features (item metadata, text) until enough interactions accumulate — which is why production systems hybridize content and collaborative signals.",
+    options: [
+      { id: "a", label: "Cold start — fall back on content-based features until interactions accumulate", isCorrect: true },
+      { id: "b", label: "Over-smoothing — add skip connections", isCorrect: false },
+      { id: "c", label: "Filter bubble — add more layers", isCorrect: false },
+      { id: "d", label: "Data leakage — shuffle the data", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-ndcg",
+    type: "multiple-choice",
+    question:
+      "Two recommenders both place exactly the same 3 relevant items somewhere in their top-10, so they have identical recall@10. Why might their NDCG@10 differ?",
+    hint: "What does the log discount in DCG reward?",
+    explanation:
+      "NDCG applies a logarithmic position discount, so a relevant item at rank 1 contributes far more than the same item at rank 10. Recall@10 only counts whether relevant items are in the top-10; NDCG additionally rewards ranking them higher. Same recall, different ordering → different NDCG.",
+    options: [
+      { id: "a", label: "NDCG rewards placing relevant items higher in the list; recall@10 ignores order within the top-10", isCorrect: true },
+      { id: "b", label: "NDCG counts irrelevant items, recall does not", isCorrect: false },
+      { id: "c", label: "They cannot differ if recall is equal", isCorrect: false },
+      { id: "d", label: "NDCG requires explicit ratings while recall does not", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
