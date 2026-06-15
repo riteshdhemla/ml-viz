@@ -1,0 +1,140 @@
+---
+title: "Monitoring & Observability"
+description: "Why ML monitoring needs four layers — system, input, output, outcome — and how percentile latencies, PSI drift, calibration drift, and SLO error-budget burn rates compose into alerts that wake the right person at the right time."
+order: 10
+type: concept
+estimatedMinutes: 20
+---
+
+# Monitoring & Observability
+
+A model that returns HTTP 200s, holds p99 latency under 300 ms, and never throws an exception can still be *silently broken*. The predictions look like predictions. The schema is unchanged. The dashboard is green. Meanwhile the model has been calibrated on data from six months ago, the upstream feature pipeline started returning zeros for a critical column two weeks back, and the click-through rate has been quietly bleeding 0.3 % a day. ML monitoring is the discipline of catching that *silent* failure mode in addition to the loud ones — and it requires a different toolkit from the one a backend service uses for the same job.
+
+Real-world examples: most teams build the system-metrics layer on **Grafana + Prometheus** (or **Datadog** / **New Relic**) and bolt an ML-specific layer on top using **Arize**, **Fiddler**, or **WhyLabs** for input/output drift; **CloudWatch alarms** wired to **PagerDuty** handle the page-the-on-call leg; LLM-shaped products instrument prompt/response telemetry with **Langfuse** or **Helicone** to feed offline-eval dashboards. The pattern is always the same — system metrics in one stack, ML-specific metrics in another, alerting glue on top.
+
+## Why ML monitoring is different from regular service monitoring
+
+A backend service has a single contract: respond to requests on time, with the right schema, without erroring. If those three hold, the service is *up*. ML changes the contract: a prediction can be on time, correctly typed, and still *wrong* in a way that costs money. The service-level dashboard cannot see this, because the failure is in the value of the prediction, not its delivery.
+
+The fix is to monitor at four layers, top to bottom:
+
+- **System** — latency, error rate, throughput, saturation. The classic SRE metrics. Tells you "the box is up and responding."
+- **Input** — feature distributions, missingness rates, per-feature value ranges. Tells you "the data we're scoring still looks like the data we trained on."
+- **Output** — prediction distribution, prediction confidence, per-class prediction rates. Tells you "the model's view of the world hasn't shifted."
+- **Outcome** — accuracy / precision / recall / business KPI, once labels arrive (from delayed feedback, from human review, or from explicit ground truth). Tells you "the predictions are still right."
+
+You catch different failure modes at each layer. A bad code deploy shows up at the system layer. An upstream feature-pipeline bug shows up at the input layer. A retrain that mis-calibrated the model shows up at the output layer. A genuine concept shift shows up at the outcome layer. Monitoring only one layer is the most common reason teams discover, in production, that a problem has been there for a month.
+
+<Callout type="info" title="A 200 OK is not a correct prediction.">
+Service-level dashboards can be entirely green while a model is silently degraded. The classic version of this story: a feature pipeline upstream of the model started returning zeros for a top-importance feature. The HTTP response was on time, the JSON was well-formed, the model returned a number — and the number was systematically wrong for two weeks before anyone noticed. The system layer cannot catch this. You need the input and output layers too.
+</Callout>
+
+## System-layer metrics
+
+The classic SRE quartet, applied to a model server:
+
+- **Latency** — measured as percentiles, not means. The mean lies: a service with 99 % fast requests and 1 % timeouts has an excellent mean and a terrible user experience. Report p50 (typical), p95 (slow but tolerable), p99 (where users feel the pain). For LLMs, also report **time-to-first-token** and **inter-token latency** — total latency is dominated by output length and doesn't tell you whether the system felt responsive.
+- **Error rate** — 5xx, timeouts, schema-validation failures. Track the *rate*, not the absolute count, so the metric is independent of traffic volume.
+- **Throughput** — QPS (queries per second). For LLMs, also tokens-per-second per replica — useful for capacity planning since latency budget and throughput are usually traded off.
+- **Saturation** — GPU memory, GPU utilization, queue depth, batch fullness. Saturation predicts *future* latency: a model server at 95 % memory utilization will start swapping and tail-latency will explode before throughput dies. Alert here *before* the latency-rate alert fires.
+
+Two mnemonics worth memorising:
+
+- **RED** (request-centric): **R**ate, **E**rrors, **D**uration. Best for stateless request/response systems — including most model servers.
+- **USE** (resource-centric): **U**tilisation, **S**aturation, **E**rrors. Best for backing resources — GPU pools, queues, KV caches.
+
+Use both. RED on the model endpoint, USE on the GPU pool it runs on, then graph them side by side. A correlated spike in queue depth (USE) and tail latency (RED) is a saturation incident; an uncorrelated spike in errors with flat utilisation is a code bug.
+
+<Callout type="warning" title="The mean lies — alert on the p99.">
+A service with a 50 ms mean latency can have a 5 s p99. The 1 % of users hitting that tail are absolutely sure your product is broken; their complaints are real, and the dashboard says everything is fine. Always alert on p95 or p99 — never on the mean — and remember that even p99 can hide a worse p99.9. If your traffic is large enough that a 0.1 % failure is many users per minute, the p99.9 is the line to watch.
+</Callout>
+
+## Input drift detection
+
+The most useful single number for "the input distribution has shifted" is the **Population Stability Index** (PSI). For a feature binned into $k$ bins with training probabilities $p_i$ and production probabilities $q_i$:
+
+$$
+\mathrm{PSI} = \sum_{i=1}^{k} (p_i - q_i) \cdot \log\!\left(\frac{p_i}{q_i}\right)
+$$
+
+The expression is symmetric in $p$ and $q$ — adding probability to a bin contributes the same magnitude as removing it. Standard rules of thumb:
+
+- $\mathrm{PSI} < 0.1$ — stable, no action.
+- $0.1 \leq \mathrm{PSI} < 0.25$ — watchful waiting; investigate but don't necessarily act.
+- $\mathrm{PSI} \geq 0.25$ — meaningful shift; investigate and probably retrain.
+
+PSI is one of several options. **KL divergence** $D_{\mathrm{KL}}(P \,\|\, Q) = \sum_i p_i \log(p_i / q_i)$ is the asymmetric cousin and is what PSI was derived from. The **Kolmogorov–Smirnov test** compares empirical CDFs and is useful for continuous features without binning. None of these dominates the others; teams typically pick one and stick with it for the consistency of the per-feature threshold.
+
+**Per-feature beats summary scores.** A single "input drift" number averaged across all features is almost useless — a serious shift in one important feature gets diluted by 199 stable ones, and the alarm never fires. Compute drift *per feature*, plot a heatmap, and alert on the worst offenders. When drift correlates with a known event (a deploy, a backfill, a partner-API change), the heatmap tells you which features moved together — diagnostic information no scalar can give you.
+
+## Output drift and calibration drift
+
+Even when inputs look stable, the model's *output distribution* can shift — usually because of a retrain. The cheapest check: track the mean prediction (for regression) or per-class prediction rate (for classification) over time. A retrained fraud model that suddenly predicts 8 % fraud where it used to predict 2 % is a signal — possibly the world genuinely got worse, possibly the new model is mis-calibrated. You want to see both *before* a single false-positive complaint escalates.
+
+**Calibration drift** is the more subtle one. A well-calibrated classifier produces confidence scores that match empirical accuracy: predictions made with 0.8 confidence should be right 80 % of the time. Plot a **reliability diagram** — confidence on the x-axis, empirical accuracy on the y-axis, binned across the prediction range. A calibrated model sits on the diagonal; an over-confident model bows below it; an under-confident model sits above. Track the gap between curve and diagonal — the **expected calibration error** (ECE) — over rolling windows. A drift here is a leading indicator of downstream accuracy loss: the predictions are still in the same range, but they no longer mean what the downstream system assumes they mean.
+
+## Performance monitoring (when labels eventually arrive)
+
+The gold standard is to watch real performance metrics (accuracy, precision/recall, AUC, business KPI) on a rolling window. This only works when **labels arrive in time** for the window to be useful:
+
+- **Online feedback** — clicks on a recommendation, fraud reversals, chargebacks. Labels arrive within minutes to hours. Roll the window over the last $N$ minutes and you can detect a 1 % accuracy drop in close to real time.
+- **Delayed feedback** — medical outcomes, loan defaults. Labels arrive months later. Real-performance monitoring works but lags badly; you must lean harder on input/output drift as leading indicators in the meantime.
+- **No feedback** — purely autonomous decisions with no ground truth. You can't measure accuracy; you instrument human review on a sample, or run scheduled re-labeling jobs to sample the held-out distribution.
+
+For the delayed case, **counterfactual logging** is the technique to know. Under canary or shadow traffic, log not just the candidate's prediction but also the *baseline* model's prediction on the same input. Months later, when labels arrive, you can compare both — the candidate's regression (if any) is now attributable to the *model*, not to a confound in the traffic.
+
+## Alerting that doesn't burn out the on-call
+
+Detection is the easy half. The hard half is alerting that wakes the on-call only when something is actually wrong. Two principles:
+
+**Alert on burn rate, not raw thresholds.** Define an SLO ("99.5 % of requests in p99 < 300 ms over a 30-day window") and let the *error budget* — the amount of breach you've allowed in the window — drive alerts. The metric to watch is the *burn rate*: how fast the current error rate is consuming the monthly budget. Google's SRE workbook recommends a **multi-window, multi-burn-rate** alert: a fast-burn alert fires when the rolling 1-hour error rate is consuming the monthly budget at 14× (you'll be out of budget in about two days at this rate), and a slow-burn alert fires when the 6-hour rate is consuming it at 1× (steady leak that needs investigation but not a page). The fast-burn pages, the slow-burn opens a ticket.
+
+**Runbooks for every alert, no exceptions.** A page without a runbook is a page that wakes the on-call to ask "what does this mean?" Every alert in the system should have a one-page document with: what fires it, what to check first, the three most common causes, and the rollback step. If you can't write a runbook for an alert, you don't yet understand what the alert means, and you shouldn't be alerting on it.
+
+<Callout type="warning" title="Alert fatigue is a real failure mode.">
+A noisy alert that fires 50 times a week — false positives, transient spikes, things that resolve themselves — trains the on-call to ignore it. When the real incident comes, it pages at 3 a.m. into a culture that hits "acknowledge" without looking. Audit alert frequency monthly: anything that fires more than once a week without a real incident is either a bug, the wrong metric, or the wrong threshold. Fix it, don't normalise it.
+</Callout>
+
+## Putting it together
+
+The dashboard for a production model usually has five rows, top to bottom:
+
+1. **System** — RED metrics, USE on the GPU pool. Catches deploys, infra incidents, saturation.
+2. **Input drift** — PSI heatmap over the top-$N$ features. Catches upstream pipeline regressions and genuine distribution shift.
+3. **Output drift** — mean prediction or per-class prediction rate, plus the ECE on a reliability diagram. Catches mis-calibrated retrains and silent concept drift.
+4. **Outcome** — real accuracy / business KPI on a rolling window, once labels arrive. The ground-truth signal.
+5. **SLO error budget burn** — single number per SLO. The burn rate alerts page off of this.
+
+Each row catches a different failure mode. Catching all of them is what "production-grade ML monitoring" actually means.
+
+## Common mistakes
+
+1. **Alerting on the mean latency.** The mean hides every tail. A 100 ms mean with a 5 s p99 is a customer-support fire; the dashboard says it's fine. Always alert on a percentile.
+2. **Monitoring only system metrics.** A green HTTP dashboard says nothing about prediction quality. Without input/output drift dashboards, silent degradation runs for weeks.
+3. **One summary drift score across all features.** A serious shift in one feature is diluted by 199 stable ones; the alarm never fires. Drift is per-feature; plot a heatmap.
+4. **Alerting on raw thresholds.** A 0.6 % error rate is fine for an hour, an outage for a day. Burn-rate alerts (fast and slow) absorb noise; raw-threshold alerts burn out the on-call.
+5. **Pages without runbooks.** Every page should answer "what does this mean, what do I check, what do I roll back." A page without a runbook is a page that trains the responder to acknowledge without acting.
+6. **Ignoring saturation until latency dies.** GPU memory at 95 % is a future incident; queue depth growing for an hour is a future incident. Saturation predicts latency — alert there *before* the user-facing metric blows.
+
+## Key takeaways
+
+- ML monitoring needs **four layers**: system, input, output, outcome. The system layer alone misses every silent failure.
+- System-layer metrics are **percentile latencies** (p50/p95/p99), error rate, throughput, saturation. The **mean lies**; always alert on the tail.
+- **PSI** ($\sum (p_i - q_i) \log(p_i / q_i)$) is the standard single-feature drift score; $<0.1$ stable, $0.1$–$0.25$ watch, $>0.25$ act. Compute it **per feature**, not as a summary score.
+- **Calibration drift** in a reliability diagram is a leading indicator of accuracy loss; track expected calibration error (ECE) over rolling windows.
+- When labels arrive, **rolling-window accuracy / precision / recall** is the ground-truth signal. When they don't arrive in time, **counterfactual logging** lets you attribute regression to the model later.
+- **Alert on SLO error-budget burn rate**, not raw thresholds. Use multi-window multi-burn-rate alerts: fast-burn (1h, 14×) pages; slow-burn (6h, 1×) opens a ticket.
+- Every alert needs a **runbook**. Alert fatigue is a real failure mode — audit alert frequency monthly.
+
+## Related concepts
+
+- [**Continual Learning & Testing in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — drift detection in that lesson is framed as a *trigger* for retraining. Here it's one of several monitored signals; the alerting and dashboard infrastructure below sits underneath that retraining loop.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems-design view that asks "what happens when something goes wrong." Monitoring is the engineered answer.
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — once a quantized / distilled model is serving, its calibration and tail-latency profile become first-class monitoring targets.
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — the metrics you alert on in the outcome layer are the metrics from that lesson, on a rolling window.
+
+<Exercise id="monitoring-percentiles" />
+
+<Exercise id="monitoring-psi" />
+
+<Exercise id="monitoring-alert-budget" />
