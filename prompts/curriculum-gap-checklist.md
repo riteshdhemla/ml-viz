@@ -42,7 +42,7 @@ already covered:
 
 ## Tier 1 — Critical gaps (core to overall ML/DL understanding)
 
-- [ ] **NEW COURSE `graph-neural-networks`** *(cluster Deep Learning)* — **zero coverage today.** A major architecture family absent from the curriculum. Course index + Lesson 01 (graphs as data; node/edge/graph features; the message-passing framework). Course frontmatter: difficulty `advanced`, prerequisites `["neural-networks"]`.
+- [x] **NEW COURSE `graph-neural-networks`** *(cluster Deep Learning)* — **zero coverage today.** A major architecture family absent from the curriculum. Course index + Lesson 01 (graphs as data; node/edge/graph features; the message-passing framework). Course frontmatter: difficulty `advanced`, prerequisites `["neural-networks"]`.
 - [ ] **`graph-neural-networks` Lesson 02 — Graph Convolutions & GraphSAGE** · spectral vs spatial convolutions, neighborhood aggregation, the GCN layer $H^{(l+1)} = \sigma(\hat A H^{(l)} W)$, inductive vs transductive · viz: **new `MessagePassingViz`** (a node aggregating neighbor features over rounds) · notebook (GCN forward pass on a small graph in NumPy).
 - [ ] **`graph-neural-networks` Lesson 03 — Graph Attention & Pooling + Quiz** · GAT attention over neighbors, readout/pooling for graph-level tasks, over-smoothing; then a 5-question quiz · notebook.
 - [ ] **NEW COURSE `recommender-systems`** *(cluster Applied ML)* — only mentioned in passing today. Index + Lesson 01 (the recommendation problem; explicit vs implicit feedback; content-based vs collaborative filtering; evaluation: recall@k, NDCG). Prereqs `["linear-algebra"]`.
