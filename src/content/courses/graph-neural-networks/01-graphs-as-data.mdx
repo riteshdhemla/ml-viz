@@ -1,0 +1,97 @@
+---
+title: "Graphs as Data & Message Passing"
+description: "When your data is a network — representing graphs for learning, why grids and sequences are special cases, and the message-passing framework that underlies every graph neural network."
+order: 1
+type: concept
+estimatedMinutes: 15
+---
+
+# Graphs as Data & Message Passing
+
+Most ML assumes data lives on a grid (images), a sequence (text), or a flat table (rows of features). But molecules, social networks, road maps, knowledge graphs, and recommendation systems are **graphs**: entities connected by relationships, with no fixed order and no fixed number of neighbors. **Graph Neural Networks (GNNs)** learn directly on this structure. This lesson sets up how a graph becomes learnable data and introduces the single idea — **message passing** — that nearly every GNN is built from.
+
+**Real-world examples:** predicting molecular properties for drug discovery, fraud detection on transaction graphs, friend/product recommendation, traffic forecasting on road networks, and reasoning over knowledge graphs.
+
+## What is a graph, for ML?
+
+A graph $G = (V, E)$ is a set of **nodes** $V$ and **edges** $E$ connecting them. For learning we attach features:
+
+- **Node features** $\mathbf{x}_v \in \mathbb{R}^{d}$ — e.g. an atom's element, a user's profile vector.
+- **Edge features** $\mathbf{e}_{uv}$ — e.g. a bond type, a transaction amount (optional).
+- **Graph-level features / labels** — e.g. "is this molecule toxic?".
+
+The connectivity is captured by the **adjacency matrix** $\mathbf{A} \in \{0,1\}^{n\times n}$, where $A_{uv} = 1$ if there's an edge $u\to v$. Node features stack into $\mathbf{X} \in \mathbb{R}^{n\times d}$.
+
+<Callout type="info" title="Grids and sequences are just special graphs">
+  An image is a graph where each pixel connects to its 4 (or 8) neighbors; a sentence is a graph where each token links to the next. CNNs and RNNs are GNNs with a *fixed, regular* neighborhood. GNNs generalize them to **arbitrary, irregular** connectivity.
+</Callout>
+
+## The two hard constraints
+
+A graph model must respect two properties that grids and sequences don't force on you:
+
+1. **Permutation invariance / equivariance.** There is no "first" node — relabeling the nodes must not change the prediction (for graph-level tasks) and must permute the outputs identically (for node-level tasks). Any operation over neighbors must therefore be **order-independent**.
+2. **Variable neighborhood size.** Different nodes have different numbers of neighbors, so you can't use a fixed-size weight per neighbor slot the way a CNN kernel does.
+
+Both constraints point to the same solution: aggregate neighbor information with a **permutation-invariant** function (sum, mean, max) rather than a position-dependent one.
+
+## Message passing: the core framework
+
+Nearly every GNN is an instance of **message passing**. Each node iteratively updates its representation by gathering ("aggregating") messages from its neighbors and combining them with its own state. One round (layer) for node $v$:
+
+$$
+\mathbf{h}_v^{(k)} = \text{UPDATE}\Big(\mathbf{h}_v^{(k-1)},\; \underbrace{\text{AGGREGATE}\big(\{\mathbf{h}_u^{(k-1)} : u \in \mathcal{N}(v)\}\big)}_{\text{message from neighbors}}\Big)
+$$
+
+where $\mathcal{N}(v)$ are the neighbors of $v$, and $\mathbf{h}_v^{(0)} = \mathbf{x}_v$. The two functions:
+
+- **AGGREGATE** — a permutation-invariant pooling over the neighbor set (sum/mean/max). This is what enforces permutation invariance and handles variable neighbor counts.
+- **UPDATE** — a learnable transform (typically a small neural net) combining a node's old state with the aggregated message.
+
+A concrete simple instance — mean-aggregation with a learned linear update:
+
+$$
+\mathbf{h}_v^{(k)} = \sigma\!\Big(\mathbf{W}^{(k)} \cdot \text{mean}\big(\{\mathbf{h}_u^{(k-1)} : u \in \mathcal{N}(v) \cup \{v\}\}\big)\Big)
+$$
+
+## Receptive field: why stack layers
+
+After **one** message-passing layer, each node knows about its immediate neighbors. After $k$ layers, information has propagated from up to $k$ hops away — the node's **receptive field** is its $k$-hop neighborhood. This is the graph analogue of stacking convolutions to grow a CNN's receptive field.
+
+<Callout type="warning" title="More layers is not always better (over-smoothing)">
+  Unlike CNNs, stacking many GNN layers often *hurts*: after too many rounds every node has aggregated nearly the whole graph and all node embeddings converge to the same vector — **over-smoothing**. Most GNNs use only 2–4 layers. (Covered in Lesson 3.)
+</Callout>
+
+## Tasks on graphs
+
+The same machinery serves three task levels, differing only in the final readout:
+
+| Task | Prediction | Example |
+|---|---|---|
+| **Node-level** | one label per node | classify each user as fraud/not |
+| **Edge-level** | label/score per edge | will these two users connect? (link prediction) |
+| **Graph-level** | one label per whole graph | is this molecule toxic? (needs a **readout** pooling all nodes) |
+
+## Common mistakes
+
+1. **Imposing an order on nodes.** Treating a graph's adjacency or node list as if it had a meaningful sequence breaks permutation invariance — use order-independent aggregation.
+2. **Using a fixed weight per neighbor.** Neighbor counts vary; weights must be shared and aggregation must pool a variable-size set.
+3. **Stacking deep GNNs by reflex.** Beyond a few layers, over-smoothing collapses node representations.
+4. **Forgetting self-information.** Aggregating only neighbors (not the node itself) loses the node's own features — include a self-loop or a self-term in UPDATE.
+
+## Key takeaways
+
+- A graph $(V, E)$ with node/edge features is learnable data; the **adjacency matrix** encodes connectivity. Grids and sequences are regular special cases.
+- Graph models must be **permutation-invariant** and handle **variable neighbor counts** — which forces order-independent aggregation (sum/mean/max).
+- **Message passing** — AGGREGATE neighbor states, then UPDATE — is the framework underlying nearly all GNNs; $k$ layers give a $k$-hop receptive field.
+- Node-, edge-, and graph-level tasks share the machinery; graph-level tasks add a **readout** that pools all nodes.
+
+## Related concepts
+
+- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the neural building blocks inside UPDATE
+- [**Convolution Operation**](/courses/cnns/01-convolution-operation) — the regular-grid special case GNNs generalize
+- [**Word Embeddings**](/courses/nlp/02-word-embeddings) — learned vector features, the node-feature analogue for tokens
+
+<Exercise id="gnn-permutation-invariance" />
+<Exercise id="gnn-message-passing" />
+<Exercise id="gnn-receptive-field" />

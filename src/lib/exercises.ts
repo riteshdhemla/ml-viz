@@ -6774,6 +6774,52 @@ const allExercises: Exercise[] = [
       { id: "d", label: "p = 0.001 means there's a 0.1% chance the lift is real", isCorrect: false },
     ],
   },
+
+  // ── Graph Neural Networks ───────────────────────────────────────
+  {
+    id: "gnn-permutation-invariance",
+    type: "multiple-choice",
+    question:
+      "Why must a graph neural network's neighbor-aggregation step use a function like sum, mean, or max rather than, say, concatenating neighbors in order?",
+    hint: "Graph nodes have no canonical ordering.",
+    explanation:
+      "Nodes have no inherent order, so relabeling them must not change the prediction (permutation invariance). Sum/mean/max are permutation-invariant — the result is independent of the order in which neighbors are listed. Concatenation in some order would make the output depend on an arbitrary labeling, breaking this requirement (and it also can't handle the variable number of neighbors).",
+    options: [
+      { id: "a", label: "Sum/mean/max are permutation-invariant, so node ordering doesn't affect the result", isCorrect: true },
+      { id: "b", label: "They are faster to compute than concatenation", isCorrect: false },
+      { id: "c", label: "They guarantee the embeddings are normalized", isCorrect: false },
+      { id: "d", label: "Concatenation is impossible to differentiate", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-message-passing",
+    type: "multiple-choice",
+    question:
+      "In the message-passing framework, a GNN layer computes hᵥ = UPDATE(hᵥ, AGGREGATE({hᵤ : u ∈ neighbors})). What is the role of AGGREGATE?",
+    hint: "It combines a variable-size set of neighbor states into one message.",
+    explanation:
+      "AGGREGATE pools the neighbors' current representations into a single fixed-size 'message' using a permutation-invariant operation (sum/mean/max). This both enforces permutation invariance and gracefully handles the fact that different nodes have different numbers of neighbors. UPDATE then combines that message with the node's own previous state via a learnable transform.",
+    options: [
+      { id: "a", label: "It pools the neighbors' states into one permutation-invariant, fixed-size message", isCorrect: true },
+      { id: "b", label: "It applies the final classification head", isCorrect: false },
+      { id: "c", label: "It removes self-loops from the graph", isCorrect: false },
+      { id: "d", label: "It orders the neighbors before processing", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-receptive-field",
+    type: "slider",
+    question:
+      "After how many message-passing layers can a node's representation be influenced by another node that is exactly 3 hops away?",
+    hint: "Each layer propagates information one hop further.",
+    explanation:
+      "Each message-passing layer mixes in information from one more hop, so after k layers a node's receptive field is its k-hop neighborhood. To reach a node 3 hops away you need 3 layers. (But stacking too many layers causes over-smoothing, so practical GNNs use only 2–4.)",
+    min: 1,
+    max: 8,
+    step: 1,
+    correctRange: [3, 3],
+    unit: "layers",
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
