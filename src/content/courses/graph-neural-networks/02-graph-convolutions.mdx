@@ -1,0 +1,102 @@
+---
+title: "Graph Convolutions & GraphSAGE"
+description: "Turning message passing into a trainable layer — the Graph Convolutional Network, why the adjacency is normalized, and how GraphSAGE samples neighbors to scale and generalize to unseen nodes."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Graph Convolutions & GraphSAGE
+
+The previous lesson framed every GNN as **message passing**. This lesson makes it concrete: the **Graph Convolutional Network (GCN)** packs message passing into a clean matrix operation, and **GraphSAGE** fixes the two things that stop a plain GCN from working at scale or on new data. Together they're the workhorses of practical graph learning.
+
+**Real-world examples:** node classification on citation networks, product recommendation on huge user–item graphs (GraphSAGE was created at Pinterest for exactly this), and molecular property prediction.
+
+## From message passing to a matrix multiply
+
+Recall the simple mean-aggregation update. If we aggregate over neighbors **including a self-loop**, one layer for all nodes at once is just:
+
+$$
+\mathbf{H}^{(k)} = \sigma\big(\mathbf{D}^{-1}\mathbf{A}\,\mathbf{H}^{(k-1)}\,\mathbf{W}^{(k)}\big)
+$$
+
+- $\mathbf{A}$ — adjacency **with self-loops** ($\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$), so a node keeps its own features.
+- $\mathbf{D}^{-1}\mathbf{A}$ — row-normalize so each node averages (rather than sums) its neighborhood, keeping magnitudes stable.
+- $\mathbf{W}^{(k)}$ — a **shared, learnable** weight matrix (same for every node — this is the "convolution": one filter slides over all neighborhoods).
+- $\sigma$ — a nonlinearity (ReLU).
+
+The viz shows one round of this aggregation spreading feature values across the graph.
+
+<MessagePassingViz />
+
+## The GCN normalization
+
+The original GCN (Kipf & Welling) uses **symmetric** normalization instead of plain row-averaging:
+
+$$
+\mathbf{H}^{(k)} = \sigma\big(\hat{\mathbf{A}}\,\mathbf{H}^{(k-1)}\,\mathbf{W}^{(k)}\big),
+\qquad
+\hat{\mathbf{A}} = \tilde{\mathbf{D}}^{-1/2}\,\tilde{\mathbf{A}}\,\tilde{\mathbf{D}}^{-1/2}
+$$
+
+where $\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$ and $\tilde{\mathbf{D}}$ is its degree matrix.
+
+<Callout type="info" title="Why the √ on both sides?">
+  Symmetric normalization $\tilde{\mathbf{D}}^{-1/2}\tilde{\mathbf{A}}\tilde{\mathbf{D}}^{-1/2}$ down-weights messages from **high-degree** neighbors (a hub shouldn't dominate everyone it touches), scaling each edge by $1/\sqrt{d_u d_v}$. It keeps the operator's eigenvalues bounded, which stabilizes training — better than the asymmetric row-average $\mathbf{D}^{-1}\mathbf{A}$ for most node-classification tasks.
+</Callout>
+
+## Spectral vs. spatial — same destination
+
+GCNs were originally **derived** from spectral graph theory: a convolution defined via the graph Laplacian's eigenbasis, then approximated (first-order Chebyshev) down to the simple $\hat{\mathbf{A}}\mathbf{H}\mathbf{W}$ form above. The modern, practical view is **spatial**: it's just normalized neighborhood aggregation. You don't need the spectral derivation to use it — but it's why GCNs are called "convolutions."
+
+## GraphSAGE: sample and aggregate
+
+A plain GCN has two practical problems: (1) the full $\hat{\mathbf{A}}\mathbf{H}$ multiply needs the **entire graph** in memory, and (2) it's **transductive** — it can only score nodes present at training time. **GraphSAGE** fixes both:
+
+- **Sample** a fixed number of neighbors per node (e.g. 25 at hop 1, 10 at hop 2) instead of using all of them — bounding compute and memory regardless of degree.
+- **Aggregate** the sampled neighbors with a chosen function, then concatenate with the node's own state and transform:
+
+$$
+\mathbf{h}_v^{(k)} = \sigma\Big(\mathbf{W}^{(k)} \cdot \big[\,\mathbf{h}_v^{(k-1)} \,\Vert\, \text{AGG}\big(\{\mathbf{h}_u^{(k-1)}: u \in \mathcal{S}(v)\}\big)\,\big]\Big)
+$$
+
+Aggregators can be **mean**, **pool** (element-wise max of transformed neighbors), or even an LSTM. Because the learned aggregator and weights depend only on *features*, not node identity, GraphSAGE is **inductive**: apply it to brand-new nodes or entirely new graphs without retraining.
+
+<Callout type="tip" title="Transductive vs. inductive">
+  **Transductive** (vanilla GCN): learns embeddings tied to the specific nodes seen in training; a new node means re-running on the whole graph. **Inductive** (GraphSAGE): learns *how to aggregate*, so it generalizes to unseen nodes and graphs — essential for production systems where the graph grows constantly.
+</Callout>
+
+## Choosing an aggregator
+
+| Aggregator | Behavior | Note |
+|---|---|---|
+| **Mean** | average neighbor features | simple, smooths; the GCN default |
+| **Pool (max)** | element-wise max of transformed neighbors | captures "is any neighbor X?" |
+| **Sum** | total neighbor features | most expressive (distinguishes degree); basis of GIN |
+| **LSTM** | order-sensitive over a random permutation | high capacity, not permutation-invariant by design |
+
+Sum is the most discriminative (the Graph Isomorphism Network result), mean and max lose some structural information but are often more stable.
+
+## Common mistakes
+
+1. **Forgetting self-loops.** Without $\mathbf{A}+\mathbf{I}$, a node's update ignores its own features.
+2. **Skipping normalization.** Raw $\mathbf{A}\mathbf{H}$ lets high-degree hubs blow up activation magnitudes; normalize by degree.
+3. **Expecting a transductive GCN to score new nodes.** Use GraphSAGE (or another inductive method) when the graph changes.
+4. **Using all neighbors on a huge graph.** Sample (GraphSAGE) to bound the per-node cost rather than aggregating millions of neighbors of a hub.
+
+## Key takeaways
+
+- A **GCN layer** is message passing as one matrix op: $\mathbf{H}^{(k)} = \sigma(\hat{\mathbf{A}}\mathbf{H}^{(k-1)}\mathbf{W}^{(k)})$ with a shared learnable $\mathbf{W}$ — the "filter."
+- **Symmetric normalization** $\hat{\mathbf{A}}=\tilde{\mathbf{D}}^{-1/2}\tilde{\mathbf{A}}\tilde{\mathbf{D}}^{-1/2}$ down-weights high-degree neighbors and stabilizes training.
+- **GraphSAGE** samples a fixed set of neighbors and learns an aggregator, making it **scalable** and **inductive** (works on unseen nodes/graphs).
+- The **aggregator choice** (mean / max-pool / sum / LSTM) trades expressiveness against stability; sum is the most discriminative.
+
+## Related concepts
+
+- [**Graphs as Data & Message Passing**](/courses/graph-neural-networks/01-graphs-as-data) — the framework this lesson instantiates
+- [**Convolution Operation**](/courses/cnns/01-convolution-operation) — the grid convolution a graph convolution generalizes
+- [**Self-Attention**](/courses/transformers/01-self-attention) — learning *which* neighbors matter, the idea graph attention (next lesson) borrows
+
+<Exercise id="gnn-gcn-layer" />
+<Exercise id="gnn-normalization" />
+<Exercise id="gnn-inductive" />

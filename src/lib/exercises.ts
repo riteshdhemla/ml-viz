@@ -6820,6 +6820,51 @@ const allExercises: Exercise[] = [
     correctRange: [3, 3],
     unit: "layers",
   },
+  {
+    id: "gnn-gcn-layer",
+    type: "multiple-choice",
+    question:
+      "A GCN layer computes H' = σ(Â H W). What is the weight matrix W, and how does it relate to a CNN?",
+    hint: "How many distinct weight matrices does the layer use across all nodes?",
+    explanation:
+      "W is a single learnable weight matrix shared across every node in the graph — one 'filter' applied to all neighborhoods, exactly like a CNN kernel slides the same weights across all spatial positions. That weight sharing is what makes it a convolution and keeps the parameter count independent of graph size.",
+    options: [
+      { id: "a", label: "A single shared, learnable matrix applied at every node — the analogue of a shared CNN filter", isCorrect: true },
+      { id: "b", label: "A separate learnable matrix for each node in the graph", isCorrect: false },
+      { id: "c", label: "The fixed adjacency matrix of the graph", isCorrect: false },
+      { id: "d", label: "A non-learnable normalization constant", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-normalization",
+    type: "multiple-choice",
+    question:
+      "Why does the GCN use symmetric normalization Â = D̃^(-1/2)(A+I)D̃^(-1/2) rather than the raw adjacency A?",
+    hint: "Think about what happens to a node connected to a very high-degree hub.",
+    explanation:
+      "Raw A sums neighbor features, so high-degree hubs produce huge activations and destabilize training. Symmetric normalization scales each edge by 1/√(d_u·d_v), down-weighting messages from high-degree neighbors and bounding the operator's eigenvalues — which keeps activation magnitudes stable. The +I adds self-loops so a node retains its own features.",
+    options: [
+      { id: "a", label: "It down-weights high-degree neighbors and bounds activation magnitudes, stabilizing training", isCorrect: true },
+      { id: "b", label: "It makes the graph directed", isCorrect: false },
+      { id: "c", label: "It removes the need for a nonlinearity", isCorrect: false },
+      { id: "d", label: "It increases the receptive field per layer", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-inductive",
+    type: "multiple-choice",
+    question:
+      "Your user–item graph grows constantly with new users. Why is GraphSAGE a better fit than a vanilla (transductive) GCN?",
+    hint: "What does each method actually learn — embeddings, or a function?",
+    explanation:
+      "A vanilla GCN is transductive: it learns embeddings tied to the specific nodes present at training, so a new user requires re-running over the whole graph. GraphSAGE is inductive — it learns an aggregator function over neighbor *features*, not node identities, so it can embed brand-new nodes (or whole new graphs) without retraining. It also samples a fixed number of neighbors, bounding cost on a huge graph.",
+    options: [
+      { id: "a", label: "GraphSAGE learns an aggregator over features, so it generalizes to unseen nodes without retraining (inductive)", isCorrect: true },
+      { id: "b", label: "GraphSAGE always achieves higher accuracy than any GCN", isCorrect: false },
+      { id: "c", label: "GraphSAGE does not require node features", isCorrect: false },
+      { id: "d", label: "A transductive GCN cannot use a nonlinearity", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
