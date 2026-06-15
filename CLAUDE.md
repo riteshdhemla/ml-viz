@@ -341,6 +341,7 @@ surface-border   — borders
 - [x] **Building with LLMs** — prompt engineering & in-context learning, decoding/sampling, chain-of-thought & structured output, embeddings & semantic search, RAG, agents & tool use, AI-engineering architecture *(course + 6 lessons + quiz)*
 - [~] **Fine-Tuning & Alignment** — SFT, instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO *(in progress: course + Lesson 01 shipped; Lessons 02–06 + RL bridge queued in `prompts/content-build-checklist.md`)*
 - [ ] **ML Systems & MLOps** — data engineering, deployment patterns, model compression, continual learning & test-in-production, monitoring, MLOps infra *(planned — integrate into `ml-in-practice`, split out if it grows past ~10 lessons)*
+- [x] **GPU Programming for ML** — GPU architecture & SIMT, the CUDA programming model, memory coalescing/tiling/occupancy/roofline, GPUs for deep learning (GEMM, tensor cores, mixed precision, fusion) *(course + 4 lessons + quiz)*
 
 ---
 
@@ -386,6 +387,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | RNNUnrollViz | `visualizations/RNNUnroll/` | rnns/01-recurrent-neural-networks | ✅ |
 | LatentSpaceViz | `visualizations/LatentSpace/` | generative-models/03-variational-autoencoders | ✅ |
 | PoolingViz | `visualizations/Pooling/` | cnns/02-pooling-and-architectures | ✅ |
+| CoalescingViz | `visualizations/Coalescing/` | gpu-programming/03-memory-and-performance | ✅ |
 | TransferLearningViz | `visualizations/TransferLearning/` | cnns/03-transfer-learning | ✅ |
 | PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
 | GMMResponsibilityViz | `visualizations/GMM/` | probabilistic-models/01-gaussian-mixture-models | ✅ |
