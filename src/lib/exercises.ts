@@ -6265,6 +6265,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Compute-bound at all batch sizes for LLM inference; adding HBM bandwidth never helps because tensor-cores are the bottleneck.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — Responsible AI & the Human Side ──────
+  {
+    id: "ml-practice-responsible-equal-opportunity",
+    type: "multiple-choice",
+    question:
+      "You're auditing a credit-approval classifier across two demographic groups A and B with **different base repayment rates**. The product team asks you to make the model 'fair across groups'. After picking a parity definition with stakeholders, you tune per-group thresholds so that $P(\\hat{y}=1 \\mid Y=1, A) = P(\\hat{y}=1 \\mid Y=1, B)$. Which parity definition have you enforced, and which other parity is now provably *not* satisfied?",
+    hint: "The constraint equalises the true positive rate across groups. The Chouldechova / Kleinberg–Mullainathan–Raghavan impossibility result says which other parities cannot simultaneously hold when base rates differ.",
+    explanation:
+      "Equalising $P(\\hat{y}=1 \\mid Y=1, A) = P(\\hat{y}=1 \\mid Y=1, B)$ is **equal opportunity** — among people who genuinely qualify, the true positive rate is the same across groups. The impossibility result (Chouldechova; Kleinberg, Mullainathan, Raghavan) says that when base rates $P(Y=1 \\mid A) \\neq P(Y=1 \\mid B)$, equal opportunity, demographic parity, and predictive parity cannot all hold — except in the trivial perfect-classifier case. Enforcing equal opportunity therefore generically breaks both **demographic parity** (approval rates will differ across groups) and **predictive parity** (positive predictive values will differ). This isn't a bug in fairness math — it's the math telling you that 'fair' is a stakeholder choice between competing parities, not a single algorithmic constraint. Option (A) is wrong because demographic parity is about approval rates, not TPR. Option (B) describes predictive parity, not what we enforced. Option (D) is the impossibility-result inverse and the most common misconception — equalising one parity does *not* automatically equalise the others.",
+    options: [
+      { id: "a", label: "Demographic parity; predictive parity is still satisfied automatically.", isCorrect: false },
+      { id: "b", label: "Predictive parity; demographic parity is still satisfied automatically.", isCorrect: false },
+      { id: "c", label: "Equal opportunity; demographic parity and predictive parity will generically *not* hold because the base rates $P(Y=1 \\mid A) \\neq P(Y=1 \\mid B)$, and the impossibility result rules out simultaneously satisfying all three.", isCorrect: true },
+      { id: "d", label: "Equal opportunity; demographic parity and predictive parity also hold automatically because they are implied by equalising TPR across groups.", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-responsible-uncertainty-ux",
+    type: "multiple-choice",
+    question:
+      "You ship a medical-imaging triage model that outputs a probability per case. Internal evaluation shows the model is **uncalibrated** — when it says '0.9 probability of urgent', the empirical rate is closer to 0.55. The product team wants to display the probability to clinicians. What is the right responsible-AI move *before* surfacing the number?",
+    hint: "The lesson framed confidence display as a lever: it converts model uncertainty into product value — but only if the number is honest. What does honesty require here?",
+    explanation:
+      "**(B) is correct.** Surfacing an uncalibrated probability is a lie — clinicians will treat '0.9' as 'almost certain' when in reality 45% of those flagged are non-urgent. The responsible-AI move is to **calibrate first** (Platt scaling, isotonic regression — covered earlier in this course), confirm the calibration on held-out data, then surface either the calibrated number or coarse buckets ('high / medium / low') that map to the calibrated probability. Showing the raw uncalibrated number (A) misleads users into over-trust; the resulting clinical errors are squarely the deployment team's fault. Hiding uncertainty altogether (C) wastes the most valuable signal the model has — clinicians need to know when to escalate the model's call. A red 'low-confidence' banner without calibration (D) inherits the same lie — 'low confidence' for the model might be the same calibrated probability as 'high confidence' for a clinician, and the threshold is meaningless until calibrated.",
+    options: [
+      { id: "a", label: "Ship the raw probability — clinicians are experts and will mentally adjust for any miscalibration.", isCorrect: false },
+      { id: "b", label: "Calibrate the model first (Platt scaling or isotonic regression), validate calibration on a held-out set, then display either the calibrated probability or coarse buckets (high / medium / low) that map to the calibrated number.", isCorrect: true },
+      { id: "c", label: "Hide the probability entirely — only show the binary urgent/non-urgent decision so the uncertainty issue disappears.", isCorrect: false },
+      { id: "d", label: "Display the raw probability but add a red 'low-confidence' banner whenever the model output is below a threshold; calibration is not needed.", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-responsible-dp-epsilon",
+    type: "slider",
+    question:
+      "You release a sum statistic with epsilon-differential privacy by adding Laplace noise of scale $1/\\epsilon$ (each individual contributes at most 1, so the sensitivity is 1). For a sensitive analytics dashboard your stakeholders want roughly **balanced** privacy and utility — strong enough that no single record can be inferred from the release, but accurate enough that the dashboard is still useful. What epsilon do you pick? (Move the slider; the accepted operational range for a single-release DP statistic is around 0.5 to 5.)",
+    hint: "Very small epsilon (~0.01) drowns the signal in noise; very large epsilon (~10) gives almost no privacy guarantee. The single-release sweet spot is in the middle.",
+    explanation:
+      "An epsilon in the **0.5 to 5** range is the standard operational sweet spot for a single DP release: small enough that the privacy guarantee is meaningful (the output distribution shifts by at most $e^{\\epsilon}$ when any one record is added or removed), large enough that the Laplace noise of scale $1/\\epsilon$ doesn't dwarf the signal. The notebook for this lesson sweeps the trade-off: at epsilon = 0.01 the noise is enormous; at epsilon = 10 the noise is invisible but so is the privacy guarantee. Real deployments also track a *global* privacy budget across many releases (Renyi or zero-concentrated DP composition), so the per-release epsilon stays small even when the cumulative epsilon is moderate. Apple and the US Census Bureau, for example, publish per-release epsilons in roughly this band, with documented composition rules.",
+    min: 0.0,
+    max: 10.0,
+    step: 0.1,
+    correctRange: [0.5, 5.0],
+    unit: "",
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
