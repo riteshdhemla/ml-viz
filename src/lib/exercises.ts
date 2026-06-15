@@ -6865,6 +6865,126 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A transductive GCN cannot use a nonlinearity", isCorrect: false },
     ],
   },
+  {
+    id: "gnn-attention",
+    type: "multiple-choice",
+    question:
+      "How does a Graph Attention Network (GAT) differ from a GCN in how it weights a node's neighbors?",
+    hint: "Fixed function of degree, or learned from the features?",
+    explanation:
+      "A GCN weights each neighbor by a fixed function of degree (1/√(d_v·d_u)). A GAT instead learns a content-dependent attention coefficient α_vu for each neighbor — computed from the node and neighbor features and softmax-normalized over the neighborhood — so the model learns which neighbors to emphasize. It's self-attention restricted to the graph's edges.",
+    options: [
+      { id: "a", label: "GAT learns content-dependent attention weights over neighbors; GCN uses fixed degree-based weights", isCorrect: true },
+      { id: "b", label: "GAT attends to every node in the graph, GCN only to neighbors", isCorrect: false },
+      { id: "c", label: "GAT removes the need for any learnable weights", isCorrect: false },
+      { id: "d", label: "They are identical; GAT is just a renamed GCN", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-readout",
+    type: "multiple-choice",
+    question:
+      "To classify a whole molecule (a graph-level task) from per-node embeddings, what must the readout function be?",
+    hint: "The graph has no node ordering.",
+    explanation:
+      "The readout pools all node embeddings into one graph vector, and because the graph has no canonical node order it must be permutation-invariant — sum, mean, or max. Sum preserves size information; mean is scale-stable. A node-order-dependent operation (like ordered concatenation) would give different answers for the same graph.",
+    options: [
+      { id: "a", label: "A permutation-invariant pool over all nodes (sum/mean/max)", isCorrect: true },
+      { id: "b", label: "An ordered concatenation of node embeddings", isCorrect: false },
+      { id: "c", label: "The embedding of node 0 only", isCorrect: false },
+      { id: "d", label: "The adjacency matrix flattened to a vector", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-oversmoothing",
+    type: "multiple-choice",
+    question:
+      "Why do most GNNs use only 2–4 layers rather than the dozens common in CNNs?",
+    hint: "What happens to node embeddings after many rounds of neighbor averaging?",
+    explanation:
+      "Each layer averages a node with its neighbors; after many layers every node has aggregated nearly the whole graph and all embeddings converge to the same vector — over-smoothing — destroying the node-to-node distinctions needed for prediction. Mitigations include skip/residual connections, jumping knowledge, normalization, or simply staying shallow.",
+    options: [
+      { id: "a", label: "Over-smoothing: repeated aggregation makes all node embeddings converge to the same vector", isCorrect: true },
+      { id: "b", label: "Graphs are too small to support deep networks", isCorrect: false },
+      { id: "c", label: "Deeper GNNs cannot be trained with backpropagation", isCorrect: false },
+      { id: "d", label: "Each layer shrinks the receptive field", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-quiz-message-passing",
+    type: "multiple-choice",
+    question:
+      "Which property of sum/mean/max aggregation makes it the right choice for combining a node's neighbors?",
+    hint: "Nodes have no canonical order.",
+    explanation:
+      "These functions are permutation-invariant: the result doesn't depend on the order the neighbors are listed in, which is required because graph nodes have no canonical ordering. They also naturally handle a variable number of neighbors — both core constraints of learning on graphs.",
+    options: [
+      { id: "a", label: "They are permutation-invariant and handle a variable number of neighbors", isCorrect: true },
+      { id: "b", label: "They are the only differentiable aggregators", isCorrect: false },
+      { id: "c", label: "They require the neighbors to be sorted first", isCorrect: false },
+      { id: "d", label: "They make the network deeper automatically", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-quiz-gcn",
+    type: "multiple-choice",
+    question:
+      "In the GCN layer H' = σ(Â H W), why is the adjacency augmented with self-loops (Â built from A + I)?",
+    hint: "What would a node's update miss without its own row?",
+    explanation:
+      "Self-loops ensure each node includes its own features in the aggregation. Without A + I, a node's new representation would be built only from its neighbors, discarding its own information — usually harmful. The self-loop is the matrix-form equivalent of including the node itself in its neighborhood.",
+    options: [
+      { id: "a", label: "So each node retains its own features during aggregation, not just its neighbors'", isCorrect: true },
+      { id: "b", label: "To make the graph directed", isCorrect: false },
+      { id: "c", label: "To increase the number of layers", isCorrect: false },
+      { id: "d", label: "To remove the need for weights W", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-quiz-sage",
+    type: "multiple-choice",
+    question:
+      "What two problems with a vanilla GCN does GraphSAGE address?",
+    hint: "Think memory on huge graphs, and brand-new nodes.",
+    explanation:
+      "GraphSAGE samples a fixed number of neighbors (bounding memory/compute regardless of node degree — solving scalability) and learns an aggregator over features rather than node-specific embeddings (making it inductive — able to embed unseen nodes/graphs without retraining). A vanilla GCN is full-graph and transductive.",
+    options: [
+      { id: "a", label: "Scalability (samples neighbors) and inductiveness (generalizes to unseen nodes)", isCorrect: true },
+      { id: "b", label: "Vanishing gradients and exploding activations", isCorrect: false },
+      { id: "c", label: "Over-smoothing and over-squashing only", isCorrect: false },
+      { id: "d", label: "It removes the need for node features and labels", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-quiz-attention",
+    type: "multiple-choice",
+    question:
+      "A GAT's attention coefficients α_vu for node v are normalized with a softmax. Over what set is that softmax computed?",
+    hint: "GAT attention is local, not global.",
+    explanation:
+      "The softmax is taken over v's neighbors only — GAT is edge-restricted attention, so each node distributes a total attention of 1 across its own neighborhood. This is unlike a transformer, where attention is normalized over all positions. The locality is what keeps GAT a message-passing GNN.",
+    options: [
+      { id: "a", label: "Over v's neighbors only (attention is restricted to graph edges)", isCorrect: true },
+      { id: "b", label: "Over every node in the entire graph", isCorrect: false },
+      { id: "c", label: "Over the layers of the network", isCorrect: false },
+      { id: "d", label: "Over the feature dimensions", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-quiz-oversmoothing",
+    type: "multiple-choice",
+    question:
+      "Which technique does NOT help mitigate over-smoothing in deep GNNs?",
+    hint: "Three of these preserve node distinctiveness; one makes the problem worse.",
+    explanation:
+      "Skip/residual connections, jumping-knowledge (combining all layers), and normalization (e.g. PairNorm) all preserve node distinctiveness as depth grows. Simply stacking many more plain aggregation layers is the cause of over-smoothing, not a fix — it accelerates the collapse of node embeddings toward a single vector.",
+    options: [
+      { id: "a", label: "Stacking many more plain aggregation layers", isCorrect: true },
+      { id: "b", label: "Residual/skip connections", isCorrect: false },
+      { id: "c", label: "Jumping-knowledge (combining representations from all layers)", isCorrect: false },
+      { id: "d", label: "Normalization such as PairNorm", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
