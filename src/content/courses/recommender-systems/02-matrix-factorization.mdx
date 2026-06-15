@@ -1,0 +1,89 @@
+---
+title: "Matrix Factorization"
+description: "The model-based collaborative filtering workhorse — learning latent user and item factors, the SVD/ALS connection, regularization, and how it handles the sparse rating matrix that won the Netflix Prize."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Matrix Factorization
+
+Memory-based collaborative filtering compares whole rating vectors, which is slow and brittle on sparse data. **Matrix factorization** instead learns a compact explanation: every user and every item is a short vector of **latent factors**, and a rating is just their dot product. This single idea powered the winning Netflix Prize entries and remains the backbone of model-based recommendation.
+
+**Real-world examples:** the Netflix Prize (2009), Spotify's and Amazon's classic CF pipelines, and the "embedding tables" inside modern deep recommenders.
+
+## The latent-factor model
+
+Represent each user $u$ by a vector $\mathbf{p}_u \in \mathbb{R}^k$ and each item $i$ by $\mathbf{q}_i \in \mathbb{R}^k$. The predicted rating is their dot product:
+
+$$
+\hat{R}_{ui} = \mathbf{p}_u^{\top}\mathbf{q}_i = \sum_{f=1}^{k} p_{uf}\,q_{if}
+$$
+
+Stacking the vectors into matrices $\mathbf{P}\in\mathbb{R}^{n\times k}$ (users) and $\mathbf{Q}\in\mathbb{R}^{m\times k}$ (items), the whole rating matrix is approximated by a **low-rank product**:
+
+$$
+\hat{\mathbf{R}} = \mathbf{P}\mathbf{Q}^{\top}, \qquad k \ll n, m
+$$
+
+Each latent factor is an unnamed "taste" dimension (the model discovers them — maybe one ends up tracking "action-vs-romance"). A user's vector says how much they like each dimension; an item's says how much it expresses each. The viz shows how a low rank reconstructs a structured rating matrix:
+
+<MatrixFactorizationViz />
+
+## The connection to SVD and low-rank approximation
+
+This is exactly the **low-rank approximation** from the linear-algebra course. If $\mathbf{R}$ were fully observed, the best rank-$k$ approximation would be its truncated **SVD** $\mathbf{R} \approx \mathbf{U}_k\mathbf{\Sigma}_k\mathbf{V}_k^{\top}$ (Eckart–Young). Matrix factorization is the same low-rank idea, with two practical twists for recommendation:
+
+1. **The matrix is mostly unknown.** Classic SVD needs a complete matrix; you can't take the SVD of something that's 99% missing. So we fit factors **only to the observed entries**.
+2. **We don't need orthogonality.** Any $\mathbf{P}, \mathbf{Q}$ that reconstruct the observed ratings will do, so we solve a regression instead of a strict decomposition.
+
+## The training objective
+
+Fit the factors by minimizing squared error on the **observed** ratings $\mathcal{K} = \{(u,i): R_{ui}\text{ known}\}$, with L2 **regularization** to prevent overfitting the sparse data:
+
+$$
+\min_{\mathbf{P},\mathbf{Q}} \sum_{(u,i)\in\mathcal{K}} \big(R_{ui} - \mathbf{p}_u^{\top}\mathbf{q}_i\big)^2 \;+\; \lambda\big(\lVert\mathbf{p}_u\rVert^2 + \lVert\mathbf{q}_i\rVert^2\big)
+$$
+
+Two standard optimizers:
+
+- **SGD** — for each observed rating, take a gradient step on $\mathbf{p}_u$ and $\mathbf{q}_i$. Simple, scales to huge sparse data, the Netflix-Prize favorite.
+- **ALS (Alternating Least Squares)** — fix $\mathbf{Q}$ and solve for $\mathbf{P}$ in closed form (it's just ridge regression per user), then fix $\mathbf{P}$ and solve for $\mathbf{Q}$; alternate. Each half is convex and **parallelizes** beautifully — the choice for implicit feedback at scale (Spark MLlib).
+
+<Callout type="info" title="Biases matter as much as factors">
+  Real ratings are dominated by *who is rating* and *what is being rated*. Production models add bias terms: $\hat{R}_{ui} = \mu + b_u + b_i + \mathbf{p}_u^{\top}\mathbf{q}_i$, where $\mu$ is the global mean, $b_u$ a user's tendency to rate high/low, and $b_i$ an item's overall popularity. These biases often explain more variance than the latent factors themselves.
+</Callout>
+
+## Why low rank works
+
+A low rank $k$ encodes an assumption: a few hidden tastes explain most of the rating behavior. This (a) **compresses** $n\times m$ ratings into $(n+m)\times k$ parameters, (b) **generalizes** — predicting unrated entries by completing the pattern, which is the whole point, and (c) acts as a regularizer against memorizing noise. Too small a $k$ underfits (misses real structure); too large overfits the sparse observations — tune it on held-out ratings.
+
+## Limitations
+
+- **Cold start** persists: a new user/item has no ratings, so no factor vector can be learned (fall back to content features or biases).
+- **Linearity**: a dot product captures only linear factor interactions — deep recommenders (next lesson) add nonlinearity.
+- **Implicit feedback** needs the confidence-weighted variant (weighted ALS), since unobserved ≠ negative.
+
+## Common mistakes
+
+1. **Fitting to the zeros.** Train on *observed* entries only; treating missing ratings as 0 biases the factors toward "everyone dislikes everything."
+2. **No regularization.** With sparse data, unregularized factors overfit instantly — keep the $\lambda$ term.
+3. **Skipping bias terms.** Pure $\mathbf{p}_u^{\top}\mathbf{q}_i$ ignores user/item rating tendencies that dominate real data.
+4. **Picking $k$ by training error.** Training error always falls with larger $k$; choose $k$ (and $\lambda$) on a held-out set.
+
+## Key takeaways
+
+- Matrix factorization models each user and item as a length-$k$ **latent-factor vector**; a rating is their **dot product**, so $\hat{\mathbf{R}} = \mathbf{P}\mathbf{Q}^{\top}$ is **low-rank**.
+- It's the **SVD/low-rank** idea adapted to a **mostly-missing** matrix: fit factors to *observed* entries with **regularization**, via **SGD** or **ALS**.
+- **Bias terms** ($\mu + b_u + b_i$) capture user/item tendencies and often explain more than the factors.
+- Low rank **compresses and generalizes** (predicting unrated entries) but inherits **cold start** and is **linear** — motivating deep recommenders.
+
+## Related concepts
+
+- [**SVD & Low-Rank Approximation**](/courses/linear-algebra/04-svd-and-low-rank) — the exact low-rank theory matrix factorization adapts
+- [**The Recommendation Problem**](/courses/recommender-systems/01-the-recommendation-problem) — the feedback types and metrics this model serves
+- [**Regularization**](/courses/linear-regression/03-regularization) — the L2 penalty that keeps sparse-data factors from overfitting
+
+<Exercise id="recsys-latent-factors" />
+<Exercise id="recsys-svd-connection" />
+<Exercise id="recsys-als" />

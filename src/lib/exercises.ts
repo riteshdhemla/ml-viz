@@ -7030,6 +7030,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "NDCG requires explicit ratings while recall does not", isCorrect: false },
     ],
   },
+  {
+    id: "recsys-latent-factors",
+    type: "multiple-choice",
+    question:
+      "In matrix factorization, a user is a vector p_u ∈ ℝᵏ and an item is q_i ∈ ℝᵏ. How is the predicted rating computed?",
+    hint: "It's the simplest possible combination of two vectors that yields a scalar.",
+    explanation:
+      "The predicted rating is the dot product p_u·q_i = Σ_f p_uf q_if. Each latent factor f is an unnamed 'taste' dimension; the dot product sums how much the user likes each dimension times how much the item expresses it. Stacking these gives the low-rank reconstruction R̂ = P Qᵀ.",
+    options: [
+      { id: "a", label: "The dot product p_u · q_i of the user and item factor vectors", isCorrect: true },
+      { id: "b", label: "The Euclidean distance between p_u and q_i", isCorrect: false },
+      { id: "c", label: "The element-wise max of p_u and q_i", isCorrect: false },
+      { id: "d", label: "The number of shared neighbors of u and i", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-svd-connection",
+    type: "multiple-choice",
+    question:
+      "Matrix factorization is the low-rank/SVD idea adapted to recommendation. What is the key reason you can't just take the SVD of the rating matrix directly?",
+    hint: "What fraction of the rating matrix do you actually observe?",
+    explanation:
+      "Classic SVD requires a fully observed matrix, but the rating matrix is mostly unknown (a user has rated a tiny fraction of items). So instead of decomposing a complete matrix, matrix factorization fits the latent factors only to the observed entries (a regularized regression), which also frees it from SVD's orthogonality constraint.",
+    options: [
+      { id: "a", label: "The rating matrix is mostly missing; SVD needs a complete matrix, so we fit factors to observed entries only", isCorrect: true },
+      { id: "b", label: "SVD only works on square matrices", isCorrect: false },
+      { id: "c", label: "SVD cannot represent user preferences", isCorrect: false },
+      { id: "d", label: "SVD is too fast to be useful here", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-als",
+    type: "multiple-choice",
+    question:
+      "Alternating Least Squares (ALS) fixes the item factors Q and solves for the user factors P, then alternates. Why is each half-step attractive computationally?",
+    hint: "With one matrix fixed, what kind of problem is solving for the other?",
+    explanation:
+      "With Q fixed, solving for each user's factor vector is an independent ridge-regression problem with a closed-form solution — convex and, crucially, embarrassingly parallel across users (then across items on the next half-step). That parallelism is why ALS is favored for very large implicit-feedback datasets (e.g. Spark MLlib).",
+    options: [
+      { id: "a", label: "Each half-step is a convex closed-form ridge regression that parallelizes across users/items", isCorrect: true },
+      { id: "b", label: "It eliminates the need for any regularization", isCorrect: false },
+      { id: "c", label: "It guarantees the global optimum of the joint objective", isCorrect: false },
+      { id: "d", label: "It removes the cold-start problem", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
