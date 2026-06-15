@@ -1,0 +1,123 @@
+---
+title: "Hypothesis Testing: Null, Alternative & p-values"
+description: "What the null and alternative hypotheses actually claim, how a test statistic turns data into a p-value, what that p-value does and does not mean, and how significance level α trades off Type I against Type II error."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/02-probability-distributions"
+  - "ml-in-practice/09-continual-learning-and-test-in-production"
+estimatedMinutes: 10
+---
+
+# Hypothesis Testing: Null, Alternative & p-values
+
+Every A/B test, every "is this model actually better?" question, and every reported "$p < 0.05$" rests on one piece of machinery: **null hypothesis significance testing**. The idea is to assume *nothing interesting is happening*, work out how surprising the observed data would be under that assumption, and reject the assumption only if the data are surprising enough. This page defines the three terms precisely and shows how they connect.
+
+## The null hypothesis $H_0$
+
+The **null hypothesis** is the "boring" default — the claim that there is **no effect, no difference, no relationship**. It is the position you assume true *for the sake of argument*, and the only one you can directly test, because it pins down a specific sampling distribution.
+
+| Setting | Null hypothesis $H_0$ |
+|---|---|
+| A/B test on conversion rate | the two variants have equal conversion: $p_A = p_B$ |
+| New model vs. baseline accuracy | the models have equal accuracy: $\mu_{\text{new}} = \mu_{\text{base}}$ |
+| Coin fairness | the coin is fair: $p = 0.5$ |
+| Regression coefficient | the feature has no effect: $\beta_j = 0$ |
+
+$H_0$ is always an **equality** (or a "no worse than" boundary). That precision is the point: it fixes the distribution of the test statistic, which is what lets you compute probabilities at all.
+
+## The alternative hypothesis $H_1$
+
+The **alternative hypothesis** (also $H_A$) is the claim you actually care about — that an effect *does* exist. It is the logical complement of $H_0$ over the parameter space, and it determines whether the test is one- or two-sided.
+
+$$
+\text{two-sided: } H_1: p_A \ne p_B
+\qquad
+\text{one-sided: } H_1: p_B > p_A
+$$
+
+<Callout type="warning" title="You never 'accept' the alternative — you reject the null">
+  A significance test can only **reject** $H_0$ or **fail to reject** it. Failing to reject is *not* evidence that $H_0$ is true — it may just mean you lacked the data to detect the effect (low power). "Absence of evidence is not evidence of absence."
+</Callout>
+
+## The test statistic and its null distribution
+
+A **test statistic** $T$ collapses the whole dataset into one number measuring how far the data deviate from $H_0$, scaled by noise. For comparing two means, the two-sample $z$/$t$ statistic is:
+
+$$
+T = \frac{\hat{\theta} - \theta_0}{\widehat{\text{SE}}}
+= \frac{\bar{x}_B - \bar{x}_A}{\sqrt{\,\widehat{\text{SE}}_A^2 + \widehat{\text{SE}}_B^2\,}}
+$$
+
+Under $H_0$, $T$ follows a known distribution — its **null distribution** (standard normal for large samples, Student's $t$ for small ones). Large $|T|$ means the observed gap is many standard errors away from "no difference," which is unlikely if $H_0$ holds.
+
+## The p-value
+
+The **p-value** is the probability, **assuming $H_0$ is true**, of observing a test statistic at least as extreme as the one you actually got:
+
+$$
+\boxed{\; p = P\big(\,|T| \ge |t_{\text{obs}}| \;\big|\; H_0 \,\big) \;}
+$$
+
+Small $p$ ⇒ the data would be very surprising if nothing were going on ⇒ evidence against $H_0$. The decision rule compares it to a pre-chosen **significance level** $\alpha$:
+
+- $p \le \alpha$ → **reject $H_0$** (the result is "statistically significant")
+- $p > \alpha$ → **fail to reject $H_0$**
+
+<Callout type="warning" title="What a p-value is NOT">
+  $p$ is **not** the probability that $H_0$ is true, and $1 - p$ is **not** the probability the effect is real — those are Bayesian posterior quantities requiring a prior. $p$ is computed entirely *inside the world where $H_0$ holds*. A p-value of 0.03 means "if there were truly no effect, data this extreme arise 3% of the time," nothing more.
+</Callout>
+
+## Worked example: an A/B test
+
+Variant A: 200/2000 conversions (10.0%). Variant B: 240/2000 (12.0%). Is B genuinely better, or is a 2-point lift just noise?
+
+$H_0: p_A = p_B$ &nbsp;vs&nbsp; $H_1: p_A \ne p_B$ (two-sided), at $\alpha = 0.05$.
+
+```python
+import numpy as np
+from scipy import stats
+
+xA, nA = 200, 2000     # variant A: conversions, total
+xB, nB = 240, 2000     # variant B
+
+pA, pB = xA / nA, xB / nB
+p_pool = (xA + xB) / (nA + nB)                       # pooled rate under H0
+se = np.sqrt(p_pool * (1 - p_pool) * (1 / nA + 1 / nB))
+z = (pB - pA) / se                                   # test statistic
+p_value = 2 * (1 - stats.norm.cdf(abs(z)))           # two-sided
+
+print(f"rates:    A = {pA:.3f}   B = {pB:.3f}   lift = {pB - pA:+.3f}")
+print(f"z statistic = {z:.3f}")
+print(f"p-value     = {p_value:.4f}")
+print("reject H0 (B is better)" if p_value < 0.05 else "fail to reject H0")
+# z statistic ≈ 1.961,  p-value ≈ 0.0499  ->  just barely reject H0
+```
+
+The 2-point lift sits right at the edge of significance — a vivid reminder that "significant" is a threshold artifact, not a hard truth, and that effect size and confidence intervals matter as much as the binary verdict.
+
+## Two ways to be wrong
+
+| | $H_0$ true | $H_0$ false |
+|---|:---:|:---:|
+| **Reject $H_0$** | Type I error (rate $\alpha$) | ✓ correct (power $= 1-\beta$) |
+| **Fail to reject** | ✓ correct | Type II error (rate $\beta$) |
+
+- **$\alpha$ (significance)** — the false-positive rate you accept up front (typically 0.05). Lowering it makes false alarms rarer but costs power.
+- **$\beta$ / power** — power $1-\beta$ is the chance of detecting a real effect of a given size. More data raises power without raising $\alpha$.
+
+<Callout type="info" title="The peeking problem">
+  The 5% false-positive guarantee assumes you check the p-value **once**, at a pre-registered sample size. Re-checking every day and stopping on the first $p < 0.05$ is running many tests; the true Type I rate balloons to 20–30%. Fix it by fixing the sample size in advance, or by using sequential / always-valid p-values. (See the A/B-testing lesson.)
+</Callout>
+
+## Common mistakes
+
+1. **Reading $p$ as "probability the null is true."** It is a probability *of the data given the null*, not of the null given the data.
+2. **Treating $p > \alpha$ as proof of no effect.** It only means you didn't gather enough evidence; the effect may be real but small, or your test underpowered.
+3. **Chasing significance by peeking or by testing many variants** without a multiple-comparison correction (Bonferroni, Benjamini–Hochberg) — both silently inflate false positives.
+4. **Confusing statistical with practical significance.** With a huge $N$, a 0.01% lift can be "significant" yet worthless. Always report the effect size and a confidence interval alongside $p$.
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the sampling distributions (normal, $t$) that supply a test statistic's null distribution
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the Bayesian alternative that gives $P(H \mid \text{data})$ directly, the quantity a p-value is so often mistaken for
+- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — A/B testing, power, MDE, and the peeking problem in a production ML setting
