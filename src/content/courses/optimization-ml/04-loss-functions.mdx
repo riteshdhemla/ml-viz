@@ -1,0 +1,101 @@
+---
+title: "Loss Functions"
+description: "What we actually optimize — regression losses (MSE, MAE, Huber), classification losses (cross-entropy, hinge, focal), the link between maximum likelihood and loss, and how to choose."
+order: 4
+type: concept
+estimatedMinutes: 16
+---
+
+# Loss Functions
+
+Every optimizer in this course minimizes *something* — but what? The **loss function** defines the objective: it turns "the model is wrong" into a single number whose gradient drives learning. The choice of loss is one of the most consequential modeling decisions you make: it encodes what kinds of errors you care about, how you treat outliers, and even what probabilistic assumption you're making about the data.
+
+**Real-world examples:** MSE in every regression, cross-entropy in essentially every classifier and language model, hinge loss in SVMs, Huber loss in robust regression and RL, focal loss in object detectors with class imbalance.
+
+## What a loss must do
+
+A loss $L(\hat{y}, y)$ measures the discrepancy between a prediction $\hat{y}$ and a target $y$, and the training objective averages it over the data:
+
+$$
+\mathcal{L}(\theta) = \frac{1}{n}\sum_{i=1}^{n} L\big(f_\theta(\mathbf{x}_i),\, y_i\big)
+$$
+
+For gradient-based learning it should be **differentiable** (almost everywhere) and, ideally, give informative gradients even when predictions are badly wrong.
+
+## Regression losses
+
+| Loss | Formula | Behavior |
+|---|---|---|
+| **MSE (L2)** | $(\hat{y}-y)^2$ | smooth; penalizes large errors quadratically → **outlier-sensitive** |
+| **MAE (L1)** | $\lvert\hat{y}-y\rvert$ | constant gradient; **robust** to outliers; non-smooth at 0 |
+| **Huber** | quadratic for small errors, linear beyond $\delta$ | best of both: smooth near 0, robust to large errors |
+
+$$
+L_\delta(\hat{y}, y) = \begin{cases} \tfrac{1}{2}(\hat{y}-y)^2 & \lvert\hat{y}-y\rvert \le \delta \\ \delta\,\lvert\hat{y}-y\rvert - \tfrac{1}{2}\delta^2 & \text{otherwise} \end{cases}
+$$
+
+<Callout type="info" title="The loss decides what 'average' you predict">
+  Minimizing **MSE** makes the model predict the conditional **mean**; minimizing **MAE** makes it predict the conditional **median** (which is why MAE shrugs off outliers). The loss isn't just a knob — it changes the statistic your model estimates.
+</Callout>
+
+## Classification losses
+
+For classification we want to penalize *confident wrong* predictions, which calls for losses over probabilities or margins.
+
+**Cross-entropy (log loss)** is the default. For a true class with predicted probability $p$, the loss is $-\log p$ — it explodes as the model becomes confidently wrong, giving strong gradients exactly when needed. For binary labels:
+
+$$
+L = -\big[y\log\hat{p} + (1-y)\log(1-\hat{p})\big]
+$$
+
+**Hinge loss** (SVMs) penalizes predictions that aren't correct *by a margin*: $L = \max(0,\, 1 - y\cdot\hat{y})$ for $y\in\{-1,+1\}$. Zero loss once a point is correctly classified beyond the margin — it cares about the boundary, not calibrated probabilities.
+
+**Focal loss** down-weights easy examples — $L = -(1-\hat{p})^\gamma \log\hat{p}$ — so a detector swamped by thousands of easy background boxes still learns from the rare hard positives. It's cross-entropy built for extreme class imbalance.
+
+## The deep link: loss = negative log-likelihood
+
+Most losses aren't arbitrary — they're **maximum likelihood** under an assumed noise model (from the probability course):
+
+- **Gaussian** noise on the target ⇒ minimizing negative log-likelihood **is MSE**.
+- **Laplace** noise ⇒ **MAE**.
+- **Bernoulli/categorical** label ⇒ **cross-entropy**.
+
+$$
+\text{MLE: } \max_\theta \prod_i p_\theta(y_i\mid \mathbf{x}_i) \;\;\Longleftrightarrow\;\; \min_\theta \sum_i -\log p_\theta(y_i\mid \mathbf{x}_i)
+$$
+
+So "choosing a loss" is really "choosing a probabilistic model of your data." The gradient-descent variants from Lesson 1 then minimize whichever surface that choice produces — and the loss shapes that surface:
+
+<GradientDescentViz />
+
+## Choosing a loss
+
+- **Regression with outliers?** MAE or Huber, not MSE.
+- **Want calibrated class probabilities?** Cross-entropy.
+- **Want a max-margin boundary?** Hinge.
+- **Severe class imbalance?** Weighted cross-entropy or focal loss.
+- **Add regularization** (L2/L1 penalty) to the loss to control overfitting — the loss is also where priors enter (MAP).
+
+## Common mistakes
+
+1. **MSE on classification.** Squared error on class labels gives weak gradients when confidently wrong and assumes Gaussian noise on a 0/1 target — use cross-entropy.
+2. **Ignoring outliers with MSE.** A few extreme points dominate the quadratic loss and drag the fit; switch to Huber/MAE.
+3. **Class imbalance under plain cross-entropy.** The majority class dominates the average loss; reweight or use focal loss.
+4. **Forgetting numerical stability.** Compute cross-entropy from logits (log-sum-exp), not by taking $\log$ of a separately-computed probability that may underflow to 0.
+
+## Key takeaways
+
+- The **loss function** defines the objective the optimizer minimizes; it encodes which errors matter and what data model you assume.
+- **Regression**: MSE (mean, outlier-sensitive), MAE (median, robust), Huber (a smooth compromise).
+- **Classification**: cross-entropy (default, calibrated probabilities), hinge (max-margin), focal (class imbalance).
+- Most losses are **negative log-likelihood** under a noise model — Gaussian→MSE, Laplace→MAE, Bernoulli→cross-entropy — so picking a loss is picking a probabilistic model.
+
+## Related concepts
+
+- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — the optimizers that minimize whichever loss you choose
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — the likelihood view that derives these losses
+- [**Maximum Margin**](/courses/svm/01-maximum-margin) — where hinge loss comes from
+
+<Exercise id="opt-loss-mse-mae" />
+<Exercise id="opt-loss-cross-entropy" />
+<Exercise id="opt-loss-mle-link" />

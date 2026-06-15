@@ -7405,6 +7405,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It does not need a validation set", isCorrect: false },
     ],
   },
+  {
+    id: "opt-loss-mse-mae",
+    type: "multiple-choice",
+    question:
+      "Your regression targets contain occasional extreme outliers. Why might MAE (or Huber) be a better loss than MSE?",
+    hint: "How does each loss grow with the size of an error?",
+    explanation:
+      "MSE grows quadratically with the error, so a few large outliers dominate the total loss and drag the fit toward them (minimizing MSE predicts the conditional mean, which outliers distort). MAE grows linearly and predicts the conditional median, which is robust to outliers. Huber is quadratic for small errors and linear for large ones — robust yet smooth near zero.",
+    options: [
+      { id: "a", label: "MSE's quadratic penalty lets outliers dominate; MAE/Huber are robust to them", isCorrect: true },
+      { id: "b", label: "MAE always trains faster than MSE", isCorrect: false },
+      { id: "c", label: "MSE cannot be differentiated", isCorrect: false },
+      { id: "d", label: "MAE ignores all errors below 1.0", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-loss-cross-entropy",
+    type: "multiple-choice",
+    question:
+      "Why is cross-entropy preferred over squared error for training a classifier?",
+    hint: "What gradient does each give when the model is confidently wrong?",
+    explanation:
+      "Cross-entropy (−log p of the true class) produces large gradients precisely when the model is confidently wrong, driving fast correction; it also corresponds to the correct probabilistic model (Bernoulli/categorical label). Squared error on class labels gives vanishing gradients when confidently wrong and assumes Gaussian noise on a 0/1 target, which is mismatched.",
+    options: [
+      { id: "a", label: "It gives strong gradients for confident-wrong predictions and matches the categorical label model", isCorrect: true },
+      { id: "b", label: "It is the only differentiable classification loss", isCorrect: false },
+      { id: "c", label: "It never overfits", isCorrect: false },
+      { id: "d", label: "It requires no probabilities, only raw scores", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-loss-mle-link",
+    type: "multiple-choice",
+    question:
+      "Minimizing mean squared error is equivalent to maximum likelihood under which assumption about the target noise?",
+    hint: "Which distribution's negative log-likelihood is a sum of squared errors?",
+    explanation:
+      "Assuming the target is the model's prediction plus Gaussian noise, the negative log-likelihood reduces (up to constants) to the sum of squared errors — so minimizing MSE is exactly Gaussian MLE. Laplace noise gives MAE; a Bernoulli/categorical label gives cross-entropy. Choosing a loss is implicitly choosing a noise model.",
+    options: [
+      { id: "a", label: "Gaussian noise on the target", isCorrect: true },
+      { id: "b", label: "Uniform noise on the target", isCorrect: false },
+      { id: "c", label: "No noise at all", isCorrect: false },
+      { id: "d", label: "Poisson-distributed targets", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
