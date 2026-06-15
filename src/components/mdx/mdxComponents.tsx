@@ -40,6 +40,8 @@ import { BoostingViz } from "@/components/visualizations/Boosting/BoostingViz";
 import { QTableViz } from "@/components/visualizations/QTable/QTableViz";
 import { PoolingViz } from "@/components/visualizations/Pooling/PoolingViz";
 import { CoalescingViz } from "@/components/visualizations/Coalescing/CoalescingViz";
+import { SamplingDistributionViz } from "@/components/visualizations/SamplingDistribution/SamplingDistributionViz";
+import { HypothesisTestViz } from "@/components/visualizations/HypothesisTest/HypothesisTestViz";
 import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
 import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
 import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbiViz";
@@ -117,6 +119,8 @@ export const mdxComponents: MDXComponents = {
   QTableViz,
   PoolingViz,
   CoalescingViz,
+  SamplingDistributionViz,
+  HypothesisTestViz,
   LatentSpaceViz,
   RNNUnrollViz,
   HMMViterbiViz,

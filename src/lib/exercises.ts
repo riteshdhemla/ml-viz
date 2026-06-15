@@ -6640,6 +6640,140 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It is limited by host↔device transfer; the fix is more PCIe lanes", isCorrect: false },
     ],
   },
+
+  // ── Statistical Inference & Hypothesis Testing ──────────────────
+  {
+    id: "stats-standard-error",
+    type: "slider",
+    question:
+      "A population has standard deviation σ = 20. You take a sample of n = 100. What is the standard error of the sample mean?",
+    hint: "SE = σ / √n.",
+    explanation:
+      "SE = σ/√n = 20/√100 = 20/10 = 2. The standard error is the spread of the sampling distribution of the mean — much smaller than the population spread of 20, and it shrinks as √n grows.",
+    min: 0,
+    max: 20,
+    step: 0.1,
+    correctRange: [2, 2],
+    unit: "",
+  },
+  {
+    id: "stats-clt",
+    type: "multiple-choice",
+    question:
+      "The Central Limit Theorem says that as the sample size n grows, the sampling distribution of the mean approaches a normal distribution. What is the crucial condition on the population's own shape?",
+    hint: "Does the population itself have to be normal?",
+    explanation:
+      "The remarkable part of the CLT is that there is essentially no condition on the population's shape (given finite variance): even a strongly skewed population yields approximately normal sample means once n is reasonably large. This is what justifies using normal-based tools (z-scores, CIs, z-tests) on non-normal data.",
+    options: [
+      { id: "a", label: "The population can be any shape (with finite variance) — it need not be normal", isCorrect: true },
+      { id: "b", label: "The population must itself be normal", isCorrect: false },
+      { id: "c", label: "The population must be symmetric", isCorrect: false },
+      { id: "d", label: "The population must be discrete", isCorrect: false },
+    ],
+  },
+  {
+    id: "stats-confidence-interval",
+    type: "slider",
+    question:
+      "A sample mean is 50 with standard error SE = 2. Using z* = 1.96, what is the half-width (the ± margin) of the 95% confidence interval?",
+    hint: "margin = z* × SE = 1.96 × 2.",
+    explanation:
+      "The 95% CI is x̄ ± z*·SE = 50 ± 1.96(2) = 50 ± 3.92, i.e. [46.08, 53.92]. The half-width is 1.96 × 2 = 3.92.",
+    min: 0,
+    max: 10,
+    step: 0.01,
+    correctRange: [3.9, 3.94],
+    unit: "",
+  },
+  {
+    id: "stats-null-hypothesis",
+    type: "multiple-choice",
+    question:
+      "In an A/B test comparing conversion rates of variants A and B, what is the correct null hypothesis H₀?",
+    hint: "H₀ is always the 'no effect' claim, stated as an equality.",
+    explanation:
+      "The null hypothesis is the 'boring' default of no effect, written as an equality: p_A = p_B (the two variants convert at the same rate). It must be an equality because that pins down a specific sampling distribution to compute the test statistic against. 'B is better' is the alternative hypothesis, not the null.",
+    options: [
+      { id: "a", label: "p_A = p_B — the two variants have equal conversion rates", isCorrect: true },
+      { id: "b", label: "p_B > p_A — variant B converts better", isCorrect: false },
+      { id: "c", label: "p_A ≠ p_B — the variants differ", isCorrect: false },
+      { id: "d", label: "p_B is as large as possible", isCorrect: false },
+    ],
+  },
+  {
+    id: "stats-z-test",
+    type: "slider",
+    question:
+      "Under H₀ the mean is μ₀ = 100 with σ = 20. You observe a sample mean of 105 from n = 64 samples. What is the z-statistic?",
+    hint: "z = (x̄ − μ₀) / (σ/√n). Here σ/√n = 20/8.",
+    explanation:
+      "SE = σ/√n = 20/√64 = 20/8 = 2.5. z = (105 − 100)/2.5 = 5/2.5 = 2.0. The observed mean sits 2 standard errors above the null value — borderline significant for a two-tailed test at α = 0.05 (critical value 1.96).",
+    min: 0,
+    max: 5,
+    step: 0.1,
+    correctRange: [2, 2],
+    unit: "",
+  },
+  {
+    id: "stats-p-value",
+    type: "multiple-choice",
+    question:
+      "A test returns p = 0.03. Which interpretation is correct?",
+    hint: "The p-value is computed entirely inside the world where H₀ is true.",
+    explanation:
+      "p = 0.03 means: if H₀ were true, data at least as extreme as what we observed would occur 3% of the time. It is NOT the probability that H₀ is true, nor the probability the effect is real — those are Bayesian posterior quantities requiring a prior. The p-value conditions on H₀ being true.",
+    options: [
+      { id: "a", label: "If H₀ were true, a result this extreme would occur 3% of the time", isCorrect: true },
+      { id: "b", label: "There is a 3% probability that H₀ is true", isCorrect: false },
+      { id: "c", label: "There is a 97% probability that the effect is real", isCorrect: false },
+      { id: "d", label: "The effect size is 0.03", isCorrect: false },
+    ],
+  },
+  {
+    id: "stats-type-errors",
+    type: "multiple-choice",
+    question:
+      "A spam filter test uses H₀ = 'this email is not spam.' The filter rejects H₀ (flags the email as spam) for a legitimate email. What type of error is this?",
+    hint: "Rejecting a true null hypothesis.",
+    explanation:
+      "H₀ ('not spam') is actually true here, but the test rejected it — that is a Type I error (false positive), whose rate is the significance level α. A Type II error (false negative) would be failing to flag an email that really is spam. Power (1−β) is the chance of correctly flagging real spam.",
+    options: [
+      { id: "a", label: "Type I error (false positive) — rejecting a true H₀", isCorrect: true },
+      { id: "b", label: "Type II error (false negative) — failing to reject a false H₀", isCorrect: false },
+      { id: "c", label: "No error — the test behaved correctly", isCorrect: false },
+      { id: "d", label: "A loss of statistical power", isCorrect: false },
+    ],
+  },
+  {
+    id: "stats-quiz-standard-error",
+    type: "multiple-choice",
+    question:
+      "Your estimate of a mean has a standard error you'd like to cut in half. By what factor must you increase the sample size?",
+    hint: "SE = σ/√n, so SE depends on √n.",
+    explanation:
+      "Because SE = σ/√n, halving SE requires √n to double, which means n must increase 4×. This √n law is why precision has diminishing returns — each additional digit of accuracy costs disproportionately more data.",
+    options: [
+      { id: "a", label: "4× the data", isCorrect: true },
+      { id: "b", label: "2× the data", isCorrect: false },
+      { id: "c", label: "√2× the data", isCorrect: false },
+      { id: "d", label: "16× the data", isCorrect: false },
+    ],
+  },
+  {
+    id: "stats-quiz-p-value",
+    type: "multiple-choice",
+    question:
+      "An A/B test on 5 million users finds a 0.01% conversion lift with p = 0.001. What is the right conclusion?",
+    hint: "Statistical significance and practical significance are different things.",
+    explanation:
+      "The tiny p-value means the effect is statistically significant — with millions of users, even a microscopic real difference becomes detectable. But a 0.01% lift may be practically worthless. Statistical significance answers 'is it real?'; practical significance answers 'does it matter?' — always report the effect size and a confidence interval, not just p.",
+    options: [
+      { id: "a", label: "The lift is real (statistically significant) but likely too small to matter in practice", isCorrect: true },
+      { id: "b", label: "The lift is large and important because p is so small", isCorrect: false },
+      { id: "c", label: "The result is invalid because the effect is tiny", isCorrect: false },
+      { id: "d", label: "p = 0.001 means there's a 0.1% chance the lift is real", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
