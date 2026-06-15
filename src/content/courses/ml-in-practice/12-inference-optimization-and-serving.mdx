@@ -1,0 +1,132 @@
+---
+title: "Inference Optimization & Serving"
+description: "Make trained models fast and cheap to serve — KV-cache for attention, continuous batching, accelerator choice (GPU/TPU/CPU), and modern LLM serving stacks like vLLM and TGI."
+order: 12
+type: concept
+estimatedMinutes: 22
+---
+
+# Inference Optimization & Serving
+
+Training a model is the part that gets the papers; *serving* it is the part that gets the bill. A 70B-parameter LLM that costs eight figures to train will quietly cost the same again every year in serving GPUs if no one optimises the inference path. The good news is that the entire inference stack — from the kernel that computes attention to the scheduler that batches requests — has been re-engineered over the last three years, and most of the win is available to teams that *use* the right serving stack rather than build one. This lesson walks the layers: the cost equation, the KV-cache, batching, accelerators, and the modern serving stacks (vLLM / TGI / TensorRT-LLM / Triton) that bundle the wins.
+
+Real-world examples: a chat product that needs sub-second time-to-first-token at peak traffic typically picks **vLLM** or **TGI** on H100/H200 GPUs with **continuous batching** and **paged KV-cache**, then layers **INT4 quantization** on top once latency is acceptable. A batch summarisation job that re-runs every night picks throughput-first stacks (TensorRT-LLM with large static batches, or vLLM with high `max_num_seqs`) on cheaper L40S / A100s. An on-device assistant picks a smaller model (Phi / Llama-3.1-8B) quantized to INT4, served by **llama.cpp** or **MLX** on consumer silicon with no GPU at all.
+
+## The inference cost equation: latency, throughput, and cost
+
+Three numbers govern an inference deployment, and they trade off against each other.
+
+- **Latency** — wall-clock time from the user's request to the response. For an LLM this splits into *time-to-first-token* (TTFT, dominated by the **prefill** phase that processes the prompt) and *inter-token latency* (ITL, dominated by the **decode** phase that generates one token at a time). Users feel TTFT as "is anything happening?" and ITL as "is it fast?"
+- **Throughput** — tokens per second across all users on a fixed hardware budget. Throughput pays the bill.
+- **Cost per million tokens** — the metric a finance team actually cares about. It's `(GPU hourly cost) / (throughput in tokens/hour) × 10^6`.
+
+Prefill and decode are different beasts. Prefill processes $s$ input tokens *in parallel* — it's compute-bound and saturates the GPU's matmul units. Decode generates one token per step, *sequentially* over the whole response — it's memory-bandwidth-bound because each step reads the entire model weights from HBM to compute one logit. A model that can do 200k prefill tokens/s on an H100 may only do 100 decode tokens/s/request. Almost every modern inference optimisation is about closing that gap.
+
+<Callout type="info" title="Decode is bandwidth-bound, not compute-bound.">
+For a 70B model on a single H100, decoding one token requires reading roughly 140 GB of weights (at FP16) from HBM. With ~3 TB/s of HBM bandwidth, the *hardware floor* on per-request decode latency is about $140 / 3000 \approx 47$ ms per token, no matter how fast the compute is. This is why quantization (smaller weights → less to read) and batching (amortise the read across many sequences) are the biggest decode wins — both attack the bandwidth bottleneck, not the FLOPs.
+</Callout>
+
+## The KV-cache: the trick that makes decoding fast
+
+Naive autoregressive decoding recomputes attention over the whole prefix at every step: token $t$ attends to tokens $1, \ldots, t-1$, then token $t+1$ attends to $1, \ldots, t$, and so on. That's $O(s^2)$ work to generate a response of length $s$. The **KV-cache** is the observation that the *keys* $K$ and *values* $V$ for every previous token were already computed in earlier steps — so we can store them and only compute $K, V, Q$ for the *new* token at each decode step. Decoding becomes $O(s)$ instead of $O(s^2)$, at the cost of carrying the cache in memory.
+
+The memory cost is the thing that bites. For a model with $L$ layers, $H$ attention heads of dimension $d$, sequence length $s$, batch size $b$, and a numerical format using `bytes` per element, the KV-cache size is
+
+$$
+\text{KV-cache bytes} = 2 \cdot L \cdot H \cdot d \cdot s \cdot b \cdot \text{bytes},
+$$
+
+where the leading 2 covers both K *and* V. For Llama-3.1-70B (L = 80, H = 8 KV-heads, d = 128, FP16 = 2 bytes), one sequence of 8k context consumes $2 \cdot 80 \cdot 8 \cdot 128 \cdot 8192 \cdot 1 \cdot 2 \approx 2.7$ GB. A batch of 32 such sequences eats 85 GB — about a full H100. The cache, not the model weights, is what limits how many concurrent requests a GPU can hold.
+
+**PagedAttention**, the algorithm behind vLLM, fixes the worst part of this. Naive allocators reserve `max_seq_len` of cache for every active request and waste 60–80% of HBM on padding. PagedAttention treats the KV-cache like a virtual-memory pager — allocate it in 16-token blocks on demand, share blocks between requests with identical prefixes, and free blocks when a request finishes. It is roughly the same idea as OS paging applied to attention, and it routinely 2–4× the throughput of naive serving without changing the model at all.
+
+## Batching: static, dynamic, and continuous
+
+A GPU that processes one request at a time wastes most of its compute. Batching amortises the model-weight read across many sequences, which is what unlocks decode throughput.
+
+- **Static batching** — wait for $B$ requests to arrive, run them as a batch, return responses together. Simple; terrible for interactive workloads because (a) you wait for the slowest request before responding to anyone, and (b) variable-length responses idle the batch on the GPU while the longest one finishes.
+- **Dynamic batching** — collect requests up to a small window (e.g. 5 ms) and dispatch whatever arrived. Better latency, but still suffers the variable-length-tail problem during decode.
+- **Continuous batching** (also called *iteration-level scheduling* or *in-flight batching*) — the scheduler runs the model *one decode step at a time across the whole active batch*, and the moment any request finishes, a queued request takes its slot. There's no "batch boundary"; the batch composition changes every step. This is the design that makes modern LLM servers feel responsive at high QPS.
+
+Continuous batching is what gives vLLM and TGI most of their throughput advantage. A static batch of 32 sequences with response lengths spanning 50–1000 tokens runs at the *longest* sequence's pace and wastes ~80% of the slots after the short ones finish. The same workload with continuous batching keeps every slot busy, increasing throughput by 4–10× for chat traffic.
+
+<Callout type="warning" title="Padding wastes compute *and* memory.">
+Naive batching pads every sequence to the longest one in the batch and runs the GPU over the padding tokens too. The KV-cache for the padding is also allocated. The combined waste — padded compute *and* padded cache — is why teams who batch without continuous batching see real throughput well below the theoretical "batch size × single-sequence speed" they expected.
+</Callout>
+
+## Accelerators and the roofline model
+
+A surprising amount of inference-perf reasoning collapses into one picture: the **roofline model**. Plot *operational intensity* (FLOPs per byte read from HBM) on the x-axis and *achievable FLOPs/s* on the y-axis. The achievable performance is the *minimum* of two ceilings:
+
+$$
+\text{achievable FLOPs/s} = \min\bigl(\,\text{peak compute},\; \text{HBM bandwidth} \times \text{operational intensity}\,\bigr).
+$$
+
+Below the intersection ("memory-bound" region), you're limited by how fast you can read weights and activations from HBM — adding compute doesn't help. Above the intersection ("compute-bound" region), you're limited by FLOPs — adding bandwidth doesn't help. LLM decode lives squarely in the memory-bound region; LLM prefill and most CNN training live in the compute-bound region.
+
+The major accelerator families occupy different points:
+
+- **GPU** (NVIDIA H100/H200, AMD MI300) — high peak compute (~1 PF/s FP16) *and* high HBM bandwidth (3–5 TB/s). The default for both training and serving. H200 over H100 is mostly a bandwidth upgrade (4.8 → 4.8+ TB/s, larger HBM3e) — visible in decode throughput, invisible in prefill.
+- **TPU** (Google v5e / v5p) — large systolic arrays, high inter-chip bandwidth via ICI. Strong for training and large-batch inference; serving stacks (JetStream, SAX) are improving but still less mature than the NVIDIA ecosystem.
+- **CPU** — viable for small models and edge. Slow HBM equivalents (DDR5 at ~80 GB/s, vs HBM at 3000 GB/s) make decode of medium/large models painfully slow; small models (≤7B, quantized) on AVX-512 CPUs are fine for low-QPS deployments.
+- **Inference-specific silicon** — Groq LPU (extreme bandwidth, fixed weight layout), Cerebras WSE-3, AWS Inferentia, Google's Edge TPU. Specialised wins, narrower software stacks.
+
+The practical takeaway: pick the accelerator by where your workload sits on the roofline. A high-throughput batch summariser benefits from cheap compute-heavy chips (L40S); a low-latency chat product benefits from bandwidth-heavy chips (H100/H200 or Groq); an edge assistant benefits from a quantized small model on commodity hardware.
+
+## Serving stacks: what each buys you
+
+Every modern LLM serving stack bundles the same handful of ideas — continuous batching, paged KV-cache, kernel-level fusion — but with different trade-offs.
+
+- **vLLM** — open-source, Python-first, the reference implementation of **PagedAttention**. Easiest to stand up; great throughput; supports most open models. The default choice for self-hosted LLM serving in 2026.
+- **Text Generation Inference (TGI)** — HuggingFace's serving stack. Continuous batching, tensor-parallelism, tightly integrated with the HF model hub. Production-grade with a slightly older codebase than vLLM but more battle-tested in HF Inference Endpoints.
+- **TensorRT-LLM** — NVIDIA's compile-down stack. Compiles a model to a TensorRT engine with kernel fusion and INT4/FP8 paths tailored for Hopper/Blackwell. The fastest stack on NVIDIA hardware when configured well; the slowest to iterate on because every change recompiles.
+- **Triton Inference Server** — NVIDIA's general-purpose inference server (not the Python language Triton). Hosts TensorRT, ONNX, PyTorch, and TensorRT-LLM models behind a unified gRPC/HTTP API with dynamic batching and model ensembling. The "production deployment glue" most teams put in front of TensorRT-LLM.
+- **llama.cpp / MLX / SGLang** — niche-but-important: llama.cpp for CPU and Apple-Silicon edge; MLX for Apple Silicon training+serving; SGLang for advanced structured-output and constrained-decoding workflows.
+
+If you're picking once and not benchmarking, vLLM is the right default — it gives you 80% of the throughput of TensorRT-LLM with 10% of the operational overhead.
+
+## Quantization for inference: recap
+
+Quantization (covered in *Deployment Patterns & Model Compression*) is the single biggest inference win because it attacks the decode bottleneck directly: smaller weights mean less HBM bandwidth per token. Three flavours matter at inference time:
+
+- **INT8 weight quantization** — straightforward, ~2× decode speedup over FP16, typically under 0.5% accuracy loss.
+- **INT4 weight quantization via GPTQ or AWQ** — calibrated post-training quantization that keeps activations in FP16. ~4× speedup over FP16, ~1–2% accuracy loss with good calibration.
+- **FP8 / MXFP4** — mixed-precision formats supported natively on Hopper/Blackwell. Almost lossless for inference at decode time.
+
+The KV-cache itself can also be quantized to INT8 or FP8, doubling the effective context length you can hold on a GPU. Most modern serving stacks support this as a flag.
+
+## Speculative decoding: getting two tokens for the price of one
+
+A single decode step on a large model reads all the weights from HBM to produce one token — almost all of that bandwidth is "wasted" if the next token was easy to predict. **Speculative decoding** uses a small "draft" model to propose the next $k$ tokens cheaply, then the large model verifies all $k$ in a single forward pass and accepts the longest prefix that matches. When the draft model's predictions are close to the target's, the effective tokens-per-step rises from 1 to 2–4 with no quality loss, since the *target* model still validates everything. The win is biggest on easy prefixes (boilerplate, code skeletons) and smallest on hard ones (novel reasoning). All major serving stacks now support some flavour of this — Medusa heads, EAGLE, plain draft-target, lookahead decoding.
+
+## Common mistakes
+
+1. **Ignoring the prefill/decode split.** Optimising for tokens/second without separating TTFT from ITL leads to "fast" servers that feel laggy because TTFT is 4 seconds while ITL is great. Measure both, target them separately.
+2. **Static batching for chat traffic.** A batch that waits for the slowest sequence wastes ~80% of decode slots. Use continuous batching for any interactive workload.
+3. **Over-allocating KV-cache.** Naive allocators reserve `max_seq_len` per request and starve other requests. PagedAttention (vLLM) or block-paged allocators are the fix.
+4. **Buying compute when you needed bandwidth.** Upgrading from A100 to H100 for a decode-bound serving job buys you partial bandwidth and lots of compute you can't use. H200 or quantization usually wins more for the same dollars.
+5. **Building a custom serving stack.** vLLM / TGI / TensorRT-LLM are the result of hundreds of engineering-years. Almost no team should build from scratch — the leverage is in *configuring* the right stack, not authoring one.
+6. **Forgetting that quantization compounds.** INT4 weights + FP8 KV-cache + continuous batching multiply, not add. A naive FP16 server vs a fully-tuned modern stack on the same hardware routinely differs by 10–20× in throughput.
+
+## Key takeaways
+
+- LLM inference has two phases with different bottlenecks: **prefill** is compute-bound, **decode** is HBM-bandwidth-bound. Optimisations target one or the other.
+- The **KV-cache** turns $O(s^2)$ attention into $O(s)$ at the cost of $2 \cdot L \cdot H \cdot d \cdot s \cdot b \cdot B$ memory (where $B$ is bytes per element). The cache, not the weights, usually limits concurrency.
+- **PagedAttention** (vLLM) treats the cache like virtual memory — 16-token blocks, prefix sharing, on-demand allocation — and recovers 60–80% of HBM otherwise wasted on padding.
+- **Continuous batching** (iteration-level scheduling) keeps every decode slot busy by rotating requests in and out at every step. It's worth 4–10× throughput vs static batching for chat traffic.
+- The **roofline model** is the right mental model for accelerator choice: pick bandwidth for decode-bound workloads (H100/H200, Groq), compute for prefill-heavy or batch jobs (L40S, TPU).
+- **vLLM** is the right default open-source serving stack in 2026; **TensorRT-LLM + Triton** is faster on NVIDIA when the team can absorb the compile loop; **TGI** for HF-shop integration.
+- **Quantization** (INT4 weights, FP8 KV-cache) and **speculative decoding** compound with batching for another 2–4× without quality loss.
+
+## Related concepts
+
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — quantization, pruning, and distillation are the model-side optimisations; this lesson is the runtime-side counterpart. Together they decide your dollars-per-million-tokens bill.
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — the serving fleet (vLLM, TGI, Triton) sits on top of the platform substrate from the previous lesson. Capacity planning for the GPU pool reuses the queueing-theory math from there.
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — TTFT, ITL, tokens-per-second, and KV-cache utilisation are the operational SLIs you alert on once a serving stack is running.
+- [**Foundation Models & Scaling**](/courses/transformers/05-foundation-models-and-scaling) — the same scaling math that drives training cost drives inference cost; bigger models hit the bandwidth wall harder.
+
+<Exercise id="ml-practice-inference-kv-cache-bytes" />
+
+<Exercise id="ml-practice-inference-continuous-batching" />
+
+<Exercise id="ml-practice-inference-roofline-regime" />

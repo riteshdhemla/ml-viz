@@ -6220,6 +6220,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Local-disk pipelines are inherently less portable to Kubernetes; the team should standardise on Kubernetes-native local storage classes.", isCorrect: false },
     ],
   },
+  // ── ML in Practice — Inference Optimization & Serving ──────
+  {
+    id: "ml-practice-inference-kv-cache-bytes",
+    type: "slider",
+    question:
+      "You're serving Llama-3.1-70B in FP16. The architecture has $L = 80$ layers, $H = 8$ KV-heads, head dimension $d = 128$, and 2 bytes per element. Using $\\text{bytes} = 2 \\cdot L \\cdot H \\cdot d \\cdot s \\cdot b \\cdot \\text{bytes per element}$, what is the KV-cache size for **one** sequence with $s = 8192$ tokens of context, in gigabytes? Round to the nearest 0.1 GB.",
+    hint: "Plug in: $2 \\cdot 80 \\cdot 8 \\cdot 128 \\cdot 8192 \\cdot 1 \\cdot 2$. Convert bytes to GB by dividing by $1024^3$.",
+    explanation:
+      "$2 \\cdot 80 \\cdot 8 \\cdot 128 \\cdot 8192 \\cdot 1 \\cdot 2 = 2{,}684{,}354{,}560$ bytes $\\approx 2.5$ GB per sequence. A batch of 32 such 8k-context sequences therefore needs ~80 GB of KV-cache — about a full H100. This is why the *cache*, not the weights, sets the concurrency limit on most modern LLM deployments, and why PagedAttention (16-token blocks, prefix sharing, on-demand allocation) is worth so much: a naive allocator that reserves `max_seq_len = 8192` for every request wastes most of that 80 GB on padding when real sequences are short.",
+    min: 0,
+    max: 10,
+    step: 0.1,
+    correctRange: [2.4, 2.6],
+    unit: "GB",
+  },
+  {
+    id: "ml-practice-inference-continuous-batching",
+    type: "multiple-choice",
+    question:
+      "Your chat product serves an LLM with naive **static batching**: gather 32 requests, run them as a batch, return all responses together. Response lengths vary widely (50–1000 tokens). The serving team is debating fixes. Which option is the modern best practice and addresses the actual root cause?",
+    hint: "Think about what happens to a batch slot the instant a short request finishes — and what fraction of slots are 'still working' at the end.",
+    explanation:
+      "The right answer is **(B) continuous (iteration-level) batching**. With static batching, the whole batch runs at the *longest* sequence's pace; the moment a 50-token request finishes, its slot sits idle until the 1000-token request finishes too — wasting ~80% of decode slots on a chat workload. Continuous batching schedules one decode step at a time across the whole active batch, and the instant any sequence finishes, a queued request takes its slot. Throughput rises 4–10× on chat traffic without changing the model. (A) padding *worsens* the waste by also computing on the padding tokens. (C) larger static batches make the tail problem bigger, not smaller — the slowest of 128 is even slower than the slowest of 32. (D) GPU upgrades buy you raw throughput but don't fix the structural waste; the new GPU will also be ~80% idle on tail decode.",
+    options: [
+      { id: "a", label: "Pad all requests in the batch to the longest sequence length so the GPU runs at a single uniform shape.", isCorrect: false },
+      { id: "b", label: "Switch to continuous (iteration-level) batching: schedule one decode step at a time across the active batch, and the instant any request finishes, a queued request takes its slot. The batch composition changes every step, so no slot waits for the slowest request to finish.", isCorrect: true },
+      { id: "c", label: "Increase the static batch size from 32 to 128 so the per-request fixed cost amortises further.", isCorrect: false },
+      { id: "d", label: "Upgrade from H100 to H200 GPUs; the higher HBM bandwidth solves the variable-length problem.", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-inference-roofline-regime",
+    type: "multiple-choice",
+    question:
+      "You're decoding tokens one-by-one from a 70B-parameter LLM on an H100 (peak FP16 compute ~1 PF/s, HBM bandwidth ~3 TB/s). At batch size 1, each decode step reads ~140 GB of weights from HBM to produce one token. According to the roofline model, which regime is this workload in, and which hardware change buys the most decode throughput?",
+    hint: "Compute the operational intensity (FLOPs per byte read from HBM). For a single-token forward pass, this is *small*. Compare to the ridge point (peak compute / HBM bandwidth).",
+    explanation:
+      "**(C) is correct.** The roofline ridge point for an H100 is roughly $1\\text{ PF/s} \\,/\\, 3\\text{ TB/s} \\approx 333$ FLOPs/byte. A single-token decode does about $2 \\cdot 70 \\times 10^9 = 1.4 \\times 10^{11}$ FLOPs while reading $1.4 \\times 10^{11}$ bytes — operational intensity ~1 FLOP/byte, two orders of magnitude *below* the ridge. The workload is firmly memory-bandwidth-bound; the achievable throughput is HBM-bandwidth × operational-intensity, not peak FLOPs. Hardware-wise, the biggest decode wins come from raising effective bandwidth: more HBM bandwidth (H200), quantization (smaller weights → less to read), and batching (amortise the same read across many sequences). (A) is wrong because adding compute can't help a memory-bound workload — the FLOPs ceiling isn't the constraint. (B) misreads the regime: the workload is compute-*starved* relative to bandwidth, but adding more compute doesn't change that. (D) is true for prefill, false for decode — prefill is compute-bound, decode is bandwidth-bound, and the question is explicitly about decode.",
+    options: [
+      { id: "a", label: "Compute-bound; upgrade to a chip with more peak FLOPs (e.g. Blackwell B200) — the FLOPs ceiling is the binding constraint.", isCorrect: false },
+      { id: "b", label: "Compute-bound at low batch size, memory-bound at high batch size; the fix is to *lower* the batch size so it stays in the compute regime.", isCorrect: false },
+      { id: "c", label: "Memory-bandwidth-bound: operational intensity (~1 FLOP/byte) is far below the H100 ridge point (~333 FLOPs/byte). The biggest decode wins come from raising effective bandwidth — H200 (more HBM bandwidth), quantization (less to read per token), and batching (amortise the read across many sequences).", isCorrect: true },
+      { id: "d", label: "Compute-bound at all batch sizes for LLM inference; adding HBM bandwidth never helps because tensor-cores are the bottleneck.", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
