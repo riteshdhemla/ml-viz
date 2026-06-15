@@ -6310,6 +6310,82 @@ const allExercises: Exercise[] = [
     correctRange: [0.5, 5.0],
     unit: "",
   },
+  // ── ml-in-practice quiz: lessons 04–13 coverage ──────────────────
+  {
+    id: "ml-practice-quiz-canary",
+    type: "multiple-choice",
+    question:
+      "Your team finishes 'shadow' on a new ranker — offline cross-entropy on live traffic looks great. The PM wants to jump straight to a 50/50 A/B test for faster statistical power. What is the strongest argument for inserting a small-fraction canary (1–5%) BEFORE the A/B?",
+    hint: "Shadow throws away the candidate's outputs. A/B exposes 50% of users. What gap sits between those two patterns?",
+    explanation:
+      "Shadow runs the candidate but discards its outputs — so the candidate's downstream effects (the rerank step, the feature service, the logging pipeline) are never exercised end-to-end. A 50/50 A/B test exposes half of users to those un-tested code paths at once. The canary's job is to find operational regressions (error rate, p99 latency, crash rate, KV-cache fragmentation) on a small fraction first; it is a *trip-wire*, not a measurement of user behaviour. Skipping it means an operational bug hits half the user base before the A/B's behaviour metric reflects it. Power, novelty effects, and reward-distribution estimates are A/B and bandit concerns, not what the canary solves.",
+    options: [
+      { id: "a", label: "The canary gives stronger statistical power than the A/B because traffic is unbalanced", isCorrect: false },
+      { id: "b", label: "Shadow never exercises the candidate's downstream code paths end-to-end; the canary catches operational regressions on a small slice before exposing 50% of users", isCorrect: true },
+      { id: "c", label: "The canary is required to estimate each arm's reward distribution before a bandit can be launched", isCorrect: false },
+      { id: "d", label: "Canaries eliminate novelty effects that would otherwise bias the A/B test", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-psi",
+    type: "multiple-choice",
+    question:
+      "Your monitoring dashboard reports PSI = 0.18 on the 'device_type' feature for three consecutive daily windows. The standard PSI playbook treats <0.1 as stable, 0.1–0.25 as watch, and >=0.25 as act. What is the right response?",
+    hint: "Where does 0.18 fall on the standard threshold table — and how does sustained vs transient change what you do?",
+    explanation:
+      "PSI = 0.18 lies in the 0.1–0.25 'watchful waiting' band: the input distribution has clearly moved, but not enough on its own to justify a retrain. Because the alarm is sustained over multiple windows (not a one-off spike from a deploy or backfill), the right move is to investigate the cause — has a partner API changed, did a UA-string parser drift, is there a new device class — and check whether prediction-distribution or output-quality metrics have also moved. Immediate retraining on a single per-feature signal in the watch band is the over-reacting failure mode the lesson warns about. Ignoring it is the opposite failure: sustained drift in this band often precedes a >=0.25 crossing within weeks.",
+    options: [
+      { id: "a", label: "Trigger an immediate retrain — three consecutive windows is the standard retrain trigger regardless of magnitude", isCorrect: false },
+      { id: "b", label: "Ignore it — only PSI above 0.25 is meaningful, and a single feature drifting is never worth investigating", isCorrect: false },
+      { id: "c", label: "Watchful waiting: investigate the cause and check whether prediction-distribution or quality metrics have also moved; retrain only if the signal corroborates", isCorrect: true },
+      { id: "d", label: "Switch the monitoring metric from PSI to KL divergence — PSI is unreliable in the 0.1–0.25 range", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-lineage",
+    type: "multiple-choice",
+    question:
+      "Six weeks after training, you need to reproduce a benchmark run bit-for-bit. Your tracker logged the git SHA of the training repo and the final metrics. What is the MINIMUM additional pair of artifacts you need to make the run truly reproducible?",
+    hint: "The lesson names three things you must version. Code is one — what are the other two?",
+    explanation:
+      "A reproducible run requires versioning three things: code, data, and environment. The git SHA covers code. The lesson is explicit that the other two — a content-addressed pointer to the exact train/val/test snapshot (DVC, LakeFS, Delta/Iceberg version, or S3 object version id) and a pinned environment fingerprint (container image digest, lockfile, CUDA/driver versions) — are non-negotiable. 'Python 3.11 and PyTorch 2.4' is not enough; a minor patch can change kernel selection and silently move metrics. Hyperparameters live in the run record but are not what determines reproducibility once code is pinned; sweep config and stdout logs are useful for debugging but cannot recreate the bytes that produced the model.",
+    options: [
+      { id: "a", label: "Hyperparameter sweep config and a copy of stdout logs", isCorrect: false },
+      { id: "b", label: "A content-addressed data version (e.g. DVC/Delta/object-version id) and a pinned environment fingerprint (container image digest or lockfile)", isCorrect: true },
+      { id: "c", label: "GPU model and total training wall-clock time", isCorrect: false },
+      { id: "d", label: "The optimizer state dict and a list of installed pip packages by name", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-kv-cache",
+    type: "multiple-choice",
+    question:
+      "You serve a decoder-only LLM at batch size 16 with 4k context. To free more GPU memory for concurrent requests, your team is choosing between (i) shrinking the model from FP16 to INT4 weights and (ii) quantizing the KV-cache to FP8. The serving job is currently OOM-ing on the KV-cache, not the weights. Which lever wins, and why?",
+    hint: "Recall: KV-cache bytes scale as 2 * L * H * d * s * b * bytes. Which lever attacks that term directly?",
+    explanation:
+      "Quantizing the KV-cache from FP16 (2 bytes) to FP8 (1 byte) halves the per-element cost of the KV-cache term — which is the term that's actually OOM-ing. Modern serving stacks (vLLM, TGI, TensorRT-LLM) expose this as a flag and report it as roughly doubling the effective context length the GPU can hold. INT4 weight quantization is great when the weights are the bottleneck, but here they aren't: the cache grows linearly in batch size and sequence length while weights are fixed. Shrinking the weights frees a constant amount of memory regardless of batch size — useful but not what's binding. The two compressions compose (INT4 weights *and* FP8 cache is the production endgame), but if you must pick one for *this* OOM, target the term that's actually large.",
+    options: [
+      { id: "a", label: "INT4 weights — model weights always dominate GPU memory and shrinking them frees the most space", isCorrect: false },
+      { id: "b", label: "FP8 KV-cache — the cache scales with batch size and context length and is the term that's actually OOM-ing; halving its per-element cost roughly doubles concurrency", isCorrect: true },
+      { id: "c", label: "Neither — only PagedAttention can reduce KV-cache memory; numerical-format changes have no effect", isCorrect: false },
+      { id: "d", label: "Both are equivalent because total GPU memory is the sum of weights plus cache and either saving is fungible", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-fairness",
+    type: "multiple-choice",
+    question:
+      "You build a loan-approval classifier. Stakeholders agree the harm to mitigate is qualified applicants being denied at different rates across demographic groups. Base rates of repayment differ across groups in the historical data. Which fairness definition is the BEST fit, and why can you not also enforce demographic parity?",
+    hint: "Which definition conditions on Y=1? And what does the Chouldechova/Kleinberg impossibility result say when base rates differ?",
+    explanation:
+      "The harm framed by stakeholders — 'qualified applicants denied at different rates' — is exactly what equal opportunity formalises: P(Y_hat=1 | Y=1, A=a) = P(Y_hat=1 | Y=1, A=b). True positive rates equal across groups; among people who genuinely qualify, every group has the same approval rate. Demographic parity (P(Y_hat=1 | A=a) equal across groups) ignores Y, so when base rates of Y=1 genuinely differ, enforcing parity forces the model to either over-predict for the lower-base-rate group or under-predict for the higher one. The Chouldechova / Kleinberg–Mullainathan–Raghavan impossibility result is explicit: when base rates differ, demographic parity, equal opportunity, and predictive parity cannot all hold simultaneously (except in the trivial perfect-classifier case). Fairness is therefore a *choice* of which parity matters; here that choice is equal opportunity.",
+    options: [
+      { id: "a", label: "Demographic parity — it is the strongest definition and always preferred when groups should be treated equally", isCorrect: false },
+      { id: "b", label: "Equal opportunity (equal TPR across groups) — it matches the stated harm; demographic parity cannot also hold because when base rates differ, the three group-parity definitions are mutually incompatible (Chouldechova / Kleinberg et al.)", isCorrect: true },
+      { id: "c", label: "Predictive parity alone — calibration across groups is sufficient and makes the other definitions redundant", isCorrect: false },
+      { id: "d", label: "All three can be enforced jointly by adjusting the decision threshold per group", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -140,7 +140,7 @@ coverColor `bg-gradient-to-r from-accent-rose to-brand-500`.
 - [x] **`ml-in-practice` + MLOps Infrastructure & Orchestration** · storage/compute, dev env, resource mgmt, orchestrators, ML platform · viz: *none* · notebook.
 - [x] **`ml-in-practice` + Inference Optimization & Serving** · KV-cache, batching, accelerators, serving (e.g. vLLM), cost/latency · viz: *none* · notebook.
 - [x] **`ml-in-practice` + Responsible AI & the Human Side** · UX for ML, team structure, responsible/ethical AI · viz: *none* · notebook.
-- [ ] **`ml-in-practice` quiz** (or per-split-course quiz) — 5 quiz exercises. *(Only if `ml-in-practice` doesn't already have one; otherwise extend it.)*
+- [x] **`ml-in-practice` quiz** (or per-split-course quiz) — 5 quiz exercises. *(Only if `ml-in-practice` doesn't already have one; otherwise extend it.)*
 
 ---
 
