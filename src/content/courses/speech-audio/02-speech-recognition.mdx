@@ -1,0 +1,89 @@
+---
+title: "Speech Recognition"
+description: "Turning audio into text — the alignment problem, Connectionist Temporal Classification (CTC), sequence-to-sequence and attention-based ASR, and how Whisper-style models work."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Speech Recognition
+
+**Automatic Speech Recognition (ASR)** maps an audio signal to the words that were spoken. The central difficulty isn't recognizing sounds — it's **alignment**: a one-second utterance is ~100 spectrogram frames but maybe 3 words, and you don't know which frames correspond to which characters. This lesson covers the two ideas that solved alignment — **CTC** and **attention-based sequence-to-sequence** — and how modern systems like Whisper combine them.
+
+**Real-world examples:** voice assistants, dictation, video captioning and subtitles, call-center transcription, and the speech front-end of multimodal assistants.
+
+## The alignment problem
+
+The input is a sequence of $T$ audio frames (e.g. 100/second); the output is a much shorter sequence of $U$ characters or tokens. Crucially, the alignment between them is **unknown and variable**: people speak at different speeds, pause, and stretch sounds. Classical systems used hand-built **HMM** alignments (and pronunciation dictionaries and separate language models) — powerful but complex. The deep-learning era replaced that pipeline with end-to-end models that learn alignment implicitly.
+
+## CTC: alignment without labels
+
+**Connectionist Temporal Classification (CTC)** lets a model output a character per frame and *sum over all possible alignments* to the target text — no frame-level labels needed. Two ingredients:
+
+- A special **blank** token $\varnothing$ the model can emit when it's "between" characters or unsure.
+- A **collapse rule**: merge repeated characters, then remove blanks. So `h h ∅ e ∅ l l ∅ l o` → `hello`.
+
+CTC defines the probability of a target as the **sum over every frame-labeling that collapses to it**:
+
+$$
+P(\text{"hello"}\mid X) = \sum_{\pi \,\in\, \text{align(hello)}} \prod_{t} P(\pi_t \mid X)
+$$
+
+This sum has exponentially many alignments but is computed efficiently with a **dynamic-programming** (forward–backward) algorithm — the same DP family as HMMs. CTC assumes outputs are **conditionally independent across frames** given the audio, which is its main limitation (it leans on an external language model to fix that).
+
+<Callout type="info" title="Why the blank token is the key trick">
+  Without a blank, the collapse rule couldn't tell "hello" (one l-sound held long) from "helo" — repeated real characters would always merge. The blank lets the model *separate* genuine repeats ("ll") from a single sound spanning many frames, making the alignment well-defined.
+</Callout>
+
+## Sequence-to-sequence and attention
+
+The alternative: treat ASR as **translation from audio to text**. An **encoder** processes the spectrogram into a representation; a **decoder** generates the transcript token by token, using **attention** to look at the relevant audio frames for each output token.
+
+- **Listen, Attend and Spell (LAS)** was the canonical attention-based ASR model.
+- Unlike CTC, the decoder is **autoregressive** — each token conditions on the previous ones — so it models the language internally (no conditional-independence assumption) and needs no separate language model.
+- The cost: it must be run sequentially and can "hallucinate" fluent-but-wrong text if attention drifts.
+
+| | CTC | Attention seq2seq |
+|---|---|---|
+| Alignment | monotonic, summed over | learned by attention (flexible) |
+| Output dependence | conditionally independent per frame | autoregressive (models language) |
+| Decoding | fast, parallel-ish | sequential |
+| Needs external LM | helps a lot | optional |
+
+## Modern ASR: Whisper and the transformer era
+
+**Whisper** (and similar models) are **encoder–decoder transformers** trained on enormous, weakly-labeled audio–text data scraped from the web. The recipe:
+
+1. Input a **log-mel spectrogram** (Lesson 1) to a transformer **encoder**.
+2. A transformer **decoder** generates text autoregressively with cross-attention to the audio — the seq2seq approach, scaled up.
+3. **Massive, diverse training data** (multilingual, noisy, many domains) makes it robust **zero-shot** — it transcribes accents, background noise, and languages it was never specifically tuned for, and even does translation and timestamps.
+
+The lesson of Whisper mirrors the rest of modern ML: a fairly standard architecture plus huge weakly-supervised data beats carefully engineered pipelines. Some production systems still prefer **CTC/transducer** models for **streaming** (low-latency, word-by-word) recognition, where an autoregressive decoder over the whole utterance is awkward.
+
+<Callout type="tip" title="RNN-Transducer: the streaming workhorse">
+  The **RNN-T (transducer)** combines CTC's frame-synchronous, streaming-friendly nature with an internal language model (it conditions on previous outputs). It's the backbone of many on-device, real-time assistants where you need transcription to appear *as you speak*, which a full-utterance attention decoder can't do.
+</Callout>
+
+## Common mistakes
+
+1. **Forgetting CTC's blank/collapse rule.** Without it, repeated characters and held sounds are indistinguishable.
+2. **Assuming attention ASR can stream.** A full-utterance autoregressive decoder needs the whole input; use CTC/RNN-T for low latency.
+3. **Ignoring the language model.** CTC's per-frame independence makes an external/internal LM important for fluent output.
+4. **Underestimating data.** Whisper's robustness comes from scale and diversity of training data more than architectural novelty.
+
+## Key takeaways
+
+- ASR's core challenge is **alignment**: many audio frames map to few output tokens, with unknown, variable correspondence.
+- **CTC** outputs a token per frame with a **blank** and a **collapse rule**, summing over all alignments via dynamic programming — fast and streaming-friendly, but assumes per-frame independence.
+- **Attention seq2seq** treats ASR as audio→text translation with an **autoregressive** decoder that models language internally — flexible but sequential.
+- **Whisper**-style encoder–decoder transformers trained on **massive weakly-labeled data** give robust zero-shot ASR; **RNN-T/CTC** remain preferred for **streaming**.
+
+## Related concepts
+
+- [**Audio Representations & Spectrograms**](/courses/speech-audio/01-audio-representations) — the log-mel features that feed every ASR model
+- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — the classical alignment model and the DP that CTC echoes
+- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the encoder–decoder backbone of modern ASR
+
+<Exercise id="audio-alignment" />
+<Exercise id="audio-ctc" />
+<Exercise id="audio-whisper" />

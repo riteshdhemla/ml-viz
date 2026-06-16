@@ -1,0 +1,81 @@
+---
+title: "Audio Representations & Spectrograms"
+description: "How sound becomes a tensor a model can learn from — sampling a waveform, the short-time Fourier transform, mel spectrograms, and MFCCs."
+order: 1
+type: concept
+estimatedMinutes: 15
+---
+
+# Audio Representations & Spectrograms
+
+Audio is a wave — a one-dimensional signal of air pressure over time. Feeding a raw waveform to a model is possible but hard: it's enormously long (tens of thousands of samples per second) and the information you care about lives in its *frequencies*, not its raw amplitudes. The key move in audio ML is to transform sound into a **spectrogram** — a 2-D time-frequency image — which turns audio into something CNNs and transformers handle naturally. This lesson covers that pipeline.
+
+**Real-world examples:** every speech recognizer, music classifier, voice assistant, sound-event detector, and audio generation model starts by computing spectrogram-style features (or learns an equivalent front-end).
+
+## The waveform and sampling
+
+A microphone records a continuous pressure wave; a computer stores **samples** of it at a fixed **sampling rate** $f_s$ (e.g. 16 kHz for speech, 44.1 kHz for music). The **Nyquist theorem** says you can faithfully represent frequencies only up to $f_s/2$ — so 16 kHz audio captures content up to 8 kHz, enough for intelligible speech.
+
+The result is a long 1-D array: one second of 16 kHz audio is 16,000 numbers. Raw, this is unwieldy and frequency information is implicit.
+
+## From time to frequency: the Fourier transform
+
+The **Fourier transform** rewrites a signal as a sum of sinusoids — revealing *which frequencies* are present and how strongly. A pure 440 Hz tone is a flat waveform but a single spike in the frequency domain. For audio, frequency content is exactly the perceptually and linguistically meaningful part (pitch, formants, timbre).
+
+But a single Fourier transform over a whole clip loses *when* each frequency occurred. Speech changes constantly, so we need both time and frequency.
+
+## The spectrogram (STFT)
+
+The **Short-Time Fourier Transform (STFT)** solves this: slide a short window across the signal and take the Fourier transform of each window. The result is a 2-D map — **time on one axis, frequency on the other, magnitude as intensity** — the **spectrogram**.
+
+$$
+\text{STFT}: \text{1-D waveform} \;\longrightarrow\; \text{2-D } (\text{time} \times \text{frequency}) \text{ image}
+$$
+
+<Callout type="info" title="The time–frequency resolution trade-off">
+  The window length sets a fundamental trade-off: a **short** window localizes events precisely in time but resolves frequency poorly; a **long** window resolves frequency finely but blurs timing. You can't have perfect resolution in both (a signal-processing uncertainty principle). Speech systems pick a window around 25 ms with a 10 ms hop as a practical balance.
+</Callout>
+
+A spectrogram is an **image**, which is why CNNs (and now transformers) are the natural models for audio — the whole 2-D toolkit transfers directly.
+
+## Mel spectrograms and MFCCs
+
+Human hearing isn't linear in frequency: we distinguish low frequencies far more finely than high ones. Two perceptually-motivated transforms make features that match how we hear:
+
+- **Mel spectrogram** — warp the frequency axis onto the **mel scale** (roughly logarithmic), so the representation devotes resolution where the ear does. This is the dominant input feature for modern deep speech and audio models.
+- **MFCC (Mel-Frequency Cepstral Coefficients)** — apply a further transform (a discrete cosine transform of the log-mel energies) to get a compact, decorrelated feature vector. MFCCs were *the* feature for classical (pre-deep-learning) speech recognition and remain common for lightweight systems.
+
+| Representation | What it is | Used by |
+|---|---|---|
+| Raw waveform | 1-D samples | end-to-end models (wav2vec) |
+| Spectrogram (STFT) | time × linear-frequency | general audio |
+| **Mel spectrogram** | time × mel-frequency | **most deep speech/audio models** |
+| MFCC | compact cepstral coefficients | classical ASR, small models |
+
+<Callout type="tip" title="Learned front-ends">
+  Modern systems sometimes skip hand-designed features and **learn** the front-end from the raw waveform (e.g. wav2vec 2.0's convolutional encoder). But mel spectrograms remain a strong, cheap default — even Whisper uses a log-mel spectrogram as its input.
+</Callout>
+
+## Common mistakes
+
+1. **Feeding raw waveforms by default.** It's long and frequency information is implicit; spectrogram features are usually easier and cheaper to learn from.
+2. **Ignoring the sampling rate / Nyquist limit.** Mismatched sample rates or under-sampling discards or aliases the frequencies you need.
+3. **Wrong window length.** Too short blurs frequency, too long blurs time; tune the STFT window to the signal.
+4. **Using a linear frequency axis for speech.** The mel scale matches human hearing and consistently works better for speech.
+
+## Key takeaways
+
+- Audio is a **1-D waveform** sampled at rate $f_s$; the **Nyquist** limit caps representable frequency at $f_s/2$.
+- The **STFT** turns a waveform into a 2-D **spectrogram** (time × frequency), making audio an *image* that CNNs/transformers handle — subject to a **time–frequency resolution trade-off**.
+- **Mel spectrograms** warp frequency to match human hearing and are the dominant deep-audio feature; **MFCCs** are a compact classical variant.
+- Some modern models **learn** the front-end from raw audio, but mel spectrograms remain a strong default (e.g. Whisper).
+
+## Related concepts
+
+- [**Speech Recognition**](/courses/speech-audio/02-speech-recognition) — turning these features into text with CTC and seq2seq models
+- [**Convolution Operation**](/courses/cnns/01-convolution-operation) — the 2-D convolution applied to spectrogram images
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the signals and spectra underlying frequency analysis
+
+<Exercise id="audio-sampling" />
+<Exercise id="audio-spectrogram" />
+<Exercise id="audio-mel" />
