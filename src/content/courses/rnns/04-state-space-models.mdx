@@ -1,0 +1,90 @@
+---
+title: "State Space Models (S4 & Mamba)"
+description: "Sequence models that are recurrent in theory but convolutional in training — linear state-space recurrence, the parallel-scan speedup, and how Mamba's selectivity rivals attention at sub-quadratic cost."
+order: 4
+type: concept
+estimatedMinutes: 18
+---
+
+# State Space Models (S4 & Mamba)
+
+RNNs process sequences step by step but can't be parallelized over time (and forget long contexts); transformers parallelize beautifully but cost $O(L^2)$ in sequence length. **State space models (SSMs)** — the S4 and Mamba family — aim for the best of both: a *recurrent* model with long memory that nevertheless *trains in parallel*, at **sub-quadratic** cost. They're the most serious recent challenger to attention for long-sequence modeling.
+
+**Real-world examples:** long-document and genomics modeling (S4 on million-length sequences), Mamba and hybrid Mamba-transformer language models, and efficient on-device sequence models where the $O(L^2)$ attention bill is prohibitive.
+
+## The linear recurrence
+
+An SSM maps an input sequence $u_t$ to an output $y_t$ through a hidden **state** $\mathbf{h}_t$, with a *linear* recurrence:
+
+$$
+\mathbf{h}_t = \mathbf{A}\,\mathbf{h}_{t-1} + \mathbf{B}\,u_t, \qquad y_t = \mathbf{C}\,\mathbf{h}_t
+$$
+
+This looks like an RNN — but the transition is **linear** (no nonlinearity inside the recurrence). $\mathbf{A}$ controls how the state evolves and remembers; $\mathbf{B}$ writes the input into the state; $\mathbf{C}$ reads the output out. The recurrent unrolling is the same picture as an RNN:
+
+<RNNUnrollViz />
+
+## The key trick: recurrence ⟺ convolution
+
+Because the recurrence is linear, you can unroll it in closed form. Substituting repeatedly, $y_t$ is a **convolution** of the entire input history with a fixed kernel:
+
+$$
+y_t = \sum_{j=0}^{t} \mathbf{C}\mathbf{A}^{j}\mathbf{B}\; u_{t-j} \;=\; (\mathbf{K} * u)_t, \qquad \mathbf{K} = (\mathbf{C}\mathbf{B},\, \mathbf{C}\mathbf{A}\mathbf{B},\, \mathbf{C}\mathbf{A}^2\mathbf{B},\, \dots)
+$$
+
+This duality is the whole point:
+
+- **Training**: compute the kernel $\mathbf{K}$ once, then apply it as a single (FFT-based) **convolution** over the whole sequence in parallel — no step-by-step loop, like a CNN.
+- **Inference**: roll the **recurrence** forward one step at a time with an $O(1)$ state update per token — like an RNN, with no growing KV-cache.
+
+<Callout type="info" title="One model, two modes">
+  A linear SSM is *the same computation* expressed two ways: a parallel convolution for fast training, and a constant-memory recurrence for fast autoregressive generation. Attention can't do the convolution-mode parallel training *and* O(1) per-token inference — it pays O(L) per token from the growing KV-cache.
+</Callout>
+
+## S4: making it actually work
+
+A naive linear recurrence forgets quickly ($\mathbf{A}^j$ shrinks) or blows up. **S4** (Structured State Space) makes long memory practical with a special **structured initialization** of $\mathbf{A}$ (the HiPPO matrix), designed so the state optimally compresses the input history — letting S4 capture dependencies over tens of thousands of steps where LSTMs and even transformers struggle. The "structured" also keeps the math efficient.
+
+## Mamba: selectivity
+
+S4's $\mathbf{A}, \mathbf{B}, \mathbf{C}$ are **fixed** — the same for every token (it's a Linear Time-Invariant system). That's what allows the convolution view, but it means the model can't *choose* what to remember based on content, the way attention can. **Mamba** adds **selectivity**: it makes $\mathbf{B}, \mathbf{C}$ (and the timestep) **functions of the input**, so the model dynamically decides what to keep and what to ignore per token.
+
+<Callout type="warning" title="Selectivity breaks the convolution — so Mamba uses a parallel scan">
+  Once $\mathbf{B}, \mathbf{C}$ depend on the input, the system is time-*varying* and the fixed-kernel convolution no longer applies. Mamba recovers parallel training with a **hardware-aware parallel scan** (an associative scan over the linear recurrence) that runs efficiently on GPUs. It keeps the $O(L)$ scaling while regaining content-based selection.
+</Callout>
+
+## SSM vs. attention
+
+| | Attention | SSM (S4 / Mamba) |
+|---|---|---|
+| Cost in length $L$ | $O(L^2)$ | $O(L)$ (or $O(L\log L)$) |
+| Training | parallel | parallel (convolution / scan) |
+| Inference / token | $O(L)$ (KV-cache grows) | $O(1)$ (fixed-size state) |
+| Memory of full context | exact (attends to all) | compressed into the state |
+| Content-based selection | yes (native) | S4 no; **Mamba yes** |
+
+The trade-off: attention keeps an exact record of every token (and can look any of them up), while an SSM compresses history into a fixed-size state — cheaper, but lossy. Mamba narrows the quality gap enough that **hybrid** models (mostly SSM layers with a few attention layers) are an active, promising direction.
+
+## Common mistakes
+
+1. **Calling an SSM "just an RNN."** The recurrence is *linear*, which is exactly what unlocks parallel (convolutional/scan) training that RNNs lack.
+2. **Expecting S4 to do content-based selection.** S4 is time-invariant (fixed $\mathbf{A},\mathbf{B},\mathbf{C}$); that capability is Mamba's selectivity.
+3. **Assuming SSMs store the full context like attention.** They compress it into a fixed-size state — efficient but lossy, the core quality trade-off.
+4. **Thinking SSMs make attention obsolete.** They excel at long sequences and cheap inference, but hybrids (and attention) remain strong; it's a trade-off, not a strict replacement.
+
+## Key takeaways
+
+- An **SSM** is a **linear** recurrence $\mathbf{h}_t = \mathbf{A}\mathbf{h}_{t-1} + \mathbf{B}u_t,\ y_t = \mathbf{C}\mathbf{h}_t$ — recurrent like an RNN but linear.
+- Linearity gives a **recurrence ⟺ convolution** duality: train as a parallel convolution, generate as an $O(1)$-per-token recurrence.
+- **S4** uses structured (HiPPO) initialization for very long memory; **Mamba** adds input-dependent **selectivity**, recovered in parallel via a hardware-aware **scan**.
+- Versus attention, SSMs are **sub-quadratic** with $O(1)$ inference but **compress** context (lossy); hybrids combine both.
+
+## Related concepts
+
+- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks) — the recurrent computation SSMs make linear and parallelizable
+- [**BPTT & Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — the long-memory problem S4's structured state addresses
+- [**Modern Attention**](/courses/transformers/04-modern-attention) — the $O(L^2)$ mechanism SSMs offer a sub-quadratic alternative to
+
+<Exercise id="ssm-linear-recurrence" />
+<Exercise id="ssm-conv-duality" />
+<Exercise id="ssm-mamba-selectivity" />
