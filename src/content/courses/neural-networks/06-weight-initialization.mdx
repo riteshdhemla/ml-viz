@@ -1,0 +1,92 @@
+---
+title: "Weight Initialization & Training Dynamics"
+description: "Getting training to start at all — why initialization scale decides whether signals vanish or explode, Xavier and He initialization, and the residual connections, normalization, and warmup that keep deep nets stable."
+order: 6
+type: concept
+estimatedMinutes: 15
+---
+
+# Weight Initialization & Training Dynamics
+
+Before a network can learn anything, it has to *propagate a signal* — forward through dozens of layers and backward as gradients. Get the starting weights wrong and that signal either fades to nothing or blows up to infinity, and training never gets off the ground. **Weight initialization** is the unglamorous decision that makes deep learning trainable at all, and it's tied to a web of techniques — normalization, residual connections, learning-rate warmup — that together keep training stable.
+
+**Real-world examples:** every deep network you train relies on He/Xavier init under the hood; residual connections are why networks can be 100+ layers deep; warmup schedules are standard for training transformers.
+
+## Why initialization scale is critical
+
+Consider a signal passing through $L$ layers, each multiplying by a weight matrix. If each layer scales the signal's variance by a factor $g$, after $L$ layers it's scaled by $g^L$:
+
+- $g > 1$: the signal (and gradients) **explode** exponentially — `NaN` losses.
+- $g < 1$: the signal **vanishes** exponentially — deep layers get no gradient and don't learn.
+- $g \approx 1$: the signal is **preserved** across depth — training works.
+
+The whole goal of principled initialization is to make $g \approx 1$: keep the **variance of activations (and gradients) roughly constant** from layer to layer.
+
+<VanishingGradientViz />
+
+<Callout type="warning" title="Why not just initialize to zero (or all-equal)?">
+  Zero (or any constant) weights make every neuron in a layer compute the *same thing* and receive the *same gradient* — they stay identical forever, so the layer has the effective capacity of a single neuron. This is the **symmetry-breaking** problem: weights must be **random** to differentiate neurons. Initialization is random, just carefully *scaled* random.
+</Callout>
+
+## Xavier and He initialization
+
+The fix: scale the random weights by the layer width so variance is preserved. With $n_{\text{in}}$ inputs to a layer:
+
+**Xavier/Glorot** (for tanh / sigmoid, symmetric activations) keeps variance stable in both directions:
+
+$$
+\text{Var}(W) = \frac{2}{n_{\text{in}} + n_{\text{out}}}
+$$
+
+**He/Kaiming** (for ReLU) accounts for ReLU zeroing out half its inputs (halving the variance), so it compensates with a factor of 2:
+
+$$
+\text{Var}(W) = \frac{2}{n_{\text{in}}}
+$$
+
+<Callout type="info" title="Match the init to the activation">
+  ReLU networks initialized with Xavier tend to let activations decay with depth (the missing factor of 2 compounds); He init fixes it. Using the wrong one rarely *breaks* a shallow net but visibly slows or destabilizes a deep one. Rule of thumb: **He for ReLU-family, Xavier for tanh/sigmoid.**
+</Callout>
+
+## Architectural fixes that stabilize training
+
+Good init gets you started, but keeping a *very* deep network stable needs structural help:
+
+- **Residual (skip) connections** — $\mathbf{y} = \mathbf{x} + F(\mathbf{x})$. The identity path lets gradients flow directly backward, so signal strength doesn't decay through depth. This is the single change that made 100+ layer networks (ResNets) trainable, and it's in every transformer.
+- **Normalization** — BatchNorm / LayerNorm (previous lesson) re-center and re-scale activations each layer, actively counteracting drift in their statistics and making training robust to the initialization scale.
+- Together, init + residuals + normalization are why modern architectures train reliably where 1990s-style deep nets simply wouldn't.
+
+## Learning-rate dynamics
+
+Initialization sets the starting point; the **learning rate schedule** governs the path:
+
+- **Warmup** — start with a tiny learning rate and ramp up over the first few hundred/thousand steps. Early on, weights (and adaptive-optimizer statistics) are unreliable, so a large LR can blow up; warmup avoids that. It's standard for transformers.
+- **Decay** — anneal the LR downward (cosine, step) as training proceeds, so the model takes big steps early and fine steps near a minimum.
+
+<Callout type="tip" title="Init, normalization, and LR interact">
+  These knobs aren't independent: BatchNorm makes a network far less sensitive to init scale and permits higher learning rates; warmup compensates for unstable early dynamics. A training failure is often not one bad setting but a bad *combination* — when debugging, suspect the init/normalization/LR interaction, not just one of them.
+</Callout>
+
+## Common mistakes
+
+1. **Initializing weights to zero or all-equal.** Breaks symmetry-breaking — neurons stay identical and the layer learns nothing useful.
+2. **Init scale that's too large or too small.** Exploding (`NaN`) or vanishing gradients; use He/Xavier sized to the layer width.
+3. **Wrong init for the activation.** Xavier with ReLU lets activations decay through depth; use He for ReLU.
+4. **No warmup on a large model.** A big initial learning rate on transformers/large nets often diverges in the first few steps.
+
+## Key takeaways
+
+- A network preserves signal across depth only when per-layer variance scaling is $\approx 1$; otherwise gradients **vanish or explode** exponentially.
+- Weights must be **random** (symmetry breaking) but carefully **scaled**: **He** ($2/n_{\text{in}}$) for ReLU, **Xavier** ($2/(n_{\text{in}}{+}n_{\text{out}})$) for tanh/sigmoid.
+- **Residual connections** and **normalization** keep very deep nets stable by providing identity gradient paths and controlling activation statistics.
+- **Warmup + decay** learning-rate schedules manage the early-instability and late-precision phases; init, normalization, and LR all interact.
+
+## Related concepts
+
+- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — the normalization that complements good initialization
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimization the learning-rate schedule controls
+- [**BPTT & Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — the same vanishing/exploding signal problem, in depth over time
+
+<Exercise id="nn-init-symmetry" />
+<Exercise id="nn-init-he-xavier" />
+<Exercise id="nn-init-warmup" />
