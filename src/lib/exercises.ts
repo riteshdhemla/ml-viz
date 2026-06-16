@@ -8020,6 +8020,170 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Controlling for variables is never useful", isCorrect: false },
     ],
   },
+  {
+    id: "audio-sampling",
+    type: "slider",
+    question:
+      "Audio is sampled at 16 kHz. By the Nyquist theorem, what is the highest frequency (in kHz) it can faithfully represent?",
+    hint: "Half the sampling rate.",
+    explanation:
+      "The Nyquist theorem says the highest representable frequency is half the sampling rate: 16 kHz / 2 = 8 kHz. That's enough for intelligible speech (most speech energy is below ~8 kHz), which is why 16 kHz is the standard rate for speech ML.",
+    min: 0,
+    max: 16,
+    step: 0.5,
+    correctRange: [8, 8],
+    unit: "kHz",
+  },
+  {
+    id: "audio-spectrogram",
+    type: "multiple-choice",
+    question:
+      "Why is a spectrogram (from the Short-Time Fourier Transform) preferred over a single Fourier transform of the whole audio clip?",
+    hint: "Speech changes over time — what does a single FFT lose?",
+    explanation:
+      "A single Fourier transform tells you which frequencies are present but not WHEN they occurred. Speech changes constantly, so we need both axes. The STFT slides a short window across the signal, giving a 2-D time-frequency image (the spectrogram) that preserves timing — and that's an image CNNs and transformers handle naturally.",
+    options: [
+      { id: "a", label: "It preserves WHEN each frequency occurs (a 2-D time-frequency image), not just which frequencies", isCorrect: true },
+      { id: "b", label: "It is faster to compute than a single FFT", isCorrect: false },
+      { id: "c", label: "It removes all noise from the audio", isCorrect: false },
+      { id: "d", label: "It converts audio to a 1-D signal", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-mel",
+    type: "multiple-choice",
+    question:
+      "Why do most deep speech models use a mel spectrogram rather than a linear-frequency spectrogram?",
+    hint: "How does human hearing resolve low vs high frequencies?",
+    explanation:
+      "Human hearing is roughly logarithmic in frequency — we distinguish low frequencies far more finely than high ones. The mel scale warps the frequency axis to match this, devoting resolution where the ear (and speech information) is, which consistently improves performance over a linear axis.",
+    options: [
+      { id: "a", label: "The mel scale matches human hearing's nonlinear frequency resolution", isCorrect: true },
+      { id: "b", label: "Mel spectrograms are lossless and linear ones aren't", isCorrect: false },
+      { id: "c", label: "Linear spectrograms can't be fed to neural networks", isCorrect: false },
+      { id: "d", label: "Mel spectrograms remove the time axis", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-alignment",
+    type: "multiple-choice",
+    question:
+      "What is the central difficulty (the 'alignment problem') in speech recognition?",
+    hint: "Compare the number of audio frames to the number of output characters.",
+    explanation:
+      "There are many audio frames (e.g. 100/second) but far fewer output tokens (a few words), and the correspondence between them is unknown and variable — people speak at different speeds and stretch sounds. Mapping the long frame sequence to the short token sequence without frame-level labels is the alignment problem CTC and attention solve.",
+    options: [
+      { id: "a", label: "Many audio frames map to few output tokens with unknown, variable correspondence", isCorrect: true },
+      { id: "b", label: "Audio is too quiet to recognize", isCorrect: false },
+      { id: "c", label: "There are more output tokens than audio frames", isCorrect: false },
+      { id: "d", label: "Spectrograms cannot be computed in real time", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-ctc",
+    type: "multiple-choice",
+    question:
+      "In CTC, what is the role of the special 'blank' token together with the collapse rule (merge repeats, then drop blanks)?",
+    hint: "How do you tell 'hello' (real double-l) from 'helo'?",
+    explanation:
+      "The collapse rule merges consecutive repeated tokens, so without a blank a genuine double letter ('ll' in hello) would always merge to one. The blank lets the model separate a real repeat (insert a blank between the two l's) from a single sound held across many frames — making the alignment well-defined and letting CTC train without frame-level labels.",
+    options: [
+      { id: "a", label: "The blank separates genuine repeated characters from a single sound spanning many frames", isCorrect: true },
+      { id: "b", label: "The blank marks the end of the audio", isCorrect: false },
+      { id: "c", label: "The blank is the most common word in the language", isCorrect: false },
+      { id: "d", label: "The blank doubles the output length", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-whisper",
+    type: "multiple-choice",
+    question:
+      "Whisper achieves robust zero-shot speech recognition across accents, noise, and languages. What is the primary reason?",
+    hint: "Architecture novelty, or training data?",
+    explanation:
+      "Whisper is a fairly standard encoder-decoder transformer fed log-mel spectrograms; its robustness comes mainly from training on a massive, diverse, weakly-labeled audio-text dataset scraped from the web. This mirrors the broader lesson of modern ML: scale and data diversity beat carefully engineered pipelines.",
+    options: [
+      { id: "a", label: "Training on massive, diverse, weakly-labeled audio-text data (scale over architecture)", isCorrect: true },
+      { id: "b", label: "A radically new architecture unlike transformers", isCorrect: false },
+      { id: "c", label: "Hand-built pronunciation dictionaries for every language", isCorrect: false },
+      { id: "d", label: "It avoids spectrograms entirely", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-quiz-nyquist",
+    type: "multiple-choice",
+    question:
+      "You need to capture audio content up to 10 kHz. What minimum sampling rate does the Nyquist theorem require?",
+    hint: "Sampling rate must be at least twice the highest frequency.",
+    explanation:
+      "Nyquist requires a sampling rate of at least twice the highest frequency you want to represent: 2 × 10 kHz = 20 kHz. Sampling below this causes aliasing, where high frequencies masquerade as lower ones. (CD audio uses 44.1 kHz to comfortably cover the ~20 kHz limit of human hearing.)",
+    options: [
+      { id: "a", label: "20 kHz", isCorrect: true },
+      { id: "b", label: "10 kHz", isCorrect: false },
+      { id: "c", label: "5 kHz", isCorrect: false },
+      { id: "d", label: "40 kHz", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-quiz-stft",
+    type: "multiple-choice",
+    question:
+      "Choosing the STFT window length involves a fundamental trade-off. What is it?",
+    hint: "Resolution in time vs resolution in frequency.",
+    explanation:
+      "A short window localizes events precisely in time but resolves frequency poorly; a long window resolves frequency finely but blurs timing. You cannot have perfect resolution in both simultaneously (a time-frequency uncertainty principle). Speech systems use ~25 ms windows as a practical balance.",
+    options: [
+      { id: "a", label: "Short windows give sharp time but blurry frequency resolution; long windows the reverse", isCorrect: true },
+      { id: "b", label: "Longer windows are always strictly better", isCorrect: false },
+      { id: "c", label: "Window length affects only computation speed, not resolution", isCorrect: false },
+      { id: "d", label: "Window length determines the sampling rate", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-quiz-mel",
+    type: "multiple-choice",
+    question:
+      "What are MFCCs (Mel-Frequency Cepstral Coefficients)?",
+    hint: "A compact transform of the log-mel energies.",
+    explanation:
+      "MFCCs apply a discrete cosine transform to the log mel-spectrogram energies, producing a compact, decorrelated feature vector. They were the dominant feature for classical (pre-deep-learning) speech recognition and remain useful for lightweight systems; modern deep models more often use the mel spectrogram directly.",
+    options: [
+      { id: "a", label: "A compact, decorrelated feature derived by a cosine transform of log-mel energies", isCorrect: true },
+      { id: "b", label: "Raw waveform samples", isCorrect: false },
+      { id: "c", label: "The output text of a speech recognizer", isCorrect: false },
+      { id: "d", label: "A type of microphone", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-quiz-ctc",
+    type: "multiple-choice",
+    question:
+      "Compared to an attention-based sequence-to-sequence ASR model, what is a key advantage of CTC (and transducer/RNN-T) models?",
+    hint: "Which can produce output as you speak?",
+    explanation:
+      "CTC and transducer models are frame-synchronous and streaming-friendly — they can emit output incrementally as audio arrives, enabling low-latency, word-by-word transcription. A full-utterance attention decoder generally needs the whole input before decoding, making it awkward for real-time streaming.",
+    options: [
+      { id: "a", label: "They support low-latency streaming (output as you speak)", isCorrect: true },
+      { id: "b", label: "They always achieve lower word error rates", isCorrect: false },
+      { id: "c", label: "They need no training data", isCorrect: false },
+      { id: "d", label: "They do not require a spectrogram", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-quiz-whisper",
+    type: "multiple-choice",
+    question:
+      "What architecture does Whisper use, and what does it take as input?",
+    hint: "A familiar transformer setup, fed a feature from Lesson 1.",
+    explanation:
+      "Whisper is an encoder-decoder transformer: the encoder processes a log-mel spectrogram of the audio, and the decoder generates text autoregressively with cross-attention to the encoded audio. It's the attention seq2seq approach scaled up with huge weakly-supervised data.",
+    options: [
+      { id: "a", label: "An encoder-decoder transformer fed a log-mel spectrogram", isCorrect: true },
+      { id: "b", label: "A plain RNN fed raw 1-D waveform samples", isCorrect: false },
+      { id: "c", label: "A decision tree fed MFCCs", isCorrect: false },
+      { id: "d", label: "A CNN that outputs the waveform directly", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
