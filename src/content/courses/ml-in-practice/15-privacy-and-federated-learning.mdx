@@ -1,0 +1,97 @@
+---
+title: "Privacy & Federated Learning"
+description: "Training on sensitive data without exposing it — differential privacy and the ε budget, DP-SGD, federated learning, and the fundamental privacy–utility trade-off."
+order: 15
+type: concept
+estimatedMinutes: 16
+---
+
+# Privacy & Federated Learning
+
+Models trained on personal data — health records, messages, keystrokes, location — can **leak** that data: they memorize training examples, and attackers can extract them or infer who was in the training set. As ML touches more sensitive data (and regulation tightens), training that *provably* protects individuals has become a first-class engineering concern. This lesson covers the two pillars: **differential privacy** (a rigorous guarantee) and **federated learning** (keep the data on the device).
+
+**Real-world examples:** mobile keyboards learning next-word prediction without uploading your texts, hospitals jointly training a model without sharing patient records, the US Census applying differential privacy to published statistics, and DP-trained foundation models.
+
+## Models leak training data
+
+Neural networks **memorize**. Documented attacks:
+
+- **Membership inference** — given a data point, determine whether it was in the training set (a privacy violation by itself for, say, a medical dataset).
+- **Training-data extraction** — prompt a large model to regurgitate verbatim training examples (names, phone numbers, secrets).
+
+Anonymization alone is famously weak: "de-identified" datasets are routinely **re-identified** by linking to side information. We need a mathematical guarantee, not a hope.
+
+## Differential privacy
+
+**Differential privacy (DP)** is that guarantee. Intuitively: the model's output should be **almost the same whether or not any single individual's data was included** — so no one's participation can be detected, and nothing specific to them can be learned. Formally, a randomized algorithm $M$ is $\varepsilon$-differentially private if for any two datasets $D, D'$ differing in one person's record, and any outcome $S$:
+
+$$
+\Pr[M(D) \in S] \le e^{\varepsilon}\,\Pr[M(D') \in S]
+$$
+
+- **$\varepsilon$ (the privacy budget)** — smaller = more private. $\varepsilon \to 0$ means the two cases are indistinguishable (max privacy, useless model); large $\varepsilon$ means weak privacy. Typical deployments target $\varepsilon$ in roughly $1$–$10$.
+- The guarantee is achieved by adding **calibrated random noise** — to the data, the gradients, or the output.
+
+<Callout type="info" title="DP is a property of the algorithm, not the data">
+  You can't look at a released model and check if it's 'private.' DP is a guarantee about the *training procedure*: how much any one record could have influenced the result. That's what makes it robust — it holds against *any* attacker with *any* side information, unlike ad-hoc anonymization.
+</Callout>
+
+## DP-SGD: differentially private training
+
+The standard way to train a deep network with DP is **DP-SGD**, which modifies normal SGD in two steps each update:
+
+1. **Clip per-example gradients** to a maximum norm $C$ — bounding how much any single example can move the model (its "sensitivity").
+2. **Add Gaussian noise** to the summed gradients before the step — masking any individual's contribution.
+
+$$
+\tilde{g} = \frac{1}{B}\left(\sum_{i} \text{clip}(g_i, C) + \mathcal{N}(0, \sigma^2 C^2 \mathbf{I})\right)
+$$
+
+The clip-then-noise pattern is the heart of it. A **privacy accountant** tracks the total $\varepsilon$ spent across all training steps (privacy budget is consumed cumulatively).
+
+<Callout type="warning" title="The privacy–utility trade-off is real">
+  Clipping and noise **cost accuracy** — more privacy (smaller $\varepsilon$, more noise) means a worse model. DP-SGD also disproportionately hurts **underrepresented groups** (their gradients are rarer, so noise drowns them out more), a fairness concern. There is no free privacy: you are always buying it with utility.
+</Callout>
+
+## Federated learning
+
+**Federated learning (FL)** attacks privacy from a different angle: *don't move the data at all*. Instead of uploading raw data to a central server, the **model goes to the data**:
+
+```text
+1. Server sends the current model to many clients (phones, hospitals).
+2. Each client trains locally on its own private data.
+3. Clients send back only model UPDATES (gradients/weights), never raw data.
+4. Server aggregates the updates (FedAvg = weighted average) into a new model. Repeat.
+```
+
+**Federated Averaging (FedAvg)** is the core algorithm: average the clients' locally-updated weights, weighted by their data counts. The raw data never leaves the device.
+
+FL's own challenges: clients have **non-IID** data (your phone's data isn't representative of everyone's), unreliable/intermittent participation, communication cost, and — importantly — **the updates themselves can leak** (gradients can be inverted to partially reconstruct inputs).
+
+<Callout type="tip" title="The techniques compose">
+  FL and DP are complementary and usually combined: federated learning keeps raw data local, **secure aggregation** ensures the server sees only the *summed* update (not any individual's), and **differential privacy** adds noise so even the aggregate can't be inverted to a person. Defense in depth — each layer closes a different leak.
+</Callout>
+
+## Common mistakes
+
+1. **Trusting anonymization.** De-identified data is re-identifiable; use DP for an actual guarantee.
+2. **Treating ε as a label, not a budget.** Privacy is spent cumulatively across queries/epochs; an accountant must track the total.
+3. **Assuming federated = private.** Raw data stays local, but gradient updates can leak — add secure aggregation and/or DP.
+4. **Ignoring the utility (and fairness) cost.** DP noise lowers accuracy and hits rare groups hardest; budget it deliberately.
+
+## Key takeaways
+
+- Models **memorize and leak** training data (membership inference, extraction); anonymization is not a real defense.
+- **Differential privacy** guarantees that any single individual barely affects the output, tuned by the **privacy budget $\varepsilon$** (smaller = more private) via calibrated **noise**.
+- **DP-SGD** trains privately by **clipping per-example gradients then adding Gaussian noise**, with an accountant tracking total $\varepsilon$ — at a real **accuracy cost**.
+- **Federated learning** keeps raw data on-device and shares only **model updates** (FedAvg); combine it with **secure aggregation + DP** because updates can still leak.
+
+## Related concepts
+
+- [**Responsible AI & the Human Side**](/courses/ml-in-practice/13-responsible-ai-and-the-human-side) — the ethics and fairness context privacy sits within
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — where federated and privacy-preserving training are operationalized
+- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — the SGD that DP-SGD modifies with clipping and noise
+
+<Exercise id="privacy-differential" />
+<Exercise id="privacy-dp-sgd" />
+<Exercise id="privacy-federated" />
