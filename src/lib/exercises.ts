@@ -7540,6 +7540,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Warmup makes the model deeper over time", isCorrect: false },
     ],
   },
+  {
+    id: "moe-sparse-routing",
+    type: "multiple-choice",
+    question:
+      "In a Mixture-of-Experts layer with N experts and top-k routing, how many experts process each token?",
+    hint: "What does 'sparse' activation mean here?",
+    explanation:
+      "Only the top-k experts selected by the router process each token (typically k=1 or 2), regardless of how many experts N exist. The router scores all experts but the token is routed to just k of them — this sparse activation is what keeps per-token compute small even when N is large.",
+    options: [
+      { id: "a", label: "Only k experts (e.g. 1 or 2), chosen by the router", isCorrect: true },
+      { id: "b", label: "All N experts, then averaged", isCorrect: false },
+      { id: "c", label: "Exactly half of the experts", isCorrect: false },
+      { id: "d", label: "A random expert each forward pass", isCorrect: false },
+    ],
+  },
+  {
+    id: "moe-params-compute",
+    type: "multiple-choice",
+    question:
+      "Why is a Mixture-of-Experts model said to 'decouple parameters from compute'?",
+    hint: "Which quantity scales with N, and which with k?",
+    explanation:
+      "Total parameters scale with the number of experts N (all experts' weights are stored), but compute per token scales only with k (the active experts). So you can add experts to grow capacity/knowledge while per-token FLOPs stay roughly fixed — far more parameters at near-constant inference cost. The hidden cost is memory: all N experts must still be resident.",
+    options: [
+      { id: "a", label: "Parameters scale with N (all experts stored) but compute scales only with k (active experts)", isCorrect: true },
+      { id: "b", label: "Both parameters and compute scale with N", isCorrect: false },
+      { id: "c", label: "It uses fewer parameters than a dense model", isCorrect: false },
+      { id: "d", label: "Compute scales with N while parameters stay fixed", isCorrect: false },
+    ],
+  },
+  {
+    id: "moe-load-balancing",
+    type: "multiple-choice",
+    question:
+      "Why do MoE models need an auxiliary load-balancing loss (and/or expert capacity limits)?",
+    hint: "What does the router do if left unconstrained?",
+    explanation:
+      "Without balancing, the router collapses onto a few favorite experts: those get overloaded (a compute bottleneck) while the rest sit idle (wasted capacity). An auxiliary loss encourages even token distribution across experts, and a capacity cap hard-limits tokens per expert (dropping overflow), keeping the computation balanced and hardware-efficient.",
+    options: [
+      { id: "a", label: "Otherwise routing collapses onto a few experts — overloading them and leaving the rest idle", isCorrect: true },
+      { id: "b", label: "To make all experts compute the identical function", isCorrect: false },
+      { id: "c", label: "To reduce the total number of experts to 1", isCorrect: false },
+      { id: "d", label: "Because experts cannot be trained with backpropagation otherwise", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
