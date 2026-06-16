@@ -7720,6 +7720,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "An irreducibly blurry input image", isCorrect: false },
     ],
   },
+  {
+    id: "anomaly-unsupervised",
+    type: "multiple-choice",
+    question:
+      "Why is anomaly detection usually framed as unsupervised (model 'normal' and flag deviations) rather than supervised classification?",
+    hint: "How many — and how varied — are the anomaly examples?",
+    explanation:
+      "Anomalies are rare and diverse: you have very few labeled positives and the next anomaly may look nothing like the last, so the positive class isn't a coherent thing to classify. Modeling what normal looks like and flagging deviations sidesteps both problems — it needs no anomaly labels and naturally catches novel anomaly types.",
+    options: [
+      { id: "a", label: "Anomalies are too few and too varied to learn as a class; modeling 'normal' handles novel ones", isCorrect: true },
+      { id: "b", label: "Supervised learning cannot be applied to tabular data", isCorrect: false },
+      { id: "c", label: "Anomalies are always more common than normal points", isCorrect: false },
+      { id: "d", label: "Unsupervised methods are always more accurate", isCorrect: false },
+    ],
+  },
+  {
+    id: "anomaly-isolation-forest",
+    type: "multiple-choice",
+    question:
+      "Isolation Forest scores a point by the average number of random splits needed to isolate it. Why do anomalies get SHORT path lengths?",
+    hint: "Where do anomalies sit relative to the dense mass of normal data?",
+    explanation:
+      "Anomalies lie far from the dense mass of normal points, so a random axis-aligned split is likely to separate them early — they get isolated in few splits (short path). Normal points buried in the dense region need many splits to isolate. Short average path length therefore signals an anomaly; it's fast and scales well.",
+    options: [
+      { id: "a", label: "They sit far from the dense data, so random splits isolate them in few cuts", isCorrect: true },
+      { id: "b", label: "They are always exactly at the mean", isCorrect: false },
+      { id: "c", label: "Because the trees are trained only on anomalies", isCorrect: false },
+      { id: "d", label: "Short paths actually indicate normal points, not anomalies", isCorrect: false },
+    ],
+  },
+  {
+    id: "anomaly-threshold",
+    type: "multiple-choice",
+    question:
+      "A fraud detector flags 0.1% of transactions as anomalous. Why is classification accuracy a poor way to evaluate it?",
+    hint: "What accuracy does a detector that flags nothing achieve?",
+    explanation:
+      "Under extreme class imbalance, a trivial detector that flags nothing as anomalous achieves ~99.9% accuracy while catching zero fraud — accuracy is dominated by the majority class and tells you nothing. Use precision-recall AUC, recall at a fixed alert rate, or precision@k, which reflect how well the rare anomalies are actually caught.",
+    options: [
+      { id: "a", label: "A 'flag nothing' detector is ~99.9% accurate yet useless; use PR-AUC or recall at a fixed alert rate", isCorrect: true },
+      { id: "b", label: "Accuracy is too slow to compute on large datasets", isCorrect: false },
+      { id: "c", label: "Accuracy only works for regression", isCorrect: false },
+      { id: "d", label: "Accuracy overcounts the rare class", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

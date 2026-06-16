@@ -1,0 +1,80 @@
+---
+title: "Anomaly & Outlier Detection"
+description: "Finding the rare and the unexpected — statistical, distance, density, isolation, and reconstruction methods, the extreme class-imbalance problem, and how to set a threshold."
+order: 14
+type: concept
+estimatedMinutes: 16
+---
+
+# Anomaly & Outlier Detection
+
+Most ML predicts the common case. **Anomaly detection** flips the goal: find the rare, the unexpected, the *don't-look-like-the-rest*. The anomalies are exactly the points you have almost no labeled examples of — fraud, intrusions, equipment failures, manufacturing defects — so the problem demands different tools and a different mindset than ordinary classification.
+
+**Real-world examples:** credit-card fraud, network-intrusion detection, predictive maintenance (a failing machine), manufacturing QA, and out-of-distribution detection for safe ML deployment.
+
+## Why it's not just classification
+
+Anomalies are **rare and diverse**: you might have a handful of fraud examples and millions of normal ones, and the *next* fraud may look nothing like the last. This breaks supervised classification two ways — there aren't enough positive labels, and the positive class isn't a coherent cluster. So most anomaly detection is **unsupervised** or **semi-supervised**: model what *normal* looks like, then flag whatever deviates.
+
+$$
+\text{anomaly score } s(\mathbf{x}) \text{ high} \;\Longleftrightarrow\; \mathbf{x}\text{ is far from the model of normal}
+$$
+
+The output is a continuous **anomaly score**; a **threshold** turns it into a decision.
+
+## The families of methods
+
+**Statistical.** Assume a distribution for normal data and flag low-probability points. The classic rule: flag points beyond $\mu \pm 3\sigma$ (a z-score), or use a robust version (median/MAD) less swayed by the outliers themselves. Simple, interpretable, great for low-dimensional or per-feature checks.
+
+**Distance / density-based.** An anomaly is far from its neighbors or in a sparse region:
+
+- **kNN distance** — score = distance to the $k$-th nearest neighbor.
+- **LOF (Local Outlier Factor)** — compares a point's local density to its neighbors', catching anomalies that are only locally unusual (a point normal globally but isolated within its cluster).
+- **DBSCAN** — points that join no cluster are labeled noise (anomalies).
+
+**Isolation Forest.** A clever inversion: build random trees that split on random features at random thresholds; **anomalies get isolated in fewer splits** because they're far from the mass of data. The anomaly score is the average path length to isolate a point — short paths = anomalous. Fast, scalable, and a strong default.
+
+**Reconstruction-based.** Train an **autoencoder** (or PCA) only on normal data; it learns to reconstruct normal inputs well. At test time, a **high reconstruction error** flags an anomaly — the model can't represent something it never learned. The deep-learning workhorse for high-dimensional data (images, sensor streams).
+
+**One-Class SVM.** Learn a boundary enclosing the normal data; points outside are anomalies.
+
+<Callout type="info" title="Choosing a method by data shape">
+  Low-dimensional, roughly Gaussian → statistical. Clustered with varying density → LOF/DBSCAN. Tabular, mixed features, large → Isolation Forest. High-dimensional (images, signals) → autoencoder reconstruction. There's no universal best; match the method to the geometry of "normal."
+</Callout>
+
+## The threshold problem
+
+Every method produces a score; you must pick a cutoff. This is a precision/recall trade-off under extreme imbalance:
+
+- **Too low** → flood of false alarms (alert fatigue; the team ignores the system).
+- **Too high** → misses real anomalies (the costly failure you built this to catch).
+
+Set the threshold from a **target alert budget** ("we can investigate 50/day") or a **target recall** on known past anomalies. Because anomalies are rare, **accuracy is a useless metric** (a "always normal" detector is 99.9% accurate) — evaluate with **precision-recall AUC**, recall at a fixed alert rate, or precision@k.
+
+<Callout type="warning" title="Contamination and drift">
+  Two traps: (1) your "normal" training data is often **contaminated** with undetected anomalies, which the model then learns as normal — use robust methods or clean iteratively. (2) Normal **drifts** over time (seasonality, new user behavior), so a static threshold goes stale; monitor and re-fit, tying back to production monitoring.
+</Callout>
+
+## Common mistakes
+
+1. **Using accuracy.** With 0.1% anomalies, predicting "all normal" scores 99.9% — meaningless. Use PR-AUC / recall at a fixed alert rate.
+2. **Assuming clean training data.** Real "normal" sets contain hidden anomalies (contamination) that poison the model of normal.
+3. **A static threshold forever.** Normal behavior drifts; the cutoff must be monitored and updated.
+4. **Forcing supervised classification.** Too few and too varied positives — model *normal* and flag deviations instead.
+
+## Key takeaways
+
+- Anomaly detection finds **rare, diverse** deviations; with too few/varied positive labels it's usually **unsupervised** — model *normal*, flag the rest with a continuous **anomaly score**.
+- Method families: **statistical** (z-score), **distance/density** (kNN, LOF, DBSCAN), **Isolation Forest** (anomalies isolate fast), **reconstruction** (autoencoder error), **one-class SVM** — matched to the data's geometry.
+- A **threshold** turns scores into decisions, trading false alarms against misses; set it by an **alert budget or target recall**.
+- **Accuracy is misleading** under extreme imbalance — use PR-AUC / recall@alert-rate; watch for **contamination** and **drift**.
+
+## Related concepts
+
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — drift detection and alerting, which anomaly detection underpins
+- [**Hierarchical & DBSCAN Clustering**](/courses/clustering/02-hierarchical-and-dbscan) — the density-based method that doubles as an outlier detector
+- [**Autoencoders**](/courses/generative-models/02-autoencoders) — the reconstruction model behind deep anomaly detection
+
+<Exercise id="anomaly-unsupervised" />
+<Exercise id="anomaly-isolation-forest" />
+<Exercise id="anomaly-threshold" />
