@@ -68,7 +68,7 @@ already covered:
 - [x] **`ml-in-practice` + Anomaly & Outlier Detection** *(new concept lesson)* — density/distance/isolation-forest/autoencoder methods, the imbalance problem, threshold selection · viz: reuse · notebook.
 - [x] **`ml-in-practice` + Privacy & Federated Learning** *(new concept lesson)* — differential privacy intuition (ε), DP-SGD, federated averaging, the privacy/utility trade-off · viz: optional · notebook.
 - [ ] **NEW COURSE or lessons — Speech & Audio** — spectrograms/MFCC, CTC, Whisper-style ASR; an unrepresented modality.
-- [ ] **`optimization-ml` (or `model-evaluation`) + Hyperparameter Optimization / AutoML** *(new concept lesson)* — grid/random/Bayesian search (links `bayesian-methods/03`), Hyperband/ASHA, neural architecture search overview · notebook.
+- [x] **`optimization-ml` (or `model-evaluation`) + Hyperparameter Optimization / AutoML** *(new concept lesson)* — grid/random/Bayesian search (links `bayesian-methods/03`), Hyperband/ASHA, neural architecture search overview · notebook.
 
 ---
 
