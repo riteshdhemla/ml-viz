@@ -1,0 +1,83 @@
+---
+title: "Self-Supervised Learning"
+description: "Learning useful representations without labels — pretext tasks, contrastive methods (SimCLR, MoCo), masked image modeling (MAE), and why self-supervision is what made foundation models possible."
+order: 5
+type: concept
+estimatedMinutes: 16
+---
+
+# Self-Supervised Learning
+
+Labels are expensive; raw data is nearly free. **Self-supervised learning (SSL)** exploits that asymmetry: it invents a supervised task *from the unlabeled data itself*, learning representations that transfer to real tasks with little or no labeling. SSL is the engine behind modern foundation models — BERT, GPT, CLIP, and the strongest vision backbones are all pretrained self-supervised. This lesson covers the main recipes, with vision as the running example.
+
+**Real-world examples:** pretraining a vision backbone on millions of unlabeled images then fine-tuning on a small labeled set; BERT's masked-language pretraining; DINO/MAE features used for retrieval and segmentation; the entire "pretrain then adapt" paradigm.
+
+## The core idea: supervision from the data
+
+Supervised learning needs $(\mathbf{x}, y)$ pairs. SSL constructs the target $y$ from $\mathbf{x}$ via a **pretext task** — a puzzle whose answer is known for free because you made it:
+
+- Hide part of the input and predict it (masking).
+- Transform the input and predict the transformation.
+- Decide whether two views came from the same source (contrastive).
+
+Solving the pretext task forces the network to learn the structure of the data — edges, objects, semantics — which then **transfers** to downstream tasks. The pretext task is a means; the learned representation is the product.
+
+## Two dominant families
+
+### Contrastive learning
+
+Pull representations of two augmented views of the *same* image together; push apart views of *different* images. The model learns an embedding where semantically similar inputs are nearby — the same geometry as the embedding-training and CLIP ideas elsewhere in the curriculum:
+
+<ContrastiveViz />
+
+- **SimCLR** — two random augmentations of each image form a positive pair; all other images in the batch are negatives. Uses a large batch (many negatives) and the InfoNCE loss.
+- **MoCo** — keeps a **momentum-updated** encoder and a queue of past embeddings as negatives, so you get many negatives without a huge batch.
+
+$$
+\mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\text{sim}(\mathbf{z}_i, \mathbf{z}_j)/\tau)}{\sum_{k}\exp(\text{sim}(\mathbf{z}_i, \mathbf{z}_k)/\tau)}
+$$
+
+<Callout type="warning" title="Contrastive methods need good negatives — or a trick to avoid them">
+  Naive contrastive learning can **collapse**: map everything to the same vector and the loss looks fine. Negatives prevent that (everything can't be close to everything). Newer methods — **BYOL, DINO** — avoid explicit negatives using asymmetry (a momentum/target network, stop-gradient, predictor head) and still don't collapse, which was a surprising and influential result.
+</Callout>
+
+### Masked modeling
+
+Mask out part of the input and reconstruct it — no augmentations or negatives needed:
+
+- **MAE (Masked Autoencoder)** — mask ~75% of image patches, encode the visible ones, and reconstruct the missing pixels. The high mask ratio makes it a hard, meaningful task (and cheap, since the encoder only sees 25% of patches).
+- **BERT** — the same idea in NLP: mask ~15% of tokens, predict them. (Masked *language* modeling is the original masked-modeling success.)
+
+Masked modeling is **generative** (predict content) where contrastive learning is **discriminative** (compare views); both yield strong, transferable features.
+
+## Augmentations are the inductive bias
+
+In vision SSL, the choice of **augmentations** quietly defines what "similar" means. Random crop, color jitter, blur, and flips tell the model "these transformations shouldn't change the representation" — so it learns features invariant to them. Get the augmentations wrong (e.g. color jitter on a task where color is the signal) and the representation discards exactly what you needed. The pretext task's design *is* the prior.
+
+## Why SSL matters: it scales
+
+The reason SSL reshaped ML: it removes the labeling bottleneck, so training data scales to the entire internet. Pretrain once, self-supervised, on enormous unlabeled corpora; then **adapt** (fine-tune or linear-probe) to many downstream tasks with little labeled data. This is exactly the **foundation-model** recipe — and why a pretrained backbone often beats a from-scratch supervised model even when labels are available.
+
+## Common mistakes
+
+1. **Expecting contrastive learning to work without negatives (or an anti-collapse trick).** Plain contrastive loss collapses; use enough negatives or a BYOL/DINO-style asymmetry.
+2. **Poorly chosen augmentations.** They define the invariances; the wrong ones make the model discard task-relevant signal.
+3. **Evaluating SSL by the pretext loss.** A low reconstruction/contrastive loss isn't the goal — measure downstream transfer (linear probe / fine-tune accuracy).
+4. **Assuming masked and contrastive are interchangeable.** They learn different feature styles; the best choice is task- and modality-dependent.
+
+## Key takeaways
+
+- **Self-supervised learning** builds a supervised **pretext task** from unlabeled data so representations can be learned without labels, then **transferred** downstream.
+- **Contrastive** methods (SimCLR, MoCo) pull together augmented views of the same image and push apart different ones; they need **negatives** (or a BYOL/DINO trick) to avoid **collapse**.
+- **Masked modeling** (MAE, BERT) reconstructs hidden parts of the input — generative, negative-free, and highly effective.
+- **Augmentations define the invariances**; SSL's real value is removing the labeling bottleneck, enabling internet-scale pretraining — the foundation-model recipe.
+
+## Related concepts
+
+- [**Training Embedding Models**](/courses/nlp/07-training-embedding-models) — the contrastive/in-batch-negative objective in the text domain
+- [**Vision-Language Models**](/courses/computer-vision/04-vision-language-models) — CLIP, contrastive learning across image and text
+- [**Transfer Learning**](/courses/cnns/03-transfer-learning) — how the pretrained SSL representation is adapted to downstream tasks
+
+<Exercise id="ssl-pretext-task" />
+<Exercise id="ssl-contrastive-collapse" />
+<Exercise id="ssl-masked-modeling" />

@@ -7630,6 +7630,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It eliminates the need for any training", isCorrect: false },
     ],
   },
+  {
+    id: "ssl-pretext-task",
+    type: "multiple-choice",
+    question:
+      "What is a 'pretext task' in self-supervised learning?",
+    hint: "Where does the supervision signal come from if there are no labels?",
+    explanation:
+      "A pretext task is a supervised problem constructed from the unlabeled data itself — e.g. predict a masked patch, or decide whether two augmented views came from the same image. The target is known for free because you created it. Solving it forces the network to learn the data's structure, and that representation transfers to real downstream tasks; the pretext task itself is just a means.",
+    options: [
+      { id: "a", label: "A task whose labels are generated automatically from the data, used to learn transferable features", isCorrect: true },
+      { id: "b", label: "The final downstream task the model is deployed on", isCorrect: false },
+      { id: "c", label: "A hand-labeling step done before training", isCorrect: false },
+      { id: "d", label: "A regularization penalty added to the loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "ssl-contrastive-collapse",
+    type: "multiple-choice",
+    question:
+      "In contrastive self-supervised learning (e.g. SimCLR), what role do negative examples play?",
+    hint: "What trivial solution would the model find with only positives?",
+    explanation:
+      "Negatives prevent representation collapse. With only positives (pull matching views together), the model could map every input to the same vector and achieve zero loss while learning nothing. Pushing apart different images' views makes that trivial solution high-loss. Negative-free methods like BYOL/DINO instead avoid collapse with architectural asymmetry (momentum/target network, stop-gradient).",
+    options: [
+      { id: "a", label: "They prevent collapse — without them the model could map everything to one vector", isCorrect: true },
+      { id: "b", label: "They provide the ground-truth class labels", isCorrect: false },
+      { id: "c", label: "They are unnecessary and usually removed", isCorrect: false },
+      { id: "d", label: "They make training fully supervised", isCorrect: false },
+    ],
+  },
+  {
+    id: "ssl-masked-modeling",
+    type: "multiple-choice",
+    question:
+      "Masked autoencoders (MAE) mask a large fraction (~75%) of image patches and reconstruct them. How does this differ from contrastive learning?",
+    hint: "Generative reconstruction vs comparing views; does it need negatives or augmentation pairs?",
+    explanation:
+      "Masked modeling is generative — it reconstructs hidden content — and needs neither negatives nor augmented view-pairs, just a mask. Contrastive learning is discriminative: it compares two augmented views and relies on negatives (or an anti-collapse trick). Both produce strong transferable features; MAE's high mask ratio makes the task hard and the encoder cheap (it sees only the visible patches).",
+    options: [
+      { id: "a", label: "MAE is generative (reconstruct masked content) and needs no negatives or view-pairs", isCorrect: true },
+      { id: "b", label: "MAE requires twice as many labels as contrastive learning", isCorrect: false },
+      { id: "c", label: "MAE can only be used for NLP, not vision", isCorrect: false },
+      { id: "d", label: "MAE and contrastive learning are mathematically identical", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
