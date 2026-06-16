@@ -1,0 +1,92 @@
+---
+title: "Mixture of Experts"
+description: "Scaling models without scaling cost per token — sparse expert layers, top-k gating, load balancing, and why MoE decouples a model's parameter count from its compute."
+order: 6
+type: concept
+estimatedMinutes: 18
+---
+
+# Mixture of Experts
+
+Scaling laws (previous lesson) say bigger models are better — but bigger models cost more *per token*, for training and every inference. **Mixture of Experts (MoE)** breaks that link: it grows a model's parameter count enormously while keeping the compute per token nearly flat, by activating only a small **sparse** slice of the network for each input. It's how many of the largest frontier models pack hundreds of billions or trillions of parameters into a serveable budget.
+
+**Real-world examples:** the Switch Transformer, GLaM, Mixtral, and a large fraction of frontier LLMs use MoE feed-forward layers; it's the dominant technique for scaling parameters past what a dense model can afford.
+
+## The idea: replace one FFN with many experts
+
+In a standard transformer block, every token passes through the *same* feed-forward network (FFN). An MoE layer replaces that single FFN with $N$ parallel **experts** (each its own FFN) plus a small **router** (gating network). For each token, the router picks a few experts; the token is processed by only those.
+
+$$
+\text{dense: every token} \to \text{1 big FFN}
+\qquad
+\text{MoE: every token} \to \text{top-}k\text{ of }N\text{ experts}
+$$
+
+The viz shows the routing: each token lights up only its chosen experts.
+
+<MoERoutingViz />
+
+## Top-k gating
+
+The router is a learned linear layer producing a score per expert; a softmax over the **top-$k$** chosen experts gives the combination weights. The layer's output is the gated sum of just those experts:
+
+$$
+g = \text{softmax}\big(\text{top-}k(\,W_r\,\mathbf{x}\,)\big), \qquad \mathbf{y} = \sum_{e \in \text{top-}k} g_e \, \text{Expert}_e(\mathbf{x})
+$$
+
+Typically $k = 1$ (Switch Transformer) or $k = 2$ (most others) out of $N = 8, 64,$ or more experts. Because only $k$ of $N$ experts run, the **FLOPs per token depend on $k$, not $N$**.
+
+## The headline: parameters ≫ compute
+
+This is the whole point. With $N$ experts but only $k$ active:
+
+$$
+\text{total params} \propto N \quad\text{(huge)}, \qquad \text{compute per token} \propto k \quad\text{(small, fixed)}
+$$
+
+A model with 64 experts has ~64× the FFN parameters of a dense model but, at $k=1$, roughly the *same* compute per token. More parameters store more knowledge; sparse activation keeps each token cheap. MoE **decouples capacity from cost** — the lever scaling laws couldn't otherwise reach affordably.
+
+<Callout type="info" title="Specialization is emergent, not assigned">
+  You don't tell experts what to specialize in — the router *learns* to send related tokens to the same experts. In practice experts often loosely specialize (by syntax, language, or topic), though the structure is fuzzy and far from human-interpretable. The router and experts are trained jointly, end to end.
+</Callout>
+
+## Load balancing: the central difficulty
+
+Left alone, the router collapses: it learns to send almost everything to a few favorite experts, leaving the rest idle. That wastes the extra capacity and creates a compute bottleneck on the popular experts. Two standard fixes:
+
+- **Auxiliary load-balancing loss** — an added penalty that encourages the router to spread tokens **evenly** across experts (e.g. penalizing the product of each expert's token fraction and its average gate probability).
+- **Expert capacity** — a hard cap on how many tokens each expert will accept per batch; tokens beyond the cap are **dropped** (skipped via the residual connection) to keep the computation balanced and hardware-friendly.
+
+<Callout type="warning" title="MoE's real costs">
+  The parameter savings aren't free. MoE adds: **memory** (all $N$ experts' weights must be stored/loaded even though few run), **communication** (experts are sharded across devices, so routing shuffles tokens between GPUs — "all-to-all"), and **training instability** (the discrete top-k routing is finicky). MoE wins on *compute per token*, not on memory or simplicity.
+</Callout>
+
+## When MoE helps
+
+- ✅ **Knowledge-heavy tasks at scale** where you want maximum parameters per unit of inference compute.
+- ✅ Settings where memory and inter-device bandwidth are available.
+- ❌ Memory-constrained deployment (all experts must be resident) or small models where a dense FFN is simpler and the routing overhead isn't worth it.
+
+## Common mistakes
+
+1. **Equating params with compute.** An MoE's giant parameter count does *not* mean proportionally more FLOPs per token — only $k$ experts run.
+2. **Ignoring load balancing.** Without an auxiliary loss / capacity limit, routing collapses onto a few experts and the rest are dead weight.
+3. **Forgetting the memory bill.** Every expert's weights are resident even if rarely used — MoE trades compute for memory.
+4. **Assuming clean expert specialization.** Specialization is emergent and fuzzy, not a designed, interpretable decomposition.
+
+## Key takeaways
+
+- **MoE** replaces a block's single FFN with $N$ **experts** + a **router**; each token uses only its **top-$k$** experts (sparse activation).
+- This **decouples parameters from compute**: total params scale with $N$ (huge) while FLOPs per token scale with $k$ (small, fixed) — more capacity at near-constant cost.
+- **Top-$k$ gating** (usually $k=1$ or $2$) selects and weights experts via a learned softmax router.
+- **Load balancing** (auxiliary loss + expert capacity) is essential to stop routing collapse; MoE's costs are **memory, cross-device communication, and training instability**.
+
+## Related concepts
+
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — why we want more parameters, the demand MoE serves cheaply
+- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the FFN sublayer MoE replaces
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — the memory/communication trade-offs MoE's sharding runs into
+
+<Exercise id="moe-sparse-routing" />
+<Exercise id="moe-params-compute" />
+<Exercise id="moe-load-balancing" />
