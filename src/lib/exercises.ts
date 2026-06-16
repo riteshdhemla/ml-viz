@@ -7765,6 +7765,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Accuracy overcounts the rare class", isCorrect: false },
     ],
   },
+  {
+    id: "privacy-differential",
+    type: "multiple-choice",
+    question:
+      "Differential privacy guarantees that the model's output is nearly the same whether or not any one individual's data is included, tuned by ε. What does a SMALLER ε mean?",
+    hint: "ε bounds how distinguishable the two cases are.",
+    explanation:
+      "Smaller ε means stronger privacy: the outputs with and without any individual are harder to tell apart (ε→0 is perfect indistinguishability but a useless model). Larger ε means weaker privacy. ε is a budget spent cumulatively across training, achieved by adding calibrated noise — and it's a property of the algorithm, robust against any attacker, unlike anonymization.",
+    options: [
+      { id: "a", label: "Stronger privacy — any one individual's presence is harder to detect", isCorrect: true },
+      { id: "b", label: "Weaker privacy and a more accurate model", isCorrect: false },
+      { id: "c", label: "More training data is required", isCorrect: false },
+      { id: "d", label: "Nothing — ε only affects speed", isCorrect: false },
+    ],
+  },
+  {
+    id: "privacy-dp-sgd",
+    type: "multiple-choice",
+    question:
+      "DP-SGD modifies normal SGD with two steps per update. What are they, and what is the clipping for?",
+    hint: "Bound each example's influence, then mask it.",
+    explanation:
+      "DP-SGD clips each per-example gradient to a maximum norm C, then adds Gaussian noise to the summed gradient. Clipping bounds how much any single example can move the model (its sensitivity), so a fixed amount of noise suffices to mask any individual's contribution. The cost is reduced accuracy — the privacy–utility trade-off.",
+    options: [
+      { id: "a", label: "Clip per-example gradients (bound each one's influence), then add Gaussian noise to the sum", isCorrect: true },
+      { id: "b", label: "Increase the learning rate, then decrease the batch size", isCorrect: false },
+      { id: "c", label: "Encrypt the data, then delete it after training", isCorrect: false },
+      { id: "d", label: "Add noise to the inputs only, never the gradients", isCorrect: false },
+    ],
+  },
+  {
+    id: "privacy-federated",
+    type: "multiple-choice",
+    question:
+      "In federated learning with FedAvg, what is sent from the clients back to the server?",
+    hint: "What stays on the device, and what leaves it?",
+    explanation:
+      "Clients train locally on their own data and send back only model updates (weights or gradients), which the server averages (weighted by data count) — the raw data never leaves the device. Note this isn't automatically private: the updates themselves can leak information, so federated learning is usually combined with secure aggregation and differential privacy.",
+    options: [
+      { id: "a", label: "Only model updates (weights/gradients); the raw data stays on the device", isCorrect: true },
+      { id: "b", label: "The full raw training dataset", isCorrect: false },
+      { id: "c", label: "Nothing — the server never updates", isCorrect: false },
+      { id: "d", label: "A decrypted copy of each user's records", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
