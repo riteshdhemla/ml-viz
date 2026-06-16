@@ -7810,6 +7810,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A decrypted copy of each user's records", isCorrect: false },
     ],
   },
+  {
+    id: "hpo-random-vs-grid",
+    type: "multiple-choice",
+    question:
+      "For the same number of trials, random search usually outperforms grid search on hyperparameters. Why?",
+    hint: "How many distinct values of the *important* hyperparameter does each method try?",
+    explanation:
+      "Most hyperparameters barely affect the result. Grid search spreads its budget evenly across all dimensions, so it only tries a few distinct values of the one that matters. Random search tries a different value of every hyperparameter on each trial, effectively sampling the important dimension at many more distinct values for the same budget — so it explores what matters more finely.",
+    options: [
+      { id: "a", label: "Random search samples the few important hyperparameters at many more distinct values per budget", isCorrect: true },
+      { id: "b", label: "Grid search cannot handle continuous hyperparameters", isCorrect: false },
+      { id: "c", label: "Random search needs no validation set", isCorrect: false },
+      { id: "d", label: "Random search always finds the global optimum", isCorrect: false },
+    ],
+  },
+  {
+    id: "hpo-hyperband",
+    type: "multiple-choice",
+    question:
+      "Successive Halving / Hyperband start many configurations with a small budget, keep the best, and give survivors more budget. What does this exploit?",
+    hint: "How early can you usually tell a config is bad?",
+    explanation:
+      "Bad configurations usually reveal themselves early (poor performance after a few epochs), so you can stop them cheaply and reallocate that compute to promising configs. This concentrates the budget where it matters and finds a good config for far less total compute than running every configuration to completion.",
+    options: [
+      { id: "a", label: "Bad configs reveal themselves early, so killing them cheaply frees compute for promising ones", isCorrect: true },
+      { id: "b", label: "Every configuration must run to completion to be compared", isCorrect: false },
+      { id: "c", label: "Hyperparameters can be learned by gradient descent", isCorrect: false },
+      { id: "d", label: "It removes the need to evaluate any configuration", isCorrect: false },
+    ],
+  },
+  {
+    id: "hpo-validation",
+    type: "multiple-choice",
+    question:
+      "You search hundreds of hyperparameter configurations and pick the best. On which data should you select, and where do you finally report performance?",
+    hint: "What happens to the set you optimize against?",
+    explanation:
+      "Select configurations on the validation set (or via cross-validation); the test set must be held out and touched only once for the final report. Tuning against the test set overfits it and inflates your reported numbers. With heavy searching even the validation set can be overfit, so nested cross-validation is the rigorous choice.",
+    options: [
+      { id: "a", label: "Select on validation (or CV); report once on a held-out test set never used for tuning", isCorrect: true },
+      { id: "b", label: "Select and report both on the test set", isCorrect: false },
+      { id: "c", label: "Select on the training set's accuracy", isCorrect: false },
+      { id: "d", label: "It doesn't matter which set you use", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
