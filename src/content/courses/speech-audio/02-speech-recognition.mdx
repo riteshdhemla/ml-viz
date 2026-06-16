@@ -23,7 +23,7 @@ The input is a sequence of $T$ audio frames (e.g. 100/second); the output is a m
 - A special **blank** token $\varnothing$ the model can emit when it's "between" characters or unsure.
 - A **collapse rule**: merge repeated characters, then remove blanks. So `h h ∅ e ∅ l l ∅ l o` → `hello`.
 
-CTC defines the probability of a target as the **sum over every frame-labeling that collapses to it**:
+Given the audio input $X$ (the sequence of spectrogram frames), CTC defines the probability of a target as the **sum over every frame-labeling that collapses to it**:
 
 $$
 P(\text{"hello"}\mid X) = \sum_{\pi \,\in\, \text{align(hello)}} \prod_{t} P(\pi_t \mid X)
