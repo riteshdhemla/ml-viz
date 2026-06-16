@@ -46,6 +46,7 @@ import { MessagePassingViz } from "@/components/visualizations/MessagePassing/Me
 import { MatrixFactorizationViz } from "@/components/visualizations/MatrixFactorization/MatrixFactorizationViz";
 import { GaussianProcessViz } from "@/components/visualizations/GaussianProcess/GaussianProcessViz";
 import { MoERoutingViz } from "@/components/visualizations/MoERouting/MoERoutingViz";
+import { CalibrationViz } from "@/components/visualizations/Calibration/CalibrationViz";
 import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
 import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
 import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbiViz";
@@ -129,6 +130,7 @@ export const mdxComponents: MDXComponents = {
   MatrixFactorizationViz,
   GaussianProcessViz,
   MoERoutingViz,
+  CalibrationViz,
   LatentSpaceViz,
   RNNUnrollViz,
   HMMViterbiViz,

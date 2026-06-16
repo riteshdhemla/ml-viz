@@ -60,7 +60,7 @@ already covered:
 - [x] **`transformers` + Mixture of Experts (MoE)** *(new concept lesson, insert before quiz, renumber)* — zero coverage; central to modern LLM scaling. Sparse routing, top-k gating, expert capacity, load balancing, why MoE decouples params from FLOPs · viz: **new `MoERoutingViz`** (tokens routed to top-k experts) · ~3 exercises · notebook.
 - [x] **`rnns` (or `transformers`) + State Space Models (S4/Mamba)** *(new concept lesson, insert before quiz, renumber)* — currently mention-only. Linear recurrence, the convolutional/recurrent duality, selective SSMs (Mamba), sub-quadratic sequence modeling vs attention · viz: *reuse `RNNUnrollViz`* · ~3 exercises · notebook.
 - [x] **`computer-vision` (or `nlp`) + Self-Supervised Learning** *(new concept lesson, insert before quiz, renumber)* — only mentioned. Pretext tasks, masked modeling (MAE/BERT), contrastive (SimCLR/MoCo) recap, why SSL scales · viz: *reuse `ContrastiveViz`* · ~3 exercises · notebook.
-- [ ] **`model-evaluation` + Calibration & Uncertainty** *(new concept lesson)* — calibration is mentioned in many lessons but never developed. Reliability diagrams, ECE, temperature scaling, aleatoric vs epistemic uncertainty · viz: **new `CalibrationViz`** (reliability diagram + temperature slider) · ~3 exercises · notebook.
+- [x] **`model-evaluation` + Calibration & Uncertainty** *(new concept lesson)* — calibration is mentioned in many lessons but never developed. Reliability diagrams, ECE, temperature scaling, aleatoric vs epistemic uncertainty · viz: **new `CalibrationViz`** (reliability diagram + temperature slider) · ~3 exercises · notebook.
 
 ## Tier 3 — Breadth / advanced (nice-to-have, lower urgency)
 

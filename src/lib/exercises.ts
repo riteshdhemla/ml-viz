@@ -7675,6 +7675,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "MAE and contrastive learning are mathematically identical", isCorrect: false },
     ],
   },
+  {
+    id: "eval-calibration",
+    type: "multiple-choice",
+    question:
+      "A model is 95% accurate but, among predictions it makes with 99% confidence, it's correct only 80% of the time. What does this indicate?",
+    hint: "Is the problem accuracy, or the trustworthiness of the probability?",
+    explanation:
+      "The model is accurate but miscalibrated — specifically overconfident: its stated probabilities run ahead of its empirical accuracy. Accuracy (is the top prediction right?) and calibration (is the attached probability trustworthy?) are independent. A reliability diagram and ECE measure calibration separately from accuracy.",
+    options: [
+      { id: "a", label: "It is overconfident — well calibrated would mean ~99% of its 99%-confidence predictions are correct", isCorrect: true },
+      { id: "b", label: "It is underfitting and needs more capacity", isCorrect: false },
+      { id: "c", label: "Its accuracy must be wrong", isCorrect: false },
+      { id: "d", label: "Calibration and accuracy are the same thing", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-temperature-scaling",
+    type: "multiple-choice",
+    question:
+      "Temperature scaling divides all logits by a single tuned scalar T before the softmax. Why does it improve calibration without changing accuracy?",
+    hint: "Does dividing every logit by the same T change which class has the largest logit?",
+    explanation:
+      "Dividing all logits by the same positive T is a monotonic transform, so the argmax — the predicted class — is identical for every input; top-1 accuracy is exactly preserved. Meanwhile T>1 softens the probabilities (lowering overconfidence) and T<1 sharpens them, so confidence is rescaled to match accuracy. It's a cheap post-hoc fix tuned on validation data.",
+    options: [
+      { id: "a", label: "Dividing all logits by one scalar is monotonic, so the predicted class (argmax) never changes", isCorrect: true },
+      { id: "b", label: "It retrains the model with more data", isCorrect: false },
+      { id: "c", label: "It changes the predicted class to the second-most-likely one", isCorrect: false },
+      { id: "d", label: "It only works if accuracy is already 100%", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-aleatoric-epistemic",
+    type: "multiple-choice",
+    question:
+      "Which scenario is dominated by EPISTEMIC (rather than aleatoric) uncertainty?",
+    hint: "Which kind shrinks if you collect more data?",
+    explanation:
+      "Epistemic uncertainty is the model's ignorance and is reducible with more data — a query in a region with no training examples is the classic case (an ensemble's models disagree there). Aleatoric uncertainty is irreducible noise inherent in the data (overlapping classes, label noise, a blurry image) and persists even with infinite data.",
+    options: [
+      { id: "a", label: "Predicting on an input from a region with no training data", isCorrect: true },
+      { id: "b", label: "Two classes that genuinely overlap in feature space", isCorrect: false },
+      { id: "c", label: "Noisy labels in the training set", isCorrect: false },
+      { id: "d", label: "An irreducibly blurry input image", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

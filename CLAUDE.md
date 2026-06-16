@@ -394,6 +394,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | MatrixFactorizationViz | `visualizations/MatrixFactorization/` | recommender-systems/02-matrix-factorization | ✅ |
 | GaussianProcessViz | `visualizations/GaussianProcess/` | bayesian-methods/02-gaussian-processes | ✅ |
 | MoERoutingViz | `visualizations/MoERouting/` | transformers/06-mixture-of-experts | ✅ |
+| CalibrationViz | `visualizations/Calibration/` | model-evaluation/07-calibration-and-uncertainty | ✅ |
 | TransferLearningViz | `visualizations/TransferLearning/` | cnns/03-transfer-learning | ✅ |
 | PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
 | GMMResponsibilityViz | `visualizations/GMM/` | probabilistic-models/01-gaussian-mixture-models | ✅ |
