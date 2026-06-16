@@ -1,0 +1,111 @@
+---
+title: "Learning Theory & Generalization"
+description: "Why models generalize — empirical risk minimization, the bias-variance decomposition, the generalization gap, VC dimension and capacity, and the surprise of double descent."
+order: 6
+type: concept
+estimatedMinutes: 18
+---
+
+# Learning Theory & Generalization
+
+Training error is easy to drive to zero — just memorize. The real question, the one all of machine learning rests on, is *why does fitting the training data ever help on data you haven't seen?* **Learning theory** answers it: it formalizes what we minimize, what generalization costs, and why bigger models don't always overfit the way classical intuition says they should.
+
+**Real-world examples:** every decision about model size, regularization strength, and dataset size is a bet about generalization; the bias-variance trade-off underlies model selection; double descent reshaped how we think about overparameterized deep nets.
+
+## Empirical risk minimization
+
+What we *want* to minimize is the **true risk** — expected loss over the real data distribution $\mathcal{D}$, which we can never see:
+
+$$
+R(f) = \mathbb{E}_{(\mathbf{x},y)\sim\mathcal{D}}\big[L(f(\mathbf{x}), y)\big]
+$$
+
+What we *can* minimize is the **empirical risk** — average loss over our finite training sample:
+
+$$
+\hat{R}(f) = \frac{1}{n}\sum_{i=1}^{n} L(f(\mathbf{x}_i), y_i)
+$$
+
+Training a model is **empirical risk minimization (ERM)**: pick the $f$ that minimizes $\hat{R}$ and *hope* it also minimizes $R$. Generalization theory is the study of when that hope is justified — i.e. how close $\hat{R}(f)$ stays to $R(f)$.
+
+## The generalization gap
+
+The quantity that matters is the **generalization gap**:
+
+$$
+\text{gap} = R(f) - \hat{R}(f) \quad (\approx \text{test error} - \text{training error})
+$$
+
+A small training error is worthless if the gap is large. Theory shows the gap tends to **grow with model capacity** (a more flexible model can fit the particular sample more tightly, including its noise) and **shrink with more data** (a bigger sample is harder to fit by coincidence). This is the formal backing for "more data helps" and "simpler models generalize better."
+
+## The bias–variance decomposition
+
+For squared loss, expected test error splits into three pieces:
+
+$$
+\mathbb{E}\big[(y - \hat{f}(\mathbf{x}))^2\big] = \underbrace{\text{Bias}^2}_{\text{too simple}} + \underbrace{\text{Variance}}_{\text{too sensitive}} + \underbrace{\sigma^2}_{\text{irreducible noise}}
+$$
+
+- **Bias** — error from wrong assumptions; a model too simple to capture the truth (**underfitting**).
+- **Variance** — error from sensitivity to the particular training sample; an over-flexible model that fits noise (**overfitting**).
+- **Irreducible noise** — the floor no model can beat.
+
+<BiasVarianceViz />
+
+Classically, capacity trades one for the other: increasing model complexity lowers bias but raises variance, giving the familiar **U-shaped** test-error curve with a sweet spot in the middle.
+
+<Callout type="info" title="Regularization shifts the trade-off">
+  L2/L1 penalties, dropout, and early stopping all *reduce variance* at the cost of a little bias — deliberately moving left on the complexity axis to land nearer the sweet spot. That's why a regularized complex model often beats an unregularized simpler one.
+</Callout>
+
+## Capacity: VC dimension
+
+How do we quantify "model capacity"? The classic measure is **VC (Vapnik–Chervonenkis) dimension**: the size of the largest set of points the model class can **shatter** (classify in *all* possible label arrangements). A linear classifier in 2D has VC dimension 3 — it can shatter 3 points but not 4.
+
+VC theory bounds the generalization gap roughly as:
+
+$$
+R(f) \le \hat{R}(f) + O\!\left(\sqrt{\frac{d_{\text{VC}}}{n}}\right)
+$$
+
+More capacity ($d_{\text{VC}}$) or less data ($n$) loosens the bound. It's the formal statement of "complex models need more data."
+
+## Double descent: the modern surprise
+
+Classical theory predicts test error should rise once a model is complex enough to interpolate (memorize) the training set. Deep learning violated this. As you keep growing an already-interpolating model **past** the point where it hits zero training error, test error often **falls again** — the **double descent** curve.
+
+```text
+test error
+  │   classical U      ┊  modern descent
+  │      ╱‾╲           ┊      ╲___
+  │  ___╱    ╲___      ┊          ‾‾‾───
+  │              ╲    ╱┊
+  │               ╲__╱ ┊  ← interpolation threshold
+  └─────────────────────────────► model capacity
+```
+
+Past the **interpolation threshold**, among the many models that fit the data perfectly, gradient descent tends to find a *smooth, low-norm* one that generalizes well. This is why massively overparameterized networks — which classical bias-variance would predict to overfit catastrophically — generalize fine. It doesn't repeal the bias-variance idea; it shows capacity alone is the wrong axis, and implicit regularization matters.
+
+## Common mistakes
+
+1. **Trusting training error.** Low $\hat{R}$ with a large generalization gap is overfitting; only held-out error estimates $R$.
+2. **Equating more parameters with more overfitting.** Double descent shows overparameterized models can generalize — capacity isn't the whole story.
+3. **Ignoring the data axis.** The gap shrinks with $n$; sometimes more data beats any modeling trick.
+4. **Reading bias-variance off training loss.** The decomposition is about *expected test* error over datasets, not a single training run.
+
+## Key takeaways
+
+- Training is **empirical risk minimization** — minimizing average training loss as a proxy for the unseen **true risk**; theory studies the **generalization gap** between them.
+- The gap **grows with capacity** and **shrinks with data**; the **bias-variance decomposition** splits test error into underfitting (bias), overfitting (variance), and irreducible noise.
+- **VC dimension** measures capacity and bounds the gap as $\sim\!\sqrt{d_{\text{VC}}/n}$ — formalizing "complex models need more data."
+- **Double descent**: past the interpolation threshold, test error can fall again, so overparameterized models generalize — implicit regularization, not raw capacity, decides.
+
+## Related concepts
+
+- [**Bias-Variance Tradeoff**](/courses/knn-decision-trees/03-bias-variance) — the decomposition this lesson formalizes as theory
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — how we *estimate* the generalization gap in practice
+- [**Regularization**](/courses/linear-regression/03-regularization) — the variance-reducing tools that shift the trade-off
+
+<Exercise id="eval-erm" />
+<Exercise id="eval-generalization-gap" />
+<Exercise id="eval-double-descent" />

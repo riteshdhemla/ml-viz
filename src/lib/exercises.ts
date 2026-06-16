@@ -7450,6 +7450,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Poisson-distributed targets", isCorrect: false },
     ],
   },
+  {
+    id: "eval-erm",
+    type: "multiple-choice",
+    question:
+      "Training a model minimizes the empirical risk (average loss on the training set). What is the true quantity we actually care about, and why can't we minimize it directly?",
+    hint: "Expected loss over what?",
+    explanation:
+      "We care about the true risk — expected loss over the entire data distribution — but we can never compute it because we only have a finite sample, not the distribution. So we minimize empirical risk (training loss) as a proxy and rely on generalization theory to bound how far the two diverge. Empirical risk minimization is the whole training paradigm.",
+    options: [
+      { id: "a", label: "True risk = expected loss over the full data distribution, which we can't see (only a finite sample)", isCorrect: true },
+      { id: "b", label: "The training accuracy, which is always unavailable", isCorrect: false },
+      { id: "c", label: "Nothing — empirical risk is exactly what we care about", isCorrect: false },
+      { id: "d", label: "The number of parameters, which is hard to count", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-generalization-gap",
+    type: "multiple-choice",
+    question:
+      "How does the generalization gap (test error − training error) typically change as you increase model capacity and as you add more training data?",
+    hint: "Capacity lets a model fit the sample tighter; data makes coincidental fits harder.",
+    explanation:
+      "The gap tends to grow with capacity (a more flexible model can fit the particular sample, including its noise, more tightly) and shrink with more data (a larger sample is harder to fit by coincidence). This is the formal backing for 'simpler models generalize better' and 'more data helps.'",
+    options: [
+      { id: "a", label: "Grows with more capacity, shrinks with more data", isCorrect: true },
+      { id: "b", label: "Shrinks with more capacity, grows with more data", isCorrect: false },
+      { id: "c", label: "Is unaffected by both", isCorrect: false },
+      { id: "d", label: "Always equals zero for a correct model", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-double-descent",
+    type: "multiple-choice",
+    question:
+      "Double descent describes what happens to test error as model capacity grows past the interpolation threshold (zero training error). What is observed?",
+    hint: "Classical theory says error rises after interpolation; reality is more surprising.",
+    explanation:
+      "Past the interpolation threshold, test error can fall again rather than continuing to rise — the 'second descent.' Among the many models that fit the training data perfectly, gradient descent tends to find a smooth, low-norm one that generalizes well (implicit regularization). This is why massively overparameterized networks generalize despite classical bias-variance predicting catastrophic overfitting.",
+    options: [
+      { id: "a", label: "Test error rises to a peak at the interpolation threshold, then descends again", isCorrect: true },
+      { id: "b", label: "Test error rises monotonically forever", isCorrect: false },
+      { id: "c", label: "Training error increases past the threshold", isCorrect: false },
+      { id: "d", label: "Test error becomes exactly zero everywhere", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
