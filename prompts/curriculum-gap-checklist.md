@@ -65,7 +65,7 @@ already covered:
 ## Tier 3 — Breadth / advanced (nice-to-have, lower urgency)
 
 - [ ] **NEW COURSE `causal-inference`** *(cluster Applied ML)* — correlation vs causation, interventions/do-calculus, confounding, A/B testing link to `ml-in-practice/09`, potential outcomes. Index + 2–3 lessons.
-- [ ] **`ml-in-practice` + Anomaly & Outlier Detection** *(new concept lesson)* — density/distance/isolation-forest/autoencoder methods, the imbalance problem, threshold selection · viz: reuse · notebook.
+- [x] **`ml-in-practice` + Anomaly & Outlier Detection** *(new concept lesson)* — density/distance/isolation-forest/autoencoder methods, the imbalance problem, threshold selection · viz: reuse · notebook.
 - [ ] **`ml-in-practice` + Privacy & Federated Learning** *(new concept lesson)* — differential privacy intuition (ε), DP-SGD, federated averaging, the privacy/utility trade-off · viz: optional · notebook.
 - [ ] **NEW COURSE or lessons — Speech & Audio** — spectrograms/MFCC, CTC, Whisper-style ASR; an unrepresented modality.
 - [ ] **`optimization-ml` (or `model-evaluation`) + Hyperparameter Optimization / AutoML** *(new concept lesson)* — grid/random/Bayesian search (links `bayesian-methods/03`), Hyperband/ASHA, neural architecture search overview · notebook.
