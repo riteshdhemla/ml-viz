@@ -7585,6 +7585,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Because experts cannot be trained with backpropagation otherwise", isCorrect: false },
     ],
   },
+  {
+    id: "ssm-linear-recurrence",
+    type: "multiple-choice",
+    question:
+      "A state space model uses the recurrence h_t = A·h_{t-1} + B·u_t, y_t = C·h_t. What single property distinguishes it from a vanilla RNN, and why does it matter?",
+    hint: "Is there a nonlinearity inside the recurrence?",
+    explanation:
+      "The SSM recurrence is linear — there's no nonlinearity applied inside the state update (unlike an RNN's tanh). Linearity is exactly what lets you unroll the recurrence into a fixed-kernel convolution, enabling parallel training over the whole sequence. RNNs, with their nonlinear recurrence, are stuck processing one step at a time.",
+    options: [
+      { id: "a", label: "The recurrence is linear, which enables parallel (convolutional) training", isCorrect: true },
+      { id: "b", label: "It has no hidden state at all", isCorrect: false },
+      { id: "c", label: "It can only handle fixed-length sequences", isCorrect: false },
+      { id: "d", label: "It uses attention internally", isCorrect: false },
+    ],
+  },
+  {
+    id: "ssm-conv-duality",
+    type: "multiple-choice",
+    question:
+      "S4-style SSMs are described as 'recurrent for inference, convolutional for training.' What does this duality buy you?",
+    hint: "Which mode is parallel, and which is O(1) per token?",
+    explanation:
+      "The linear recurrence can be computed two equivalent ways: as a parallel convolution with a precomputed kernel (fast, parallel training like a CNN) or as a step-by-step recurrence with a fixed-size state (O(1) memory and compute per generated token, like an RNN with no growing KV-cache). You get parallel training AND cheap autoregressive inference — something attention can't offer simultaneously.",
+    options: [
+      { id: "a", label: "Parallel convolutional training plus O(1)-per-token recurrent inference from one model", isCorrect: true },
+      { id: "b", label: "Exact lookup of every past token like attention", isCorrect: false },
+      { id: "c", label: "The ability to skip training entirely", isCorrect: false },
+      { id: "d", label: "Quadratic cost in sequence length", isCorrect: false },
+    ],
+  },
+  {
+    id: "ssm-mamba-selectivity",
+    type: "multiple-choice",
+    question:
+      "Mamba adds 'selectivity' to S4 by making the B and C matrices depend on the input. What does this gain, and what does it cost?",
+    hint: "Content-based selection — but is the system still time-invariant?",
+    explanation:
+      "Input-dependent B, C let the model dynamically choose what to remember or ignore per token (content-based selection, like attention) — S4's fixed matrices can't do this. The cost: the system is no longer time-invariant, so the fixed-kernel convolution no longer applies; Mamba recovers parallel training with a hardware-aware parallel scan over the recurrence, keeping O(L) scaling.",
+    options: [
+      { id: "a", label: "It gains content-based selection but loses the convolution view, so Mamba uses a parallel scan", isCorrect: true },
+      { id: "b", label: "It makes the model quadratic in sequence length", isCorrect: false },
+      { id: "c", label: "It removes the hidden state entirely", isCorrect: false },
+      { id: "d", label: "It eliminates the need for any training", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
