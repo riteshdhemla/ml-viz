@@ -7855,6 +7855,171 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It doesn't matter which set you use", isCorrect: false },
     ],
   },
+  {
+    id: "causal-confounder",
+    type: "multiple-choice",
+    question:
+      "Ice-cream sales and drowning deaths are strongly correlated. What is the confounder, and why can't you spot the confounding from the two variables alone?",
+    hint: "What third variable drives both? And do confounded vs causal data look different?",
+    explanation:
+      "Hot weather is the confounder: it drives both ice-cream sales and swimming (hence drownings), creating a correlation with no causal link between the two. You cannot detect this from the sales/drownings data alone — confounded and genuinely causal data can look identical. You need an experiment or assumptions about the causal structure.",
+    options: [
+      { id: "a", label: "Hot weather drives both; confounded and causal data look identical, so you need structure/experiments", isCorrect: true },
+      { id: "b", label: "Ice cream causes drowning, detectable from a large enough sample", isCorrect: false },
+      { id: "c", label: "There is no confounder; the correlation is causal", isCorrect: false },
+      { id: "d", label: "More data alone would reveal the confounding", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-prediction-vs-causation",
+    type: "multiple-choice",
+    question:
+      "A model accurately predicts recovery from 'patient is on drug X.' Why might this be useless for deciding whether to prescribe drug X?",
+    hint: "What's the difference between P(Y|X) and P(Y|do(X))?",
+    explanation:
+      "The model captures P(recovery | on drug) — a correlation — but prescribing is an intervention, P(recovery | do(drug)). If doctors give the drug to healthier patients (confounding), the drug can be correlated with recovery while causing none. Accuracy at prediction says nothing about the causal effect of intervening.",
+    options: [
+      { id: "a", label: "Prediction captures P(Y|X), but prescribing asks P(Y|do(X)); confounding makes them differ", isCorrect: true },
+      { id: "b", label: "The model is simply not accurate enough", isCorrect: false },
+      { id: "c", label: "Prediction and causation are always the same", isCorrect: false },
+      { id: "d", label: "The model needs more features to become causal", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-simpson",
+    type: "multiple-choice",
+    question:
+      "Simpson's paradox: a treatment appears worse overall but better within every subgroup. Which analysis is correct?",
+    hint: "Does statistics alone decide, or the causal role of the grouping variable?",
+    explanation:
+      "It depends on the causal structure. If the grouping variable is a confounder (affects both treatment assignment and outcome), the within-subgroup (stratified) analysis is correct and you should adjust for it. If it's a mediator on the causal path, you should not. Statistics alone can't resolve the paradox — the causal roles do.",
+    options: [
+      { id: "a", label: "It depends on the causal role of the grouping variable (confounder → stratify; mediator → don't)", isCorrect: true },
+      { id: "b", label: "The overall (pooled) analysis is always correct", isCorrect: false },
+      { id: "c", label: "The subgroup analysis is always correct", isCorrect: false },
+      { id: "d", label: "Whichever has the larger sample size", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-ate",
+    type: "multiple-choice",
+    question:
+      "The 'fundamental problem of causal inference' is that for any individual you can observe only one potential outcome. What is the standard response?",
+    hint: "If individual effects are unobservable, what do we target instead?",
+    explanation:
+      "Since Y(1) and Y(0) can't both be observed for one unit, individual causal effects are unidentifiable. The field targets population averages instead — the Average Treatment Effect, E[Y(1) − Y(0)] — which can be estimated via randomization or by adjusting for confounders, despite the per-individual counterfactual being forever missing.",
+    options: [
+      { id: "a", label: "Estimate population averages like the ATE = E[Y(1) − Y(0)] instead of individual effects", isCorrect: true },
+      { id: "b", label: "Measure both potential outcomes with a better sensor", isCorrect: false },
+      { id: "c", label: "Give up — causal effects can never be estimated", isCorrect: false },
+      { id: "d", label: "Use a larger model to predict the counterfactual exactly", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-do-operator",
+    type: "multiple-choice",
+    question:
+      "How does P(Y | do(T=1)) differ from P(Y | T=1), and what does the do-operator do to the causal graph?",
+    hint: "Intervening vs observing; what happens to arrows into T?",
+    explanation:
+      "P(Y | T=1) is what we observe among those who happened to be treated (contaminated by confounding); P(Y | do(T=1)) is what would happen if we set T=1 for everyone. The do-operator deletes all incoming arrows to T — exactly what physical randomization does — so confounders no longer influence who is treated.",
+    options: [
+      { id: "a", label: "do(T) is intervening (delete arrows into T); P(Y|T) is merely observing, so it carries confounding", isCorrect: true },
+      { id: "b", label: "They are always equal", isCorrect: false },
+      { id: "c", label: "do(T) deletes arrows OUT of T", isCorrect: false },
+      { id: "d", label: "P(Y|do(T)) ignores Y entirely", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-backdoor",
+    type: "multiple-choice",
+    question:
+      "The backdoor adjustment formula lets you estimate a causal effect from observational data — but only under which key (untestable) assumption?",
+    hint: "What must the adjustment set Z contain?",
+    explanation:
+      "Unconfoundedness (a.k.a. 'no unmeasured confounders'): the adjustment set Z must block all backdoor paths, i.e. contain every confounder. If a confounder is unmeasured, adjustment is biased no matter how much data you have. This assumption is untestable from the data — it rests on knowledge of the causal structure. (Positivity and consistency are also required.)",
+    options: [
+      { id: "a", label: "Unconfoundedness — you measured and adjusted for all confounders (untestable)", isCorrect: true },
+      { id: "b", label: "That the sample size exceeds one million", isCorrect: false },
+      { id: "c", label: "That the outcome is binary", isCorrect: false },
+      { id: "d", label: "That the treatment was randomized", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-quiz-confounder",
+    type: "multiple-choice",
+    question:
+      "Which best defines a confounder?",
+    hint: "It sits upstream of both the cause and the effect.",
+    explanation:
+      "A confounder is a variable that causally influences both the treatment and the outcome, inducing a non-causal association between them. Adjusting for it removes the bias. (Contrast: a mediator lies on the causal path T→M→Y, and a collider is a common effect of T and Y — adjusting for those introduces bias.)",
+    options: [
+      { id: "a", label: "A variable that influences both the treatment and the outcome", isCorrect: true },
+      { id: "b", label: "A variable on the causal path from treatment to outcome", isCorrect: false },
+      { id: "c", label: "A common effect of the treatment and outcome", isCorrect: false },
+      { id: "d", label: "Any variable correlated with the outcome", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-quiz-rct",
+    type: "multiple-choice",
+    question:
+      "Why does randomly assigning treatment (an RCT or A/B test) let the simple treated-vs-untreated difference estimate the causal effect?",
+    hint: "What does randomization do to the link between confounders and treatment?",
+    explanation:
+      "Randomization severs the arrow from every confounder into the treatment — assignment no longer depends on any pre-existing variable — so treated and untreated groups are comparable in expectation. The observed outcome difference is then an unbiased estimate of the causal effect, with no adjustment needed.",
+    options: [
+      { id: "a", label: "It makes treatment independent of all confounders, so the groups are comparable", isCorrect: true },
+      { id: "b", label: "It increases the sample size", isCorrect: false },
+      { id: "c", label: "It removes all noise from the outcome", isCorrect: false },
+      { id: "d", label: "It guarantees the treatment has an effect", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-quiz-counterfactual",
+    type: "multiple-choice",
+    question:
+      "A patient took the drug and recovered. The counterfactual 'would they have recovered without it?' is...",
+    hint: "Can you ever observe the outcome under the treatment they did NOT receive?",
+    explanation:
+      "It is unobservable — the other potential outcome for that individual, which can never be measured because they did take the drug. This is the fundamental problem of causal inference; we estimate average counterfactual contrasts (the ATE) across a population rather than any individual's counterfactual.",
+    options: [
+      { id: "a", label: "An unobservable potential outcome — the fundamental problem of causal inference", isCorrect: true },
+      { id: "b", label: "Directly measurable by re-testing the patient", isCorrect: false },
+      { id: "c", label: "Always equal to the observed outcome", isCorrect: false },
+      { id: "d", label: "Irrelevant to estimating causal effects", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-quiz-do",
+    type: "multiple-choice",
+    question:
+      "Observational data shows people who take vitamins are healthier. Before concluding vitamins cause health, what is the central concern?",
+    hint: "Who chooses to take vitamins?",
+    explanation:
+      "Confounding via self-selection: health-conscious people both take vitamins and do other healthy things (exercise, diet, checkups), so vitamin-takers would be healthier regardless. The association P(health|vitamins) reflects this, not necessarily P(health|do(vitamins)). You'd need to adjust for those confounders or run a randomized trial.",
+    options: [
+      { id: "a", label: "Confounding — health-conscious people both take vitamins and live healthier overall", isCorrect: true },
+      { id: "b", label: "The sample is too large to trust", isCorrect: false },
+      { id: "c", label: "Vitamins are a mediator, so the effect is overstated by definition", isCorrect: false },
+      { id: "d", label: "Nothing — the correlation proves causation here", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-quiz-collider",
+    type: "multiple-choice",
+    question:
+      "When estimating a causal effect by adjustment, why is 'control for as many variables as possible' bad advice?",
+    hint: "What happens if you adjust for a collider or a mediator?",
+    explanation:
+      "Adjusting for a confounder removes bias, but adjusting for a collider (a common effect of treatment and outcome) opens a spurious path and creates bias, and adjusting for a mediator (on the causal path) removes part of the real effect. Only the confounders identified by the causal graph should be adjusted for — blindly controlling for everything can make the estimate worse.",
+    options: [
+      { id: "a", label: "Adjusting for colliders or mediators introduces bias; only confounders should be controlled for", isCorrect: true },
+      { id: "b", label: "More controls always reduce bias", isCorrect: false },
+      { id: "c", label: "It only slows down computation, with no statistical harm", isCorrect: false },
+      { id: "d", label: "Controlling for variables is never useful", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

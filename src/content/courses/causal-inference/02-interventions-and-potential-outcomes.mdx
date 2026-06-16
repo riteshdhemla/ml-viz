@@ -1,0 +1,90 @@
+---
+title: "Interventions & Potential Outcomes"
+description: "The formal machinery of cause — potential outcomes and counterfactuals, the average treatment effect, do-calculus and the backdoor criterion, and how to estimate effects from observational data."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Interventions & Potential Outcomes
+
+The previous lesson argued that causation differs from correlation. This one gives the tools to *quantify* a causal effect: the **potential-outcomes** framework (what would have happened?), the **do-operator** and **backdoor criterion** (when can observational data answer a causal question?), and the estimators that put numbers on "did it work?"
+
+**Real-world examples:** estimating a drug's effect from a trial, measuring an A/B test's lift, evaluating a policy or job-training program, and adjusting observational data to approximate an experiment.
+
+## Potential outcomes and counterfactuals
+
+For a binary treatment $T \in \{0, 1\}$, each unit has **two potential outcomes**: $Y(1)$ if treated and $Y(0)$ if not. The **individual causal effect** is $Y_i(1) - Y_i(0)$.
+
+<Callout type="warning" title="The fundamental problem of causal inference">
+  For any individual you only ever observe **one** potential outcome — the one for the treatment they actually got. The other is a **counterfactual**: forever unobserved. You can never measure an individual causal effect directly; the whole field is about recovering *averages* despite this missing-data problem.
+</Callout>
+
+So we target population averages. The **Average Treatment Effect**:
+
+$$
+\text{ATE} = \mathbb{E}[Y(1) - Y(0)]
+$$
+
+## Why the naive difference is biased
+
+The obvious estimate — average outcome of the treated minus the untreated — equals the ATE only if the groups are **comparable**. With confounding they aren't:
+
+$$
+\underbrace{\mathbb{E}[Y\mid T=1] - \mathbb{E}[Y\mid T=0]}_{\text{naive (observed)}} = \text{ATE} + \underbrace{\text{confounding bias}}_{\text{groups differ}}
+$$
+
+The bias is the difference between the groups' baseline outcomes. Randomization makes it zero (groups equal in expectation); observational data needs adjustment.
+
+## The do-operator and interventional distributions
+
+Pearl's **do-operator** formalizes intervention: $P(Y \mid \text{do}(T=1))$ is the distribution of $Y$ if we *reach in and set* $T=1$ for everyone — as opposed to $P(Y\mid T=1)$, which is what we see among those who *happened* to be treated. Graphically, $\text{do}(T)$ **deletes all arrows into $T$** (including from confounders), which is exactly what randomization does physically. The ATE is $\mathbb{E}[Y\mid \text{do}(1)] - \mathbb{E}[Y\mid \text{do}(0)]$.
+
+## The backdoor criterion and adjustment
+
+When can observational data identify a causal effect? The **backdoor criterion**: if a set of variables $Z$ **blocks every non-causal ("backdoor") path** from $T$ to $Y$ — intuitively, if $Z$ contains all the confounders — then you can recover the effect by **adjusting** for $Z$:
+
+$$
+P(Y \mid \text{do}(T)) = \sum_{z} P(Y \mid T, Z=z)\,P(Z=z)
+$$
+
+In words: estimate the effect *within each stratum* of the confounders, then average over the confounder distribution. This is the **adjustment (backdoor) formula** — it turns a causal query into ordinary conditional probabilities you can estimate, *given* you measured the right $Z$.
+
+<Callout type="info" title="Three assumptions make it work">
+  Adjustment recovers the ATE under: (1) **unconfoundedness** — you measured and adjusted for all confounders (untestable, the big one); (2) **positivity** — every unit has a non-zero chance of each treatment (so each stratum has both groups); (3) **consistency** — the observed outcome equals the potential outcome for the treatment received. Violate (1) and your estimate is biased no matter how much data you have.
+</Callout>
+
+## Estimating the effect in practice
+
+- **Stratification / regression adjustment** — the backdoor formula directly; include confounders as covariates.
+- **Propensity scores** — model $P(T\mid Z)$ (probability of treatment given confounders); match or weight (IPW) treated and control units with similar propensity to mimic a randomized comparison.
+- **Doubly-robust estimators** — combine an outcome model and a propensity model; consistent if *either* is correct.
+- **Randomize when you can** — an RCT/A-B test makes $Z$ irrelevant by design; adjustment is the fallback when experiments are impossible or unethical.
+
+<Callout type="tip" title="Don't adjust for everything">
+  Adjusting for confounders removes bias — but adjusting for a **collider** (a common *effect* of $T$ and $Y$) or a **mediator** (a variable *on* the causal path) introduces bias. "Control for more variables" is not safe; the causal graph tells you which $Z$ is valid. This is the practical payoff of drawing the structure first.
+</Callout>
+
+## Common mistakes
+
+1. **Treating $P(Y\mid T)$ as $P(Y\mid \text{do}(T))$.** Observing the treated is not intervening; they differ exactly by confounding.
+2. **Adjusting for colliders/mediators.** It opens spurious paths or removes real effect — only adjust for confounders the graph identifies.
+3. **Ignoring positivity.** If some stratum has only treated (or only control) units, the effect there isn't identified and adjustment extrapolates blindly.
+4. **Believing unconfoundedness because the model fits.** It's an untestable assumption; a great predictive fit says nothing about hidden confounders.
+
+## Key takeaways
+
+- Each unit has **potential outcomes** $Y(1), Y(0)$ but you observe only one — the **fundamental problem**; so we estimate the **ATE** $=\mathbb{E}[Y(1)-Y(0)]$.
+- The **naive** treated-minus-untreated difference equals the ATE plus **confounding bias**; randomization zeroes the bias, observational data must adjust.
+- The **do-operator** defines intervention (delete arrows into $T$); the **backdoor criterion + adjustment formula** identify the effect *if* you measured all confounders.
+- Practical estimators — **regression adjustment, propensity scores/IPW, doubly-robust** — rely on **unconfoundedness, positivity, consistency**; don't adjust for colliders or mediators.
+
+## Related concepts
+
+- [**Correlation, Causation & Confounding**](/courses/causal-inference/01-correlation-and-confounding) — the intuition this lesson formalizes
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the conditional-probability machinery behind the adjustment formula
+- [**Hypothesis Testing & p-values**](/courses/probability-statistics/07-hypothesis-testing) — how the estimated effect's significance is judged
+
+<Exercise id="causal-ate" />
+<Exercise id="causal-do-operator" />
+<Exercise id="causal-backdoor" />
