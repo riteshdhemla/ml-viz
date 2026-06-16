@@ -1,0 +1,87 @@
+---
+title: "Correlation, Causation & Confounding"
+description: "Why 'correlation is not causation' is a practical warning, not a slogan — confounders, spurious associations, Simpson's paradox, and why prediction and causation are different goals."
+order: 1
+type: concept
+estimatedMinutes: 16
+---
+
+# Correlation, Causation & Confounding
+
+Machine learning is extraordinary at finding **correlations** — but most decisions we actually care about are **causal**: *will this treatment help this patient? will this feature change increase retention?* A model can predict perfectly and still be useless (or dangerous) for these questions, because correlation and causation come apart in systematic, predictable ways. This lesson builds the intuition for *why*, which the next lesson formalizes.
+
+**Real-world examples:** "does this drug work?" (vs. is it correlated with recovery), "did the marketing campaign cause sales?", deciding whether a model's feature is actionable, and avoiding policies that optimize a proxy while harming the real goal.
+
+## Prediction is not causation
+
+A supervised model learns $P(Y \mid X)$ — what $Y$ tends to be *when we observe* $X$. A causal question asks what $Y$ would be *if we intervened to set* $X$ — written $P(Y \mid \text{do}(X))$. These are different:
+
+$$
+P(Y \mid X = x) \;\;\neq\;\; P(Y \mid \text{do}(X = x)) \quad\text{in general}
+$$
+
+Observing that hospital patients on a certain drug recover more often (correlation) does **not** mean giving the drug *causes* recovery — maybe doctors prescribe it to healthier patients. The model that predicts recovery from "is on drug" is accurate and causally wrong at the same time.
+
+## Confounding: the core problem
+
+A **confounder** is a variable that influences *both* the supposed cause and the effect, creating a correlation that isn't causal:
+
+```text
+        confounder Z (e.g. patient health)
+        ╱                          ╲
+       ▼                            ▼
+   treatment X  ───?───►  outcome Y
+```
+
+Health $Z$ drives *both* who gets the treatment $X$ and who recovers $Y$, so $X$ and $Y$ are correlated even if $X$ does nothing. The classic spurious examples — ice-cream sales correlate with drownings (confounder: hot weather), shoe size correlates with reading ability in children (confounder: age) — are all this structure.
+
+<Callout type="warning" title="You cannot detect confounding from the data alone">
+  No amount of staring at $X$ and $Y$ reveals whether a confounder is inflating their correlation — the data look identical whether the link is causal or confounded. You need either an **experiment** or **assumptions about the causal structure** (a graph). This is why causal inference needs more than statistics: it needs a model of *how the data was generated*.
+</Callout>
+
+## Simpson's paradox
+
+The most vivid demonstration: an association can **reverse** when you account for a confounder. A treatment can appear *worse* overall yet be *better* in every subgroup — because the subgroups had different base rates and different treatment assignment.
+
+$$
+P(\text{recover}\mid\text{treated}) < P(\text{recover}\mid\text{untreated})
+\quad\text{overall, yet the reverse within every subgroup}
+$$
+
+The aggregate and the stratified analyses disagree, and *which one is correct depends on the causal structure* — whether the grouping variable is a confounder (adjust for it) or a mediator (don't). Statistics alone can't tell you; causal reasoning can.
+
+## Why ML cares
+
+- **Actionability.** A feature can be highly predictive yet useless to act on (it's an effect, not a cause, or it's confounded). Deciding *what to change* is causal.
+- **Robustness / distribution shift.** Correlations that ride on a confounder break when the confounder's distribution shifts; causal relationships are more stable.
+- **Fairness.** Whether a model is "using" a protected attribute is fundamentally a causal question about paths, not a correlation.
+- **Optimizing proxies.** Pushing on a correlate of the goal (not a cause) can move the metric while the real objective stagnates or worsens.
+
+## How causation is actually established
+
+- **Randomized controlled trial (RCT).** Randomly assign the treatment. Randomization **severs the arrow from any confounder into $X$** — treated and untreated groups are comparable in expectation, so the observed difference *is* the causal effect. This is the gold standard, and it's exactly why A/B tests randomize.
+- **Adjustment from observational data.** When you can't experiment, *if* you can identify and measure the confounders, you can statistically adjust for them (stratify / control) to recover the causal effect — under assumptions covered next lesson.
+
+## Common mistakes
+
+1. **Reading a predictive coefficient as a causal effect.** A regression weight is not "the effect of changing $X$" unless confounding is handled.
+2. **Controlling for the wrong variable.** Adjusting for a confounder removes bias; adjusting for a *mediator* or *collider* introduces it. The causal structure decides.
+3. **Trusting aggregate associations.** Simpson's paradox shows aggregates can reverse the truth; the right stratification depends on causal roles.
+4. **Assuming more data fixes it.** Confounding bias does not shrink with sample size — a billion confounded observations are still confounded.
+
+## Key takeaways
+
+- Prediction learns $P(Y\mid X)$; causation concerns $P(Y\mid \text{do}(X))$ — **observing vs. intervening** — and they differ in general.
+- A **confounder** drives both treatment and outcome, creating non-causal correlation; you **cannot detect it from $X,Y$ alone** — you need experiments or structural assumptions.
+- **Simpson's paradox**: associations can reverse under stratification, and the correct analysis depends on the **causal roles** of variables.
+- **Randomization** (RCT/A-B test) severs confounding and is the gold standard; otherwise recover effects by **adjusting** for measured confounders.
+
+## Related concepts
+
+- [**Interventions & Potential Outcomes**](/courses/causal-inference/02-interventions-and-potential-outcomes) — the formal framework for do(X) and treatment effects
+- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — A/B testing, the randomized experiment that establishes causal impact
+- [**Bayesian Networks**](/courses/graphical-models/01-bayesian-networks) — the directed graphs used to encode causal structure
+
+<Exercise id="causal-confounder" />
+<Exercise id="causal-prediction-vs-causation" />
+<Exercise id="causal-simpson" />
