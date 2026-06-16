@@ -71,7 +71,7 @@ Left alone, the router collapses: it learns to send almost everything to a few f
 
 1. **Equating params with compute.** An MoE's giant parameter count does *not* mean proportionally more FLOPs per token — only $k$ experts run.
 2. **Ignoring load balancing.** Without an auxiliary loss / capacity limit, routing collapses onto a few experts and the rest are dead weight.
-3. **Forgetting the memory bill.** Every expert's weights are resident even if rarely used — MoE trades compute for memory.
+3. **Forgetting the memory bill.** Every expert's weights are resident even if rarely used — MoE spends extra *memory* to save *compute* per token, not the other way around.
 4. **Assuming clean expert specialization.** Specialization is emergent and fuzzy, not a designed, interpretable decomposition.
 
 ## Key takeaways
