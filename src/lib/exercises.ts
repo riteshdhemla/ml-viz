@@ -7495,6 +7495,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Test error becomes exactly zero everywhere", isCorrect: false },
     ],
   },
+  {
+    id: "nn-init-symmetry",
+    type: "multiple-choice",
+    question:
+      "Why can't you initialize all the weights of a neural network layer to zero (or any single constant)?",
+    hint: "What would every neuron in the layer compute, and what gradient would each receive?",
+    explanation:
+      "With identical weights, every neuron in the layer computes the same output and receives the same gradient, so they update identically and stay identical forever — the layer has the effective capacity of one neuron. This is the symmetry-breaking problem: weights must be initialized randomly so neurons differentiate. Initialization is random, just carefully scaled.",
+    options: [
+      { id: "a", label: "Identical weights make all neurons compute the same thing and get the same gradient — they never differentiate", isCorrect: true },
+      { id: "b", label: "Zero weights cause the learning rate to become zero", isCorrect: false },
+      { id: "c", label: "It makes the loss function non-differentiable", isCorrect: false },
+      { id: "d", label: "It is actually fine and commonly done", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-init-he-xavier",
+    type: "multiple-choice",
+    question:
+      "You're building a deep network with ReLU activations. Which initialization preserves activation variance through depth, and why does it differ from the tanh case?",
+    hint: "ReLU zeros out roughly half of its inputs.",
+    explanation:
+      "He (Kaiming) initialization with Var(W) = 2/n_in is designed for ReLU: the factor of 2 compensates for ReLU zeroing about half its inputs (halving the variance). Xavier/Glomot (≈ 2/(n_in+n_out)) suits symmetric activations like tanh/sigmoid. Using Xavier with ReLU lets activations decay through depth; He fixes it.",
+    options: [
+      { id: "a", label: "He init (Var = 2/n_in) — the factor of 2 compensates for ReLU zeroing half its inputs", isCorrect: true },
+      { id: "b", label: "Zero init, because ReLU is piecewise linear", isCorrect: false },
+      { id: "c", label: "Xavier init, because ReLU is symmetric", isCorrect: false },
+      { id: "d", label: "Very large weights so ReLU never saturates", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-init-warmup",
+    type: "multiple-choice",
+    question:
+      "Why do large models (e.g. transformers) often use learning-rate warmup — a small LR ramped up over the first few hundred steps?",
+    hint: "How reliable are the weights and adaptive-optimizer statistics at step 1?",
+    explanation:
+      "Early in training the weights are random and adaptive-optimizer statistics (e.g. Adam's moment estimates) haven't settled, so a large learning rate can produce huge, destabilizing updates that diverge. Warmup uses a tiny LR initially and ramps it up once the dynamics stabilize, then typically decays it. It's standard for training large models.",
+    options: [
+      { id: "a", label: "Early weights and optimizer statistics are unreliable, so a large LR can diverge; warmup ramps up safely", isCorrect: true },
+      { id: "b", label: "It reduces the total number of parameters", isCorrect: false },
+      { id: "c", label: "It replaces the need for any initialization", isCorrect: false },
+      { id: "d", label: "Warmup makes the model deeper over time", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
