@@ -12,31 +12,10 @@ estimatedMinutes: 16
 
 The **Augmented Dickey-Fuller (ADF) test** is the workhorse hypothesis test for
 **stationarity**, and the first concrete decision in the Box-Jenkins ARIMA
-workflow. Rather than survey it top-down, this page works through it as a chain
-of questions — each answer motivating the next.
+workflow. Rather than survey it top-down, this page builds it up one question at
+a time — each answer motivating the next.
 
-**The questions:**
-
-1. What does it mean for a series to be stationary, and why care?
-2. How is stationarity connected to the roots of a polynomial?
-3. What exactly is a unit root?
-4. What does the simplest case — AR(1) — look like?
-5. Why does differencing remove a unit root?
-6. What regression does the ADF test actually fit?
-7. What are the null and alternative hypotheses?
-8. What does the "Augmented" in ADF add?
-9. What are the three specifications, and how do I choose?
-10. What is the test statistic, and why aren't the critical values ±1.96?
-11. What does the p-value entail?
-12. What is the decision rule, and how does it set d in ARIMA?
-13. Why is "fail to reject" weaker than "proven stationary"?
-14. How does the KPSS test complement ADF?
-15. What will the ADF test miss entirely?
-16. Can we see the whole thing on a worked example?
-
----
-
-## Q1 — What does it mean for a series to be stationary, and why care?
+## What does it mean for a series to be stationary, and why care?
 
 A series $y_t$ is **weakly (covariance) stationary** if its mean, variance, and
 autocovariances do not change over time. Intuitively, the series looks
@@ -49,9 +28,7 @@ estimates are unstable and forecasts diverge. Establishing stationarity (or
 manufacturing it by differencing) is therefore step zero of any classical
 forecasting pipeline.
 
----
-
-## Q2 — How is stationarity connected to the roots of a polynomial?
+## How is stationarity connected to the roots of a polynomial?
 
 This is the key insight that makes the whole test possible: **stationarity of an
 autoregressive process is decided entirely by the roots of a polynomial.**
@@ -70,11 +47,9 @@ circle** in the complex plane, i.e. $|z| > 1$ for all roots.
 So "is this series stationary?" is, mathematically, the same question as "do all
 the roots of this polynomial sit outside the unit circle?"
 
----
+## What exactly is a unit root?
 
-## Q3 — What exactly is a unit root?
-
-A **unit root** is the boundary case of the rule in Q2: one of the roots sits
+A **unit root** is the boundary case of the rule just described: one of the roots sits
 *exactly on* the unit circle, $z = 1$. That single fact is what "non-stationary"
 means in the ADF world.
 
@@ -89,9 +64,7 @@ The ADF test exists precisely to answer one yes/no question: **does the series
 have a unit root?** If yes → non-stationary; if no → stationary (at least with
 respect to this unit-root form of non-stationarity).
 
----
-
-## Q4 — What does the simplest case — AR(1) — look like?
+## What does the simplest case — AR(1) — look like?
 
 For AR(1): $y_t = \phi\, y_{t-1} + \varepsilon_t$, the characteristic polynomial
 is $1 - \phi z = 0$, whose single root is $z = 1/\phi$.
@@ -108,9 +81,7 @@ $\operatorname{Var}(y_t) = t\sigma^2$ grows without bound, the mean wanders, and
 the ACF decays linearly rather than geometrically. This is the canonical
 non-stationarity the ADF test is built to detect.
 
----
-
-## Q5 — Why does differencing remove a unit root?
+## Why does differencing remove a unit root?
 
 Because a unit root factors out cleanly. If $\phi(z)$ has a single root at $z=1$,
 we can write $\phi(z) = (1-z)\,\tilde\phi(z)$, where $\tilde\phi$ has all roots
@@ -128,9 +99,7 @@ leaving the stationary process $\tilde\phi(B)\Delta y_t = \varepsilon_t$.
   $d$ that removes every unit root.
 </Callout>
 
----
-
-## Q6 — What regression does the ADF test actually fit?
+## What regression does the ADF test actually fit?
 
 Testing "$\phi = 1$" directly is awkward because under the null the usual
 regression theory breaks down (the regressor $y_{t-1}$ is itself non-stationary).
@@ -144,7 +113,7 @@ y_t - y_{t-1} = (\phi - 1)\, y_{t-1} + \varepsilon_t
 \qquad \gamma \equiv \phi - 1.
 $$
 
-The full ADF regression adds deterministic terms and lagged differences (see Q8):
+The full ADF regression adds deterministic terms and lagged differences (the "augmented" part, explained below):
 
 $$
 \boxed{\;\Delta y_t = \underbrace{\alpha}_{\text{drift}} + \underbrace{\beta t}_{\text{trend}}
@@ -155,11 +124,9 @@ $$
 The reparameterisation turns the unit-root question into a question about a
 *single coefficient* $\gamma$.
 
----
+## What are the null and alternative hypotheses?
 
-## Q7 — What are the null and alternative hypotheses?
-
-From the reparameterisation in Q6, with $\gamma = \phi - 1$:
+From the reparameterisation above, with $\gamma = \phi - 1$:
 
 - $\phi = 1 \iff \gamma = 0$ → **unit root, non-stationary** → null hypothesis $H_0$
 - $\phi < 1 \iff \gamma < 0$ → **stationary, mean-reverting** → alternative $H_1$
@@ -167,29 +134,25 @@ From the reparameterisation in Q6, with $\gamma = \phi - 1$:
 Two consequences worth internalising:
 
 - **The unit root is the null.** The test is set up to *assume* non-stationarity
-  and demand evidence to overturn it. This asymmetry drives the interpretation in
-  Q11–Q13.
+  and demand evidence to overturn it. This asymmetry drives the interpretation of
+  the p-value and the "fail to reject" outcome discussed later.
 - **It is a one-sided test.** Stationarity only ever pushes $\gamma$ *negative*,
   so we only look at the left tail.
 
----
-
-## Q8 — What does the "Augmented" in ADF add?
+## What does the "Augmented" in ADF add?
 
 The plain Dickey-Fuller regression assumes the errors are white noise. Real
 series have higher-order autocorrelation, which would contaminate the estimate of
 $\gamma$. The **augmented** test soaks up that structure by adding $k$ lagged
 differences as control regressors — the $\sum_{j=1}^{k} \delta_j\, \Delta y_{t-j}$
-term in the boxed equation of Q6.
+term in the boxed regression above.
 
 These terms whiten the residuals so that the distribution of the test statistic
 is valid. The lag order $k$ is chosen to remove residual autocorrelation —
 commonly by minimising AIC/BIC (statsmodels' `autolag="AIC"`) or a rule of thumb
 like $k = \lfloor 12\,(T/100)^{1/4}\rfloor$.
 
----
-
-## Q9 — What are the three specifications, and how do I choose?
+## What are the three specifications, and how do I choose?
 
 The deterministic terms $\alpha$ (drift) and $\beta t$ (trend) define **three
 flavours** of the test. You must match the specification to the visual shape of
@@ -209,9 +172,7 @@ your series, because it changes the critical values:
   residuals and biases the test toward non-stationarity.
 </Callout>
 
----
-
-## Q10 — What is the test statistic, and why aren't the critical values ±1.96?
+## What is the test statistic, and why aren't the critical values ±1.96?
 
 The ADF statistic is the **t-ratio** on $\hat\gamma$:
 
@@ -238,9 +199,7 @@ You **reject the unit-root null** when the ADF statistic is **more negative**
 than the critical value (it falls in the left tail). A statistic of $-1.8$ does
 not reject; $-5.7$ rejects decisively.
 
----
-
-## Q11 — What does the p-value entail?
+## What does the p-value entail?
 
 The ADF p-value is computed by interpolating the test statistic against the
 Dickey-Fuller distribution (MacKinnon's response-surface approximation, not a
@@ -254,9 +213,7 @@ It answers: *if the series truly had a unit root, how often would we see a
 $\hat\gamma$ this far below zero by chance alone?* A small p-value means "rarely"
 — so a unit root is implausible, and we conclude the series is stationary.
 
----
-
-## Q12 — What is the decision rule, and how does it set d in ARIMA?
+## What is the decision rule, and how does it set d in ARIMA?
 
 $$
 \boxed{\;p < 0.05 \;\Rightarrow\; \text{reject } H_0 \;\Rightarrow\; \textbf{stationary}\;}
@@ -273,11 +230,9 @@ The recipe for choosing $d$ is just this rule in a loop: test the raw series; if
 it fails to reject, difference and re-test; the number of differences needed to
 finally reject is exactly the integration order $d$ in ARIMA$(p, d, q)$.
 
----
+## Why is "fail to reject" weaker than "proven stationary"?
 
-## Q13 — Why is "fail to reject" weaker than "proven stationary"?
-
-Because the unit root is the *null* (Q7), the two outcomes are not symmetric.
+Because the unit root is the *null* hypothesis, the two outcomes are not symmetric.
 
 <Callout type="warning" title="'Fail to reject' is not 'proven stationary'">
   Failing to reject only means *there isn't enough evidence against* a unit root —
@@ -289,11 +244,9 @@ Because the unit root is the *null* (Q7), the two outcomes are not symmetric.
 </Callout>
 
 This low power is the practical reason you should not rely on the ADF test alone —
-which motivates Q14.
+which motivates pairing it with the KPSS test below.
 
----
-
-## Q14 — How does the KPSS test complement ADF?
+## How does the KPSS test complement ADF?
 
 The **KPSS test** flips the hypotheses: KPSS takes *stationarity* as its null.
 Reading the two tests together resolves the ambiguity that low power introduces:
@@ -308,9 +261,7 @@ Reading the two tests together resolves the ambiguity that low power introduces:
 When both agree you can act with confidence; when they disagree, the disagreement
 itself is diagnostic.
 
----
-
-## Q15 — What will the ADF test miss entirely?
+## What will the ADF test miss entirely?
 
 <Callout type="warning" title="What the ADF test will not catch">
   The ADF test detects only <strong>unit-root</strong> non-stationarity (a
@@ -321,13 +272,11 @@ itself is diagnostic.
   the number with a plot.
 </Callout>
 
----
-
-## Q16 — Can we see the whole thing on a worked example?
+## Can we see the whole thing on a worked example?
 
 Take a series with a clear upward trend (36 monthly observations, levels ~50→110).
 
-**ADF on the raw levels** (spec `"ct"`, because there is a visible trend — Q9):
+**ADF on the raw levels** (spec `"ct"`, because there is a visible trend):
 
 ```
 ADF statistic: −1.83    p-value: 0.36
@@ -335,7 +284,7 @@ ADF statistic: −1.83    p-value: 0.36
 ```
 
 The statistic $-1.83$ is *less negative* than the $-3.41$ critical value, and
-$p = 0.36 > 0.05$ → **fail to reject** → the series has a unit root (Q12).
+$p = 0.36 > 0.05$ → **fail to reject** → the series has a unit root.
 
 **Apply one difference** $\Delta y_t = y_t - y_{t-1}$ and re-test (now spec
 `"c"`, since differencing removed the trend):
@@ -346,7 +295,7 @@ ADF statistic: −5.71    p-value: 0.0000
 ```
 
 Now $-5.71$ is far into the left tail and $p \approx 0 < 0.05$ → **reject** →
-the differenced series is stationary. One difference removed one unit root (Q5),
+the differenced series is stationary. One difference removed one unit root,
 so $d = 1$. We can now fit the ARMA part of an ARIMA$(p, 1, q)$ model on
 $\Delta y_t$.
 
@@ -370,18 +319,18 @@ def report_adf(series, regression="c", label=""):
     print("        →", "STATIONARY (reject unit root)" if pval < 0.05
                        else "NON-STATIONARY (fail to reject)")
 
-# Levels: include a trend term because the series drifts upward (Q9)
+# Levels: include a trend term because the series drifts upward
 report_adf(y, regression="ct", label="levels")
 
 # First difference: trend is gone, use the constant spec
 report_adf(np.diff(y), regression="c", label="Δy")
 
-# Cross-check with KPSS (null = stationary), the complementary test (Q14)
+# Cross-check with KPSS (null = stationary), the complementary test
 kpss_stat, kpss_p, _, kpss_crit = kpss(np.diff(y), regression="c", nlags="auto")
 print(f"\nKPSS on Δy: stat={kpss_stat:.3f}  p={kpss_p:.4f}  "
       f"→ {'stationary' if kpss_p > 0.05 else 'non-stationary'}")
 
-# Helper: difference until ADF rejects → returns the integration order d (Q12)
+# Helper: difference until ADF rejects → returns the integration order d
 def integration_order(series, max_d=2, alpha=0.05):
     s = np.asarray(series, dtype=float)
     for d in range(max_d + 1):

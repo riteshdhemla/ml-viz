@@ -11,18 +11,7 @@ estimatedMinutes: 10
 
 The Beta-Bernoulli model is the cleanest example of conjugacy: multiplying a Bernoulli likelihood by a Beta prior produces a Beta posterior. No integration is required — the update reduces to adding counts to the prior's parameters.
 
-**The questions:**
-
-1. What is the model, prior, and setup?
-2. How does the posterior fall out in five steps?
-3. What does the update look like on a numeric instance?
-4. How does sequential updating work?
-5. How does the Beta distribution model different prior beliefs?
-6. How does this connect to MAP estimation?
-
----
-
-## Q1 — What is the model, prior, and setup?
+## What is the model, prior, and setup?
 
 **Model:** each flip $x_i \in \{0,1\}$ is drawn from $\text{Bernoulli}(p)$, where the bias $p \in [0,1]$ is unknown.
 
@@ -34,9 +23,7 @@ $$
 
 where $B(\alpha,\beta) = \Gamma(\alpha)\Gamma(\beta)/\Gamma(\alpha+\beta)$ is the Beta function — a constant that does not depend on $p$.
 
----
-
-## Q2 — How does the posterior fall out in five steps?
+## How does the posterior fall out in five steps?
 
 **Step 1 — write the likelihood.** For $n$ independent flips with $k$ heads and $n-k$ tails:
 
@@ -80,9 +67,7 @@ $$
   The prior parameters $\alpha$ and $\beta$ act like **imaginary data**: $\alpha-1$ prior heads and $\beta-1$ prior tails (using the mode formula). A $\text{Beta}(1,1)$ prior (uniform) starts with zero pseudo-evidence and lets the data speak entirely. A $\text{Beta}(10,10)$ prior encodes strong belief that $p\approx0.5$ and resists updating until many flips arrive.
 </Callout>
 
----
-
-## Q3 — What does the update look like on a numeric instance?
+## What does the update look like on a numeric instance?
 
 **Prior:** $\text{Beta}(2,2)$ — a mild "probably fair coin" belief, peaked at $p=0.5$.
 
@@ -127,9 +112,7 @@ print(f"Mean:      {alpha_post/(alpha_post+beta_post):.4f}")
 print(f"MLE:       {k/n:.4f}")
 ```
 
----
-
-## Q4 — How does sequential updating work?
+## How does sequential updating work?
 
 Because the posterior is a Beta, it becomes the prior for the next observation. After seeing flips one by one, the posterior updates incrementally:
 
@@ -162,9 +145,7 @@ plt.tight_layout()
 plt.show()
 ```
 
----
-
-## Q5 — How does the Beta distribution model different prior beliefs?
+## How does the Beta distribution model different prior beliefs?
 
 | Prior $\text{Beta}(\alpha,\beta)$ | Meaning |
 |:---------------------------------:|:-------:|
@@ -174,9 +155,7 @@ plt.show()
 | $\text{Beta}(0.5,0.5)$ | U-shaped — suspect extreme bias |
 | $\text{Beta}(k+1, n-k+1)$ | Equivalent to $n$ observations with Laplace smoothing |
 
----
-
-## Q6 — How does this connect to MAP estimation?
+## How does this connect to MAP estimation?
 
 MAP estimation finds the **mode** of the posterior. For $\text{Beta}(\alpha+k,\,\beta+n-k)$ with $\alpha,\beta > 1$:
 

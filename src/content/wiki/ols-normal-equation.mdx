@@ -11,16 +11,7 @@ estimatedMinutes: 12
 
 **Ordinary Least Squares (OLS)** minimizes the sum of squared residuals $\|\mathbf{y} - X\mathbf{w}\|^2$ and has an exact closed-form solution. This page derives that solution step by step and verifies it on a concrete 3-point example.
 
-**The questions:**
-
-1. What objective does OLS minimize?
-2. How is the normal-equation solution derived?
-3. Can we work the solution out by hand on a 3-point example?
-4. What does the same computation look like in NumPy?
-
----
-
-## Q1 — What objective does OLS minimize?
+## What objective does OLS minimize?
 
 We want the weight vector $\mathbf{w}$ that minimizes:
 
@@ -30,9 +21,7 @@ $$
 
 The $\frac{1}{n}$ scaling constant is dropped — it doesn't affect where the minimum is.
 
----
-
-## Q2 — How is the normal-equation solution derived?
+## How is the normal-equation solution derived?
 
 **Step 1 — Expand the squared norm.** Use $(\mathbf{a}-\mathbf{b})^\top(\mathbf{a}-\mathbf{b}) = \mathbf{a}^\top\mathbf{a} - 2\mathbf{a}^\top\mathbf{b} + \mathbf{b}^\top\mathbf{b}$ (valid because $\mathbf{y}^\top X\mathbf{w}$ is a scalar, equal to its transpose $\mathbf{w}^\top X^\top\mathbf{y}$):
 
@@ -72,9 +61,7 @@ This is a global minimum (not a saddle point) because the Hessian $\nabla^2_{\ma
   $X^\top X$ is invertible if and only if the columns of $X$ are linearly independent — no feature is a linear combination of the others (no perfect collinearity) and $n \geq d$ (not more features than samples). When this fails, use Ridge regression: $(X^\top X + \lambda I)$ is always invertible for $\lambda > 0$.
 </Callout>
 
----
-
-## Q3 — Can we work the solution out by hand on a 3-point example?
+## Can we work the solution out by hand on a 3-point example?
 
 Data: $(x, y) = (1, 2),\,(2, 3),\,(3, 5)$. Fit $\hat{y} = w_0 + w_1 x$.
 
@@ -115,9 +102,7 @@ $$
 
 **Verify:** predictions $\hat{y}_1 = 1.833$, $\hat{y}_2 = 3.333$, $\hat{y}_3 = 4.833$; residuals $0.167, -0.333, 0.167$; $SS_{\text{res}} = 0.167$; $SS_{\text{tot}} = 4.667$; $R^2 = 0.964$. Prediction at $x=4$: $\hat{y} = 6.333$.
 
----
-
-## Q4 — What does the same computation look like in NumPy?
+## What does the same computation look like in NumPy?
 
 ```python
 import numpy as np

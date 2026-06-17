@@ -11,18 +11,7 @@ estimatedMinutes: 12
 
 Both Ridge and Lasso add a penalty to OLS to prevent large weights, but the choice of penalty norm leads to fundamentally different behavior: Ridge shrinks everything smoothly, Lasso zeros features out exactly.
 
-**The questions:**
-
-1. What is the closed-form Ridge (L2) solution, and how is it derived?
-2. How does the Lasso (L1) achieve sparsity without a closed form?
-3. What is the geometric picture behind L1 vs L2?
-4. How do the coefficient paths evolve as λ varies?
-5. In what order does Lasso eliminate features?
-6. How do you choose λ with cross-validation?
-
----
-
-## Q1 — What is the closed-form Ridge (L2) solution, and how is it derived?
+## What is the closed-form Ridge (L2) solution, and how is it derived?
 
 Ridge adds a squared-norm penalty:
 
@@ -64,9 +53,7 @@ $$
   Putting a zero-mean Gaussian prior $\mathbf{w} \sim \mathcal{N}(\mathbf{0}, \tau^2 I)$ and taking the MAP estimate recovers exactly the Ridge solution with $\lambda = 1/(2\tau^2)$. A tighter prior (smaller $\tau^2$) corresponds to stronger regularization (larger $\lambda$).
 </Callout>
 
----
-
-## Q2 — How does the Lasso (L1) achieve sparsity without a closed form?
+## How does the Lasso (L1) achieve sparsity without a closed form?
 
 Lasso adds an absolute-value penalty:
 
@@ -88,18 +75,14 @@ The second condition is the key: if the gradient of the data-fit term is small e
 
 **Why L2 doesn't zero things out:** Ridge applies a force of magnitude $2\lambda |w_j|$ — proportional to the weight. As $|w_j| \to 0$, the force also goes to zero, so the weight asymptotically approaches but never reaches zero.
 
----
-
-## Q3 — What is the geometric picture behind L1 vs L2?
+## What is the geometric picture behind L1 vs L2?
 
 Picture the constraint region in weight space:
 
 - **L2 (sphere):** $\|\mathbf{w}\|^2 \leq r^2$ is a circle (in 2D). The loss contours expand until they touch the circle. A circle has no corners — the touching point is almost never on an axis.
 - **L1 (diamond):** $\|\mathbf{w}\|_1 \leq r$ is a diamond. Its corners lie on the axes (where one or more $w_j = 0$). Elliptical loss contours almost always touch the diamond at a corner — producing a sparse solution.
 
----
-
-## Q4 — How do the coefficient paths evolve as λ varies?
+## How do the coefficient paths evolve as λ varies?
 
 As $\lambda$ increases from 0 to $\infty$:
 - **Ridge:** all coefficients shrink smoothly, asymptotically approaching 0 — never exactly 0.
@@ -150,9 +133,7 @@ plt.tight_layout()
 plt.show()
 ```
 
----
-
-## Q5 — In what order does Lasso eliminate features?
+## In what order does Lasso eliminate features?
 
 The **order** in which Lasso zeros features depends on the correlation between each feature and the current residual:
 
@@ -170,9 +151,7 @@ for j in range(p):
 
 Strong features (high $|\text{corr}(x_j, r)|$) survive to larger λ; noise features die first. This is the path algorithm's key insight: as λ increases, features drop in order of decreasing relevance.
 
----
-
-## Q6 — How do you choose λ with cross-validation?
+## How do you choose λ with cross-validation?
 
 ```python
 from sklearn.linear_model import RidgeCV, LassoCV
