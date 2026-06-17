@@ -1,0 +1,317 @@
+---
+title: "The Augmented Dickey-Fuller Test"
+description: "A deep dive into the ADF unit-root test — why stationarity is a statement about the roots of the AR characteristic polynomial, what regression the test actually runs, how to read the test statistic against the non-standard Dickey-Fuller distribution, and exactly what the p-value does and does not tell you."
+topics: ["time-series"]
+relatedLessons:
+  - "time-series/01-time-series-fundamentals"
+  - "time-series/02-arima-models"
+estimatedMinutes: 16
+---
+
+# The Augmented Dickey-Fuller Test
+
+The **Augmented Dickey-Fuller (ADF) test** is the workhorse hypothesis test for
+**stationarity** in time-series analysis. It is the first concrete decision in
+the Box-Jenkins ARIMA workflow: it tells you whether the raw series can be
+modelled directly, or whether it must be differenced first (and how many times —
+the $d$ in ARIMA$(p,d,q)$).
+
+To use it well you need to understand three things that are usually glossed over:
+
+1. **Why stationarity is fundamentally a statement about a polynomial root.**
+2. **What regression the ADF test actually fits, and what its null hypothesis is.**
+3. **What the p-value means — and the asymmetry of evidence that makes "fail to reject" weaker than people assume.**
+
+---
+
+## 1. Stationarity and the unit root
+
+### Stationarity, briefly
+
+A series $y_t$ is **weakly (covariance) stationary** if its mean, variance, and
+autocovariances do not change over time. Classical models — ARIMA, exponential
+smoothing, VAR — are built on this assumption. On a non-stationary series, the
+sample mean and sample autocorrelations are not estimating fixed population
+quantities, so coefficient estimates are unstable and forecasts diverge.
+
+### The AR characteristic polynomial
+
+The key insight is that **stationarity of an autoregressive process is decided
+entirely by the roots of a polynomial.** Write an AR($p$) process with the
+backshift operator $B$ (where $B y_t = y_{t-1}$):
+
+$$
+\phi(B)\, y_t = \varepsilon_t, \qquad
+\phi(B) = 1 - \phi_1 B - \phi_2 B^2 - \cdots - \phi_p B^p
+$$
+
+The **characteristic equation** is $\phi(z) = 0$. The process is stationary
+**if and only if every root $z$ of $\phi(z)=0$ lies strictly outside the unit
+circle** in the complex plane, i.e. $|z| > 1$ for all roots.
+
+A **unit root** is the boundary case: one of the roots sits *exactly on* the
+unit circle, $z = 1$. That single fact is what "non-stationary" means in the
+ADF world. Note that $z=1$ being a root is equivalent to
+
+$$
+\phi(1) = 1 - \phi_1 - \phi_2 - \cdots - \phi_p = 0.
+$$
+
+### The AR(1) picture
+
+For the simplest case, AR(1): $y_t = \phi\, y_{t-1} + \varepsilon_t$, the
+characteristic polynomial is $1 - \phi z = 0$, whose single root is $z = 1/\phi$.
+
+| Condition | Root location | Behaviour |
+|-----------|---------------|-----------|
+| $\lvert\phi\rvert < 1$ | $\lvert z\rvert = 1/\lvert\phi\rvert > 1$ (outside) | **Stationary** — shocks decay geometrically, series is mean-reverting |
+| $\phi = 1$ | $z = 1$ (**on** the circle) | **Unit root** — pure random walk $y_t = y_{t-1} + \varepsilon_t$; shocks are permanent |
+| $\lvert\phi\rvert > 1$ | $\lvert z\rvert < 1$ (inside) | **Explosive** — series diverges; rare in practice |
+
+When $\phi = 1$ the series becomes a **random walk**: each shock $\varepsilon_t$
+is added to a running sum and *never decays*. The variance $\operatorname{Var}(y_t) = t\sigma^2$
+grows without bound, the mean wanders, and the ACF decays linearly rather than
+geometrically. This is the canonical non-stationarity that the ADF test is built
+to detect.
+
+<Callout type="info" title="Why differencing 'integrates out' a unit root">
+  If $\phi(z)$ has a single root at $z=1$, we can factor $\phi(z) = (1-z)\,\tilde\phi(z)$,
+  where $\tilde\phi$ has all roots outside the circle. The factor $(1-z)$ corresponds
+  exactly to the differencing operator $\Delta = 1 - B$. So applying one difference
+  $\Delta y_t = y_t - y_{t-1}$ **cancels the unit root**, leaving the stationary
+  process $\tilde\phi(B)\Delta y_t = \varepsilon_t$. This is precisely why the
+  **I**ntegrated part of AR**I**MA exists — and why the number of unit roots equals
+  the differencing order $d$.
+</Callout>
+
+---
+
+## 2. What we actually run when we run an ADF test
+
+### The reparameterised regression
+
+Testing "$\phi = 1$" directly is awkward because under the null the usual
+regression theory breaks down (the regressor $y_{t-1}$ is itself non-stationary).
+Dickey and Fuller's trick is to **subtract $y_{t-1}$ from both sides** of the
+AR(1) equation:
+
+$$
+y_t - y_{t-1} = (\phi - 1)\, y_{t-1} + \varepsilon_t
+\quad\Longrightarrow\quad
+\Delta y_t = \gamma\, y_{t-1} + \varepsilon_t,
+\qquad \gamma \equiv \phi - 1.
+$$
+
+Now the unit-root question becomes a question about a *single coefficient*:
+
+- $\phi = 1 \iff \gamma = 0$ → **unit root, non-stationary** (null hypothesis $H_0$)
+- $\phi < 1 \iff \gamma < 0$ → **stationary, mean-reverting** (alternative $H_1$)
+
+This is a **one-sided** test: stationarity only ever pushes $\gamma$ *negative*.
+
+### The "Augmented" part
+
+The plain Dickey-Fuller regression above assumes the errors are white noise.
+Real series have higher-order autocorrelation, which would contaminate the
+estimate of $\gamma$. The **augmented** test soaks up that structure by adding
+$k$ lagged differences as control regressors:
+
+$$
+\boxed{\;\Delta y_t = \underbrace{\alpha}_{\text{drift}} + \underbrace{\beta t}_{\text{trend}}
++ \gamma\, y_{t-1}
++ \sum_{j=1}^{k} \delta_j\, \Delta y_{t-j} + \varepsilon_t\;}
+$$
+
+The $\sum_j \delta_j \Delta y_{t-j}$ terms whiten the residuals so that the
+distribution of the test statistic is valid. The lag order $k$ is chosen to
+remove residual autocorrelation — commonly by minimising AIC/BIC (statsmodels'
+`autolag="AIC"`) or a rule of thumb like $k = \lfloor 12\,(T/100)^{1/4}\rfloor$.
+
+### Three deterministic specifications
+
+The terms $\alpha$ (drift) and $\beta t$ (trend) define **three flavours** of the
+test — you must match the specification to the visual shape of your series, because
+it changes the critical values:
+
+| Spec | Regression includes | Use when the series… | statsmodels `regression=` |
+|------|--------------------|----------------------|---------------------------|
+| **n** | $\gamma y_{t-1}$ only | fluctuates around **zero** | `"n"` |
+| **c** | $\alpha + \gamma y_{t-1}$ | fluctuates around a **non-zero constant** | `"c"` (default) |
+| **ct** | $\alpha + \beta t + \gamma y_{t-1}$ | has a **linear trend** | `"ct"` |
+
+<Callout type="warning" title="Match the spec to the data">
+  Using the wrong deterministic terms is the most common ADF mistake. Run a
+  trend-stationary series through the no-trend ("c") spec and the leftover trend
+  masquerades as a unit root — the test fails to reject when it should. If your
+  plot shows a clear upward drift, use `"ct"`. Otherwise the trend leaks into the
+  residuals and biases the test toward non-stationarity.
+</Callout>
+
+### The test statistic and its non-standard distribution
+
+The ADF statistic is the **t-ratio** on $\hat\gamma$:
+
+$$
+\text{ADF} = \frac{\hat\gamma}{\operatorname{SE}(\hat\gamma)}.
+$$
+
+Here is the subtlety that catches everyone: **under the null this statistic does
+NOT follow a Student's $t$ distribution.** Because $y_{t-1}$ is non-stationary
+under $H_0$, the estimator $\hat\gamma$ has a non-standard limiting distribution
+(a functional of Brownian motion — the **Dickey-Fuller distribution**). It is
+skewed and shifted to the left, so the critical values are *more negative* than
+the familiar $-1.96$:
+
+| Spec | 1% | 5% | 10% |
+|------|------|------|------|
+| **c** (constant) | $-3.43$ | $-2.86$ | $-2.57$ |
+| **ct** (constant + trend) | $-3.96$ | $-3.41$ | $-3.12$ |
+
+*(approximate large-sample MacKinnon values; statsmodels returns exact
+sample-size-adjusted ones.)*
+
+You **reject the unit-root null** when the ADF statistic is **more negative**
+than the critical value (it falls in the left tail). A statistic of $-1.8$ does
+not reject; $-5.7$ rejects decisively.
+
+---
+
+## 3. What the p-value entails
+
+The ADF p-value is computed by interpolating the test statistic against the
+Dickey-Fuller distribution (MacKinnon's response-surface approximation, not a
+$t$-table). Concretely:
+
+$$
+p = \Pr\big(\text{DF statistic} \le \text{observed ADF} \;\big|\; H_0:\ \text{unit root}\big).
+$$
+
+It answers: *if the series truly had a unit root, how often would we see a
+$\hat\gamma$ this far below zero by chance alone?* A small p-value means "rarely"
+— so a unit root is implausible.
+
+### The decision rule
+
+$$
+\boxed{\;p < 0.05 \;\Rightarrow\; \text{reject } H_0 \;\Rightarrow\; \textbf{stationary}\;}
+\qquad
+\boxed{\;p \ge 0.05 \;\Rightarrow\; \text{fail to reject} \;\Rightarrow\; \textbf{evidence of a unit root}\;}
+$$
+
+| p-value | Interpretation | ARIMA action |
+|---------|----------------|--------------|
+| $p < 0.05$ | Reject unit root; series is stationary | Current $d$ is enough |
+| $p \ge 0.05$ | Cannot reject unit root; likely non-stationary | Difference once more, $d \leftarrow d+1$, re-test |
+
+<Callout type="warning" title="'Fail to reject' is not 'proven stationary'">
+  The ADF test is built so the unit root is the **null**. Failing to reject only
+  means *there isn't enough evidence against* a unit root — it never *confirms*
+  one, and rejecting never *proves* perfect stationarity. The ADF test is also
+  known to have **low power**: when $\phi$ is close to but below 1 (say $0.95$),
+  a near-unit-root stationary series is easily mistaken for a random walk, so
+  $p$ stays above $0.05$ even though the series is technically stationary.
+</Callout>
+
+### Confirm with KPSS — the complementary test
+
+Because of that low power, best practice **pairs the ADF test with the KPSS
+test**, which flips the hypotheses: KPSS takes *stationarity* as its null. Reading
+the two together resolves ambiguity:
+
+| ADF | KPSS | Conclusion |
+|-----|------|-----------|
+| Reject (stationary) | Fail to reject (stationary) | **Stationary** ✓ — both agree |
+| Fail to reject | Reject | **Non-stationary** (unit root) — both agree |
+| Fail to reject | Fail to reject | **Inconclusive** — not enough data/power |
+| Reject | Reject | **Difference-and-trend mix** — try detrending; possible structural break |
+
+<Callout type="warning" title="What the ADF test will miss">
+  The ADF test detects only **unit-root** non-stationarity (a random-walk-type
+  stochastic trend). It does **not** detect: structural breaks (a sudden level
+  shift), heteroscedasticity (variance changing over time), or seasonality. A
+  series can pass the ADF test and still be badly non-stationary in a way it was
+  never designed to catch. Always complement the number with a plot.
+</Callout>
+
+---
+
+## Worked example
+
+Take a series with a clear upward trend (36 monthly observations, levels ~50→110):
+
+**ADF on the raw levels** (spec `"ct"`, because there is a visible trend):
+
+```
+ADF statistic: −1.83    p-value: 0.36
+5% critical value: −3.41
+```
+
+The statistic $-1.83$ is *less negative* than the $-3.41$ critical value, and
+$p = 0.36 > 0.05$ → **fail to reject** → the series has a unit root.
+
+**Apply one difference** $\Delta y_t = y_t - y_{t-1}$ and re-test (now spec
+`"c"`, since differencing removed the trend):
+
+```
+ADF statistic: −5.71    p-value: 0.0000
+5% critical value: −2.86
+```
+
+Now $-5.71$ is far into the left tail and $p \approx 0 < 0.05$ → **reject** →
+the differenced series is stationary. One difference removed one unit root, so
+$d = 1$. We can now fit the ARMA part of an ARIMA$(p, 1, q)$ model on
+$\Delta y_t$.
+
+---
+
+## Python
+
+```python
+import numpy as np
+from statsmodels.tsa.stattools import adfuller, kpss
+
+# A trending (non-stationary) series: random walk with drift
+rng = np.random.default_rng(0)
+y = 50 + np.cumsum(2.0 + rng.normal(0, 3, size=120))
+
+def report_adf(series, regression="c", label=""):
+    stat, pval, used_lag, nobs, crit, icbest = adfuller(
+        series, regression=regression, autolag="AIC"
+    )
+    print(f"[{label}] ADF={stat:.3f}  p={pval:.4f}  lags={used_lag}")
+    for k, v in crit.items():
+        print(f"        {k:>3} critical value: {v:.3f}")
+    print("        →", "STATIONARY (reject unit root)" if pval < 0.05
+                       else "NON-STATIONARY (fail to reject)")
+
+# Levels: include a trend term because the series drifts upward
+report_adf(y, regression="ct", label="levels")
+
+# First difference: trend is gone, use the constant spec
+report_adf(np.diff(y), regression="c", label="Δy")
+
+# Cross-check with KPSS (null = stationary), the complementary test
+kpss_stat, kpss_p, _, kpss_crit = kpss(np.diff(y), regression="c", nlags="auto")
+print(f"\nKPSS on Δy: stat={kpss_stat:.3f}  p={kpss_p:.4f}  "
+      f"→ {'stationary' if kpss_p > 0.05 else 'non-stationary'}")
+
+# Helper: difference until ADF rejects → returns the integration order d
+def integration_order(series, max_d=2, alpha=0.05):
+    s = np.asarray(series, dtype=float)
+    for d in range(max_d + 1):
+        p = adfuller(s, autolag="AIC")[1]
+        if p < alpha:
+            return d, p
+        s = np.diff(s)
+    return max_d, p
+
+d, p = integration_order(y)
+print(f"\nChosen differencing order: d = {d}  (ADF p = {p:.4f})")
+```
+
+## Related concepts
+
+- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals) — stationarity, differencing, and where the ADF test first appears
+- [**ARIMA Models**](/courses/time-series/02-arima-models) — the test selects the integration order $d$ in ARIMA$(p,d,q)$
+- [**ARIMA Order Selection**](/wiki/arima-order-selection) — the full Box-Jenkins workflow that begins with this test
+- [**Hypothesis Testing**](/wiki/hypothesis-testing) — null/alternative, p-values, and the meaning of "fail to reject"

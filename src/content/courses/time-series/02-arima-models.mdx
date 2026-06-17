@@ -48,6 +48,12 @@ $$
 
 The model is written **ARIMA(p, d, q)** where $p$ is the AR order, $d$ is the number of differences (usually 0, 1, or 2), and $q$ is the MA order.
 
+#### Choosing d: the Augmented Dickey-Fuller test
+
+How many differences do you need? You don't guess — you test. The **Augmented Dickey-Fuller (ADF) test** checks whether a series has a **unit root**: a root of the AR characteristic polynomial sitting exactly on the unit circle, which is the precise mathematical signature of a random-walk-style non-stationary series. Its null hypothesis is "the series has a unit root"; a p-value below 0.05 rejects that null and declares the series stationary. The recipe is simple: run the test, and if it fails to reject, difference once more and re-test — the number of differences needed to reach stationarity is exactly your $d$.
+
+<WikiLink slug="augmented-dickey-fuller" title="The Augmented Dickey-Fuller Test" />
+
 <Callout type="info" title="The memory fingerprint">
   AR and MA have opposite ACF/PACF signatures — a critical fact for model identification:
   - **AR(p):** ACF tails off exponentially; PACF cuts off sharply after lag $p$
