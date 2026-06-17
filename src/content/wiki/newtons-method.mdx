@@ -11,7 +11,7 @@ estimatedMinutes: 10
 
 Newton's method minimizes a function by fitting a local quadratic model at the current point and jumping directly to its minimum. For a true quadratic this lands at the global minimum in one step. For non-quadratic functions it converges much faster than gradient descent near a minimum.
 
-## What is the core idea behind Newton's method?
+## The core idea behind Newton's method
 
 Near a point $\mathbf{x}_0$, any smooth $f$ is approximated by the second-order Taylor expansion:
 
@@ -25,7 +25,7 @@ where $\mathbf{H}(\mathbf{x}_0) = \nabla^2 f(\mathbf{x}_0)$ is the **Hessian** (
 
 Write the displacement as $\mathbf{s} = \mathbf{x} - \mathbf{x}_0$. Newton's method minimizes the right-hand side over $\mathbf{s}$, ignoring the constant $f(\mathbf{x}_0)$.
 
-## How is the Newton step derived?
+## Deriving the Newton step
 
 Take the gradient of the quadratic model with respect to $\mathbf{s}$ and set it to zero:
 
@@ -55,7 +55,7 @@ Compare to gradient descent $\mathbf{x} \leftarrow \mathbf{x} - \eta\,\nabla f(\
   In a steep direction ($\lambda_i$ large), $\mathbf{H}^{-1}$ shrinks the step — preventing overshoot. In a flat direction ($\lambda_i$ small), it enlarges the step — accelerating progress. Gradient descent uses the same step size everywhere, so it struggles when the loss landscape is elongated (ill-conditioned).
 </Callout>
 
-## Can we watch a single step land exactly on the minimum? ($f(x, y) = x^2 + xy + y^2 - 3x$)
+## A single step landing exactly on the minimum ($f(x, y) = x^2 + xy + y^2 - 3x$)
 
 The function $f(x, y) = x^2 + xy + y^2 - 3x$ has a unique minimum at $(2, -1)$ (verified by the Hessian analysis in the multivariable optimization lesson).
 
@@ -138,7 +138,7 @@ for i in range(50):
 print(f"GD after 50 steps: {xgd.round(3)}  f = {f(*xgd):.3f}")   # ≈ [2., -1.]
 ```
 
-## How does Newton compare to gradient descent on iteration count and cost?
+## Newton vs gradient descent: iteration count and cost
 
 | Method | Steps to reach $\|\nabla f\| < 10^{-6}$ | Cost per step |
 |--------|:-----------------------------------------:|:-------------:|

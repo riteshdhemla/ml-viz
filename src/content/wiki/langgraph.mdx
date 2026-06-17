@@ -12,13 +12,13 @@ estimatedMinutes: 11
 
 The [agents lesson](/courses/building-with-llms/05-agents-and-tool-use) describes the **ReAct loop** — Thought → Action → Observation, repeated until done. That loop is easy to sketch and surprisingly hard to make robust: you need bounded iteration, branching ("did the model ask for a tool, or is it finished?"), persistence so a run can pause and resume, and a way to inspect what happened. **LangGraph** is a framework that makes that control flow *explicit* by modelling the agent as a **directed graph with shared state**, rather than a hidden `while` loop. This page covers the mental model; the companion notebook builds a tiny LangGraph-style engine from scratch so the abstractions are concrete.
 
-## Why model an agent as a graph instead of a chain?
+## Why a graph, not a chain
 
 <Callout type="info" title="Chain vs. graph">
   A LangChain **chain** is a fixed pipeline — a DAG you traverse once, A → B → C. LangGraph adds the two things agents need that a DAG can't express: **cycles** (loop back to re-plan) and **conditional edges** (choose the next node at runtime). An agent is fundamentally a loop with branches; LangGraph gives that loop a first-class structure.
 </Callout>
 
-## What are the three core abstractions (State, Nodes, Edges)?
+## The three core abstractions
 
 **1. State** — a single typed object threaded through every node. You declare its shape and, per field, a **reducer** that says how a node's output is merged in. The canonical example is a message list whose reducer is "append":
 
@@ -45,7 +45,7 @@ Without the `operator.add` reducer each node would *replace* `messages`; with it
 - **Conditional edge** `add_conditional_edges("agent", route_fn, {...})` — call `route_fn(state)`, which returns a key naming the next node. This is where the agent *decides* whether to call a tool or stop.
 - The reserved **`START`** and **`END`** sentinels mark entry and termination.
 
-## How does a ReAct agent look expressed as a graph?
+## A ReAct agent as a graph
 
 The classic agent is just two nodes and one decision:
 
@@ -96,11 +96,11 @@ app.invoke({"messages": [user("pop. of capital of France / 1000")], "steps": 0})
 
 The `tools → agent` edge is the **cycle** that a plain chain cannot express, and `route` collapses the entire "keep going or stop?" decision — plus the bounded-loop safeguard from the agents lesson — into one inspectable function.
 
-## How does LangGraph actually execute a graph?
+## Graph execution model
 
 LangGraph runs in **super-steps** (a Pregel-style message-passing model). At each super-step it executes the active node(s), applies their updates to the state through the reducers, then evaluates outgoing edges to find the next active node. Nodes with no data dependency between them run in parallel within a super-step; a conditional edge picks the single next node. Execution halts when control reaches `END`.
 
-## Why does the graph structure buy you reliability?
+## Reliability from graph structure
 
 | Need (from the agents lesson) | What LangGraph gives you |
 |---|---|
@@ -114,7 +114,7 @@ LangGraph runs in **super-steps** (a Pregel-style message-passing model). At eac
   Attaching a checkpointer (`app = g.compile(checkpointer=...)`) makes every run *durable and resumable*. The same mechanism powers human-in-the-loop approvals (pause at a node, wait for input, continue) and "time travel" debugging (fork from any past state) — capabilities that are painful to bolt onto a hand-written `while` loop.
 </Callout>
 
-## What are the common pitfalls?
+## Common pitfalls
 
 1. **Forgetting the reducer on the message field.** Without `Annotated[list, operator.add]`, each node overwrites the history and the agent loses its memory of prior steps.
 2. **No termination guard in the router.** A conditional edge that can always route back into the graph yields an infinite loop and runaway cost — always include a step cap or explicit stop condition (the same bounded-loop rule from the agents lesson).

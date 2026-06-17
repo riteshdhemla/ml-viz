@@ -11,14 +11,14 @@ estimatedMinutes: 14
 
 The **Box-Jenkins methodology** is a four-phase iterative procedure for fitting an ARIMA model. Each phase produces evidence that feeds back into the next iteration if the model is misspecified.
 
-## What are the four phases of the procedure?
+## The four phases of the procedure
 
 1. **Identification** — determine $d$ (differencing order) from the ADF test; read $p$ and $q$ from ACF/PACF plots.
 2. **Estimation** — fit the model via maximum likelihood to estimate $\phi_1,\ldots,\phi_p$ and $\theta_1,\ldots,\theta_q$.
 3. **Diagnostics** — check that the residuals are white noise; if not, revise the order and repeat.
 4. **Forecasting** — use the fitted model to generate point forecasts and prediction intervals.
 
-## How do you determine the differencing order d with the ADF test?
+## Determining the differencing order d with the ADF test
 
 This is step 1a of Phase 1 (Identification).
 
@@ -39,7 +39,7 @@ If $p \ge 0.05$, apply one more difference ($d \leftarrow d+1$) and re-test. Typ
   Differencing beyond what is needed (d=2 when d=1 suffices) inflates MA terms and makes estimation harder. Apply the minimum number of differences that passes the ADF test.
 </Callout>
 
-## How do you read p and q from the ACF/PACF?
+## Reading p and q from the ACF/PACF
 
 This is step 1b of Phase 1. After differencing $d$ times, inspect the correlogram of $\Delta^d y_t$:
 
@@ -54,7 +54,7 @@ For **AR($p$)**: look at the lag where the PACF drops inside the $\pm 1.96/\sqrt
 
 For **MA($q$)**: look at the lag where the ACF drops inside the band. That lag is $q$.
 
-## How are the model parameters estimated, and how do you compare candidates?
+## Parameter estimation and comparing candidates
 
 This is Phase 2 (Estimation). Given tentative orders $(p, d, q)$, maximize the log-likelihood of the model:
 
@@ -72,7 +72,7 @@ $$
 
 BIC penalizes extra parameters more strongly than AIC, so it prefers simpler models. Both should point to the same winner; if they disagree, prefer BIC for longer series.
 
-## How do you check the residuals with diagnostics?
+## Checking the residuals with diagnostics
 
 This is Phase 3 (Diagnostics).
 
@@ -91,7 +91,7 @@ Other checks:
 - **Q-Q plot**: residuals close to the diagonal confirms Gaussian errors
 - **Variance over time**: no ARCH effects (conditional heteroscedasticity)
 
-## Can we see the whole procedure on a 36-observation series?
+## The whole procedure on a 36-observation series
 
 Dataset (simulated monthly sales, Jan 2020 – Dec 2022):
 
@@ -150,7 +150,7 @@ $$
 
 Prediction intervals widen: 95% PI at $h=1$ is $\pm 1.96 \times 2.8 = \pm 5.5$; at $h=6$ it is $\pm 1.96 \times 2.8\sqrt{6} \approx \pm 13.4$.
 
-## How do you run the whole workflow in Python?
+## Running the whole workflow in Python
 
 ```python
 import numpy as np

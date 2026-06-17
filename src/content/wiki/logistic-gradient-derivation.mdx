@@ -17,7 +17,7 @@ $$
 
 The factor that "should" appear from $\sigma'$ cancels exactly. This page shows why.
 
-## How is a single example's loss and prediction set up?
+## Per-example loss and prediction setup
 
 For a single example $i$ with $z_i = \mathbf{w}^T\mathbf{x}_i$ and $\hat{y}_i = \sigma(z_i)$, the per-example loss is:
 
@@ -27,7 +27,7 @@ $$
 
 We want $\partial \mathcal{L}_i / \partial w_j$ for one weight $w_j$.
 
-## What does the chain rule look like, link by link?
+## The chain rule, link by link
 
 $$
 \frac{\partial \mathcal{L}_i}{\partial w_j}
@@ -63,7 +63,7 @@ z_i = \sum_k w_k x_{ik}
 \frac{\partial z_i}{\partial w_j} = x_{ij}
 $$
 
-## Why does the sigmoid derivative cancel exactly?
+## Exact cancellation of the sigmoid derivative
 
 Multiply Links 1 and 2:
 
@@ -93,7 +93,7 @@ $$
 \frac{\partial \mathcal{L}_i}{\partial w_j} = (\hat{y}_i - y_i)\,x_{ij}
 $$
 
-## How does the per-example result vectorize over the whole dataset?
+## Vectorizing over the whole dataset
 
 Average over $n$ examples:
 
@@ -109,7 +109,7 @@ $$
 
 This is the prediction-error vector times the design matrix — the same structure as linear regression's gradient. The only difference is $\hat{\mathbf{y}} = \sigma(X\mathbf{w})$ instead of $X\mathbf{w}$.
 
-## What does one gradient step look like numerically?
+## A gradient step worked numerically
 
 Take a 1-feature problem with a bias column:
 
@@ -187,7 +187,7 @@ fd_grad = np.array([(loss(w0 + eps*np.eye(2)[j]) - loss(w0 - eps*np.eye(2)[j])) 
 print(f"Finite-diff grad: {fd_grad.round(5)}")   # matches [0., -0.75]
 ```
 
-## Why does this clean form appear in the first place?
+## Why this clean form appears
 
 The fact that $\sigma'$ cancels is not a coincidence: it is because the sigmoid is the **canonical link** for the Bernoulli distribution in the exponential family. Cross-entropy is derived from the Bernoulli MLE objective, and the canonical link is precisely the function that makes the gradient equal to the prediction error. Any exponential-family model (Gaussian for MSE, Poisson for count regression, etc.) has the same structure: the gradient is always $\hat{y} - y$, scaled by the feature matrix.
 

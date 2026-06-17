@@ -16,7 +16,7 @@ The loop alternates between two steps until the log-likelihood converges:
 - **E-step** — given current parameters, compute how *responsible* each hidden state (and each transition) is for the observed data.
 - **M-step** — re-estimate $\pi, A, B$ as normalized expected counts.
 
-## What notation and quantities does the algorithm rely on?
+## Notation and key quantities
 
 An HMM with $N$ hidden states emits an observation sequence $\mathbf{x} = (x_1, \ldots, x_T)$. The **forward variable** from the forward algorithm captures all information up to and including time $t$:
 
@@ -26,7 +26,7 @@ $$
 
 Its value: the product $\alpha_t(i)\,\beta_t(i)$ (defined below) equals $P(\mathbf{x},\, z_t = i)$ — the joint probability of the full observation sequence and being in state $i$ at time $t$. Normalizing across states $\sum_k \alpha_t(k)\beta_t(k) = P(\mathbf{x})$ gives the state occupancy $\gamma_t(i) = P(z_t=i \mid \mathbf{x})$. Baum–Welch additionally needs a **backward pass**.
 
-## How does the backward pass work?
+## The backward pass
 
 The E-step starts by running a recursion backward through the sequence.
 
@@ -42,7 +42,7 @@ $$
 
 The recursion runs backwards from $t = T$ to $t = 1$: each state's backward value is a sum over where it could transition next, weighted by the emission probability of the next observation.
 
-## How do we compute the state occupancy γ?
+## Computing the state occupancy γ
 
 Combine forward and backward to get the probability of being in state $i$ at time $t$, given the *whole* sequence:
 
@@ -52,7 +52,7 @@ $$
 
 The numerator combines everything before-and-including $t$ ($\alpha$) with everything after $t$ ($\beta$); the denominator normalizes over all states.
 
-## How do we compute the transition counts ξ?
+## Computing the transition counts ξ
 
 We also need the expected transitions, not just the per-state occupancies.
 
@@ -64,7 +64,7 @@ $$
 
 Read the numerator left to right: arrive at state $i$ by time $t$, take the transition to $j$, emit the next observation from $j$, then account for the rest of the sequence.
 
-## How does the M-step re-estimate the parameters?
+## The M-step parameter re-estimation
 
 With the expected counts in hand, re-estimate every parameter as a ratio of expected counts:
 
@@ -80,13 +80,13 @@ In words:
 - $\hat{A}_{ij}$ — expected number of $i \to j$ transitions, divided by expected number of times in state $i$
 - $\hat{b}_j(k)$ — expected number of times state $j$ emitted symbol $k$, divided by expected time in state $j$
 
-## How does this connect to Gaussian Mixture Models?
+## Connection to Gaussian Mixture Models
 
 <Callout type="tip" title="It's GMMs with a Markov chain">
   This is the same E-step/M-step loop as [Gaussian Mixture Models](/courses/probabilistic-models/01-gaussian-mixture-models) — HMMs are essentially "GMMs with a Markov chain tying the components across time." γ plays the role of the GMM responsibilities; the M-step is the same weighted-count normalization.
 </Callout>
 
-## What are the convergence guarantees and pitfalls?
+## Convergence guarantees and pitfalls
 
 - Each iteration **provably increases** the likelihood (the standard EM guarantee) — but only to a **local** optimum. Use multiple random restarts.
 - Multiplying many probabilities underflows fast; real implementations run all recursions in **log space** (or rescale $\alpha_t$, $\beta_t$ at each step). `hmmlearn` handles this for you.
