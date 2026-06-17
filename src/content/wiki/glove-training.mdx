@@ -11,7 +11,17 @@ estimatedMinutes: 10
 
 [Word2Vec](/courses/nlp/02-word-embeddings) uses **local context windows**. GloVe (Pennington et al., 2014) instead trains on **global co-occurrence statistics**: it factorizes a corpus-wide count matrix rather than streaming over windows.
 
-## The key insight: ratios carry meaning
+**The questions:**
+
+1. What is the key insight — why do co-occurrence ratios carry meaning?
+2. What is the full training procedure?
+3. Why train on log counts instead of raw counts?
+4. What does the weighting function do on a concrete numeric example?
+5. How does GloVe compare to Word2Vec?
+
+---
+
+## Q1 — What is the key insight, and why do co-occurrence ratios carry meaning?
 
 The ratio $P(k \mid \text{ice})\, /\, P(k \mid \text{steam})$ is informative about word relationships:
 
@@ -24,7 +34,9 @@ The ratio $P(k \mid \text{ice})\, /\, P(k \mid \text{steam})$ is informative abo
 
 GloVe is designed so that *differences of word vectors* capture these ratios — which is exactly what makes analogies ("king − man + woman ≈ queen") work.
 
-## Training procedure
+---
+
+## Q2 — What is the full training procedure?
 
 1. **Build the co-occurrence matrix** $X \in \mathbb{R}^{V \times V}$ over the corpus: $X_{ij}$ counts how often word $j$ appears within a context window of word $i$ (typical window size: 10 words, symmetric). One pass over the corpus; the matrix is sparse.
 
@@ -46,11 +58,21 @@ $$
 
 4. **Final embedding** = $\mathbf{v}_i + \tilde{\mathbf{v}}_i$ (sum of both matrices for each word). The two matrices are symmetric in the objective, and summing them gives a small but consistent quality boost.
 
+---
+
+## Q3 — Why train on log counts instead of raw counts?
+
+The objective in Q2 targets the **log** of each co-occurrence count rather than the raw count:
+
 <Callout type="tip" title="Why log counts?">
   Co-occurrence counts span many orders of magnitude (Zipf's law). Taking the log compresses this range so the least-squares objective isn't dominated by the handful of extremely frequent pairs — and it makes vector *differences* correspond to count *ratios*: $\mathbf{v}_a^\top\tilde{\mathbf{v}}_k - \mathbf{v}_b^\top\tilde{\mathbf{v}}_k \approx \log\frac{X_{ak}}{X_{bk}}$.
 </Callout>
 
-## Numeric example: two pairs, $x_\text{max}=100$
+---
+
+## Q4 — What does the weighting function do on a concrete numeric example?
+
+Two pairs, $x_\text{max}=100$:
 
 **Frequent pair** — "ice" and "solid" co-occur $X_{ij}=100$ times:
 
@@ -68,7 +90,9 @@ $$
 
 Even if the predicted dot product is off by 1.0, this pair contributes only $0.032 \times 1.0 \approx 0.032$ — roughly 11× less than the frequent pair. The weighting function deliberately deprioritizes rare co-occurrences whose counts are noisy.
 
-## GloVe vs Word2Vec
+---
+
+## Q5 — How does GloVe compare to Word2Vec?
 
 | Property | Word2Vec | GloVe |
 |----------|----------|-------|

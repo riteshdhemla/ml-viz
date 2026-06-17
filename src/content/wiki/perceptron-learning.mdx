@@ -11,7 +11,18 @@ estimatedMinutes: 10
 
 The perceptron is the simplest trainable classifier — a single linear threshold unit. Its learning algorithm adjusts weights only on mistakes, and its convergence theorem is one of the oldest guarantees in machine learning. Its limitation is equally clean: XOR defeats it, and proving that impossible forced the invention of the multi-layer perceptron.
 
-## The model
+**The questions:**
+
+1. What is the perceptron model?
+2. What is the learning rule, and when does it converge?
+3. What does learning OR look like step by step?
+4. Why is XOR impossible for a single perceptron?
+5. How does a hidden layer fix XOR?
+6. What are the perceptron's limitations?
+
+---
+
+## Q1 — What is the perceptron model?
 
 $$
 \hat{y} = \mathbb{1}[\mathbf{w}^\top \mathbf{x} + b > 0]
@@ -21,7 +32,9 @@ $$
 - $b \in \mathbb{R}$ — bias, shifts the boundary off the origin
 - Class 1 on the positive side of $\mathbf{w}^\top \mathbf{x} + b = 0$; class 0 otherwise
 
-## The learning rule
+---
+
+## Q2 — What is the learning rule, and when does it converge?
 
 $$
 \mathbf{w} \leftarrow \mathbf{w} + \eta\,(y - \hat{y})\,\mathbf{x}, \qquad b \leftarrow b + \eta\,(y - \hat{y})
@@ -33,9 +46,11 @@ The update is zero when the prediction is correct ($y = \hat{y}$). On a mistake:
 
 **Convergence theorem.** If the data is linearly separable with margin $\gamma > 0$, the perceptron makes at most $R^2/\gamma^2$ mistakes before finding a correct separator, where $R = \max_i \lVert \mathbf{x}_i \rVert$.
 
-## Worked example: learning OR ($\eta = 1$)
+---
 
-OR is linearly separable (output 1 when at least one input is 1). Start from $\mathbf{w} = (0, 0)$, $b = 0$, cycling through the four training points in order $(1,1),(1,0),(0,1),(0,0)$:
+## Q3 — What does learning OR look like step by step?
+
+With $\eta = 1$: OR is linearly separable (output 1 when at least one input is 1). Start from $\mathbf{w} = (0, 0)$, $b = 0$, cycling through the four training points in order $(1,1),(1,0),(0,1),(0,0)$:
 
 | Step | Input $(x_1, x_2)$ | Label | Pred | Update | State after |
 |------|--------------------|-------|------|--------|-------------|
@@ -47,7 +62,9 @@ OR is linearly separable (output 1 when at least one input is 1). Start from $\m
 
 After step 4, $\mathbf{w} = (1,1)$, $b = 0$ — boundary $x_1 + x_2 = 0$. Verify: $(0,0)\to 0$ ✓, $(1,0)\to 1$ ✓, $(0,1)\to 1$ ✓, $(1,1)\to 2$ ✓. Step 5 confirms one clean pass; two more correct passes complete the convergence check. The algorithm has converged in exactly **2 mistakes**.
 
-## XOR: proof of impossibility
+---
+
+## Q4 — Why is XOR impossible for a single perceptron?
 
 XOR outputs 1 when exactly one input is 1:
 
@@ -87,7 +104,9 @@ $$
 
 This contradicts $w_1 + w_2 + 2b > 0$. No linear separator exists for XOR.
 
-## The hidden-layer fix
+---
+
+## Q5 — How does a hidden layer fix XOR?
 
 A two-layer MLP transforms the inputs so the classes become linearly separable in hidden space. One exact solution (ReLU activations):
 
@@ -129,7 +148,9 @@ for x, y in zip(XOR_inputs, XOR_labels):
     print(f"x={tuple(x.astype(int))}  h={tuple(h.astype(int))}  y_hat={y_hat}  y={y}  {status}")
 ```
 
-## Limitations
+---
+
+## Q6 — What are the perceptron's limitations?
 
 1. **Non-separable data** — the rule never converges; weights oscillate indefinitely.
 2. **Non-unique solution** — the boundary found depends on example ordering and initialization.

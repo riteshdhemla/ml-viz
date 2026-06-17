@@ -17,7 +17,15 @@ $$
 
 The algorithm alternates two steps, each of which provably decreases $J$.
 
-## Procedure
+**The questions:**
+
+1. What are the steps of the algorithm, and why does each decrease $J$?
+2. What does a full worked iteration on 5 points look like?
+3. How is K-Means implemented from scratch in NumPy?
+
+---
+
+## Q1 — What are the steps of the algorithm, and why does each decrease J?
 
 **Step 0 — Initialize** $K$ centroids $\boldsymbol{\mu}_1, \ldots, \boldsymbol{\mu}_K$ (random pick from data, or K-Means++).
 
@@ -50,7 +58,11 @@ The mean is the unique minimizer of within-cluster squared distance — that is 
   Both steps only decrease $J$, and there are finitely many possible assignment configurations, so K-Means must terminate. But it converges to a local minimum — different initializations can give different final clusters. Use K-Means++ and `n_init ≥ 10` in practice.
 </Callout>
 
-## Worked example: 5 points, $K = 2$
+---
+
+## Q2 — What does a full worked iteration on 5 points look like?
+
+Here $K = 2$.
 
 Points: $A(1,1)$, $B(1.5,2)$, $C(3,4)$, $D(5,7)$, $E(3.5,5)$.
 
@@ -107,7 +119,9 @@ No point changes assignment. **Converged after 2 iterations.**
 
 Final clusters: $C_1 = \{A, B\}$, $C_2 = \{C, D, E\}$.
 
-## NumPy implementation (from scratch)
+---
+
+## Q3 — How is K-Means implemented from scratch in NumPy?
 
 ```python
 import numpy as np

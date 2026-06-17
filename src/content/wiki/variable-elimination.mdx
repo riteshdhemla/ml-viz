@@ -11,11 +11,22 @@ estimatedMinutes: 10
 
 **Variable elimination** is the workhorse algorithm for *exact* inference in [Bayesian Networks](/courses/graphical-models/01-bayesian-networks). Given a query like $P(\text{Disease} \mid \text{Symptoms})$, it computes the answer by summing out every non-query variable — but does so factor by factor, in a chosen order, instead of building the full joint table.
 
-## Why not just sum the joint?
+**The questions:**
+
+1. Why not just sum the full joint distribution?
+2. What is the variable elimination procedure?
+3. What does it look like on a worked example?
+4. What determines the complexity, and how does the elimination order matter?
+
+---
+
+## Q1 — Why not just sum the full joint distribution?
 
 The naive approach — build the full joint $P(X_1, \ldots, X_n)$ and marginalize — costs $O(2^n)$ for $n$ binary variables. Variable elimination exploits the network's factorization to keep intermediate tables small: it interleaves multiplication and summation so no factor ever has to mention more variables than necessary.
 
-## The procedure
+---
+
+## Q2 — What is the variable elimination procedure?
 
 To compute $P(Q \mid E = e)$ (query $Q$, evidence $E$):
 
@@ -27,7 +38,9 @@ To compute $P(Q \mid E = e)$ (query $Q$, evidence $E$):
    c. Sum out $Z_i$: $g(\ldots) = \sum_{z_i} f_\text{new}(\ldots, Z_i = z_i)$. Replace the original factors with $g$.
 4. **Multiply remaining factors** and normalize to get $P(Q \mid E = e)$.
 
-## Worked example: the Sprinkler network
+---
+
+## Q3 — What does it look like on a worked example?
 
 Network: Rain → Sprinkler, Rain → Wet, Sprinkler → Wet. Query: $P(\text{Wet} \mid \text{Rain=T})$.
 
@@ -50,7 +63,9 @@ $$
 
 **Step 4 — normalize.** Compute $g(\text{Wet=F}) = 0.01 \times 0.01 + 0.99 \times 0.20 = 0.1981$. These sum to $1.000$, so no further normalization is needed: $P(\text{Wet=T} \mid \text{Rain=T}) \approx 0.802$. Even with the sprinkler being off 99% of the time when it rains, the rain itself makes the grass likely wet.
 
-## Complexity and the elimination order
+---
+
+## Q4 — What determines the complexity, and how does the elimination order matter?
 
 The cost is exponential in the size of the *largest intermediate factor*, which depends on the elimination order. The best achievable maximum factor size (minus one) is the graph's **treewidth** — so variable elimination is tractable for tree-like networks and expensive for densely connected ones.
 
