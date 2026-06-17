@@ -11,7 +11,7 @@ estimatedMinutes: 10
 
 The singular value decomposition (SVD) factors any matrix into a rotation, a stretch, and another rotation. But its real power is the **Eckart–Young theorem**: discarding the smallest stretches gives the provably best compressed approximation of the original matrix.
 
-## What is the SVD, and what do its pieces mean?
+## The SVD and its pieces
 
 For any $m \times n$ real matrix $A$ of rank $r$:
 
@@ -25,7 +25,7 @@ $$
 
 Each $\sigma_i = \sqrt{\lambda_i(A^\top A)}$ — because $A^\top A = (U\Sigma V^\top)^\top(U\Sigma V^\top) = V\Sigma^2 V^\top$, which is exactly the eigendecomposition of $A^\top A$ with eigenvalues $\sigma_i^2$. $U$ and $V$ are orthogonal, so $U^\top U = I$ and $V^\top V = I$.
 
-## How does the SVD become a sum of rank-1 layers?
+## SVD as a sum of rank-1 layers
 
 Expanding $U\Sigma V^\top$ column by column gives a sum of rank-1 outer products:
 
@@ -35,7 +35,7 @@ $$
 
 Each term $\mathbf{u}_i \mathbf{v}_i^\top$ is a rank-1 matrix — the simplest possible structure ($m$ numbers times $n$ numbers). The singular value $\sigma_i$ says how much of $A$ lives in that layer. Because the $\sigma_i$ are sorted, the first few layers carry most of the information.
 
-## What is rank-$k$ truncation, and what does it save?
+## Rank-$k$ truncation and its savings
 
 Drop all but the first $k$ layers:
 
@@ -47,7 +47,7 @@ where $U_k$, $V_k$ keep only the first $k$ columns and $\Sigma_k = \text{diag}(\
 
 **Storage trade-off.** A rank-$k$ approximation of an $m \times n$ matrix stores $k(m + n + 1)$ numbers instead of $mn$. For a 512×512 image with $k = 50$: $50 \times 1025 = 51\,250$ vs $512^2 = 262\,144$ — about $5\times$ compression.
 
-## What does the Eckart–Young theorem guarantee?
+## The Eckart–Young guarantee
 
 **Theorem.** Among all rank-$k$ matrices $B$, the truncated SVD $A_k$ minimizes the Frobenius norm of the approximation error:
 
@@ -63,7 +63,7 @@ $$
 
 **Why.** The Frobenius norm satisfies $\lVert A \rVert_F^2 = \sum_i \sigma_i^2$ (sum of squared singular values). Among all rank-$k$ matrices, the one closest to $A$ in Frobenius norm must retain the $k$ largest singular values unchanged and zero out the rest. Any other rank-$k$ matrix would keep some smaller $\sigma_i$ while discarding a larger one, increasing the sum of dropped terms. $A_k$ keeps exactly the top-$k$ — it is the unique minimizer.
 
-## Can we verify the error formula numerically?
+## Verifying the error formula numerically
 
 ```python
 import numpy as np
@@ -83,7 +83,7 @@ for k in [1, 5, 10, 20, 30]:
 
 All rows print `True` — the error formula is exact.
 
-## Where is low-rank approximation used in practice?
+## Low-rank approximation in practice
 
 | Application | How $A_k$ is used |
 |-------------|------------------|
@@ -92,7 +92,7 @@ All rows print `True` — the error formula is exact.
 | LoRA fine-tuning | Represent each weight update as $\Delta W = B A$ with low-rank $B, A$; reduces parameters from $mn$ to $k(m+n)$ |
 | Noise filtering | Small $\sigma_i \approx$ noise; truncating denoises — same logic as dropping low-variance PCA components |
 
-## How do I read the singular-value spectrum?
+## Reading the singular-value spectrum
 
 <Callout type="tip" title="The scree plot">
   Plot the singular values $\sigma_1, \sigma_2, \ldots$ in decreasing order. A steep drop followed by a flat "noise floor" means the matrix is effectively low-rank — the elbow is the true number of underlying factors. A completely flat spectrum means no compression is lossless: the matrix genuinely uses all its dimensions.

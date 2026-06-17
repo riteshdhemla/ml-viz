@@ -15,7 +15,7 @@ For the derivation of the Jacobian itself, see:
 
 <WikiLink slug="bptt-algorithm" title="Backpropagation Through Time (BPTT)" />
 
-## What is the spectral-norm bound on the gradient?
+## The spectral-norm bound on the gradient
 
 The full gap-$(T-k)$ gradient is:
 
@@ -41,7 +41,7 @@ $$
 
 The exponent $T-k$ is the whole story.
 
-## What are the three regimes it produces?
+## The three regimes
 
 | Spectral norm $\lambda = \|W_{hh}\|$ | Behavior | Effect on training |
 |:------------------------------------:|:--------:|:------------------:|
@@ -53,7 +53,7 @@ The exponent $T-k$ is the whole story.
   The $\tanh'$ factor satisfies $0 < \tanh'(z) \le 1$, with equality only at $z = 0$. Once any unit is even slightly saturated ($|z| > 1$), $\tanh'(z) < 0.42$. This multiplies the per-step gain below $\lambda$ — it can push a borderline-stable RNN into vanishing, but it can never rescue a vanishing one.
 </Callout>
 
-## What do concrete spectral radii look like numerically?
+## Concrete spectral radii, numerically
 
 **Vanishing case — $\lambda = 0.5$.**
 
@@ -117,7 +117,7 @@ for gap in [5, 10, 20]:
     print(f"  gap={gap}: {effective_gain**gap:.3e}")
 ```
 
-## How do the spectral radius and the spectral norm differ?
+## Spectral radius versus spectral norm
 
 The bound above uses the **spectral norm** $\|W_{hh}\|$ (largest singular value) for a worst-case guarantee. For the long-run growth *rate* along the dominant direction, use the **spectral radius** $\rho(W_{hh})$ — the largest eigenvalue magnitude. For a product of the *same* matrix:
 
@@ -127,7 +127,7 @@ $$
 
 The condition for vanishing is $\rho(W_{hh}) < 1$; for exploding, $\rho(W_{hh}) > 1$. These are exactly the same regimes — the spectral norm gives the per-step bound, the spectral radius gives the long-run exponent.
 
-## Why does gradient clipping fix explosions but not vanishing?
+## Why gradient clipping fixes explosions but not vanishing
 
 **Gradient clipping** rescales an over-large gradient back to a safe norm:
 

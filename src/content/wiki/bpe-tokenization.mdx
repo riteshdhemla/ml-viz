@@ -11,7 +11,7 @@ estimatedMinutes: 12
 
 BPE, used by GPT and many modern models, builds a subword vocabulary by iteratively merging the most frequent adjacent symbol pair. It solves the **out-of-vocabulary problem**: common words become single tokens, rare words decompose into known subword pieces — nothing maps to `[UNK]`.
 
-## What is the algorithm, step by step?
+## The algorithm, step by step
 
 1. Split every training word into characters plus a special end-of-word marker `</w>`: "low" → `["l","o","w","</w>"]`.
 2. Start with the character vocabulary (every unique character is a token).
@@ -23,7 +23,7 @@ BPE, used by GPT and many modern models, builds a subword vocabulary by iterativ
 
 The learned **merge list** (the ordered sequence of pairs) *is* the tokenizer: to tokenize new text, apply the same merges in the same order.
 
-## What does a worked trace of the merges look like?
+## A worked trace of the merges
 
 Training corpus: "low"×5, "lower"×2, "newest"×6.
 
@@ -42,7 +42,7 @@ Best pair: (l, o) count=7  → merge to "lo"
 
 **Result:** the vocabulary learns meaningful subwords. "unhappiness" → `["un", "happi", "ness"]` — familiar subwords even if the full word was rare in training.
 
-## How is it implemented from scratch?
+## Implementation from scratch
 
 ```python
 vocab = {" ".join(word) + " </w>": freq
@@ -76,7 +76,7 @@ for _ in range(num_merges):
     print(f"Merged {best} → {''.join(best)}")
 ```
 
-## What are the main variants?
+## Main variants
 
 **WordPiece** (used by BERT) is similar but merges based on language-model likelihood improvement rather than raw frequency, producing tokens prefixed with `##` for word-continuation: "unhappiness" → `["un", "##happi", "##ness"]`.
 

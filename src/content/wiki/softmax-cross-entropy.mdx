@@ -11,7 +11,7 @@ estimatedMinutes: 8
 
 Softmax converts raw output scores (logits) into a valid probability distribution. Paired with cross-entropy loss, the gradient takes a remarkably clean form that every neural network practitioner should know cold.
 
-## What is the softmax formula, and what properties does it have?
+## The softmax formula and its properties
 
 For $K$ classes with logits $\mathbf{z} = (z_1, \ldots, z_K)$:
 
@@ -25,7 +25,7 @@ Properties:
 - Invariant to a constant offset: $\hat{p}_k(\mathbf{z} + c) = \hat{p}_k(\mathbf{z})$ for any $c$
 - Differences between logits determine confidence, not absolute values
 
-## What does softmax look like on a concrete 3-class example?
+## A concrete 3-class example
 
 Logits $\mathbf{z} = (2, 1, -1)$:
 
@@ -39,7 +39,7 @@ $$
 
 The model is 70.5% confident in class 1.
 
-## What is cross-entropy loss?
+## Cross-entropy loss
 
 For a single example with true class $y$ (integer index):
 
@@ -51,7 +51,7 @@ The log-sum-exp form is used in practice because it is numerically stable.
 
 **Numeric example** ($y = 0$ is correct): $\mathcal{L} = -\log(0.705) \approx 0.350$.
 
-## How do you derive the softmax + cross-entropy gradient?
+## Deriving the softmax + cross-entropy gradient
 
 We want $\frac{\partial \mathcal{L}}{\partial z_k}$ for each logit $z_k$.
 
@@ -83,7 +83,7 @@ $$
 - Wrong classes: gradient $= \hat{p}_k \ge 0$ — pushes logits **down**
 - Gradients sum to zero: $\sum_k (\hat{p}_k - \mathbb{1}[k=y]) = 1 - 1 = 0$ — consistent with the constraint $\sum_k \hat{p}_k = 1$
 
-## Can we verify the gradient numerically?
+## Verifying the gradient numerically
 
 ```python
 import numpy as np
@@ -119,7 +119,7 @@ print(f"FD:      {fd.round(4)}")
 print(f"Match:   {np.allclose(softmax_ce_grad(z, y), fd, atol=1e-7)}")
 ```
 
-## What is the log-sum-exp numerical-stability trick?
+## The log-sum-exp numerical-stability trick
 
 Direct computation of $e^{z_k}$ overflows for large logits ($e^{1000}$ is inf in float32). Subtract the maximum before exponentiating — the offset cancels in the softmax ratio:
 

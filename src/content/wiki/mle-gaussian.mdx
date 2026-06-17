@@ -11,7 +11,7 @@ estimatedMinutes: 12
 
 Given $n$ i.i.d. observations $x_1, \ldots, x_n$ from a Gaussian $\mathcal{N}(\mu, \sigma^2)$, we want the parameter values that maximize the probability of seeing this exact data. The derivation has eight steps: write the log-likelihood, differentiate, and solve separately for $\mu$ and $\sigma^2$.
 
-## How do you set up the Gaussian density and log-likelihood?
+## Setting up the Gaussian density and log-likelihood
 
 The density of a single observation is:
 
@@ -35,7 +35,7 @@ $$
   - \frac{1}{2\sigma^2}\sum_{i=1}^n (x_i - \mu)^2
 $$
 
-## How do you solve for the maximum-likelihood mean?
+## Solving for the maximum-likelihood mean
 
 **Step 3 — differentiate with respect to $\mu$.**
 
@@ -69,7 +69,7 @@ The MLE for the mean is the **sample average**.
   Maximizing $\ell$ over $\mu$ with $\sigma^2$ fixed is the same as minimizing $\sum(x_i - \mu)^2$. So fitting a linear model by **minimizing squared error is exactly MLE under Gaussian noise**. The two derivations — OLS and Gaussian MLE — are the same optimization in disguise.
 </Callout>
 
-## How do you solve for the maximum-likelihood variance?
+## Solving for the maximum-likelihood variance
 
 It is cleanest to treat $v = \sigma^2$ as the variable.
 
@@ -99,7 +99,7 @@ $$
 \boxed{\;\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\;}
 $$
 
-## Can we verify the estimates numerically?
+## Verifying the estimates numerically
 
 Take $\mathbf{x} = [2, 4, 4, 4, 5, 5, 7, 9]$ (eight observations from Rice & Nerman's classic example):
 
@@ -134,7 +134,7 @@ print(f"Unbiased variance (n-1): {sigma2_unbiased:.3f}")  # 4.571
 print(f"Numpy default std²:    {x.var(ddof=1):.3f}") # 4.571  (ddof=1 = n-1)
 ```
 
-## Why is the MLE variance biased?
+## Why the MLE variance is biased
 
 The MLE variance divides by $n$, not $n-1$. Why is it biased?
 
@@ -150,7 +150,7 @@ $$
 
 MLE is **consistent** — as $n \to \infty$, $\hat{\sigma}^2_\text{MLE} \to \sigma^2$ — but it is not unbiased in finite samples.
 
-## What does the log-likelihood surface look like?
+## The log-likelihood surface
 
 The log-likelihood is a concave function of $(\mu, v)$, so the unique maximum is the MLE:
 
@@ -181,7 +181,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-## What are the key results at a glance?
+## Key results at a glance
 
 | Parameter | MLE formula | Notes |
 |-----------|------------|-------|

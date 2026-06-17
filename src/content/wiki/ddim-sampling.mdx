@@ -11,11 +11,11 @@ estimatedMinutes: 10
 
 Standard DDPM sampling requires walking back through all $T = 1000$ noise levels — one network call per step. **DDIM** (Denoising Diffusion Implicit Models, Song et al., 2021) reformulates the reverse process as a deterministic ODE, which makes **step-skipping** valid: you can visit 50 of the 1000 timesteps and still land on a high-quality sample.
 
-## Why is step-skipping allowed at all?
+## Why step-skipping is valid
 
 DDPM's reverse process is stochastic — each step adds fresh noise, so the trajectory is a random walk that must be taken one step at a time. DDIM removes the stochasticity: given the model's noise prediction, both the "clean image estimate" and the next point on the trajectory are *deterministic functions* of the current point. A deterministic trajectory can be integrated with large steps, exactly like solving an ODE with a coarser grid.
 
-## What is the DDIM sampling procedure, step by step?
+## The DDIM sampling procedure
 
 Recall the cumulative noise coefficient $\bar{\alpha}_t = \prod_{s=1}^{t}(1-\beta_s)$, where $\beta_s$ is the noise variance added at step $s$. Because $\beta_s$ is small, $\bar{\alpha}_t$ decreases from $\approx 1$ (clean) to $\approx 0$ (pure noise) as $t$ increases from $0$ to $T$.
 
@@ -39,7 +39,7 @@ $$
 
 Read step 3 as: *guess the clean image, then re-noise that guess to exactly the next (lower) noise level* — using the same predicted noise direction rather than a fresh random draw.
 
-## What properties does DDIM give you?
+## Properties of DDIM
 
 - **~20× speedup** — reducing $T=1000$ to $S=50$ steps loses little quality.
 - **Deterministic** — the same starting noise $\mathbf{x}_{\tau_1}$ always produces the same image. This enables **semantic interpolation**: interpolate between two starting noises and the outputs interpolate smoothly.
