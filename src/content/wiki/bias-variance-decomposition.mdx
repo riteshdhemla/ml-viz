@@ -11,18 +11,7 @@ estimatedMinutes: 10
 
 Every supervised model faces the same trade-off: the more flexible it is, the more it chases training-set noise; the simpler it is, the more it ignores real signal. The **bias-variance decomposition** quantifies this formally, splitting expected test error into three additive components that cannot be reduced independently.
 
-**The questions:**
-
-1. What is the setup and notation?
-2. How does the algebraic decomposition work?
-3. How does the tradeoff show up in KNN?
-4. How do you estimate Bias² and Variance empirically?
-5. How do you diagnose whether you have a bias or variance problem?
-6. What is the modern footnote about double descent?
-
----
-
-## Q1 — What is the setup and notation?
+## What is the setup and notation?
 
 Let the true relationship be $y = f(\mathbf{x}) + \varepsilon$, where $\varepsilon$ is zero-mean noise with $\mathbb{E}[\varepsilon] = 0$ and $\text{Var}(\varepsilon) = \sigma^2$. We fit a model $\hat{f}$ on a training set $\mathcal{D}$ drawn from the same distribution. The **expected test error** at a fixed point $\mathbf{x}$ — expectation over many random draws of $\mathcal{D}$ — is:
 
@@ -30,9 +19,7 @@ $$
 \mathbb{E}_\mathcal{D}\!\left[(y - \hat{f}(\mathbf{x}))^2\right]
 $$
 
----
-
-## Q2 — How does the algebraic decomposition work?
+## How does the algebraic decomposition work?
 
 Let $\mu(\mathbf{x}) = \mathbb{E}_\mathcal{D}[\hat{f}(\mathbf{x})]$ be the mean prediction across training sets. Add and subtract $\mu$:
 
@@ -55,9 +42,7 @@ The three terms:
 - **Variance** $= \mathbb{E}_\mathcal{D}\!\left[(\hat{f}(\mathbf{x}) - \mathbb{E}[\hat{f}(\mathbf{x})])^2\right]$ — how much the prediction swings when you redraw the training set; cured by regularization, ensembling, or more data.
 - $\sigma^2$ — label noise baked into the targets; no model can escape it.
 
----
-
-## Q3 — How does the tradeoff show up in KNN?
+## How does the tradeoff show up in KNN?
 
 For $k$-nearest neighbors, $k$ shifts both terms in opposite directions:
 
@@ -70,9 +55,7 @@ For $k$-nearest neighbors, $k$ shifts both terms in opposite directions:
 
 **Total test error** traces a U-shape as $k$ grows: Bias² rises monotonically while Variance falls. The optimal $k$ sits at the bottom of the U, found by cross-validation.
 
----
-
-## Q4 — How do you estimate Bias² and Variance empirically?
+## How do you estimate Bias² and Variance empirically?
 
 Run the model on many resamples and measure the spread vs. the average error:
 
@@ -106,9 +89,7 @@ for k in [1, 3, 5, 10, 20, 50]:
     print(f"{k:>3}  {bias2:>8.4f}  {variance:>8.4f}  {bias2+variance:>8.4f}")
 ```
 
----
-
-## Q5 — How do you diagnose whether you have a bias or variance problem?
+## How do you diagnose whether you have a bias or variance problem?
 
 <Callout type="tip" title="Training vs. validation error">
   Compare training error and validation error. **Both high** → bias problem: the model cannot fit even what it has seen — add capacity, more features, or reduce regularization. **Training low, validation high** → variance problem: regularize, simplify, get more data, or use ensembles. More data cures variance; it never cures bias.
@@ -121,9 +102,7 @@ for k in [1, 3, 5, 10, 20, 50]:
 | Errors decrease with more data | Variance-limited | Collect more data |
 | Errors plateau with more data | Bias-limited | Change model family |
 
----
-
-## Q6 — What is the modern footnote about double descent?
+## What is the modern footnote about double descent?
 
 Classical theory predicts a U-shaped test error curve. Very large neural networks add a twist: past the **interpolation threshold** — the point where the model can perfectly memorize training data — test error can fall again as the model grows further. Among the many zero-training-error solutions, gradient descent tends to find the smoothest one, which behaves as if implicitly regularized. The bias–variance lens is still the right starting intuition; just know the edges are an active research area.
 

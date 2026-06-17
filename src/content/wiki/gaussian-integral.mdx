@@ -11,17 +11,7 @@ estimatedMinutes: 10
 
 The Gaussian PDF is $p(x) = \frac{1}{\sigma\sqrt{2\pi}}\,e^{-(x-\mu)^2/2\sigma^2}$. The constant $\frac{1}{\sigma\sqrt{2\pi}}$ is not given — it is derived by demanding that the total area equal 1. Computing it requires one beautiful trick: squaring the integral and switching to polar coordinates.
 
-**The questions:**
-
-1. How do you evaluate the standard Gaussian integral?
-2. How does the constant scale to general $\mu$ and $\sigma$?
-3. How do you derive $\mathbb{E}[X] = \mu$?
-4. How do you derive $\text{Var}(X) = \sigma^2$?
-5. How do you verify all of this numerically?
-
----
-
-## Q1 — How do you evaluate the standard Gaussian integral?
+## How do you evaluate the standard Gaussian integral?
 
 Call the total area $I$:
 
@@ -55,9 +45,7 @@ $$
 I^2 = 2\pi \cdot 1 = 2\pi \quad\Longrightarrow\quad I = \sqrt{2\pi}.
 $$
 
----
-
-## Q2 — How does the constant scale to general $\mu$ and $\sigma$?
+## How does the constant scale to general $\mu$ and $\sigma$?
 
 For $\mathcal{N}(\mu, \sigma^2)$, substitute $z = (x - \mu)/\sigma$, $dx = \sigma\, dz$:
 
@@ -67,9 +55,7 @@ $$
 
 Dividing by $\sigma\sqrt{2\pi}$ forces the area to 1 — that is the normalization constant.
 
----
-
-## Q3 — How do you derive $\mathbb{E}[X] = \mu$?
+## How do you derive $\mathbb{E}[X] = \mu$?
 
 Use the same substitution $z = (x - \mu)/\sigma$, so $x = \mu + \sigma z$ and $dx = \sigma\, dz$. Let $\phi(z) = \frac{1}{\sqrt{2\pi}}e^{-z^2/2}$ be the standard normal density:
 
@@ -86,9 +72,7 @@ $$
 
 The first integral is 1 (normalization). The second is 0 because $z\,\phi(z)$ is an **odd function** — $g(-z) = -g(z)$ — integrated over the symmetric interval $(-\infty, \infty)$.
 
----
-
-## Q4 — How do you derive $\text{Var}(X) = \sigma^2$?
+## How do you derive $\text{Var}(X) = \sigma^2$?
 
 $\text{Var}(X) = \mathbb{E}[(X-\mu)^2] = \sigma^2 \int_{-\infty}^\infty z^2 \phi(z)\, dz$. We need the integral to equal 1.
 
@@ -105,9 +89,7 @@ $$
 \text{Var}(X) = \sigma^2 \cdot 1 = \sigma^2.
 $$
 
----
-
-## Q5 — How do you verify all of this numerically?
+## How do you verify all of this numerically?
 
 ```python
 import numpy as np

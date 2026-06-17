@@ -11,25 +11,11 @@ estimatedMinutes: 8
 
 After an object detector runs its forward pass, it produces thousands of overlapping bounding boxes — often dozens for the same physical object. **NMS** prunes duplicates by keeping only the highest-scoring box for each spatial region, discarding all other boxes that heavily overlap it.
 
-**The questions:**
-
-1. Why do duplicate boxes arise in the first place?
-2. What is the 6-step NMS algorithm?
-3. What is IoU, and how is it computed?
-4. What does NMS look like on a worked 4-box example?
-5. How do I implement NMS in pure Python?
-6. What is Soft-NMS, and why use it in crowded scenes?
-7. What is the difference between class-aware and class-agnostic NMS?
-
----
-
-## Q1 — Why do duplicate boxes arise in the first place?
+## Why do duplicate boxes arise in the first place?
 
 Every anchor (or grid cell in YOLO) that partially overlaps an object fires with some confidence. For a single cat, the 9 anchors centred on the cat and dozens more nearby may all receive high objectness scores. Without pruning, the detector would return 50+ boxes around every detected object.
 
----
-
-## Q2 — What is the 6-step NMS algorithm?
+## What is the 6-step NMS algorithm?
 
 Let $B$ be the set of all candidate boxes with confidence $> $ threshold (e.g. 0.05), and $\tau$ the IoU suppression threshold (typically 0.45–0.5):
 
@@ -42,9 +28,7 @@ Let $B$ be the set of all candidate boxes with confidence $> $ threshold (e.g. 0
 
 **Time complexity:** $O(n^2)$ in the worst case (all boxes pairwise compared), where $n$ is the number of candidates. In practice $n$ is small after the confidence threshold filter.
 
----
-
-## Q3 — What is IoU, and how is it computed?
+## What is IoU, and how is it computed?
 
 $$
 \text{IoU}(A, B) = \frac{|A \cap B|}{|A \cup B|} = \frac{|A \cap B|}{|A| + |B| - |A \cap B|}
@@ -52,9 +36,7 @@ $$
 
 IoU = 0 means no overlap; IoU = 1 means the boxes are identical. The standard NMS suppression threshold is $\tau = 0.5$: boxes sharing more than half their union area are treated as duplicates.
 
----
-
-## Q4 — What does NMS look like on a worked 4-box example?
+## What does NMS look like on a worked 4-box example?
 
 Four candidate boxes for a single "cat" object, sorted by confidence. NMS threshold $\tau = 0.5$.
 
@@ -75,9 +57,7 @@ Four candidate boxes for a single "cat" object, sorted by confidence. NMS thresh
   A threshold too high (e.g. 0.7) lets heavily overlapping duplicates survive. A threshold too low (e.g. 0.3) suppresses genuinely distinct nearby objects. The range 0.45–0.5 is the standard starting point; tune it on your validation set, especially for crowded scenes.
 </Callout>
 
----
-
-## Q5 — How do I implement NMS in pure Python?
+## How do I implement NMS in pure Python?
 
 ```python
 import numpy as np
@@ -138,9 +118,7 @@ print(f"Kept indices: {kept}")          # [0, 2, 3]
 print(f"Kept scores:  {scores[kept]}")  # [0.92  0.61  0.55]
 ```
 
----
-
-## Q6 — What is Soft-NMS, and why use it in crowded scenes?
+## What is Soft-NMS, and why use it in crowded scenes?
 
 Standard NMS makes a binary decision: suppress or keep. In crowded scenes two different objects can have high IoU (e.g. two overlapping people), so hard suppression causes missed detections.
 
@@ -154,15 +132,11 @@ Boxes with high IoU have their confidence decayed exponentially rather than zero
 
 **Effect:** in a crowd of 10 people with mutual IoU ≈ 0.4–0.6, hard NMS might keep 3; Soft-NMS keeps all 10 with appropriately reduced confidences.
 
----
-
-## Q7 — What is the difference between class-aware and class-agnostic NMS?
+## What is the difference between class-aware and class-agnostic NMS?
 
 **Class-aware NMS** (default): run NMS independently per class. A "car" box does not suppress a nearby "person" box, even if their IoU is 0.8.
 
 **Class-agnostic NMS**: suppress any box regardless of class label. Used when classes are mutually exclusive or when speed matters more than precision on overlapping multi-class scenes.
-
----
 
 ## Related concepts
 

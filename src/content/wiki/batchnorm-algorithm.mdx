@@ -11,17 +11,7 @@ estimatedMinutes: 8
 
 Batch Normalization (Ioffe & Szegedy, 2015) normalizes the pre-activations of each layer across the current mini-batch, then re-scales with learnable parameters. This stabilizes the optimization landscape, enables higher learning rates, and reduces sensitivity to weight initialization.
 
-**The questions:**
-
-1. What are the three steps of the forward pass?
-2. Can we see it on a worked example — $\mathbf{x} = (2, 4, 6, 8)$?
-3. How are running statistics used for inference?
-4. How is it implemented from scratch in NumPy?
-5. Where is BatchNorm placed in a network?
-
----
-
-## Q1 — What are the three steps of the forward pass?
+## What are the three steps of the forward pass?
 
 For a mini-batch of $m$ pre-activations $x_1, \ldots, x_m$ at one feature:
 
@@ -49,9 +39,7 @@ After rescaling: $\mathbb{E}[y] = \beta$, $\text{Var}[y] = \gamma^2$.
 
 **Why two steps?** Normalizing alone forces mean 0 and variance 1, which might not be optimal for the downstream layer. The learnable $\gamma$ and $\beta$ restore full expressivity — at the limit they can undo the normalization entirely, but the smooth optimization landscape encourages useful, near-identity values.
 
----
-
-## Q2 — Can we see it on a worked example? ($\mathbf{x} = (2, 4, 6, 8)$, $m = 4$)
+## Can we see it on a worked example? ($\mathbf{x} = (2, 4, 6, 8)$, $m = 4$)
 
 **Step 1 — statistics:**
 
@@ -75,9 +63,7 @@ $$
 
 Verify: mean $= (−1.683+0.106+1.894+3.683)/4 = 1 = \beta$ ✓, variance $= 4 = \gamma^2$ ✓
 
----
-
-## Q3 — How are running statistics used for inference?
+## How are running statistics used for inference?
 
 During training, batch statistics are computed fresh each mini-batch. At inference time (often a single sample with no batch), BatchNorm switches to **running averages** accumulated during training via an exponential moving average:
 
@@ -95,9 +81,7 @@ where $\alpha \approx 0.1$ is the momentum parameter. At inference, the layer us
   In PyTorch, always call `model.eval()` before inference. In train mode, BatchNorm uses stochastic batch statistics. In eval mode, it uses the deterministic running statistics. Forgetting this causes unpredictable inference errors, especially on single-sample inputs where batch variance is undefined.
 </Callout>
 
----
-
-## Q4 — How is it implemented from scratch in NumPy?
+## How is it implemented from scratch in NumPy?
 
 ```python
 import numpy as np
@@ -135,9 +119,7 @@ print(f"\nRunning mean after 5 batches: {mu_run:.4f}")  # converges toward 5
 print(f"Running var  after 5 batches: {var_run:.4f}")  # converges toward 5
 ```
 
----
-
-## Q5 — Where is BatchNorm placed in a network?
+## Where is BatchNorm placed in a network?
 
 The original paper normalizes **pre-activations** (before the nonlinearity): `Linear → BN → ReLU`. In practice "BN after activation" sometimes works better for residual networks. Transformers use **LayerNorm** instead — normalized over the feature dimension rather than the batch dimension — which works well at batch size 1.
 
