@@ -12,11 +12,26 @@ estimatedMinutes: 11
 
 The [agents lesson](/courses/building-with-llms/05-agents-and-tool-use) shows an agent calling tools. The moment you have **many** agents and **many** tools, a quadratic problem appears: $N$ agents each needing bespoke integrations to $M$ tools is $N \times M$ one-off connectors. Two open protocols attack this from different directions. **MCP (Model Context Protocol)** standardizes the *vertical* edge — how an agent reaches tools and data. **A2A (Agent2Agent)** standardizes the *horizontal* edge — how agents talk to *each other*. They are complementary, not competing: turn $N \times M$ into $N + M$.
 
+**The questions:**
+
+1. What problem do these protocols solve, in one sentence each?
+2. What is MCP, and how does an agent reach tools with it?
+3. What is A2A, and how do agents collaborate with it?
+4. How do MCP and A2A compose in a real system?
+5. How do these protocols widen the attack surface?
+6. What are the common mistakes?
+
+---
+
+## Q1 — What problem do these protocols solve, in one sentence each?
+
 <Callout type="info" title="One sentence each">
   **MCP** is "USB-C for AI tools": a single way for any LLM app to plug into any tool or data source. **A2A** is the protocol that lets an agent *delegate a task to another agent* it has never been hard-coded to know about.
 </Callout>
 
-## MCP — Model Context Protocol
+---
+
+## Q2 — What is MCP, and how does an agent reach tools with it?
 
 An open standard (introduced by Anthropic, late 2024) with a **client–server** architecture spoken over **JSON-RPC 2.0**:
 
@@ -49,7 +64,9 @@ A session starts with an `initialize` handshake (capability negotiation), then t
 
 That `inputSchema` is the same JSON-Schema function-calling contract from the agents lesson — MCP just standardizes *discovery and transport* so a tool server written once works with any MCP-capable host.
 
-## A2A — Agent2Agent Protocol
+---
+
+## Q3 — What is A2A, and how do agents collaborate with it?
 
 An open standard (introduced by Google, 2025) for **agent-to-agent** collaboration across vendors and frameworks. Where MCP connects an agent *down* to tools, A2A connects agents *across* to peers, treating a remote agent as an opaque collaborator rather than a callable function. Core concepts:
 
@@ -69,7 +86,9 @@ A client agent discovers a remote agent's card, sends a task, and receives strea
 // 3. remote agent streams: working → completed, returning an Artifact
 ```
 
-## How they compose
+---
+
+## Q4 — How do MCP and A2A compose in a real system?
 
 ```text
         ┌─────────────┐      A2A (agent ↔ agent)      ┌─────────────┐
@@ -93,7 +112,9 @@ An orchestrator uses **MCP** to reach its own tools and **A2A** to delegate a su
 | Transport | JSON-RPC over stdio / HTTP-SSE | JSON-RPC / HTTP + SSE |
 | Analogy | USB-C for tools | agents hiring agents |
 
-## Security: the protocols widen the attack surface
+---
+
+## Q5 — How do these protocols widen the attack surface?
 
 Both standards move untrusted content and capability across trust boundaries — exactly the risk the agents lesson flagged.
 
@@ -101,12 +122,16 @@ Both standards move untrusted content and capability across trust boundaries —
   An MCP server can return content containing **indirect prompt injection**; a malicious or compromised server is a confused-deputy waiting to happen. An A2A peer is an opaque agent you may not fully trust. Apply least privilege (expose only needed tools), authenticate servers and agent cards, validate every tool I/O, and gate irreversible actions behind human approval. A standardized protocol makes integration easy *and* makes a bad actor's integration easy.
 </Callout>
 
-## Common mistakes
+---
+
+## Q6 — What are the common mistakes?
 
 1. **Treating MCP and A2A as competitors.** They occupy different layers; most real systems use both.
 2. **Trusting tool/agent output blindly.** Protocol responses are untrusted input — sanitize and validate before feeding them back to the model.
 3. **Over-granting capability.** Connecting every MCP server "just in case" bloats the tool list (hurting selection) and widens the blast radius of a compromise.
 4. **Ignoring task lifecycle in A2A.** Long-running tasks emit `input-required` and intermediate states; a client that only handles `completed` will hang or drop work.
+
+---
 
 ## Related concepts
 

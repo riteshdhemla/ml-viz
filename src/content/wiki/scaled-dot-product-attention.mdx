@@ -11,7 +11,18 @@ estimatedMinutes: 12
 
 **Scaled dot-product attention** is the single operation that lets every token in a sequence directly look at every other token. This page derives the $1/\sqrt{d_k}$ scaling factor from first principles and works through a complete 3-token example by hand.
 
-## The formula
+**The questions:**
+
+1. What is the formula?
+2. What is the step-by-step procedure?
+3. Why divide by $\sqrt{d_k}$?
+4. Can we see the whole thing on a 3-token worked example?
+5. How do we verify it in pure Python?
+6. What does the PyTorch one-liner look like?
+
+---
+
+## Q1 — What is the formula?
 
 $$
 \text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V
@@ -19,14 +30,18 @@ $$
 
 where $Q \in \mathbb{R}^{n \times d_k}$ (queries), $K \in \mathbb{R}^{n \times d_k}$ (keys), $V \in \mathbb{R}^{n \times d_v}$ (values), and $n$ is sequence length.
 
-## Procedure
+---
+
+## Q2 — What is the step-by-step procedure?
 
 1. **Scores** — compute $QK^\top$. Entry $(i,j)$ is the dot product of query $i$ with key $j$: how relevant token $j$ is to token $i$.
 2. **Scale** — divide by $\sqrt{d_k}$ to prevent large magnitudes from saturating the softmax.
 3. **Softmax** — apply row-wise so each row sums to 1 (the attention weights).
 4. **Weighted sum** — multiply by $V$: each output is a blend of all values, weighted by relevance.
 
-## Why divide by $\sqrt{d_k}$?
+---
+
+## Q3 — Why divide by $\sqrt{d_k}$?
 
 Take query $\mathbf{q}$ and key $\mathbf{k}$ with components that are i.i.d. with mean 0 and variance 1. Their dot product is:
 
@@ -58,7 +73,9 @@ Empirical check: for $d_k \in \{2, 8, 64\}$, sampling 20,000 random unit-varianc
   Think of softmax as a thermostat. When all scores are moderate, the distribution is spread (the model can attend to many tokens). When one score dominates by 10×, softmax assigns ~1.0 to that entry — the model becomes a hard lookup. Large $d_k$ without scaling causes the latter by default, which is why the scale factor is not optional.
 </Callout>
 
-## Worked example: 3 tokens, $d_k = 2$
+---
+
+## Q4 — Can we see the whole thing on a 3-token worked example? ($d_k = 2$)
 
 Given projected vectors directly (each row = one token):
 
@@ -110,7 +127,9 @@ $$
 
 Token 1 attends mostly to key 1 (its strongest match), but the high value of token 3 still lifts its output. Token 3, matching all keys equally, returns the plain average of all values.
 
-## Pure Python verification
+---
+
+## Q5 — How do we verify it in pure Python?
 
 ```python
 import math
@@ -136,7 +155,9 @@ print("weights :", [[round(w,3) for w in r] for r in weights])
 print("output  :", [[round(o,3) for o in r] for r in out])
 ```
 
-## PyTorch one-liner
+---
+
+## Q6 — What does the PyTorch one-liner look like?
 
 ```python
 import torch, torch.nn.functional as F

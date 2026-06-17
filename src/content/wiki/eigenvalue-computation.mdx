@@ -11,7 +11,20 @@ estimatedMinutes: 10
 
 An eigenvector $\mathbf{v}$ of $\mathbf{A}$ satisfies $\mathbf{A}\mathbf{v} = \lambda\mathbf{v}$ — the matrix only scales it, never rotates it. Finding these special directions is a two-phase procedure: find the **eigenvalues** first from the characteristic polynomial, then find the **eigenvectors** by solving a linear system for each eigenvalue.
 
-## Phase 1: The characteristic equation
+**The questions:**
+
+1. How do you find the eigenvalues (the characteristic equation)?
+2. How do you find the eigenvectors once you have an eigenvalue?
+3. Can we work a full 2×2 example end-to-end?
+4. Why do both rows of $(\mathbf{A}-\lambda\mathbf{I})$ collapse to one constraint?
+5. What is the eigendecomposition, and why does it make powers easy?
+6. How does power iteration find just the dominant eigenvector?
+
+---
+
+## Q1 — How do you find the eigenvalues (the characteristic equation)?
+
+Phase 1 of the procedure: solve for $\lambda$ from a determinant condition.
 
 Rearrange $\mathbf{A}\mathbf{v} = \lambda\mathbf{v}$ as $(\mathbf{A} - \lambda\mathbf{I})\mathbf{v} = \mathbf{0}$. For this to have a non-zero solution $\mathbf{v}$, the matrix $(\mathbf{A} - \lambda\mathbf{I})$ must be **singular** (not invertible), which means its determinant is zero:
 
@@ -21,11 +34,17 @@ $$
 
 For a $2\times2$ matrix this gives a quadratic in $\lambda$ (the **characteristic polynomial**); for $n\times n$ it gives a degree-$n$ polynomial.
 
-## Phase 2: The null space for each eigenvalue
+---
+
+## Q2 — How do you find the eigenvectors once you have an eigenvalue?
+
+Phase 2 of the procedure: solve a homogeneous linear system for each $\lambda$.
 
 Once we have a specific eigenvalue $\lambda_k$, substitute it back into $(\mathbf{A} - \lambda_k\mathbf{I})\mathbf{v} = \mathbf{0}$ and solve. The solution is the **null space** (kernel) of $(\mathbf{A}-\lambda_k\mathbf{I})$ — a whole line of directions (any scalar multiple of the eigenvector is also an eigenvector).
 
-## Worked example: $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$
+---
+
+## Q3 — Can we work a full 2×2 example end-to-end? ($\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$)
 
 ### Step 1 — set up the characteristic equation
 
@@ -86,7 +105,9 @@ $$
 
 **Verify:** $\mathbf{A}\mathbf{v}_2 = \begin{bmatrix}4(1)+1(-2)\\2(1)+3(-2)\end{bmatrix} = \begin{bmatrix}2\\-4\end{bmatrix} = 2\begin{bmatrix}1\\-2\end{bmatrix}$ ✓
 
-### Why both rows collapse to one constraint
+---
+
+## Q4 — Why do both rows of $(\mathbf{A}-\lambda\mathbf{I})$ collapse to one constraint?
 
 When $\lambda$ is an eigenvalue, $(\mathbf{A}-\lambda\mathbf{I})$ is singular by construction ($\det = 0$). A singular $2\times2$ matrix has rank at most 1 — its two rows are proportional. That redundancy is exactly why infinitely many solutions exist (a whole line, i.e. the eigenvector direction).
 
@@ -108,7 +129,9 @@ for i in range(2):
     print(f"\nλ={lam:.0f}: Av={lhs.round(3)}, λv={rhs.round(3)}, match={np.allclose(lhs, rhs)}")
 ```
 
-## The eigendecomposition
+---
+
+## Q5 — What is the eigendecomposition, and why does it make powers easy?
 
 With eigenvectors as columns $\mathbf{V} = [\mathbf{v}_1 | \mathbf{v}_2]$ and eigenvalues on the diagonal:
 
@@ -143,7 +166,9 @@ print("A³ direct:\n", A_cubed_direct)
 print("A³ via eigen:\n", A_cubed_eigen.round(3))
 ```
 
-## Power iteration (finding the dominant eigenvector)
+---
+
+## Q6 — How does power iteration find just the dominant eigenvector?
 
 For large matrices where we only need the top eigenvector, power iteration is much cheaper than the full eigendecomposition:
 

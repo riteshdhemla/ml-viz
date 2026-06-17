@@ -12,7 +12,19 @@ estimatedMinutes: 10
 
 Every A/B test, every "is this model actually better?" question, and every reported "$p < 0.05$" rests on one piece of machinery: **null hypothesis significance testing**. The idea is to assume *nothing interesting is happening*, work out how surprising the observed data would be under that assumption, and reject the assumption only if the data are surprising enough. This page defines the three terms precisely and shows how they connect.
 
-## The null hypothesis $H_0$
+**The questions:**
+
+1. What is the null hypothesis $H_0$?
+2. What is the alternative hypothesis $H_1$?
+3. What is a test statistic, and what is its null distribution?
+4. What exactly is a p-value?
+5. Can we see it on a worked A/B test?
+6. What are the two ways to be wrong?
+7. What are the most common mistakes?
+
+---
+
+## Q1 — What is the null hypothesis $H_0$?
 
 The **null hypothesis** is the "boring" default — the claim that there is **no effect, no difference, no relationship**. It is the position you assume true *for the sake of argument*, and the only one you can directly test, because it pins down a specific sampling distribution.
 
@@ -25,7 +37,9 @@ The **null hypothesis** is the "boring" default — the claim that there is **no
 
 $H_0$ is always an **equality** (or a "no worse than" boundary). That precision is the point: it fixes the distribution of the test statistic, which is what lets you compute probabilities at all.
 
-## The alternative hypothesis $H_1$
+---
+
+## Q2 — What is the alternative hypothesis $H_1$?
 
 The **alternative hypothesis** (also $H_A$) is the claim you actually care about — that an effect *does* exist. It is the logical complement of $H_0$ over the parameter space, and it determines whether the test is one- or two-sided.
 
@@ -39,7 +53,9 @@ $$
   A significance test can only **reject** $H_0$ or **fail to reject** it. Failing to reject is *not* evidence that $H_0$ is true — it may just mean you lacked the data to detect the effect (low power). "Absence of evidence is not evidence of absence."
 </Callout>
 
-## The test statistic and its null distribution
+---
+
+## Q3 — What is a test statistic, and what is its null distribution?
 
 A **test statistic** $T$ collapses the whole dataset into one number measuring how far the data deviate from $H_0$, scaled by noise. For comparing two means, the two-sample $z$/$t$ statistic is:
 
@@ -50,7 +66,9 @@ $$
 
 Under $H_0$, $T$ follows a known distribution — its **null distribution** (standard normal for large samples, Student's $t$ for small ones). Large $|T|$ means the observed gap is many standard errors away from "no difference," which is unlikely if $H_0$ holds.
 
-## The p-value
+---
+
+## Q4 — What exactly is a p-value?
 
 The **p-value** is the probability, **assuming $H_0$ is true**, of observing a test statistic at least as extreme as the one you actually got:
 
@@ -67,7 +85,9 @@ Small $p$ ⇒ the data would be very surprising if nothing were going on ⇒ evi
   $p$ is **not** the probability that $H_0$ is true, and $1 - p$ is **not** the probability the effect is real — those are Bayesian posterior quantities requiring a prior. $p$ is computed entirely *inside the world where $H_0$ holds*. A p-value of 0.03 means "if there were truly no effect, data this extreme arise 3% of the time," nothing more.
 </Callout>
 
-## Worked example: an A/B test
+---
+
+## Q5 — Can we see it on a worked A/B test?
 
 Variant A: 200/2000 conversions (10.0%). Variant B: 240/2000 (12.0%). Is B genuinely better, or is a 2-point lift just noise?
 
@@ -95,7 +115,9 @@ print("reject H0 (B is better)" if p_value < 0.05 else "fail to reject H0")
 
 The 2-point lift sits right at the edge of significance — a vivid reminder that "significant" is a threshold artifact, not a hard truth, and that effect size and confidence intervals matter as much as the binary verdict.
 
-## Two ways to be wrong
+---
+
+## Q6 — What are the two ways to be wrong?
 
 | | $H_0$ true | $H_0$ false |
 |---|:---:|:---:|
@@ -109,7 +131,9 @@ The 2-point lift sits right at the edge of significance — a vivid reminder tha
   The 5% false-positive guarantee assumes you check the p-value **once**, at a pre-registered sample size. Re-checking every day and stopping on the first $p < 0.05$ is running many tests; the true Type I rate balloons to 20–30%. Fix it by fixing the sample size in advance, or by using sequential / always-valid p-values. (See the A/B-testing lesson.)
 </Callout>
 
-## Common mistakes
+---
+
+## Q7 — What are the most common mistakes?
 
 1. **Reading $p$ as "probability the null is true."** It is a probability *of the data given the null*, not of the null given the data.
 2. **Treating $p > \alpha$ as proof of no effect.** It only means you didn't gather enough evidence; the effect may be real but small, or your test underpowered.

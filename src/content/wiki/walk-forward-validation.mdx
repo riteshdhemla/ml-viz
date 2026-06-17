@@ -11,7 +11,17 @@ estimatedMinutes: 10
 
 Standard k-fold cross-validation randomly shuffles data across folds. For time series this is invalid: a training point at $t = 80$ could end up alongside a validation point at $t = 60$, so the model is trained on data it would never have seen at prediction time. **Walk-forward validation** preserves temporal order by always training on the past and validating on strict future windows.
 
-## Why k-fold leaks the future
+**The questions:**
+
+1. Why does k-fold cross-validation leak the future?
+2. What are the two walk-forward schemes?
+3. Can we trace a one-step expanding-window evaluation by hand?
+4. How do you choose the initial training size $n_0$?
+5. How do you implement walk-forward validation in Python?
+
+---
+
+## Q1 — Why does k-fold cross-validation leak the future?
 
 Consider a 10-observation series with k-fold k=5 (2 observations per fold):
 
@@ -22,7 +32,9 @@ Observation:               1 2 3 4 5 6 7 8 9 10
 
 When fold 1 is the validation set, the training set includes fold 3 (observations 3 and 10), fold 4 (1 and 7), fold 5 (5 and 9). The model trained on observations [3, 5, 7, 9, 10] is asked to predict observation [2] — it has seen the *future* of observation 2. Any temporal signal (trends, autocorrelation) gets leaked from future to past.
 
-## The two walk-forward schemes
+---
+
+## Q2 — What are the two walk-forward schemes?
 
 ### Expanding window
 
@@ -50,7 +62,11 @@ Round 3:  train [3..W+2]       → validate [W+3 .. W+h+2]
 
 **Best for:** when the process is non-stationary and very old data is irrelevant (e.g., financial series where market regimes change). Avoids the training set growing without bound.
 
-## Worked trace: h=1, expanding window
+---
+
+## Q3 — Can we trace a one-step expanding-window evaluation by hand?
+
+Worked trace: $h=1$, expanding window.
 
 Series (12 observations): $[10, 12, 14, 13, 15, 17, 16, 18, 20, 19, 21, 23]$
 
@@ -75,13 +91,17 @@ This is the walk-forward estimate of the model's one-step-ahead MAE. Compare to,
   When the forecast horizon $h = 1$, each validation window touches a different time point — the folds are non-overlapping and the errors are approximately independent. When $h > 1$, adjacent windows share observations (window 1 predicts $t=7$; window 2 predicts $t=7$ and $t=8$), introducing correlation between fold errors. Report the average anyway, but interpret the standard error of CV error cautiously.
 </Callout>
 
-## Choosing the initial training size $n_0$
+---
+
+## Q4 — How do you choose the initial training size $n_0$?
 
 - At minimum, $n_0$ must be large enough to fit the model (e.g., at least $p + q + d + 1$ observations for ARIMA, or several windows for LSTM).
 - Larger $n_0$ gives more stable first estimates but fewer validation rounds.
 - Common choice: $n_0 = 0.5T$ to $0.7T$, leaving 30–50% of the series for evaluation.
 
-## Python
+---
+
+## Q5 — How do you implement walk-forward validation in Python?
 
 ```python
 import numpy as np

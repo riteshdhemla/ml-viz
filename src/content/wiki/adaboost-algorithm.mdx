@@ -11,7 +11,16 @@ estimatedMinutes: 10
 
 AdaBoost trains a sequence of weak learners (typically depth-1 decision stumps) where each round re-weights the training set so the next stump focuses on the current errors. The final prediction is a weighted vote across all stumps.
 
-## The 6-step procedure
+**The questions:**
+
+1. What are the six steps of the algorithm?
+2. Where does the model weight α come from?
+3. What happens in one complete round, worked by hand?
+4. How is the whole thing coded from scratch?
+
+---
+
+## Q1 — What are the six steps of the algorithm?
 
 1. Initialize equal weights: $w_i = 1/n$ for all $n$ samples
 2. Train weak learner $h_b$ on the weighted dataset
@@ -30,7 +39,9 @@ $$
   AdaBoost requires $y_i \in \{-1, +1\}$, not $\{0, 1\}$. The sign in the update rule $\exp(-\alpha_b y_i h_b(\mathbf{x}_i))$ flips between shrinking (correct: $y_i h_b = +1$) and growing (wrong: $y_i h_b = -1$) the weight.
 </Callout>
 
-## Deriving the model weight α
+---
+
+## Q2 — Where does the model weight α come from?
 
 $\alpha_b$ is not arbitrary — it is the exact minimizer of the **exponential loss** after the current stump is fixed. The objective at round $b$ is:
 
@@ -64,7 +75,9 @@ $$
 | $= 0.5$ (random) | $= 0$ | Ignored entirely |
 | $> 0.5$ (worse than random) | $< 0$ | Inverted vote |
 
-## Worked example: one complete AdaBoost round
+---
+
+## Q3 — What happens in one complete round, worked by hand?
 
 **Setup:** 10 points, uniform weights $w_i = 0.1$. A stump misclassifies exactly **2** of them.
 
@@ -123,7 +136,11 @@ def adaboost_one_round(n=10, n_wrong=2):
 adaboost_one_round(n=10, n_wrong=2)
 ```
 
-## From-scratch AdaBoost (decision stumps)
+---
+
+## Q4 — How is the whole thing coded from scratch?
+
+From-scratch AdaBoost with decision stumps:
 
 ```python
 import numpy as np

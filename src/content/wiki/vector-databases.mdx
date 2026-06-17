@@ -12,7 +12,18 @@ estimatedMinutes: 11
 
 The [embeddings lesson](/courses/building-with-llms/03-embeddings-and-semantic-search) turns text into vectors and ranks them by cosine similarity. That works fine for a few thousand documents. At a few **million**, scoring the query against every vector — exact $k$-nearest-neighbour — is too slow for an interactive request. A **vector database** is a system built around an **Approximate Nearest Neighbour (ANN)** index that returns *most* of the true neighbours in a fraction of the time, plus the operational machinery (persistence, metadata filtering, updates, sharding) a production retriever needs.
 
-## The cost of exact search
+**The questions:**
+
+1. What does exact search cost, and why does it break down at scale?
+2. Which distance metrics do vector indexes use?
+3. What are the main ANN index families?
+4. Beyond the index, what does a vector DB add?
+5. How many candidates does IVF actually score (worked intuition)?
+6. What are the common mistakes?
+
+---
+
+## Q1 — What does exact search cost, and why does it break down at scale?
 
 Exact kNN scans all $N$ vectors of dimension $d$:
 
@@ -26,7 +37,9 @@ At $N = 10^7$ and $d = 768$ that is ~$8\times10^9$ multiply-adds **per query** �
   ANN returns *most* of the true neighbours, *most* of the time. Every index exposes a knob (cells probed, graph search width) that trades **recall** (fraction of true top-$k$ you actually find) against **latency**. There is no free lunch — you choose the operating point.
 </Callout>
 
-## Distance metrics
+---
+
+## Q2 — Which distance metrics do vector indexes use?
 
 The index is built for a specific metric; mixing them silently returns garbage.
 
@@ -38,7 +51,9 @@ The index is built for a specific metric; mixing them silently returns garbage.
 
 **Trick:** if you $L_2$-normalize every vector once at insert time, cosine ranking and dot-product ranking become identical, so the index can use the faster dot product.
 
-## The index families
+---
+
+## Q3 — What are the main ANN index families?
 
 **Flat (brute force).** No index — scan everything. *Exact* (100% recall), simple, but $O(N)$. The right choice below ~10⁴–10⁵ vectors, and the ground truth you measure other indexes against.
 
@@ -61,13 +76,17 @@ $$
 | HNSW | very high | very low | high | slow |
 | IVF-PQ | lower | very low | very low | k-means ×(m+1) |
 
-## Beyond the index: what a vector DB adds
+---
+
+## Q4 — Beyond the index, what does a vector DB add?
 
 - **Metadata filtering** — "nearest neighbours *where* `tenant = 42 AND year ≥ 2023`". Naive post-filtering can empty your top-$k$; production engines do *filtered ANN* that respects the predicate during the search.
 - **Hybrid search** — fuse ANN scores with a keyword (BM25) score so exact IDs and rare tokens still match (the embeddings lesson's hybrid search).
 - **CRUD + persistence + sharding** — add/delete/update vectors, snapshot to disk, and scale across machines. HNSW in particular makes deletes awkward, which is a real operational concern.
 
-## Worked intuition: IVF candidate count
+---
+
+## Q5 — How many candidates does IVF actually score (worked intuition)?
 
 $N = 1{,}000{,}000$ vectors, $n_{\text{list}} = 1000$ cells (so ~1000 vectors each). With `nprobe = 10`:
 
@@ -77,13 +96,17 @@ $$
 
 You score 10k vectors instead of 1M — a **100× speedup** — at the cost of missing any true neighbour whose vector landed in one of the 990 un-probed cells. Raising `nprobe` to 50 scores 50k vectors and recovers most of that lost recall.
 
-## Common mistakes
+---
+
+## Q6 — What are the common mistakes?
 
 1. **Treating ANN as exact.** Always measure recall@k against a flat-index ground truth on a sample before trusting it.
 2. **Index/metric mismatch.** Building for $L_2$ then querying with cosine (or comparing vectors from two different embedding models) returns nonsense.
 3. **Forgetting to normalize** when your similarity assumes unit vectors.
 4. **Post-filtering instead of filtered search.** Retrieving top-$k$ and *then* applying a strict metadata filter can return far fewer than $k$ results; push the filter into the search.
 5. **Re-tuning nothing.** `nprobe`/`efSearch` ship at conservative defaults; the right value depends on your recall target and corpus.
+
+---
 
 ## Related concepts
 

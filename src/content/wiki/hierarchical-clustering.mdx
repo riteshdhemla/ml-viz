@@ -11,7 +11,16 @@ estimatedMinutes: 10
 
 Agglomerative hierarchical clustering starts with every point in its own cluster and repeatedly merges the two "closest" clusters. The **linkage rule** defines what "closest" means for two clusters, and that choice changes which clusters form and when.
 
-## The four standard linkage methods
+**The questions:**
+
+1. What are the four standard linkage methods?
+2. How do the linkages compare on a 4-point worked example?
+3. When do linkages actually give different cluster structures?
+4. How is Ward linkage derived from variance?
+
+---
+
+## Q1 — What are the four standard linkage methods?
 
 | Method | Distance between clusters $A$ and $B$ | Shape tendency |
 |--------|---------------------------------------|----------------|
@@ -24,7 +33,11 @@ Agglomerative hierarchical clustering starts with every point in its own cluster
   Ward linkage minimizes within-cluster variance at every merge, so it produces the most compact and evenly-sized clusters. It is the best default for spherical, roughly equal-sized blobs. Single linkage is the only method that can detect elongated "chain" shapes, but it suffers from chaining: one bridge point between two distant blobs can pull them together early. Complete linkage is robust to this but can split large, elongated natural clusters.
 </Callout>
 
-## Worked example: 4 points, 3 linkages
+---
+
+## Q2 — How do the linkages compare on a 4-point worked example?
+
+Here we trace 4 points across 3 linkages.
 
 **Points:** A(1,1), B(2,2), C(8,8), D(9,9).
 
@@ -89,7 +102,9 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Where linkages give different structures
+---
+
+## Q3 — When do linkages actually give different cluster structures?
 
 The 4-point example is too clean — the blobs are far apart. Linkages produce different **cluster assignments** when:
 
@@ -118,7 +133,9 @@ plt.tight_layout()
 plt.show()
 ```
 
-## Ward linkage: the variance derivation
+---
+
+## Q4 — How is Ward linkage derived from variance?
 
 Ward linkage uses a different formula: instead of computing the distance between two clusters directly, it asks "how much does the within-cluster variance increase if we merge these two clusters?"
 

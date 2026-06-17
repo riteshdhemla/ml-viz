@@ -12,7 +12,17 @@ estimatedMinutes: 9
 
 A partial derivative answers a narrow question: how fast does $f$ change if I nudge **one** coordinate, holding the rest fixed? The **directional derivative** answers the general one: how fast does $f$ change if I step in an *arbitrary* direction $\mathbf{u}$? Partial derivatives are just the special case where $\mathbf{u}$ is a coordinate axis. This single quantity is what makes "the gradient points in the direction of steepest ascent" a theorem rather than a slogan.
 
-## Limit definition
+**The questions:**
+
+1. What is the limit definition of the directional derivative?
+2. How does it reduce to the dot product with the gradient?
+3. Why does the gradient point in the direction of steepest ascent?
+4. Can we work a concrete numerical example?
+5. What are the common pitfalls?
+
+---
+
+## Q1 — What is the limit definition of the directional derivative?
 
 Fix a point $\mathbf{x} \in \mathbb{R}^n$ and a **unit** direction $\hat{\mathbf{u}}$ ($\|\hat{\mathbf{u}}\| = 1$). Slide along the ray $\mathbf{x} + h\,\hat{\mathbf{u}}$ and measure the per-unit-distance change:
 
@@ -26,7 +36,9 @@ Setting $\hat{\mathbf{u}} = \mathbf{e}_i$ (the $i$-th standard basis vector) rec
   $D_{\hat{\mathbf{u}}} f$ is a *rate per unit distance*. If $\mathbf{u}$ is not normalized, the limit scales by $\|\mathbf{u}\|$ and you get a rate per unit of $h$ instead — an apples-to-oranges quantity. Always divide by $\|\mathbf{u}\|$ first: $\hat{\mathbf{u}} = \mathbf{u}/\|\mathbf{u}\|$.
 </Callout>
 
-## Deriving the dot-product formula
+---
+
+## Q2 — How does it reduce to the dot product with the gradient?
 
 Define the single-variable restriction $g(h) = f(\mathbf{x} + h\,\hat{\mathbf{u}})$. By the limit definition, $D_{\hat{\mathbf{u}}} f(\mathbf{x}) = g'(0)$. Now differentiate $g$ with the **multivariable chain rule**. Writing the path as $\boldsymbol{\gamma}(h) = \mathbf{x} + h\,\hat{\mathbf{u}}$, we have $\boldsymbol{\gamma}'(h) = \hat{\mathbf{u}}$, so:
 
@@ -44,7 +56,9 @@ $$
 
 The directional derivative in **any** direction is just the projection of the gradient onto that direction. The gradient packages every directional derivative at once — compute it once, dot it with any $\hat{\mathbf{u}}$ you like.
 
-## Why the gradient is steepest ascent
+---
+
+## Q3 — Why does the gradient point in the direction of steepest ascent?
 
 Expand the dot product geometrically. With $\theta$ the angle between $\nabla f$ and $\hat{\mathbf{u}}$, and $\|\hat{\mathbf{u}}\| = 1$:
 
@@ -70,7 +84,9 @@ The maximum is attained when $\theta = 0$, i.e. $\hat{\mathbf{u}} = \nabla f / \
   The third row explains why $\nabla f$ is always perpendicular to the contour through $\mathbf{x}$: moving along a contour leaves $f$ unchanged, so the directional derivative there is $0$, which forces $\cos\theta = 0$.
 </Callout>
 
-## Worked example
+---
+
+## Q4 — Can we work a concrete numerical example?
 
 Let $f(x, y) = x^2 + 3xy$ at the point $\mathbf{x} = (1, 2)$.
 
@@ -125,7 +141,9 @@ fd = (f(*(np.array(p) + h*u)) - f(*p)) / h
 print(f"finite-diff     = {fd:.3f}")          # ≈ 7.200
 ```
 
-## Common pitfalls
+---
+
+## Q5 — What are the common pitfalls?
 
 1. **Forgetting to normalize $\mathbf{v}$.** Using a non-unit vector inflates the result by $\|\mathbf{v}\|$. In the example, skipping normalization gives $8(3)+3(4)=36$ instead of $7.2$.
 2. **Assuming partials existing implies the directional derivative exists in every direction.** For non-differentiable functions (e.g. $f(x,y) = \tfrac{xy}{x^2+y^2}$ at the origin) the chain-rule shortcut $\nabla f \cdot \hat{\mathbf{u}}$ can fail; you must fall back to the limit definition. The dot-product formula is guaranteed only where $f$ is differentiable.

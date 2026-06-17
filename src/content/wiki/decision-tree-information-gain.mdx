@@ -11,7 +11,19 @@ estimatedMinutes: 12
 
 At every node a decision tree searches for the feature and threshold that most reduces impurity. This page covers the two impurity measures, the information-gain formula, and a complete hand trace of a split search on a 10-point loan-approval dataset.
 
-## Running example
+**The questions:**
+
+1. What dataset are we splitting?
+2. How do we measure impurity with Gini?
+3. How do we measure impurity with entropy?
+4. What is the information-gain formula?
+5. What does one worked split (Age ≤ 31.5) look like end to end?
+6. How does the tree scan every candidate threshold?
+7. How do we implement the split search in code?
+
+---
+
+## Q1 — What dataset are we splitting?
 
 10 applicants, feature = **age**, label = 1 (approved) / 0 (denied):
 
@@ -21,9 +33,9 @@ At every node a decision tree searches for the feature and threshold that most r
 
 Root node: 5 approvals, 5 denials.
 
-## Impurity measures
+---
 
-### Gini impurity
+## Q2 — How do we measure impurity with Gini?
 
 $$
 \text{Gini}(S) = 1 - \sum_{k=1}^{K} p_k^2
@@ -38,7 +50,9 @@ $$
 \text{Gini}(\text{root}) = 1 - (0.5^2 + 0.5^2) = 0.5
 $$
 
-### Entropy
+---
+
+## Q3 — How do we measure impurity with entropy?
 
 $$
 \text{Entropy}(S) = -\sum_{k=1}^{K} p_k\log_2 p_k
@@ -57,7 +71,9 @@ $$
   Both measures are near-equivalent in practice. Gini avoids the logarithm (slightly faster); scikit-learn defaults to it. ID3/C4.5 use Entropy. When both are applied to the same split they give the same winner.
 </Callout>
 
-## Information gain formula
+---
+
+## Q4 — What is the information-gain formula?
 
 $$
 \text{IG} = I(\text{parent}) - \left(\frac{n_L}{n}\,I(\text{left}) + \frac{n_R}{n}\,I(\text{right})\right)
@@ -65,7 +81,9 @@ $$
 
 The second term is the **weighted child impurity** — a large impure child hurts more than a small one.
 
-## Worked split: Age ≤ 31.5
+---
+
+## Q5 — What does one worked split (Age ≤ 31.5) look like end to end?
 
 This threshold puts ages 22, 25, 28, 30 left and ages 33, 36, 40, 45, 50, 60 right.
 
@@ -108,7 +126,9 @@ $$
 
 Both measures agree this is a large improvement.
 
-## Full threshold scan
+---
+
+## Q6 — How does the tree scan every candidate threshold?
 
 The tree checks every midpoint between consecutive sorted ages. The best split is the one with the **highest gain** (equivalently the lowest weighted child impurity). In the table below, P = approvals (positive class) and N = denials (negative class) that fall on each side of the threshold. For example, "Age ≤ 23.5" puts only the age-22 applicant (a denial) on the left, so Left (P/N) = 0/1:
 
@@ -128,7 +148,9 @@ The tree checks every midpoint between consecutive sorted ages. The best split i
 
 The gain is largest here because the left child is perfectly pure — all denials — while the right child is nearly pure (5 approvals, 1 denial). The gain decreases when the threshold moves away from 31.5 because either the pure side starts picking up mixed labels (going lower) or the mix on the right worsens (going higher).
 
-## Implementation
+---
+
+## Q7 — How do we implement the split search in code?
 
 ```python
 import numpy as np

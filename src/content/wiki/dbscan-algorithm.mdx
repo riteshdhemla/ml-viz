@@ -11,12 +11,24 @@ estimatedMinutes: 8
 
 DBSCAN (Density-Based Spatial Clustering of Applications with Noise) finds clusters as dense connected regions without requiring $K$ in advance. Its key insight: a "cluster" is a maximal set of **core points** and their reachable neighbors, where a core point has at least `min_samples` points within radius $\varepsilon$.
 
-## Two parameters
+**The questions:**
+
+1. What are the two parameters?
+2. How is each point classified as core, border, or noise?
+3. What are the steps of the clustering algorithm?
+4. What does a 9-point worked example produce?
+5. How do you choose ε with the k-distance elbow plot?
+
+---
+
+## Q1 — What are the two parameters?
 
 - **$\varepsilon$ (eps):** radius of the neighborhood around each point
 - **min\_samples:** minimum number of points (including the point itself) to form a dense region
 
-## Point-type definitions
+---
+
+## Q2 — How is each point classified as core, border, or noise?
 
 For a point $p$, let $N_\varepsilon(p) = \{q : d(p,q) \le \varepsilon\}$ be its $\varepsilon$-neighborhood, which includes $p$ itself.
 
@@ -30,7 +42,9 @@ For a point $p$, let $N_\varepsilon(p) = \{q : d(p,q) \le \varepsilon\}$ be its 
   A point is **core** when $\lvert N_\varepsilon(p)\rvert \ge \text{min\_samples}$ *including itself*. With `min_samples=3`, a core point needs **2 other neighbors** within $\varepsilon$, not 3. This off-by-one is the most common DBSCAN mistake.
 </Callout>
 
-## The clustering algorithm
+---
+
+## Q3 — What are the steps of the clustering algorithm?
 
 1. For each unvisited point $p$: mark it visited; compute $N_\varepsilon(p)$.
 2. If $\lvert N_\varepsilon(p)\rvert < \text{min\_samples}$: tentatively label $p$ as noise.
@@ -39,7 +53,11 @@ For a point $p$, let $N_\varepsilon(p) = \{q : d(p,q) \le \varepsilon\}$ be its 
 5. Continue expanding until no more points can be added; then restart from step 1.
 6. Any point initially labeled noise that was added to a cluster during expansion becomes a **border** point.
 
-## Worked example: 9 points, $\varepsilon = 2$, min\_samples = 3
+---
+
+## Q4 — What does a 9-point worked example produce?
+
+Here $\varepsilon = 2$ and min\_samples = 3.
 
 Points in two tight blobs plus one isolated point:
 
@@ -80,7 +98,9 @@ print(f"Labels: {labels}")  # [0 0 0 0 1 1 1 1 -1]
 print(f"Core point mask: {DBSCAN(eps=2, min_samples=3).fit(X).core_sample_indices_}")
 ```
 
-## Parameter selection: the k-distance elbow plot
+---
+
+## Q5 — How do you choose ε with the k-distance elbow plot?
 
 Sort points by their distance to the $k$-th nearest neighbor (where $k$ = min\_samples − 1). The **elbow** — the point where distance starts increasing sharply — is a good estimate for $\varepsilon$:
 

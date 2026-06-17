@@ -11,7 +11,17 @@ estimatedMinutes: 14
 
 The **Expectation-Maximization (EM) algorithm** handles models with latent variables by iterating two steps: (1) compute soft responsibilities for the hidden variables given current parameters, and (2) re-estimate parameters as if those responsibilities were the true counts.
 
-## Procedure
+**The questions:**
+
+1. What is the EM procedure, step by step?
+2. Why does EM work — what is the ELBO and why does the likelihood never decrease?
+3. What does one EM iteration look like worked out by hand?
+4. How do the responsibilities shift after the update?
+5. How is EM implemented in code?
+
+---
+
+## Q1 — What is the EM procedure, step by step?
 
 For a Gaussian Mixture Model with $K$ components, parameters $\theta = \{\pi_k, \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\}$, and observed data $\{\mathbf{x}_i\}_{i=1}^n$:
 
@@ -51,7 +61,9 @@ $$
 
 and stop when $|\ell^{(t+1)} - \ell^{(t)}| < \varepsilon$ (e.g. $10^{-6}$). Otherwise return to Step 1.
 
-## Why it works: the ELBO
+---
+
+## Q2 — Why does EM work — what is the ELBO and why does the likelihood never decrease?
 
 The two steps look like heuristics, but they are coordinate ascent on a single objective. Introduce *any* distribution $q(z)$ over the latent variable and apply **Jensen's inequality** ($\log$ is concave):
 
@@ -83,7 +95,9 @@ The first $\ge$ is Jensen; the second is the M-step's maximization; the $=$ is t
   Every E-step makes the ELBO bound tight (zero gap). Every M-step pushes the bound up. Since the bound lower-bounds the true likelihood, the likelihood can only go up. This is why you never need to worry about EM diverging — the monotone guarantee is built into the algebra.
 </Callout>
 
-## Worked example: one EM iteration by hand
+---
+
+## Q3 — What does one EM iteration look like worked out by hand?
 
 Data $X = \{1, 2, 4, 5\}$, $K = 2$. Initialize $\mu = (2, 4)$, $\sigma = (1.5, 1.5)$, $\pi = (0.5, 0.5)$.
 
@@ -142,7 +156,9 @@ $$
 
 The log-likelihood after one step rose from $-7.514$ to $-7.390$ — exactly the monotonic increase the ELBO argument promises. The means pulled slightly toward the data and the Gaussians tightened.
 
-### How responsibilities shift after the update
+---
+
+## Q4 — How do the responsibilities shift after the update?
 
 Re-running the E-step with the updated parameters $(\mu_1^{(1)} = 2.08, \mu_2^{(1)} = 3.92, \sigma^{(1)} = 1.286)$:
 
@@ -155,7 +171,9 @@ Re-running the E-step with the updated parameters $(\mu_1^{(1)} = 2.08, \mu_2^{(
 
 Points 1 and 2 now assign more firmly to cluster 1 (the mean moved toward them) while points 4 and 5 shift more firmly to cluster 2 — and the reduced $\sigma$ tightened the Gaussians, amplifying the separation.
 
-## Implementation
+---
+
+## Q5 — How is EM implemented in code?
 
 ```python
 import numpy as np
