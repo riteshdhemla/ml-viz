@@ -49,7 +49,7 @@ with $I$ the $B \times B$ identity. The first term is "given image $i$, classify
 
 At initialisation the diagonal is no more likely than any other cell, so the loss starts near $\log B$ for batch size $B$. Larger batch sizes give a harder (more informative) classification task, so CLIP-style models scale strongly with batch size; the original paper used batches of 32,768 pairs.
 
-The learnable temperature $\tau$ — initialised at $e^{-2} \approx 0.135$ — controls how peaked the softmax is. The model has every incentive to drive $\tau$ down once it starts winning, so it is clipped in practice to avoid numerical blow-up.
+The learnable temperature $\tau$ — initialised at $\tau = 0.07$ in the original CLIP (stored as a log logit-scale $\log(1/\tau)$) — controls how peaked the softmax is. The model has every incentive to drive $\tau$ down once it starts winning, so it is clipped in practice to avoid numerical blow-up.
 
 <Callout type="info">
 **InfoNCE in two modalities.** The CLIP loss is just symmetric InfoNCE — the same contrastive objective from sentence-embedding training in [Training Embedding Models](/courses/nlp/07-training-embedding-models). The novelty isn't the loss, it's the *negative pool*: instead of two sentences, the positives and negatives are an image and a caption. Same math, two encoders.

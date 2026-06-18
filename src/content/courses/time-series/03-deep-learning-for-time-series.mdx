@@ -119,13 +119,13 @@ TCNs replace recurrence with **dilated causal convolutions** — a design that i
 
 **Causal convolution:** at time $t$, the output depends only on $y_t, y_{t-1}, \ldots$ — never on the future. This is enforced by left-padding the input.
 
-**Dilation:** a convolution with kernel size $k$ and dilation $d$ skips $d - 1$ positions between kernel elements. At layer $l$ with dilation $2^l$, the effective **receptive field** is:
+**Dilation:** a convolution with kernel size $k$ and dilation $d$ skips $d - 1$ positions between kernel elements. At layer $l$ with dilation $2^l$, a single kernel spans $(k-1)\cdot 2^l + 1$ positions. Stacking layers $l = 0, 1, \ldots, L$ with doubling dilation gives a total **receptive field**:
 
 $$
-\text{RF}(l) = k \cdot 2^l
+\text{RF} = 1 + (k-1)\,(2^{L+1} - 1)
 $$
 
-Stacking $L$ layers with doubling dilation gives a total receptive field of $k \cdot (2^{L+1} - 1)$. With $k = 3$ and $L = 8$ (9 layers), the receptive field reaches $3 \times (2^9 - 1) = 1533$ time steps — far more than a practical LSTM can handle stably.
+With $k = 3$ and $L = 8$ (9 layers), the receptive field reaches $1 + 2 \times (2^9 - 1) = 1023$ time steps — far more than a practical LSTM can handle stably. (With two stacked conv layers per residual block, as in the original Bai et al. TCN, this roughly doubles again.)
 
 **Key advantages over LSTM:**
 - Fully parallelizable: compute all timesteps simultaneously during training

@@ -8,7 +8,7 @@ estimatedMinutes: 24
 
 # PEFT: LoRA & QLoRA
 
-Full fine-tuning updates **every** weight of a 7B-parameter model — that's 14 GB of trainable parameters at FP16, plus another 28 GB of Adam optimizer state. The whole exercise often won't even fit on the GPU you have. **Parameter-Efficient Fine-Tuning (PEFT)** says: most of the model is already great, so freeze it. Only train a tiny new piece on top.
+Full fine-tuning updates **every** weight of a 7B-parameter model — that's 14 GB just for the weights at FP16, plus another 14 GB of gradients and ~28 GB of Adam optimizer state (the two moments), pushing the total past 60 GB. The whole exercise often won't even fit on the GPU you have. **Parameter-Efficient Fine-Tuning (PEFT)** says: most of the model is already great, so freeze it. Only train a tiny new piece on top.
 
 **Real-world examples:** every "fine-tune Llama on my support tickets" tutorial; Stable Diffusion LoRAs that teach a style or a face; a 65B model adapted on a single 48 GB GPU with QLoRA; Hugging Face's `peft` library powering most open-weight community adapters.
 
@@ -37,6 +37,8 @@ The frozen base $W_0$ stays untouched; the forward pass becomes
 $$
 h = W_0 x + \frac{\alpha}{r}\, B A\, x.
 $$
+
+At initialization $A$ is a random Gaussian and $B = 0$, so $BA = 0$: the adapter starts as an exact no-op and the model behaves identically to the pretrained base, only departing from it as training pulls $B$ away from zero. This is what makes LoRA safe to attach without degrading the base model on step one.
 
 At inference you can either keep $B$ and $A$ separate (zero added latency for an attached adapter) or **merge** them into $W_0 + BA$ for a vanilla single matrix multiply.
 

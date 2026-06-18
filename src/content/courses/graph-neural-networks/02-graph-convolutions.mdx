@@ -17,11 +17,11 @@ The previous lesson framed every GNN as **message passing**. This lesson makes i
 Recall the simple mean-aggregation update. If we aggregate over neighbors **including a self-loop**, one layer for all nodes at once is just:
 
 $$
-\mathbf{H}^{(k)} = \sigma\big(\mathbf{D}^{-1}\mathbf{A}\,\mathbf{H}^{(k-1)}\,\mathbf{W}^{(k)}\big)
+\mathbf{H}^{(k)} = \sigma\big(\tilde{\mathbf{D}}^{-1}\tilde{\mathbf{A}}\,\mathbf{H}^{(k-1)}\,\mathbf{W}^{(k)}\big)
 $$
 
-- $\mathbf{A}$ — adjacency **with self-loops** ($\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$), so a node keeps its own features.
-- $\mathbf{D}^{-1}\mathbf{A}$ — row-normalize so each node averages (rather than sums) its neighborhood, keeping magnitudes stable.
+- $\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$ — adjacency **with self-loops**, so a node keeps its own features; $\tilde{\mathbf{D}}$ is its degree matrix.
+- $\tilde{\mathbf{D}}^{-1}\tilde{\mathbf{A}}$ — row-normalize so each node averages (rather than sums) its neighborhood, keeping magnitudes stable.
 - $\mathbf{W}^{(k)}$ — a **shared, learnable** weight matrix (same for every node — this is the "convolution": one filter slides over all neighborhoods).
 - $\sigma$ — a nonlinearity (ReLU).
 
