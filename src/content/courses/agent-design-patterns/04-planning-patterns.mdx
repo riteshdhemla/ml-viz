@@ -1,0 +1,168 @@
+---
+title: "Planning Patterns"
+description: "Single-path Plan Generator commits to one ordered action sequence; Multi-path generates alternatives and selects the best — the right choice depends on how costly a wrong plan would be."
+order: 4
+type: concept
+estimatedMinutes: 18
+---
+
+# Planning Patterns
+
+A goal tells the agent *what* to achieve. A plan tells it *how* — in what order, using which tools, producing what intermediate results. Planning is the bridge between goal representation and action execution, and getting it wrong is expensive: an agent that commits to a bad plan and executes it to completion may have already sent emails, modified files, or consumed API quota before anyone notices.
+
+This lesson covers two planning patterns: the **Single-path Plan Generator**, which commits to one action sequence, and the **Multi-path Plan Generator**, which explores alternatives before committing.
+
+## What is an agent plan?
+
+A plan is an ordered sequence of **(action, expected_outcome)** pairs:
+
+```
+Plan for "send Q3 report to the team":
+  Step 1: retrieve_file("reports/q3-summary.pdf")  → expect: file bytes
+  Step 2: lookup_contact_list("team")              → expect: list of email addresses
+  Step 3: compose_email(file, recipients, subject) → expect: draft email object
+  Step 4: send_email(draft)                        → expect: delivery confirmation
+```
+
+Plans can be **flat** (a linear sequence as above) or **hierarchical** (a tree of subgoal decompositions, where each node is itself a sub-plan). The planner takes a structured goal — produced by the Goal Creation Patterns from Lesson 02 — and produces the executable action sequence.
+
+Two properties matter most:
+
+- **Completeness** — does the plan cover all steps needed to reach the goal?
+- **Executability** — can each action actually be performed with the tools available?
+
+## Pattern 5: Single-path Plan Generator
+
+**Context:** The agent has a clear goal, a known set of available tools, and needs to act quickly. The task is well-defined and errors are detectable early.
+
+**Problem:** How do you generate a complete, executable action plan with a single FM call while keeping latency and cost low?
+
+**Solution:** The Single-path Plan Generator makes one FM call with the goal and available tools as input, and receives back a complete ordered action list:
+
+```
+Goal + available tools
+        │
+        ▼
+Foundation Model (one call)
+        │
+        ▼
+Ordered action list: [step_1, step_2, ..., step_n]
+        │
+        ▼
+Validator (checks each step is in available_tools)
+        │
+        ▼
+Executor
+```
+
+The FM generates the entire plan in one shot. The validator checks that every action name exists in the tool registry — a cheap filter that catches hallucinated tool names before execution begins.
+
+**Example plan generated for "Send the Q3 report to the team":**
+```json
+[
+  { "action": "retrieve_file",   "params": { "path": "reports/q3-summary.pdf" } },
+  { "action": "lookup_contacts", "params": { "group": "team" } },
+  { "action": "compose_email",   "params": { "subject": "Q3 Report" } },
+  { "action": "send_email",      "params": {} }
+]
+```
+
+**Forces:**
+- *Fast and low-cost* — one FM call regardless of plan length. Latency is dominated by the single call, not by plan size.
+- *Deterministic structure* — the plan is fixed before execution starts, making it easy to log, audit, and explain.
+- *"First-plan commitment" risk* — if the generated plan is flawed (wrong tool, missing step, incorrect order), the agent executes the flawed plan. There is no correction mechanism at the planning stage.
+- *Brittle for novel situations* — the FM generates a plan based on the goal description and tool names. Unusual combinations of constraints may produce plans that are syntactically valid but semantically wrong.
+
+**Best for:** well-defined tasks with clear success criteria, reversible or low-stakes actions, time-critical applications where latency matters more than plan quality.
+
+## Pattern 6: Multi-path Plan Generator
+
+**Context:** The task is complex, involves irreversible actions, or has multiple valid approaches with significantly different risk profiles. A wrong plan is expensive to recover from.
+
+**Problem:** How do you reduce the risk of committing to a bad plan without switching to full interactive human-in-the-loop planning?
+
+**Solution:** The Multi-path Plan Generator generates $N$ independent candidate plans and evaluates them before selecting one:
+
+```
+Goal + available tools
+        │
+        ├──────────────────────────────────────┐
+        │                                      │
+        ▼                                      ▼
+  FM call #1                          FM call #N  (different seeds / prompts)
+  Plan candidate 1                    Plan candidate N
+        │                                      │
+        └──────────────┬───────────────────────┘
+                       │
+                       ▼
+               Plan Evaluator
+          (feasibility + efficiency + safety)
+                       │
+                       ▼
+              Best-scoring plan
+                       │
+                       ▼
+                   Executor
+```
+
+The evaluator scores each candidate plan on multiple criteria. The plan with the highest aggregate score is selected for execution.
+
+**Evaluation criteria:**
+
+| Criterion | Question | How to measure |
+|-----------|---------|----------------|
+| **Feasibility** | Can all steps be executed with available tools? | Check each action against tool registry |
+| **Efficiency** | Does the plan reach the goal with minimal steps? | Count total steps (fewer = better) |
+| **Safety** | Does the plan avoid irreversible or harmful actions? | Flag steps like `delete`, `drop_table`, `send_email` to external parties |
+| **Compliance** | Does the plan respect policy constraints? | Check steps against an allowlist/denylist |
+
+**Forces:**
+- *Better plan quality* — selecting from $N$ candidates finds plans that the first-generated option missed.
+- *Diverse coverage* — independent FM calls explore different plan structures (different ordering, different tool sequences).
+- *$N\times$ cost and latency* — generating 3 plans costs 3× the FM calls. For $N = 3$–$5$, this is acceptable; for larger $N$ the cost scales linearly.
+- *Evaluator is itself fallible* — the scoring function encodes assumptions. A flawed scoring function can consistently prefer bad plans.
+
+**Best for:** high-stakes tasks with irreversible actions; complex multi-step workflows; tasks where multiple valid approaches exist with meaningfully different risk profiles.
+
+## Plan scoring
+
+The aggregate score of a candidate plan $P$ is a weighted sum:
+
+$$\text{score}(P) = w_1 \cdot \text{feasibility}(P) + w_2 \cdot \text{efficiency}(P) + w_3 \cdot \text{safety}(P)$$
+
+The weights $w_i$ are domain-specific. In a financial transaction agent, $w_3$ (safety) dominates. In a research assistant generating document drafts, $w_2$ (efficiency) matters more. The weights encode organisational priorities and should be set by the deploying team, not hardcoded in the library.
+
+A simple binary feasibility score: $\text{feasibility}(P) = 1$ if all steps are in the tool registry, $0$ otherwise. An infeasible plan should never be selected regardless of other scores — enforce this as a hard filter before weighted scoring.
+
+## Connection to prompting techniques
+
+The two planning patterns map onto well-known FM prompting techniques:
+
+| Planning Pattern | Equivalent prompting technique | Mechanism |
+|-----------------|-------------------------------|-----------|
+| Single-path | **Chain-of-Thought (CoT)** | One reasoning chain from goal to action list |
+| Multi-path | **Tree-of-Thought (ToT)** | Multiple reasoning branches evaluated and pruned |
+| Incremental (next lesson) | **ReAct** | Interleaves plan steps with execution feedback; plans one step at a time |
+
+The connection is not cosmetic — the patterns share the same structural insight. CoT/Single-path commits early; ToT/Multi-path explores before committing; ReAct/Incremental delays commitment until the last moment by observing outcomes.
+
+<Callout type="warning" title="Avoid committing to irreversible plans without a checkpoint">
+  Even Multi-path planning can produce a flawed plan if all $N$ generations share the same blind spot — the same training distribution produces similar errors. For any plan that includes irreversible actions (sending external communications, modifying production databases, making financial transactions), insert a **Human Reflection** checkpoint before execution begins. The Human Reflection pattern (covered in Lesson 06) is the safety net that planning patterns alone cannot provide.
+</Callout>
+
+## Key takeaways
+
+- A plan is an ordered sequence of (action, expected_outcome) pairs. Plans can be flat or hierarchical; they must be complete and executable.
+- The **Single-path Plan Generator** produces one plan in a single FM call: fast and low-cost, but risks first-plan commitment — flaws execute without correction.
+- The **Multi-path Plan Generator** generates $N$ independent plans and scores them on feasibility, efficiency, and safety: better quality at $N\times$ FM cost.
+- The scoring function is $\text{score}(P) = \sum w_i \cdot \text{criterion}_i(P)$; weights are domain-specific. Apply feasibility as a hard filter first.
+- Single-path maps to Chain-of-Thought; Multi-path maps to Tree-of-Thought; incremental planning maps to ReAct.
+- For irreversible actions, insert a Human Reflection checkpoint after planning, before execution — planning patterns alone are insufficient safety guarantees.
+
+## Related concepts
+
+- [**Context & Knowledge Patterns**](/courses/agent-design-patterns/03-context-and-knowledge-patterns) — the Optimiser and RAG that supply the planner with relevant context
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the ReAct loop that planning patterns build on
+
+<Exercise id="agent-single-vs-multi-path" />
+<Exercise id="agent-plan-evaluation" />

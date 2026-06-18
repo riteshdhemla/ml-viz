@@ -1,0 +1,188 @@
+---
+title: "Context & Knowledge Patterns"
+description: "The Prompt/Response Optimiser refines how the agent talks to the model; RAG augments what the model knows at query time."
+order: 3
+type: concept
+estimatedMinutes: 18
+---
+
+# Context & Knowledge Patterns
+
+A foundation model has two fundamental limitations that directly affect agent reliability: its **context window is finite**, and its **training data has a cutoff**. Domain-specific facts, recent events, and private organisational knowledge are simply not in the model's weights.
+
+Two patterns address this. The **Prompt/Response Optimiser** improves *how* the agent communicates with the model — structuring inputs to maximise quality and parsing outputs reliably. **Retrieval Augmented Generation (RAG)** improves *what* the model is given — injecting relevant external knowledge at query time.
+
+## The context problem
+
+Consider what happens when an agent asks an FM a question like "What is our Q3 revenue?":
+
+- The FM has never seen your company's financials.
+- Even if it has, Q3 data may postdate its training cutoff.
+- The context window that holds the conversation history is finite — everything cannot fit.
+- The FM may hallucinate a plausible-sounding but wrong figure.
+
+These two patterns address different aspects of this problem. The Optimiser ensures the FM receives a well-formed, high-signal prompt and returns a parseable response. RAG ensures the relevant facts are *in* the context when the FM reasons.
+
+## Pattern 3: Prompt/Response Optimiser
+
+**Context:** The agent must repeatedly query a foundation model as part of a task. Raw user messages and unprocessed FM outputs are unreliable — they contain noise, are ambiguously formatted, and may be misinterpreted.
+
+**Problem:** How do you maximise the quality and parseability of FM inputs and outputs without changing the model's weights?
+
+**Solution:** The Prompt/Response Optimiser has two sides — input optimisation and output post-processing.
+
+### Input optimisation
+
+The optimiser assembles a structured prompt from components:
+
+| Component | Content |
+|-----------|---------|
+| **Role description** | "You are a travel-booking assistant. You have access to: [tool list]." |
+| **Task instruction** | The specific goal, stated unambiguously |
+| **Constraints** | Budget, format requirements, what *not* to do |
+| **Context chunks** | Retrieved documents, prior conversation, tool results |
+| **Output format spec** | "Respond in JSON with fields: {action, params, reasoning}" |
+| **Examples** | One or two few-shot demonstrations of the desired format |
+
+**Before (raw user message):**
+```
+Book me a flight to Paris on Friday
+```
+
+**After (optimised prompt):**
+```
+You are a travel-booking assistant. Available tools: search_flights(origin, dest, date),
+book_flight(flight_id, passenger_details).
+
+Task: Book a flight matching the user's request. Always confirm the booking details
+before calling book_flight.
+
+User request: "Book me a flight to Paris on Friday"
+Current date: Thursday 2026-06-18
+User profile: { "home_airport": "LHR", "seat_preference": "aisle" }
+
+Respond in JSON:
+{ "next_action": "<tool_name>", "params": {...}, "reasoning": "<one sentence>" }
+
+Example:
+User: "Find flights to NYC tomorrow"
+Response: {"next_action": "search_flights", "params": {"origin": "LHR", "dest": "JFK",
+"date": "2026-06-19"}, "reasoning": "User wants tomorrow's flights from their home airport."}
+```
+
+### Output post-processing
+
+FM outputs are not always in the format requested. The post-processor:
+
+1. Extracts structured data from freeform text (parse JSON from a response that wraps it in markdown fences)
+2. Normalises fields (convert "next Friday" to an ISO date)
+3. Detects failure modes: explicit refusals ("I can't help with that"), uncertainty signals ("I don't know", "I'm not sure"), and format violations
+4. Retries with a rephrased prompt if parsing fails
+
+**Forces:**
+- *Improves quality significantly* — structured prompts reduce ambiguity; few-shot examples align format expectations.
+- *Adds latency and complexity* — each optimisation step is processing overhead; prompt templates must be maintained as the agent's tools and context evolve.
+- *Can mask model weaknesses* — a very polished prompt may appear to work in testing but fail on edge cases not covered by the examples.
+
+<Callout type="tip" title="Highest-ROI optimisation technique">
+  Few-shot examples are the most effective single prompt engineering technique. Three well-chosen examples of the input-output format the agent needs typically outperform elaborate instruction paragraphs. Prioritise examples over prose explanations.
+</Callout>
+
+## Pattern 4: Retrieval Augmented Generation (RAG)
+
+**Context:** The agent needs to reason about facts that are not in the FM's training data — company documents, recent news, personal files, product catalogues, code repositories.
+
+**Problem:** How do you give the FM access to a large external knowledge base at query time without fine-tuning the model or exceeding the context window?
+
+**Solution:** RAG separates knowledge storage from reasoning:
+
+**Step 1 — Index:** Documents are chunked, embedded into vectors, and stored in a vector database (or BM25 index for lexical retrieval).
+
+**Step 2 — Retrieve:** At query time, the user's query (or the agent's current subgoal) is embedded and compared against all document vectors. The top-$k$ most similar chunks are returned.
+
+**Step 3 — Inject:** The retrieved chunks are injected into the FM prompt as context, alongside the task instruction. The FM reasons over both its parametric knowledge and the retrieved facts.
+
+```
+Query → Embed → [Vector DB] → Top-k chunks
+                                    │
+                    Task + chunks → FM → Response
+```
+
+### Retrieval quality metrics
+
+| Metric | Formula | Meaning |
+|--------|---------|---------|
+| **Recall@k** | (relevant docs in top-k) / (total relevant) | Did we retrieve all relevant docs? |
+| **Precision@k** | (relevant docs in top-k) / k | How many retrieved docs are relevant? |
+| **MRR** | mean of 1/rank of first relevant doc | Was the best doc ranked first? |
+
+A RAG system with poor recall starves the FM of information it needs. Poor precision wastes context window tokens on irrelevant chunks.
+
+The similarity between a query embedding $\mathbf{q}$ and a document embedding $\mathbf{d}$ is typically computed as cosine similarity:
+
+$$\text{sim}(\mathbf{q}, \mathbf{d}) = \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mathbf{q}\|\|\mathbf{d}\|}$$
+
+### Agent-specific RAG challenges
+
+Basic RAG handles simple single-hop questions well. Agents face harder cases:
+
+**Multi-hop retrieval** — the answer requires chaining information from multiple documents. "What is the cancellation policy for the hotel the user booked last week?" requires first retrieving the booking, then retrieving the hotel's policy document. A single similarity search may not surface both.
+
+**Retrieval planning** — the agent must decide *what* to retrieve. In a long-running task, the relevant query changes at each step. The agent should rewrite the retrieval query at each planning step rather than using the original user message.
+
+**Dynamic knowledge bases** — the corpus changes over time (new documents added, old ones updated). The index must be maintained and stale embeddings refreshed.
+
+**Forces:**
+- *Improves factual accuracy and recency* — the FM reasons over real documents, not parametric guesses.
+- *Adds retrieval latency* — embedding lookup and nearest-neighbour search add overhead (typically 50–200 ms at moderate scale).
+- *Requires index maintenance* — someone must build and keep the vector index fresh; stale indexes erode quality silently.
+- *Context window competition* — each retrieved chunk consumes context tokens. More chunks = more information but less room for reasoning and output.
+
+## How the two patterns compose
+
+The Optimiser and RAG are designed to work together. The composition has two stages:
+
+1. **Query rewriting** — the Optimiser rewrites the agent's current subgoal into a retrieval query. A subgoal like "confirm the user's hotel preference" is not a good retrieval query; "user hotel preference seat type booking history" retrieves better.
+
+2. **Final prompt assembly** — after retrieval, the Optimiser injects the chunks and formats the full FM prompt with task, retrieved context, output spec, and examples.
+
+```
+Goal
+  │
+  ▼
+Optimiser (query rewrite)
+  │
+  ▼
+RAG (retrieve top-k chunks)
+  │
+  ▼
+Optimiser (inject chunks + format final prompt)
+  │
+  ▼
+Foundation Model
+  │
+  ▼
+Optimiser (parse + validate response)
+  │
+  ▼
+Structured action / answer
+```
+
+This pipeline is the basis for most production agent backends. Every step can fail independently, so each boundary should have error handling and logging.
+
+## Key takeaways
+
+- The FM's finite context window and training cutoff are fundamental limitations; Context & Knowledge Patterns address them structurally.
+- The **Prompt/Response Optimiser** improves communication quality: structured prompts with role, task, constraints, format spec, and examples; output post-processing detects failures and normalises formats.
+- **RAG** extends the FM's knowledge at query time: index → retrieve (cosine similarity, top-k) → inject. Monitor Recall@k, Precision@k, and MRR.
+- Agent-specific RAG challenges include multi-hop retrieval, retrieval planning (rewrite query at each step), and dynamic index maintenance.
+- The two patterns compose naturally: the Optimiser rewrites the retrieval query and assembles the final injected prompt; RAG fills the context with relevant facts.
+
+## Related concepts
+
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — deep dive on RAG in the LLM context
+- [**Goal Creation Patterns**](/courses/agent-design-patterns/02-goal-creation-patterns) — the structured goals that drive retrieval queries
+- [**Planning Patterns**](/courses/agent-design-patterns/04-planning-patterns) — next lesson: how structured goals become executable action sequences
+
+<Exercise id="agent-rag-retrieval-strategy" />
+<Exercise id="agent-prompt-optimiser-forces" />
