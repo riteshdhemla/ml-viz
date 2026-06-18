@@ -4376,7 +4376,7 @@ const allExercises: Exercise[] = [
       "An anchor box has area 100×100 pixels and a ground-truth box has area 80×80 pixels. They overlap with an intersection area of 4000 pixels². What is the IoU, and is this anchor positive (IoU > 0.5)?",
     hint: "IoU = intersection / (A + B − intersection). Union = area_A + area_B − intersection.",
     explanation:
-      "Union = 100×100 + 80×80 − 4000 = 10000 + 6400 − 4000 = 12400. IoU = 4000/12400 ≈ 0.32. Since 0.32 < 0.5, this anchor is negative (background) in Faster R-CNN / YOLO training. An anchor with IoU > 0.5 with any ground-truth box is assigned as a positive sample; IoU < 0.3 is negative; 0.3–0.5 is ignored. This threshold selection critically affects what the model learns to detect.",
+      "Union = 100×100 + 80×80 − 4000 = 10000 + 6400 − 4000 = 12400. IoU = 4000/12400 ≈ 0.32. Since 0.32 < 0.4, this anchor is negative (background). The standard assignment rule is: IoU > 0.5 with any ground-truth box → positive; IoU < 0.4 → negative (train class head only); 0.4 ≤ IoU ≤ 0.5 → ignored during training. This threshold selection critically affects what the model learns to detect.",
     options: [
       { id: "a", label: "IoU ≈ 0.50 — positive anchor (borderline)", isCorrect: false },
       { id: "b", label: "IoU ≈ 0.32 — negative anchor (below 0.5 threshold)", isCorrect: true },
@@ -6225,14 +6225,14 @@ const allExercises: Exercise[] = [
     id: "ml-practice-inference-kv-cache-bytes",
     type: "slider",
     question:
-      "You're serving Llama-3.1-70B in FP16. The architecture has $L = 80$ layers, $H = 8$ KV-heads, head dimension $d = 128$, and 2 bytes per element. Using $\\text{bytes} = 2 \\cdot L \\cdot H \\cdot d \\cdot s \\cdot b \\cdot \\text{bytes per element}$, what is the KV-cache size for **one** sequence with $s = 8192$ tokens of context, in gigabytes? Round to the nearest 0.1 GB.",
-    hint: "Plug in: $2 \\cdot 80 \\cdot 8 \\cdot 128 \\cdot 8192 \\cdot 1 \\cdot 2$. Convert bytes to GB by dividing by $1024^3$.",
+      "You're serving Llama-3.1-70B in FP16. The architecture has $L = 80$ layers, $H = 8$ KV-heads, head dimension $d = 128$, and 2 bytes per element. Using $\\text{bytes} = 2 \\cdot L \\cdot H \\cdot d \\cdot s \\cdot b \\cdot \\text{bytes per element}$, what is the KV-cache size for **one** sequence with $s = 8192$ tokens of context, in gigabytes (GB, i.e. $10^9$ bytes)? Round to the nearest 0.1 GB.",
+    hint: "Plug in: $2 \\cdot 80 \\cdot 8 \\cdot 128 \\cdot 8192 \\cdot 1 \\cdot 2$. Convert bytes to GB by dividing by $10^9$.",
     explanation:
-      "$2 \\cdot 80 \\cdot 8 \\cdot 128 \\cdot 8192 \\cdot 1 \\cdot 2 = 2{,}684{,}354{,}560$ bytes $\\approx 2.5$ GB per sequence. A batch of 32 such 8k-context sequences therefore needs ~80 GB of KV-cache — about a full H100. This is why the *cache*, not the weights, sets the concurrency limit on most modern LLM deployments, and why PagedAttention (16-token blocks, prefix sharing, on-demand allocation) is worth so much: a naive allocator that reserves `max_seq_len = 8192` for every request wastes most of that 80 GB on padding when real sequences are short.",
+      "$2 \\cdot 80 \\cdot 8 \\cdot 128 \\cdot 8192 \\cdot 1 \\cdot 2 = 2{,}684{,}354{,}560$ bytes $\\approx 2.7$ GB per sequence (decimal GB = bytes $/ 10^9$). A batch of 32 such 8k-context sequences therefore needs ~85 GB of KV-cache — about a full H100. This is why the *cache*, not the weights, sets the concurrency limit on most modern LLM deployments, and why PagedAttention (16-token blocks, prefix sharing, on-demand allocation) is worth so much: a naive allocator that reserves `max_seq_len = 8192` for every request wastes most of that 85 GB on padding when real sequences are short.",
     min: 0,
     max: 10,
     step: 0.1,
-    correctRange: [2.4, 2.6],
+    correctRange: [2.5, 2.8],
     unit: "GB",
   },
   {

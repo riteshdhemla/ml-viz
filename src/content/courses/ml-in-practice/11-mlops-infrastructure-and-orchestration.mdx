@@ -103,7 +103,7 @@ A team's first reflex should be to *integrate* rather than *build*. Most of thes
 
 1. **Local-disk intermediates.** Writing step outputs to the worker's local disk works in dev and dies in prod. Every intermediate artefact belongs in object storage, addressable by run id; this is what makes pipelines restartable and parallelisable.
 2. **Pinning Python without pinning CUDA.** A perfect `poetry.lock` does not save you from a CUDA driver upgrade. Pin the CUDA major.minor in your base Docker image, treat it as part of the dependency graph.
-3. **Running clusters at 95 % utilisation.** Queue wait time explodes as utilisation approaches 1 (Pollaczek–Khinchine: $W_q \propto \rho / (1 - \rho)$). Aim for ~70–80 % steady-state; the cluster will *feel* faster even though it's "less used."
+3. **Running clusters at 95 % utilisation.** For an M/M/1 queue, wait time $W_q = \rho / (\mu(1-\rho))$ explodes as utilisation $\rho \to 1$. Aim for ~70–80 % steady-state; the cluster will *feel* faster even though it's "less used."
 4. **Non-idempotent tasks.** A task that mutates external state without checking what it already wrote will double-count on retry. Idempotency is what makes automatic retries safe; without it, retries are the bug.
 5. **One huge monolithic DAG.** A 200-task DAG that re-runs from scratch every day is a DAG you can't reason about. Split into sub-pipelines along data-asset boundaries; the orchestrator's job is composing them, not owning all logic.
 6. **Building before integrating.** Every layer above has a credible managed product. Building a worse MLflow on a worse Airflow on a worse Argo is a multi-year detour most teams should not take.

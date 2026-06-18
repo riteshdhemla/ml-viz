@@ -56,11 +56,19 @@ Pretrained weights are stored in FP32 (32 bits per parameter) or BF16 (16 bits).
 
 ### Uniform post-training quantization
 
-The simplest scheme: clip the weight tensor to $[-w_{\max}, w_{\max}]$, divide into $2^b$ equal-width bins, replace each weight with the centre of its bin.
+**Symmetric (absmax) quantization** — the default for weights — maps the range $[-w_{\max}, w_{\max}]$ to $[-(2^{b-1}-1), 2^{b-1}-1]$:
 
 $$
 q(w) = \text{round}\!\left(\frac{w}{\Delta}\right)\Delta, \qquad \Delta = \frac{2 w_{\max}}{2^b - 1}.
 $$
+
+**Affine (zero-point) quantization** adds an integer zero-point $z$ so that the float zero maps exactly to an integer level, handling asymmetric distributions:
+
+$$
+q(w) = \text{round}\!\left(\frac{w}{\Delta} + z\right), \qquad w_{\text{approx}} = \Delta\,(q - z).
+$$
+
+Symmetric is simpler (one scale per tensor/channel) and works well for weights whose distributions are roughly bell-shaped around zero. Affine is required for **activations** — ReLU outputs are non-negative, so their range is $[0, x_{\max}]$ and a symmetric scheme would waste half the levels. W8A8 and W4A8 integer-matmul schemes use affine quantization on activations and symmetric on weights.
 
 At inference the integers are de-quantized on the fly (or kept in integer form for INT8 matmul). The memory savings are exact:
 
