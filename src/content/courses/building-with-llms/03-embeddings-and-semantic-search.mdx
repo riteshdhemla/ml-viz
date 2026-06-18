@@ -30,6 +30,10 @@ $$
 
 It ranges from $-1$ (opposite) through $0$ (unrelated) to $1$ (identical direction). Cosine is preferred over raw Euclidean distance because it focuses on *direction* (topic) rather than *length* (which often just tracks text length).
 
+<Callout type="tip" title="Normalized embeddings: cosine = dot product">
+  Modern embedding models (OpenAI, Sentence-BERT) output **L2-normalized (unit-norm)** vectors: $\|\mathbf{a}\| = \|\mathbf{b}\| = 1$. For unit vectors the denominator is $1 \times 1 = 1$, so $\text{cos}(\mathbf{a}, \mathbf{b}) = \mathbf{a} \cdot \mathbf{b}$ exactly. This is why vector databases default to **inner-product (dot-product) indexes** — it's the same as cosine but cheaper. If you're unsure whether your embeddings are normalized, normalize first with `a / np.linalg.norm(a)`.
+</Callout>
+
 ```python
 import numpy as np
 

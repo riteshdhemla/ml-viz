@@ -32,6 +32,14 @@ $$
 - **$\varepsilon$ (the privacy budget)** — smaller = more private. $\varepsilon \to 0$ means the two cases are indistinguishable (max privacy, useless model); large $\varepsilon$ means weak privacy. Typical deployments target $\varepsilon$ in roughly $1$–$10$.
 - The guarantee is achieved by adding **calibrated random noise** — to the data, the gradients, or the output.
 
+The definition above is **pure $\varepsilon$-DP**, achieved exactly by the **Laplace mechanism** (noise $\sim \text{Lap}(0, \Delta f / \varepsilon)$ for a query with $\ell_1$-sensitivity $\Delta f$). In practice, **DP-SGD uses Gaussian noise**, which satisfies the relaxed $(\varepsilon, \delta)$-DP guarantee: with small but nonzero $\delta$ (typically $\delta \ll 1/n$), the multiplicative bound may fail with probability at most $\delta$. The $(\varepsilon, \delta)$ variant is written:
+
+$$
+\Pr[M(D) \in S] \le e^{\varepsilon}\,\Pr[M(D') \in S] + \delta.
+$$
+
+Gaussian noise is preferred in practice because it leads to tighter privacy accounting across many gradient steps (using the Rényi or moments accountant), at the cost of introducing the $\delta$ slack.
+
 <Callout type="info" title="DP is a property of the algorithm, not the data">
   You can't look at a released model and check if it's 'private.' DP is a guarantee about the *training procedure*: how much any one record could have influenced the result. That's what makes it robust — it holds against *any* attacker with *any* side information, unlike ad-hoc anonymization.
 </Callout>

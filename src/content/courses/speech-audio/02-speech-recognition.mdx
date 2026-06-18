@@ -64,6 +64,18 @@ The lesson of Whisper mirrors the rest of modern ML: a fairly standard architect
   The **RNN-T (transducer)** combines CTC's frame-synchronous, streaming-friendly nature with an internal language model (it conditions on previous outputs). It's the backbone of many on-device, real-time assistants where you need transcription to appear *as you speak*, which a full-utterance attention decoder can't do.
 </Callout>
 
+## Evaluating ASR: Word Error Rate
+
+The standard metric is **Word Error Rate (WER)** — the edit distance between the reference transcript and the hypothesis, at the word level, normalised by reference length:
+
+$$
+\text{WER} = \frac{S + D + I}{N}
+$$
+
+where $S$ = substitutions (wrong word), $D$ = deletions (missing word), $I$ = insertions (extra word), and $N$ = total words in the reference. A WER of 0 is perfect; values above 1 are possible (many insertions). Human-level conversational WER is roughly 5–8 %; Whisper's multilingual median is ≈ 10–15 %.
+
+**Character Error Rate (CER)** is the same metric computed at the character level — preferred for languages without clear word boundaries (Chinese, Japanese, Thai) or for measuring fine-grained accuracy in morphologically complex languages.
+
 ## Common mistakes
 
 1. **Forgetting CTC's blank/collapse rule.** Without it, repeated characters and held sounds are indistinguishable.
