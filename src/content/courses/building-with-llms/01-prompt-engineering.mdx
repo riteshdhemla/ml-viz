@@ -51,8 +51,9 @@ The skill is ordering and delimiting these so the model never confuses *instruct
 
 The model outputs a probability distribution over the next token; **decoding** turns that distribution into actual text. Two knobs dominate:
 
-- **Temperature** $T$ rescales the logits before softmax: $p_i = \mathrm{softmax}(z_i / T)$. Low $T$ sharpens the distribution toward the top token (deterministic, "greedy"); high $T$ flattens it (diverse, "creative").
-- **Top-p (nucleus) sampling** keeps only the smallest set of tokens whose probabilities sum to $p$, discards the long tail, and renormalises — so implausible tokens can never be sampled.
+- **Temperature** $T$ rescales the logits before softmax: $p_i = \dfrac{e^{z_i/T}}{\sum_j e^{z_j/T}}$. Low $T$ sharpens the distribution toward the top token (deterministic, "greedy"); high $T$ flattens it (diverse, "creative").
+- **Top-k sampling** keeps only the $k$ highest-probability tokens, zeros out the rest, and renormalises — a fixed-size shortlist.
+- **Top-p (nucleus) sampling** keeps only the smallest set of tokens whose probabilities sum to $p$, discards the long tail, and renormalises — so implausible tokens can never be sampled. Unlike top-k, the shortlist size adapts to how peaked the distribution is.
 
 <SamplingViz />
 

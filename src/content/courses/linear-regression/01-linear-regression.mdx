@@ -15,10 +15,10 @@ The simplest supervised learning task: given input features $x_1, \ldots, x_d$, 
 ## The model
 
 $$
-\hat{y} = w_0 + w_1 x_1 + w_2 x_2 + \cdots + w_d x_d = \mathbf{w}^T \mathbf{x} + w_0
+\hat{y} = w_0 + w_1 x_1 + w_2 x_2 + \cdots + w_d x_d
 $$
 
-In matrix form: $\hat{\mathbf{y}} = X\mathbf{w}$, where $X$ includes a bias column of ones.
+Compactly, $\hat{y} = \mathbf{w}^\top \mathbf{x}$ where $\mathbf{w} = (w_0, w_1, \ldots, w_d)^\top$ and $\mathbf{x} = (1, x_1, \ldots, x_d)^\top$ (a leading $1$ absorbs the bias). In matrix form across $n$ examples: $\hat{\mathbf{y}} = X\mathbf{w}$, where $X \in \mathbb{R}^{n \times (d+1)}$ prepends a column of ones to the feature matrix.
 
 Each weight $w_j$ tells you how much $y$ changes when $x_j$ increases by one unit, **holding all other features constant**. This is the key interpretation of linear regression.
 
@@ -52,7 +52,7 @@ $(X^\top X)^{-1}$ exists when the feature columns are linearly independent; Ridg
 
 ### Residuals and $R^2$ for this fit
 
-Using the three-point dataset $\{(1,2),\,(2,3),\,(3,5)\}$ from the code above — where the normal equation gives $\mathbf{w} = (w_0, w_1) = (0.333,\,1.5)$ — let's verify the fit quality. A **residual** is the gap between truth and prediction, $r_i = y_i - \hat{y}_i$. Plug each $x_i$ into the fitted line:
+Using the three-point dataset $\{(1,2),\,(2,3),\,(3,5)\}$ (also used in the Python code below) — where the normal equation gives $\mathbf{w} = (w_0, w_1) = (0.333,\,1.5)$ — let's verify the fit quality. A **residual** is the gap between truth and prediction, $r_i = y_i - \hat{y}_i$. Plug each $x_i$ into the fitted line:
 
 $$
 \hat{y}_1 = 0.333 + 1.5\cdot1 = 1.833, \quad

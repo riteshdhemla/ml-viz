@@ -21,10 +21,10 @@ Bagging trains trees independently and averages them. **Boosting** trains trees 
 5. Repeat until $B$ models are trained
 
 $$
-\hat{f}_B(\mathbf{x}) = \sum_{b=1}^{B} \eta \cdot h_b(\mathbf{x})
+\hat{f}_B(\mathbf{x}) = \hat{f}_0(\mathbf{x}) + \sum_{b=1}^{B} \eta \cdot h_b(\mathbf{x})
 $$
 
-where $h_b$ is the $b$-th weak learner and $\eta$ is the **learning rate** (shrinkage).
+where $\hat{f}_0$ is the initial constant prediction (e.g. the mean of $y$), $h_b$ is the $b$-th weak learner, and $\eta$ is the **learning rate** (shrinkage). This is the gradient-boosting form; AdaBoost (below) is the special case where each learner carries its own weight $\alpha_b$ in place of a single shared $\eta$.
 
 <Callout type="tip" title="Analogy">
   Imagine a student taking practice exams. After each exam, they focus on the questions they got wrong. Over time, they improve not by studying everything equally, but by targeting their weaknesses. Boosting does this with models.
@@ -37,7 +37,7 @@ The original boosting algorithm:
 1. Initialize equal weights $w_i = 1/n$ for all samples
 2. Train weak learner $h_b$
 3. Compute weighted error: $\epsilon_b = \frac{\sum_{i: h_b(\mathbf{x}_i) \neq y_i} w_i}{\sum w_i}$
-4. Compute model weight: $\alpha_b = \frac{1}{2} \ln\left(\frac{1 - \epsilon_b}{\epsilon_b}\right)$
+4. Compute model weight: $\alpha_b = \frac{1}{2} \ln\left(\frac{1 - \epsilon_b}{\epsilon_b}\right)$ — requires $\epsilon_b < 0.5$ (better than random)
 5. Update sample weights: $w_i \leftarrow w_i \cdot \exp(-\alpha_b \cdot y_i \cdot h_b(\mathbf{x}_i))$
 6. Normalize weights and repeat
 

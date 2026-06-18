@@ -71,7 +71,7 @@ hidden = hidden.detach()   # keep the value, drop the gradient history
 
 ## The real fix is architectural
 
-You cannot tune your way out of vanishing gradients: the bound $(\|W_{hh}\|\cdot\gamma)^{T-k}$ is exponential in the gap no matter how you initialize, because *every* path back multiplies by $W_{hh}$ and $\tanh'$. The fix is to change the architecture so there is a path whose per-step Jacobian is $\approx 1$ instead of $\|W_{hh}\|\cdot\gamma$. That is exactly what LSTMs and GRUs do: their **cell state** is updated additively ($c_t \approx c_{t-1} + \text{(stuff)}$), so $\partial c_t/\partial c_{t-1} \approx 1$ and the product of Jacobians stays near 1 over long gaps — a gradient **highway**. The next lesson derives those gates.
+You cannot tune your way out of vanishing gradients: the bound $(\|W_{hh}\|\cdot\gamma)^{T-k}$ — where $\gamma = \max_t \|\mathrm{diag}(\tanh'(\mathbf{a}_t))\| \le 1$ is the tanh derivative factor — is exponential in the gap no matter how you initialize, because *every* path back multiplies by $W_{hh}$ and $\tanh'$. The fix is to change the architecture so there is a path whose per-step Jacobian is $\approx 1$ instead of $\|W_{hh}\|\cdot\gamma$. That is exactly what LSTMs and GRUs do: their **cell state** is updated additively ($c_t \approx c_{t-1} + \text{(stuff)}$), so $\partial c_t/\partial c_{t-1} \approx 1$ and the product of Jacobians stays near 1 over long gaps — a gradient **highway**. The next lesson derives those gates.
 
 | Problem | Symptom | Fix |
 |---------|---------|-----|
@@ -88,7 +88,7 @@ You cannot tune your way out of vanishing gradients: the bound $(\|W_{hh}\|\cdot
 
 - **BPTT** is backprop on the unrolled network; one weight matrix appears at every step.
 - One step's Jacobian is $\partial\mathbf{h}_t/\partial\mathbf{h}_{t-1} = \mathrm{diag}(\tanh'(\mathbf{a}_t))\,W_{hh}$; the gap-$(T-k)$ gradient is a **product of $T-k$** of these.
-- That product is bounded by $(\|W_{hh}\|\cdot\gamma)^{T-k}$, so gradients **vanish** (gain below 1) or **explode** (gain above 1) *exponentially* in the gap.
+- That product is bounded by $(\|W_{hh}\|\cdot\gamma)^{T-k}$, where $\gamma = \max_t \|\mathrm{diag}(\tanh'(\mathbf{a}_t))\| \le 1$, so gradients **vanish** (gain below 1) or **explode** (gain above 1) *exponentially* in the gap.
 - $\tanh' \le 1$ only ever makes vanishing **worse**, never lifts it back.
 - **Gradient clipping** fixes explosions but not vanishing; vanishing needs an architectural fix — gated cells whose Jacobian is $\approx 1$.
 

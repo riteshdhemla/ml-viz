@@ -375,6 +375,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | VanishingGradientViz | `visualizations/VanishingGradient/` | rnns/02-bptt-and-vanishing-gradient | ✅ |
 | KNNBoundaryViz | `visualizations/KNNBoundary/` | knn-decision-trees/01-knn | ✅ |
 | MarginViz | `visualizations/Margin/` | svm/01-maximum-margin | ✅ |
+| KernelViz | `visualizations/KernelViz/` | svm/02-kernel-trick | ✅ |
 | DecisionTreeSplitViz | `visualizations/DecisionTreeSplit/` | knn-decision-trees/02-decision-trees | ✅ |
 | NeuralNetworkViz | `visualizations/NeuralNetwork/` | neural-networks/03-layers-and-forward-pass | ✅ |
 | LSTMGateViz | `visualizations/LSTMGate/` | rnns/03-lstm-and-gru | ✅ |

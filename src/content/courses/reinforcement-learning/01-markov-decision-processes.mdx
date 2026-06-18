@@ -76,18 +76,20 @@ $Q$ is the more useful of the two for control: if you know $Q^*$, the optimal ac
 The key insight: value is **recursive**. The value of a state = immediate reward + discounted value of where you land. For a fixed policy:
 
 $$
-V^\pi(s) = \sum_a \pi(a\mid s)\sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^\pi(s')\big]
+V^\pi(s) = \sum_a \pi(a\mid s)\sum_{s'} P(s'\mid s,a)\big[R(s,a,s') + \gamma V^\pi(s')\big]
 $$
 
 And the **Bellman optimality equation** — the one $\pi^*$ satisfies — replaces the policy average with a max:
 
 $$
-V^*(s) = \max_a \sum_{s'} P(s'\mid s,a)\big[R(s,a) + \gamma V^*(s')\big]
+V^*(s) = \max_a \sum_{s'} P(s'\mid s,a)\big[R(s,a,s') + \gamma V^*(s')\big]
 $$
 
 $$
-Q^*(s,a) = \sum_{s'} P(s'\mid s,a)\Big[R(s,a) + \gamma \max_{a'} Q^*(s',a')\Big]
+Q^*(s,a) = \sum_{s'} P(s'\mid s,a)\Big[R(s,a,s') + \gamma \max_{a'} Q^*(s',a')\Big]
 $$
+
+(We use the transition-reward convention $R(s,a,s')$ here to match the worked code below, where reward is attached to landing in $s'$. If reward depends only on $(s,a)$, it factors out of the $\sum_{s'}$ as $R(s,a)$.)
 
 <Callout type="tip" title="The recursion that powers all of RL">
   "The value of where I am equals the best immediate reward plus the discounted value of where I'll be." Every RL algorithm — value iteration, Q-learning, DQN, actor-critic — is ultimately a way of solving or approximating this Bellman equation.

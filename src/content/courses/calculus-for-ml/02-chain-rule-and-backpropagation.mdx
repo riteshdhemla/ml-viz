@@ -195,7 +195,7 @@ dL_db1 = dL_dz1                             # × 1
 
 Naively computing $\frac{\partial L}{\partial w_i}$ by finite differences requires two forward passes **per parameter**. A network with millions of parameters would be intractable.
 
-Backpropagation computes **all gradients in one backward pass** by reusing intermediate results. The key insight: gradients at earlier layers are computed by multiplying already-computed downstream gradients with local Jacobians. Total cost: $\approx 3\times$ the forward pass cost.
+Backpropagation computes **all gradients in one backward pass** by reusing intermediate results. The key insight: gradients at earlier layers are computed by multiplying already-computed downstream gradients with local Jacobians. Total cost: $\approx 2$–$3\times$ the forward pass cost (one pass to compute activations, one to propagate gradients, plus the weight gradient accumulation).
 
 <Callout type="info" title="Automatic differentiation">
   Modern frameworks (PyTorch, JAX) implement **automatic differentiation** — they build the computational graph on-the-fly, store forward activations, and replay the backward pass automatically. You never write the backward pass by hand.
