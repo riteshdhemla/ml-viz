@@ -35,10 +35,10 @@ $$
 The VAE loss has two terms:
 
 $$
-\mathcal{L} = \underbrace{\|\mathbf{x} - \hat{\mathbf{x}}\|^2}_{\text{reconstruction}} + \underbrace{D_{\text{KL}}\!\left(q_\phi(\mathbf{z}|\mathbf{x}) \;\|\; \mathcal{N}(0, I)\right)}_{\text{KL divergence}}
+\mathcal{L} = \underbrace{-\log p_\theta(\mathbf{x}|\mathbf{z})}_{\text{reconstruction}} + \underbrace{D_{\text{KL}}\!\left(q_\phi(\mathbf{z}|\mathbf{x}) \;\|\; \mathcal{N}(0, I)\right)}_{\text{KL divergence}}
 $$
 
-1. **Reconstruction loss** — keeps the decoded output close to the original
+1. **Reconstruction loss** — measures how well the decoder recovers the input. For a Gaussian decoder this is $\|\mathbf{x} - \hat{\mathbf{x}}\|^2$ (MSE); for a Bernoulli decoder (binary data such as black-and-white MNIST pixels) it is binary cross-entropy. The decoder architecture and loss must match.
 2. **KL divergence** — pulls the encoder's distribution toward the standard Gaussian
 
 The KL divergence has a closed-form solution for two Gaussians:
@@ -123,6 +123,7 @@ class VAE(nn.Module):
         return self.decode(z), mu, logvar
 
 def vae_loss(x_hat, x, mu, logvar):
+    # MSE = Gaussian decoder; use F.binary_cross_entropy for binary data (e.g. MNIST)
     recon = F.mse_loss(x_hat, x, reduction='sum')
     kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     return recon + kl
@@ -164,7 +165,7 @@ $$
 $$
 
 - $\beta < 1$: better reconstruction, less structured latent space
-- $\beta > 1$: more disentangled representations, potentially blurrier outputs
+- $\beta > 1$: encourages more disentangled representations, but with too large a $\beta$ the encoder may ignore the input entirely (**posterior collapse**), producing blurry or degenerate outputs
 
 ## Common mistakes
 

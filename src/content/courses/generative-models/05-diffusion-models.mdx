@@ -54,7 +54,7 @@ $$
 \mathcal{L} = \mathbb{E}_{t, \mathbf{x}_0, \boldsymbol{\epsilon}} \left[ \| \boldsymbol{\epsilon} - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, t) \|^2 \right]
 $$
 
-where $\mathbf{x}_t = \sqrt{\bar{\alpha}_t} \, \mathbf{x}_0 + \sqrt{1 - \bar{\alpha}_t} \, \boldsymbol{\epsilon}$ and $\bar{\alpha}_t = \prod_{s=1}^t (1 - \beta_s)$.
+where $\mathbf{x}_t = \sqrt{\bar{\alpha}_t} \, \mathbf{x}_0 + \sqrt{1 - \bar{\alpha}_t} \, \boldsymbol{\epsilon}$, and defining $\alpha_t = 1 - \beta_t$ gives $\bar{\alpha}_t = \prod_{s=1}^t \alpha_s$.
 
 ```python
 import torch
@@ -140,7 +140,7 @@ The noise schedule $\beta_t$ controls how fast noise is added:
 
 | Schedule | Formula | Effect |
 |----------|---------|--------|
-| Linear | $\beta_t = \beta_1 + (T-t) \frac{\beta_T - \beta_1}{T}$ | Original DDPM |
+| Linear | $\beta_t = \beta_1 + (t-1) \dfrac{\beta_T - \beta_1}{T-1}$ | Original DDPM |
 | Cosine | $\bar{\alpha}_t = \frac{f(t)}{f(0)}$, $f(t) = \cos\left(\frac{t/T + s}{1+s} \cdot \frac{\pi}{2}\right)^2$ | Smoother, better quality |
 
 <Callout type="info" title="Why cosine schedule?">
@@ -149,7 +149,7 @@ The noise schedule $\beta_t$ controls how fast noise is added:
 
 ## Accelerated sampling: DDIM
 
-Standard DDPM requires $T=1000$ steps — one network call per noise level. **DDIM** (Denoising Diffusion Implicit Models) reformulates the reverse process as a *deterministic* ODE, which makes step-skipping valid: visit only ~50 of the 1000 timesteps (estimate the clean image, re-noise it to the next visited level, repeat) and still land on a high-quality sample. Because the trajectory is deterministic, the same starting noise always produces the same image — enabling smooth latent-space interpolation. Same trained model, ~20× faster sampling.
+Standard DDPM requires $T=1000$ steps — one network call per noise level. **DDIM** (Denoising Diffusion Implicit Models) reformulates the reverse process as a *deterministic* ODE, which makes step-skipping valid: visit only ~50 of the 1000 timesteps (estimate the clean image, re-noise it to the next visited level, repeat) and still land on a high-quality sample. Because the trajectory is deterministic with $\eta = 0$ (the default DDIM setting), the same starting noise always produces the same image — enabling smooth latent-space interpolation. Same trained model, ~20× faster sampling.
 
 <WikiLink slug="ddim-sampling" title="DDIM Sampling" />
 
