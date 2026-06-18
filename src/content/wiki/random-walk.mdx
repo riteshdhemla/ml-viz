@@ -1,0 +1,311 @@
+---
+title: "Random Walk"
+description: "The stochastic process where each step is an independent random increment — variance grows linearly with time, the Markov property holds exactly, and the continuous limit is Brownian motion."
+topics: ["probability-statistics"]
+relatedLessons:
+  - "generative-models/05-diffusion-models"
+  - "reinforcement-learning/01-markov-decision-processes"
+estimatedMinutes: 14
+---
+
+# Random Walk
+
+A **random walk** is a stochastic process $\{S_t\}_{t \ge 0}$ built by accumulating independent random increments:
+
+$$
+S_t = \sum_{i=1}^{t} \varepsilon_i, \qquad S_0 = 0,
+$$
+
+where each $\varepsilon_i$ is drawn i.i.d. from some distribution. The defining character of a random walk is that **the past is irrelevant** — the conditional distribution of $S_{t+1}$ given the entire history depends only on the current position $S_t$. This is the Markov property, and it is not a coincidence: a random walk is the simplest discrete-time Markov chain on $\mathbb{R}$.
+
+## The symmetric random walk
+
+The canonical discrete case draws each step from $\{-1, +1\}$ with equal probability:
+
+$$
+\varepsilon_i = \begin{cases} +1 & \text{with probability } \tfrac{1}{2} \\ -1 & \text{with probability } \tfrac{1}{2} \end{cases}
+$$
+
+This is the **symmetric (simple) random walk** on $\mathbb{Z}$. Every sample path is a sequence of coin-flip-driven steps on the integer line.
+
+## Mean and variance
+
+Because the increments are i.i.d. with $\mathrm{E}[\varepsilon_i] = 0$ and $\mathrm{Var}(\varepsilon_i) = 1$, and because $S_t$ is their sum:
+
+$$
+\mathrm{E}[S_t] = 0, \qquad \mathrm{Var}(S_t) = t.
+$$
+
+More generally, for increments with variance $\sigma^2$:
+
+$$
+\mathrm{Var}(S_t) = t\sigma^2.
+$$
+
+The standard deviation grows as $\sqrt{t}$, not $t$. This **sub-linear spread** is the hallmark of a random walk — the process diffuses outward, but much slower than a deterministic linear trend.
+
+| $t$ | $\mathrm{E}[S_t]$ | $\mathrm{SD}(S_t) = \sigma\sqrt{t}$ |
+|-----|--------------------|------------------------------------|
+| 1 | 0 | $\sigma$ |
+| 4 | 0 | $2\sigma$ |
+| 9 | 0 | $3\sigma$ |
+| 100 | 0 | $10\sigma$ |
+| 10,000 | 0 | $100\sigma$ |
+
+The variance grows without bound. A random walk is therefore **non-stationary** — its distribution changes with time even though its mean stays fixed at zero.
+
+<Callout type="info" title="Why non-stationarity matters for time series">
+  A covariance-stationary process requires finite, time-invariant variance. A random walk has
+  variance $= t\sigma^2 \to \infty$, so it violates this requirement. This is precisely the
+  <strong>unit-root non-stationarity</strong> that the Augmented Dickey-Fuller test is designed
+  to detect: the AR(1) model $y_t = y_{t-1} + \varepsilon_t$ (i.e. $\phi = 1$) is a random walk.
+</Callout>
+
+## The Markov property in detail
+
+A process $\{S_t\}$ satisfies the Markov property when:
+
+$$
+P(S_{t+1} = s \mid S_0, S_1, \ldots, S_t) = P(S_{t+1} = s \mid S_t).
+$$
+
+For a random walk this is immediate: $S_{t+1} = S_t + \varepsilon_{t+1}$, and $\varepsilon_{t+1}$ is independent of everything before time $t+1$. So the full history collapses to the current position. This makes random walks analytically tractable — the $k$-step transition probabilities can be computed by convolving the single-step distribution $k$ times.
+
+## The reflection principle and first-passage times
+
+A powerful tool for symmetric random walks is the **reflection principle**: any path that reaches level $a > 0$ by time $t$ can be reflected about $a$ after the first hitting time to produce a bijection with paths above $a$ at time $t$.
+
+This gives the probability of ever reaching $a$ by step $t$:
+
+$$
+P\!\left(\max_{0 \le s \le t} S_s \ge a\right) = 2\,P(S_t \ge a),
+$$
+
+which holds because paths that end above $a$ are a subset, and the reflection makes the count exact.
+
+The **first-passage time** $T_a = \min\{t : S_t = a\}$ for a symmetric walk satisfies:
+
+$$
+P(T_a = t) = \frac{a}{t}\,P(S_t = a), \qquad t \ge a,\ t \equiv a \pmod{2}.
+$$
+
+The expected first-passage time is $\mathrm{E}[T_a] = \infty$ — a symmetric random walk will almost surely return to any level eventually, but the expected wait is infinite.
+
+<Callout type="tip" title="Almost sure recurrence">
+  A 1D and 2D symmetric random walk are <strong>recurrent</strong>: they return to the origin
+  (and every previously visited site) with probability 1. In 3D and higher dimensions the walk
+  is <strong>transient</strong> — it escapes to infinity and returns to any fixed point with
+  probability less than 1. This dimension threshold is Pólya's theorem (1921).
+</Callout>
+
+## The Gambler's Ruin
+
+A classic application: a gambler starts with $k$ chips, wins or loses one chip per round with probabilities $p$ and $q = 1 - p$, and stops when they reach $N$ chips (win) or 0 chips (ruined).
+
+Let $R_k$ be the probability of ruin starting from $k$. The Markov property gives the recurrence:
+
+$$
+R_k = p\,R_{k+1} + q\,R_{k-1}, \qquad R_0 = 1,\ R_N = 0.
+$$
+
+Solving this linear recurrence:
+
+$$
+R_k = \begin{cases}
+\dfrac{(q/p)^k - (q/p)^N}{1 - (q/p)^N} & p \ne q \\[8pt]
+1 - \dfrac{k}{N} & p = q = \tfrac{1}{2}
+\end{cases}
+$$
+
+### Worked example: $k = 10$, $N = 100$, $p = 0.49$
+
+$$
+\frac{q}{p} = \frac{0.51}{0.49} \approx 1.0408
+$$
+
+$$
+R_{10} = \frac{(1.0408)^{10} - (1.0408)^{100}}{1 - (1.0408)^{100}}
+= \frac{1.492 - 57.0}{1 - 57.0}
+= \frac{-55.5}{-56.0} \approx 0.991
+$$
+
+A slight disadvantage ($p = 0.49$ vs $p = 0.5$) at table limit $N = 100$ turns a 10-chip bankroll into a near-certain ruin. With $p = 0.5$ (fair game), $R_{10} = 1 - 10/100 = 0.90$ — still 90% ruin probability with only 10% of the target.
+
+## Brownian motion as the continuous limit
+
+Scale a symmetric random walk so that each step covers $\Delta x = \sigma\sqrt{\Delta t}$ in time $\Delta t$. As $\Delta t \to 0$ with $t = n\,\Delta t$ fixed, the Central Limit Theorem drives the distribution of $S_t$ to:
+
+$$
+S_t \xrightarrow{d} \mathcal{N}(0,\, \sigma^2 t).
+$$
+
+The resulting continuous-time limit is **Brownian motion** (Wiener process) $W_t$, characterised by:
+
+1. $W_0 = 0$ almost surely.
+2. **Independent increments:** $W_t - W_s \perp W_s - W_r$ for $r < s < t$.
+3. **Gaussian increments:** $W_t - W_s \sim \mathcal{N}(0,\, t - s)$.
+4. **Continuous paths:** almost surely $t \mapsto W_t$ is continuous everywhere, yet differentiable nowhere.
+
+$$
+\boxed{\;W_t \sim \mathcal{N}(0, t)\;}
+$$
+
+The nowhere-differentiable property means Brownian motion has infinite variation on any interval — which is why its calculus (Itô calculus) requires new rules that do not reduce to ordinary calculus.
+
+| Property | Random Walk | Brownian Motion |
+|----------|-------------|-----------------|
+| State space | $\mathbb{Z}$ | $\mathbb{R}$ |
+| Time | Discrete $t \in \mathbb{N}$ | Continuous $t \ge 0$ |
+| Increment distribution | Symmetric Bernoulli | $\mathcal{N}(0, \Delta t)$ |
+| $\mathrm{Var}(S_t)$ | $t$ | $t$ |
+| Paths | Piecewise constant | Continuous, nowhere differentiable |
+| Recurrence (1D) | Yes (Pólya) | Yes |
+
+## Drift and the random walk with drift
+
+Adding a constant $\mu$ per step gives a **random walk with drift**:
+
+$$
+S_t = \mu t + \sum_{i=1}^{t} \varepsilon_i, \qquad \mathrm{E}[S_t] = \mu t.
+$$
+
+When $\mu \ne 0$, the process still has variance $t\sigma^2$ (still non-stationary), but now wanders in a direction. In the AR(1) framework:
+
+$$
+y_t = \alpha + y_{t-1} + \varepsilon_t,
+$$
+
+where $\alpha = \mu$ is the drift term. This is the "random walk with constant" null in the ADF test (`regression="c"`). The drift does not restore stationarity — only differencing removes the unit root.
+
+## A worked path trace: 10 steps
+
+Starting at $S_0 = 0$, draw 10 coin flips:
+
+$$
+\varepsilon = (+1,\ -1,\ +1,\ +1,\ -1,\ -1,\ +1,\ +1,\ +1,\ -1)
+$$
+
+| $t$ | $\varepsilon_t$ | $S_t$ |
+|-----|-----------------|--------|
+| 0 | — | 0 |
+| 1 | +1 | 1 |
+| 2 | −1 | 0 |
+| 3 | +1 | 1 |
+| 4 | +1 | 2 |
+| 5 | −1 | 1 |
+| 6 | −1 | 0 |
+| 7 | +1 | 1 |
+| 8 | +1 | 2 |
+| 9 | +1 | 3 |
+| 10 | −1 | 2 |
+
+Net displacement $S_{10} = 2$. Actual $\mathrm{SD}$ at $t = 10$ is $\sqrt{10} \approx 3.16$, so ending at $2$ is unremarkable — the walk could plausibly end anywhere from roughly $-6$ to $+6$.
+
+## Applications in machine learning
+
+### MCMC and the Metropolis-Hastings algorithm
+
+Markov Chain Monte Carlo methods sample from distributions $p(x)$ by constructing a Markov chain whose stationary distribution is $p$. The **Metropolis-Hastings algorithm** proposes new states via a random walk kernel:
+
+$$
+x' = x + \delta, \qquad \delta \sim \mathcal{N}(0, \sigma^2 I)
+$$
+
+and accepts with probability $\min\!\left(1,\ \dfrac{p(x')}{p(x)}\right)$. The step size $\sigma$ controls the trade-off between exploration and acceptance rate — too large and almost every proposal is rejected; too small and the chain explores slowly.
+
+### Diffusion models
+
+Score-based and DDPM diffusion models frame image generation as the **reverse of a random walk** (actually a forward SDE). The forward process gradually corrupts an image $\mathbf{x}_0$ over $T$ steps:
+
+$$
+\mathbf{x}_t = \sqrt{\bar\alpha_t}\,\mathbf{x}_0 + \sqrt{1 - \bar\alpha_t}\,\boldsymbol{\varepsilon}, \qquad \boldsymbol{\varepsilon} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}),
+$$
+
+which in the limit becomes Brownian motion on image space. A neural network is trained to reverse this diffusion — denoising each step — and generation is the reverse walk from pure noise back to a sample.
+
+### Random exploration in reinforcement learning
+
+In policy-gradient and Q-learning algorithms, the agent needs to explore state space. A simple exploration strategy is **$\varepsilon$-greedy** with random tie-breaking, but more principled approaches explicitly inject random walk noise (e.g., Ornstein-Uhlenbeck process in DDPG) so that exploration is temporally correlated — the agent takes a few random steps in one direction before reversing, covering the state space more efficiently than pure white noise.
+
+## Implementing a random walk in NumPy
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+rng = np.random.default_rng(42)
+
+def random_walk_1d(n_steps, n_paths=1, sigma=1.0):
+    """Simulate n_paths independent random walks of n_steps steps."""
+    steps = rng.normal(0, sigma, size=(n_paths, n_steps))
+    return np.concatenate([np.zeros((n_paths, 1)), np.cumsum(steps, axis=1)], axis=1)
+
+T = 500
+paths = random_walk_1d(T, n_paths=50)
+
+# Theoretical ±1 SD band
+t = np.arange(T + 1)
+sd_band = np.sqrt(t)
+
+# Verify empirical variance matches theory
+print(f"Var(S_100) theoretical: {100:.1f}")
+print(f"Var(S_100) empirical:   {paths[:, 100].var():.2f}")
+# → values should be close to 100
+```
+
+```python
+# 2D random walk
+def random_walk_2d(n_steps):
+    steps = rng.choice([-1, 1], size=(n_steps, 2))  # axis-aligned
+    return np.vstack([np.zeros((1, 2)), np.cumsum(steps, axis=0)])
+
+path_2d = random_walk_2d(5000)
+print(f"Final position: ({path_2d[-1, 0]:.0f}, {path_2d[-1, 1]:.0f})")
+print(f"Distance from origin: {np.linalg.norm(path_2d[-1]):.1f}  "
+      f"(expected ~√{len(path_2d)-1} ≈ {np.sqrt(len(path_2d)-1):.1f})")
+```
+
+```python
+# Gambler's ruin probability (analytical formula)
+def ruin_prob(k, N, p):
+    """Probability of ruin starting at k chips, target N, win prob p."""
+    q = 1 - p
+    if abs(p - 0.5) < 1e-10:
+        return 1 - k / N
+    r = q / p
+    return (r**k - r**N) / (1 - r**N)
+
+print("Ruin probabilities (target N=100):")
+for k, p in [(10, 0.49), (10, 0.50), (10, 0.51), (50, 0.50)]:
+    print(f"  k={k:2d}, p={p:.2f}  → R_k = {ruin_prob(k, 100, p):.4f}")
+```
+
+```python
+# Show that RW is non-stationary: variance grows linearly
+T = 1000
+n_paths = 2000
+walks = random_walk_1d(T, n_paths=n_paths)
+
+checkpoints = [1, 10, 50, 100, 500, 1000]
+print(f"{'t':>6}  {'E[S_t]':>10}  {'Var(S_t)':>10}  {'Theoretical':>12}")
+for t_check in checkpoints:
+    mean = walks[:, t_check].mean()
+    var  = walks[:, t_check].var()
+    print(f"{t_check:>6}  {mean:>10.4f}  {var:>10.2f}  {t_check:>12.2f}")
+```
+
+<Callout type="warning" title="A random walk is not ergodic in the usual sense">
+  Ergodicity requires the time average to converge to the ensemble (population) average.
+  A random walk's time-average position converges to zero for any fixed path, but because
+  the variance grows without bound, paths diverge across the ensemble. Long-run sample statistics
+  computed from a single non-stationary path are not reliable estimators of the underlying
+  process parameters — this is the practical reason stationarity must be established before
+  fitting ARIMA or any classical time-series model.
+</Callout>
+
+## Related concepts
+
+- [**Augmented Dickey-Fuller Test**](/wiki/augmented-dickey-fuller) — the statistical test that detects when a time series is a random walk (unit-root non-stationarity)
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — generative models built by learning to reverse a Brownian-motion-like corruption process
+- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes) — formalises sequential decision-making; a random-policy agent follows a random walk over the state space
+- [**Hypothesis Testing**](/wiki/hypothesis-testing) — the statistical machinery behind the ADF unit-root test
