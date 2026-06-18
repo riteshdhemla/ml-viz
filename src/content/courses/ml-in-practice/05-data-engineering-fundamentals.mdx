@@ -29,7 +29,7 @@ The same logical table — `events(user_id, item_id, ts, action, country, device
 
 ### Row-oriented storage
 
-Every record's fields are stored together, contiguous on disk. Reading a single row is one seek. Updating a single row is one read + one write. The classics — CSV, JSON-lines, Avro, and the row groups inside Parquet at the byte level — are row-oriented. Postgres and MySQL store their primary heap files in row-major order.
+Every record's fields are stored together, contiguous on disk. Reading a single row is one seek. Updating a single row is one read + one write. The classics — CSV, JSON-lines, and Avro — are row-oriented. Postgres and MySQL store their primary heap files in row-major order. (Parquet is *not* row-oriented: although it partitions rows into "row groups," the bytes inside each row group are laid out column-chunk by column-chunk — it is columnar, as below.)
 
 - **Fast.** Point lookups (`WHERE user_id = 42`), single-row updates, full-record reads, serialisation for transport.
 - **Slow.** Column scans (`SELECT AVG(price) FROM orders`), aggregations across millions of rows on a few columns, predicate push-down on one column.
