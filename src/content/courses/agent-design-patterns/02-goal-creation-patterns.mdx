@@ -1,0 +1,154 @@
+---
+title: "Goal Creation Patterns"
+description: "How agents capture user intent: the Passive Goal Creator waits for explicit requests, the Proactive Goal Creator monitors context and acts without being asked."
+order: 2
+type: concept
+estimatedMinutes: 18
+---
+
+# Goal Creation Patterns
+
+Before an agent can plan or act, it needs a goal. Sounds obvious — yet in practice, *how* a goal enters the system determines almost everything downstream: the agent's accuracy, its privacy footprint, the latency to first action, and the rate at which it does things users didn't intend.
+
+This lesson covers the first two patterns in the catalogue: the **Passive Goal Creator** and the **Proactive Goal Creator**.
+
+## Why goal creation is hard
+
+User intent is rarely a clean, machine-readable specification. Four problems recur:
+
+**Ambiguity** — "Book me something for dinner" leaves unspecified: what cuisine, what neighbourhood, what time, what price range, how many people. Even a human assistant would ask follow-up questions.
+
+**Implicit context** — "Remind me about my meeting tomorrow" assumes the agent knows the user's calendar. The goal is stated relative to a context the agent may or may not have access to.
+
+**Context-dependence** — The same words mean different things in different contexts. "Send the report" means one thing on Monday morning before a stakeholder call and another at 11 pm on a Friday.
+
+**Changing goals** — Users update their intentions mid-task. An agent that commits rigidly to an initial goal interpretation will frustrate users who said "book a hotel near the conference" and then moved the conference venue.
+
+Both patterns in this lesson offer different answers to these problems.
+
+## Pattern 1: Passive Goal Creator
+
+**Context:** The user interacts with the agent through an explicit interface — a chat window, an API call, a form submission. The user takes the initiative.
+
+**Problem:** How do you reliably transform a natural language user message into a structured goal representation that the downstream planner can act on?
+
+**Solution:** The Passive Goal Creator sits between the user's input channel and the planner. It:
+
+1. Receives the raw user message
+2. Runs an NLP parsing step (keyword extraction, intent classification, entity recognition — often using an FM call)
+3. Produces a structured **goal object** with fields for intent, entities, and constraints
+4. Passes the goal object to the planner
+
+```
+User message
+     │
+     ▼
+NLP parser / FM intent extractor
+     │
+     ▼
+Structured goal: { intent, entities, constraints }
+     │
+     ▼
+Planner
+```
+
+If the parser cannot produce a high-confidence structured goal, the Passive Goal Creator asks the user for clarification — a **disambiguation step** — before proceeding.
+
+**Example:** Input "Book a flight to Paris on Friday under $500" produces:
+```json
+{
+  "intent": "book_flight",
+  "entities": { "destination": "Paris", "date": "next Friday" },
+  "constraints": { "max_price_usd": 500 }
+}
+```
+
+**Forces:**
+- *Accuracy is high* — the user stated exactly what they want, so the goal object closely reflects intent.
+- *Reactive by design* — the agent only acts when the user explicitly requests something. No surprises.
+- *Clarification can add latency* — ambiguous requests require back-and-forth before planning begins.
+- *User must know how to ask* — the pattern assumes a user who can articulate their goal. It is not suitable for users who don't know what they want until they see options.
+
+**Best for:** command-and-control interfaces, API clients, explicit task submission pipelines, developer tools.
+
+## Pattern 2: Proactive Goal Creator
+
+**Context:** The agent has continuous access to a context stream — calendar events, sensor readings, usage patterns, environmental signals — and is expected to *anticipate* user needs rather than waiting to be asked.
+
+**Problem:** How does the agent identify and act on user needs before the user explicitly requests anything?
+
+**Solution:** The Proactive Goal Creator runs a continuous monitoring loop:
+
+1. **Context monitors** observe streams of signals (calendar, recent user activity, sensor data, communication metadata)
+2. A **goal inference engine** (typically an FM) interprets accumulated context and identifies candidate goals
+3. A **confidence check** determines whether inferred confidence exceeds a threshold
+4. If confidence is high enough: the agent either proposes the goal to the user (*suggest mode*) or executes it autonomously (*auto-execute mode*)
+
+```
+Context streams: calendar, usage patterns, sensors
+          │
+          ▼
+Goal inference engine (FM)
+          │
+          ▼
+Confidence ≥ threshold?
+    ├── No → discard or lower-priority queue
+    └── Yes → propose to user / auto-execute
+```
+
+**Example:** The user has checked Paris weather forecasts three days in a row, has a "Travel budget" note updated recently, and has no flight booked. Confidence crosses threshold → agent proactively suggests: "Would you like me to search for Paris flights for next weekend?"
+
+**Forces:**
+- *Better UX for recurring or predictable tasks* — the agent anticipates needs, reducing user effort.
+- *Risk of false positives* — an inferred goal that is wrong feels intrusive or condescending. A user who checked Paris weather for research, not travel, will be annoyed by a flight suggestion.
+- *Privacy implications* — the pattern requires continuous observation of user behaviour. This must be disclosed, consented to, and handled with data minimisation principles.
+- *Auto-execute mode raises the stakes* — errors in goal inference can trigger actions the user didn't want and didn't sanction.
+
+**Best for:** ambient assistants, smart home systems, continuous monitoring pipelines, productivity assistants with long-term user context.
+
+<Callout type="warning" title="Proactive Goal Creator and consent">
+  Proactive agents must be transparent about what they observe and why. A user who discovers the agent has been monitoring their browsing history to infer goals — without explicit consent — will lose trust permanently. Surprise actions erode confidence even when the action is correct. Always: disclose what signals are monitored, allow users to opt out of specific signals, and prefer *suggest mode* over *auto-execute* until trust is established.
+</Callout>
+
+## Comparison
+
+| Aspect | Passive Goal Creator | Proactive Goal Creator |
+|--------|---------------------|----------------------|
+| **Trigger** | User explicit request | Context change / pattern detection |
+| **Accuracy** | High (user states intent directly) | Variable (inference may be wrong) |
+| **Latency to action** | On demand | Potentially zero (pre-emptive) |
+| **Privacy requirement** | Low | High (must observe behaviour) |
+| **False positive risk** | None | Present |
+| **Clarification need** | On ambiguity | On low confidence |
+| **Best fit** | Developer APIs, task interfaces | Ambient assistants, monitoring systems |
+
+The two patterns are not mutually exclusive. Many production agents combine them: the Proactive Goal Creator surfaces suggestions that the user can accept or modify (becoming a Passive Goal Creator flow once the user responds).
+
+## Goal decomposition
+
+Both patterns produce a **top-level goal** — a single structured objective. Before the planner can act, the top-level goal must be decomposed into **instrumental subgoals**: the smaller objectives whose completion collectively achieves the top-level goal.
+
+**Example decomposition for "Book Tokyo trip":**
+1. Search for available flights on the requested dates
+2. Compare flight options by price, duration, and stops
+3. Book the selected flight
+4. Search for accommodation near the destination
+5. Confirm accommodation and generate full itinerary
+
+Goal decomposition is where the structural complexity of a task becomes visible. A flat goal object becomes a directed acyclic graph of subtasks, some sequential (must book flight before hotel confirmation) and some parallelisable (can search for flights and accommodation simultaneously). Planning patterns (Lesson 04) take this decomposition as input.
+
+## Key takeaways
+
+- Goal creation is the first step in every agent system — how goals enter the system shapes all downstream behaviour.
+- The **Passive Goal Creator** converts explicit user input into a structured goal object; it is accurate and reactive but requires the user to articulate their need.
+- The **Proactive Goal Creator** infers goals from context streams; it anticipates needs but risks false positives and requires careful consent handling.
+- Both patterns must handle ambiguity — through clarification (passive) or confidence thresholds (proactive).
+- Top-level goals must be decomposed into instrumental subgoals before planning; this decomposition reveals the task's parallelism and dependencies.
+
+## Related concepts
+
+- [**Foundation Model Agents & the Pattern Catalogue**](/courses/agent-design-patterns/01-foundation-model-agents) — the five challenge dimensions that motivate these patterns
+- [**Context & Knowledge Patterns**](/courses/agent-design-patterns/03-context-and-knowledge-patterns) — next lesson: how the agent manages what it knows
+
+<Exercise id="agent-passive-vs-proactive" />
+<Exercise id="agent-goal-decomposition" />

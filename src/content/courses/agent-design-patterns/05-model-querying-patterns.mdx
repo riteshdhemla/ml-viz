@@ -1,0 +1,195 @@
+---
+title: "Model Querying Patterns"
+description: "One-shot vs incremental model querying — how agents structure their interactions with foundation models to balance cost, latency, and reasoning quality."
+order: 5
+type: concept
+estimatedMinutes: 18
+---
+
+# Model Querying Patterns
+
+An agent is ultimately a loop that calls a model. But the *shape* of that call — how many times, in what order, how results feed back — determines everything: cost, latency, reasoning quality, and how gracefully the agent recovers from mistakes. This lesson dissects the two fundamental querying architectures and teaches you to choose between them deliberately.
+
+**Real-world examples:** single-pass document classification, multi-step code generation with self-review, CoT-driven math solvers, tool-using agents that re-plan when a tool call fails.
+
+## The querying interface
+
+Before diving into patterns, it helps to name what every agent is actually doing when it talks to a model. A **query** is a single call to the foundation model: you send a context window (system prompt, conversation history, tool results) and receive a completion. All agent complexity lives in *how you compose and sequence* these queries.
+
+Two dimensions matter most:
+
+- **Breadth**: how much information you pack into one context window
+- **Depth**: how many sequential queries you chain together
+
+One-shot and incremental querying represent the two poles of the depth axis.
+
+## One-shot model querying
+
+In a **one-shot query**, the agent sends a single, carefully constructed prompt and treats the model's first response as the final answer. No follow-up, no correction, no feedback loop.
+
+```text
+System: You are a helpful assistant.
+User:   Extract all dates from the following invoice text and return
+        them as a JSON array. Text: "Invoice date: 2024-03-15.
+        Due date: 2024-04-15. Order placed: 2024-03-01."
+
+Model:  ["2024-03-15", "2024-04-15", "2024-03-01"]
+```
+
+The prompt must carry *all* necessary context upfront because there is no second chance. This forces careful prompt design — which is actually a feature: it makes the agent's behaviour predictable and the call auditable.
+
+**When to use it:**
+
+| Task characteristic | Why one-shot works |
+|---|---|
+| Task is well-defined and bounded | The model can complete it in one pass |
+| Output schema is simple | Low risk of structural failure |
+| Latency is tight | No round-trip overhead |
+| Cost is constrained | One call, one bill |
+| High call volume | Scales linearly, no state to manage |
+
+<Callout type="tip" title="One-shot forces prompt discipline">
+  One-shot querying is not lazy — it is a deliberate constraint. If you cannot write a single prompt that reliably solves your task, that is a signal the task may need decomposition. Start one-shot and escalate to incremental only when quality demands it.
+</Callout>
+
+**Forces against one-shot:** complex tasks with implicit sub-problems, tasks where the model needs to discover information before it can plan, and cases where error recovery matters. A single context window has a fixed compute budget; harder tasks need more.
+
+## Incremental model querying
+
+In **incremental querying**, the agent issues a *sequence* of LLM calls where each call builds on the result of the previous one. The calls are not independent — the agent threads state between them, accumulating reasoning, tool results, and partial answers.
+
+This is how almost all production agents with non-trivial capability work. The three canonical sub-patterns are:
+
+### Sequential chaining
+
+Each call produces output that becomes input for the next:
+
+$$\text{output}_t = \text{LLM}(\text{context} + \text{output}_{t-1})$$
+
+The canonical example is **chain-of-thought**: asking the model to reason step by step across multiple completions rather than cramming reasoning and answer into one.
+
+```text
+Call 1 — Plan:    "Break this task into numbered sub-tasks."
+         → ["1. Parse the question", "2. Look up X", "3. Synthesise answer"]
+
+Call 2 — Execute: "Perform sub-task 1: parse the question."
+         → "The question asks about ..."
+
+Call 3 — Execute: "Perform sub-task 2: look up X given ..."
+         → "X is 42"
+
+Call 4 — Finish:  "Using these results, write the final answer."
+         → "The answer is 42, because ..."
+```
+
+Sequential chaining enables **tool use**: call 2 might return a tool invocation, the agent runs the tool, then call 3 receives the result.
+
+### Conditional branching
+
+The agent uses the model's output to decide *which* next query to issue:
+
+```python
+result = llm(classify_prompt)
+if result == "needs_retrieval":
+    context = retrieve(query)
+    answer  = llm(answer_prompt + context)
+else:
+    answer  = llm(answer_prompt)
+```
+
+This keeps expensive branches (retrieval, external tool calls) off the hot path for simple queries. It is the backbone of routing architectures — a cheap classifier call gates access to a more expensive specialist call.
+
+### Loop with exit condition
+
+The agent repeatedly re-queries until a quality criterion is met:
+
+```python
+for attempt in range(max_retries):
+    output = llm(prompt + scratchpad)
+    if verifier(output):
+        break
+    scratchpad += f"\nAttempt {attempt+1} failed: {output}. Try again."
+```
+
+This is how **self-correction** works in practice: the model acts as its own critic, and failure feedback is appended to the context before the next attempt. The loop exits on success or a retry cap.
+
+<Callout type="info" title="Scratchpads accumulate reasoning">
+  Each iteration appends to the context window, giving the model a running scratchpad of what it tried and why it failed. This is architecturally identical to the hidden reasoning trace in modern reasoning models — the difference is only where the state lives (external context vs. model internals).
+</Callout>
+
+## Key metrics
+
+Three numbers govern the economics of any querying strategy:
+
+$$\text{cost} \approx \sum_{i=1}^{N} \text{tokens}_i \cdot p_{\text{token}}$$
+
+$$\text{latency} \approx \sum_{i=1}^{N} \text{latency}_i \quad \text{(sequential calls cannot overlap)}$$
+
+| Metric | One-shot | Incremental |
+|---|---|---|
+| **Tokens per call** | High (all context upfront) | Low-to-medium per call |
+| **Number of calls** | 1 | 2–$N$ |
+| **Total tokens** | Often lower | Can exceed one-shot with long chains |
+| **Latency** | Minimal | Adds up with depth |
+| **Latency budget pressure** | Low | High — each call adds wall-clock time |
+
+The critical insight: latency compounds because sequential calls cannot be parallelised. A chain of four calls each taking 800 ms costs 3.2 s of wall-clock time *minimum*, regardless of token count.
+
+## Relationship to ReAct and CoT
+
+**Chain-of-thought (CoT)** and **ReAct** are incremental querying patterns with specific semantics:
+
+- **CoT** is sequential chaining where each call extends a reasoning trace. The "chain" is the accumulated scratchpad.
+- **ReAct** (Reason + Act) alternates between reasoning calls and action calls (tool use). Each Thought → Action → Observation cycle is one iteration of a loop with exit condition.
+
+<Callout type="warning" title="ReAct is incremental querying, not magic">
+  ReAct is often presented as an agent "framework" but it is structurally just a loop with exit condition where the model emits both reasoning and tool invocations. Understanding it at the querying-pattern level lets you swap it out for alternatives (e.g., tool-first planning, pure CoT) when the task demands it.
+</Callout>
+
+One-shot querying corresponds to **direct prompting**: the task is solved in a single context window, sometimes including a CoT instruction (which generates the chain internally, within one call, rather than across calls).
+
+## Comparing the patterns
+
+| Dimension | One-shot | Incremental |
+|---|---|---|
+| **Latency** | Lowest | Grows linearly with depth |
+| **Cost** | Predictable, often lower | Can be lower *or* higher |
+| **Reasoning quality** | Limited to one-pass | Improves with depth |
+| **Error recovery** | None — no retry | Possible via loop + self-correction |
+| **Explainability** | Low (single opaque call) | High (each step is inspectable) |
+| **Implementation complexity** | Minimal | Requires state management |
+| **Failure mode** | Silent wrong answer | Infinite loops, cost explosions |
+
+## Decision flow
+
+Start from the simplest option that could work:
+
+1. **Can a single prompt reliably solve this task?** → Use one-shot.
+2. **Does the task have separable sub-tasks where each result conditions the next?** → Use sequential chaining.
+3. **Do expensive steps (retrieval, tool calls) apply only to some inputs?** → Add conditional branching.
+4. **Does output quality need to be verified and retried?** → Add a loop with exit condition.
+5. **Does the task require discovering information before planning?** → Use a full ReAct loop.
+
+<Callout type="warning" title="Incremental is not always better">
+  More calls means more latency, more cost, and more failure modes (infinite loops, runaway costs). Only escalate to incremental when you have measured that one-shot quality is insufficient. Premature complexity in agent design is as harmful as in software design.
+</Callout>
+
+This lesson builds on the planning patterns in [Lesson 04 — Planning Patterns](/courses/agent-design-patterns/04-planning-patterns), which govern *what the agent decides to do*. The next lesson, [Lesson 06 — Reflection Patterns](/courses/agent-design-patterns/06-reflection-patterns), covers how agents evaluate and revise their own outputs — a critical complement to the loop-with-exit-condition pattern introduced here.
+
+## Key takeaways
+
+- A **one-shot query** sends all context in one call and accepts the first response — fast, cheap, predictable, but limited in reasoning depth.
+- **Incremental querying** chains multiple calls, threading state between them; enables CoT, tool use, conditional routing, and self-correction.
+- The three incremental sub-patterns are **sequential chaining**, **conditional branching**, and **loop with exit condition** — ReAct and CoT are instances of these.
+- Latency compounds across sequential calls; cost depends on total tokens, not call count alone.
+- Prefer one-shot; escalate to incremental only when quality measurements justify the added complexity.
+
+## Related concepts
+
+- [**Planning Patterns**](/courses/agent-design-patterns/04-planning-patterns) — how agents decompose tasks before querying
+- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns) — how agents evaluate and revise outputs after querying
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the original CoT technique that incremental querying operationalises
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — how tool calls fit into the incremental querying loop
+
+<Exercise id="agent-querying-comparison" />
+<Exercise id="agent-incremental-chains" />

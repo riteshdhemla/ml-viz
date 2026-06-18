@@ -1,0 +1,231 @@
+---
+title: "Reflection Patterns"
+description: "Self-Reflection, Cross-Reflection, and Human Reflection — how agents structure critique and revision loops to reduce hallucinations and improve output quality."
+order: 6
+type: concept
+estimatedMinutes: 18
+---
+
+# Reflection Patterns
+
+Foundation model agents hallucinate. Not occasionally — structurally. A single forward pass through a language model is a one-shot bet: the model generates output that is *plausible given its training distribution*, but plausibility is not correctness. For low-stakes tasks, that bet is often good enough. For high-stakes generation — medical summaries, legal drafts, code that will be deployed, financial analysis — a single pass is insufficient.
+
+**Reflection patterns** are the structural answer: rather than hoping the first generation is correct, an agent is given explicit mechanisms to *critique* and *revise* its own output, or to receive critique from an external source. Reflection turns generation into a loop, and loops compound quality.
+
+**Real-world examples:** code agents that self-debug failing tests, writing assistants that self-edit for factual accuracy, multi-agent pipelines where one model grades another's output, medical summarization systems with mandatory human review before delivery.
+
+## Why agents hallucinate — and why reflection helps
+
+A language model's output is sampled from a conditional distribution: $p(\text{output} \mid \text{prompt})$. This distribution is learned from training data and compressed into billions of parameters. Two structural properties cause hallucination:
+
+1. **The model has no ground truth oracle.** It cannot look up facts — it pattern-matches. When a pattern is absent or rare in training data, the model fills the gap with a plausible continuation that may be factually wrong.
+2. **Autoregressive generation compounds errors.** Each token is conditioned on all previous tokens. A wrong token early in the sequence shifts the distribution for every subsequent token — a cascade.
+
+Reflection exploits a well-documented asymmetry: **models are better at detecting errors than avoiding them**. Given a draft and the question "what is wrong with this?", a model often finds mistakes it would not have avoided in the original generation. This is the same asymmetry that makes code review easier than code writing.
+
+<Callout type="info" title="The critique asymmetry">
+  Evaluating a claim requires less knowledge than generating it correctly from scratch. A model that hallucinates "Einstein won the Nobel Prize in 1922 for relativity" will often correctly flag that error when shown the statement and asked to fact-check it. Reflection puts the model in the easier evaluator position on its own output.
+</Callout>
+
+## Self-Reflection
+
+**Self-Reflection** is the simplest reflection pattern: a single agent critiques and revises its own output. The loop has three phases:
+
+1. **Generate** — produce an initial draft $d_0$.
+2. **Critique** — evaluate $d_0$, producing a structured critique $c_0$ listing identified problems.
+3. **Revise** — incorporate $c_0$ to produce a revised draft $d_1$.
+
+Repeat from step 2 until a stopping criterion is met.
+
+```text
+Agent → generates draft d₀
+Agent → critiques d₀ → produces critique c₀: ["claim X is unsupported", "step 3 is incorrect"]
+Agent → revises d₀ using c₀ → produces d₁
+Agent → critiques d₁ → produces critique c₁: ["minor clarification needed in conclusion"]
+Agent → revises d₁ using c₁ → produces d₂
+Stopping condition met → return d₂
+```
+
+### Why it works
+
+The key insight is that **generation and critique use different sub-skills**. When generating, the model is constrained to produce fluent, forward-moving text — errors get locked in early. When critiquing, the model can read the output globally, compare claims against each other, and notice inconsistencies. The critique step breaks the local coherence trap.
+
+### Forces
+
+| Force | Effect |
+|---|---|
+| **Latency** | Each generate-critique-revise cycle adds 2–3× the base generation time |
+| **Cost** | Proportional to iterations — 3 iterations ≈ 4–6× the single-pass cost |
+| **Error reduction** | Strong for factual errors, reasoning gaps, and format inconsistencies |
+| **Independence** | None — the same model with the same biases critiques itself |
+
+### When to use Self-Reflection
+
+Self-Reflection is appropriate when:
+- The task has **verifiable correctness criteria** (code that must compile, math that must check out, structured data that must be valid)
+- **Latency tolerance** is moderate — a few seconds of extra processing is acceptable
+- **Cost matters** but not critically — 2–3 iterations are often enough
+- There is no second agent or human available to review
+
+<Callout type="tip" title="Structured critique prompts matter">
+  Vague critique prompts ("Is this good?") produce vague critiques. Force structure: "List specific factual errors. List reasoning gaps. List missing information. Rate overall quality 1–5." Structured critique gives the revision step concrete targets.
+</Callout>
+
+## Cross-Reflection
+
+**Cross-Reflection** introduces a second, independent agent as the critic. Agent A produces a draft; Agent B critiques it; Agent A (or a third agent) revises it. The key property is that Agent B has no access to Agent A's internal reasoning — it sees only the output, just as an external reviewer would.
+
+```text
+Agent A → generates draft d₀
+Agent B → reads d₀, produces critique c₀ (independent review)
+Agent A → revises d₀ using c₀ → produces d₁
+(Optional: Agent B or Agent C reviews d₁ → repeat)
+```
+
+### Why it works — independence and diversity
+
+Self-Reflection is bounded by the model's own blind spots. If Agent A has a systematic bias — a false belief baked in from training, a tendency to over-claim — the same bias will appear in both the generation and the critique. Agent A can't see what it can't see.
+
+Cross-Reflection provides **independent error detection**: Agent B has its own knowledge representation, its own sampling path, and potentially different training. Errors that are consistent with Agent A's training distribution may be inconsistent with Agent B's, making them detectable.
+
+If Agent A and Agent B are different model checkpoints, different temperatures, or prompted with different personas, Cross-Reflection also provides **perspective diversity**: the critique surface is wider.
+
+<Callout type="info" title="Ensemble reasoning">
+  Cross-Reflection is the critique analogue of ensemble methods in supervised learning. Just as averaging multiple classifiers reduces variance, routing an output through multiple independent critics reduces the chance that a systematic error goes undetected.
+</Callout>
+
+### Forces
+
+| Force | Effect |
+|---|---|
+| **Independence** | High — separate model or sampling path eliminates shared blind spots |
+| **Error diversity** | Catches errors that self-reflection misses |
+| **Coordination overhead** | Two agents must be orchestrated; messages passed between them |
+| **Cost** | Higher than self-reflection — two LLM calls per round minimum |
+| **Latency** | Can be parallelised partially (B reviews while A drafts the next round) |
+
+### When to use Cross-Reflection
+
+Cross-Reflection is appropriate when:
+- **Systematic bias** is a concern — the generating model may have consistent knowledge gaps
+- The task requires **independent validation** (e.g. code review, adversarial robustness testing)
+- You have **multiple model instances** available (different checkpoints, different temperatures)
+- The domain is **specialized** and different models may have different relevant knowledge
+
+## Human Reflection
+
+**Human Reflection** places a human in the critique role at a critical checkpoint. The agent generates a draft; a human reviews it; the agent revises (or a human directly edits) before the output is used.
+
+```text
+Agent → generates draft d₀
+Human → reviews d₀ → provides critique or approval
+Agent → revises d₀ using human feedback → produces d₁
+(If irreversible action: human → approves before execution)
+```
+
+Human Reflection is the gold standard for accuracy — humans can draw on world knowledge, lived experience, and domain expertise that no current model reliably replicates. But it is **synchronous on human availability**: the agent must wait.
+
+### Forces
+
+| Force | Effect |
+|---|---|
+| **Accuracy** | Highest — humans catch subtle errors, ethical issues, context mismatches |
+| **Latency** | Unbounded — depends entirely on human response time |
+| **Throughput** | Limited by the number of human reviewers |
+| **Human overhead** | Requires trained reviewers for specialized domains |
+| **Irreversibility** | Only pattern that can reliably gate irreversible actions |
+
+### When to use Human Reflection
+
+Human Reflection is required when:
+- The action is **irreversible** — sending an email to a large list, executing a trade, modifying production data
+- The domain is **regulated** — medical, legal, financial outputs that require human accountability
+- **Failure cost** is catastrophic — the cost of an error exceeds the cost of human review
+- The organization requires a **human decision-maker** to be in the chain of accountability
+
+<Callout type="warning" title="Human review doesn't scale automatically">
+  Human Reflection is the highest-quality pattern but creates a throughput bottleneck. Design it for the checkpoints that genuinely require it — not every step. If you route every agent output through human review, you've built an expensive manual process, not an agent.
+</Callout>
+
+## The reflection loop: iterations and convergence
+
+How many reflection iterations are needed? The answer follows a **diminishing returns curve**.
+
+Let $q_n$ be the quality of the output after $n$ iterations (on a 0–1 scale where 1 is perfect). Empirically, quality improvement per iteration decreases:
+
+$$\Delta q_n = q_n - q_{n-1} \approx \alpha \cdot (1 - q_{n-1})$$
+
+where $\alpha \in (0, 1)$ is the per-iteration improvement rate (typically 0.3–0.6 in practice). This gives a recurrence that converges geometrically:
+
+$$q_n \approx 1 - (1 - q_0)(1 - \alpha)^n$$
+
+Substituting typical values ($q_0 = 0.65$, $\alpha = 0.45$):
+
+| Iteration | Quality | $\Delta q$ |
+|---|---|---|
+| 0 (draft) | 0.65 | — |
+| 1 | 0.81 | +0.16 |
+| 2 | 0.89 | +0.08 |
+| 3 | 0.93 | +0.04 |
+| 4 | 0.95 | +0.02 |
+
+Most of the gain comes in the first 1–2 iterations. Beyond 3, the cost-benefit ratio becomes unfavorable for most tasks.
+
+### Convergence criteria
+
+Rather than fixing the number of iterations, use one of these stopping rules:
+
+1. **Quality threshold** — stop when the critic scores the output above a target (e.g. "no major issues found").
+2. **Delta threshold** — stop when $\Delta q_n < \delta$ for a small $\delta$ (the critic finds only trivial issues).
+3. **Maximum iterations** — always set an upper bound $N_\text{max}$ to cap cost and prevent loops.
+4. **No new issues** — stop when the critique is empty or identical to the previous critique.
+
+In production, combine rules 1 and 3: target quality plus a hard cap.
+
+<Callout type="tip" title="Make the stopping criterion explicit in the prompt">
+  Tell the critic exactly when to say "no further revisions needed." Without this, models tend to always find something to criticize — even minor stylistic issues — which keeps the loop running past the point of diminishing returns.
+</Callout>
+
+## Choosing a reflection pattern
+
+Use this decision tree to select the right pattern for a given scenario:
+
+```
+Is the action irreversible or regulated?
+├── Yes → Human Reflection (required)
+└── No
+    Is systematic model bias a concern (domain-specific knowledge gaps)?
+    ├── Yes → Cross-Reflection (independent agent critic)
+    └── No
+        Is the output high-stakes enough to justify 2–3 extra LLM calls?
+        ├── Yes → Self-Reflection (2–3 iterations with structured critique)
+        └── No → Single-pass generation (no reflection)
+```
+
+### Comparison table
+
+| Pattern | Latency multiplier | Cost multiplier | Error independence | Human overhead | Best use case |
+|---|---|---|---|---|---|
+| None | 1× | 1× | — | None | Low-stakes, reversible |
+| Self-Reflection | 3–5× | 3–5× | Low (same model) | None | High-stakes text/code generation |
+| Cross-Reflection | 3–6× | 4–8× | High (different model) | None | Adversarial, domain-bias-prone tasks |
+| Human Reflection | Unbounded | High (human time) | Complete | Significant | Regulated, irreversible actions |
+
+Patterns can be **composed**: a pipeline might use Self-Reflection for a first quality pass, Cross-Reflection for independent validation, and Human Reflection as a final gate before any irreversible action.
+
+## Key takeaways
+
+- Foundation models hallucinate structurally; a single forward pass has no built-in correction mechanism. Reflection patterns introduce explicit critique-and-revise loops.
+- **Self-Reflection** (generate → critique → revise) exploits the asymmetry between generating and evaluating — the same model is better at spotting errors than avoiding them. Best for high-stakes generation when latency is acceptable.
+- **Cross-Reflection** routes output through an independent agent critic, eliminating the shared blind spots of self-critique. Best when systematic model bias is a concern.
+- **Human Reflection** places a human at critical checkpoints — highest accuracy, but synchronous on human availability. Required for irreversible or regulated actions.
+- Quality improvement per iteration follows a **diminishing returns curve**; most gain comes in iterations 1–2. Always set a maximum iteration cap alongside a quality threshold.
+- Patterns compose: use Self-Reflection for quality, Cross-Reflection for independence, Human Reflection for irreversibility.
+
+## Related concepts
+
+- [**Model Querying Patterns**](/courses/agent-design-patterns/05-model-querying-patterns) — single-pass generation, chain-of-thought, and tool-augmented querying that feed into the reflection loop
+- [**Multi-Agent Cooperation**](/courses/agent-design-patterns/07-multi-agent-cooperation) — how reflection patterns compose with orchestration, delegation, and specialization in larger agent systems
+
+<Exercise id="agent-reflection-type" />
+<Exercise id="agent-reflection-when" />

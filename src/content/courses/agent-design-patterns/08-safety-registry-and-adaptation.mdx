@@ -1,0 +1,207 @@
+---
+title: "Safety, Registry & Adaptation Patterns"
+description: "Multimodal Guardrails, Tool/Agent Registry, Agent Adapter, and Explainability — the infrastructure patterns that make agents safe, extensible, and maintainable in production."
+order: 8
+type: concept
+estimatedMinutes: 18
+---
+
+# Safety, Registry & Adaptation Patterns
+
+The previous lesson covered [multi-agent cooperation](/courses/agent-design-patterns/07-multi-agent-cooperation) — orchestrators, sub-agents, and the protocols that connect them. Once your system spans multiple agents and tools, **infrastructure concerns** become first-class design problems: how do you keep user data safe, discover and version tools at runtime, bridge heterogeneous external APIs, and explain what the agent actually did?
+
+This lesson covers four patterns that address exactly these concerns: **Multimodal Guardrails**, **Tool/Agent Registry**, **Agent Adapter**, and **Explainability**.
+
+## Multimodal Guardrails
+
+An agent that interacts with a foundation model (FM) or external service must handle inputs and outputs it did not author. A **Guardrail** is a validation layer placed between the agent and the FM — or between the FM and the external world — that inspects content for safety before allowing it to pass.
+
+<Callout type="info" title="What guardrails validate">
+  Modern agents are multimodal, so guardrails must cover more than text. The same interception layer can validate:
+  - **Text**: toxicity, hate speech, PII (social security numbers, email addresses, card numbers), policy violations
+  - **Images**: NSFW content, watermark presence, metadata anomalies
+  - **Audio**: personally identifying voice prints, prohibited content
+</Callout>
+
+### Implementation
+
+A guardrail chain wraps the FM call and applies checks in sequence:
+
+```
+User input
+    │
+    ▼
+Input Guardrail ──── reject ──► error response
+    │
+    ▼  (passed)
+Foundation Model
+    │
+    ▼
+Output Guardrail ─── reject ──► fallback response
+    │
+    ▼  (passed)
+Agent / Caller
+```
+
+**Rule-based checks** run first — they are cheap and catch obvious violations (regex for SSN patterns, keyword blocklists). **Classifier-based checks** run second — they are slower but handle subtle content. Both operate on the same content; the chain fails fast on the first failure.
+
+### Forces
+
+The central tension is **safety vs latency**. Every guardrail adds round-trip time. In practice:
+
+- Place a lightweight rule-based check *before* the FM call to avoid wasted inference on clearly invalid inputs.
+- Place a more thorough classifier *after* the FM response to catch hallucinated PII or unsafe generated content before it reaches the user.
+- For latency-sensitive paths, run the output guardrail asynchronously and stream the response — aborting and replacing the stream if a violation is detected late.
+
+<Callout type="warning" title="Guardrails are not a silver bullet">
+  A guardrail that is too aggressive becomes a denial-of-service mechanism on legitimate use. Calibrate thresholds against a representative eval set. Log all rejections — they are signals about edge cases in your policy.
+</Callout>
+
+## Tool/Agent Registry
+
+As a system grows, an agent may have access to dozens of tools and several sub-agents. Hard-coding this knowledge inside each agent creates a maintenance nightmare. The **Registry** pattern solves this with a centralised catalogue.
+
+### Structure
+
+Each entry maps a canonical name to a descriptor:
+
+```json
+{
+  "web_search": {
+    "description": "Search the web and return the top-N results.",
+    "schema": {
+      "type": "object",
+      "properties": {
+        "query":  { "type": "string" },
+        "top_n":  { "type": "integer", "default": 5 }
+      },
+      "required": ["query"]
+    },
+    "endpoint": "https://tools.internal/search",
+    "version": "2.1.0",
+    "access_roles": ["agent", "admin"]
+  }
+}
+```
+
+The agent asks the registry *"what can I do right now?"* and receives only the tools it has permission to call, with their current schemas. This enables:
+
+- **Dynamic tool selection** — the LLM sees a fresh, role-filtered list at each invocation.
+- **Versioning** — callers can pin to a tool version or accept the latest.
+- **Access control** — certain tools (e.g. `send_email`) can be restricted to specific agent roles.
+
+### Relation to MCP
+
+The **Model Context Protocol** (MCP) is an open standard for exactly this registry contract: a server advertises its tools via a typed manifest, and any compliant client (agent or LLM runtime) can discover and call them. A registry backed by MCP gives you vendor-neutral tool discovery across your entire stack.
+
+### Forces
+
+The registry adds **flexibility** — new tools are available the moment they are registered, with no agent redeployment. The cost is **complexity**: you now have a runtime dependency. If the registry is unavailable, agents cannot discover tools. Mitigate with a local fallback cache of the last-known schema set.
+
+<Callout type="tip" title="Start with a static registry">
+  Before building a dynamic registry, use a typed constant in your codebase — a `dict` or TypeScript object. Migrate to a service only when you have more than ~10 tools or multiple teams adding tools independently.
+</Callout>
+
+## Agent Adapter
+
+Agents maintain an internal representation of their actions — e.g., a `Task` with fields like `action` and `params`. External APIs have their own schemas, authentication mechanisms, and error vocabularies. The **Adapter** pattern places a translation layer between the two.
+
+### What an adapter does
+
+```
+Agent internal task            External API request
+┌─────────────────┐            ┌──────────────────────┐
+│ action: "search"│  ──────►  │ method: "POST"        │
+│ params:         │  Adapter   │ url: ".../search"     │
+│   query: "..."  │  ──────►  │ headers: {auth: ...}  │
+│   top_n: 5      │            │ body: {q: "...", n:5} │
+└─────────────────┘            └──────────────────────┘
+                External API error ──► Agent-internal error
+                  {"code": 429}  ──►  RateLimitError
+```
+
+The adapter:
+1. **Converts format** — maps internal field names and types to the external API's schema.
+2. **Injects auth** — adds API keys, OAuth tokens, or service credentials without the agent knowing they exist.
+3. **Maps errors** — translates HTTP status codes and vendor-specific error payloads into a uniform internal exception hierarchy.
+
+### Forces
+
+The adapter **decouples** agent logic from external specifics. When a vendor changes their API, only the adapter needs updating. The agent is unchanged. Use the adapter pattern whenever your agent must talk to more than one external service, or when you expect the external interface to evolve.
+
+The cost is an extra indirection layer. For a single, stable external system it may be overkill — wrap it inline. For **heterogeneous tool ecosystems** (web search, email, databases, internal microservices all behind different APIs), adapters pay for themselves quickly.
+
+## Explainability
+
+An agent that produces a final answer without visible reasoning is hard to debug and hard for users to trust. The **Explainability** pattern makes intermediate steps observable.
+
+This is sometimes called the 18th design pattern in agentic systems because it is cross-cutting — it applies to every other pattern in this course.
+
+### What to log
+
+| What | Why |
+|---|---|
+| Tool invocations and arguments | Understand what the agent chose to do |
+| Tool return values (truncated) | Understand what data influenced the next step |
+| Intermediate reasoning traces (Thought steps in ReAct) | See *why* the agent made each decision |
+| Guardrail outcomes (pass/reject, rule hit) | Audit safety decisions |
+| Registry lookups (which tools were visible) | Debug tool selection |
+
+### Forces
+
+Full logging provides **debugging and trust**. The tensions are:
+
+- **Overhead** — logging every step adds latency and storage cost. Use structured, async logging so it does not block the critical path.
+- **Privacy** — intermediate steps may contain PII. Apply guardrails to logs as well as to responses.
+- **Verbosity for users** — users usually want a summary, not a raw trace. Distinguish between an internal audit log (full fidelity) and a user-facing "here's how I got this answer" explanation (curated highlights).
+
+<Callout type="tip" title="Explanation ≠ justification">
+  Showing the agent's Thought steps is not the same as guaranteeing those steps are *correct*. A model can produce a plausible-sounding rationale that does not match how the actual computation reached the output. Treat logged reasoning as a debugging aid, not a proof.
+</Callout>
+
+## Composing the patterns in a production stack
+
+The four patterns in this lesson naturally layer on top of each other:
+
+```
+Incoming request
+       │
+       ▼
+ Input Guardrail          ← Multimodal Guardrails (rule-based + classifier)
+       │
+       ▼
+ Registry lookup          ← Tool/Agent Registry (filtered by role + version)
+       │
+       ▼
+ Adapter(s)               ← Agent Adapter (format conversion, auth, error map)
+       │
+       ▼
+ FM / Tool execution      ← (external systems)
+       │
+       ▼
+ Output Guardrail         ← Multimodal Guardrails (PII, toxicity check)
+       │
+       ▼
+ Explainability logger    ← log trace + guardrail outcomes + registry snapshot
+       │
+       ▼
+ Final response
+```
+
+The key insight is that **none of these patterns change the agent's core reasoning logic**. They are infrastructure wrappers. This separation of concerns is what keeps agents maintainable as they scale.
+
+## Key takeaways
+
+- **Multimodal Guardrails** intercept content before the FM call (rule-based, cheap) and after the FM response (classifier, thorough). The trade-off is safety vs latency; calibrate thresholds against an eval set.
+- **Tool/Agent Registry** centralises tool discovery, versioning, and access control. The MCP standard provides a vendor-neutral contract for this. Start static, migrate to a service when the tool count grows.
+- **Agent Adapters** decouple the agent's internal representation from external API schemas, auth, and error vocabularies. Most valuable in heterogeneous tool ecosystems.
+- **Explainability** is cross-cutting: log intermediate reasoning, tool calls, and guardrail decisions for debugging and trust. Separate the internal audit log from user-facing explanations.
+- These four patterns compose as a **layered wrapper** around the agent's core logic — changing none of the reasoning, but making the system safe, discoverable, and maintainable in production.
+
+## Related concepts
+
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation) — the cooperation topology that these safety and registry patterns operate within
+- [**Quiz: Agent Design Patterns**](/courses/agent-design-patterns/09-quiz) — test your understanding of the full pattern catalogue
+
+<Exercise id="agent-guardrails-placement" />
+<Exercise id="agent-registry-benefits" />

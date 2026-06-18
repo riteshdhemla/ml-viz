@@ -8184,6 +8184,68 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A CNN that outputs the waveform directly", isCorrect: false },
     ],
   },
+  // ── Agent Design Patterns ────────────────────────────────────────
+  {
+    id: "agent-cooperation-type",
+    type: "multiple-choice",
+    question:
+      "A product team needs to decide whether to ship a controversial feature. They want the highest-quality, most thoroughly reasoned answer and can tolerate high latency and cost. Which multi-agent cooperation pattern is most appropriate?",
+    hint: "Which pattern is designed to surface hidden assumptions through adversarial critique?",
+    explanation:
+      "Debate-based cooperation is designed for exactly this scenario: two agents argue opposing positions over multiple rounds, and a mediator synthesises the strongest reasoning. It produces the highest-quality output of the three patterns precisely because it uses adversarial critique to expose weak arguments — at the cost of high latency and the most API calls.",
+    options: [
+      { id: "a", label: "Voting-based cooperation", isCorrect: false },
+      { id: "b", label: "Role-based cooperation", isCorrect: false },
+      { id: "c", label: "Debate-based cooperation", isCorrect: true },
+      { id: "d", label: "Single-agent chain-of-thought", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-voting-majority",
+    type: "multiple-choice",
+    question:
+      "Condorcet's Jury Theorem guarantees that majority vote accuracy approaches 1 as the number of voters grows. What is the critical assumption this guarantee depends on?",
+    hint: "Think about what happens when all agents share the same base model and make errors on the same inputs.",
+    explanation:
+      "The theorem requires that each voter's errors are statistically independent. If agents share the same base model or training data, they make correlated errors — they fail on the same inputs together. In that case, adding more agents does not help: the majority can be confidently wrong. Independence is approximated in practice by varying temperature, system prompts, or model family.",
+    options: [
+      { id: "a", label: "Each agent must use a different model architecture", isCorrect: false },
+      { id: "b", label: "Each agent's probability of being correct must be exactly 0.5", isCorrect: false },
+      { id: "c", label: "Agent errors must be statistically independent", isCorrect: true },
+      { id: "d", label: "The number of agents must be a prime number", isCorrect: false },
+    ],
+  },
+  // ── Agent Design Patterns — Reflection ──────────────────────────────
+  {
+    id: "agent-reflection-type",
+    type: "multiple-choice",
+    question:
+      "An agent generates a legal contract summary. A separate LLM instance is used to critique the draft before the agent revises it. Which reflection pattern is this?",
+    hint: "Think about who is doing the critiquing — the same agent or a different one?",
+    explanation:
+      "This is Cross-Reflection: Agent A drafts, and a separate agent (Agent B) independently critiques it before Agent A revises. The key property is that Agent B has no access to Agent A's reasoning — it reviews only the output, providing independent error detection. Self-Reflection uses a single agent to critique its own draft; Human Reflection involves a person at the checkpoint.",
+    options: [
+      { id: "a", label: "Self-Reflection", isCorrect: false },
+      { id: "b", label: "Cross-Reflection", isCorrect: true },
+      { id: "c", label: "Human Reflection", isCorrect: false },
+      { id: "d", label: "ReAct loop", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-reflection-when",
+    type: "multiple-choice",
+    question:
+      "An agent is about to send a bulk marketing email to 500,000 subscribers. Which reflection pattern is most appropriate before the send action is executed?",
+    hint: "Consider the reversibility and scale of the action.",
+    explanation:
+      "Human Reflection is required here. Sending an email to 500,000 people is irreversible — you cannot unsend it. Human Reflection is the only pattern that can reliably gate irreversible actions: a person reviews and explicitly approves before execution. Self-Reflection and Cross-Reflection improve draft quality but neither can substitute for a human decision-maker on an action this consequential.",
+    options: [
+      { id: "a", label: "Self-Reflection (the agent checks its own draft)", isCorrect: false },
+      { id: "b", label: "Cross-Reflection (a second agent reviews the draft)", isCorrect: false },
+      { id: "c", label: "Human Reflection (a person approves before sending)", isCorrect: true },
+      { id: "d", label: "No reflection — high-quality drafts don't need review", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
