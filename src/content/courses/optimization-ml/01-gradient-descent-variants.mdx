@@ -48,26 +48,30 @@ Plain mini-batch SGD bounces back and forth across the walls of narrow ravines �
 ### The update rule
 
 $$
-v_t = \beta \cdot v_{t-1} + (1-\beta) \cdot \nabla L_t
+v_t = \beta \cdot v_{t-1} + \nabla L_t
 $$
 
 $$
 \theta_t = \theta_{t-1} - \eta \cdot v_t
 $$
 
-$\beta \in [0, 1)$ is the **momentum coefficient** (typically $0.9$). The velocity $v_t$ is an **exponential moving average (EMA)** of past gradients. Expanding the recursion:
+$\beta \in [0, 1)$ is the **momentum coefficient** (typically $0.9$). The velocity $v_t$ accumulates past gradients with exponential decay. Expanding the recursion:
 
 $$
-v_t = (1-\beta)\sum_{k=0}^{t} \beta^k \,\nabla L_{t-k}
+v_t = \sum_{k=0}^{t} \beta^k \,\nabla L_{t-k}
 $$
 
-The weight on the gradient from $k$ steps ago decays as $\beta^k$, so recent gradients dominate. The **effective window** of the EMA is approximately:
+The weight on the gradient from $k$ steps ago decays as $\beta^k$, so recent gradients dominate. The **effective look-back window** is approximately:
 
 $$
 \text{effective window} \approx \frac{1}{1-\beta}
 $$
 
-With $\beta = 0.9$ this is $\approx 10$ steps: momentum smooths over about 10 past gradients at once.
+With $\beta = 0.9$ this is $\approx 10$ steps: the velocity is primarily driven by the last 10 gradients.
+
+<Callout type="info" title="Heavy ball vs. EMA momentum">
+  This undamped form ($v_t = \beta v_{t-1} + \nabla L_t$) is the **heavy-ball** rule — the convention used by PyTorch's `SGD(momentum=β)`. Some textbooks write $v_t = \beta v_{t-1} + (1{-}\beta)\nabla L_t$ (EMA form), which normalizes the velocity magnitude. Adam's first moment (below) uses the EMA form. The two are equivalent up to a rescaling of $\eta$.
+</Callout>
 
 ### Worked example: 2 steps with $\beta = 0.9$
 
@@ -80,28 +84,28 @@ g_1 = 2(3.0) = 6.0
 $$
 
 $$
-v_1 = 0.9 \cdot 0 + 0.1 \cdot 6.0 = 0.6
+v_1 = 0.9 \cdot 0 + 6.0 = 6.0
 $$
 
 $$
-\theta_1 = 3.0 - 0.1 \cdot 0.6 = 2.94
+\theta_1 = 3.0 - 0.1 \cdot 6.0 = 2.4
 $$
 
 **Step 2:**
 
 $$
-g_2 = 2(2.94) = 5.88
+g_2 = 2(2.4) = 4.8
 $$
 
 $$
-v_2 = 0.9 \cdot 0.6 + 0.1 \cdot 5.88 = 0.54 + 0.588 = 1.128
+v_2 = 0.9 \cdot 6.0 + 4.8 = 5.4 + 4.8 = 10.2
 $$
 
 $$
-\theta_2 = 2.94 - 0.1 \cdot 1.128 = 2.827
+\theta_2 = 2.4 - 0.1 \cdot 10.2 = 1.38
 $$
 
-Plain SGD (no momentum) would give $\theta_1 = 3.0 - 0.1 \cdot 6.0 = 2.4$ and $\theta_2 \approx 1.92$. Momentum is slower here because it takes a few steps to build velocity — but on a ravine with oscillating gradients, the cancellations in the EMA eliminate the oscillation while the consistent component accumulates.
+Plain SGD (no momentum) gives $\theta_1 = 2.4$ (identical on step 1 — no accumulated velocity yet) and $\theta_2 = 2.4 - 0.1 \cdot 4.8 = 1.92$. By step 2, momentum's accumulated velocity takes a larger step ($\theta_2 = 1.38$ vs $1.92$), converging faster. On a ravine with oscillating gradients, the cross-valley velocity components cancel while the consistent downhill component accumulates — that is where momentum's advantage is most visible.
 
 ### Why momentum helps: the Rosenbrock function
 
@@ -111,7 +115,7 @@ $$
 f(x, y) = (1 - x)^2 + 100\,(y - x^2)^2
 $$
 
-Its minimum is at $(1, 1)$ but it lies inside a long curved valley. Plain SGD follows the steep walls in tiny zig-zags and barely advances along the valley floor. With $\beta = 0.9$, the cross-valley oscillations cancel in the EMA while the along-valley component accumulates — momentum slides efficiently toward $(1, 1)$.
+Its minimum is at $(1, 1)$ but it lies inside a long curved valley. Plain SGD follows the steep walls in tiny zig-zags and barely advances along the valley floor. With $\beta = 0.9$, the cross-valley oscillations cancel in the accumulated velocity while the along-valley component accumulates — momentum slides efficiently toward $(1, 1)$.
 
 <Callout type="tip" title="Ball rolling downhill">
   Momentum behaves exactly like a ball rolling down a hill: it picks up speed
@@ -333,7 +337,7 @@ Why? At initialization, the model's weights are random and its gradient estimate
 ## Key takeaways
 
 - **Mini-batch SGD** (batch size 32–512) is the practical foundation: it leverages GPU vectorization while keeping gradient noise that improves generalization.
-- **Momentum** ($\beta \approx 0.9$) maintains a velocity EMA with effective window $1/(1-\beta) \approx 10$ steps, smoothing oscillations in narrow ravines.
+- **Momentum** ($\beta \approx 0.9$) accumulates past gradients with exponential decay (weight $\beta^k$ on gradient $k$ steps back), with an effective look-back window of $1/(1-\beta) \approx 10$ steps, smoothing oscillations in narrow ravines.
 - **RMSprop** normalizes each parameter's update by the EMA of its recent squared gradients, giving large steps to infrequent (sparse) parameters and small steps to frequently-updated ones.
 - **Adam** combines both: first-moment EMA (momentum) and second-moment EMA (RMSprop), with bias correction that compensates for zero initialization in the first few steps.
 - **Learning rate schedules** — especially cosine annealing and warm-up — matter as much as the choice of optimizer; a well-scheduled SGD often beats a poorly-scheduled Adam.
