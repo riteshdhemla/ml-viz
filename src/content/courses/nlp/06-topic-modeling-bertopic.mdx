@@ -86,7 +86,9 @@ Imagine 30 short tickets that fall into three obvious topics: billing, shipping,
 | defective | 0 | 0 | 11 | 11 |
 | the | 60 | 65 | 58 | 183 |
 
-Roughly, $\bar{f}$ (average words per class) is on the order of a few hundred. Plug into the formula and the top scores per cluster fall out as expected: cluster 0 → `refund`, `invoice`; cluster 1 → `delivery`, `tracking`; cluster 2 → `defective`, `broken`. The word `the` appears with huge $\mathrm{tf}$ in every cluster, but its $\log(1 + \bar{f}/f_t)$ collapses to near zero, so it never makes the top-$k$. That is the IDF analogue doing its job at the cluster level.
+Roughly, $\bar{f}$ (average words per class) is on the order of a few hundred. Plug into the formula and the discriminative terms score highest per cluster: cluster 0 → `refund`, `invoice`; cluster 1 → `delivery`, `tracking`; cluster 2 → `defective`, `broken`. The IDF analogue $\log(1 + \bar{f}/f_t)$ **down-weights** common words — `refund` ($f_t = 21$) gets a factor $\log(1 + 300/21) \approx 2.7$, while `the` ($f_t = 183$) gets only $\approx 0.97$.
+
+But notice this penalty alone does **not** evict `the`: its tf is so large that its cluster-0 score is still $60 \times 0.97 \approx 58$, *above* `refund`'s $18 \times 2.7 \approx 49$. The IDF analogue shrinks the gap but cannot close it for an extremely frequent stopword. That is why BERTopic's `CountVectorizer` strips stopwords **before** c-TF-IDF runs: down-weighting and stopword removal are complementary — the ranking handles moderately common words, explicit stopword filtering handles the `the`/`and`/`is` tier.
 
 ## How does this compare to LDA?
 

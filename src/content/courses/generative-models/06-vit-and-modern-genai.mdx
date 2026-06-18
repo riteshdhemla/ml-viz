@@ -1,6 +1,6 @@
 ---
 title: "ViT & Modern Generative AI"
-description: "Vision Transformers, StyleGAN, CycleGAN, and the Stable Diffusion pipeline — how generative models scaled to photorealistic synthesis."
+description: "Vision Transformers, Classifier-Free Guidance, StyleGAN, CycleGAN, and the Stable Diffusion pipeline — how generative models scaled to photorealistic synthesis."
 order: 6
 type: concept
 estimatedMinutes: 18
@@ -8,7 +8,7 @@ estimatedMinutes: 18
 
 # ViT & Modern Generative AI
 
-The past five years brought a wave of architectural innovations that pushed generative models from toy demos to photorealistic, billion-parameter systems. This lesson covers four of the most influential ideas: the **Vision Transformer**, **Classifier-Free Guidance**, **StyleGAN**, **CycleGAN**, and the **Stable Diffusion latent pipeline**.
+The past five years brought a wave of architectural innovations that pushed generative models from toy demos to photorealistic, billion-parameter systems. This lesson covers five of the most influential ideas: the **Vision Transformer**, **Classifier-Free Guidance**, **StyleGAN**, **CycleGAN**, and the **Stable Diffusion latent pipeline**.
 
 ---
 
@@ -120,8 +120,8 @@ where $w$ is the **guidance scale**:
 
 | $w$ | Effect |
 |-----|--------|
-| 0 | Fully unconditional — pure model diversity, ignores prompt |
-| 1 | Conditional without any boost |
+| 0 | No guidance — the plain conditional output $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c)$ (the $(1+w)$ form gives the *conditional* prediction at $w=0$, never the unconditional one) |
+| 1 | Moderate guidance — the prompt direction is amplified once |
 | 7.5 | Strong guidance — high prompt fidelity, less diversity (Stable Diffusion default) |
 | 15+ | Very strong — may over-saturate colors and lose realism |
 
@@ -137,8 +137,8 @@ import numpy as np
 cond   = np.array([0.8, -0.2, 0.5])
 uncond = np.array([0.1,  0.1, 0.1])
 
-print(cfg_output(cond, uncond, w=0))    # → [0.1  0.1  0.1]  (uncond only)
-print(cfg_output(cond, uncond, w=7.5))  # → [6.35 -1.85  3.65]  (strong pull toward cond)
+print(cfg_output(cond, uncond, w=0))    # → [ 0.8 -0.2  0.5]  (conditional, no guidance)
+print(cfg_output(cond, uncond, w=7.5))  # → [ 6.05 -2.45  3.5]  (strong pull toward cond)
 ```
 
 <Callout type="warning" title="CFG costs 2× compute">
@@ -235,7 +235,7 @@ $$
 \mathbf{z} = \mathcal{E}(x), \quad x \in \mathbb{R}^{512 \times 512 \times 3} \;\longrightarrow\; \mathbf{z} \in \mathbb{R}^{64 \times 64 \times 4}
 $$
 
-The VAE compresses the image by a factor of 8 in each spatial dimension, reducing the tensor from 786 K values to 16 K values — a **49× reduction**. The VAE is pre-trained separately and frozen during diffusion training.
+The VAE compresses the image by a factor of 8 in each spatial dimension, reducing the tensor from 786 K values to 16 K values — a **48× reduction** ($786{,}432 / 16{,}384 = 48$). The VAE is pre-trained separately and frozen during diffusion training.
 
 **Step 2 — Latent diffusion (denoise):**
 
@@ -277,7 +277,7 @@ print(f"Text embedding:  {text_emb}")
 print(f"Latent noise:    {latent_noise}")
 print(f"U-Net output:    {unet_output}")
 print(f"Decoded image:   {decoded_image}")
-print(f"Compression ratio: {512*512*3 / (64*64*4):.0f}×")  # → 49×
+print(f"Compression ratio: {512*512*3 / (64*64*4):.0f}×")  # → 48×
 ```
 
 ### Why latent space works
@@ -285,7 +285,7 @@ print(f"Compression ratio: {512*512*3 / (64*64*4):.0f}×")  # → 49×
 The VAE is trained with a perceptual loss — it learns to preserve visually important structure (edges, textures) while discarding imperceptible high-frequency noise. The diffusion model only needs to learn the distribution of **perceptually meaningful** latents, not raw pixel values. This separation of concerns is the key architectural insight of Stable Diffusion.
 
 <Callout type="success" title="Summary of the pipeline">
-  **Encode** (VAE) → **Denoise** (U-Net conditioned by CLIP) → **Decode** (VAE). The middle step runs in a 49× smaller space, so each denoising step is ~49× cheaper than pixel-space diffusion at the same resolution.
+  **Encode** (VAE) → **Denoise** (U-Net conditioned by CLIP) → **Decode** (VAE). The middle step runs in a 48× smaller space, so each denoising step is ~48× cheaper than pixel-space diffusion at the same resolution.
 </Callout>
 
 ---
@@ -321,7 +321,7 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 - **Classifier-Free Guidance** trains one model for both conditional and unconditional generation; at inference it amplifies the direction toward the condition by guidance scale $w$.
 - **StyleGAN** uses a mapping network ($\mathcal{Z} \to \mathcal{W}$) and AdaIN to disentangle style at each scale, enabling fine-grained image attribute control.
 - **CycleGAN** enables unpaired image translation via cycle consistency: translating there and back must recover the original.
-- **Stable Diffusion** runs diffusion in a VAE latent space (~49× smaller than pixel space), with CLIP-conditioned cross-attention in the U-Net, making high-resolution synthesis tractable.
+- **Stable Diffusion** runs diffusion in a VAE latent space (~48× smaller than pixel space), with CLIP-conditioned cross-attention in the U-Net, making high-resolution synthesis tractable.
 
 ---
 
