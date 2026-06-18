@@ -1,0 +1,111 @@
+---
+title: "Foundation Model Agents & the Pattern Catalogue"
+description: "The anatomy of an FM-based agent, the five challenge dimensions that make agent design hard, and the six pattern groups that address them."
+order: 1
+type: concept
+estimatedMinutes: 18
+---
+
+# Foundation Model Agents & the Pattern Catalogue
+
+Software agents have existed for decades, but **foundation model-based agents** are qualitatively different: they perceive an environment, reason with a pretrained language model, and execute actions — often in an open-ended loop that was impossible to script in advance. Understanding how to design these systems reliably is the subject of this course.
+
+**Real-world examples:** GitHub Copilot Workspace (plans and executes multi-file code edits), coding agents like Devin and SWE-agent, AutoGPT-style autonomous loops, customer support pipelines that resolve tickets end-to-end.
+
+## What is an FM-based agent?
+
+An FM-based agent is a software system with three essential characteristics:
+
+1. **Perception** — it ingests observations from an environment (user messages, tool outputs, sensor readings, API responses).
+2. **Reasoning** — it uses a foundation model to interpret observations, maintain context, and decide what to do next.
+3. **Action execution** — it can call tools, write files, invoke APIs, spawn sub-agents, or interact with the world in ways that have real consequences.
+
+The crucial distinction from a simple chatbot is **persistent state and action execution**. A chatbot returns text; an agent *does things*. A chatbot forgets context between turns (unless you re-inject it); an agent maintains a working memory that accumulates over an extended task.
+
+```
+Observation → [Foundation Model] → Action
+     ↑                                  ↓
+     └──────── Environment ←────────────┘
+```
+
+The loop continues until the agent decides the goal is achieved, encounters an unrecoverable error, or hits a resource limit.
+
+## The five core agent components
+
+Every FM-based agent is built from some combination of these five components:
+
+| Component | Responsibility |
+|-----------|---------------|
+| **Goal Management** | Capture, clarify, and track user intent throughout a task |
+| **Context & Memory** | Maintain working memory (in-context) and long-term state (external storage) |
+| **Planning** | Decompose goals into ordered action sequences the agent can execute |
+| **Execution** | Invoke tools, APIs, databases, and sub-agents; handle results and errors |
+| **Monitoring** | Observe outcomes, detect failures, trigger reflection or replanning |
+
+These components interact: the planner uses context to generate a plan; the executor updates context with results; the monitor may reset context and replan on failure. Pattern design is largely about structuring these interactions.
+
+## Why agents are hard — five challenge dimensions
+
+Building agents that work reliably in the real world is difficult for reasons that go beyond ordinary software engineering:
+
+**(a) Goal-seeking** — User goals are ambiguous ("book me something for dinner" — what? where? when? budget?), implicit (the user assumes the agent knows their calendar), and mutable (the user changes their mind mid-task). Agents must handle uncertainty about what success looks like.
+
+**(b) Hallucination** — Foundation models confidently generate plausible-sounding but factually incorrect outputs. An agent that acts on hallucinated information (e.g., a file path that doesn't exist, an API endpoint that was invented) can corrupt state or fail silently in hard-to-detect ways.
+
+**(c) Explainability** — Multi-step reasoning chains are opaque. When an agent produces a wrong answer after ten tool calls, diagnosing *which step* went wrong and *why* is non-trivial. This matters especially for debugging, auditing, and user trust.
+
+**(d) Complex accountability** — When an agent causes harm (deletes the wrong file, sends an incorrect report, makes a financial transaction), accountability is distributed across: the FM provider, the agent developer, the deploying organisation, and the user who issued the goal. Existing legal and organisational frameworks are not well-equipped for this.
+
+**(e) Safety** — Agents can take **irreversible real-world actions**. Sending an email, deleting a database row, executing a trade — these cannot be undone. Safety guardrails must prevent catastrophic actions even when the FM's reasoning is subtly wrong.
+
+<Callout type="warning" title="The irreversibility asymmetry">
+  A human making a mistake can often apologise and correct course. An agent that sends 10,000 emails or drops a production table cannot. Design agents with the principle of **minimum necessary authority**: request only the permissions needed, prefer reversible actions, and checkpoint before irreversible ones.
+</Callout>
+
+## The pattern catalogue
+
+This course covers 18 patterns organised into 6 groups. Each group targets one or more of the challenge dimensions above:
+
+<Callout type="info" title="The 6 pattern groups">
+  **Group 1 — Goal Creation Patterns (2):** Passive Goal Creator, Proactive Goal Creator — address the *goal-seeking* challenge by structuring how user intent is captured.
+
+  **Group 2 — Context & Knowledge Patterns (2):** Prompt/Response Optimiser, Retrieval Augmented Generation — address *hallucination* by improving what the model knows and how it is asked.
+
+  **Group 3 — Planning Patterns (2):** Single-path Plan Generator, Multi-path Plan Generator — structure how goals are decomposed into executable action sequences.
+
+  **Group 4 — Model Querying Patterns (2):** One-shot Model Querying, Incremental Model Querying — control how and when the FM is called within a task.
+
+  **Group 5 — Reflection Patterns (3):** Self-Reflection, Cross-Reflection, Human Reflection — address *explainability* and *safety* by introducing review steps before committing to actions.
+
+  **Group 6 — Multi-Agent Cooperation Patterns (3) + Safety & Infrastructure Patterns (4):** Voting, Role-based Cooperation, Debate-based Cooperation, Multimodal Guardrails, Tool/Agent Registry, Agent Adapter, Explainability — address *accountability* and *safety* through structural checks and separation of concerns.
+</Callout>
+
+This course covers Groups 1–3 in depth (Lessons 01–04). Groups 4–6 build on the same foundations and follow the same GoF-inspired pattern format.
+
+## How to read a pattern
+
+Each pattern in this catalogue is described using the **Gang of Four** pattern format, adapted for agents:
+
+- **Context** — when does this problem arise? What kind of system are you building?
+- **Problem** — what specific challenge does the pattern address? State it as a question or tension.
+- **Solution** — the structural arrangement: which components exist, how they connect, what each does.
+- **Forces** — the trade-offs. Every pattern has costs as well as benefits. Understanding the forces lets you choose the right pattern for your situation.
+- **Consequences** — what improves when you apply this pattern, and what gets harder or more expensive?
+
+A pattern is not a recipe. It is a named vocabulary for a structural decision — one that has been found useful enough to recur across many independent systems.
+
+## Key takeaways
+
+- An FM-based agent perceives an environment, reasons with a foundation model, and executes real-world actions in a loop — distinct from a chatbot by its state and action capabilities.
+- Five components appear in almost every agent: goal management, context/memory, planning, execution, and monitoring.
+- Five challenge dimensions make agent design hard: goal-seeking ambiguity, hallucination, explainability, complex accountability, and safety with irreversible actions.
+- The 18 patterns in this catalogue each address one or more challenge dimensions using the GoF pattern format: context, problem, solution, forces, consequences.
+- Prefer minimum necessary authority: reversible actions and explicit checkpoints before irreversible ones.
+
+## Related concepts
+
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — practical introduction to agent loops, tool calling, and ReAct
+- [**Goal Creation Patterns**](/courses/agent-design-patterns/02-goal-creation-patterns) — next lesson: how to capture and structure user intent
+
+<Exercise id="agent-fm-agent-components" />
+<Exercise id="agent-challenge-mapping" />

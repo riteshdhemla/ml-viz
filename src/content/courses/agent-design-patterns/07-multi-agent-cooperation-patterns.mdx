@@ -1,0 +1,170 @@
+---
+title: "Multi-Agent Cooperation Patterns"
+description: "Voting-based, Role-based, and Debate-based cooperation — how multiple agents divide work, combine perspectives, and produce higher-quality outputs than any single agent."
+order: 7
+type: concept
+estimatedMinutes: 18
+---
+
+# Multi-Agent Cooperation Patterns
+
+A single agent — no matter how capable — is still a single point of failure. Its reasoning can go off-track, its training may have blind spots, and its confidence calibration is imperfect. The solution is the same one humans discovered for high-stakes decisions: **involve more minds**.
+
+Multi-agent cooperation is the umbrella term for architectures in which two or more agents work together on the same problem. The three patterns below — voting, role-based, and debate — span a spectrum from *breadth* (many independent views) to *depth* (iterative argumentation). Choosing the right pattern is an engineering trade-off, not a universally correct answer.
+
+This lesson builds on [Reflection Patterns](/courses/agent-design-patterns/06-reflection-patterns), where a single agent critiques its own output. Cooperation extends that idea to *external* critique and *distributed* generation. We look ahead to [Safety, Registries & Adaptation](/courses/agent-design-patterns/08-safety-registry-adaptation) in the next lesson.
+
+## Why multiple agents?
+
+Three forces push us toward multi-agent designs:
+
+1. **Divide and conquer.** Long or complex tasks exceed a single context window or require domain expertise that no one system prompt can cover. Splitting work across specialists keeps each sub-task tractable.
+2. **Diverse perspectives.** Different sampling temperatures, system prompts, or model versions produce meaningfully different outputs for the same input. Aggregating those outputs smooths out idiosyncratic errors.
+3. **Specialisation.** Roles like *planner*, *executor*, and *critic* require genuinely different behaviours. Encoding them in separate agents — each with a tight system prompt — is cleaner than asking one agent to context-switch mid-conversation.
+
+<Callout type="info" title="Coordination overhead is real">
+  Adding agents multiplies API calls, latency, and cost. Each pattern below has a different overhead profile. Always benchmark against the simpler single-agent baseline before committing to a multi-agent design.
+</Callout>
+
+## Voting-based cooperation
+
+**Structure.** $N$ independent agents each produce an answer to the same question. A coordinator aggregates the answers using a voting rule and returns the winner.
+
+### Aggregation rules
+
+| Rule | Description | Best when |
+|---|---|---|
+| **Majority vote** | Answer with the most votes wins | Binary or small label set |
+| **Weighted vote** | Each agent's vote is scaled by a confidence score | Agents have different track records |
+| **Borda count** | Agents rank all options; ranks are summed; lowest total wins | Multiple options, no clear majority |
+
+Majority vote is the default because it requires no calibration. Weighted voting improves accuracy when you can estimate per-agent reliability from historical data. Borda count is useful when the task is inherently comparative (e.g. ranking search results).
+
+### Condorcet's jury theorem
+
+The mathematical backbone of majority voting comes from political philosophy. **Condorcet's Jury Theorem** (1785) states:
+
+> If each voter independently has probability $p > 0.5$ of choosing the correct option, then the probability of the majority being correct is:
+>
+> $$P(\text{majority correct}) = \sum_{k=\lceil N/2 \rceil}^{N} \binom{N}{k} p^k (1-p)^{N-k}$$
+>
+> and this probability **approaches 1 as $N \to \infty$**.
+
+For example, with $p = 0.7$ and $N = 5$ agents the majority is correct $\approx 83\%$ of the time; at $N = 11$ it rises to $\approx 91\%$.
+
+<Callout type="warning" title="The independence assumption">
+  The theorem requires that agent errors are **independent**. If all agents share the same base model, they will make correlated errors on the same inputs. Independence is best approximated by varying temperature, system prompts, or model family. Correlated errors mean the law of large numbers doesn't help you — a majority can still be confidently wrong.
+</Callout>
+
+The key implication for practice: majority voting pays off most for **factual QA and classification tasks** where there is a ground-truth answer and agent errors are uncorrelated. It helps less for open-ended generation, where "correctness" is subjective.
+
+### Forces
+
+- **Robustness.** One agent failing (or hallucinating) does not determine the output; the majority overrides it.
+- **Cost.** Cost scales linearly with $N$. At $N = 5$ you pay five times the per-query cost.
+- **Latency.** If agents run in parallel, wall-clock latency equals a single agent; if sequential, it multiplies.
+- **Failure mode.** Correlated errors. If the question has a common misconception, the majority may be confidently wrong.
+
+## Role-based cooperation
+
+**Structure.** Agents are assigned **specialised roles** with distinct responsibilities. An orchestrator agent routes tasks to the right specialist and assembles the final output.
+
+A canonical four-role setup:
+
+| Role | Responsibility |
+|---|---|
+| **Planner** | Decomposes the goal into a task list; produces a structured plan |
+| **Executor** | Carries out one task at a time; calls tools, writes code, retrieves documents |
+| **Critic** | Evaluates executor output against requirements; emits structured feedback |
+| **Summariser** | Compresses intermediate results into a compact context for the next step |
+
+The orchestrator acts as a router: it dispatches work, receives structured outputs, and decides what to do next.
+
+### Why separation of concerns matters
+
+Each role benefits from a different system prompt and, potentially, a different model. A Planner benefits from high-level reasoning and creativity; an Executor benefits from tool-calling accuracy and format compliance; a Critic benefits from being adversarially prompted to find flaws. Mixing all four instructions into one prompt creates conflicting objectives and muddles the output.
+
+This is the same principle behind **AutoGen** and **CrewAI**: both frameworks formalise role definitions as first-class objects, wiring agents together through structured message-passing protocols rather than ad-hoc string concatenation.
+
+```text
+User goal: "Write a Python function to merge two sorted lists"
+
+Planner → { tasks: ["implement merge", "write tests", "review"] }
+              ↓
+Executor → def merge_sorted(a, b): ...  (+ test file)
+              ↓
+Critic  → "merge_sorted fails on empty input; add edge case"
+              ↓
+Executor → (revised implementation)
+              ↓
+Summariser → "merge_sorted(a, b) — O(n+m), handles empty lists. Tests pass."
+```
+
+<Callout type="tip" title="Message schemas prevent confusion">
+  In practice, agents communicate through structured schemas (JSON objects with typed fields), not free-form text. A Critic should emit `{ issues: [...], severity: "minor|major", approved: bool }`, not a paragraph. Strict schemas reduce the chance that a downstream agent misinterprets the feedback as an instruction.
+</Callout>
+
+### Forces
+
+- **Efficiency.** Each agent does one thing and does it well; no context is wasted on irrelevant instructions.
+- **Debuggability.** Role boundaries make it easy to pinpoint which agent introduced an error.
+- **Cost.** Lower than voting for the same quality level — you pay for $K$ sequential steps, not $N$ parallel duplicates.
+- **Failure mode.** Cascading failures. An error in the Planner propagates to every downstream role. The Critic must be adversarially tuned or it will rubber-stamp bad executor output.
+
+## Debate-based cooperation
+
+**Structure.** Two (or more) agents are assigned **opposing positions** on a question. They argue for multiple rounds. A mediator agent synthesises the strongest points from each side and produces a final answer.
+
+The protocol:
+
+1. **Initialisation.** The mediator presents the question. Agent A argues *for* position X; Agent B argues *against* (or for position Y).
+2. **Debate rounds.** Each agent reads the other's last argument and responds, attempting to rebut weak points and reinforce strong ones.
+3. **Synthesis.** After $K$ rounds, the mediator scores each agent's reasoning quality and produces a final answer that incorporates the most defensible claims.
+
+$$\text{answer} = \text{Synthesise}\!\left(\arg\max_{r} \text{score}(A_r),\ \arg\max_{r} \text{score}(B_r)\right)$$
+
+### Why debate produces higher quality
+
+Debate forces **red-teaming by design**. Agent B's entire job is to find holes in Agent A's reasoning. This exposes hidden assumptions, catches logical gaps, and surface-tests claims that a single agent would silently accept. The literature on [Constitutional AI and scalable oversight](https://arxiv.org/abs/2212.08073) documents that debate can help a weaker mediator correctly evaluate outputs it could not produce on its own.
+
+<Callout type="info" title="Connection to self-consistency">
+  Debate is the *structured* cousin of self-consistency sampling (chain-of-thought with majority vote). Both elicit multiple reasoning paths. Debate is qualitatively richer because the paths *react to each other* — later arguments are more targeted than independent samples.
+</Callout>
+
+### Forces
+
+- **Quality.** Highest of the three patterns — adversarial critique is the most reliable way to surface errors.
+- **Latency.** Slowest — $K$ rounds of back-and-forth plus synthesis. Unsuitable for latency-sensitive applications.
+- **Cost.** Highest — $2K + 1$ LLM calls minimum (two agents × K rounds + one mediator call).
+- **Failure mode.** Both agents may converge on the same wrong answer if the question has a compelling but incorrect consensus. The mediator needs to be robust to persuasion without evidence.
+
+## Pattern comparison
+
+| Pattern | Relative cost | Relative latency | Output diversity | Primary failure mode |
+|---|---|---|---|---|
+| **Voting** | $O(N)$ | Low (parallel) | High | Correlated errors |
+| **Role-based** | $O(K)$ | Medium (sequential steps) | Medium | Cascading planner error |
+| **Debate** | $O(2K)$ | High (sequential rounds) | High | Consensus on a wrong answer |
+
+$N$ = number of voters; $K$ = number of pipeline steps or debate rounds.
+
+<Callout type="tip" title="When to use which">
+  Use **voting** for high-volume classification or factual QA where errors are independent and latency budget allows parallel calls. Use **role-based** for multi-step agentic tasks (coding, research, document generation) where each step has different requirements. Use **debate** for high-stakes, ambiguous, or controversial decisions where quality matters more than cost or speed.
+</Callout>
+
+## Key takeaways
+
+- Multi-agent cooperation addresses the fundamental limits of any single agent: single point of failure, narrow context, and conflicting role requirements.
+- **Voting-based** cooperation aggregates $N$ independent answers; Condorcet's jury theorem guarantees accuracy approaches 1 as $N \to \infty$ — provided agent errors are independent.
+- **Role-based** cooperation assigns planner, executor, critic, and summariser roles to separate agents; efficiency comes from specialisation and separation of concerns (the principle behind AutoGen and CrewAI).
+- **Debate-based** cooperation exposes hidden assumptions through adversarial argumentation; it produces the highest-quality outputs but at the highest cost and latency.
+- Choose the pattern based on the task's error-independence profile, latency budget, and whether quality or throughput dominates.
+
+## Related concepts
+
+- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns) — single-agent self-critique, the simpler precursor to multi-agent cooperation
+- [**Safety, Registries & Adaptation**](/courses/agent-design-patterns/08-safety-registry-adaptation) — guardrails, agent registries, and dynamic adaptation in multi-agent systems
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the ReAct loop and tool-calling primitives that individual agents in a cooperative system rely on
+
+<Exercise id="agent-cooperation-type" />
+<Exercise id="agent-voting-majority" />
