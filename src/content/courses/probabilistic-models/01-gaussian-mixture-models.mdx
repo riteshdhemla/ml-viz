@@ -124,9 +124,11 @@ scikit-learn supports four covariance structures:
 | Type | Parameters per cluster | Shape |
 |------|----------------------|-------|
 | `full` | $d(d+3)/2$ | Arbitrary ellipsoids |
-| `tied` | $d(d+3)/2$ | Same ellipse for all |
+| `tied` | $d$ (mean only) + one shared $\frac{d(d+1)}{2}$ covariance | Same ellipse for all |
 | `diag` | $2d$ | Axis-aligned ellipses |
 | `spherical` | $d+1$ | Circles |
+
+(`tied` shares a single covariance matrix across all $K$ clusters, so each cluster only adds its own mean — strictly fewer parameters than `full`, which is the point of using it.)
 
 ```python
 from sklearn.mixture import GaussianMixture
@@ -152,7 +154,7 @@ $$
 \text{BIC} = -2 \log P(X \mid \hat{\theta}) + k \ln(n)
 $$
 
-Penalizes complexity more than AIC — prefers simpler models.
+where $k$ is the total number of free parameters in the model (not the number of components $K$) and $n$ is the number of data points. Penalizes complexity more than AIC — prefers simpler models.
 
 ### AIC (Akaike Information Criterion)
 

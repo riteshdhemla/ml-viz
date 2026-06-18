@@ -63,7 +63,7 @@ The expression is symmetric in $p$ and $q$ — adding probability to a bin contr
 - $0.1 \leq \mathrm{PSI} < 0.25$ — watchful waiting; investigate but don't necessarily act.
 - $\mathrm{PSI} \geq 0.25$ — meaningful shift; investigate and probably retrain.
 
-PSI is one of several options. **KL divergence** $D_{\mathrm{KL}}(P \,\|\, Q) = \sum_i p_i \log(p_i / q_i)$ is the asymmetric cousin and is what PSI was derived from. The **Kolmogorov–Smirnov test** compares empirical CDFs and is useful for continuous features without binning. None of these dominates the others; teams typically pick one and stick with it for the consistency of the per-feature threshold.
+PSI is one of several options. **KL divergence** $D_{\mathrm{KL}}(P \,\|\, Q) = \sum_i p_i \log(p_i / q_i)$ is the asymmetric, one-directional building block; PSI is in fact the **symmetrized (Jeffreys) divergence** $D_{\mathrm{KL}}(P \,\|\, Q) + D_{\mathrm{KL}}(Q \,\|\, P)$, which is exactly why $\sum_i (p_i - q_i)\log(p_i/q_i)$ is symmetric in $p$ and $q$. The **Kolmogorov–Smirnov test** compares empirical CDFs and is useful for continuous features without binning. None of these dominates the others; teams typically pick one and stick with it for the consistency of the per-feature threshold.
 
 **Per-feature beats summary scores.** A single "input drift" number averaged across all features is almost useless — a serious shift in one important feature gets diluted by 199 stable ones, and the alarm never fires. Compute drift *per feature*, plot a heatmap, and alert on the worst offenders. When drift correlates with a known event (a deploy, a backfill, a partner-API change), the heatmap tells you which features moved together — diagnostic information no scalar can give you.
 
