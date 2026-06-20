@@ -73,7 +73,7 @@ $$
 Q_i = X\,W_{Q_i}, \quad K = X\,W_K, \quad V = X\,W_V \quad \forall i
 $$
 
-KV cache shrinks by a factor of $h$: instead of storing $h$ copies of $K$ and $V$, you store one. Quality drops slightly; LLaMA-3 70B uses MQA.
+KV cache shrinks by a factor of $h$: instead of storing $h$ copies of $K$ and $V$, you store one. Quality drops slightly; true MQA is rare in practice — most modern LLMs prefer GQA instead.
 
 **Grouped-Query Attention (GQA)**
 
@@ -93,10 +93,10 @@ $$
 |---------|---------|-----------|-----------------|-------|
 | **MHA** | $h$ | $h$ | $1\times$ | Original |
 | **GQA** | $h$ | $G$ | $h/G\times$ smaller | Mistral, LLaMA-2/3 |
-| **MQA** | $h$ | $1$ | $h\times$ smaller | Extreme; PaLM |
+| **MQA** | $h$ | $1$ | $h\times$ smaller | Extreme; PaLM, Falcon |
 
 <Callout type="info" title="GQA in practice">
-  Mistral 7B uses GQA with $h=32$ query heads and $G=8$ KV heads — a 4× KV cache reduction. LLaMA-2 70B uses MQA ($G=1$) for maximum cache savings at large scale. Quality comparisons show GQA with $G \approx h/4$ is nearly indistinguishable from full MHA.
+  Mistral 7B uses GQA with $h=32$ query heads and $G=8$ KV heads — a 4× KV cache reduction. LLaMA-2 70B and LLaMA-3 70B both use GQA ($h=64$ query heads, $G=8$ KV heads) — an 8× cache reduction. Quality comparisons show GQA with $G \approx h/4$ to $h/8$ is nearly indistinguishable from full MHA.
 </Callout>
 
 ## Rotary Positional Encoding (RoPE)
