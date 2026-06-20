@@ -3,10 +3,12 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { LessonMeta } from "@/types/course";
 import { MdxContent } from "@/components/mdx/MdxContent";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
+import { AskAiButton } from "@/components/lessons/AskAiButton";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
 import { QuizResults } from "@/components/exercises/QuizResults";
-import { getNotebookUrl } from "@/lib/utils";
+import { getNotebookUrl, getLessonUrl } from "@/lib/utils";
+import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
 
 interface Props {
   meta: LessonMeta;
@@ -27,6 +29,13 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
   const notebookUrl = isQuiz ? null : getNotebookUrl(meta.courseSlug, meta.slug, meta.notebookUrl);
   const badge = LESSON_TYPE_BADGE[meta.type];
   const position = allLessons.findIndex((l) => l.slug === meta.slug) + 1;
+  const deepDivePrompt = buildDeepDivePrompt({
+    title: meta.title,
+    description: meta.description,
+    url: getLessonUrl(meta.courseSlug, meta.slug),
+    headings: extractHeadings(source),
+    kind: "lesson",
+  });
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -51,6 +60,7 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
             </span>
           )}
           {notebookUrl && <NotebookLink href={notebookUrl} />}
+          <AskAiButton prompt={deepDivePrompt} />
         </div>
         <ReadingProgressBar />
       </header>

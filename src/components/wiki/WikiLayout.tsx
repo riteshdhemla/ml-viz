@@ -3,8 +3,11 @@ import { ChevronLeft, BookOpen } from "lucide-react";
 import type { WikiPageMeta } from "@/types/wiki";
 import { MdxContent } from "@/components/mdx/MdxContent";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
+import { AskAiButton } from "@/components/lessons/AskAiButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
 import { getNotebookUrl } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/site";
+import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
 
 export interface ReferencedLesson {
   href: string;
@@ -21,6 +24,13 @@ interface Props {
 
 export function WikiLayout({ meta, source, referencedBy }: Props) {
   const notebookUrl = getNotebookUrl("wiki", meta.slug, meta.notebookUrl);
+  const deepDivePrompt = buildDeepDivePrompt({
+    title: meta.title,
+    description: meta.description,
+    url: absoluteUrl(`/wiki/${meta.slug}`),
+    headings: extractHeadings(source),
+    kind: "wiki",
+  });
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
@@ -41,6 +51,7 @@ export function WikiLayout({ meta, source, referencedBy }: Props) {
             Wiki
           </span>
           <NotebookLink href={notebookUrl} />
+          <AskAiButton prompt={deepDivePrompt} />
         </div>
         <ReadingProgressBar />
       </header>
