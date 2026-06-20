@@ -7,7 +7,8 @@ import { AskAiButton } from "@/components/lessons/AskAiButton";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
 import { QuizResults } from "@/components/exercises/QuizResults";
-import { getNotebookUrl, getLessonUrl } from "@/lib/utils";
+import { getNotebookUrl } from "@/lib/utils";
+import { absoluteUrl } from "@/lib/site";
 import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
 
 interface Props {
@@ -32,7 +33,7 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
   const deepDivePrompt = buildDeepDivePrompt({
     title: meta.title,
     description: meta.description,
-    url: getLessonUrl(meta.courseSlug, meta.slug),
+    url: absoluteUrl(`/courses/${meta.courseSlug}/${meta.slug}`),
     headings: extractHeadings(source),
     kind: "lesson",
   });

@@ -1,6 +1,6 @@
 /** Canonical site origin, no trailing slash. Safe to import anywhere. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://ml-viz.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://ml-viz-ruby.vercel.app"
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "ML Viz";
