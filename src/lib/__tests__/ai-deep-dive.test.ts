@@ -46,7 +46,7 @@ describe("buildDeepDivePrompt", () => {
   const opts = {
     title: "Gradient Descent",
     description: "How models learn by following the slope.",
-    url: "https://ml-viz.vercel.app/courses/neural-networks/02-gradient-descent",
+    url: "https://ml-viz-ruby.vercel.app/courses/neural-networks/02-gradient-descent",
     headings: ["The loss landscape", "Learning rate"],
     kind: "lesson" as const,
   };
@@ -81,7 +81,7 @@ describe("provider URLs", () => {
     const prompt = buildDeepDivePrompt({
       title: "PCA & SVD",
       description: "Dimensionality reduction.",
-      url: "https://ml-viz.vercel.app/wiki/pca",
+      url: "https://ml-viz-ruby.vercel.app/wiki/pca",
       headings: ["Eigenvectors"],
       kind: "wiki",
     });

@@ -34,14 +34,13 @@ export function range(n: number): number[] {
 const GITHUB_REPO = "riteshdhemla/ml-viz";
 const GITHUB_BRANCH = "main";
 
-export function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-}
-
 /**
  * Returns a Google Colab URL for a lesson notebook.
  * Convention: notebooks/{courseSlug}/{lessonSlug}.ipynb
  * Pass `override` to use an explicit URL instead.
+ *
+ * For the canonical site origin and page URLs, use `SITE_URL` / `absoluteUrl()`
+ * from `@/lib/site` — that is the single source of truth.
  */
 export function getNotebookUrl(
   courseSlug: string,
@@ -51,8 +50,4 @@ export function getNotebookUrl(
   if (override) return override;
   const path = `notebooks/${courseSlug}/${lessonSlug}.ipynb`;
   return `https://colab.research.google.com/github/${GITHUB_REPO}/blob/${GITHUB_BRANCH}/${path}`;
-}
-
-export function getLessonUrl(courseSlug: string, lessonSlug: string): string {
-  return `${getSiteUrl()}/courses/${courseSlug}/${lessonSlug}`;
 }

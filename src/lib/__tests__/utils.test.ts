@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   cn,
   slugify,
@@ -7,8 +7,6 @@ import {
   lerp,
   range,
   getNotebookUrl,
-  getLessonUrl,
-  getSiteUrl,
 } from "@/lib/utils";
 
 describe("cn", () => {
@@ -91,30 +89,5 @@ describe("getNotebookUrl", () => {
     expect(
       getNotebookUrl("x", "y", "https://example.com/custom.ipynb")
     ).toBe("https://example.com/custom.ipynb");
-  });
-});
-
-describe("site/lesson URLs", () => {
-  const original = process.env.NEXT_PUBLIC_SITE_URL;
-  afterEach(() => {
-    if (original === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
-    else process.env.NEXT_PUBLIC_SITE_URL = original;
-  });
-
-  it("falls back to localhost when the env var is unset", () => {
-    delete process.env.NEXT_PUBLIC_SITE_URL;
-    expect(getSiteUrl()).toBe("http://localhost:3000");
-  });
-
-  it("uses NEXT_PUBLIC_SITE_URL when set", () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://ml-viz.vercel.app";
-    expect(getSiteUrl()).toBe("https://ml-viz.vercel.app");
-  });
-
-  it("composes a lesson URL from the site URL", () => {
-    process.env.NEXT_PUBLIC_SITE_URL = "https://ml-viz.vercel.app";
-    expect(getLessonUrl("clustering", "01-k-means")).toBe(
-      "https://ml-viz.vercel.app/courses/clustering/01-k-means"
-    );
   });
 });

@@ -58,7 +58,7 @@ Add these in **GitHub → Settings → Secrets and variables**:
 
 | Variable | Value |
 |----------|-------|
-| `NEXT_PUBLIC_SITE_URL` | `https://ml-viz.vercel.app` |
+| `NEXT_PUBLIC_SITE_URL` | `https://ml-viz-ruby.vercel.app` |
 
 > Tip: run `npx vercel link` in the repo root once to generate `.vercel/project.json`, copy the IDs, then delete the file (it is gitignored).
 
