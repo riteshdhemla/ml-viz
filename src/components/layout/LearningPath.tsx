@@ -34,6 +34,9 @@ const CLUSTER_ORDER = [
   "Deep Learning",
   "Unsupervised & Probabilistic",
   "Applied ML",
+  "LLMs",
+  "Agents & Harnesses",
+  "GPU Programming",
   "Reinforcement Learning",
 ];
 
@@ -43,6 +46,9 @@ const CLUSTER_STYLES: Record<string, { accent: string; badge: string }> = {
   "Deep Learning":             { accent: "text-accent-orange", badge: "bg-accent-orange/15 text-accent-orange" },
   "Unsupervised & Probabilistic": { accent: "text-accent-rose", badge: "bg-accent-rose/15 text-accent-rose" },
   "Applied ML":                { accent: "text-accent-yellow", badge: "bg-accent-yellow/15 text-accent-yellow" },
+  "LLMs":                      { accent: "text-brand-500",     badge: "bg-brand-500/15 text-brand-300" },
+  "Agents & Harnesses":        { accent: "text-brand-200",     badge: "bg-brand-500/15 text-brand-200" },
+  "GPU Programming":           { accent: "text-accent-orange", badge: "bg-accent-orange/15 text-accent-orange" },
   "Reinforcement Learning":    { accent: "text-brand-400",     badge: "bg-brand-400/15 text-brand-400" },
 };
 
