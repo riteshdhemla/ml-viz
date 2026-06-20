@@ -5164,6 +5164,53 @@ const allExercises: Exercise[] = [
     ],
   },
 
+  // ── Reasoning Models ────────────────────────────────────────────
+  {
+    id: "reasoning-train-vs-test",
+    type: "multiple-choice",
+    question:
+      "What is the key difference between train-time compute scaling and test-time compute scaling for reasoning models?",
+    hint: "One is done once; the other happens per query.",
+    explanation:
+      "Train-time scaling means running RL for more steps so the model learns better reasoning strategies — a one-time investment that improves all future queries. Test-time scaling means letting the model generate more thinking tokens at inference before answering — a per-query cost that can be adjusted based on problem difficulty. Both improve accuracy and they compose: a better-trained model also benefits more from extra test-time tokens.",
+    options: [
+      { id: "a", label: "Train-time scaling teaches the model better strategies (one-time cost); test-time scaling gives it more tokens to think per query (per-query cost)", isCorrect: true },
+      { id: "b", label: "Train-time scaling increases the context window; test-time scaling increases the number of parameters", isCorrect: false },
+      { id: "c", label: "Train-time scaling uses chain-of-thought prompts; test-time scaling uses RL on human feedback", isCorrect: false },
+      { id: "d", label: "They are the same technique applied at different points in the pipeline", isCorrect: false },
+    ],
+  },
+  {
+    id: "reasoning-rl-reward",
+    type: "multiple-choice",
+    question:
+      "DeepSeek-R1 is trained with RL using a verifiable reward signal. What does 'verifiable' mean in this context, and why does it matter?",
+    hint: "Think about what the reward model is checking.",
+    explanation:
+      "A verifiable reward means the correctness of the final answer can be checked automatically — a math answer matched against the numeric solution, or code run against a test suite. This matters because it removes the need for a human-trained reward model (which can be gamed) and provides a clean, consistent signal. Without verifiability, RL training often suffers from reward hacking where the model optimises surface features rather than correctness.",
+    options: [
+      { id: "a", label: "The final answer can be checked automatically (e.g. math answer, unit-test pass), removing the need for a separate reward model", isCorrect: true },
+      { id: "b", label: "Human labelers verify each reasoning trace step by step", isCorrect: false },
+      { id: "c", label: "The model verifies its own answers using a separate forward pass", isCorrect: false },
+      { id: "d", label: "The reward is computed as a fixed function of output length", isCorrect: false },
+    ],
+  },
+  {
+    id: "reasoning-when-to-use",
+    type: "multiple-choice",
+    question:
+      "Which task is the BEST fit for a reasoning model (like o3 or DeepSeek-R1) over a standard LLM?",
+    hint: "Reasoning models trade latency and cost for accuracy on hard, multi-step problems.",
+    explanation:
+      "Solving a competition math problem is exactly the use case reasoning models excel at: multi-step logic, verifiable answer, and the user can wait several seconds. Sentiment classification is a one-step lookup, real-time chat needs low latency, and document summarization is a single-pass task where standard LLMs already perform well. Reasoning models add cost and latency without meaningful quality gains on these simpler tasks.",
+    options: [
+      { id: "a", label: "Solving a competition-level mathematics problem", isCorrect: true },
+      { id: "b", label: "Classifying customer reviews into positive/negative/neutral sentiment", isCorrect: false },
+      { id: "c", label: "Generating a real-time chat reply in a customer support app", isCorrect: false },
+      { id: "d", label: "Summarizing a 10-page document into bullet points", isCorrect: false },
+    ],
+  },
+
   // ── Fine-Tuning & Alignment ─────────────────────────────────────
   {
     id: "sft-when-to-finetune",
@@ -5464,6 +5511,52 @@ const allExercises: Exercise[] = [
       { id: "b", label: "≈ 26 GB (same as FP16 — quantization only changes precision, not size)", isCorrect: false },
       { id: "c", label: "≈ 52 GB (twice the FP16 footprint)", isCorrect: false },
       { id: "d", label: "≈ 13 GB (a 2× reduction vs FP16)", isCorrect: false },
+    ],
+  },
+  // ── Knowledge Distillation ────────────────────────────────────
+  {
+    id: "distillation-soft-labels",
+    type: "multiple-choice",
+    question:
+      "Why do 'soft labels' from a teacher model provide richer supervision than one-hot hard labels?",
+    hint: "Think about what information is encoded in the non-argmax probabilities.",
+    explanation:
+      "A teacher's full output distribution encodes similarity structure between classes — 'kitten' being far more likely than 'airplane' when the true label is 'cat' reveals which outputs are close neighbours. Hard labels only encode the argmax; all wrong answers look equally wrong. This similarity structure ('dark knowledge') is what lets a small distilled student learn faster and reach higher accuracy than a same-sized model trained from scratch on hard labels.",
+    options: [
+      { id: "a", label: "Soft labels reveal the similarity structure between outputs — the non-argmax probabilities encode 'dark knowledge' that hard labels discard", isCorrect: true },
+      { id: "b", label: "Soft labels are easier to compute because they don't require human annotation", isCorrect: false },
+      { id: "c", label: "Soft labels reduce overfitting by adding label smoothing noise", isCorrect: false },
+      { id: "d", label: "Soft labels are better because they use the full vocabulary, not just one class", isCorrect: false },
+    ],
+  },
+  {
+    id: "distillation-temperature",
+    type: "multiple-choice",
+    question:
+      "In knowledge distillation, a temperature τ > 1 is applied to both the teacher and student logits before computing the KL divergence loss. What does raising τ achieve?",
+    hint: "Consider what happens to the softmax distribution as temperature increases.",
+    explanation:
+      "Temperature τ > 1 softens both distributions — spreading probability mass more evenly across the vocabulary. This makes near-miss tokens more visible (a tail probability of 0.001 becomes 0.05 at high τ), giving the student richer gradient signal from each example. The τ² factor in the loss compensates for the gradient scaling that temperature introduces. Too high a τ makes the distribution nearly uniform — no useful signal; too low (τ → 1) approaches hard labels.",
+    options: [
+      { id: "a", label: "It spreads probability mass across the vocabulary, making near-miss tokens more visible to the student", isCorrect: true },
+      { id: "b", label: "It makes training faster by reducing the magnitude of the KL divergence loss", isCorrect: false },
+      { id: "c", label: "It regularizes the student by injecting uniform noise into the teacher predictions", isCorrect: false },
+      { id: "d", label: "It prevents the student from copying the teacher's exact output distribution", isCorrect: false },
+    ],
+  },
+  {
+    id: "distillation-vs-scratch",
+    type: "multiple-choice",
+    question:
+      "You need to deploy a 1 B-parameter LLM. You can either (a) train a 1 B model from scratch on the same data or (b) distill a 70 B teacher into a 1 B student. With the same compute budget, which approach typically produces a better model?",
+    hint: "Think about what information each training signal provides per example.",
+    explanation:
+      "Distillation almost always wins at the small end. The teacher's soft output distribution provides denser supervision per token than one-hot labels: every example tells the student about the relative probability of every alternative, not just the correct one. With the same compute budget, the distilled student learns the same input-output structure faster and with less data. This is why virtually every production small LLM (Phi, Gemma, LLaMA distilled variants) is a distillation product rather than a from-scratch small pretraining.",
+    options: [
+      { id: "a", label: "Distillation — the teacher's soft labels provide denser per-example supervision than one-hot training targets", isCorrect: true },
+      { id: "b", label: "From-scratch training — distillation caps the student at the teacher's accuracy, so it can never exceed it", isCorrect: false },
+      { id: "c", label: "From-scratch training — distillation inherits all of the teacher's errors, including its biases", isCorrect: false },
+      { id: "d", label: "Neither — 1 B parameters is below the threshold where distillation helps", isCorrect: false },
     ],
   },
   // ── Reinforcement Learning — Bridge to RLHF ────────────────────

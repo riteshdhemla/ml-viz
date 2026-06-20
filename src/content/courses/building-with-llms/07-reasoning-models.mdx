@@ -1,0 +1,140 @@
+---
+title: "Reasoning Models"
+description: "How o1, DeepSeek-R1, and Gemini Flash Thinking differ from base LLMs — chain-of-thought training via RL, test-time compute scaling, and when to use a reasoning model."
+order: 7
+type: concept
+estimatedMinutes: 18
+---
+
+# Reasoning Models
+
+Standard LLMs predict the next token given their context. They do a fixed amount of computation per token — which means a one-step multiplication and a twenty-step proof look equally hard from the model's perspective. **Reasoning models** break that constraint: they spend extra compute *thinking* before answering, and they are trained to exploit it. The result is dramatically better performance on tasks requiring multi-step logic, math, and code.
+
+**Real-world examples:** OpenAI o1/o3, DeepSeek-R1, Google Gemini Flash Thinking, and Qwen QwQ. All are trained on top of strong base LLMs but with an additional reasoning-focused post-training stage.
+
+## How standard CoT differs from reasoning models
+
+[Chain-of-thought prompting](/courses/building-with-llms/02-chain-of-thought) asks a base model to produce intermediate steps before its final answer. This helps, but the model was not *trained* to produce those steps reliably — it just completes a pattern.
+
+Reasoning models internalize CoT: they are explicitly trained to generate long reasoning traces before committing to an answer. The traces may be:
+- **Visible** (DeepSeek-R1 outputs `<think>...</think>` blocks before the answer)
+- **Hidden** (o1/o3 run an internal "thinking" pass that users don't see)
+
+Either way, the model allocates more forward passes, and more tokens, to hard problems than to easy ones.
+
+<Callout type="tip" title="Same architecture, different training">
+  Reasoning models use the same decoder-only Transformer architecture as base LLMs. The difference is entirely in how they are trained after pretraining: RL that rewards correct final answers over long reasoning chains.
+</Callout>
+
+## Train-time compute scaling: RL on reasoning traces
+
+The training recipe for reasoning models uses **reinforcement learning** to teach the model to reason:
+
+1. **Generate** several candidate reasoning chains + final answers for each problem.
+2. **Verify** the final answer against a ground-truth checker (math answer, unit-test pass, or a reward model for open-ended problems).
+3. **Reinforce** chains that reached the correct answer; penalize those that didn't.
+
+The model learns — entirely through trial and error — that longer, more deliberate chains lead to better answers. No human-written reasoning traces are required; the reward signal comes from verifying the *end result*.
+
+$$
+\mathcal{L}_{\text{RL}} = -\mathbb{E}_{\tau \sim \pi_\theta}\big[R(\tau)\big]
+\quad \text{where } R(\tau) = \mathbf{1}[\text{final answer is correct}]
+$$
+
+Popular algorithms for this step include **GRPO** (Group Relative Policy Optimization, used by DeepSeek) and **PPO** (used by OpenAI o1). Both keep the model close to a reference policy to prevent reward hacking.
+
+**Scaling law at train time:** running RL for more steps lets the model discover more effective reasoning strategies. In the DeepSeek-R1 paper, model accuracy on competition math benchmarks rises near-monotonically with RL training duration — longer training = longer and better reasoning traces at inference.
+
+## Test-time compute scaling: budget forcing
+
+Once a reasoning model is trained, you can control how much it thinks at inference time. The technique is called **budget forcing**: inject keywords or constraints that tell the model to think more or less.
+
+**"Wait" trick:** appending the string `"Wait"` to the model's partial reasoning trace nudges it to pause and reconsider, often catching errors before committing. This can be done multiple times.
+
+```text
+[Problem] Prove that √2 is irrational.
+
+[Model thinks...]
+Assume √2 = p/q in lowest terms. Then 2 = p²/q², so p² = 2q²...
+Wait, let me check the parity argument more carefully.
+If p² is even then p must be even — write p = 2k...
+[continues longer reasoning chain]
+[Answer] √2 is irrational because any representation p/q leads to a contradiction.
+```
+
+**Scaling curve:** empirically, reasoning accuracy improves with more thinking tokens — but with diminishing returns. There is an optimal compute budget per problem difficulty; hard competition problems benefit from much longer chains than grade-school arithmetic.
+
+<Callout type="info" title="Train-time vs test-time scaling">
+  | | Train-time | Test-time |
+  |---|---|---|
+  | What is scaled | RL training steps | Tokens generated before answering |
+  | Effect | Model learns better strategies | Model applies strategies more carefully |
+  | Cost | One-time (training) | Per-query (inference) |
+  | Control | Fixed at deployment | Adjustable per request |
+</Callout>
+
+## DeepSeek-R1: a reference implementation
+
+DeepSeek-R1 (2025) is the most transparent publicly documented reasoning model. Key facts:
+
+- **Architecture:** decoder-only Transformer (same class as LLaMA/GPT)
+- **Training:** pretraining → SFT → GRPO-based RL with verifiable reward signals
+- **Reasoning traces:** explicitly output between `<think>` and `</think>` tags; the final answer follows after `</think>`
+- **Emergent behaviour:** the RL stage produced spontaneous "aha moments" — the model learned to revisit and correct its own earlier steps without being told to
+- **Open weights:** DeepSeek released both the 671 B MoE model and smaller distilled variants (7 B, 14 B, 70 B parameters)
+
+```text
+Example output format:
+<think>
+  Let me break this into cases...
+  Case 1: if n is even, then...
+  Wait, that doesn't work for n=2. Let me reconsider.
+  Actually, the key insight is...
+</think>
+The answer is 42, because [brief explanation].
+```
+
+## When to use a reasoning model
+
+Reasoning models are not universally better — they are slower and more expensive per query. Choose them when:
+
+✅ **Hard, verifiable tasks** — math olympiad problems, competitive programming, formal proofs, scientific calculations where correctness is binary and checkable
+
+✅ **Multi-step planning** — tasks requiring correct intermediate state (e.g. agentic coding that spans many files)
+
+✅ **Low latency tolerance** — the user or system can wait several seconds or more for a better answer
+
+❌ **High-volume, latency-sensitive tasks** — classification, extraction, summarisation of a single document: standard LLMs or even small fine-tuned models are cheaper and fast enough
+
+❌ **Tasks requiring real-time streaming** — reasoning models often hold back output until thinking is complete
+
+❌ **Creative generation** — longer thinking rarely helps prose, dialogue, or style
+
+<Callout type="warning" title="Thinking tokens cost money">
+  A reasoning model might generate 2,000–10,000 thinking tokens before outputting 200 answer tokens. At typical API prices, this is 10–50× more expensive than a standard completion of the same length. Always measure whether the quality uplift is worth the cost for your specific task.
+</Callout>
+
+## Common mistakes
+
+1. **Using a reasoning model for simple tasks** — calling o1 to classify a sentiment or extract a date is wasteful; a standard model or even a smaller fine-tuned model does it just as well for a fraction of the cost.
+2. **Prompting like a base LLM** — don't tell a reasoning model to "think step by step"; it already does. Adding CoT triggers can *interfere* with its internal reasoning strategy.
+3. **Ignoring the thinking trace** — for debugging, the `<think>` trace (when visible) is the best diagnostic. If the reasoning is sound but the answer is wrong, the issue is in the final-step extraction. If the reasoning itself is flawed, the problem is the model's knowledge or strategy.
+4. **Equating reasoning length with quality** — longer traces are generally better, but a model can also ramble. Evaluate the final answer, not the token count.
+
+## Key takeaways
+
+- Reasoning models are standard LLMs post-trained with **RL on verifiable outcomes** — they learn to generate useful CoT traces without explicit trace supervision.
+- **Train-time scaling** (more RL steps) and **test-time scaling** (more thinking tokens) both improve accuracy, and they compose.
+- **Budget forcing** (e.g. the "Wait" trick) is a simple way to give the model more test-time compute without retraining.
+- DeepSeek-R1 is the most documented open example: GRPO-based RL, `<think>` tags, emergent self-correction.
+- Use reasoning models for **hard, verifiable, low-throughput tasks**; fall back to standard LLMs for speed and cost.
+
+## Related concepts
+
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the prompting precursor to trained reasoning
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — the pretraining that provides the base capability reasoning RL refines
+- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the RL machinery reasoning training adapts for verifiable rewards
+
+<Exercise id="reasoning-train-vs-test" />
+<Exercise id="reasoning-rl-reward" />
+<Exercise id="reasoning-when-to-use" />

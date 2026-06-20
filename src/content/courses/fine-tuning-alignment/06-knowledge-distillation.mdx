@@ -1,0 +1,141 @@
+---
+title: "Knowledge Distillation"
+description: "Training a small student model to mimic a large teacher — soft labels, temperature scaling, and why 'dark knowledge' makes distilled models punch above their weight."
+order: 6
+type: concept
+estimatedMinutes: 18
+---
+
+# Knowledge Distillation
+
+Training a GPT-4-class model requires hundreds of billions of parameters and costs millions of dollars. Deploying it on every user request is even costlier. **Knowledge distillation** offers a way out: train a small, fast **student** model to mimic the output distribution of the large **teacher** — and the student often ends up far better than an identically-sized model trained from scratch.
+
+**Real-world examples:** Phi-2/3 (Microsoft), Gemma-2 (Google), LLaMA distilled variants, DistilBERT (Hugging Face), and virtually every mobile- or edge-deployed LLM are distillation products. The core idea transfers beyond LLMs to any domain where you have a strong, expensive model and need a cheap one.
+
+## The core insight: soft labels carry more information
+
+A hard label says "the answer is cat." A teacher's full output distribution over 50,000 tokens says "cat is 78 % likely, kitten 9 %, feline 4 %, dog 1.2 %..." — it encodes the *relative similarity structure* between classes. Hinton et al. called this **dark knowledge**: information the teacher has learned that isn't visible in the argmax.
+
+<Callout type="tip" title="Why dark knowledge matters">
+  When training on hard labels, every wrong answer looks equally wrong. The teacher's distribution reveals which wrong answers are *close* — "kitten" and "cat" are nearly the same, while "airplane" and "cat" are not. The student learns this similarity structure, effectively getting richer supervision from each example.
+</Callout>
+
+## The distillation loss
+
+Distillation minimises the **KL divergence** between teacher and student probability distributions. For a single input $x$ with teacher output $\hat{y}_T$ and student output $\hat{y}_S$ over the vocabulary $V$:
+
+$$
+\mathcal{L}_{\text{KD}} = \text{KL}(\hat{y}_T \,\|\, \hat{y}_S) = \sum_{i \in V} \hat{y}_T^{(i)} \log \frac{\hat{y}_T^{(i)}}{\hat{y}_S^{(i)}}
+$$
+
+In practice, a **temperature** $\tau > 1$ is applied to soften the distributions before computing the loss:
+
+$$
+p_i^{(\tau)} = \frac{\exp(z_i / \tau)}{\sum_j \exp(z_j / \tau)}
+$$
+
+where $z_i$ are the raw logits. Higher $\tau$ spreads probability mass across more tokens, making the soft labels more informative (and the KL target less spiky).
+
+The full training objective typically blends distillation with standard cross-entropy on the true label:
+
+$$
+\mathcal{L} = \alpha \cdot \tau^2 \cdot \mathcal{L}_{\text{KD}}(T) \;+\; (1-\alpha) \cdot \mathcal{L}_{\text{CE}}
+$$
+
+The $\tau^2$ factor compensates for the gradient scaling introduced by temperature (gradients are divided by $\tau$ twice through the softmax). Common choices: $\alpha = 0.5\text{–}0.9$, $\tau = 2\text{–}10$.
+
+<Callout type="info" title="Why not just use a lower temperature for the teacher?">
+  You could. The standard choice $\tau = 1$ recovers hard labels in the limit. Using $\tau > 1$ spreads the teacher's distribution, making near-misses more visible to the student. Too high ($\tau \gg 10$) and the distribution becomes nearly uniform — no signal. The sweet spot depends on the model and task and is usually found by validation.
+</Callout>
+
+```python
+import torch
+import torch.nn.functional as F
+
+def distillation_loss(student_logits, teacher_logits, labels, tau=4.0, alpha=0.7):
+    # Soft targets — both teacher and student softened at temperature τ
+    soft_student = F.log_softmax(student_logits / tau, dim=-1)
+    soft_teacher = F.softmax(teacher_logits / tau, dim=-1)
+
+    # KL divergence (τ² compensates gradient scaling)
+    kd_loss = F.kl_div(soft_student, soft_teacher, reduction="batchmean") * (tau ** 2)
+
+    # Hard-label cross-entropy
+    ce_loss = F.cross_entropy(student_logits, labels)
+
+    return alpha * kd_loss + (1 - alpha) * ce_loss
+```
+
+## Types of distillation
+
+**Output (response) distillation** — the student learns from the teacher's final token probability distribution, as above. Cheapest to run; the teacher is frozen and queried offline.
+
+**Feature (intermediate) distillation** — the student is also trained to match the teacher's hidden states or attention maps at intermediate layers. Adds more signal but requires architectural alignment (same hidden dimensions or an adapter layer).
+
+**Sequence-level distillation** — for generative models, the teacher generates complete responses for each prompt; the student trains on those responses via standard cross-entropy. This is the most common form in LLM distillation: generate a synthetic dataset of `(prompt, teacher_response)` pairs, then SFT the student on them.
+
+| Type | Teacher outputs used | Cost | Signal richness |
+|------|---------------------|------|-----------------|
+| Response | Final logits / probabilities | Low | Medium |
+| Feature | Intermediate activations | High | High |
+| Sequence-level | Full generated responses | Medium | Low (hard labels) |
+
+## Worked example: DistilBERT
+
+DistilBERT reduces BERT-base (110 M params, 12 layers) to a 6-layer, 66 M-parameter student with three simultaneous objectives:
+
+1. **Soft MLM loss** — KL divergence between student and teacher on masked token predictions.
+2. **Hard MLM loss** — standard cross-entropy against the true masked token.
+3. **Cosine embedding loss** — student's hidden states pushed to align with teacher's at each layer.
+
+Result: 97 % of BERT's performance on GLUE at 60 % the size and 60 % the inference time. The multi-objective approach is now the standard template for BERT-family distillation.
+
+## LLM-specific patterns
+
+For instruction-following LLMs, sequence-level distillation dominates because:
+
+1. **Logit access** is often unavailable — the teacher may be a closed API (GPT-4, Claude) returning only text, not probabilities.
+2. **Vocabulary mismatch** — teacher and student often use different tokenizers, making token-level KD non-trivial.
+3. **Long responses** — a full response provides enough supervision even as a hard-label sequence.
+
+The Phi-3 family exemplifies this: the training set is "textbook-quality" synthetic data generated by GPT-4, and the student is trained on it with standard next-token prediction — conceptually simple sequence-level distillation.
+
+<Callout type="warning" title="Distillation inherits teacher errors">
+  The student learns what the teacher does, including its biases, refusals, and hallucinations. If the teacher is miscalibrated or politically biased, the student may amplify those flaws. Always evaluate the distilled student independently, not just against the teacher's outputs.
+</Callout>
+
+## Distillation vs. other compression techniques
+
+| Method | Changes | Recovers accuracy? | Notes |
+|--------|---------|-------------------|-------|
+| **Distillation** | Trains a smaller architecture | Yes (with enough data) | Best quality at fixed size |
+| **Quantization** | Reduces bit-width | Mostly (INT8), partially (INT4) | No retraining for PTQ |
+| **Pruning** | Removes weights/heads | Partially | Needs fine-tuning after |
+| **LoRA** | Adds low-rank adapters | N/A (fine-tuning, not compression) | — |
+
+These techniques compose: QLoRA distillation (distill to a small model, then quantize to INT4) is common for mobile deployment.
+
+## Common mistakes
+
+1. **Using $\tau = 1$** — at temperature 1, the teacher's argmax dominates; you lose most of the dark knowledge that makes distillation valuable.
+2. **Skipping the hard-label term** — pure KD can overfit to the teacher's errors; the CE term anchors the student to ground truth.
+3. **Forgetting the $\tau^2$ gradient correction** — omitting it means the KD gradient is scaled down by $\tau^2$ relative to the CE gradient, so $\alpha$ effectively means something different from what you intend.
+4. **Assuming closed-API teachers can't be distilled** — sequence-level distillation only needs generated text, not logits.
+
+## Key takeaways
+
+- **Soft labels** from the teacher encode similarity structure between outputs ("dark knowledge") that hard labels cannot.
+- The distillation loss is **KL divergence** between teacher and student distributions, applied at temperature $\tau > 1$ to amplify near-misses.
+- The full objective blends $\mathcal{L}_{\text{KD}}$ (soft) and $\mathcal{L}_{\text{CE}}$ (hard) with weight $\alpha$.
+- **Sequence-level distillation** (student trains on teacher-generated text) is dominant for LLMs because logit access and vocabulary alignment are often unavailable.
+- Distillation **composes** with quantization and pruning — it's the quality floor, the others compress further.
+
+## Related concepts
+
+- [**PEFT & LoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — parameter-efficient fine-tuning that keeps the student small during adaptation
+- [**Model Merging & Quantization**](/courses/fine-tuning-alignment/05-model-merging-and-quantization) — compression that stacks on top of distillation
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the same next-token training loop used by sequence-level distillation
+
+<Exercise id="distillation-soft-labels" />
+<Exercise id="distillation-temperature" />
+<Exercise id="distillation-vs-scratch" />

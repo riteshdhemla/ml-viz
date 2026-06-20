@@ -159,7 +159,7 @@ print(out.shape)                                 # (2, 20, 512)
 
 ## End-to-end data flow (decoder-only / GPT)
 
-1. **Tokenize** text into integer IDs.
+1. **Tokenize** text into integer IDs. Modern LLMs use **Byte-Pair Encoding (BPE)** or similar subword tokenizers — common words become a single token while rare words split into familiar subword pieces, eliminating out-of-vocabulary (`[UNK]`) tokens. See the [Text Preprocessing](/courses/nlp/01-text-preprocessing) lesson for full details on BPE and WordPiece.
 2. **Embed** each ID into a $d_{\text{model}}$ vector; **add positional encoding**.
 3. Pass through $N$ Transformer blocks (with **causal** self-attention).
 4. Final **LayerNorm**, then a linear projection to vocabulary size.
