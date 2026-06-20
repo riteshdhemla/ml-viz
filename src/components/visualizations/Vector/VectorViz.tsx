@@ -104,9 +104,9 @@ export function VectorViz({ className }: { className?: string }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 mb-3">
         <VizSlider label="aₓ" min={-4} max={4} step={0.1} value={ax} onChange={setAx} format={(v) => v.toFixed(1)} />
-        <VizSlider label="a_y" min={-4} max={4} step={0.1} value={ay} onChange={setAy} format={(v) => v.toFixed(1)} />
+        <VizSlider label="aᵧ" min={-4} max={4} step={0.1} value={ay} onChange={setAy} format={(v) => v.toFixed(1)} />
         <VizSlider label="bₓ" min={-4} max={4} step={0.1} value={bx} onChange={setBx} format={(v) => v.toFixed(1)} />
-        <VizSlider label="b_y" min={-4} max={4} step={0.1} value={by} onChange={setBy} format={(v) => v.toFixed(1)} />
+        <VizSlider label="bᵧ" min={-4} max={4} step={0.1} value={by} onChange={setBy} format={(v) => v.toFixed(1)} />
       </div>
 
       <div className="flex gap-5 flex-wrap">
