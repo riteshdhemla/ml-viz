@@ -66,14 +66,14 @@ notebooks/                      # Jupyter notebooks — one per lesson
 
 The site is deployed to Vercel. Key facts:
 
-- **Production URL:** `https://ml-viz.vercel.app` (set as `NEXT_PUBLIC_SITE_URL` in Vercel dashboard)
+- **Production URL:** `https://ml-viz-ruby.vercel.app` (set as `NEXT_PUBLIC_SITE_URL` in Vercel dashboard)
 - **Auto-deploy:** every push to `main` triggers a rebuild
 - **Build:** `npm run build` — all MDX content is compiled statically at build time
 - **Environment variables** (set in Vercel dashboard → Settings → Environment Variables):
 
   | Variable | Value | Notes |
   |----------|-------|-------|
-  | `NEXT_PUBLIC_SITE_URL` | `https://ml-viz.vercel.app` | Used in lesson back-links inside notebooks |
+  | `NEXT_PUBLIC_SITE_URL` | `https://ml-viz-ruby.vercel.app` | Used in lesson back-links inside notebooks |
 
 - **Colab links** point to notebooks on the `main` branch. Always merge to `main` before expecting Colab buttons to resolve in production.
 - `src/lib/content.ts` uses `fs` (server-side only) — this works fine on Vercel serverless runtime.
@@ -100,7 +100,7 @@ A separate `.github/workflows/ci.yml` runs type-check + lint + build on every PR
 - `VERCEL_PROJECT_ID` — same file
 
 **Required GitHub variable** (Settings → Variables → Actions):
-- `NEXT_PUBLIC_SITE_URL` = `https://ml-viz.vercel.app`
+- `NEXT_PUBLIC_SITE_URL` = `https://ml-viz-ruby.vercel.app`
 
 When adding a feature that needs an environment variable, add it to: `.env.example`, Vercel dashboard, AND the `cd.yml` env block if it's needed at build time.
 

@@ -38,7 +38,7 @@ estimatedMinutes: N
 - Visualization components from `mdxComponents.tsx` are available if relevant
 
 **Companion notebook:** `notebooks/wiki/[kebab-slug].ipynb`
-1. Markdown cell: title + back-link to `https://ml-viz.vercel.app/wiki/[slug]`
+1. Markdown cell: title + back-link to `https://ml-viz-ruby.vercel.app/wiki/[slug]`
 2. Code cell: imports + dark matplotlib style
 3. From-scratch implementation of the procedure (NumPy, no frameworks)
 4. A visualization of the algorithm's behaviour
