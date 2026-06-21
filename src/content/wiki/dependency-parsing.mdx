@@ -1,0 +1,91 @@
+---
+title: "Dependency Parsing"
+description: "Recovering the grammatical structure of a sentence — dependency trees, transition-based and graph-based parsers, and neural approaches."
+topics: ["nlp"]
+relatedLessons:
+  - "nlp/01-text-preprocessing"
+estimatedMinutes: 12
+advanced: true
+---
+
+# Dependency Parsing
+
+<Callout type="warning" title="Advanced material">
+  A specialized classical-NLP topic. Modern LLMs rarely parse explicitly, but dependency structure remains important for linguistics, information extraction, and interpretability. Read [Text Preprocessing](/courses/nlp/01-text-preprocessing) first for tokenization background.
+</Callout>
+
+Dependency parsing recovers the **grammatical structure** of a sentence as a tree of binary relations between words. Each word (except the root) has exactly one **head** — the word it grammatically depends on — labeled with a relation type like `nsubj` (nominal subject) or `dobj` (direct object).
+
+## The dependency tree
+
+For *"The cat sat on the mat"*:
+
+```
+        sat (ROOT)
+       /  |    \
+    cat  on   (punct)
+    /      \
+  The      mat
+            |
+           the
+```
+
+- `sat` is the **root** (the main verb)
+- `cat` is the subject of `sat` (`nsubj`)
+- `on` is a prepositional modifier (`prep`), `mat` is its object (`pobj`)
+- `The`, `the` are determiners (`det`)
+
+A valid dependency tree satisfies:
+1. **Single head** — every word has exactly one parent
+2. **Connected & acyclic** — it forms a tree rooted at a single node
+3. **Projective** (often, but not always) — no crossing edges when words are laid out in order
+
+## Dependency vs. constituency parsing
+
+| | Constituency (phrase-structure) | Dependency |
+|---|---|---|
+| **Structure** | Nested phrases (NP, VP, …) | Word-to-word head relations |
+| **Nodes** | Non-terminal phrase nodes + words | Just words |
+| **Best for** | Languages with rigid word order (English) | Free-word-order languages; downstream relation extraction |
+
+Dependency parses are flatter and map more directly to "who did what to whom," which is why they dominate modern applied NLP.
+
+## Transition-based parsing
+
+Treats parsing as a sequence of actions over a **stack** and **buffer**, building the tree incrementally — fast ($O(n)$) and the basis of most neural parsers. The **arc-standard** system has three actions:
+
+- **SHIFT** — move the next buffer word onto the stack
+- **LEFT-ARC** — add a dependency edge; the second-top stack item becomes a child of the top; remove it
+- **RIGHT-ARC** — add an edge the other direction; remove the top item
+
+A classifier (originally a SVM/perceptron with hand-crafted features; now a neural network) predicts the next action from the current configuration. Chen & Manning (2014) showed a simple feed-forward network over word/POS/arc embeddings dramatically outperformed feature-engineered parsers — an early NLP deep-learning win.
+
+## Graph-based parsing
+
+Instead of greedy local actions, score **every possible edge** and find the maximum-spanning-tree over the complete directed graph of words:
+
+$$
+\hat{T} = \arg\max_{T \in \mathcal{T}(x)} \sum_{(h, m) \in T} \text{score}(h, m)
+$$
+
+The **Chu-Liu/Edmonds algorithm** finds the maximum spanning arborescence in $O(n^2)$. Graph-based parsers (e.g., the **biaffine attention parser**, Dozat & Manning 2017) are globally optimal over edges and currently achieve state-of-the-art accuracy. The biaffine parser uses a transformer/BiLSTM encoder, then a biaffine scorer:
+
+$$
+\text{score}(h, m) = \mathbf{h}_h^\top \mathbf{U}\, \mathbf{h}_m + \mathbf{b}
+$$
+
+## Evaluation metrics
+
+- **UAS (Unlabeled Attachment Score):** fraction of words assigned the correct head
+- **LAS (Labeled Attachment Score):** fraction with both correct head *and* correct relation label
+
+LAS is the stricter, standard metric. Modern parsers exceed 95% LAS on English newswire.
+
+## Where parsing fits today
+
+Even in the LLM era, dependency parsing remains useful for:
+
+- **Information extraction** — subject-verb-object triples for knowledge graphs
+- **Relation extraction** — the dependency path between two entities is a strong feature
+- **Linguistic analysis & low-resource languages** — explicit structure where labeled data is scarce
+- **Interpretability** — probing whether transformer attention heads encode syntactic structure (they partly do — "structural probes" recover dependency trees from BERT embeddings)

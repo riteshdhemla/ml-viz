@@ -1,0 +1,94 @@
+---
+title: "Neural Radiance Fields (NeRF)"
+description: "Representing a 3D scene as a neural network — volume rendering, positional encoding, and novel-view synthesis."
+topics: ["computer-vision"]
+relatedLessons:
+  - "computer-vision/03-backbones-in-practice"
+  - "generative-models/05-diffusion-models"
+estimatedMinutes: 14
+advanced: true
+---
+
+# Neural Radiance Fields (NeRF)
+
+<Callout type="warning" title="Advanced material">
+  A specialized 3D-vision topic at the intersection of graphics and deep learning. It assumes comfort with MLPs, gradients, and basic 3D geometry. This goes beyond the core 2D computer-vision curriculum.
+</Callout>
+
+NeRF (Mildenhall et al., 2020) solves **novel-view synthesis**: given a sparse set of photos of a scene from known camera positions, generate photorealistic images from *new*, unseen viewpoints. The radical idea is to represent the entire 3D scene not as a mesh or voxel grid, but as the **weights of a single small neural network**.
+
+## The scene as a function
+
+A NeRF is a function that maps a 3D point and viewing direction to color and density:
+
+$$
+F_\Theta : (\mathbf{x}, \mathbf{d}) \mapsto (\mathbf{c}, \sigma)
+$$
+
+- $\mathbf{x} = (x, y, z)$ — a 3D location in the scene
+- $\mathbf{d} = (\theta, \phi)$ — the viewing direction (a unit vector)
+- $\mathbf{c} = (r, g, b)$ — the emitted color at that point, seen from that direction
+- $\sigma$ — the **volume density** (differential opacity): how much light is blocked at that point. $\sigma \to \infty$ for solid surfaces, $\sigma = 0$ for empty air
+
+The network $F_\Theta$ is just an MLP (~8 layers). Density depends only on position (geometry is view-independent); color depends on both position and direction (so the model can capture specular highlights that change with viewpoint).
+
+## Volume rendering — making it differentiable
+
+To render a pixel, cast a camera ray $\mathbf{r}(t) = \mathbf{o} + t\mathbf{d}$ from the camera through that pixel and accumulate color along it. The expected color is the classic volume-rendering integral:
+
+$$
+C(\mathbf{r}) = \int_{t_n}^{t_f} T(t)\,\sigma(\mathbf{r}(t))\,\mathbf{c}(\mathbf{r}(t), \mathbf{d})\, dt
+$$
+$$
+T(t) = \exp\!\left(-\int_{t_n}^{t} \sigma(\mathbf{r}(s))\, ds\right)
+$$
+
+- $T(t)$ is **transmittance** — the probability that the ray travels from the near bound $t_n$ to $t$ without being blocked. It down-weights points hidden behind opaque surfaces.
+- In practice the integral is approximated by **stratified sampling**: partition $[t_n, t_f]$ into $N$ bins, draw one sample per bin, and use a discrete quadrature sum.
+
+Because the whole rendering pipeline is differentiable, NeRF is trained by simple gradient descent: render the rays for the training images, compare to the ground-truth pixel colors with an MSE loss, and backpropagate into $\Theta$.
+
+$$
+\mathcal{L} = \sum_{\mathbf{r}} \| C(\mathbf{r}) - C_{\text{gt}}(\mathbf{r}) \|^2
+$$
+
+No 3D supervision is needed — only 2D photos and their camera poses.
+
+## Positional encoding — the key trick
+
+An MLP fed raw $(x, y, z)$ coordinates produces blurry results: networks are biased toward low-frequency functions and can't represent sharp geometric/texture detail. NeRF fixes this by mapping each coordinate through a high-frequency **positional encoding** before the MLP:
+
+$$
+\gamma(p) = \bigl(\sin(2^0\pi p), \cos(2^0\pi p), \ldots, \sin(2^{L-1}\pi p), \cos(2^{L-1}\pi p)\bigr)
+$$
+
+This lifts the inputs into a high-dimensional space where the MLP can fit high-frequency detail. (This is the same Fourier-feature idea as transformer positional encodings — see [Multi-Head & Positional Encoding](/courses/transformers/02-multi-head-and-positional).) It is the single most important component for sharp NeRF reconstructions.
+
+## Hierarchical sampling
+
+Uniformly sampling along each ray wastes computation on empty space. NeRF trains two networks:
+
+1. A **coarse** network sampled uniformly, whose densities reveal where the surface likely is
+2. A **fine** network that samples more densely near the high-density regions found by the coarse pass (importance sampling)
+
+## Strengths and limitations
+
+| Strengths | Limitations |
+|---|---|
+| Photorealistic novel views | Slow to train (hours per scene) |
+| Tiny storage (~5 MB of weights vs GBs of voxels) | Slow to render (many MLP queries per ray) |
+| Continuous, no discretization artifacts | One network per scene — no generalization |
+| Only needs 2D images + poses | Struggles with reflective/transparent surfaces, dynamic scenes |
+
+## The follow-up explosion
+
+NeRF spawned a huge research line addressing its weaknesses:
+
+- **Instant-NGP** — hash-grid encoding cuts training from hours to seconds
+- **Mip-NeRF** — anti-aliasing across scales
+- **Dynamic / 4D NeRFs** — scenes that change over time
+- **3D Gaussian Splatting** (2023) — replaces the MLP+ray-marching with explicit anisotropic Gaussians, achieving real-time rendering and largely superseding vanilla NeRF for many applications
+
+## Why it matters
+
+NeRF reframed 3D reconstruction as **coordinate-based representation learning** — encode a continuous signal in network weights and query it differentiably. That "neural field" paradigm now extends well beyond rendering, to signed-distance functions, physics simulation, and compression.
