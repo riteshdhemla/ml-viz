@@ -1,0 +1,91 @@
+---
+title: "Independent Component Analysis (ICA)"
+description: "Blind source separation — recovering independent signals from mixed observations using non-Gaussianity."
+topics: ["probabilistic-models"]
+relatedLessons:
+  - "pca-dimensionality/01-pca"
+  - "probabilistic-models/02-em-algorithm"
+estimatedMinutes: 10
+---
+
+# Independent Component Analysis (ICA)
+
+ICA recovers **statistically independent source signals** from mixed observations — without knowing the mixing process. The canonical example is the **cocktail party problem**: $n$ microphones record $n$ speakers talking simultaneously; ICA unmixes the signals.
+
+## The model
+
+Assume $n$ independent source signals $s_1, \ldots, s_n$ are mixed by an unknown matrix $A \in \mathbb{R}^{n \times n}$:
+
+$$
+x = A s
+$$
+
+We observe $x$ but not $s$ or $A$. The goal: find the **unmixing matrix** $W = A^{-1}$ such that $s = Wx$.
+
+## Why Gaussianity fails (and non-Gaussianity saves us)
+
+**The Central Limit Theorem** says that a sum of independent random variables tends toward Gaussian, regardless of the source distributions. Therefore, *mixtures of independent sources are more Gaussian than the sources themselves*. This gives us a recovery strategy:
+
+> **Find the unmixing $W$ that makes the recovered signals $\hat{s} = Wx$ as non-Gaussian as possible.**
+
+Maximally non-Gaussian → maximally unmixed.
+
+The one exception: if the sources are themselves Gaussian, ICA fails — Gaussian independence cannot be distinguished from Gaussian mixture in this way. (This is one key difference from Factor Analysis, which assumes Gaussian latent variables.)
+
+## Measures of non-Gaussianity
+
+**Kurtosis:** $\text{kurt}(s) = E[s^4] - 3(E[s^2])^2$. Kurtosis is 0 for a Gaussian; positive for heavy-tailed distributions (super-Gaussian), negative for light-tailed (sub-Gaussian). ICA maximizes absolute kurtosis.
+
+**Negentropy:** $J(s) = H(s_\text{Gaussian}) - H(s)$, where $H$ is differential entropy and $s_\text{Gaussian}$ has the same variance. Gaussian has maximum entropy, so $J(s) \ge 0$ with equality iff $s$ is Gaussian. Maximizing negentropy = minimizing entropy = maximizing non-Gaussianity.
+
+**FastICA** approximates negentropy using a smooth nonlinearity $G$:
+
+$$
+J(s) \approx \left[E[G(s)] - E[G(\nu)]\right]^2
+$$
+
+where $\nu \sim \mathcal{N}(0,1)$. Common choices: $G(u) = \log \cosh(u)$ (general) or $G(u) = -e^{-u^2/2}$ (sparse sources).
+
+## Bell-Sejnowski algorithm (MLE ICA)
+
+Model each source $s_i$ as having a known, non-Gaussian density $p_{s_i}$. The log-likelihood of $W$ given observations $x^{(1)}, \ldots, x^{(m)}$:
+
+$$
+\ell(W) = \sum_{i=1}^{m}\sum_{j=1}^{n} \log p_{s_j}(w_j^\top x^{(i)}) + m \log |W|
+$$
+
+where $w_j^\top$ is the $j$-th row of $W$. The gradient ascent update:
+
+$$
+W \leftarrow W + \alpha \left[\begin{pmatrix} 1 - 2g(w_1^\top x) \\ \vdots \\ 1 - 2g(w_n^\top x) \end{pmatrix} x^\top + (W^\top)^{-1}\right]
+$$
+
+where $g = p_s'/p_s$ is the score function of the source density. For a standard sigmoid-shaped density, $g(\cdot) = \sigma(\cdot)$ and $1 - 2g(u) = \tanh(u/2)$.
+
+The $\log|W|$ term (from the change-of-variables Jacobian) is crucial — it prevents the trivial solution $W = 0$.
+
+## ICA vs. PCA
+
+| | PCA | ICA |
+|---|---|---|
+| **Goal** | Decorrelate (find orthogonal directions of maximum variance) | Find statistically independent components |
+| **Second-order** | Yes — only uses covariance matrix | No — requires higher-order statistics |
+| **Rotation** | Fixed (eigenvectors) | Rotation is the parameter — can be anything |
+| **Gaussianity** | Optimal for Gaussian data | Fails for Gaussian sources |
+| **Applications** | Compression, preprocessing | Blind source separation, neural decoding |
+
+**Key insight:** PCA removes linear correlations; ICA removes all statistical dependencies. Two variables can be uncorrelated but not independent (e.g., $X \sim \mathcal{U}[-1,1]$, $Y = X^2$: $E[XY] = 0$ but $Y$ is determined by $X$). ICA removes even these higher-order dependencies.
+
+## Practical applications
+
+- **Audio source separation:** unmix $n$ speakers from $n$ microphones
+- **EEG/MEG:** separate brain signal components (artifacts like eye blinks from neural oscillations)
+- **Financial data:** find independent risk factors driving correlated stock returns
+- **fMRI:** identify independent spatial modes of brain activity
+
+## Limitations
+
+1. **Requires $n$ sources = $n$ observations** (square mixing matrix). Extensions exist for overcomplete ICA ($n < m$).
+2. **Order and scale are ambiguous:** $WA = I$ but $(WD)(D^{-1}A)$ is also a valid solution for any diagonal $D$. Convention: normalize sources to unit variance.
+3. **Fails for Gaussian sources** — cannot distinguish independent Gaussians from their rotations.
+4. **Sensitive to outliers** — kurtosis maximization is particularly sensitive to heavy tails.

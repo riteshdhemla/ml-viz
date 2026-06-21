@@ -1,0 +1,171 @@
+---
+title: "Generalized Linear Models & GDA"
+description: "The unifying framework behind linear and logistic regression — and its generative twin, Gaussian Discriminant Analysis."
+order: 4
+type: concept
+estimatedMinutes: 15
+---
+
+# Generalized Linear Models & GDA
+
+Linear regression and logistic regression look different on the surface — one outputs a real number, the other a probability — but they share the same update rule and the same theoretical justification. **Generalized Linear Models (GLMs)** expose why.
+
+## The exponential family
+
+A distribution belongs to the **exponential family** if its density can be written as:
+
+$$
+p(y\,;\,\eta) = b(y)\,\exp\!\bigl(\eta\, T(y) - a(\eta)\bigr)
+$$
+
+- $\eta$ — the **natural (canonical) parameter**, which encodes the distribution's shape
+- $T(y)$ — the **sufficient statistic** (usually just $y$)
+- $a(\eta)$ — the **log-partition function** that normalizes the density
+- $b(y)$ — a base measure independent of $\eta$
+
+<Callout type="info" title="Why this matters">
+  The exponential family is a single algebraic form that contains **Gaussian, Bernoulli, Poisson, Exponential, Gamma, Multinomial**, and many other distributions. Any distribution in this family admits the same EM-style MLE algorithm, and GLMs are built exactly on top of this structure.
+</Callout>
+
+### Bernoulli as exponential family
+
+For binary outcomes ($y \in \{0,1\}$), $y \sim \text{Bernoulli}(\phi)$:
+
+$$
+p(y;\phi) = \phi^y(1-\phi)^{1-y} = \exp\!\Bigl(y\ln\!\tfrac{\phi}{1-\phi} + \ln(1-\phi)\Bigr)
+$$
+
+So $\eta = \ln\!\frac{\phi}{1-\phi}$, i.e., the log-odds. Inverting: $\phi = \frac{1}{1+e^{-\eta}} = \sigma(\eta)$ — the sigmoid function drops out naturally.
+
+### Gaussian as exponential family
+
+For $y \sim \mathcal{N}(\mu, \sigma^2)$ with known $\sigma^2$:
+
+$$
+p(y;\mu) \propto \exp\!\Bigl(\mu\cdot y - \tfrac{\mu^2}{2\sigma^2}\Bigr)
+$$
+
+So $\eta = \mu$ and $T(y) = y$. The natural parameter is just the mean.
+
+### Poisson as exponential family
+
+For count outcomes $y \in \{0,1,2,\ldots\}$, $y \sim \text{Poisson}(\lambda)$:
+
+$$
+p(y;\lambda) = \frac{e^{-\lambda}\lambda^y}{y!} = \frac{1}{y!}\exp\!\bigl(y\ln\lambda - \lambda\bigr)
+$$
+
+So $\eta = \ln\lambda$ and the mean is $e^\eta$.
+
+---
+
+## The three GLM assumptions
+
+A **Generalized Linear Model** makes exactly three assumptions:
+
+1. **Distribution:** $y \mid x;\theta \sim \text{ExpFamily}(\eta)$ — the outcome follows some exponential family distribution
+2. **Linear predictor:** $\eta = \theta^\top x$ — the natural parameter is a linear function of the features
+3. **Prediction target:** predict $\hat{y} = E[y \mid x;\theta]$ — output the conditional mean
+
+That's it. Plug in different distributions and you get:
+
+| Distribution | Link function $\eta$ | Predicted mean $E[y]$ | Model |
+|---|---|---|---|
+| Gaussian | $\eta = \mu$ | $\theta^\top x$ | Linear regression |
+| Bernoulli | $\eta = \ln\frac{p}{1-p}$ | $\sigma(\theta^\top x)$ | Logistic regression |
+| Poisson | $\eta = \ln\lambda$ | $e^{\theta^\top x}$ | Poisson regression |
+
+<Callout type="tip" title="Why they share an update rule">
+  The MLE gradient for any GLM takes the form $\nabla_\theta \ell = X^\top(y - \hat{y})$ — features times residuals. Linear and logistic regression look different in their predictions but identical in their gradient structure, which is why the same gradient descent loop works for both.
+</Callout>
+
+---
+
+## Poisson regression — a new example
+
+When outcomes are counts (number of website visits, insurance claims, traffic accidents), $y \ge 0$ and the Gaussian assumption is violated (negative predictions are meaningless). Poisson regression fits naturally:
+
+$$
+\lambda_i = e^{\theta^\top x_i}, \qquad
+\ell(\theta) = \sum_i \bigl[y_i\,\theta^\top x_i - e^{\theta^\top x_i} - \ln(y_i!)\bigr]
+$$
+
+The exponential link ensures $\lambda > 0$ always. Gradient descent with $\nabla_\theta \ell = X^\top(y-\hat{y})$ — same recipe as linear and logistic.
+
+---
+
+## Gaussian Discriminant Analysis (GDA)
+
+GLMs above are **discriminative** — they model $P(y|x)$ directly. **Gaussian Discriminant Analysis** is the generative alternative for binary classification.
+
+**Generative idea:** model the class-conditional distributions $P(x|y)$, then use Bayes' theorem to recover $P(y|x)$.
+
+GDA assumes:
+
+$$
+y \sim \text{Bernoulli}(\phi), \qquad
+x \mid y=0 \sim \mathcal{N}(\mu_0, \Sigma), \qquad
+x \mid y=1 \sim \mathcal{N}(\mu_1, \Sigma)
+$$
+
+Both classes share the same covariance $\Sigma$ (equal covariance assumption). MLEs are closed-form:
+
+$$
+\hat\phi = \frac{\sum 1\{y^{(i)}=1\}}{m}, \qquad
+\hat\mu_k = \frac{\sum_{i:y^{(i)}=k} x^{(i)}}{\sum 1\{y^{(i)}=k\}}, \qquad
+\hat\Sigma = \frac{1}{m}\sum_{i=1}^m (x^{(i)} - \mu_{y^{(i)}})(x^{(i)} - \mu_{y^{(i)}})^\top
+$$
+
+The posterior $P(y=1|x)$ turns out to be exactly $\sigma(\theta^\top x)$ for some $\theta$ derived from $(\phi, \mu_0, \mu_1, \Sigma)$. So GDA has a **logistic-regression-shaped decision boundary** even though it was fit as a generative model.
+
+### Worked example — 2D data
+
+Suppose we have two classes of 2D points:
+- Class 0: clustered around $\mu_0 = (-2, 0)$
+- Class 1: clustered around $\mu_1 = (+2, 0)$
+- Shared covariance $\Sigma = I$
+
+GDA fit:
+1. Compute class means $\hat\mu_0 = (-2,0)$, $\hat\mu_1 = (2,0)$
+2. Pool all residuals to estimate $\hat\Sigma$
+3. Decision boundary: the vertical line $x_1 = 0$ (midpoint of the two means, scaled by $\Sigma^{-1}$)
+
+---
+
+## GDA vs. logistic regression
+
+| | GDA | Logistic Regression |
+|---|---|---|
+| **Model** | Generative: models $P(x\|y)$ | Discriminative: models $P(y\|x)$ |
+| **Assumption** | Gaussians with shared $\Sigma$ | No distributional assumption on $x$ |
+| **Strength** | Needs less data when assumptions hold | Robust when assumptions are wrong |
+| **Boundary** | Always linear (same functional form as logistic) | Always linear |
+| **Prediction** | Same sigmoid form at test time | Same sigmoid form |
+
+<Callout type="warning" title="When to prefer each">
+  If $x \mid y$ is truly Gaussian, GDA is asymptotically more efficient (lower test error with the same training set size). In practice, features are rarely Gaussian, so logistic regression usually wins — it makes no assumptions about the input distribution and only has to learn the boundary.
+</Callout>
+
+---
+
+## Choosing a GLM in practice
+
+1. **Continuous output** → linear regression (Gaussian GLM)
+2. **Binary outcome** → logistic regression (Bernoulli GLM), or GDA if data is Gaussian
+3. **Count outcome** (non-negative integer) → Poisson regression; negative binomial if over-dispersed
+4. **Rate or duration** → Gamma or exponential GLM
+
+The unifying message: once you pick a distribution, the GLM machinery gives you a training loss, gradient formula, and link function automatically — no need to invent them from scratch.
+
+---
+
+## Key takeaways
+
+- The **exponential family** is a single algebraic form containing Gaussian, Bernoulli, Poisson, and many other distributions.
+- **GLMs** assume (1) $y|x$ follows an exponential family, (2) $\eta = \theta^\top x$, and (3) predict the conditional mean. This unifies linear and logistic regression.
+- All GLMs share the same gradient form $\nabla_\theta \ell = X^\top(y - \hat{y})$, which is why one optimizer works for all of them.
+- **GDA** is the generative alternative: model $P(x|y)$ as Gaussian and recover $P(y|x)$ via Bayes. It has the same linear boundary as logistic regression but is more data-efficient when its Gaussian assumption holds.
+
+<Exercise id="glm-exponential-family" />
+<Exercise id="glm-identify-distribution" />
+<Exercise id="gda-vs-logistic" />

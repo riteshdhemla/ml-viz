@@ -1,0 +1,182 @@
+---
+title: "Exploration Strategies & Model-Based RL"
+description: "How agents balance trying new actions vs. exploiting what they know — and how world models enable sample-efficient learning."
+order: 5
+type: concept
+estimatedMinutes: 18
+---
+
+# Exploration Strategies & Model-Based RL
+
+An RL agent can only learn from experience. But to collect *useful* experience it must sometimes try actions it has never taken before. This is the **exploration–exploitation dilemma** — arguably the central challenge unique to RL. At the same time, interacting with the real world is expensive: every training step might cost time, money, or physical wear. **Model-based RL** addresses this by learning a world model and generating synthetic experience for free.
+
+## The exploration–exploitation dilemma
+
+At every step an agent faces a choice:
+
+- **Exploit** — take the action it currently believes is best (maximize short-term reward)
+- **Explore** — try something new to gather information that might lead to better long-term rewards
+
+Too much exploitation: the agent gets stuck in a local optimum, never discovering better strategies.
+Too much exploration: the agent wastes time on suboptimal actions and accumulates poor rewards.
+
+The challenge is that the agent doesn't know in advance which arms/actions are good — it has to discover this through interaction.
+
+---
+
+## ε-greedy — the baseline
+
+The simplest strategy: with probability $\epsilon$ take a **random** action; with probability $1-\epsilon$ take the **greedy** (currently best-estimated) action.
+
+$$
+a_t = \begin{cases} \text{random} & \text{with probability } \epsilon \\ \arg\max_a Q(s_t, a) & \text{with probability } 1-\epsilon \end{cases}
+$$
+
+**Decaying ε:** Start with $\epsilon = 1.0$ (pure exploration) and anneal toward $\epsilon_{\min} = 0.05$ over the first $N$ steps. This front-loads exploration when the Q-values are least reliable.
+
+**Limitation:** ε-greedy explores **blindly** — every action gets equal random probability regardless of how uncertain we are about it. Better strategies should explore more in states where uncertainty is high.
+
+---
+
+## Optimistic initialization
+
+A simple trick: initialize all Q-values to a large positive number $Q(s, a) = Q_0 \gg 0$. Since the true rewards are usually smaller, any action taken will update the Q-value downward — making *untried actions* look better than tried ones. This naturally drives exploration early in training without any explicit randomness.
+
+**Works well when:** the Q-table is small and you can initialize every entry. Less practical for large/continuous state spaces where you can't enumerate all $(s,a)$ pairs.
+
+---
+
+## Upper Confidence Bound (UCB)
+
+UCB makes exploration **principled**: prefer actions where the Q-estimate is either high or highly uncertain.
+
+$$
+a_t = \arg\max_a \left[ Q(s_t, a) + c\sqrt{\frac{\ln t}{N_t(a)}} \right]
+$$
+
+- $Q(s_t, a)$ — current value estimate (exploitation term)
+- $c\sqrt{\frac{\ln t}{N_t(a)}}$ — uncertainty bonus (exploration term): large when action $a$ has been tried rarely ($N_t(a)$ small) relative to the total steps $t$
+- $c$ — exploration constant controlling the balance
+
+**Intuition:** the bonus shrinks as an action is tried more ($N_t(a) \to \infty$), but grows slowly as total time passes ($\ln t$). Every action is eventually tried infinitely often, but better actions are tried more.
+
+**Regret bound:** UCB achieves $O(\sqrt{T \ln T})$ regret in the multi-armed bandit setting — optimal up to logarithmic factors. This is *provably better* than ε-greedy.
+
+<Callout type="info" title="UCB in practice">
+  UCB requires maintaining visit counts $N_t(a)$ for every action. In the tabular case this is straightforward. For deep RL with large state spaces, UCB-style bonuses are approximated using count models or uncertainty estimates from the neural network (e.g., ensemble disagreement).
+</Callout>
+
+---
+
+## Thompson Sampling
+
+A Bayesian approach: maintain a **posterior distribution** over Q-values, sample a Q-function from the posterior, then act greedily with respect to that sample.
+
+**For the bandit case:**
+1. Model each arm's reward as $\text{Bernoulli}(\theta_a)$, with prior $\theta_a \sim \text{Beta}(1,1)$
+2. After observing $S_a$ successes and $F_a$ failures: posterior is $\text{Beta}(1+S_a, 1+F_a)$
+3. At each step: sample $\tilde\theta_a \sim \text{Beta}(1+S_a, 1+F_a)$ for each arm; pull $a^* = \arg\max_a \tilde\theta_a$
+
+**Why it works:** arms with high uncertainty have wide posteriors — they're likely to be sampled as the best arm. As you observe more data, the posteriors narrow and the agent converges to the optimal arm.
+
+Thompson Sampling is **Bayes-optimal** for many bandit problems and often outperforms UCB in practice despite being simpler to implement.
+
+---
+
+## Count-based exploration
+
+Give the agent a **bonus reward** for visiting rarely-seen states:
+
+$$
+r^+(s, a) = r(s, a) + \beta \cdot \frac{1}{\sqrt{N(s, a)}}
+$$
+
+where $N(s,a)$ counts visits to $(s,a)$. Novel transitions get large bonuses; frequently visited ones get tiny bonuses, steering the agent away from repetitive paths.
+
+**In practice:** exact counting is impossible for large state spaces. Approximations include:
+- **Pseudo-counts** via density models (count states by how much a density model's loss changes upon adding a new observation)
+- **Hash-based counts** using locality-sensitive hashing to group similar states
+
+---
+
+## Curiosity-driven exploration (intrinsic motivation)
+
+Rather than counting, train a **forward dynamics model** that predicts the next state: $\hat{s}' = f(s, a)$. Use its prediction error as an intrinsic reward:
+
+$$
+r^+_t = \eta \cdot \|s'_t - \hat{s}'_t\|^2
+$$
+
+The agent is rewarded for visiting states the model cannot predict — i.e., novel states. As the model improves, the intrinsic reward for familiar states drops to zero. Two key implementations:
+
+- **ICM (Intrinsic Curiosity Module):** uses a **self-supervised** feature space (features learned to predict actions from state pairs) to filter out irrelevant visual variation — the agent isn't distracted by moving leaves or TV noise
+- **RND (Random Network Distillation):** compare a fixed random network's output to a trained predictor; high error = novel state
+
+---
+
+## Model-based RL
+
+**Model-free RL** (Q-learning, policy gradient) learns by direct interaction: every gradient update requires a real environment step. This is sample-inefficient: DQN needs ~50M frames to match human performance on Atari.
+
+**Model-based RL** breaks this bottleneck: learn an **environment model** $\hat{T}(s'|s,a)$ and **reward model** $\hat{R}(s,a)$, then generate synthetic rollouts from the model without real interaction.
+
+### Dyna-Q
+
+The simplest model-based algorithm (Sutton, 1991):
+
+```
+for each real step:
+  1. Take action a in real env; observe (s, a, r, s')
+  2. Update Q(s, a) from real transition
+  3. Update model: M ← experience (s, a, r, s')
+  4. Repeat k times:
+       sample random (s̃, ã) from visited states/actions
+       r̃, s̃' ← M(s̃, ã)    # synthetic rollout from model
+       Update Q(s̃, ã) from synthetic transition
+```
+
+With $k = 50$ planning steps per real step, Dyna-Q is 50× more sample-efficient than Q-learning on tabular problems because each real interaction generates 50 gradient updates.
+
+### World models and deep model-based RL
+
+Modern deep model-based RL learns a **latent space** world model:
+- **RSSM (Recurrent State Space Model)** in Dreamer — encodes observations into compact latent states, learns transitions in latent space, imagines entire trajectories of future states, optimizes policy in imagination
+- **MBPO (Model-Based Policy Optimization)** — generates short rollouts ($h$ steps) from a learned dynamics model, adds them to the replay buffer, trains any model-free algorithm on the mix
+
+### When model-based beats model-free
+
+| Aspect | Model-free | Model-based |
+|---|---|---|
+| **Sample efficiency** | Low (millions of steps) | High (hundreds to thousands of steps) |
+| **Final performance** | Often higher (less model bias) | Can suffer from model errors compounding |
+| **Environment realism** | Irrelevant (learns directly) | Critical — model errors compound over long horizons |
+| **Best for** | Simulatable environments (games) | Real-world robotics, drug discovery, limited data |
+
+<Callout type="warning" title="Model errors compound">
+  A 1% per-step model error becomes $(0.99)^{50} \approx 60\%$ accuracy after 50 steps. Long imaginary rollouts amplify model errors into catastrophic mispredictions. This is why model-based RL often uses **short rollouts** (Dyna uses $k=1$ to $50$ steps, MBPO uses $h=5$) or combines model-generated data conservatively with real data.
+</Callout>
+
+---
+
+## Connecting exploration to model-based RL
+
+Model-based and exploration methods are complementary:
+
+- A world model enables **planning under uncertainty** (MCTS-style search with the model)
+- Exploration bonuses can be defined in latent space (explore states the model is uncertain about: high ensemble disagreement in $\hat{T}$)
+- AlphaGo/AlphaZero uses UCB-style exploration within MCTS rollouts through a learned world model
+
+---
+
+## Key takeaways
+
+- **ε-greedy** is simple but explores blindly; **decaying ε** front-loads exploration when Q-values are least reliable.
+- **UCB** adds an uncertainty bonus that shrinks as an action is tried more; it achieves provably sub-linear regret.
+- **Thompson Sampling** samples from the posterior and acts greedily; it is Bayes-optimal and often outperforms UCB in practice.
+- **Count-based** and **curiosity-driven** methods extend exploration to large state spaces by approximating novelty.
+- **Model-based RL** learns a world model to generate synthetic rollouts, dramatically improving sample efficiency; compounding model errors mean short rollouts are preferred.
+- **Dyna-Q** is the archetypal model-based algorithm: one real step followed by $k$ planning steps from the model.
+
+<Exercise id="rl-exploration-ucb" />
+<Exercise id="rl-exploration-thompson" />
+<Exercise id="rl-model-based-dyna" />

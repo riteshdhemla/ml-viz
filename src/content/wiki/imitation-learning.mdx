@@ -1,0 +1,97 @@
+---
+title: "Imitation Learning"
+description: "Learning policies from expert demonstrations — behavioral cloning, DAgger, and GAIL."
+topics: ["reinforcement-learning"]
+relatedLessons:
+  - "reinforcement-learning/06-from-policy-gradient-to-rlhf"
+  - "reinforcement-learning/04-policy-gradient"
+estimatedMinutes: 12
+---
+
+# Imitation Learning
+
+Imitation Learning (IL) learns a policy from expert demonstrations, bypassing the need to define a reward function. Instead of specifying what good behavior looks like numerically, you show the agent — and it learns to imitate.
+
+**Applications:** robotic manipulation from human teleoperation, autonomous driving from human drivers, game playing from professional replays, and (in a certain framing) RLHF for LLMs.
+
+## 1. Behavioral Cloning (BC)
+
+The simplest approach: treat imitation as supervised learning. Collect a dataset $\mathcal{D} = \{(s_i, a_i^*)\}$ of (state, expert action) pairs, then train a policy $\pi_\theta$ to minimize:
+
+$$
+\mathcal{L}(\theta) = \mathbb{E}_{(s,a^*) \sim \mathcal{D}}\!\left[\ell(\pi_\theta(s),\, a^*)\right]
+$$
+
+For continuous actions, $\ell$ is MSE; for discrete actions, cross-entropy.
+
+**Problem — distribution shift:** During training, the policy sees only states the *expert* visited. At test time, any small mistake moves the policy to a state not in the training set. From that out-of-distribution state, the policy makes another mistake, leading to further drift — errors compound.
+
+The formal result: if the policy makes an error with probability $\epsilon$ per step, the total expected error over a trajectory of length $T$ is $O(\epsilon T^2)$ rather than $O(\epsilon T)$, because each early mistake causes a cascade.
+
+## 2. DAgger — Dataset Aggregation
+
+DAgger (Ross et al., 2011) fixes distribution shift by iteratively collecting data from states the **learned policy** actually visits:
+
+```
+Initialize D = ∅, π₁ = any policy
+for i = 1, 2, 3, ...:
+  1. Roll out πᵢ in the environment to collect states {s₁, s₂, ...}
+  2. Query expert for labels: aⱼ* = π_expert(sⱼ) for each visited state sⱼ
+  3. Aggregate: D ← D ∪ {(sⱼ, aⱼ*)}
+  4. Train πᵢ₊₁ via BC on the full dataset D
+```
+
+**Key insight:** By querying the expert at states the learned policy visits (not just states the expert visits), DAgger ensures the training distribution matches the test distribution. Under mild assumptions, DAgger achieves $O(\epsilon T)$ error — linear rather than quadratic.
+
+**Limitation:** requires querying the expert at every training iteration, which is expensive if the expert is a human. Impractical when the expert is not queryable (e.g., learning from fixed offline video demonstrations).
+
+## 3. GAIL — Generative Adversarial Imitation Learning
+
+GAIL (Ho & Ermon, 2016) reframes imitation as: *find a policy whose state-action occupancy measure matches the expert's*. It uses a GAN-style discriminator:
+
+- **Discriminator** $D_\phi(s,a)$: trained to distinguish (state, action) pairs from the expert vs. from the current policy
+- **Policy** $\pi_\theta$: trained (with RL) to fool the discriminator — produce state-action pairs that look expert-like
+
+$$
+\min_\theta \max_\phi \;\mathbb{E}_{\pi_\theta}[\log D_\phi(s,a)] + \mathbb{E}_{\pi^*}[\log(1 - D_\phi(s,a))]
+$$
+
+The discriminator's output $-\log D_\phi(s,a)$ serves as an **implicit reward signal** — the policy gets rewarded for being indistinguishable from the expert.
+
+**Advantages over BC:**
+- Recovers more robust policies because it matches the full trajectory distribution, not just one-step imitation
+- Works well even with limited expert data, since the discriminator generalizes
+
+**Disadvantages:**
+- Requires interacting with the real environment during training (to generate policy rollouts for the discriminator)
+- Inherits GAN training instabilities
+- Computationally expensive: alternates RL + discriminator updates
+
+## 4. Inverse Reinforcement Learning
+
+IL and Inverse RL (IRL) are related but different:
+
+| | Imitation Learning | Inverse RL |
+|---|---|---|
+| **Goal** | Recover a policy $\pi$ that mimics the expert | Recover the reward function $R$ that the expert optimizes |
+| **Output** | A policy | A reward function |
+| **Generalization** | Policy may not generalize to new environments | Reward function generalizes if environment changes |
+| **Complexity** | Simpler (direct supervision) | Harder (requires solving RL inner loop) |
+
+## 5. Imitation Learning and RLHF
+
+RLHF for LLMs uses a form of imitation learning:
+
+1. **SFT (Supervised Fine-Tuning)** — behavioral cloning on high-quality human demonstrations
+2. **Reward model** — learn a reward function from human preference comparisons (inverse RL spirit)
+3. **PPO** — optimize the policy against the learned reward
+
+The SFT stage is essentially behavioral cloning: train the LLM to imitate curated human responses. The reward model + PPO stage then corrects for the distribution shift problem by having the policy interact with the reward model and receive feedback.
+
+## Summary
+
+| Method | Expert access needed | Distribution shift | Complexity |
+|---|---|---|---|
+| BC | Offline demos only | Severe ($O(T^2)$ error) | Low |
+| DAgger | Online queries to expert | Eliminated ($O(T)$ error) | Medium |
+| GAIL | Offline demos + env interaction | Avoided (matched occupancy) | High |
