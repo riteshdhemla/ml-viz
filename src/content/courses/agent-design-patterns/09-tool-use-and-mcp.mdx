@@ -1,0 +1,92 @@
+---
+title: "Tool Use, Function Calling & MCP"
+description: "The engineering substrate beneath every agent: how a model emits a structured tool call, how your runtime executes it, why errors must be handled, and how the Model Context Protocol standardises the whole integration."
+order: 9
+type: concept
+estimatedMinutes: 20
+---
+
+# Tool Use, Function Calling & MCP
+
+The pattern catalogue so far describes *what* agents do — set goals, plan, reflect, cooperate. This lesson is about the **mechanism** that lets them act at all: **tool use** via function calling. An agent is only as capable as the tools it can reach and as reliable as the runtime that executes them.
+
+**Real-world examples:** a coding agent that runs your test suite and reads the failures; a support agent that looks up an order and issues a refund; a research agent that queries a search API and a vector store; an ops agent that reads dashboards and opens a pull request.
+
+## A tool is a typed contract
+
+A **tool** is a function the model is *allowed* to call, advertised to it as a name, a description, and a JSON-schema parameter spec. Critically, the model never executes anything — it emits a **request** to call the tool, and your runtime runs the real function:
+
+```python
+tools = [{
+    "name": "refund_order",
+    "description": "Refund an order by id. Use only after confirming with the user.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "order_id": {"type": "string"},
+            "amount_cents": {"type": "integer", "minimum": 0},
+        },
+        "required": ["order_id", "amount_cents"],
+    },
+}]
+# Model emits:  refund_order(order_id="A-91", amount_cents=4200)
+# Your runtime validates the args, runs it, returns {"status": "ok"} to the model.
+```
+
+This is just **structured output** pointed at an action: the schema constrains the model to emit a syntactically valid call. The whole agent runtime is a loop around this — the **ReAct** loop from the catalogue's first lesson:
+
+<AgentLoopViz />
+
+## Why error handling is not optional
+
+Agents compound errors. If a single Thought → Action → Observation step succeeds with probability $p$, an $n$-step trajectory succeeds with probability $p^n$:
+
+$$P(\text{success}) = p^n$$
+
+At $p = 0.95$, ten steps is only $0.95^{10} \approx 0.60$. The tool layer is where most of that loss lives — a malformed argument, a timed-out API, a rate limit, an empty result. Robust runtimes therefore:
+
+- **Validate arguments** against the schema *before* executing, and feed validation errors back as observations so the model can correct.
+- **Distinguish transient from deterministic failures** — retry a timeout with backoff; do **not** retry a 404 five times.
+- **Bound the loop** — cap total steps and total cost so a confused agent can't spin forever.
+- **Apply least privilege** — expose only the tools (and scopes) a task needs.
+
+<Callout type="warning" title="Tool output is untrusted input">
+  A tool that browses the web or reads a document can return text containing **hidden instructions** (indirect prompt injection). That text flows straight back into the model's context. Treat every observation as untrusted: sandbox execution, strip or quarantine tool output, and require human confirmation for irreversible actions. This is the Multimodal Guardrails pattern doing real work.
+</Callout>
+
+## MCP: stop hand-rolling every integration
+
+Without a standard, every agent re-implements its own glue for every tool — a bespoke wrapper per API, per database, per file system. The **Model Context Protocol (MCP)** is an open standard that fixes this by defining a client–server interface between agents and the outside world:
+
+- An **MCP server** exposes *tools* (callable functions), *resources* (readable data), and *prompts* (reusable templates) over a uniform protocol.
+- An **MCP client** (your agent host) discovers and calls them without knowing their internals.
+
+The payoff is **n + m integrations instead of n × m**: any MCP-speaking agent can use any MCP server. A Postgres server, a GitHub server, and a filesystem server written once are reachable by every agent, the same way USB-C lets one cable charge many devices.
+
+<Callout type="info" title="MCP standardises the wiring, not the judgement">
+  MCP makes a tool *reachable* and *describable*; it does nothing to decide *when* the agent should call it or whether the result is trustworthy. Tool selection, argument validation, and guardrails remain your job — MCP just removes the bespoke-adapter tax.
+</Callout>
+
+<Exercise id="adp-tool-emit-vs-execute" />
+
+<Exercise id="adp-react-reliability" />
+
+## Common mistakes
+
+1. **Over-trusting tool output** — feeding unvalidated, possibly malicious results straight back to the model.
+2. **Retrying deterministic failures** — burning budget retrying a malformed request that will never succeed.
+3. **Too many tools** — a sprawling tool list degrades selection accuracy; keep it tight and well-described.
+4. **Confusing MCP with safety** — assuming a standard protocol makes tool use safe. It standardises connection, not trust.
+
+## Key takeaways
+
+- A **tool** is a typed contract; the model **emits** a call, your **runtime executes** it and returns an observation.
+- Function calling is structured output aimed at an action — the engine of the ReAct loop.
+- Reliability is $p^n$: handle errors, separate transient from deterministic, bound the loop, and apply least privilege.
+- **MCP** standardises agent-to-world integration (tools, resources, prompts), turning $n \times m$ adapters into $n + m$.
+
+## Related concepts
+
+- [**Model Querying Patterns**](/courses/agent-design-patterns/05-model-querying-patterns) — how the agent structures the calls this loop is built from
+- [**Safety, Registry & Adaptation Patterns**](/courses/agent-design-patterns/08-safety-registry-and-adaptation) — the Tool/Agent Registry and Guardrails that govern tool use
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the introductory treatment this lesson deepens

@@ -1,0 +1,76 @@
+---
+title: "Model Registry, Versioning & Governance"
+description: "The system of record for production models: registries and promotion stages, full lineage and reproducibility, model cards, and the audit/compliance trail that answers 'which model decided this, and why?'."
+order: 18
+type: concept
+estimatedMinutes: 18
+---
+
+# Model Registry, Versioning & Governance
+
+A trained model is not a file — it's a *decision-maker* that will be questioned. Which version is in production? What data and code produced it? Who approved it? Can we reproduce it, and can we roll back? **Governance** is the discipline that answers these questions, and the **model registry** is the system of record that makes the answers cheap.
+
+**Real-world examples:** a bank that must explain to a regulator exactly which model version denied a loan and on what data it was trained; an ML team that needs to roll back to last week's model in 60 seconds after a bad deploy; an audit that asks who approved the model now serving customers.
+
+## The model registry
+
+A **registry** is a versioned catalogue of models — the ML analogue of a container registry. Each registered model carries a version and moves through **promotion stages**:
+
+$$\text{None} \rightarrow \text{Staging} \rightarrow \text{Production} \rightarrow \text{Archived}$$
+
+The registry decouples *training* from *deployment*: training pipelines **register** candidate versions; the deployment system pulls **whichever version is in the Production stage**. Rollback becomes a stage change — re-point Production at the previous version — rather than a rebuild. Promotion to Production is the natural place to attach an **approval gate** (the evaluation gate from the CI/CD/CT lesson, plus a human sign-off where required).
+
+## Lineage and reproducibility
+
+A registry is only as useful as the **lineage** it records. For every model version you want to reconstruct the full provenance:
+
+- **Code** — the exact commit of training and feature code.
+- **Data** — the dataset version/snapshot (hash or DVC/Delta version).
+- **Config** — hyperparameters, random seeds, environment/dependencies.
+- **Metrics** — offline evaluation results that justified promotion.
+
+With all four pinned, a model is **reproducible**: re-running the pipeline at that commit, on that data snapshot, with that config and seed, yields the same model. Reproducibility is what makes debugging, auditing, and "retrain exactly this" possible.
+
+<Callout type="info" title="Version the triplet, not just the weights">
+  A model version is meaningless without its **(code, data, config)** triplet. Versioning only the weights file leaves you unable to explain or reproduce it. This is why model versioning is tied to data versioning (DVC, Delta, lakeFS) and experiment tracking — they record the inputs the registry's outputs depend on.
+</Callout>
+
+## Model cards and documentation
+
+A **model card** is a short, standardised document shipped with a model that records its intended use, training data, evaluation results (**including performance across subgroups**), known limitations, and ethical considerations. Model cards turn "the model does X" tribal knowledge into an auditable artifact — and surface fairness gaps before deployment rather than after an incident.
+
+## Governance: the audit trail
+
+Governance ties it together into an **audit trail** that can answer, for any production prediction:
+
+- *Which model version* served it, and which stage was Production at that moment?
+- *What lineage* produced that version (code/data/config/metrics)?
+- *Who approved* its promotion, and against what evaluation?
+
+<Callout type="warning" title="Governance is cheap to build, expensive to retrofit">
+  Reconstructing lineage *after* a regulator or incident asks is painful and often impossible — the data snapshot is gone, the commit is ambiguous, the approval was a Slack message. Capture provenance **at registration time**, automatically, so the audit trail exists before anyone needs it.
+</Callout>
+
+<Exercise id="mlp-registry-rollback" />
+
+<Exercise id="mlp-model-lineage" />
+
+## Common mistakes
+
+1. **Versioning weights without code/data/config** — a model you can't reproduce or explain.
+2. **No promotion stages** — deploying straight from training, with no clean rollback target.
+3. **Skipping model cards** — discovering subgroup performance gaps only after an incident.
+4. **Retrofitting governance** — trying to reconstruct lineage after the fact instead of capturing it at registration.
+
+## Key takeaways
+
+- A **registry** versions models and moves them through **stages** (Staging → Production → Archived); rollback is a stage change.
+- **Reproducibility** requires pinning the **(code, data, config)** triplet plus metrics — not just the weights.
+- **Model cards** document intended use, subgroup performance, and limitations as an auditable artifact.
+- **Governance** is the audit trail answering *which model, from what, approved by whom* — capture it at registration, not after.
+
+## Related concepts
+
+- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking) — the run/metric/artifact records lineage builds on
+- [**CI/CD, Continuous Training & MLOps Maturity**](/courses/ml-in-practice/16-cicd-and-continuous-training) — the pipelines that register and promote versions
+- [**Responsible AI & the Human Side**](/courses/ml-in-practice/13-responsible-ai-and-the-human-side) — the fairness and accountability model cards surface

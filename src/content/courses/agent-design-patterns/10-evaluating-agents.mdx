@@ -1,0 +1,73 @@
+---
+title: "Evaluating Agents"
+description: "Why agent evaluation is harder than model evaluation: outcome vs trajectory metrics, LLM-as-judge on traces, agent benchmarks, and the cost/latency budgets that decide whether an agent ships."
+order: 10
+type: concept
+estimatedMinutes: 20
+---
+
+# Evaluating Agents
+
+A model produces one output you can score against a reference. An **agent** produces a *trajectory* — a sequence of thoughts, tool calls, and observations — that may reach the right answer by a wasteful or unsafe path, or reach a wrong answer through reasoning that looked fine at every step. Evaluating agents means scoring both **what** they produced and **how** they got there.
+
+**Real-world examples:** measuring whether a coding agent's patch passes the hidden test suite (SWE-bench); checking whether a web agent completed a multi-step task without hallucinating a step (GAIA); auditing whether a support agent followed policy before issuing a refund (τ-bench).
+
+## Outcome vs trajectory
+
+Two complementary axes of evaluation:
+
+- **Outcome (end-state) evaluation** — did the final result satisfy the goal? Often checkable programmatically: tests pass, the order shows refunded, the file contains the value. This is the metric users care about.
+- **Trajectory (process) evaluation** — was the *path* sound? Did the agent call the right tools, avoid forbidden actions, not loop, and stay within budget? Two agents with identical success rates can have wildly different trajectories — one efficient and auditable, the other a 40-step random walk that got lucky.
+
+A useful efficiency metric normalises steps taken against an oracle minimum:
+
+$$\text{efficiency} = \frac{\text{minimum steps}}{\text{steps taken}}, \qquad \text{success rate} = \frac{1}{N}\sum_{i=1}^{N} \mathbb{1}[\text{task } i \text{ solved}]$$
+
+<Callout type="info" title="Pass@k hides flakiness">
+  Agents are stochastic, so a single run is noise. Report **pass@k** (solved in at least one of k attempts) *and* **pass^k / consistency** (solved in all k). A high pass@1 with low consistency means the agent is unreliable, not capable — exactly the distinction a single-run benchmark conceals.
+</Callout>
+
+## LLM-as-judge on traces
+
+Many trajectory questions have no programmatic checker — "did the agent's reasoning justify the action?", "was the tone appropriate?". Here an **LLM-as-judge** scores the trace against a rubric. Make it reliable by:
+
+- Using a **rubric with explicit criteria** rather than a vague "is this good?".
+- Preferring **pairwise comparison** (A vs B) over absolute scores — models are better at ranking than calibrated grading.
+- Mitigating bias: judges favour longer answers, their own outputs, and the first option presented. Randomise order and control for length.
+
+<Callout type="warning" title="Validate the judge before you trust it">
+  An LLM judge is itself a model under evaluation. Spot-check it against human labels on a held-out set and report its agreement (e.g. Cohen's κ) before using it as ground truth. An unvalidated judge can silently bless a regressed agent.
+</Callout>
+
+## Benchmarks and budgets
+
+Public agent benchmarks pin down capability claims: **GAIA** (multi-step reasoning + tool use), **SWE-bench** (resolve real GitHub issues), **WebArena** (browser tasks), **τ-bench** (tool-agent-user interaction with policy). They are necessary but not sufficient — your task distribution differs, and benchmarks leak into training data over time.
+
+Two budgets gate every production agent and belong in the eval report:
+
+- **Cost** — tokens × steps × price. An agent that solves a task for \$3 may be a worse product than a workflow that solves 90% of them for \$0.02.
+- **Latency** — steps are sequential, so end-to-end time grows with trajectory length. Parallelising independent tool calls is often the highest-leverage fix.
+
+<Exercise id="adp-outcome-vs-trajectory" />
+
+<Exercise id="adp-agent-success-rate" />
+
+## Common mistakes
+
+1. **Scoring only the final answer** — missing unsafe or wasteful trajectories that happen to succeed.
+2. **Single-run evaluation** — reporting one lucky trajectory instead of pass@k with consistency.
+3. **Trusting an unvalidated judge** — using LLM-as-judge as ground truth without checking it against humans.
+4. **Ignoring cost and latency** — shipping an agent that is accurate but too slow or expensive to use.
+
+## Key takeaways
+
+- Evaluate **outcome** (did it work) *and* **trajectory** (was the path sound, efficient, safe).
+- Agents are stochastic — report **pass@k** and **consistency**, not a single run.
+- **LLM-as-judge** scores unverifiable trace quality; use rubrics, pairwise comparison, and validate the judge against humans.
+- Public **benchmarks** bound capability; **cost and latency budgets** decide whether the agent actually ships.
+
+## Related concepts
+
+- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns) — the self-critique loops that evaluation both measures and powers
+- [**Tool Use, Function Calling & MCP**](/courses/agent-design-patterns/09-tool-use-and-mcp) — the trajectory steps being scored
+- [**LLM Evaluation & LLM-as-a-Judge**](/courses/building-with-llms/08-llm-evaluation) — the judging machinery applied to single-turn outputs

@@ -1,0 +1,84 @@
+---
+title: "Deploying Agents in Production"
+description: "From a working loop to a reliable service: orchestration topologies, statefulness and checkpointing, human-in-the-loop gates, runtime guardrails, observability, and controlling cost and latency."
+order: 11
+type: concept
+estimatedMinutes: 20
+---
+
+# Deploying Agents in Production
+
+A prototype agent is a `while` loop on your laptop. A *deployed* agent is a service that runs untrusted instructions, calls real tools with real side effects, must not loop forever, must be debuggable when it misbehaves at 3 a.m., and must cost less than the value it creates. This lesson is the systems-design layer that wraps the patterns into something you can operate.
+
+**Real-world examples:** a customer-support agent fielding thousands of conversations a day; a background coding agent that opens PRs and waits for human approval; a multi-agent research pipeline where a planner delegates to specialist workers.
+
+## Orchestration topology
+
+How you wire agents together is the first design decision, and it mirrors the workflow patterns:
+
+- **Single agent** — one loop with tools. Simplest; prefer it until you have evidence you need more.
+- **Orchestrator–workers** — a planner decomposes a task and delegates sub-tasks to specialised workers, then synthesises results. Good when sub-tasks are unpredictable.
+- **Routing** — a classifier sends each request to a specialised agent (billing vs technical), keeping each prompt focused.
+- **Parallelisation** — independent sub-tasks (or repeated voting) run concurrently to cut latency or raise quality.
+
+<Callout type="tip" title="Reach for a workflow before an agent">
+  Autonomous agents are powerful *and* unpredictable. If the steps are known in advance, a fixed **workflow** (scripted chain) is cheaper, faster, and easier to test. Add agentic autonomy only where the task genuinely can't be predetermined — most production "agents" are mostly workflow with a small autonomous core.
+</Callout>
+
+## State, checkpointing, and human-in-the-loop
+
+A reliable agent loop must be **persistable**. Modelling the agent as a state graph (nodes call the model or run tools; edges decide what's next) lets you **checkpoint** after every step. That single property unlocks production behaviours:
+
+- **Pause/resume** — stop at a step, persist, and continue later or on another worker.
+- **Human-in-the-loop (HITL)** — pause before an irreversible action (refund, deploy, email) and wait for approval, then resume from the checkpoint.
+- **Recovery** — on crash or timeout, resume from the last good checkpoint instead of restarting the whole trajectory.
+- **Time-travel debugging** — replay a trajectory to the step where it went wrong.
+
+## Guardrails and observability at runtime
+
+Two non-negotiable operational layers:
+
+- **Guardrails** run *around* the loop: input filters (prompt-injection, PII), output filters (toxicity, schema, policy), and action gates (allow-lists, spend caps, confirmation for destructive tools). Run cheap deterministic checks first, model-based checks second.
+- **Observability** captures every Thought / Action / Observation as a **trace** of spans, with token counts, latency, cost, and tool errors attached. You cannot debug a non-deterministic system you can't replay — tracing is the agent equivalent of a stack trace.
+
+## Rolling out changes safely
+
+An agent is never "done" — you constantly change prompts, tools, and the underlying model. Ship those changes the way you ship any production system: **shadow** the new version against live traffic with its actions discarded, **canary** it to a small fraction of users, or run a **50/50 A/B** to measure outcomes. The same risk/signal trade-off applies to agents as to any model:
+
+<RolloutViz />
+
+## Controlling cost and latency
+
+Because steps are sequential and each carries tokens, an agent's cost and latency scale with trajectory length:
+
+$$\text{cost} \approx \sum_{s=1}^{S} (\text{prompt tokens}_s + \text{output tokens}_s)\times \text{price}, \qquad \text{latency} \approx \sum_{s=1}^{S} \text{step time}_s$$
+
+The highest-leverage controls: **cap the step budget**, **parallelise independent tool calls**, **cache** repeated retrievals and tool results, **trim/summarise context** as the transcript grows, and **route by difficulty** — send easy steps to a small cheap model and reserve the frontier model for hard ones.
+
+<Callout type="warning" title="Set a hard budget ceiling">
+  A bug, an adversarial input, or a reasoning loop can make an agent call tools thousands of times. Enforce a per-task ceiling on steps **and** on dollars at the runtime level, independent of whatever limit you put in the prompt — the prompt is a suggestion, the runtime cap is a guarantee.
+</Callout>
+
+<Exercise id="adp-deploy-checkpoint" />
+
+<Exercise id="adp-deploy-cost-control" />
+
+## Common mistakes
+
+1. **Using a multi-agent system where one agent (or a workflow) would do** — needless cost, latency, and coordination failure.
+2. **Stateless loops** — no checkpointing means no pause/resume, no HITL, and full restarts on failure.
+3. **Prompt-only limits** — trusting the prompt to bound steps/spend instead of enforcing it in the runtime.
+4. **No tracing** — shipping a non-deterministic system you cannot replay or debug.
+
+## Key takeaways
+
+- Choose the **topology** deliberately; prefer a single agent or a workflow until you need more.
+- Model the loop as a **checkpointed state graph** to unlock pause/resume, **human-in-the-loop**, and recovery.
+- **Guardrails** (input/output/action) and **tracing** are operational requirements, not extras.
+- Cost and latency scale with trajectory length — bound the budget, parallelise, cache, and route by difficulty.
+
+## Related concepts
+
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — the cooperation topologies you orchestrate here
+- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents) — the metrics that tell you a deployed agent still works
+- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — canary, shadow, and A/B rollouts that apply to agents too
