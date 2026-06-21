@@ -1,0 +1,185 @@
+---
+title: "CNN Visualization & Adversarial Attacks"
+description: "Understanding what ConvNets actually learn — and how adversarial examples expose their brittleness."
+order: 3
+type: concept
+estimatedMinutes: 20
+---
+
+# CNN Visualization & Adversarial Attacks
+
+A trained CNN achieves 95% accuracy, but *what did it actually learn?* And why does adding invisible pixel noise make it misclassify a cat as a guacamole with 99% confidence? These two questions — interpretability and robustness — define modern CNN analysis.
+
+## Why visualization matters
+
+Neural networks are often called "black boxes," but their internals are inspectable. Visualization methods answer questions like:
+
+- Which pixels drove this prediction?
+- What does neuron 47 in layer 3 respond to?
+- Are the learned features sensible or are they spurious correlations?
+
+These answers are essential for debugging, regulatory compliance ("why did the model deny this loan?"), and catching dataset biases before deployment.
+
+---
+
+## 1. Saliency maps
+
+The simplest visualization: compute the gradient of the predicted class score with respect to the **input pixels**.
+
+$$
+S_{ij} = \left|\frac{\partial \, \text{score}_c}{\partial \, x_{ij}}\right|
+$$
+
+Large $|S_{ij}|$ means pixel $(i,j)$ had a large influence on the output. Display the magnitude as a heatmap overlaid on the image.
+
+**Algorithm:**
+1. Forward pass: compute the score for the predicted class $c$
+2. Backward pass: compute $\partial \text{score}_c / \partial x$ (gradient with respect to the input)
+3. Take the absolute value (or max over channels for color images)
+4. Display as a heatmap
+
+<Callout type="tip" title="Guided Backpropagation">
+  Standard saliency can be noisy. **Guided Backpropagation** modifies the backward pass to only propagate positive gradients through ReLU layers, producing sharper and more interpretable maps. It zeros out gradients wherever the activation OR the gradient is negative.
+</Callout>
+
+**Limitation:** Saliency maps show pixel-level sensitivity, not semantic regions. Two pixels that are equally sensitive may have totally different roles. Also, gradients saturate in deep networks, making the maps noisy.
+
+---
+
+## 2. Grad-CAM
+
+**Gradient-weighted Class Activation Mapping (Grad-CAM)** fixes the resolution problem by working at the last convolutional layer, where feature maps still encode spatial structure.
+
+**Key insight:** the last conv layer feature maps tell you *where* the network is looking; the gradients flowing into that layer tell you *which* maps matter for the target class.
+
+**Algorithm:**
+1. Forward pass; extract feature maps $A^k \in \mathbb{R}^{H \times W}$ from the last conv layer
+2. Backprop: compute gradient of class score $y^c$ with respect to each feature map: $\frac{\partial y^c}{\partial A^k_{ij}}$
+3. Global average pool these gradients to get importance weights: $\alpha_k = \frac{1}{HW}\sum_{i,j}\frac{\partial y^c}{\partial A^k_{ij}}$
+4. Weighted combination: $L^c_{\text{Grad-CAM}} = \text{ReLU}\!\bigl(\sum_k \alpha_k A^k\bigr)$
+5. Upsample to input resolution and overlay on the image
+
+The ReLU keeps only the features that *increase* the class score. The result is a coarse heatmap highlighting the discriminative image regions.
+
+<Callout type="info" title="Grad-CAM vs saliency">
+  Saliency is high-resolution but noisy; Grad-CAM is coarse (14×14 for a 224×224 image) but semantically meaningful. **Grad-CAM++** extends this to handle multiple instances of the same object. In practice, Grad-CAM is the most commonly used diagnostic tool in CNN interpretability.
+</Callout>
+
+---
+
+## 3. Activation maximization
+
+Instead of asking "what does the network respond to in this image?", ask: "what image would *maximally activate* this neuron?"
+
+**Algorithm:**
+1. Fix the network weights
+2. Start from random noise $x$
+3. Iteratively optimize: $x \leftarrow x + \alpha \frac{\partial A^k_{ij}}{\partial x}$ (gradient *ascent* on activation)
+4. Add regularization (L2 on pixel values, total variation smoothness) to keep the image realistic
+
+The result is a synthetic image that represents the neuron's "template." Early layers produce oriented edges and color blobs; deeper layers produce increasingly complex textures and object parts.
+
+---
+
+## 4. t-SNE of CNN feature codes
+
+Run your entire dataset through the network, extract the penultimate layer's activations (the embedding before the classifier), and apply t-SNE to reduce to 2D. If the network has learned good representations, images that look similar should cluster nearby.
+
+This visualization reveals:
+- Whether the network separates classes cleanly in feature space
+- Which classes are confused with each other
+- Whether the network has learned semantic clusters (all "cats" together regardless of breed)
+
+---
+
+## 5. Adversarial examples
+
+Here is something striking: **you can fool a state-of-the-art CNN with changes invisible to humans**.
+
+Take an image classified correctly as "panda." Add a carefully crafted noise pattern — each pixel changes by at most 0.007 out of 255 — and the CNN now classifies it as "gibbon" with 99.3% confidence. The image looks identical to humans.
+
+This reveals that CNNs learn a very different representation of images than humans do. They are sensitive to high-frequency pixel patterns that humans ignore.
+
+---
+
+## 6. Fast Gradient Sign Method (FGSM)
+
+FGSM (Goodfellow et al., 2014) is the simplest adversarial attack. The idea: instead of optimizing the prediction (gradient *descent* on the loss), take one step in the direction that *maximizes* the loss.
+
+$$
+x_{\text{adv}} = x + \epsilon \cdot \text{sign}\!\left(\nabla_x J(\theta, x, y)\right)
+$$
+
+- $x$ — original clean image
+- $y$ — true label
+- $J$ — cross-entropy loss
+- $\epsilon$ — perturbation magnitude (e.g., 8/255 for imperceptible change)
+
+The $\text{sign}$ function makes every pixel move the maximum allowed amount $\epsilon$ in the loss-increasing direction. This is a **white-box** attack (requires access to the model's gradients).
+
+**Why it works:** CNNs are highly sensitive to many dimensions simultaneously. Even if each pixel changes by a tiny amount, the sum of changes across thousands of pixels can completely flip the prediction.
+
+**For targeted attack** (force output to class $t$):
+$$
+x_{\text{adv}} = x - \epsilon \cdot \text{sign}\!\left(\nabla_x J(\theta, x, t)\right)
+$$
+
+Minimize loss toward the target class instead of maximizing loss away from the true class.
+
+---
+
+## 7. PGD — iterative FGSM
+
+**Projected Gradient Descent (PGD)** extends FGSM to $k$ steps with a smaller per-step size $\alpha$, projecting back to the $\epsilon$-ball after each step:
+
+$$
+x^{t+1} = \text{Proj}_{x+\mathcal{S}}\!\left(x^t + \alpha \cdot \text{sign}(\nabla_{x^t} J)\right)
+$$
+
+where $\mathcal{S} = \{\delta : \|\delta\|_\infty \le \epsilon\}$ is the allowed perturbation set. PGD finds stronger adversarial examples than FGSM because it refines the perturbation over multiple steps. It is considered the "standard" attack for evaluating robustness.
+
+---
+
+## 8. Defenses
+
+**Adversarial training** — the most reliable defense: include adversarial examples in the training set. During each training iteration, generate adversarial examples from the current model and train on both clean and adversarial data.
+
+$$
+\min_\theta \mathbb{E}_{(x,y) \sim \mathcal{D}}\left[\max_{\|\delta\|_\infty \le \epsilon} J(\theta, x+\delta, y)\right]
+$$
+
+This is a minimax problem: the inner max finds the worst-case perturbation; the outer min trains the model to resist it. Models trained this way are called **adversarially trained** and are much more robust — at some cost to clean accuracy.
+
+**Other defenses:**
+- *Input preprocessing* — Gaussian blurring, JPEG compression, or feature squeezing to destroy adversarial structure before it reaches the model
+- *Randomized smoothing* — certifiably robust predictions via Monte Carlo noise injection
+- *Certified defenses* — prove mathematically that no attack within an $\ell_p$ ball can fool the model; computationally expensive but provides hard guarantees
+
+<Callout type="warning" title="Arms race dynamics">
+  Adversarial defense is an ongoing arms race. Many proposed defenses have been broken by adaptive attacks (attacks that know the defense). Adversarial training with PGD is currently the most empirically reliable approach, but no method achieves both full robustness and full accuracy.
+</Callout>
+
+---
+
+## Poisoning vs. evasion attacks
+
+| Attack type | When | Requires |
+|---|---|---|
+| **Poisoning** | During training | Access to training data |
+| **Evasion** | At test time | Access to model (or its outputs) |
+
+FGSM and PGD are evasion attacks. Poisoning attacks (e.g., "backdoor attacks" that trigger misclassification on images with a specific watermark) require compromising the training pipeline.
+
+---
+
+## Key takeaways
+
+- **Saliency maps** show pixel-level sensitivity via input gradients; **Grad-CAM** gives coarser but more semantically meaningful spatial attention maps using the last conv layer.
+- **Activation maximization** synthesizes the "ideal" input for a neuron; **t-SNE of features** reveals how the network clusters images in embedding space.
+- **Adversarial examples** are imperceptible perturbations that fool a CNN — they exist because CNNs are sensitive to high-dimensional linear structure humans ignore.
+- **FGSM** generates adversarial examples in one gradient step; **PGD** iterates for stronger attacks.
+- **Adversarial training** (training on adversarial examples) is the most robust defense, at the cost of some clean accuracy.
+
+<Exercise id="cnn-viz-gradcam" />
+<Exercise id="cnn-viz-saliency" />
+<Exercise id="cnn-adversarial-fgsm" />

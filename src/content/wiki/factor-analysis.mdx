@@ -1,0 +1,99 @@
+---
+title: "Factor Analysis"
+description: "A latent variable model that explains high-dimensional observations through a small number of hidden factors — and how EM fits it."
+topics: ["probabilistic-models"]
+relatedLessons:
+  - "probabilistic-models/02-em-algorithm"
+  - "pca-dimensionality/01-pca"
+estimatedMinutes: 12
+---
+
+# Factor Analysis
+
+Factor Analysis (FA) is a probabilistic latent variable model that explains a high-dimensional observation $x \in \mathbb{R}^n$ as a linear combination of $k \ll n$ hidden **factors** $z \in \mathbb{R}^k$ plus independent noise.
+
+## The generative model
+
+$$
+z \sim \mathcal{N}(0, I_k)
+$$
+$$
+x \mid z \sim \mathcal{N}(\mu + \Lambda z,\, \Psi)
+$$
+
+- $z$ — the latent factor vector ($k$-dimensional, typically $k \ll n$)
+- $\Lambda \in \mathbb{R}^{n \times k}$ — the **factor loading matrix**; column $j$ is the "direction" of factor $j$ in observation space
+- $\mu \in \mathbb{R}^n$ — the mean of the observations
+- $\Psi = \text{diag}(\psi_1, \ldots, \psi_n)$ — a **diagonal** noise covariance; each observed dimension has its own independent noise variance
+
+Marginalizing over $z$ gives the marginal:
+
+$$
+x \sim \mathcal{N}(\mu,\; \Lambda\Lambda^\top + \Psi)
+$$
+
+The covariance $\Lambda\Lambda^\top + \Psi$ has low-rank structure ($\Lambda\Lambda^\top$) plus diagonal noise ($\Psi$).
+
+## Intuition — cocktail party analogy
+
+Imagine $n = 100$ microphones recording $k = 3$ speakers. Each microphone's reading $x_i$ is a linear combination of the three speakers' voices (the factors $z_j$) plus independent microphone noise ($\psi_i$). Factor Analysis recovers the loading matrix $\Lambda$ that tells you how each microphone mixes the speakers, and the noise levels $\psi_i$ per microphone.
+
+## EM for Factor Analysis
+
+Factor Analysis is fit via EM because the latent factors $z$ are unobserved.
+
+**E-step:** Compute the posterior of $z$ given $x$ using the joint Gaussian:
+
+$$
+z \mid x \sim \mathcal{N}\!\left(\mu_{z|x},\; \Sigma_{z|x}\right)
+$$
+$$
+\Sigma_{z|x} = \left(I + \Lambda^\top \Psi^{-1} \Lambda\right)^{-1}, \qquad \mu_{z|x} = \Sigma_{z|x}\,\Lambda^\top \Psi^{-1}(x - \mu)
+$$
+
+**M-step:** Re-estimate $\Lambda$, $\mu$, and $\Psi$ in closed form:
+
+$$
+\Lambda_{\text{new}} = \left(\sum_i x^{(i)} E[z^{(i)}]^\top\right)\left(\sum_i E[z^{(i)}z^{(i)\top}]\right)^{-1}
+$$
+$$
+\psi_j = \frac{1}{m}\sum_i \left(x_j^{(i)} - \mu_j\right)^2 - \Lambda_{j,:}\,E[z^{(i)}]
+$$
+
+EM alternates these two steps until convergence.
+
+## Factor Analysis vs. PCA
+
+| | PCA | Factor Analysis |
+|---|---|---|
+| **Type** | Deterministic linear projection | Probabilistic latent variable model |
+| **Noise model** | None (or spherical: $\sigma^2 I$) | Per-dimension: diagonal $\Psi$ |
+| **Components** | Orthogonal (from eigenvectors of covariance) | Not necessarily orthogonal (can be rotated) |
+| **Rotation invariance** | No: PC directions are fixed | Yes: $\Lambda$ can be rotated without changing the marginal likelihood |
+| **Handles heteroscedastic noise** | No | Yes — each dimension has its own noise variance |
+| **Use case** | Dimensionality reduction, preprocessing | Identifying latent structure when dimensions have different noise levels |
+
+**Key difference:** PCA minimizes reconstruction error and implicitly assumes all dimensions have the same noise. Factor Analysis uses a **per-dimension noise model** $\Psi$, which makes it more appropriate when different measurements have different reliability (e.g., some sensors are noisy, others are precise).
+
+## Relationship to probabilistic PCA
+
+Probabilistic PCA (PPCA) is a special case of Factor Analysis where $\Psi = \sigma^2 I$ (all dimensions have the same noise). In that limit:
+
+- The ML solution for $\Lambda$ recovers the top $k$ PCA directions (up to rotation)
+- PPCA gives a probabilistic interpretation to the PCA objective
+- Factor Analysis generalizes this by relaxing the equal-noise assumption
+
+## Identifiability and rotation
+
+The Factor Analysis model is **not identifiable** without additional constraints. If $R$ is any orthogonal matrix, then $\Lambda R$ and $\Lambda$ produce the same marginal distribution for $x$ (since $({\Lambda R})({\Lambda R})^\top = \Lambda\Lambda^\top$). Common constraints:
+
+- **Uniqueness factor analysis:** constrain $\Lambda^\top\Psi^{-1}\Lambda$ to be diagonal
+- **Varimax rotation:** post-hoc rotation to maximize sparsity of the loading matrix
+- **Confirmatory FA:** impose prior knowledge about which factors affect which variables
+
+## When to use Factor Analysis
+
+- When you believe observations are generated from a small number of underlying latent causes
+- When different observed dimensions have different noise levels (heteroscedastic noise)
+- When you want a probabilistic model that allows uncertainty quantification on the latent factors
+- When you need to impute missing data (the EM E-step naturally handles missing observations)

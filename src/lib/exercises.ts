@@ -2601,6 +2601,53 @@ const allExercises: Exercise[] = [
     ],
   },
 
+  // ── Generalized Linear Models & GDA ──────────────────────────────────
+  {
+    id: "glm-exponential-family",
+    type: "multiple-choice",
+    question:
+      "A probability distribution p(y; η) = b(y) exp(η T(y) − a(η)) belongs to the exponential family. What is the role of a(η)?",
+    hint: "It ensures probabilities sum to 1.",
+    explanation:
+      "a(η) is the log-partition function (also called the cumulant function). It normalizes the distribution so probabilities integrate to 1 across all y. Its derivatives generate the cumulants of the distribution: a'(η) = E[T(y)] and a''(η) = Var[T(y)]. The other terms — b(y) is the base measure, T(y) is the sufficient statistic, and η is the natural parameter — serve different roles.",
+    options: [
+      { id: "a", label: "It normalizes the distribution (log-partition function)", isCorrect: true },
+      { id: "b", label: "It is the sufficient statistic for the parameter η", isCorrect: false },
+      { id: "c", label: "It controls how fast the density decays", isCorrect: false },
+      { id: "d", label: "It encodes the prior distribution over η", isCorrect: false },
+    ],
+  },
+  {
+    id: "glm-identify-distribution",
+    type: "multiple-choice",
+    question:
+      "You are predicting the number of customer support tickets a company receives each day (a non-negative integer count). Which GLM is the natural choice?",
+    hint: "Which exponential family distribution models non-negative integer counts?",
+    explanation:
+      "Poisson regression is the natural GLM for non-negative integer counts. The Poisson distribution belongs to the exponential family with natural parameter η = ln λ, so the GLM uses a log link: λ = exp(θᵀx). This guarantees the predicted count is always positive. Logistic regression is for binary outcomes, linear regression assumes Gaussian errors (allows negative values), and Gamma regression is for positive continuous values.",
+    options: [
+      { id: "a", label: "Poisson regression (log link)", isCorrect: true },
+      { id: "b", label: "Logistic regression (sigmoid link)", isCorrect: false },
+      { id: "c", label: "Linear regression (identity link)", isCorrect: false },
+      { id: "d", label: "Gamma regression (inverse link)", isCorrect: false },
+    ],
+  },
+  {
+    id: "gda-vs-logistic",
+    type: "multiple-choice",
+    question:
+      "GDA and logistic regression both produce a linear decision boundary. When should you prefer GDA over logistic regression?",
+    hint: "GDA makes a stronger distributional assumption — this is both its strength and weakness.",
+    explanation:
+      "GDA is more sample-efficient when its assumptions hold: if the class-conditional distributions P(x|y) are truly Gaussian with equal covariance, GDA achieves lower test error with less data. However, when those assumptions are wrong (non-Gaussian features, unequal covariances), logistic regression is more robust because it makes no distributional assumptions on x — it only models P(y|x) directly. In practice, real features are rarely Gaussian, so logistic regression usually wins on larger datasets.",
+    options: [
+      { id: "a", label: "When features are approximately Gaussian and you have limited data", isCorrect: true },
+      { id: "b", label: "When the decision boundary is non-linear", isCorrect: false },
+      { id: "c", label: "When you have very large datasets and features are non-Gaussian", isCorrect: false },
+      { id: "d", label: "GDA is always preferred because it has a closed-form solution", isCorrect: false },
+    ],
+  },
+
   // ── Linear & Logistic Regression course quiz ─────────────────────────
   {
     id: "linreg-quiz-ols",
@@ -2742,6 +2789,53 @@ const allExercises: Exercise[] = [
       { id: "b", label: "Underfits — the tree is too simple", isCorrect: false },
       { id: "c", label: "Generalizes perfectly", isCorrect: false },
       { id: "d", label: "Fails to converge", isCorrect: false },
+    ],
+  },
+
+  // ── CNN Visualization & Adversarial Attacks ──────────────────────────
+  {
+    id: "cnn-viz-gradcam",
+    type: "multiple-choice",
+    question:
+      "Grad-CAM computes importance weights for each feature map in the last conv layer. How are these weights calculated?",
+    hint: "It uses gradients flowing back from the class score to the feature maps.",
+    explanation:
+      "Grad-CAM computes αₖ = (1/HW) Σᵢⱼ ∂yᶜ/∂Aᵢⱼᵏ — the global average pooling of the gradient of the class score yᶜ with respect to feature map Aᵏ. This tells you how much each spatial feature map contributes to the target class. The weighted sum ReLU(Σₖ αₖ Aᵏ) gives a coarse heatmap of which spatial regions matter. This is superior to raw saliency maps because it leverages semantic feature representations rather than pixel-level gradients.",
+    options: [
+      { id: "a", label: "Global average pool of gradients of class score w.r.t. each feature map", isCorrect: true },
+      { id: "b", label: "The magnitude of each filter's weights in the last conv layer", isCorrect: false },
+      { id: "c", label: "The activation magnitude at each spatial position, averaged over channels", isCorrect: false },
+      { id: "d", label: "The cosine similarity between the feature maps and the class embedding", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-viz-saliency",
+    type: "multiple-choice",
+    question:
+      "A saliency map highlights which pixels most influence the predicted class. What gradient is computed to create it?",
+    hint: "We want to know how the output changes as each input pixel changes.",
+    explanation:
+      "A saliency map computes ∂score_c/∂x — the gradient of the predicted class score with respect to the input image pixels. Large gradient magnitude at pixel (i,j) means that pixel strongly influences the prediction. Taking the absolute value (or max over color channels) and displaying it as a heatmap reveals the network's spatial focus. Unlike Grad-CAM, saliency operates at full input resolution but tends to be noisier because it uses pixel-level gradients rather than semantic feature maps.",
+    options: [
+      { id: "a", label: "Gradient of the predicted class score w.r.t. the input image", isCorrect: true },
+      { id: "b", label: "Gradient of the loss w.r.t. the last conv layer's weights", isCorrect: false },
+      { id: "c", label: "Gradient of the predicted class score w.r.t. the first conv layer's activations", isCorrect: false },
+      { id: "d", label: "Second-order gradient (Hessian) of the loss w.r.t. input pixels", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-adversarial-fgsm",
+    type: "multiple-choice",
+    question:
+      "FGSM creates an adversarial example as x_adv = x + ε·sign(∇ₓ J(θ, x, y)). What does taking the sign() of the gradient achieve?",
+    hint: "Think about the worst-case perturbation under an ℓ∞ constraint.",
+    explanation:
+      "The sign() operation reduces each gradient component to ±1, so every pixel gets perturbed by exactly ε in the direction that most increases the loss. This is the optimal single-step attack under an ℓ∞ constraint (max |perturbation| ≤ ε): it maximally uses the allowed budget at every pixel simultaneously. Without sign(), you'd need to normalize the gradient vector, which would give smaller perturbations to high-gradient pixels and larger ones to low-gradient pixels — a suboptimal allocation under ℓ∞.",
+    options: [
+      { id: "a", label: "Every pixel moves by exactly ε in the loss-increasing direction — optimal under ℓ∞ constraint", isCorrect: true },
+      { id: "b", label: "It normalizes the perturbation to unit ℓ2 norm", isCorrect: false },
+      { id: "c", label: "It prevents any single pixel from changing by more than ε/d where d is image dimension", isCorrect: false },
+      { id: "d", label: "It zeroes out small gradients to focus the perturbation on the most sensitive pixels", isCorrect: false },
     ],
   },
 
@@ -3600,6 +3694,53 @@ const allExercises: Exercise[] = [
       { id: "b", label: "G_AB(x) looks realistic in domain B", isCorrect: false },
       { id: "c", label: "G_AB and G_BA use the same weights", isCorrect: false },
       { id: "d", label: "The discriminator cannot tell real from fake", isCorrect: false },
+    ],
+  },
+
+  // ── Exploration Strategies & Model-Based RL ──────────────────────────
+  {
+    id: "rl-exploration-ucb",
+    type: "multiple-choice",
+    question:
+      "UCB selects actions using Q(s,a) + c√(ln t / N(a)). What happens to the exploration bonus as N(a) increases?",
+    hint: "N(a) is how many times action a has been tried.",
+    explanation:
+      "As N(a) increases (action a is tried more often), the bonus c√(ln t / N(a)) shrinks toward zero. This means frequently tried actions get a smaller exploration incentive, naturally redirecting exploration toward less-tried actions. The ln t in the numerator grows slowly with total steps, ensuring that even popular actions get re-explored occasionally if enough time has passed. This gives UCB its key property: every action is tried infinitely often as t→∞, but better actions are tried proportionally more.",
+    options: [
+      { id: "a", label: "The bonus shrinks, reducing the incentive to try that action again", isCorrect: true },
+      { id: "b", label: "The bonus grows, as the algorithm becomes more confident in that action", isCorrect: false },
+      { id: "c", label: "The bonus stays constant; only the Q-estimate changes", isCorrect: false },
+      { id: "d", label: "The bonus drops to zero immediately after the first visit", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-exploration-thompson",
+    type: "multiple-choice",
+    question:
+      "In Thompson Sampling for a Bernoulli bandit, after observing 3 successes and 7 failures from arm A, what is the posterior for its success rate θ_A?",
+    hint: "Bayesian update: Beta prior + Binomial likelihood = Beta posterior.",
+    explanation:
+      "With a Beta(1,1) (uniform) prior and 3 successes + 7 failures, the posterior is Beta(1+3, 1+7) = Beta(4, 8). The Beta distribution is the conjugate prior for the Bernoulli likelihood, making Bayesian updates closed-form. The mean of Beta(4,8) is 4/(4+8) = 1/3, reflecting the observed success rate. Thompson Sampling samples θ̃_A ~ Beta(4,8) at each step — arm A has a wide posterior (high uncertainty), so it still gets sampled sometimes even though its estimated success rate is low.",
+    options: [
+      { id: "a", label: "Beta(4, 8)", isCorrect: true },
+      { id: "b", label: "Beta(3, 7)", isCorrect: false },
+      { id: "c", label: "Normal(0.3, 0.1)", isCorrect: false },
+      { id: "d", label: "Beta(1, 1) — the prior is not updated until the episode ends", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-model-based-dyna",
+    type: "multiple-choice",
+    question:
+      "Dyna-Q performs k planning steps after each real environment step. What is the purpose of these planning steps?",
+    hint: "The agent has a learned model — what can it do with it?",
+    explanation:
+      "Each planning step samples a previously visited (s, a) pair, queries the learned model for the predicted (r, s'), and performs a Q-learning update on this synthetic transition — without any real interaction. This multiplies the effective number of Q-learning updates per real step by (k+1). With k=50, the agent gets 51 gradient updates per real step, dramatically improving sample efficiency. The model is built from real transitions, so planning is only as good as the model — model errors can cause incorrect Q-value updates, which is why Dyna-Q works best in low-error tabular settings.",
+    options: [
+      { id: "a", label: "Generate synthetic transitions from the learned model for additional Q-learning updates", isCorrect: true },
+      { id: "b", label: "Collect additional real environment interactions in parallel", isCorrect: false },
+      { id: "c", label: "Update the model using transitions from the replay buffer", isCorrect: false },
+      { id: "d", label: "Evaluate the current policy on held-out test episodes", isCorrect: false },
     ],
   },
 
