@@ -47,6 +47,11 @@ export function WikiLayout({ meta, source, referencedBy }: Props) {
           <span className="hidden sm:inline text-xs text-slate-600 tabular-nums shrink-0">
             {meta.estimatedMinutes} min
           </span>
+          {meta.advanced && (
+            <span className="hidden sm:inline text-xs font-medium px-2 py-0.5 rounded border bg-accent-rose/15 text-accent-rose border-accent-rose/30">
+              Advanced
+            </span>
+          )}
           <span className="hidden sm:inline text-xs font-medium px-2 py-0.5 rounded border bg-brand-500/20 text-brand-300 border-brand-500/30">
             Wiki
           </span>

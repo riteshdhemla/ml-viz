@@ -9,4 +9,6 @@ export interface WikiPageMeta {
   estimatedMinutes: number;
   /** Override the auto-generated Colab URL. Leave unset to use notebooks/wiki/{slug}.ipynb. */
   notebookUrl?: string;
+  /** Flags deep, specialized topics that go beyond the core curriculum. Renders an "Advanced" badge. */
+  advanced?: boolean;
 }

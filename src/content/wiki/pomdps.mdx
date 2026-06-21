@@ -1,0 +1,95 @@
+---
+title: "Partially Observable MDPs (POMDPs)"
+description: "Decision-making when the agent can't see the true state — belief states, the belief-MDP, and approximate solvers."
+topics: ["reinforcement-learning"]
+relatedLessons:
+  - "reinforcement-learning/01-markov-decision-processes"
+estimatedMinutes: 14
+advanced: true
+---
+
+# Partially Observable MDPs (POMDPs)
+
+<Callout type="warning" title="Advanced material">
+  This is a specialized, graduate-level extension of the core RL curriculum. It assumes you are comfortable with MDPs, the Bellman equation, and Bayesian updates. Read the [Markov Decision Processes](/courses/reinforcement-learning/01-markov-decision-processes) lesson first.
+</Callout>
+
+A standard MDP assumes the agent observes the true state $s$ at every step. In the real world this rarely holds — a robot's sensors are noisy, a poker player can't see opponents' cards, a medical agent sees symptoms but not the underlying disease. A **Partially Observable MDP (POMDP)** models this gap between what is *true* and what is *observed*.
+
+## The POMDP tuple
+
+A POMDP extends the MDP tuple $(S, A, T, R, \gamma)$ with two more elements:
+
+$$
+\langle S,\, A,\, T,\, R,\, \Omega,\, O,\, \gamma \rangle
+$$
+
+- $\Omega$ — the set of **observations** the agent can receive
+- $O(o \mid s', a)$ — the **observation function**: probability of seeing observation $o$ after taking action $a$ and landing in state $s'$
+
+The crucial change: the agent never sees $s$ directly. It only sees observations $o$, which are a noisy, possibly aliased function of the hidden state.
+
+## The belief state
+
+Since the agent can't observe $s$, it maintains a **belief state** $b$ — a probability distribution over all possible states:
+
+$$
+b(s) = P(\text{current state} = s \mid \text{history of actions and observations})
+$$
+
+The belief is a sufficient statistic of the entire history. After taking action $a$ and observing $o$, the belief updates via Bayes' theorem (a forward filter, exactly like the HMM forward algorithm):
+
+$$
+b'(s') = \eta\, O(o \mid s', a) \sum_{s} T(s' \mid s, a)\, b(s)
+$$
+
+where $\eta$ is a normalizing constant ensuring $\sum_{s'} b'(s') = 1$.
+
+## The belief-MDP
+
+Here is the key theoretical insight: **a POMDP over states is equivalent to a fully observable MDP over belief states.** The belief $b$ is Markovian — the next belief depends only on the current belief, action, and observation. So we can write a Bellman equation in belief space:
+
+$$
+V^*(b) = \max_a \left[ R(b, a) + \gamma \sum_{o} P(o \mid b, a)\, V^*(b'_{a,o}) \right]
+$$
+
+where $R(b,a) = \sum_s b(s) R(s,a)$ is the expected reward under the belief.
+
+The catch: the belief space is **continuous** (a simplex over $|S|$ states), so this MDP has an infinite state space. Exact solutions are intractable for all but tiny problems.
+
+## Why POMDPs are hard
+
+- The belief simplex is continuous and high-dimensional.
+- Exact value iteration over beliefs is PSPACE-hard.
+- The optimal value function $V^*(b)$ is **piecewise-linear and convex** (PWLC) in the belief — represented as the upper envelope of a set of hyperplanes called **α-vectors**. The number of α-vectors can grow exponentially with the planning horizon.
+
+## Exact solvers
+
+**Value iteration with α-vectors:** The value function is represented as
+$$
+V(b) = \max_{\alpha \in \Gamma} \sum_s \alpha(s)\, b(s)
+$$
+Each α-vector corresponds to a conditional plan. Algorithms like **Incremental Pruning** and **Witness** maintain a minimal set of α-vectors, but the set still grows quickly.
+
+## Approximate solvers
+
+In practice, POMDPs are solved approximately:
+
+| Method | Idea |
+|---|---|
+| **Point-Based Value Iteration (PBVI)** | Track α-vectors only at a finite set of sampled belief points, not the whole simplex |
+| **SARSOP** | PBVI variant that samples beliefs reachable from the initial belief under near-optimal policies |
+| **POMCP / DESPOT** | Monte Carlo tree search in belief space using particle filters to represent beliefs |
+| **Deep RL (DRQN, recurrent policies)** | Replace the explicit belief with an RNN hidden state that implicitly summarizes history |
+
+## Deep RL connection — recurrent policies
+
+Modern deep RL handles partial observability without explicit belief tracking: feed the observation history into a recurrent network (LSTM/GRU). The hidden state $h_t$ learns to approximate a sufficient statistic of the history — effectively an implicit belief state. **DRQN (Deep Recurrent Q-Network)** is DQN with an LSTM layer, used when single frames don't reveal the full state (e.g., velocity in Atari from one frame).
+
+## When you need a POMDP
+
+- Sensors are noisy or incomplete (robotics, autonomous driving)
+- State aliasing: different true states produce identical observations
+- Active information gathering matters (the optimal policy may take actions purely to *reduce uncertainty*, e.g., looking around before acting)
+
+A defining feature of POMDP-optimal behavior: the agent will sometimes sacrifice immediate reward to gather information that improves future decisions — something a plain MDP policy never does.

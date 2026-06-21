@@ -61,9 +61,16 @@ export default function WikiIndexPage() {
                   href={`/wiki/${page.slug}`}
                   className="group card-glass p-5 hover:border-brand-500/50 transition-all duration-200 hover:-translate-y-0.5 block"
                 >
-                  <h3 className="font-semibold text-white group-hover:text-brand-300 transition-colors">
-                    {page.title}
-                  </h3>
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-white group-hover:text-brand-300 transition-colors">
+                      {page.title}
+                    </h3>
+                    {page.advanced && (
+                      <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide px-2 py-0.5 rounded border bg-accent-rose/15 text-accent-rose border-accent-rose/30">
+                        Advanced
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1.5 text-sm text-slate-400 line-clamp-2">
                     {page.description}
                   </p>

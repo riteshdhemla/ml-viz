@@ -1,0 +1,78 @@
+---
+title: "Inverse Reinforcement Learning"
+description: "Recovering the reward function from expert behavior — the reward-ambiguity problem, max-margin and maximum-entropy IRL."
+topics: ["reinforcement-learning"]
+relatedLessons:
+  - "reinforcement-learning/06-from-policy-gradient-to-rlhf"
+estimatedMinutes: 13
+advanced: true
+---
+
+# Inverse Reinforcement Learning (IRL)
+
+<Callout type="warning" title="Advanced material">
+  A graduate-level topic that builds on MDPs, policy optimization, and imitation learning. It is the conceptual foundation of the reward-modeling step in RLHF — read [From Policy Gradient to RLHF](/courses/reinforcement-learning/06-from-policy-gradient-to-rlhf) first, and the [Imitation Learning](/wiki/imitation-learning) wiki page for context.
+</Callout>
+
+Standard RL is: *given a reward function, find the optimal policy.* **Inverse RL flips the arrow**: given expert demonstrations, *recover the reward function the expert appears to be optimizing.* The motivation: rewards are often easier to learn from behavior than to specify by hand. "Drive safely" is hard to write as a number, but easy to demonstrate.
+
+## Why recover the reward instead of the policy?
+
+[Imitation Learning](/wiki/imitation-learning) directly copies the policy. IRL instead recovers the *reward*, which has a key advantage: a reward function is a **more transferable and compact description of intent** than a policy.
+
+- A reward generalizes to **new environments** with different dynamics — re-run RL with the recovered reward and you get a sensible policy even where the expert never acted.
+- A reward captures *why* the expert acts, not just *what* they do, so it degrades more gracefully far from demonstrated states.
+
+## The fundamental ambiguity
+
+IRL is **ill-posed**: many reward functions explain the same behavior. Trivially, $R(s) = 0$ everywhere makes *every* policy optimal, so it "explains" any demonstration. Less trivially, the expert's policy is invariant to:
+
+- Adding a constant to the reward
+- Scaling the reward by a positive factor
+- Reward shaping with any potential function $\Phi(s)$: $R'(s,a,s') = R(s,a,s') + \gamma\Phi(s') - \Phi(s)$ leaves the optimal policy unchanged
+
+Resolving this ambiguity is what distinguishes the major IRL algorithms.
+
+## Max-margin IRL (Ng & Russell, 2000)
+
+The first formulation: find a reward (linear in features, $R(s) = w^\top \phi(s)$) such that the expert policy outperforms all alternatives **by the largest possible margin**.
+
+$$
+\max_{w,\, t}\; t \quad \text{s.t.}\quad w^\top \mu(\pi^*) \ge w^\top \mu(\pi) + t \quad \forall \pi
+$$
+
+where $\mu(\pi) = \mathbb{E}[\sum_t \gamma^t \phi(s_t) \mid \pi]$ is the **expected feature count** under policy $\pi$. **Apprenticeship learning** (Abbeel & Ng, 2004) iterates: find a reward that distinguishes the expert from current policies, run RL to get a new policy, repeat until the policy's feature counts match the expert's.
+
+## Maximum Entropy IRL (Ziebart, 2008)
+
+The most influential formulation. It resolves the ambiguity with a principled tie-breaker: among all reward functions and policies consistent with the expert's feature counts, choose the one with **maximum entropy** — the least committed, most uniform distribution over trajectories.
+
+Under MaxEnt IRL, the probability of a trajectory $\tau$ is proportional to the exponential of its reward:
+
+$$
+P(\tau) \propto \exp\!\left(\sum_t R_w(s_t, a_t)\right)
+$$
+
+This makes the model probabilistic (the expert is assumed to be *approximately* optimal, with higher-reward trajectories exponentially more likely) and removes the degeneracy of max-margin methods. The gradient of the log-likelihood matches expert feature counts to the learner's expected feature counts:
+
+$$
+\nabla_w \mathcal{L} = \mu_{\text{expert}} - \mathbb{E}_{P(\tau)}[\mu(\tau)]
+$$
+
+## Deep / adversarial IRL
+
+For high-dimensional problems, the reward is a neural network:
+
+- **GCL (Guided Cost Learning):** sample-based MaxEnt IRL with neural rewards
+- **AIRL (Adversarial IRL):** a GAN-style setup where a discriminator implicitly recovers a reward that is robust to changes in dynamics
+- **GAIL** (Generative Adversarial Imitation Learning) is closely related — it skips explicit reward recovery and directly matches occupancy measures (see the [Imitation Learning](/wiki/imitation-learning) page)
+
+## IRL and RLHF
+
+RLHF for LLMs is IRL in spirit. Instead of demonstrations, it learns a reward from **human preference comparisons** ("response A is better than B"). The reward model is trained to assign higher scalar reward to preferred outputs — recovering an implicit reward function for "helpful, harmless" behavior — and PPO then optimizes the policy against it. The reward-ambiguity and reward-hacking concerns from classical IRL reappear directly: an LLM policy will exploit any flaw in the learned reward, which is why RLHF uses a KL penalty to keep the policy close to the reference model.
+
+## When to use IRL
+
+- The reward is hard to specify but easy to demonstrate (driving style, surgical technique)
+- You need the policy to transfer to new dynamics or environments
+- You want an interpretable model of *intent*, not just behavior
