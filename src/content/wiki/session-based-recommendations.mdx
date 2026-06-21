@@ -1,0 +1,125 @@
+---
+title: "Session-Based Recommendation Algorithms"
+description: "Algorithm walkthrough for GRU4Rec, SASRec, and BERT4Rec — the sequence models that power real-time recommendations by modeling the current user session rather than long-term history."
+topics: ["recommender-systems"]
+relatedLessons:
+  - "recommender-systems/04-session-based-and-realtime"
+estimatedMinutes: 14
+---
+
+# Session-Based Recommendation Algorithms
+
+Session-based recommendation models treat a user's current browsing sequence as a first-class signal, predicting the next item from the ordered list of items interacted with in the current session. This page walks through the three dominant architectures: GRU4Rec, SASRec, and BERT4Rec.
+
+## Problem formulation
+
+Given a session $S = [i_1, i_2, \ldots, i_T]$ (an ordered list of item IDs), predict the next item $i_{T+1}$ from an item catalog of size $|I|$.
+
+Training objective: maximize the probability of the observed next item:
+
+$$
+\mathcal{L} = -\sum_{t=1}^{T-1} \log P(i_{t+1} \mid i_1, \ldots, i_t; \theta)
+$$
+
+## GRU4Rec
+
+**Architecture:** Item embedding → GRU → item score projection.
+
+$$
+\mathbf{e}_t = \text{Embed}(i_t), \quad \mathbf{h}_t = \text{GRU}(\mathbf{e}_t, \mathbf{h}_{t-1}), \quad \hat{\mathbf{y}}_t = W \mathbf{h}_t
+$$
+
+**Training:** BPR-max loss or cross-entropy with in-session negatives. For a positive item $i^+$ and $k$ negative samples $\{i^-_j\}$:
+
+$$
+\mathcal{L}_{\text{BPR}} = -\log \sigma\!\left(\hat{y}_{i^+} - \frac{1}{k}\sum_j \hat{y}_{i^-_j}\right)
+$$
+
+**Strengths:** Fast, low memory, works well for short sessions (< 20 items).  
+**Limitations:** Sequential bottleneck (hidden state compresses all history), poor on long sessions.
+
+## SASRec (Self-Attentive Sequential Recommendation)
+
+**Architecture:** Item embedding → positional encoding → $L$ causal transformer layers → next-item head.
+
+### Causal self-attention in SASRec
+
+Position embeddings are added to item embeddings:
+
+$$
+\mathbf{E}^{(0)} = [\mathbf{e}_1 + \mathbf{p}_1,\; \ldots,\; \mathbf{e}_T + \mathbf{p}_T]
+$$
+
+Each transformer layer applies multi-head causal (masked) self-attention:
+
+$$
+\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d}} + M\right) V
+$$
+
+where $M_{ij} = -\infty$ if $j > i$ (future masking), $0$ otherwise. This preserves the left-to-right ordering while allowing attention to attend to any previous position.
+
+After $L$ layers, the representation at position $T$ is used to score all items:
+
+$$
+\text{score}(i_{T+1}) = \mathbf{h}_T^{(L)} \cdot \mathbf{e}_{i_{T+1}}
+$$
+
+### Training with binary cross-entropy
+
+SASRec uses a binary cross-entropy loss per position, with one randomly sampled negative item per positive:
+
+$$
+\mathcal{L} = -\sum_{t=1}^{T-1}\left[\log \sigma(\hat{y}_{i_{t+1}}) + \log(1 - \sigma(\hat{y}_{i_{t+1}^-}))\right]
+$$
+
+### Hyperparameter guide
+
+| Hyperparameter | Typical value | Impact |
+|---|---|---|
+| Number of layers $L$ | 2 | Depth vs. overfitting |
+| Embedding dim $d$ | 64 | Quality vs. memory |
+| Max sequence length | 50–200 | Truncate from right (most recent) |
+| Dropout | 0.2 | Regularization for sparse datasets |
+
+## BERT4Rec
+
+**Key difference from SASRec:** bidirectional attention via Masked Item Modeling (MIM).
+
+**Training:** Randomly mask 15–20% of items in the sequence; predict the masked items from both left and right context:
+
+$$
+\mathbf{E}^{(0)} = [\mathbf{e}_1 + \mathbf{p}_1,\; \ldots,\; [\text{MASK}] + \mathbf{p}_t,\; \ldots]
+$$
+
+After a BERT-style encoder (bidirectional self-attention), predict the masked item:
+
+$$
+\hat{i}_t = \arg\max \text{softmax}\!\left(W_{\text{out}} \mathbf{h}_t^{(L)}\right)
+$$
+
+**Serving:** At inference time, append a [MASK] token to the end of the session and predict the next item from the masked position.
+
+**When to prefer BERT4Rec over SASRec:**
+- Tasks where you need to infer items from context in both directions (e.g., fill-in-the-list).
+- Datasets where future context is available at inference time (e.g., playlist continuation, not real-time next-click prediction).
+
+## Comparison table
+
+| | GRU4Rec | SASRec | BERT4Rec |
+|---|---|---|---|
+| Architecture | GRU | Causal Transformer | BERT Transformer |
+| Attention | None | Left-to-right | Bidirectional |
+| Training loss | BPR-max | Binary CE | MLM |
+| Best for | Short sessions, fast training | General next-item | Fill-in / context-rich tasks |
+| Inference | Sequential | $O(T^2)$ attention | $O(T^2)$ attention + one mask |
+
+## Negative sampling strategies
+
+| Strategy | Description | Quality |
+|---|---|---|
+| Random | Sample from full catalog uniformly | Fast, weak signal |
+| In-batch | Other items in the same training batch | Efficient, good for large catalogs |
+| Popularity-based | Sample proportional to item frequency | Harder negatives, more realistic |
+| Hard negative mining | Sample items semantically close to the positive | Best signal, expensive |
+
+For SASRec-style models, **in-batch negatives** (treating other sequence items in the batch as negatives) are the standard trade-off between compute and signal quality.

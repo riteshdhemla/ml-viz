@@ -1,0 +1,114 @@
+---
+title: "Hierarchical Forecasting & Reconciliation"
+description: "Top-down, bottom-up, and optimal reconciliation methods for coherent forecasts across aggregation hierarchies — with the MinT reconciliation algorithm derived step by step."
+topics: ["time-series"]
+relatedLessons:
+  - "time-series/04-demand-forecasting-in-production"
+estimatedMinutes: 12
+---
+
+# Hierarchical Forecasting & Reconciliation
+
+A hierarchical time series is a collection of series organized in an aggregation structure: individual SKU sales sum to product-category sales, which sum to regional sales, which sum to national totals. Forecasting each level independently produces **incoherent** forecasts — the summed level-2 forecasts don't equal the level-1 forecast. Reconciliation methods project the base forecasts onto the **coherent subspace** where all aggregation constraints hold.
+
+## The summing matrix
+
+Let $n$ = total number of series across all levels, $m$ = number of bottom-level series. The summing matrix $S$ ($n \times m$) encodes the aggregation structure:
+
+$$
+\mathbf{y}_t = S\,\mathbf{b}_t
+$$
+
+where $\mathbf{b}_t \in \mathbb{R}^m$ are the bottom-level series values and $\mathbf{y}_t \in \mathbb{R}^n$ are all series (top + intermediate + bottom).
+
+**Example:** 1 total, 2 regions, 4 bottom-level stores (n=7, m=4):
+
+$$
+S = \begin{pmatrix}
+1 & 1 & 1 & 1 \\
+1 & 1 & 0 & 0 \\
+0 & 0 & 1 & 1 \\
+1 & 0 & 0 & 0 \\
+0 & 1 & 0 & 0 \\
+0 & 0 & 1 & 0 \\
+0 & 0 & 0 & 1
+\end{pmatrix}
+$$
+
+A set of forecasts $\hat{\mathbf{y}}$ is **coherent** if and only if $\hat{\mathbf{y}} = S\,\hat{\mathbf{b}}$ for some $\hat{\mathbf{b}}$.
+
+## Approach 1: Top-down
+
+Produce a forecast only at the top level $\hat{y}^{(top)}$, then disaggregate using historical proportions $p_i$ (fraction of total attributable to series $i$):
+
+$$
+\hat{y}_i = p_i \cdot \hat{y}^{(top)}
+$$
+
+**Proportions options:**
+- Average historical proportions: $p_i = \frac{1}{T}\sum_t \frac{y_{i,t}}{y^{(top)}_t}$
+- Proportions from the last period
+- Forecasted proportions (using a separate model)
+
+**When to use:** When bottom-level series are sparse or noisy and the aggregate is well-behaved.  
+**Limitation:** Forces bottom-level forecasts to inherit the top-level model's biases.
+
+## Approach 2: Bottom-up
+
+Forecast each bottom-level series independently, then aggregate:
+
+$$
+\hat{y}^{(top)} = \sum_i \hat{y}_i, \qquad \hat{y}^{(region)} = \sum_{i \in \text{region}} \hat{y}_i
+$$
+
+**When to use:** When bottom-level series have sufficient history and you trust the granular models.  
+**Limitation:** Aggregation propagates and amplifies bottom-level errors.
+
+## Approach 3: MinT (Minimum Trace) reconciliation
+
+Optimal reconciliation finds the coherent forecast $\tilde{\mathbf{y}}$ closest (in MSE) to the base forecasts $\hat{\mathbf{y}}$:
+
+$$
+\tilde{\mathbf{y}} = S(S^\top W^{-1} S)^{-1} S^\top W^{-1} \hat{\mathbf{y}}
+$$
+
+where $W$ is the $n \times n$ covariance matrix of base forecast errors $\hat{\mathbf{y}} - \mathbf{y}$.
+
+**Derivation intuition:** This is generalized least squares (GLS) projecting $\hat{\mathbf{y}}$ onto the coherent subspace $\{\mathbf{y} : \mathbf{y} = S\mathbf{b}\}$. The weighting by $W^{-1}$ ensures that high-variance forecasts are trusted less in the reconciliation.
+
+### Estimating W
+
+Estimating the full $n \times n$ covariance from historical forecast errors is expensive for large hierarchies. Common approximations:
+
+| Method | $W$ | Complexity |
+|---|---|---|
+| **OLS** | $I$ (identity) | $O(n)$ — simple average |
+| **WLS (variance scaling)** | $\text{diag}(\hat{\sigma}_1^2, \ldots, \hat{\sigma}_n^2)$ | $O(n)$ — series-wise variance |
+| **MinT (shrinkage)** | Shrinkage estimator of full covariance | $O(n^2)$ |
+| **MinT (sample)** | Sample covariance from rolling residuals | $O(T n^2)$ |
+
+For large hierarchies ($n > 1000$), WLS with variance scaling is the practical choice; it captures most of the gain from MinT at a fraction of the cost.
+
+## Worked example
+
+**Setup:** 1 national forecast, 2 regional forecasts, base model predictions and true values:
+
+| Series | True ($y$) | Base forecast ($\hat{y}$) |
+|---|---|---|
+| National | 100 | 105 |
+| Region A | 60 | 58 |
+| Region B | 40 | 47 |
+
+The base forecasts are incoherent: 58 + 47 = 105 ≠ 105 (coincidentally coherent here). In practice they won't sum correctly. MinT reconciliation with OLS ($W = I$):
+
+$$
+P = S(S^\top S)^{-1} S^\top, \quad \tilde{\mathbf{y}} = P\hat{\mathbf{y}}
+$$
+
+The projection $P$ maps any forecast vector onto the coherent subspace, producing reconciled forecasts that (a) sum correctly at every level and (b) are closest to the base forecasts in L2 norm.
+
+## Software
+
+- **Python:** `statsforecast` package provides `MinT`, `TopDown`, `BottomUp` via the `HierarchicalReconciliation` class.
+- **R:** `fable` package, `reconcile()` function with `MinT()` / `ETS()` methods.
+- **Reference:** Wickramasuriya et al. (2019) "Optimal Forecast Reconciliation Using Unbiased Mapping."

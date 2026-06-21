@@ -1,0 +1,156 @@
+---
+title: "Demand Forecasting in Production"
+description: "From ARIMA to production-grade forecasting — hierarchical time series, special events, ETA prediction with uncertainty, and the ensemble strategies used by DoorDash, Uber, and Instacart."
+order: 4
+type: concept
+estimatedMinutes: 20
+---
+
+# Demand Forecasting in Production
+
+An ARIMA model trained on a single aggregated demand signal is a starting point — not a production system. DoorDash forecasts delivery demand per restaurant per hour at 30-minute resolution. Uber models ride demand per geohex cell per 5-minute interval. Instacart predicts grocery item demand across thousands of SKUs and hundreds of zip codes. Each faces the same fundamental challenges: **hierarchical structure**, **sparse history at fine granularity**, **special events**, and **real-time latency requirements**.
+
+**Real-world examples:** DoorDash (order volume forecasting for driver supply planning), Lyft (market-level and driver-level demand), Uber (surge pricing and driver rebalancing), Instacart (inventory and delivery slot planning), Foodpanda (kitchen capacity allocation), Swiggy (driver availability matching), ODA (grocery inventory forecasting), Oda (last-mile logistics).
+
+## Hierarchical time series
+
+Most business forecasting problems are **hierarchical**: total national demand is the sum of regional demands, which are sums of store-level demands, which are sums of SKU-level demands.
+
+```
+Total demand
+├── Region A
+│   ├── City 1
+│   │   ├── Restaurant #101
+│   │   └── Restaurant #102
+│   └── City 2
+└── Region B
+```
+
+A naive approach: fit independent models at each level. The problem: forecasts at different levels won't be **coherent** — summing city-level forecasts may not equal the regional-level forecast.
+
+### Reconciliation approaches
+
+| Approach | Method | Best for |
+|---|---|---|
+| **Top-down** | Forecast aggregate; disaggregate using historical proportions | Stable series, sparse lower levels |
+| **Bottom-up** | Forecast leaf nodes; sum up | Low-count series where aggregation loses info |
+| **Optimal reconciliation (MinT)** | Jointly minimize forecast error across all levels using GLS | When you need coherence + accuracy |
+
+**MinT (Minimum Trace)** casts reconciliation as a linear projection:
+
+$$
+\tilde{\mathbf{y}} = S(S^{\top}W^{-1}S)^{-1}S^{\top}W^{-1}\hat{\mathbf{y}}
+$$
+
+where $S$ is the summing matrix encoding the hierarchy, $\hat{\mathbf{y}}$ are base forecasts, and $W$ is the covariance matrix of forecast errors. The result is a coherent set of forecasts that minimize total mean squared error across all levels.
+
+<WikiLink slug="hierarchical-forecasting" title="Hierarchical Forecasting & Reconciliation" />
+
+## Handling special events
+
+Time series models extrapolate from history — but **holidays, promotions, and external events** create demand spikes outside the historical distribution. Models that ignore them produce large, systematic errors.
+
+### Prophet's additive decomposition
+
+Facebook Prophet decomposes demand as:
+
+$$
+y(t) = g(t) + s(t) + h(t) + \epsilon(t)
+$$
+
+- $g(t)$: trend (piecewise linear or logistic growth)
+- $s(t)$: seasonality (Fourier series with weekly and yearly periods)
+- $h(t)$: **holiday effects** — user-specified calendar events with individually estimated impact coefficients
+- $\epsilon(t)$: noise
+
+The holiday component is the key: supply a list of dates (Thanksgiving, Super Bowl, local public holidays) and Prophet estimates a separate additive effect for each. At DoorDash, promotions and restaurant campaigns are treated as "holidays" and injected into the Prophet decomposition.
+
+<Callout type="tip" title="External regressors for planned events">
+  For promotional events where magnitude is known in advance (e.g., a planned $5 discount starting Tuesday), add the promotion indicator as an **exogenous regressor** in ARIMAX or as a future covariate in TFT (Temporal Fusion Transformer). The model learns the typical promotion lift from history and applies it to the future event.
+</Callout>
+
+### Anomaly robustification
+
+Black swan events (COVID lockdowns, extreme weather) contaminate the training signal. Two defenses:
+
+1. **Robust STL decomposition**: use median-based trend extraction, which is resistant to outliers.
+2. **Truncated training window**: weight recent data more heavily (exponential decay) so ancient anomalies don't distort the fitted model.
+
+## ETA prediction: forecasting with uncertainty
+
+ETA (Estimated Time of Arrival) prediction is a special-case demand forecast: the target is a **continuous duration** (minutes to delivery) rather than a volume. Calibrated uncertainty is critical — telling a customer "30 minutes" when the true distribution is 20–50 minutes damages trust.
+
+### Feature engineering for ETA
+
+| Feature | Source | Lag |
+|---|---|---|
+| Distance (crow-flies) | Maps API | — |
+| Historical travel time for route | Log store | 30-min bins |
+| Current traffic index (segment-level) | Real-time traffic feed | < 1 min |
+| Courier speed percentile | Courier feature store | 1-hour rolling |
+| Order complexity (# items, prep time) | Order system | — |
+| Time of day, day of week | Clock | — |
+
+Swiggy uses gradient boosted trees over these features; their ETA model improves primarily by adding more fine-grained traffic features, not by model complexity.
+
+### Quantile regression for uncertainty
+
+Instead of predicting the mean ETA, predict **multiple quantiles** (p10, p50, p90):
+
+$$
+\mathcal{L}_q(\hat{y}, y) = q(y - \hat{y})^+ + (1-q)(\hat{y} - y)^+
+$$
+
+Optimizing this pinball loss at $q = 0.9$ produces the 90th percentile ETA — a conservative bound shown to the customer. DoorDash shows a range ("arriving in 25–40 minutes") instead of a point estimate, using the p25 and p75 quantiles.
+
+## Ensemble forecasting
+
+No single model wins on all horizons and series types. Production systems blend:
+
+- **Statistical models** (ETS/ARIMA/Prophet): robust on short history, no GPU required, fast to retrain.
+- **Gradient boosting** (LightGBM/XGBoost): powerful for feature-rich tabular forecasting, handles missing values.
+- **Deep learning** (N-BEATS, TFT, PatchTST): best on long histories and cross-series patterns (global models trained on all SKUs simultaneously).
+
+The ensemble is typically a **stacking regressor**: a secondary model (often Ridge regression) trained on the validation-set predictions of each base model learns optimal blending weights. Instacart's system uses a similar approach: ETS + LightGBM + a transformer are blended, with the transformer upweighted for SKUs with 6+ months of history.
+
+<Callout type="warning" title="Backtesting ≠ production evaluation">
+  Backtesting with a fixed test window overfits your model selection to that window. Use **expanding window validation** (walk-forward): repeatedly train on all data up to time $t$, forecast $h$ steps ahead, advance $t$ by one period, repeat. This simulates the actual rolling-retrain production cadence.
+</Callout>
+
+## Production architecture
+
+```
+Raw data (orders, traffic, weather)
+        ↓
+Feature store (precomputed lag features)
+        ↓
+Multiple base models trained on rolling windows
+        ↓
+Stacking / blending layer
+        ↓
+Coherency reconciliation (if hierarchical)
+        ↓
+Forecast served to downstream systems:
+  ├─ Driver dispatch & supply planning
+  ├─ Kitchen / prep time scheduling
+  └─ Customer ETA display
+```
+
+Uber's forecasting platform (built on Apache Flink) produces horizon-5-minute predictions for thousands of geo-cells, updating every 5 minutes. The entire pipeline — from raw data to deployed forecast — runs on an automated retraining cadence with automated regression detection.
+
+## Key takeaways
+
+- **Hierarchical forecasting** requires coherent reconciliation across levels (MinT / bottom-up) so sub-forecasts sum to the aggregate.
+- **Special events** must be modeled explicitly — Prophet's holiday component, ARIMAX regressors, or TFT future covariates; generic models produce large systematic errors on known events.
+- **ETA prediction** benefits from quantile regression to produce calibrated uncertainty intervals rather than point estimates.
+- **Ensemble + stacking** consistently outperforms any single model; the blend weights themselves should be learned, not hand-tuned.
+
+## Related concepts
+
+- [**ARIMA Models**](/courses/time-series/02-arima-models) — the statistical baseline that ensembles always include
+- [**Deep Learning for Time Series**](/courses/time-series/03-deep-learning-for-time-series) — the TFT and NBEATS models used in production ensembles
+- [**Feature Stores**](/courses/ml-in-practice/17-feature-stores) — how lag features and rolling aggregates are computed and served at low latency
+
+<Exercise id="demand-forecasting-hierarchy" />
+<Exercise id="demand-forecasting-ensemble" />
+<Exercise id="demand-forecasting-eta" />

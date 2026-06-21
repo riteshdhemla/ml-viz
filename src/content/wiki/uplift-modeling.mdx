@@ -1,0 +1,123 @@
+---
+title: "Uplift Modeling & Causal Treatment Effects"
+description: "S-learner, T-learner, and X-learner meta-learners for estimating individual treatment effects — the ML approach to targeting interventions at the users most likely to respond to them."
+topics: ["causal-inference"]
+relatedLessons:
+  - "causal-inference/02-interventions-and-potential-outcomes"
+estimatedMinutes: 13
+---
+
+# Uplift Modeling & Causal Treatment Effects
+
+Standard recommendation predicts who will convert. **Uplift modeling** predicts who will convert *because of* an intervention — a discount, an email, a product recommendation. The target variable is the **Individual Treatment Effect (ITE)**:
+
+$$
+\tau_i = Y_i(1) - Y_i(0)
+$$
+
+where $Y_i(1)$ is the outcome if user $i$ is treated and $Y_i(0)$ is the outcome if not. The fundamental problem: you can only observe one potential outcome per user. Uplift models estimate $\tau_i$ from A/B experiment data where treatment is randomly assigned.
+
+## The four uplift segments
+
+Users fall into four segments based on their behavior with and without treatment:
+
+| Segment | No treatment | Treatment | Uplift |
+|---|---|---|---|
+| **Persuadables** | Would not convert | Would convert | ✅ Positive |
+| **Sure things** | Would convert | Would convert | 0 |
+| **Lost causes** | Would not convert | Would not convert | 0 |
+| **Sleeping dogs** | Would convert | Would not convert | ❌ Negative |
+
+The goal is to target **Persuadables** and avoid **Sleeping dogs** — users who would convert anyway (Sure things) waste budget; Sleeping dogs are made worse by the intervention (e.g., a discount that insults a loyal customer).
+
+## S-Learner (Single Model)
+
+Train a single model that takes both features $X$ and treatment indicator $T$ as inputs:
+
+$$
+\mu(x, t) = \mathbb{E}[Y \mid X = x, T = t]
+$$
+
+Estimate ITE by computing the model's prediction with and without treatment:
+
+$$
+\hat{\tau}(x) = \mu(x, 1) - \mu(x, 0)
+$$
+
+**Pros:** Simple, uses all data jointly, no need for two separate models.  
+**Cons:** If the treatment feature $T$ has weak main effects but strong interaction effects, regularized models may shrink its coefficient toward zero, underestimating uplift.
+
+## T-Learner (Two Models)
+
+Train separate models for treated and control groups:
+
+$$
+\mu_0(x) = \mathbb{E}[Y \mid X = x, T = 0], \qquad \mu_1(x) = \mathbb{E}[Y \mid X = x, T = 1]
+$$
+
+$$
+\hat{\tau}(x) = \mu_1(x) - \mu_0(x)
+$$
+
+**Pros:** Each model is optimized for its own group, captures group-specific patterns.  
+**Cons:** High variance when treatment/control group sizes are imbalanced; the two models may have different implicit regularization that introduces bias into $\hat{\tau}$.
+
+## X-Learner (Cross-fitted)
+
+Proposed by Künzel et al. (2019). Three-stage approach:
+
+**Stage 1:** Train $\mu_0$ on control, $\mu_1$ on treated (same as T-Learner).
+
+**Stage 2:** Compute imputed treatment effects using cross-group predictions:
+
+$$
+\tilde{\tau}_i^{(1)} = Y_i - \hat{\mu}_0(X_i) \quad \text{for treated units}
+$$
+$$
+\tilde{\tau}_i^{(0)} = \hat{\mu}_1(X_i) - Y_i \quad \text{for control units}
+$$
+
+**Stage 3:** Train two uplift models:
+- $\tau_1(x)$: regress $\tilde{\tau}^{(1)}$ on features $X$ for treated units.
+- $\tau_0(x)$: regress $\tilde{\tau}^{(0)}$ on features $X$ for control units.
+
+**Combine** using propensity score $e(x) = P(T=1 \mid X=x)$:
+
+$$
+\hat{\tau}(x) = e(x) \cdot \tau_0(x) + (1 - e(x)) \cdot \tau_1(x)
+$$
+
+**Pros:** Better performance when treatment/control sizes are very imbalanced (X-Learner upweights the larger group's estimate).  
+**Cons:** Requires propensity score estimation; 3-stage pipeline is complex.
+
+## Evaluation: Qini curve and AUUC
+
+Standard accuracy metrics are meaningless for uplift models — the true ITE is never observed. Use **ranking-based** metrics:
+
+**Qini curve:** Sort users by predicted uplift $\hat{\tau}_i$ (descending). Plot cumulative incremental gains vs. fraction of population treated. A perfect model concentrates all Persuadables at the top.
+
+$$
+\text{Qini gain at decile } k = \frac{Y^T_{(k)}}{N^T} - \frac{Y^C_{(k)}}{N^C}
+$$
+
+**AUUC** (Area Under the Uplift Curve): normalize the Qini curve area. Higher AUUC = better uplift model.
+
+## Real-world applications from case studies
+
+| Company | Use case | Estimated uplift |
+|---|---|---|
+| Netflix | Personalize "push notification to re-engage" targeting | +8% conversion vs. random targeting |
+| Lyft | Incentive targeting (discount only high-uplift riders) | −12% promotion cost, flat revenue |
+| Gojek | Targeted special offers for dormant users | +15% reactivation vs. blanket discount |
+| Instacart | Budget-constrained promotion allocation | +9% ROAS |
+| NYT | Paywall presentation personalization | +6% subscription conversion |
+
+## Causal forests
+
+For non-parametric uplift estimation, **Causal Forests** (Wager & Athey, 2018) build an ensemble of causal trees that partition the feature space to find heterogeneous treatment effects:
+
+$$
+\hat{\tau}(x) = \text{LocalWeightedEstimator}(\{(Y_i, T_i, X_i)\}_{i: X_i \approx x})
+$$
+
+The `causalml` and `EconML` Python packages implement causal forests with confidence intervals, enabling statistical significance testing of uplift estimates.

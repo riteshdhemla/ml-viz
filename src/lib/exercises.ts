@@ -9002,6 +9002,382 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Pick one guardrail and rely on it exclusively", isCorrect: false },
     ],
   },
+
+  // ── Session-Based & Real-Time Recommendations ────────────────────────────
+  {
+    id: "session-recsys-model",
+    type: "multiple-choice",
+    question:
+      "A user's all-time listening history shows jazz preferences, but in the current session they've played 5 hip-hop tracks. Which architecture is best suited to recommend the next track?",
+    hint: "Think about what signal each architecture relies on.",
+    explanation:
+      "SASRec (or any session-based sequential model) encodes the current session sequence and uses it as the primary signal, so it correctly adapts to the current hip-hop session rather than the long-term jazz history. Collaborative filtering and two-tower retrieval use long-term behavioral embeddings that would over-index on the historical jazz signal.",
+    options: [
+      { id: "a", label: "Two-tower retrieval using the user's all-time embedding", isCorrect: false },
+      { id: "b", label: "SASRec encoding the current session sequence", isCorrect: true },
+      { id: "c", label: "Matrix factorization on interaction history", isCorrect: false },
+      { id: "d", label: "Popularity-based ranking", isCorrect: false },
+    ],
+  },
+  {
+    id: "session-recsys-bandit",
+    type: "multiple-choice",
+    question:
+      "Your recommendation system has high exploitation and low exploration. Which symptom best describes the resulting user experience?",
+    hint: "What happens when a system only recommends what it already thinks you like?",
+    explanation:
+      "Pure exploitation creates a filter bubble: users only see items similar to those they've already engaged with. They never discover new interests, and long-term retention suffers even though short-term click rates may look good. Exploration injects variety that can reveal latent preferences.",
+    options: [
+      { id: "a", label: "Users see too many new items they dislike (high regret)", isCorrect: false },
+      { id: "b", label: "Users are trapped in a filter bubble, never discovering new interests", isCorrect: true },
+      { id: "c", label: "Latency spikes because exploration requires extra model calls", isCorrect: false },
+      { id: "d", label: "Cold-start users are well-served since the system defaults to popular items", isCorrect: false },
+    ],
+  },
+  {
+    id: "session-recsys-pipeline",
+    type: "multiple-choice",
+    question:
+      "A session-based recommender needs the user's last 5 item clicks, computed with < 5 ms staleness. Which storage tier should serve this feature at inference time?",
+    hint: "Consider the latency and freshness requirements.",
+    explanation:
+      "A real-time cache (Redis/Memcached) is the right tool: it provides sub-millisecond read latency and can be written to by the click-tracking service with < 1 s lag. A batch feature store is too stale (hours), a streaming Kafka topic is the source but not a serving store, and a data warehouse is far too slow for < 5 ms SLA.",
+    options: [
+      { id: "a", label: "Batch feature store updated hourly", isCorrect: false },
+      { id: "b", label: "A data warehouse query at request time", isCorrect: false },
+      { id: "c", label: "Real-time cache (Redis) written by the click-tracking service", isCorrect: true },
+      { id: "d", label: "Read directly from the Kafka event stream", isCorrect: false },
+    ],
+  },
+
+  // ── Diversity, Cold Start & Exploration ──────────────────────────────────
+  {
+    id: "diversity-cold-start-mmr",
+    type: "multiple-choice",
+    question:
+      "You apply Maximal Marginal Relevance (MMR) with λ = 0 to a candidate list. What does the resulting ranked list optimize for?",
+    hint: "Think about what λ = 0 and λ = 1 mean in the MMR formula.",
+    explanation:
+      "MMR(i) = λ·r_i − (1−λ)·max_sim(i, S). When λ = 0, the relevance term disappears entirely and the formula purely minimizes similarity to already-selected items — maximizing diversity with no regard for relevance. At λ = 1, it maximizes pure relevance. Production systems use λ ≈ 0.5–0.7.",
+    options: [
+      { id: "a", label: "Pure relevance, ignoring diversity", isCorrect: false },
+      { id: "b", label: "Pure diversity, ignoring relevance", isCorrect: true },
+      { id: "c", label: "Equal weight between relevance and diversity", isCorrect: false },
+      { id: "d", label: "Popularity-weighted diversity", isCorrect: false },
+    ],
+  },
+  {
+    id: "diversity-cold-start-bandit",
+    type: "multiple-choice",
+    question:
+      "In Thompson Sampling for a multi-armed bandit, what does 'sampling from the posterior' accomplish?",
+    hint: "Compare Thompson Sampling to a deterministic algorithm like UCB.",
+    explanation:
+      "Thompson Sampling draws a random sample μ̃_i from the current posterior P(μ_i) for each arm and pulls the arm with the highest sample. Arms with high uncertainty have wide posteriors, so their samples occasionally dominate — natural exploration. Arms with low uncertainty have tight posteriors, their samples reliably reflect the true mean — exploitation. The balance happens automatically without a tuned exploration coefficient.",
+    options: [
+      { id: "a", label: "It replaces the mean estimate with a confidence interval", isCorrect: false },
+      { id: "b", label: "It automatically balances exploration and exploitation via posterior width", isCorrect: true },
+      { id: "c", label: "It eliminates the need for online updates", isCorrect: false },
+      { id: "d", label: "It guarantees optimal arm selection every round", isCorrect: false },
+    ],
+  },
+  {
+    id: "diversity-cold-start-strategy",
+    type: "multiple-choice",
+    question:
+      "A new item has zero interaction history on your platform. Which cold-start strategy provides the most immediate signal without requiring any user interaction data for that item?",
+    hint: "Think about what's available for a brand-new item.",
+    explanation:
+      "Content-based fallback uses the item's own features (text description, category, image embedding) projected into the shared embedding space — available at item creation time, before any user interacts with it. Meta-learning and session encoding require at least some interaction history. Popularity-based defaults ignore item properties entirely.",
+    options: [
+      { id: "a", label: "Collaborative filtering with interaction-based embeddings", isCorrect: false },
+      { id: "b", label: "Content-based projection from item features (text, image, category)", isCorrect: true },
+      { id: "c", label: "Meta-learning adaptation on the user's first 5 clicks on the item", isCorrect: false },
+      { id: "d", label: "Assign the globally most popular item's embedding", isCorrect: false },
+    ],
+  },
+
+  // ── Ad Ranking & CTR Prediction ──────────────────────────────────────────
+  {
+    id: "ad-ranking-ctr-objective",
+    type: "multiple-choice",
+    question:
+      "Platform A ranks ads by raw bid. Platform B ranks ads by eCPM (predicted CTR × bid). Which platform earns more revenue per impression, and why?",
+    hint: "Consider what happens when a highly relevant but lower-bidding ad competes with an irrelevant high bidder.",
+    explanation:
+      "Platform B earns more. A highly relevant ad (high CTR) generates more clicks per impression than an irrelevant high-bid ad. By ranking on eCPM, Platform B selects the ad that maximizes expected revenue (CTR × bid × 1000). Platform A's raw-bid ranking wastes impressions on irrelevant ads that won't be clicked, earning only the bid amount — but rarely.",
+    options: [
+      { id: "a", label: "Platform A, because it rewards higher bids", isCorrect: false },
+      { id: "b", label: "Platform B, because it selects ads that maximize expected clicks × bid", isCorrect: true },
+      { id: "c", label: "They earn the same revenue on average", isCorrect: false },
+      { id: "d", label: "It depends entirely on the auction format", isCorrect: false },
+    ],
+  },
+  {
+    id: "ad-ranking-auction",
+    type: "multiple-choice",
+    question:
+      "In a second-price auction, advertiser A bids $5, B bids $3, C bids $2. What does the winner pay?",
+    hint: "Second-price means the winner pays the next-highest bid.",
+    explanation:
+      "Advertiser A wins (highest bid $5) but pays only the second-highest bid, which is $3.01 (or exactly $3 + $0.01 increment). This truthfulness property means each advertiser's dominant strategy is to bid their true value — if A's true value is $5, overbidding can't help and underbidding might lose an auction they'd have profited from.",
+    options: [
+      { id: "a", label: "$5.00 (their own bid)", isCorrect: false },
+      { id: "b", label: "$3.01 (second-highest bid + minimum increment)", isCorrect: true },
+      { id: "c", label: "$2.01 (third-highest bid + increment)", isCorrect: false },
+      { id: "d", label: "$4.00 (average of top two bids)", isCorrect: false },
+    ],
+  },
+  {
+    id: "ad-ranking-deepfm",
+    type: "multiple-choice",
+    question:
+      "DeepFM combines a Factorization Machine (FM) with an MLP. What specific advantage does the FM component provide over a plain MLP?",
+    hint: "Think about how the FM and MLP handle feature interactions differently.",
+    explanation:
+      "The FM explicitly models all pairwise feature interactions via embedding dot products (second-order interactions), and it shares the same embedding table with the MLP. This means second-order interactions are always computed without requiring the MLP to learn them, which is hard for sparse high-cardinality features. The MLP captures higher-order interactions. Together they model both efficiently.",
+    options: [
+      { id: "a", label: "The FM reduces the number of parameters", isCorrect: false },
+      { id: "b", label: "The FM automatically models all pairwise feature interactions via embedding dot products", isCorrect: true },
+      { id: "c", label: "The FM handles missing values better than the MLP", isCorrect: false },
+      { id: "d", label: "The FM provides better gradient flow during backpropagation", isCorrect: false },
+    ],
+  },
+
+  // ── Demand Forecasting in Production ─────────────────────────────────────
+  {
+    id: "demand-forecasting-hierarchy",
+    type: "multiple-choice",
+    question:
+      "You forecast demand independently at the city level and the national level. After the forecast, you sum city forecasts and find they don't equal the national forecast. What is this problem called, and how does MinT address it?",
+    hint: "The key word is 'coherent'.",
+    explanation:
+      "This is the incoherence problem in hierarchical forecasting. MinT (Minimum Trace) reconciliation projects the base forecasts onto the coherent subspace using a GLS-like formula: ỹ = S(S'W⁻¹S)⁻¹S'W⁻¹ŷ. The summing matrix S encodes the hierarchy structure; the result is a coherent set of forecasts that minimize total MSE across all levels.",
+    options: [
+      { id: "a", label: "Overfitting at the aggregate level", isCorrect: false },
+      { id: "b", label: "Incoherence — MinT reconciles by projecting forecasts to the coherent subspace", isCorrect: true },
+      { id: "c", label: "Covariate shift between city and national training data", isCorrect: false },
+      { id: "d", label: "Label leakage from the aggregation step", isCorrect: false },
+    ],
+  },
+  {
+    id: "demand-forecasting-ensemble",
+    type: "multiple-choice",
+    question:
+      "Why does backtesting with a single fixed holdout window overestimate a forecasting model's production performance?",
+    hint: "Think about how a model gets selected based on that window.",
+    explanation:
+      "A fixed test window causes model selection to overfit to that particular time period (its specific seasonality, event pattern, and anomalies). Expanding window (walk-forward) validation repeatedly trains and evaluates on rolling windows, simulating the actual rolling-retrain production cadence and giving an unbiased estimate of generalization across different time periods.",
+    options: [
+      { id: "a", label: "The model sees the test data during training when using a fixed window", isCorrect: false },
+      { id: "b", label: "Model selection overfits to the specific characteristics of that window; walk-forward validation is unbiased", isCorrect: true },
+      { id: "c", label: "A fixed window always contains more data than walk-forward", isCorrect: false },
+      { id: "d", label: "Fixed windows can't compute MAPE", isCorrect: false },
+    ],
+  },
+  {
+    id: "demand-forecasting-eta",
+    type: "multiple-choice",
+    question:
+      "DoorDash shows customers a delivery time range (e.g., '25–40 minutes') instead of a point estimate. Which modeling approach produces this range?",
+    hint: "Think about what it means to predict the p25 and p75 of a distribution.",
+    explanation:
+      "Quantile regression trains the model to predict specific quantiles (e.g., p25 and p75) of the delivery time distribution by optimizing the pinball loss at each target quantile. This produces calibrated interval bounds. A point estimate (mean or median) gives no information about the spread. Prediction intervals from a Gaussian assumption would require the distribution to actually be Gaussian, which ETA rarely is.",
+    options: [
+      { id: "a", label: "Adding ±1 standard deviation to a point estimate", isCorrect: false },
+      { id: "b", label: "Quantile regression optimizing the pinball loss at the p25 and p75 quantiles", isCorrect: true },
+      { id: "c", label: "Training two separate models: one for best case, one for worst case", isCorrect: false },
+      { id: "d", label: "Monte Carlo simulation over the route graph", isCorrect: false },
+    ],
+  },
+
+  // ── Fraud Detection at Scale ──────────────────────────────────────────────
+  {
+    id: "fraud-detection-metrics",
+    type: "multiple-choice",
+    question:
+      "A fraud detection model achieves 99.8% accuracy on a dataset where only 0.1% of transactions are fraud. Should you trust this accuracy number?",
+    hint: "What would a trivial baseline that predicts 'not fraud' for everything score?",
+    explanation:
+      "No. The trivial baseline of predicting 'not fraud' for all transactions achieves 99.9% accuracy while catching zero fraud cases. This is the class imbalance trap. Instead, use AUPRC (Area Under Precision-Recall Curve), F-beta with β > 1, or Recall@FPR. These metrics are informative at extreme imbalance.",
+    options: [
+      { id: "a", label: "Yes, 99.8% is excellent and indicates a reliable model", isCorrect: false },
+      { id: "b", label: "No — a trivial 'not fraud' classifier achieves 99.9% accuracy; use AUPRC or Recall@FPR", isCorrect: true },
+      { id: "c", label: "Yes, if the model also has low false-positive rate", isCorrect: false },
+      { id: "d", label: "No — only AUC-ROC should be used for fraud models", isCorrect: false },
+    ],
+  },
+  {
+    id: "fraud-detection-features",
+    type: "multiple-choice",
+    question:
+      "Which feature type is most predictive for real-time payment fraud detection and requires a streaming feature store?",
+    hint: "Think about what changes in the minutes before a fraud event.",
+    explanation:
+      "Velocity features — count of transactions, total amount, distinct countries, decline rate in the last N minutes/hours — are the highest-signal fraud indicators. They require a streaming feature store (Flink + Redis) because they must be computed on the fly with < 1 s staleness. Static features (address, device fingerprint age) can be pre-computed in batch.",
+    options: [
+      { id: "a", label: "User's account age (days since registration)", isCorrect: false },
+      { id: "b", label: "Velocity features: transaction count and amount in rolling windows", isCorrect: true },
+      { id: "c", label: "User's all-time spend category distribution", isCorrect: false },
+      { id: "d", label: "Merchant's industry category", isCorrect: false },
+    ],
+  },
+  {
+    id: "fraud-detection-graph",
+    type: "multiple-choice",
+    question:
+      "Graph-based fraud detection uses GNNs over an entity-sharing graph. What specific fraud pattern does this catch that feature-only models miss?",
+    hint: "Think about what it means for two accounts to share a device ID.",
+    explanation:
+      "Graph-based detection catches synthetic identity fraud: a new account with clean-looking individual features (new device, new email, reasonable address) that shares a phone number, device ID, or billing address with a known-fraud account. The GNN aggregates neighbor features, so the guilt-by-association signal propagates from the known-fraud node to connected new accounts — invisible to a feature-only model.",
+    options: [
+      { id: "a", label: "Accounts with transaction amounts outside the historical range", isCorrect: false },
+      { id: "b", label: "Synthetic identity fraud: new accounts connected to known fraudsters via shared identifiers", isCorrect: true },
+      { id: "c", label: "Rapid successive transactions in different currencies", isCorrect: false },
+      { id: "d", label: "Device fingerprints seen in unusual geographic locations", isCorrect: false },
+    ],
+  },
+
+  // ── Content Moderation at Scale ───────────────────────────────────────────
+  {
+    id: "content-moderation-label",
+    type: "multiple-choice",
+    question:
+      "You measure Cohen's kappa of 0.25 between annotators labeling 'toxic speech' on your dataset. What is the implication for model training?",
+    hint: "Kappa < 0.4 indicates poor inter-annotator agreement.",
+    explanation:
+      "Kappa of 0.25 is poor agreement — annotators fundamentally disagree on what counts as toxic speech in this dataset. A model trained on these noisy labels cannot outperform human agreement (the label noise ceiling), and reported model metrics will be misleading. The fix: improve annotation guidelines, decompose the task into clearer sub-tasks (e.g., 'does this contain a slur?'), and re-annotate before training.",
+    options: [
+      { id: "a", label: "The model will generalize well due to diverse labels", isCorrect: false },
+      { id: "b", label: "Label noise will cap model performance; improve guidelines and task decomposition before training", isCorrect: true },
+      { id: "c", label: "Training is fine as long as you use majority vote from 3 annotators", isCorrect: false },
+      { id: "d", label: "Low kappa always indicates high model accuracy since humans are noisy", isCorrect: false },
+    ],
+  },
+  {
+    id: "content-moderation-threshold",
+    type: "multiple-choice",
+    question:
+      "Your content moderation team sets the auto-remove threshold at score > 0.99. Who should own the decision to change this threshold to 0.95?",
+    hint: "Think about whose job it is to decide on false-positive tolerance.",
+    explanation:
+      "The threshold is a policy decision — it determines what level of false-positive rate (legitimate content incorrectly removed) is acceptable. This is a legal, trust & safety, and business decision, not an ML decision. The ML team provides the model's performance curve (precision-recall at each threshold) so policy teams can make an informed choice, but the threshold choice itself is theirs.",
+    options: [
+      { id: "a", label: "The ML engineer, since they understand the model's performance", isCorrect: false },
+      { id: "b", label: "Legal, trust & safety, and product teams — it's a policy decision", isCorrect: true },
+      { id: "c", label: "The data annotators, based on their labeling experience", isCorrect: false },
+      { id: "d", label: "Set it automatically to maximize F1 on the validation set", isCorrect: false },
+    ],
+  },
+  {
+    id: "content-moderation-active-learning",
+    type: "multiple-choice",
+    question:
+      "Your image moderation classifier is 99% confident on most content, but uncertain on a small subset. What active learning strategy should you use to allocate labeling budget?",
+    hint: "You have a fixed labeling budget and want the most informative labels.",
+    explanation:
+      "Uncertainty sampling prioritizes the most informative examples for labeling: images where the model is least confident (entropy close to maximum) provide the greatest information gain when labeled. Labeling already-confident examples wastes budget since the model already 'knows' those cases. Diversity sampling (ensuring labeled examples cover different clusters) can be combined with uncertainty sampling to avoid redundant labels near the same decision boundary.",
+    options: [
+      { id: "a", label: "Randomly sample from all unlabeled images", isCorrect: false },
+      { id: "b", label: "Label all images above 0.9 confidence first", isCorrect: false },
+      { id: "c", label: "Uncertainty sampling: label images with the lowest model confidence first", isCorrect: true },
+      { id: "d", label: "Label the most recently uploaded images regardless of confidence", isCorrect: false },
+    ],
+  },
+
+  // ── Code Intelligence & Generation ────────────────────────────────────────
+  {
+    id: "code-gen-fim",
+    type: "multiple-choice",
+    question:
+      "A developer's cursor is in the middle of a function body, with both code above and below the cursor. Standard left-to-right LLM completion ignores the code below. What training objective fixes this?",
+    hint: "Think about what 'FIM' stands for.",
+    explanation:
+      "Fill-in-the-Middle (FIM) training reformats code documents with three special tokens: <fim_prefix> (code before cursor), <fim_suffix> (code after cursor), <fim_middle> (target to generate). The model is trained on ~50% FIM-formatted examples, learning to generate the middle segment conditioned on both prefix and suffix. This is how GitHub Copilot, StarCoder2, and Code Llama handle cursor-position completion.",
+    options: [
+      { id: "a", label: "Bidirectional BERT-style masked token prediction", isCorrect: false },
+      { id: "b", label: "Fill-in-the-Middle (FIM): prefix + suffix as input, middle as target", isCorrect: true },
+      { id: "c", label: "Next-token prediction with a reversed copy of the file appended", isCorrect: false },
+      { id: "d", label: "Supervised fine-tuning only on function signatures", isCorrect: false },
+    ],
+  },
+  {
+    id: "code-gen-review",
+    type: "multiple-choice",
+    question:
+      "An automated code review system posts a comment on a PR suggesting a refactoring that introduces a subtle bug. What is the most important property the system violated?",
+    hint: "What makes an automated review comment harmful rather than helpful?",
+    explanation:
+      "The system violated high precision. Automated code review must prioritize precision over recall: it's far better to miss a real issue than to post an incorrect comment. A suggestion that introduces a bug is worse than silence — it creates extra review work and erodes developer trust in the tool. Production systems only post comments at > 90% precision on a held-out evaluation set, and they verify suggestions by running linters and tests, not just the LLM.",
+    options: [
+      { id: "a", label: "High recall — it should catch every possible issue", isCorrect: false },
+      { id: "b", label: "High precision — suggestions must be correct before being posted", isCorrect: true },
+      { id: "c", label: "Low latency — the review took too long to generate", isCorrect: false },
+      { id: "d", label: "Multilingual support — it should handle all programming languages", isCorrect: false },
+    ],
+  },
+  {
+    id: "code-gen-agent-loop",
+    type: "multiple-choice",
+    question:
+      "A coding agent generates a function implementation, runs the unit tests, and they fail. What should the agent do next?",
+    hint: "Think about what distinguishes an agent from a one-shot code generator.",
+    explanation:
+      "The agent should read the error output, reason about what went wrong, revise the code, and re-run the tests — this debug loop is the core difference between an agent and a one-shot generator. Models like Devin and GitHub Copilot Workspace outperform single-shot generation precisely because they iterate: generate → execute → read error → revise → execute again, until tests pass or a maximum number of retries is reached.",
+    options: [
+      { id: "a", label: "Return the failing implementation with a caveat comment", isCorrect: false },
+      { id: "b", label: "Read the error, revise the code, and re-run the tests", isCorrect: true },
+      { id: "c", label: "Ask the user to fix the failing tests manually", isCorrect: false },
+      { id: "d", label: "Generate 5 alternative implementations and let the user choose", isCorrect: false },
+    ],
+  },
+
+  // ── Voice & Multimodal AI ─────────────────────────────────────────────────
+  {
+    id: "voice-multimodal-pipeline",
+    type: "multiple-choice",
+    question:
+      "In a production voice AI agent, what is the recommended latency target for the Speech-to-Text (STT) step to keep the full voice response under 1 second?",
+    hint: "The STT output feeds into the LLM; LLM inference itself takes ~200–400 ms; TTS adds ~200 ms.",
+    explanation:
+      "Streaming Whisper can process audio in ~100–300 ms for typical utterances. Given that LLM inference (200–400 ms) and TTS first-chunk (100–200 ms) also contribute to the total latency, STT must complete in < 300 ms to keep the combined pipeline under ~1 second. In practice, streaming STT begins generating tokens while the user is still speaking, overlapping the LLM start.",
+    options: [
+      { id: "a", label: "< 50 ms (same as database query SLA)", isCorrect: false },
+      { id: "b", label: "< 300 ms using streaming Whisper", isCorrect: true },
+      { id: "c", label: "< 2 seconds is fine for voice — users expect it", isCorrect: false },
+      { id: "d", label: "Latency doesn't matter for STT since it's processed offline", isCorrect: false },
+    ],
+  },
+  {
+    id: "voice-multimodal-search",
+    type: "multiple-choice",
+    question:
+      "Pinterest's visual search allows users to search by uploading an image. What technology enables searching a catalog of 10 billion images in < 200 ms?",
+    hint: "Think about what 'retrieval over image embeddings' implies technically.",
+    explanation:
+      "CLIP encodes the query image into a vector embedding; all catalog images are pre-encoded and stored in an Approximate Nearest Neighbor (ANN) index (HNSW, ScaNN, or FAISS). ANN search retrieves the most similar embeddings in < 100 ms even at billion-image scale, far faster than exhaustive cosine similarity. This is the same two-tower + ANN pattern used in recommendation retrieval, applied to images.",
+    options: [
+      { id: "a", label: "Pixel-by-pixel hash comparison of the query against all catalog images", isCorrect: false },
+      { id: "b", label: "CLIP embeddings + ANN index (HNSW/ScaNN) for approximate nearest-neighbor retrieval", isCorrect: true },
+      { id: "c", label: "Object detection followed by metadata tag matching", isCorrect: false },
+      { id: "d", label: "Inverted index over image color histograms", isCorrect: false },
+    ],
+  },
+  {
+    id: "voice-multimodal-vlm",
+    type: "multiple-choice",
+    question:
+      "In a Vision-Language Model (VLM) like LLaVA, how are image pixels processed before being fed into the LLM?",
+    hint: "Think about the architecture: ViT → connector → LLM.",
+    explanation:
+      "A Vision Transformer (ViT) encodes the image into patch embeddings (typically 196–576 tokens for a 224×224 image with 14×14 patches). A learnable projection layer (linear or cross-attention) maps these patch embeddings into the LLM's token embedding space. The LLM then processes the concatenation of projected image tokens and text tokens autoregressively. The ViT and projection are fine-tuned jointly with the LLM on image-text pairs.",
+    options: [
+      { id: "a", label: "Raw pixel values are flattened into a single long vector fed as a token", isCorrect: false },
+      { id: "b", label: "A CNN extracts features, which replace the self-attention mechanism entirely", isCorrect: false },
+      { id: "c", label: "A ViT encodes image patches; a projection layer maps them into the LLM's token space", isCorrect: true },
+      { id: "d", label: "The image is converted to a text caption by an independent model before the LLM sees it", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -1,0 +1,112 @@
+---
+title: "The Cold Start Problem in Recommender Systems"
+description: "Strategies for new users, new items, and new contexts — content-based fallback, meta-learning, onboarding intent capture, and hybrid approaches used by Airbnb, Netflix, and Spotify."
+topics: ["recommender-systems"]
+relatedLessons:
+  - "recommender-systems/05-diversity-cold-start-exploration"
+  - "recommender-systems/01-the-recommendation-problem"
+estimatedMinutes: 11
+---
+
+# The Cold Start Problem in Recommender Systems
+
+A recommender system that depends on interaction history fails for any entity with no history. The **cold start problem** occurs for:
+
+1. **New users**: no purchase history, no clicks, no ratings.
+2. **New items**: a just-listed product, a newly published article, a newly uploaded video.
+3. **New contexts**: a platform expanding to a new country/language/vertical with few users.
+
+Cold start is not a niche edge case — new users join and new items are listed continuously; the platform must serve them well from day 0 or lose them permanently.
+
+## Strategy 1: Content-based fallback
+
+**Core idea:** when there's no interaction data, use the item's or user's own *features* instead of learned interaction embeddings.
+
+### Item cold start with content embedding
+
+Train a **content encoder** jointly with the interaction-based item tower:
+
+$$
+\mathbf{v}_{\text{content}}(i) = W_{\text{proj}} \cdot \phi(i)
+$$
+
+where $\phi(i)$ is a feature vector (text embedding of description, image CLIP embedding, category one-hot, price bucket). $W_{\text{proj}}$ is learned to map the content feature space into the shared embedding space where user embeddings live.
+
+At Airbnb, a new listing gets:
+- Text embedding from the listing description (fine-tuned BERT)
+- Image embedding from listing photos (CLIP)
+- Structured features: city, price, amenities, room type
+
+These are concatenated and projected to the user-item embedding space. The listing is immediately retrievable by similarity to historical user embeddings, before any booking occurs.
+
+### User cold start with demographic + context
+
+For new users, use available context: device type, referrer URL, country, time of day, initial search query. These form the user's "content features" before any interactions exist.
+
+At Netflix, new users without history are served a **taste cluster** assignment based on their signup responses (genre preferences) and initial browsing. The cluster's interaction history acts as a proxy user embedding.
+
+## Strategy 2: Explicit onboarding
+
+**Actively elicit preferences** during onboarding. The key is to show items that **maximally discriminate** the latent preference space — not the most popular items (which everyone likes and provide no signal).
+
+**Information gain maximization**: select the onboarding slate $\mathcal{S}$ that maximizes expected entropy reduction:
+
+$$
+\mathcal{S}^* = \arg\max_{\mathcal{S}} \mathbb{E}\left[H(P(\text{user type})) - H(P(\text{user type} \mid \text{responses to } \mathcal{S}))\right]
+$$
+
+In practice, this is approximated by clustering the item catalog into $K$ "taste clusters" and selecting one representative item per cluster, covering the full diversity of the catalog.
+
+**Examples:**
+- Spotify's artist onboarding: 5 genres × top 2 artists = 10 quick choices that classify the user into a coarse taste bucket.
+- Tinder's initial swipes: binary feedback on photos learns age/gender/style preferences within 20 interactions.
+- Duolingo's language assessment: 10 questions calibrate skill level and content difficulty.
+
+## Strategy 3: Meta-learning (MAML for few-shot users)
+
+**Model-Agnostic Meta-Learning (MAML)** trains an initialization $\theta$ such that a small number of gradient steps on user $u$'s first $K$ interactions produces a high-quality personalized model:
+
+**Training:**
+$$
+\theta^* = \arg\min_\theta \sum_u \mathcal{L}\!\left(f_{\theta - \alpha \nabla \mathcal{L}(f_\theta, D_u^{\text{support}})},\; D_u^{\text{query}}\right)
+$$
+
+The inner loop ($D_u^{\text{support}}$ = first 5 interactions) simulates the cold-start adaptation; the outer loss ($D_u^{\text{query}}$ = next 5 interactions) evaluates how well the inner adaptation generalized.
+
+**In production**, this creates a "warm start" mechanism: the base model is fine-tuned for 1–5 gradient steps on any new user's first interactions, producing a personalized model far earlier than waiting for enough interactions to train from scratch.
+
+## Strategy 4: Popularity fallback with context
+
+The simplest cold-start strategy: show the most popular items overall (or within context). Works surprisingly well when:
+- The user's context (country, device, referrer) strongly constrains preferences.
+- The catalog has clear "safe bets" with high broad appeal.
+
+**Contextual popularity fallback:** rank by popularity within context:
+
+$$
+\text{score}(i \mid \text{context}) = P(\text{click} \mid i, \text{context}) \approx \frac{\text{clicks on item } i \text{ by users in same context}}{\text{impressions on item } i \text{ in same context}}
+$$
+
+At Amazon and eBay, new users see "trending in your category" and "top sellers" — a valid cold-start strategy that's immediately available.
+
+## Strategy 5: Hybrid with exploration bonus
+
+Combine the cold-start strategy (content-based or popularity) with an **exploration bonus** for items that have received few impressions:
+
+$$
+\text{score}(i) = (1-\alpha) \cdot \hat{r}(u, i) + \alpha \cdot \text{ExplorationBonus}(i)
+$$
+
+where $\text{ExplorationBonus}(i) \propto \frac{1}{\sqrt{n_i}}$ decreases as item $i$ accumulates more impressions. New items get high exploration bonus; established items are ranked by predicted relevance.
+
+This is exactly the UCB1 bandit formula applied at the item level, ensuring new items are tested before being ranked purely on content features.
+
+## Comparison table
+
+| Strategy | Requires | Latency | Quality on day 0 | Quality after N interactions |
+|---|---|---|---|---|
+| Content embedding fallback | Item features | Low | Good | Transitions to interaction-based |
+| Explicit onboarding | User answers | Low | Good | High (immediate signal) |
+| MAML few-shot | Pre-training | Medium | Good | Very good (fast adapt) |
+| Popularity fallback | Historical logs | Very low | Acceptable | Poor (not personalized) |
+| Exploration bonus | Any base model | Low | Acceptable | Good (drives data collection) |

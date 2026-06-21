@@ -1,0 +1,142 @@
+---
+title: "Ad Ranking & CTR Prediction"
+description: "The ML engine behind digital advertising — predicting click-through rates with deep cross-feature models, the mechanics of the second-price auction, and budget-aware bid optimization."
+order: 6
+type: concept
+estimatedMinutes: 18
+---
+
+# Ad Ranking & CTR Prediction
+
+Ad systems are the single largest revenue source for most consumer internet platforms. Google, Meta, Pinterest, and Instacart each run recommender systems — but their "items" are **ads** with bids, budgets, and auction rules layered on top. The ML challenge: predict the probability that a user *clicks* an ad (CTR), then combine that prediction with the advertiser's bid into a fair ranking that maximizes both relevance *and* revenue.
+
+**Real-world examples:** Pinterest's CTR model, Criteo's personalized ad delivery (204 billion daily ad impressions), Instacart's sponsored product ranking, Grab's taxi surge & promotions, Duolingo's ad unit relevance, Autotrader's dealer ad auctions.
+
+## The ad ranking objective
+
+In most ad auctions, ads are ranked by **expected revenue**, not raw bid:
+
+$$
+\text{eCPM}_i = \text{CTR}_i \times \text{bid}_i \times 1000
+$$
+
+where eCPM is the estimated cost per thousand impressions. A cheaper ad with a very high predicted click probability outranks an expensive ad with poor relevance. This alignment of ML quality and revenue is the key design principle: better CTR prediction directly increases auction revenue.
+
+## Predicting CTR: feature interactions
+
+CTR prediction is a structured tabular problem with **very high-cardinality categorical features**: user ID (millions), item ID (millions), publisher ID (thousands), hour of day, device type, query. The key is modeling **feature interactions** — the CTR for "Nike shoes ad" shown to "runner user" during "morning" is much higher than any single feature predicts.
+
+### Wide & Deep Learning
+
+Google's Wide & Deep (2016) architecture:
+
+- **Wide component:** memorizes frequent co-occurrence patterns with a linear model over manually crafted crossed features. Fast, interpretable, captures known interactions.
+- **Deep component:** generalizes via embeddings → MLP. Discovers unseen interaction patterns.
+
+$$
+\hat{y} = \sigma\!\left(w_{\text{wide}}^{\top}\!\phi(x) + w_{\text{deep}}^{\top}\!\text{MLP}(\text{Embed}(x))\right)
+$$
+
+Still widely deployed — the "wide" side prevents the MLP from forgetting proven patterns.
+
+### DeepFM
+
+Replaces the hand-crafted wide component with a **Factorization Machine (FM)** that automatically models all pairwise feature interactions via embedding dot products:
+
+$$
+\text{FM}(x) = \sum_{i=1}^n\sum_{j=i+1}^n \langle \mathbf{e}_i, \mathbf{e}_j \rangle x_i x_j
+$$
+
+The FM and MLP share the same embedding table, so second-order interactions learned by the FM and higher-order patterns learned by the MLP reinforce each other. DeepFM is the standard baseline for CTR prediction on public benchmarks (Criteo display ads dataset).
+
+### DLRM (Deep Learning Recommendation Model)
+
+Meta's architecture (used in production for Facebook ads): a dedicated **interaction layer** that explicitly computes the dot product of every pair of embedding vectors and concatenates with dense features:
+
+$$
+\mathbf{z} = \text{concat}(\text{dense}(x_{\text{numeric}}),\; [\mathbf{e}_i \cdot \mathbf{e}_j]_{i \le j})
+$$
+
+This makes cross-feature interactions explicit and keeps the memory footprint manageable by sharing embedding tables across features. DLRM runs at billions of samples per day on thousands of GPU/CPU nodes.
+
+<Callout type="tip" title="Why embedding-based models beat tree models on CTR">
+  GBDT handles tabular features well but requires explicit feature crosses. For ad CTR with millions of IDs, you can't enumerate all crosses — the embedding lookup + FM/MLP learns them automatically. In practice, an XGBoost model stacked on DLRM embeddings often outperforms either alone.
+</Callout>
+
+## The auction mechanism
+
+### Second-price (Vickrey) auction
+
+The dominant mechanism in online advertising. Advertisers submit bids; the winner is the highest bidder but **pays only the second-highest bid** (plus a small increment):
+
+$$
+\text{payment} = b_2 + \epsilon
+$$
+
+Why second-price? It is **truthful** — each advertiser's dominant strategy is to bid their true willingness to pay, regardless of what others bid. This simplifies auction dynamics and improves revenue predictability.
+
+### Generalized Second Price (GSP) auction
+
+Used by Google Ads and most search ad systems: multiple ad slots ranked by bid score, each slot winner pays the bid score of the next slot below them. Not perfectly truthful (unlike VCG), but computationally simpler and practically stable.
+
+### Reserve prices and floors
+
+Platforms set a **reserve price** — a minimum bid below which an ad isn't shown even if it wins the auction. Reserve prices prevent low-value ads from cluttering premium inventory and establish a floor on publisher revenue.
+
+<WikiLink slug="ad-auction-and-bidding" title="Ad Auction Mechanisms & Smart Bidding" />
+
+## Budget constraints and pacing
+
+An advertiser bids per click but has a daily budget. Without pacing, the budget could exhaust in the first hour. **Budget pacing** throttles ad delivery to spread spend evenly:
+
+- **Soft pacing:** reduce the bid by a throttle factor $\rho_t$ based on current spend vs plan: $b_i^{\text{effective}} = \rho_t \cdot b_i$.
+- **Hard throttling:** probabilistically skip auction entry to match a target impression rate.
+
+LinkedIn's pacing system uses a **proportional-integral controller** to compute $\rho_t$, treating daily budget as the setpoint and current spend rate as the process variable.
+
+## Calibration: from score to probability
+
+A CTR model trained with logistic loss produces a score that is **monotonically consistent** with click probability but not necessarily **calibrated** (i.e., a score of 0.7 does not mean 70% click rate). Auction eCPM math assumes the score *is* a true probability.
+
+**Platt scaling**: fit a logistic regression $\hat{p} = \sigma(a\cdot s + b)$ on the model's output score $s$ against true click labels on a held-out calibration set. After calibration, $\hat{p}$ is a well-calibrated probability.
+
+<Callout type="warning" title="Positional bias invalidates raw CTR estimates">
+  Ads in position 1 get more clicks than ads in position 5, regardless of quality. If training data conflates position with inherent CTR, the model learns a spurious signal. The standard fix: include **position as a feature at training time** but set it to a fixed value (e.g., position 1) at serving time — a form of counterfactual debiasing.
+</Callout>
+
+## The full pipeline
+
+```
+User request → Query features + User features
+      ↓
+Candidate retrieval (pre-filtered eligible ads)
+      ↓
+CTR model (DeepFM/DLRM) → predicted CTR
+      ↓
+eCPM = CTR × bid (paced)
+      ↓
+Auction (ranked by eCPM, second-price payment)
+      ↓
+Serve ranked ads → log click/no-click
+      ↓
+Feedback loop: retrain CTR model daily/hourly
+```
+
+Pinterest runs this pipeline at ~200 billion monthly ad impressions; Instacart's sponsored products system serves results in < 80 ms.
+
+## Key takeaways
+
+- Ads are ranked by **eCPM = predicted CTR × bid**, aligning ML quality with platform revenue.
+- **DeepFM / DLRM** learn feature interactions automatically via embedding dot products — essential for high-cardinality ID features.
+- **Second-price auctions** are the standard mechanism; they are truthful, so advertisers bid their true value.
+- **Budget pacing** distributes spend over time; calibration ensures CTR scores are true probabilities for correct eCPM math.
+
+## Related concepts
+
+- [**Deep & Two-Tower Recommenders**](/courses/recommender-systems/03-deep-and-two-tower) — the same retrieval funnel that candidate ads come through
+- [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — the output head of every CTR model
+- [**Calibration & Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — why raw model scores need calibration before use in auctions
+
+<Exercise id="ad-ranking-ctr-objective" />
+<Exercise id="ad-ranking-auction" />
+<Exercise id="ad-ranking-deepfm" />

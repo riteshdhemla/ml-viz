@@ -1,0 +1,85 @@
+---
+title: "Graph-Based Fraud Detection with GNNs"
+description: "How Graph Neural Networks detect synthetic identity fraud by propagating risk through entity-sharing graphs — homophily, message passing for fraud, and incremental graph updates."
+topics: ["ml-in-practice"]
+relatedLessons:
+  - "ml-in-practice/20-fraud-detection-at-scale"
+estimatedMinutes: 12
+---
+
+# Graph-Based Fraud Detection with GNNs
+
+Feature-only fraud models evaluate each transaction in isolation. Graph-based models reason over the **connections** between accounts, devices, phone numbers, addresses, and IP addresses — detecting fraud rings and synthetic identities that look clean in isolation but reveal themselves through shared identifiers.
+
+## The entity graph
+
+Build a bipartite graph $G = (A \cup E, \text{edges})$ where:
+
+- **Account nodes** $A$: each user/merchant/device account.
+- **Entity nodes** $E$: shared identifiers (phone number, email domain, device fingerprint, IP /24 subnet, billing address).
+- **Edges**: an edge $(a, e)$ exists if account $a$ is associated with entity $e$.
+
+Two accounts connected through a shared entity have a **relationship signal**: accounts sharing a device ID are far more likely to be co-fraudulent than accounts sharing only a country.
+
+## The homophily property
+
+**Homophily** in social networks: similar nodes tend to connect. In fraud graphs: **fraud clusters**. An account connected to 3 known-fraud nodes via shared identifiers has a dramatically higher fraud probability than the same account's individual features would suggest.
+
+This is the intuition behind GNN-based fraud detection: propagate fraud risk through the graph neighborhood.
+
+## GraphSAGE for fraud
+
+**GraphSAGE** (Hamilton et al., 2017) learns node representations by aggregating neighborhood features:
+
+$$
+\mathbf{h}_v^{(k)} = \sigma\!\left(W^{(k)} \cdot \text{CONCAT}\!\left(\mathbf{h}_v^{(k-1)},\; \text{AGG}\!\left(\left\{\mathbf{h}_u^{(k-1)} : u \in \mathcal{N}(v)\right\}\right)\right)\right)
+$$
+
+where the aggregator $\text{AGG}$ is typically mean or max pooling over the sampled neighborhood $\mathcal{N}(v)$.
+
+**Layer interpretation:**
+- Layer 0: account's own features (transaction history, account age, device info).
+- Layer 1: aggregates features from directly connected entities.
+- Layer 2: aggregates features from entity neighbors' account neighbors — capturing 2-hop relationships (accounts connected through shared entities).
+
+A 2-layer GraphSAGE over the fraud graph captures the pattern: *account A shares a phone with entity E; entity E is connected to account B (known fraud)* → A's layer-2 representation includes B's risk signal.
+
+## Relation-aware attention
+
+Different edge types carry different fraud signals. A **Relation-Aware GNN** applies separate attention weights per relation type:
+
+$$
+\mathbf{h}_v^{(k)} = \text{AGG}_r\!\left(\left\{\mathbf{h}_u^{(k-1)} : u \in \mathcal{N}_r(v)\right\} \text{ for each relation } r\right)
+$$
+
+At Uber, the entity graph has relations: `SHARES_DEVICE`, `SHARES_PHONE`, `SHARES_EMAIL`, `SHARES_IP`. Each relation type has learned weights; sharing a device is a much stronger fraud signal than sharing an IP subnet, so the model learns to upweight device-sharing edges.
+
+## Handling label imbalance on graphs
+
+Standard GNN training with cross-entropy over-fits to the majority class (not-fraud). Adaptations:
+
+- **Focal loss** on node classification: down-weight easy not-fraud nodes.
+- **GraphSMOTE**: oversample the subgraph around minority (fraud) nodes.
+- **Positive-unlabeled (PU) learning**: treat unlabeled nodes as potentially positive rather than definitively negative, since fraud labels are noisy and incomplete.
+
+## Incremental graph updates
+
+A static graph trained on historical data misses real-time fraud signals. Production systems maintain **incremental graphs**:
+
+1. New account created → add node with initial features.
+2. Shared identifier detected → add edge between account and entity node.
+3. Account labeled fraud by human review → update node label.
+4. GNN re-scores neighbors of the newly labeled node immediately (subgraph re-inference, not full retrain).
+
+Nubank's fraud graph update pipeline uses a streaming job (Flink) that updates entity-account edges as transactions arrive. When account $v$ is labeled fraud, all accounts within 2 hops are immediately re-scored using the pre-trained GNN on the updated subgraph.
+
+## Comparison with feature-only models
+
+| Scenario | Feature-only GBDT | Graph GNN |
+|---|---|---|
+| Fraud with unusual transaction pattern | ✅ Detected via features | ✅ Detected |
+| Clean new account, shared device with fraud | ❌ Features look benign | ✅ 1-hop fraud propagation |
+| Fraud ring with 50 accounts sharing phone | ❌ Each account looks independent | ✅ 2-hop cluster signal |
+| Adversarial fraud using fresh identifiers | ✅ Behavioral features still signal | ❌ No graph signal yet |
+
+Graph features and traditional features are complementary; production systems concatenate the GNN's node representation with hand-crafted velocity features and feed the concatenation to a GBDT scorer.

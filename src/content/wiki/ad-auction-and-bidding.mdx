@@ -1,0 +1,119 @@
+---
+title: "Ad Auction Mechanisms & Smart Bidding"
+description: "Second-price auctions, Generalized Second Price (GSP), VCG, reserve prices, and how ML-powered smart bidding optimizes advertiser ROI across auction rounds."
+topics: ["recommender-systems"]
+relatedLessons:
+  - "recommender-systems/06-ad-ranking-and-ctr-prediction"
+estimatedMinutes: 11
+---
+
+# Ad Auction Mechanisms & Smart Bidding
+
+Online ad auctions allocate ad slots to competing advertisers in real time (< 100 ms). The auction mechanism determines who wins, what they pay, and whether the equilibrium is truthful. This page covers the major mechanisms and the ML systems advertisers use to bid optimally.
+
+## Vickrey (Second-Price) Auction
+
+The simplest truthful single-slot auction:
+
+- $n$ advertisers submit sealed bids $b_1, \ldots, b_n$.
+- The highest bidder wins: $\text{winner} = \arg\max_i b_i$.
+- The winner pays the **second-highest bid**: $p = b_{(2)}$ (the order-statistic notation for the second largest).
+
+**Dominant strategy:** Bidding your true value $v_i$ is dominant — you can never gain by overbidding (win at a loss) or underbidding (lose an auction you'd have profited from). This makes the auction **incentive-compatible**.
+
+**Proof sketch:** Suppose $v_i = 10$ and the highest opponent bid is $b_{-i} = 7$.
+- Bid $v_i = 10$: win, pay 7, profit $10 - 7 = 3$. ✅
+- Bid $b_i = 12$ (overbid): same win/loss decision if $b_{-i} < 12$, no gain.
+- Bid $b_i = 5$ (underbid): lose if $b_{-i} = 7 > 5$, leave 3 profit on the table. ❌
+
+## Generalized Second Price (GSP) Auction
+
+Used by Google Ads, Bing Ads for multiple ranked ad slots:
+
+- $K$ slots with click-through rates $\alpha_1 > \alpha_2 > \ldots > \alpha_K$ (slot 1 gets the most clicks).
+- Advertisers are ranked by **bid × predicted quality score** (Google's quality score incorporates expected CTR, ad relevance, landing page quality).
+- Advertiser ranked $k$ pays the **next advertiser's bid** (the bid that would just displace them from slot $k$).
+
+$$
+p_k = \frac{b_{k+1} \cdot q_{k+1}}{q_k}
+$$
+
+where $q_k$ is the quality score of the advertiser in slot $k$.
+
+**Not fully truthful** (unlike Vickrey): the dominant strategy is not always to bid true value in GSP. But in practice, GSP converges to a Nash equilibrium where sophisticated advertisers bid approximately truthfully after learning.
+
+## VCG Mechanism
+
+The Vickrey-Clarke-Groves mechanism generalizes second-price truthfulness to multiple slots:
+
+Each winner $k$ pays:
+
+$$
+p_k^{\text{VCG}} = \sum_{j > k} \alpha_j (b_{j+1} - b_j) \cdot \text{(externality term)}
+$$
+
+VCG charges each advertiser their **externality** — the harm their presence causes to other advertisers by displacing them to lower slots. This is the theoretically optimal truthful mechanism for multi-slot auctions, but it's computationally complex and Google has documented that GSP approximates VCG equilibria in practice.
+
+## Reserve prices
+
+A **reserve price** $r$ is the minimum eCPM required to show an ad:
+
+$$
+\text{show ad} \iff \text{eCPM}_i = \text{CTR}_i \times b_i \geq r
+$$
+
+Why set a reserve price?
+
+1. **Revenue floor**: prevents inventory from being sold below production cost.
+2. **Quality control**: low-bid, low-quality ads degrade user experience even if they "win."
+3. **Incentive to bid higher**: a reserve price near the second-bid equilibrium pushes advertisers to bid higher, increasing revenue.
+
+**ML-optimized reserves**: platforms learn per-slot, per-advertiser reserve prices from historical auction data to maximize expected revenue (Myerson's optimal auction theory).
+
+## Smart Bidding: ML for advertisers
+
+**Smart bidding** (Google Ads) / **Advantage+ bidding** (Meta) automates the advertiser's bid strategy:
+
+### Target CPA (Cost Per Acquisition)
+
+The advertiser sets a target CPA. The bidding system finds the optimal bid per auction:
+
+$$
+b^*_{\text{auction}} = \text{target CPA} \times P(\text{conversion} \mid \text{context})
+$$
+
+The system uses a conversion prediction model (trained on the advertiser's conversion signals) and adjusts the bid to match the target CPA over a rolling 7-day window.
+
+### Target ROAS (Return on Ad Spend)
+
+Maximize conversion value (revenue) subject to a minimum ROAS constraint:
+
+$$
+b^*_{\text{auction}} = \frac{\mathbb{E}[\text{conversion value}]}{\text{target ROAS}}
+$$
+
+### Portfolio bidding
+
+Manage bids across a portfolio of campaigns, shifting budget toward campaigns with the highest marginal return:
+
+$$
+\max \sum_c V_c(x_c) \quad \text{s.t.} \sum_c x_c \leq B
+$$
+
+where $V_c(x_c)$ is the value function for campaign $c$ as a function of budget $x_c$ and $B$ is the total budget. This is solved with a Lagrangian approach, treating the shadow price of the budget constraint as the universal bid modifier.
+
+## Budget pacing
+
+Without pacing, a daily budget exhausts in the first hour. **Pacing** adjusts the bid multiplier $\rho_t$ dynamically:
+
+$$
+b_t^{\text{effective}} = \rho_t \cdot b^*
+$$
+
+The pacing controller (typically a PI controller) computes $\rho_t$ by comparing actual spend rate vs. target spend rate:
+
+$$
+\rho_t = \rho_{t-1} + K_p \cdot e_t + K_i \cdot \sum_{\tau \leq t} e_\tau
+$$
+
+where $e_t = \text{target\_rate} - \text{actual\_rate}$ is the spend error. LinkedIn's system achieves < 5% budget under-delivery using this approach.
