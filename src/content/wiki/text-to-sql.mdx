@@ -1,0 +1,120 @@
+---
+title: "Text-to-SQL: LLM-Powered Database Querying"
+description: "Schema-aware prompting, execution validation, and self-correction loops for translating natural language questions into SQL — with the patterns used by Salesforce, Uber, and Grab."
+topics: ["building-with-llms"]
+relatedLessons:
+  - "building-with-llms/12-code-intelligence-and-generation"
+  - "building-with-llms/05-agents-and-tool-use"
+estimatedMinutes: 10
+---
+
+# Text-to-SQL: LLM-Powered Database Querying
+
+**Text-to-SQL** converts a natural language question ("How many orders were placed last Tuesday in California?") into an executable SQL query. With LLMs, the conversion achieves near-human accuracy on standard benchmarks (Spider, BIRD), enabling non-technical users to query databases directly. Production systems at Salesforce, Grab, and Plaid use this pattern for internal analytics democratization.
+
+## The basic pipeline
+
+```
+User question (NL)
+      ↓
+Schema retrieval (which tables are relevant?)
+      ↓
+Prompt construction (question + schema + examples)
+      ↓
+LLM → SQL generation
+      ↓
+SQL validation (syntax check)
+      ↓
+SQL execution (against database)
+      ↓
+Result formatting → natural language answer
+```
+
+## Schema-aware prompting
+
+The LLM must understand the database schema to generate valid SQL. The prompt structure:
+
+```
+You are a SQL expert. Given the schema below, write a SQL query for the question.
+
+Schema:
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    customer_id INT,
+    amount DECIMAL(10,2),
+    status VARCHAR(20),
+    created_at TIMESTAMP
+);
+
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    state VARCHAR(2)
+);
+
+Question: How many orders were placed last Tuesday in California?
+
+SQL:
+```
+
+**Schema truncation**: Large databases have hundreds of tables. Include only the relevant subset:
+1. **Keyword matching**: find tables whose column names or descriptions match question keywords.
+2. **Schema embedding retrieval**: embed table descriptions and retrieve by semantic similarity to the question.
+3. **Schema-linking**: identify which tables and columns are mentioned in the question using a classifier.
+
+## Few-shot examples improve accuracy
+
+Include 3–5 (question, SQL) examples from the same database in the prompt. The examples should cover:
+- Different aggregation types (COUNT, SUM, AVG)
+- JOIN patterns common in this schema
+- Date/time expressions specific to the DB dialect
+
+Benchmark: 0-shot GPT-4 achieves ~68% execution accuracy on BIRD; 5-shot with schema linking reaches ~82%.
+
+## Execution validation and self-correction
+
+Raw LLM-generated SQL often has syntax errors, wrong table names, or invalid column references. The **execution-validate-correct** loop:
+
+```python
+for attempt in range(max_retries):
+    sql = llm.generate(prompt)
+    try:
+        result = db.execute(sql)
+        return result  # success
+    except SQLError as e:
+        prompt += f"\nThe previous SQL failed with: {e}\nPlease fix it."
+```
+
+This loop dramatically increases success rates: a 3-retry correction loop improves execution accuracy by 10–15 percentage points over single-shot generation.
+
+## Handling dialect differences
+
+SQL dialects differ across databases (PostgreSQL, BigQuery, Snowflake, SQLite). Key differences to handle in prompts:
+
+| Feature | PostgreSQL | BigQuery | Snowflake |
+|---|---|---|---|
+| Date arithmetic | `NOW() - INTERVAL '7 days'` | `DATE_SUB(CURRENT_DATE, INTERVAL 7 DAY)` | `DATEADD(day, -7, CURRENT_DATE)` |
+| String agg | `STRING_AGG(col, ',')` | `STRING_AGG(col, ',')` | `LISTAGG(col, ',')` |
+| Regex | `col ~ 'pattern'` | `REGEXP_CONTAINS(col, 'pattern')` | `REGEXP_LIKE(col, 'pattern')` |
+
+Include the target dialect explicitly in the system prompt and provide dialect-specific examples.
+
+## Security: SQL injection prevention
+
+User input flows directly into SQL generation — a classic injection vector. Mitigations:
+
+1. **Read-only database user**: grant the SQL execution user only SELECT privileges. Even a perfectly injected DROP TABLE fails.
+2. **Query parsing and blocking**: parse the generated SQL AST and block any non-SELECT statement.
+3. **Row-level security**: enforce access control at the database layer so user X can only query their own rows.
+4. **Sandboxed execution**: run queries in a sandboxed query engine (e.g., DuckDB on a read replica) with timeout and row-count limits.
+
+## Production metrics
+
+| Metric | Description | Target |
+|---|---|---|
+| Execution accuracy | Fraction of queries that execute without error | > 90% |
+| Answer accuracy | Fraction with correct answer | > 75% |
+| Latency (p95) | End-to-end query time | < 5 s |
+| Rows returned | Guard against runaway `SELECT *` | < 10,000 |
+
+Salesforce's Text-to-SQL product (Einstein Analytics) achieves 82% exact match on internal benchmarks after schema-linking and self-correction. Grab's internal analytics assistant serves ~2,000 queries/day with 78% requiring no correction.

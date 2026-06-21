@@ -1,0 +1,129 @@
+---
+title: "Diversity, Cold Start & Exploration"
+description: "The three problems every recommender faces beyond ranking: what to show new users/items (cold start), how to avoid filter bubbles (diversity), and how to discover unknown preferences (exploration)."
+order: 5
+type: concept
+estimatedMinutes: 16
+---
+
+# Diversity, Cold Start & Exploration
+
+Optimizing NDCG@10 can produce a recommender that is technically accurate but practically terrible: it recommends the same ten items to everyone, ignores new users and products, and traps users in an ever-narrowing taste bubble. This lesson covers the three structural problems every production recommender must address beyond raw accuracy.
+
+**Real-world examples:** Spotify's "Discover Weekly" (diversity by design), Netflix's causal inference for exploration, Pinterest's cold-start for new Pins, LinkedIn's cold-start for new job listings, Airbnb's neighborhood for new property listings.
+
+## The cold start problem
+
+Cold start occurs when a user or item has **too few interactions** to produce reliable embeddings. It comes in three flavors:
+
+| Flavor | Problem | Example |
+|---|---|---|
+| **New user** | No interaction history | A just-signed-up user on Spotify |
+| **New item** | No engagement data yet | A freshly listed product on Etsy |
+| **New context** | Unseen feature combination | A user in a new geographic market |
+
+### Content-based fallback
+
+The most practical cold-start remedy: represent items by their **features** (text description, category, price, image embedding) rather than interaction-derived embeddings. When interaction data is sparse, fall back to content similarity.
+
+For a new item $i$ with features $\mathbf{f}_i$, project to the embedding space:
+
+$$
+\mathbf{v}_i^{\text{cold}} = W_{\text{proj}}\,\mathbf{f}_i
+$$
+
+The projection $W_{\text{proj}}$ is learned during training to align content features with interaction-trained embeddings. At Airbnb, new listings' content embeddings (images, description text, amenities) are used immediately on day 0; they converge to interaction-based embeddings over ~2 weeks as bookings accumulate.
+
+### Meta-learning for fast user adaptation
+
+**MAML (Model-Agnostic Meta-Learning)** trains a base model such that a small number of gradient steps on a new user's first few interactions produces a high-quality personalized model. In recommendation:
+
+$$
+\theta^* = \arg\min_\theta \sum_u \mathcal{L}\left(f_{\theta - \alpha \nabla \mathcal{L}(f_\theta, \mathcal{D}_u^{\text{support}})},\, \mathcal{D}_u^{\text{query}}\right)
+$$
+
+The inner loop updates for user $u$ on their first $k$ interactions; the outer loop optimizes the initialization $\theta$ to be maximally "fast-adaptable". Effective for platforms where users are highly heterogeneous and the onboarding sequence is short.
+
+### Onboarding intent capture
+
+Many platforms explicitly **ask** new users for preferences at signup: Spotify's "pick your favorite artists," Tinder's "swipe on these profiles." These explicit signals bootstrap the embedding even before any implicit interaction occurs. The key is to show items that **maximally partition the latent preference space** — items that are highly discriminative — not just the most popular ones.
+
+<Callout type="tip" title="Warm-up stratey at Netflix">
+  Netflix uses a combination: new users see a set of titles chosen to elicit a preference signal (explicit rating request), and in parallel are assigned to a "taste cluster" of existing users whose early ratings matched the new user's profile. The cluster's collaborative signal is used while the new user's personal data accumulates.
+</Callout>
+
+<WikiLink slug="cold-start-problem" title="Cold Start: Strategies & Algorithms" />
+
+## Diversity beyond accuracy
+
+A ranker optimizing average relevance will recommend the best item over and over — serving only the dominant taste cluster and creating a **filter bubble**. Diversity metrics measure how varied a recommendation list is:
+
+- **Intra-list diversity (ILD):** average pairwise dissimilarity of recommended items. $\text{ILD} = \frac{2}{K(K-1)}\sum_{i \neq j} d(i,j)$.
+- **Coverage:** fraction of the item catalog that ever appears in recommendations across users.
+- **Serendipity:** relevance-weighted surprise — items that are both liked and unexpected.
+
+### Maximal Marginal Relevance (MMR)
+
+MMR re-ranks a candidate list to balance relevance and novelty. At each step, select the item that maximizes:
+
+$$
+\text{MMR}(i) = \lambda \cdot r_i - (1-\lambda) \cdot \max_{j \in S} \text{sim}(i, j)
+$$
+
+where $r_i$ is the relevance score, $S$ is the set of already-selected items, and $\text{sim}$ is embedding cosine similarity. $\lambda \in [0,1]$ trades off relevance vs diversity. A greedy selection of the top-$K$ items via MMR takes $O(KN)$ and is trivially parallelizable.
+
+Spotify applies MMR-style diversification at the re-ranking stage: after retrieval and ranking, the list is passed through a diversity optimizer that ensures no two consecutive songs share the same artist, genre, or BPM bracket.
+
+### Determinantal Point Processes (DPP)
+
+DPPs assign higher probability to subsets of items that are both **high quality** and **mutually diverse**:
+
+$$
+P(S) \propto \det(L_S)
+$$
+
+where $L_{ij} = r_i^{1/2} \,\text{sim}(i,j)\, r_j^{1/2}$ (the kernel matrix). The determinant is large when items have high quality ($r_i$ large) and low mutual similarity (off-diagonal terms small). DPPs are mathematically elegant but expensive to sample from exactly; in practice, greedy approximations achieve > 90% of optimal diversity in $O(K^2 N)$.
+
+## Exploration vs exploitation
+
+Even with a well-trained model, there are items the model *thinks* aren't relevant but would actually be enjoyed — because there's no data to learn from. **Exploration** is the deliberate injection of uncertainty-resolved queries.
+
+### Multi-armed bandits recap
+
+The bandit problem: $K$ arms with unknown reward distributions. At each step, pull an arm to get a reward and update beliefs. The fundamental tension: **exploit** the current best arm, or **explore** an uncertain arm to reduce uncertainty.
+
+**Upper Confidence Bound (UCB):** Add an exploration bonus proportional to uncertainty:
+
+$$
+a_t = \arg\max_i \left[\hat{\mu}_i + c\sqrt{\frac{\ln t}{n_i}}\right]
+$$
+
+Items pulled fewer times ($n_i$ small) get larger bonuses, ensuring every item gets explored eventually. UCB is provably sublinear in regret for stationary distributions.
+
+**Thompson Sampling:** Maintain a posterior distribution $P(\mu_i)$ over each arm's mean. At each step, sample $\tilde{\mu}_i \sim P(\mu_i)$ and pull the arm with the highest sample. Empirically, Thompson Sampling often outperforms UCB in practice because it balances exploration more smoothly.
+
+### Counterfactual evaluation
+
+How do you evaluate whether exploration helped, without running a live A/B test? **Inverse Propensity Scoring (IPS)** reweights offline logged data to estimate counterfactual policy performance:
+
+$$
+\hat{R}(\pi) = \frac{1}{N}\sum_{t=1}^N \frac{\pi(a_t | s_t)}{\pi_0(a_t | s_t)}\, r_t
+$$
+
+where $\pi_0$ is the logging policy and $\pi$ is the new policy being evaluated. Items the new policy would have chosen but the logging policy rarely showed get upweighted. Netflix and Lyft use IPS-style offline evaluation to estimate the lift from exploration strategies before committing to an A/B test.
+
+## Key takeaways
+
+- **Cold start** requires falling back to content-based similarity (features, not interactions); meta-learning and explicit onboarding signals are the best tools for new users.
+- **Diversity** is not a soft goal — filter bubbles reduce long-term retention. MMR (greedy sequential selection) and DPPs (probabilistic quality-plus-diversity) are the main algorithmic tools.
+- **Exploration** via UCB or Thompson Sampling prevents the model from being trapped by its own past recommendations; counterfactual evaluation (IPS) lets you assess exploration strategies offline.
+
+## Related concepts
+
+- [**Session-Based & Real-Time Recommendations**](/courses/recommender-systems/04-session-based-and-realtime) — the sequential model that cold-start content embeddings plug into
+- [**Q-Learning**](/courses/reinforcement-learning/02-q-learning) — exploration/exploitation is the same problem as in RL
+- [**Ad Ranking & CTR Prediction**](/courses/recommender-systems/06-ad-ranking-and-ctr-prediction) — ad systems add budget and auction constraints on top of relevance
+
+<Exercise id="diversity-cold-start-mmr" />
+<Exercise id="diversity-cold-start-bandit" />
+<Exercise id="diversity-cold-start-strategy" />

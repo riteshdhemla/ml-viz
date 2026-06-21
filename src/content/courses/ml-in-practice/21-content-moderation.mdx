@@ -1,0 +1,137 @@
+---
+title: "Content Moderation at Scale"
+description: "How platforms classify, rank, and remove harmful content — multiclass toxicity detection, human-in-the-loop labeling, active learning, and the policy enforcement architecture used by Pinterest, Zillow, and DoorDash."
+order: 21
+type: concept
+estimatedMinutes: 18
+---
+
+# Content Moderation at Scale
+
+Every platform with user-generated content faces the same problem: a small fraction of content violates policies — spam, hate speech, misinformation, explicit imagery, discriminatory listings — and it must be detected and acted on before it harms users or creates legal liability. The challenge is scale: Pinterest moderates billions of pins, YouTube hundreds of hours per minute of video, DoorDash thousands of restaurant photos per day. Human review alone is impossible; ML must handle the load.
+
+**Real-world examples:** Pinterest (detect violative content at scale), Zillow (detect discriminatory language in listings), DoorDash (detect inappropriate restaurant photos), Etsy (policy violation detection), Snap (ad content review at scale), Roblox (in-game content moderation), LinkedIn (spam and fake profile detection), Bumble (detect offensive images).
+
+## The framing: multilabel classification
+
+Most content moderation is a **multilabel classification** problem: a single piece of content can simultaneously violate multiple policies (e.g., spam AND misleading). The label space is typically:
+
+| Category | Examples |
+|---|---|
+| Hate speech / harassment | Slurs, threats, bullying |
+| Adult / explicit | NSFW imagery, sexual content |
+| Spam / inauthentic | Fake reviews, bot accounts, coordinated inauthentic behavior |
+| Misinformation | Health claims, electoral interference |
+| Illegal content | CSAM, drug sales, weapons |
+| Policy-specific | Platform-specific rules (e.g., Zillow's fair housing violations) |
+
+Each category often has subcategories requiring fine-grained classifiers. At Pinterest, the content policy is represented as a **taxonomy of ~200 labels** organized in a hierarchy; a single model predicts scores across all leaf nodes simultaneously.
+
+## Labeling: the fundamental bottleneck
+
+ML models can only be as good as their training labels. Content moderation labels are:
+
+1. **Subjective** — is this image "suggestive" or just "artistic"? Annotators disagree.
+2. **Expert-intensive** — hate speech in local dialects requires native-speaker annotators.
+3. **Evolving** — new slang, new manipulation tactics, new platform features create label drift.
+
+### Inter-annotator agreement
+
+Always measure **inter-annotator agreement** (Cohen's kappa, Krippendorff's alpha) before computing model metrics. A model can't outperform human agreement. If kappa < 0.4 (poor agreement), the task needs better annotation guidelines or task decomposition before model training.
+
+### Active learning
+
+Labeling every piece of content is prohibitive. **Active learning** selects the most informative unlabeled samples for human review:
+
+- **Uncertainty sampling**: query samples where the model is least confident (entropy, least confidence, margin sampling).
+- **Diversity sampling**: cluster the unlabeled pool and sample from each cluster to avoid labeling near-duplicates.
+- **Expected model change**: select samples that would change the current model most if labeled.
+
+DoorDash uses uncertainty sampling for restaurant photo moderation: the image classifier's top-2 predicted categories' confidence gap triggers manual review when small, while high-confidence predictions are auto-approved or auto-rejected.
+
+<Callout type="tip" title="Label studios and task decomposition">
+  Complex policies decompose into simpler sub-tasks. Instead of "is this content harmful?" ask: (1) Is there a person in the image? (2) Is the person unclothed? (3) Is this in a non-sexual context? Each sub-task has higher annotator agreement and maps to a specific policy rule. The final decision is a rule over the sub-task outputs.
+</Callout>
+
+## Model architectures
+
+### Text content
+
+Standard pipeline: fine-tune a BERT-family model on the policy taxonomy. Key choices:
+
+- **Hierarchical multi-label head**: predict top-level category, then fine-grained subcategory conditional on the top prediction.
+- **Focal loss** to handle class imbalance: $\text{FL}(p_t) = -(1-p_t)^\gamma \log p_t$, where the $(1-p_t)^\gamma$ factor downweights well-classified easy examples and upweights hard ones.
+- **Cross-lingual models** (mBERT, XLM-R) for platforms with global user bases; or translate-then-classify using an MT system.
+
+Zillow's discriminatory listing detector fine-tunes a language model on the Fair Housing Act's protected categories and flags listings with discriminatory language about race, religion, family status, etc.
+
+### Image content
+
+Vision Transformers (ViT) or ResNet fine-tuned on policy-specific data. Key considerations:
+
+- **Multimodal signals**: a photo that is fine in isolation may be policy-violating when combined with its caption. Snap and Roblox use vision-language models (CLIP embeddings) to detect content where the image-text combination is the violation.
+- **Hash-based matching**: for known-bad content (CSAM, specific extremist imagery), use perceptual hashes (PhotoDNA, pHash) for exact/near-duplicate detection — much cheaper and more reliable than ML for material that has already been verified.
+
+## Decision policies and thresholds
+
+The model produces a score; a **threshold** converts it to an action. Common action tiers:
+
+| Threshold | Action | Examples |
+|---|---|---|
+| score > 0.99 | **Auto-remove** | CSAM (zero tolerance), clear spam |
+| 0.85–0.99 | **Demote / hide** | Reduce distribution without removal |
+| 0.60–0.85 | **Human review queue** | Borderline cases requiring judgment |
+| score < 0.60 | **Approve** | Passes through |
+
+The threshold is a **policy decision**, not an ML decision. Business, legal, and trust & safety teams set the false-positive tolerance; ML optimizes subject to that constraint. At Pinterest, different thresholds apply in different contexts: search results apply a stricter threshold than a user's own board because visibility is higher.
+
+### Appeals and feedback loops
+
+Every removal generates an appeal signal. Users who appeal removed content and win provide **high-quality corrective labels**: the model was wrong on exactly those cases. LinkedIn feeds winning appeals back into the training set with a corrective label and retrains weekly.
+
+<Callout type="warning" title="Model gaming and adversarial content">
+  As soon as a moderation model is deployed, bad actors probe it: they add invisible characters to evade text classifiers, add benign borders around violating images, use code words. Moderation models must be **continuously retrained** on recent violation examples and **red-teamed** regularly by a trust & safety team.
+</Callout>
+
+## Fairness in moderation
+
+Automated content moderation systems can have **disparate impact** across protected groups: a hate speech detector may flag African American Vernacular English at higher rates than white-authored text containing similar content. At Bumble and LinkedIn, fairness audits measure false-positive rates by demographic group, and models are recalibrated or retrained to equalize error rates.
+
+## The moderation system architecture
+
+```
+User-generated content (text/image/video)
+      ↓
+Hash-based deduplication (pHash, PhotoDNA)
+      ↓
+ML classifier (fine-tuned BERT/ViT)
+      ↓
+Score → action tier:
+  ├─ Auto-remove (> 0.99)
+  ├─ Demote + review queue (0.60–0.99)
+  └─ Approve (< 0.60)
+      ↓
+Human review (resolves borderline, trains active learning)
+      ↓
+Appeals processing → feedback loop
+      ↓
+Weekly retraining with appeals + new violation examples
+```
+
+## Key takeaways
+
+- Content moderation is **multilabel classification** over a policy taxonomy; use focal loss to handle extreme class imbalance.
+- **Human labeling quality** (measured by inter-annotator agreement) is the ceiling on model performance; decompose complex policies into simpler sub-tasks.
+- **Active learning** (uncertainty + diversity sampling) dramatically reduces labeling cost by querying only informative examples.
+- The threshold is a **policy decision**: ML provides scores; legal, trust & safety, and product teams set the action tiers based on acceptable false-positive rates.
+- Adversarial adaptation requires continuous retraining and red-teaming.
+
+## Related concepts
+
+- [**Fraud Detection at Scale**](/courses/ml-in-practice/20-fraud-detection-at-scale) — the parallel problem for financial transactions
+- [**Fine-Tuning with PEFT/LoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — how large language models are adapted for policy classification
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — how to detect when the violation distribution shifts
+
+<Exercise id="content-moderation-label" />
+<Exercise id="content-moderation-threshold" />
+<Exercise id="content-moderation-active-learning" />

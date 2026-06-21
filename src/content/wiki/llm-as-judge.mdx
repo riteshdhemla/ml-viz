@@ -1,0 +1,156 @@
+---
+title: "LLM-as-a-Judge: Automated LLM Evaluation"
+description: "Using LLMs to evaluate LLM outputs — G-Eval, Prometheus, pairwise comparison, reference-free evaluation, and the biases and failure modes to avoid in production eval pipelines."
+topics: ["building-with-llms"]
+relatedLessons:
+  - "building-with-llms/08-llm-evaluation"
+  - "model-evaluation/04-llm-evaluation"
+estimatedMinutes: 12
+---
+
+# LLM-as-a-Judge: Automated LLM Evaluation
+
+Traditional NLP metrics (BLEU, ROUGE, BERTScore) correlate poorly with human judgment for open-ended generation tasks. **LLM-as-a-Judge** uses a capable LLM (GPT-4, Claude, Llama-3-70B) to evaluate the outputs of another LLM, producing scores that correlate much more strongly with human preference on subjective criteria.
+
+## When to use LLM-as-a-Judge
+
+| Task | LLM judge appropriate? | Alternative |
+|---|---|---|
+| Factual QA with known answers | ❌ — just check the answer | Exact match, BERTScore |
+| Open-ended summarization quality | ✅ | Human evaluation |
+| Response helpfulness & tone | ✅ | Human evaluation |
+| Code correctness | ❌ — execute the code | Unit tests |
+| Safety / harmlessness | ✅ + human audit | Reward model |
+| Translation quality | Partial | COMET, BLEURT |
+
+## Evaluation frameworks
+
+### G-Eval
+
+G-Eval (Liu et al., 2023) uses chain-of-thought before scoring:
+
+```
+Criteria: Coherence (1–5)
+Definition: The collective quality of all sentences in the summary. 
+Output should be scored from 1 to 5 in terms of the quality of the 
+generated summary with respect to coherence.
+
+Article: [article text]
+Summary: [generated summary]
+
+Evaluation Steps:
+1. Read the article carefully.
+2. Read the generated summary.
+3. Check whether each sentence in the summary is factually consistent.
+4. Score from 1 to 5.
+
+Score (1-5):
+```
+
+G-Eval uses **token probabilities** over the score tokens (1, 2, 3, 4, 5) and computes a weighted average:
+
+$$
+\text{score} = \sum_{s \in \{1,\ldots,5\}} s \cdot P(\text{token } s \mid \text{prompt})
+$$
+
+This produces a continuous score rather than a hard integer, increasing sensitivity.
+
+### Prometheus
+
+Prometheus (Kim et al., 2024) is an open-source judge model (7B/13B Llama fine-tuned) specifically trained to:
+- Follow custom rubrics defined by the user
+- Provide fine-grained feedback (not just a score)
+- Be consistent across multiple evaluation runs
+
+```
+[System] You are a fair evaluator language model.
+[User] 
+###Task Description:
+Evaluate the following based on the given criteria.
+###Score Rubric:
+Score 1: Completely unhelpful...
+Score 3: Partially helpful...
+Score 5: Fully helpful, clear...
+###Response to evaluate:
+[LLM output]
+###Reference Answer (optional):
+[ground truth]
+###Feedback:
+```
+
+Prometheus achieves Pearson correlation > 0.8 with GPT-4 judge scores and > 0.7 with human annotators.
+
+### Pairwise comparison
+
+Instead of absolute scoring, ask the judge: "Which response is better?"
+
+```
+[Response A]: ...
+[Response B]: ...
+Question: Which response is more helpful? Answer A or B.
+```
+
+**Advantages:** Easier for judges to decide (relative > absolute); avoids scale calibration issues.  
+**Disadvantages:** Requires $O(N^2)$ comparisons for ranking; can be aggregated via Elo (as in LMSYS Chatbot Arena).
+
+**Elo rating:** Each model gets an Elo score updated after each pairwise comparison:
+
+$$
+R_A' = R_A + K(S_A - E_A), \quad E_A = \frac{1}{1 + 10^{(R_B - R_A)/400}}
+$$
+
+where $S_A = 1$ if A wins, 0 if B wins, 0.5 for tie. This produces a total ordering across thousands of models from pairwise votes.
+
+## Reference-free evaluation
+
+In production, reference answers are often unavailable (open-ended chat) or too costly to write for every query. **Reference-free** evaluation asks the judge to assess quality from the response alone:
+
+- **Faithfulness**: does the response contradict itself or the retrieved context?
+- **Groundedness**: is every claim in the response supported by the provided documents?
+- **Instruction following**: does the response follow all parts of the instruction?
+
+These are natural tasks for a capable LLM judge that doesn't need to compare against a "gold" answer.
+
+## Biases and failure modes
+
+### Positional bias
+The judge tends to prefer the first response in a pairwise comparison. Fix: **always evaluate both orderings** (A vs B and B vs A) and average the results.
+
+### Verbosity bias
+Judges prefer longer, more detailed responses even when they're not more accurate. Fix: explicitly instruct the judge to evaluate content quality, not length. Or compare responses of similar length.
+
+### Self-enhancement bias
+A model judging its own outputs scores them higher than a different model would. Fix: never use the same model as both generator and judge in production eval. Use a different, independently trained judge.
+
+### Sycophancy
+The judge agrees with confident-sounding but incorrect statements. Fix: include factual verification steps in the evaluation chain-of-thought.
+
+## Production eval pipeline
+
+```
+LLM output batch (1000 responses)
+      ↓
+Stratified sample by query type / difficulty
+      ↓
+LLM judge (criteria-based or pairwise)
+      ↓
+Judge output → scores + reasoning
+      ↓
+Aggregate: mean score by dimension
+      ↓
+Regression alert: if score drops > 5% week-over-week, flag for human review
+      ↓
+Human audit: sample 50–100 cases where judge score differs from expectation
+```
+
+**Cost optimization:** Use a smaller/faster judge (GPT-3.5, Prometheus-7B) for continuous monitoring and reserve GPT-4/Claude for regression audits and new model evaluations.
+
+## Correlation with human judgment
+
+| Judge | Pearson r with human | Cost/1K | Speed |
+|---|---|---|---|
+| GPT-4o | 0.82 | ~$15 | ~2 s/item |
+| Claude 3.5 Sonnet | 0.81 | ~$12 | ~1.5 s |
+| Prometheus-13B (self-hosted) | 0.73 | ~$0.5 | ~3 s |
+| GPT-3.5 Turbo | 0.68 | ~$1 | ~0.5 s |
+| BLEURT-20 | 0.52 | ~$0 | < 0.1 s |

@@ -1,0 +1,147 @@
+---
+title: "Code Intelligence & Generation"
+description: "How GitHub, Uber, and Meta build LLM-powered coding tools — code embeddings and search, fill-in-the-middle completion, repo-level context, code review automation, and test generation."
+order: 12
+type: concept
+estimatedMinutes: 20
+---
+
+# Code Intelligence & Generation
+
+Code is structured text with formal semantics — and LLMs trained on billions of lines of GitHub, StackOverflow, and documentation have internalized that structure more deeply than any prior program analysis tool. The result is a new category of developer tooling: code completion that understands your project, code review bots that catch real bugs, test generators that understand business logic, and coding agents that can implement features end-to-end.
+
+**Real-world examples:** GitHub Copilot (> 1M developer subscriptions), Uber's automated code review (antipattern detection), Meta's TestGen-LLM (automated test generation), Spotify's data pipeline code generation, Airbnb's coding acceleration, Intuit's code assistant for tax engineering, Microsoft's Azure code intelligence.
+
+## Code as a special case of language
+
+Code differs from natural language in ways that matter for model design:
+
+| Property | Impact |
+|---|---|
+| **Formal syntax** | Parse tree structure can be explicitly encoded |
+| **Long-range dependencies** | A function definition 500 tokens earlier is relevant to the current cursor |
+| **Multi-file context** | Completing a function requires knowing the types imported in other files |
+| **Execution semantics** | The only ground truth for correctness is whether the code runs and passes tests |
+| **Token distribution** | Variable names, API calls, and strings are long-tail identifiers not in natural language pretraining |
+
+## Code embeddings and semantic search
+
+The first use case that required no fine-tuning: **semantic code search**. Given a natural language query ("find all places where we call the payment API"), retrieve relevant code snippets.
+
+**Architecture:** Encode both the query and code snippets with a biencoder (two-tower model with separate text/code encoders), then retrieve by approximate nearest neighbor search over precomputed code embeddings. Models like UniXcoder and CodeBERT were trained with contrastive objectives on (docstring, function) pairs, pulling the docstring embedding close to the corresponding code embedding.
+
+At Sourcegraph and GitHub, code embeddings index the entire repository. A developer searches in natural language; the ANN index returns the most semantically relevant functions, classes, and files. This is RAG for code.
+
+<Callout type="tip" title="Chunking strategy for code">
+  Splitting code by character count (as you might for prose) breaks function and class boundaries, destroying syntactic context. Instead, chunk by **AST node** (function, class, method) using a parser like tree-sitter. This guarantees each chunk is a syntactically meaningful unit and preserves the docstring-body relationship.
+</Callout>
+
+## Fill-in-the-middle (FIM) completion
+
+Standard left-to-right language model completion misses a critical use case: the developer's cursor is *in the middle* of a file, not at the end. **Fill-in-the-middle (FIM)** training reformats documents with three special tokens:
+
+```
+<|fim_prefix|> ... code before cursor ...
+<|fim_suffix|> ... code after cursor ...
+<|fim_middle|> [model generates this]
+```
+
+During training, ~50% of examples are presented in FIM format; the model learns to generate the middle segment given both context directions. GitHub Copilot, Code Llama, and StarCoder2 are all FIM-trained.
+
+FIM dramatically improves completion quality for:
+- Completing a function body when the signature and return type are already written
+- Filling in a docstring that should describe code already written below it
+- Adding import statements at the top when the usage is already in the file
+
+## Repository-level context
+
+A single function rarely has enough context for a high-quality suggestion. Modern code intelligence requires **repo-level context** — pulling in type definitions, related utilities, API contracts, and tests from across the codebase.
+
+### Retrieval-augmented code completion
+
+The Copilot architecture for context:
+
+1. **Jaccard similarity retrieval**: find files with the most token overlap with the current file. Fast, no ML inference.
+2. **BM25 over symbols**: retrieve files that define the types and functions used in the current file.
+3. **Semantic embedding search**: for natural language comments or docstrings, retrieve semantically related files.
+
+The retrieved snippets are **truncated and ranked** by relevance and inserted into the prompt context window before the completion request. Meta's RepoFusion and Amazon's CodeWhisperer use neural re-rankers at this stage.
+
+### Context window management
+
+Even with 128K context windows, a large codebase doesn't fit. The prioritization:
+
+- **Always include:** current file, imported files, related test file
+- **Include if space:** callers/callees of the current function (extracted from the call graph), recently edited files
+- **Exclude:** build artifacts, generated code, vendored dependencies
+
+## Code review automation
+
+**Automated code review** annotates pull requests with ML-generated comments. The targets: anti-patterns, security vulnerabilities, test coverage gaps, documentation drift.
+
+Uber's system:
+
+1. Extract the diff (added/removed lines) plus surrounding context (10 lines each direction).
+2. Embed each hunk with a code encoder.
+3. Apply classifiers for known antipatterns (blocking API calls in async contexts, missing error handling, deprecated function usage).
+4. For high-confidence flags, post an inline PR comment with the antipattern explanation.
+
+The key challenge: **precision**. Developers quickly disable automated reviewers that have low signal-to-noise. Uber's system posts only when precision > 90% on the hunk type, measured on an offline evaluation set of past PR feedback.
+
+<Callout type="warning" title="Avoid LLM hallucination in code review">
+  A code review comment suggesting a non-existent API or a refactoring that introduces a bug is worse than no comment. Production systems ground suggestions in: (1) retrieval from verified documentation, (2) static analysis output (run the linter, not the LLM, to detect syntax errors), and (3) execution results (run the unit tests before suggesting the tests pass).
+</Callout>
+
+## Test generation
+
+**TestGen-LLM** (Meta) generates unit tests for functions that lack test coverage. The pipeline:
+
+1. Extract the target function plus its docstring and type signatures.
+2. Prompt the LLM to generate test cases covering: happy path, edge cases (empty input, max values), and error cases.
+3. **Execute the tests** and filter to only tests that pass.
+4. **Filter for build correctness** and add to the PR as a suggested test file.
+
+The "filter to only passing tests" step is critical: it grounds the output in execution semantics. A test that fails is useless and misleading. Meta's approach: generate 10× more tests than needed, execute all, keep only passing ones — a generate-then-filter pattern.
+
+## Coding agents
+
+The most ambitious application: **fully autonomous coding agents** that take a natural language issue description and produce a working implementation. Cognition AI's Devin and GitHub Copilot Workspace are the production examples.
+
+The core loop:
+
+```
+Issue description
+      ↓
+Planning: decompose into subtasks (files to edit, APIs to call)
+      ↓
+For each subtask:
+  ├─ Retrieve relevant context (code search)
+  ├─ Generate code changes
+  └─ Execute tests / linter
+          ↓ if failing
+     Debug: read error, revise code
+          ↓ if passing
+     Commit change
+      ↓
+Open pull request with changes
+```
+
+The debugging sub-loop — read error → revise → re-test — is the key differentiator from single-shot code generation. GitHub's benchmarks show that models with tool-use (file read, shell execution) solve 2-3× more software engineering tasks than completion-only models.
+
+## Key takeaways
+
+- **Code search** uses biencoder embeddings (UniXcoder, CodeBERT) over AST-chunked code; repo-level retrieval dramatically improves completion quality.
+- **FIM training** teaches models to complete the middle of a file given both prefix and suffix context — essential for real developer workflows.
+- **Automated code review** must prioritize precision over recall (> 90% precision per antipattern type) to avoid alert fatigue.
+- **Test generation** must filter by execution: only tests that pass are useful; generate 10× and filter down.
+- **Coding agents** work through a plan → generate → execute → debug loop that needs tool-use (shell, file system) to be effective.
+
+## Related concepts
+
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the agentic coding loop uses the same tool-use primitives
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — code search is retrieval over code embeddings
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — repo-level context retrieval is RAG applied to code
+
+<Exercise id="code-gen-fim" />
+<Exercise id="code-gen-review" />
+<Exercise id="code-gen-agent-loop" />

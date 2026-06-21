@@ -1,0 +1,139 @@
+---
+title: "Voice & Multimodal AI"
+description: "End-to-end voice AI pipelines, vision-language models, and multimodal RAG — the architectures behind Intercom's voice agent, Instacart's visual catalog, Airbnb's speech search, and Walmart's shopping assistant."
+order: 13
+type: concept
+estimatedMinutes: 18
+---
+
+# Voice & Multimodal AI
+
+Text-based LLMs are now a mature foundation. The next frontier is **modality extension**: systems that hear, see, and respond across voice, images, and video — in real time. The case for multimodality is not novelty: users are faster and more natural with voice than typing; images convey product attributes that text cannot; product photos contain more information than catalog descriptions. Platforms that master multimodal input handle user intent more naturally and operate at lower friction.
+
+**Real-world examples:** Intercom (voice AI customer support agent), OpenAI (voice interface for ChatGPT), Airbnb (speech search for mobile app), Walmart (fill shopping cart by voice), Instacart (PIXEL — product image generation from text), Canva (image search by visual similarity), Binance (fraud detection from transaction images), Pinterest (visual search for home décor and fashion), Etsy (visual similarity search for handmade goods).
+
+## The voice AI stack
+
+A production voice AI system chains multiple models together:
+
+```
+Microphone audio
+      ↓
+Voice Activity Detection (VAD)
+      ↓
+Speech-to-Text (STT / ASR)
+      ↓
+LLM reasoning (with tool use)
+      ↓
+Text-to-Speech (TTS)
+      ↓
+Audio output
+```
+
+Each component has distinct latency and quality requirements.
+
+### Speech-to-text: Whisper and beyond
+
+OpenAI's Whisper is the dominant open-source ASR model — a sequence-to-sequence transformer trained on 680K hours of multilingual audio-text pairs. Its key properties:
+
+- **Multilingual zero-shot**: transcribes 99+ languages without fine-tuning per language.
+- **Robustness to noise**: trained on real-world audio (YouTube, podcasts) rather than studio recordings.
+- **Timestamps**: outputs word-level timestamps, enabling downstream voice activity marking.
+
+For production voice agents (Intercom, Dialpad), the latency budget for STT is < 300 ms (streaming Whisper) so the LLM can start reasoning before the user finishes speaking. Streaming Whisper processes 20-ms audio chunks with rolling context.
+
+### End-to-end speech models
+
+A newer paradigm eliminates the text intermediate: **speech LLMs** like GPT-4o Audio operate directly on audio tokens:
+
+$$
+\text{AudioEncoder}(\text{waveform}) \to \text{audio tokens} \to \text{LLM} \to \text{audio tokens} \to \text{AudioDecoder}(\text{waveform})
+$$
+
+End-to-end models preserve prosody, tone, and emotional cues that text transcription discards. They're more natural in conversation but harder to deploy in complex agentic systems that need structured text for downstream tools.
+
+### Text-to-speech: naturalness vs latency
+
+Production TTS (ElevenLabs, Cartesia, Kokoro) must strike a balance:
+
+- **Latency**: first audio byte in < 200 ms from request (streaming TTS sends chunks of audio as they're generated).
+- **Naturalness**: voice cloning and VITS-style diffusion models achieve near-human quality.
+- **Consistency**: the voice must not change between sentences. Cache the voice embedding across the session.
+
+Airbnb's voice search for the mobile app routes the audio through Whisper (streaming, on-device for privacy) and then into their standard text search pipeline. By running Whisper on-device (the iOS Core ML version), they avoid a round-trip to the server for ASR, adding < 50 ms of latency.
+
+## Vision-language models
+
+**Vision-Language Models (VLMs)** unify image and text understanding in a single model. The standard architecture:
+
+1. **Vision encoder**: a ViT encodes the image into patch embeddings.
+2. **Connector (projection layer)**: a linear projection or cross-attention module aligns vision patch embeddings into the LLM token space.
+3. **LLM backbone**: processes the concatenation of [image patch tokens | text tokens] autoregressively.
+
+$$
+\text{LLM}([\text{ViT}(I)_{\text{projected}}\,\Vert\, \text{Embed}(\text{text})])
+$$
+
+Models: LLaVA, InternVL, Qwen-VL, GPT-4o (vision). These can answer "What is the brand shown in this product photo?" or "Is there a safety violation in this warehouse image?" without any fine-tuning.
+
+### Instacart's PIXEL: product image generation
+
+The inverse problem: generate a product image from a text description when no photograph exists in the catalog. Instacart's PIXEL system:
+
+1. Encodes existing product photos with a CLIP-style vision encoder.
+2. Conditions a diffusion model on the product text description + brand name.
+3. Generates photorealistic product images that match the catalog entry.
+
+This fills catalog gaps where product images are missing, improving search recall (items without photos get 60%+ fewer clicks). The diffusion model is fine-tuned on Instacart's catalog photography to match their visual style.
+
+## Visual search
+
+**Visual search** lets users search by uploading or selecting an image: "find furniture that looks like this." The pipeline is retrieval over image embeddings:
+
+1. **Query image** → CLIP image encoder → query embedding.
+2. **Candidate images** (the catalog) are pre-encoded and stored in a vector index.
+3. **ANN search** (HNSW/ScaNN) retrieves the top-$k$ nearest neighbors.
+4. (Optional) A **re-ranker** filters for category, price, and availability.
+
+Pinterest's visual search ("Shop the Look") generates $60B+ visual search queries per year. Etsy's visual similarity search doubles purchase conversion rates for users who found the item visually. The key difference from text search: visual similarity is *unambiguous* — "find something that looks like this" is faster to specify by image than to describe in words.
+
+<Callout type="tip" title="Multimodal embeddings unify text and image search">
+  CLIP-style models encode text and images into the *same* embedding space, so a text query and an image query are comparable by cosine similarity. This enables **cross-modal search**: a user who describes what they're looking for in text gets image results; a user who uploads an image can then refine with text ("same style but in blue"). Pinterest calls this "multi-modal query understanding."
+</Callout>
+
+## Multimodal RAG
+
+**Multimodal RAG** extends the text-RAG pattern to mixed content:
+
+1. **Index**: a document store that contains text chunks, image thumbnails, and slide screenshots — each chunk embedded with a multimodal encoder.
+2. **Retrieve**: the query (text or image) is embedded and used to retrieve the most relevant chunks from across all modalities.
+3. **Generate**: a VLM receives both retrieved text and images in context and answers the query.
+
+A customer support agent with multimodal RAG can answer "Why is my order photo different from what I see in the app?" by retrieving both the product policy document and the relevant catalog image, then generating an explanation that references both.
+
+## Production considerations
+
+| Concern | Voice | Vision |
+|---|---|---|
+| **Latency** | < 500 ms total (VAD + STT + LLM + TTS) | < 200 ms for search, up to 2 s for generation |
+| **Privacy** | On-device STT avoids sending voice to cloud | Image PII scrubbing before sending to API |
+| **Cost** | Token cost = audio token count (end-to-end models are expensive) | Image tokens = ~512–2000 tokens per image at standard res |
+| **Multilingual** | Whisper handles 99+ languages; TTS must be language-matched | VLMs have weaker non-English text OCR |
+| **Safety** | Jailbreaks via voice are harder to detect than text | Image-based prompt injection possible (text in image) |
+
+## Key takeaways
+
+- **Voice AI** is a pipeline: VAD → STT (streaming Whisper < 300 ms) → LLM → TTS; end-to-end speech models eliminate the text intermediate but are harder to tool-augment.
+- **VLMs** use a ViT encoder + projection layer to add image understanding to any LLM decoder; the same LLM can process both modalities.
+- **Visual search** is ANN retrieval over CLIP image embeddings — the same two-tower pattern as text-based semantic search.
+- **Multimodal RAG** indexes text and images in a unified embedding space, enabling cross-modal retrieval for complex queries.
+
+## Related concepts
+
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — visual search is retrieval over image embeddings
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — voice AI agents use the same tool-calling patterns as text agents
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the backbone of image generation in Instacart's PIXEL
+
+<Exercise id="voice-multimodal-pipeline" />
+<Exercise id="voice-multimodal-search" />
+<Exercise id="voice-multimodal-vlm" />

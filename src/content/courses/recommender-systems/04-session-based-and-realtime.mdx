@@ -1,0 +1,116 @@
+---
+title: "Session-Based & Real-Time Recommendations"
+description: "Moving beyond static user profiles — sequential models that read what you're doing right now, real-time feature pipelines, and contextual bandits that balance exploitation with exploration."
+order: 4
+type: concept
+estimatedMinutes: 18
+---
+
+# Session-Based & Real-Time Recommendations
+
+A user who spent six months listening to jazz opens Spotify today searching for workout tracks. A static collaborative-filtering model knows only their long-term jazz preference — it misses the **current intent** entirely. **Session-based recommendation** corrects this by treating the current browsing sequence as the primary signal, letting the system respond to what you want *right now* rather than what you wanted historically.
+
+**Real-world examples:** DoorDash (real-time menu re-ranking as you browse), Netflix (adapt recommendations mid-session), Instacart (cart-aware suggestions), Pinterest (interest-driven feed refresh), LinkedIn (job search session modeling).
+
+## What is a session?
+
+A **session** is a temporally contiguous sequence of interactions — typically delimited by a time gap (e.g., 30 minutes idle → new session). Within a session, interactions carry strong sequential signal: item A viewed → item B added to cart strongly implies interest in items similar to B, not just items correlated with A in all-time collaborative filtering.
+
+Sessions introduce two challenges absent from classical CF:
+1. **No persistent user identity** — the user may be anonymous or a new visitor. All you have is the current click stream.
+2. **Order matters** — the transition A→B→C is semantically different from C→B→A.
+
+## Sequence models for recommendation
+
+The natural tool is an **autoregressive sequence model** trained to predict the next item given the history of items in the session.
+
+### GRU4Rec
+
+The first widely adopted deep session-based model: encode the item sequence with a GRU and project the final hidden state to item scores.
+
+$$
+\mathbf{h}_t = \text{GRU}(\mathbf{e}_{i_t},\, \mathbf{h}_{t-1}), \qquad \hat{\mathbf{y}} = \mathbf{W}\,\mathbf{h}_T
+$$
+
+Trained with **BPR-max** or **cross-entropy** loss against in-session negatives. Simple, fast, and surprisingly strong for short sessions (≤ 20 items).
+
+### SASRec (Self-Attentive Sequential Recommendation)
+
+Replace the GRU with a **causal self-attention** stack — the Transformer decoder applied to item sequences. Position encodings and left-to-right masking preserve the sequential order.
+
+$$
+\mathbf{S} = \text{TransformerDecoder}([\mathbf{e}_{i_1}, \mathbf{e}_{i_2},\ldots,\mathbf{e}_{i_T}])
+$$
+
+SASRec outperforms GRU4Rec on most benchmarks by capturing long-range item dependencies within the session. Its query/key/value are item embeddings — the same architecture as an LLM, narrowed to a single domain.
+
+<Callout type="tip" title="BERT4Rec for bidirectional context">
+  SASRec uses causal (left-to-right) attention. **BERT4Rec** instead trains with masked-item prediction (like BERT's MLM) so it can attend in both directions — useful when the task is to fill a gap rather than predict the next item. At serving time, you always predict the rightmost masked position.
+</Callout>
+
+### Handling anonymous sessions
+
+When there is no user ID, the model input is only the session item sequence. Two strategies:
+
+- **Session embedding as the user representation** — use the last SASRec hidden state in place of a user embedding in the two-tower retrieval model.
+- **Nearest-session retrieval** — embed the current session and find the $k$ most similar past sessions from a session store; blend their next-item distributions.
+
+## The real-time feature pipeline
+
+Session-based models require **low-latency feature computation**. The standard pattern is a two-layer cache:
+
+| Layer | Contents | Latency target |
+|---|---|---|
+| **Online cache (Redis)** | Current session clicks, cart contents, dwell time | < 5 ms |
+| **Near-real-time store** | 1-hour aggregates (click-through rates, trending items) | < 50 ms |
+| **Batch feature store** | User long-term profile, item statistics | < 1 s (pre-fetched) |
+
+DoorDash's real-time ranking system: on every page view, the session sequence is encoded in < 20 ms, merged with batch user embeddings, and passed to the ranking model.
+
+<Callout type="warning" title="Training-serving skew in real-time features">
+  If training used "items clicked in the last hour" computed from logs, but serving computes it from a Redis stream, even a small difference in windowing logic causes feature skew — a major source of silent model degradation. Use the **same feature computation library** at both training and serving time (often via a feature store with point-in-time correctness).
+</Callout>
+
+## Contextual bandits for real-time personalization
+
+Sequence models optimize a next-item ranking — but they don't handle **exploration vs exploitation**. If the model only recommends items it already knows a user likes, it never discovers that the user would enjoy a new category. **Contextual bandits** formalize this trade-off.
+
+In the LinUCB family, each item $i$ has a reward estimate plus an uncertainty bonus:
+
+$$
+a^* = \arg\max_i \left[ \hat{\mu}_i(\mathbf{x}) + \alpha \sqrt{\mathbf{x}^\top A_i^{-1} \mathbf{x}} \right]
+$$
+
+The uncertainty bonus $\sqrt{\mathbf{x}^\top A_i^{-1} \mathbf{x}}$ inflates scores for under-explored items. As the model gathers more data about item $i$ in context $\mathbf{x}$, the $A_i$ matrix grows and the bonus shrinks, naturally shifting back to exploitation.
+
+In practice, platforms implement a lightweight version: serve the ranking model's top-$k$ with probability $1-\varepsilon$, and insert one randomly selected from outside the top-$k$ with probability $\varepsilon$ (**ε-greedy exploration**). The random insertion doubles as a constant stream of unbiased feedback for offline evaluation.
+
+<WikiLink slug="session-based-recommendations" title="Session-Based Recommendation Algorithms" />
+
+## Putting it together: DoorDash's real-time re-ranking
+
+1. User opens the app and types "sushi".
+2. The **query encoder** embeds the text query.
+3. The **session encoder** (SASRec) embeds their last 10 item views from this session (pushed to Redis by the click-tracking service).
+4. The two embeddings are concatenated and passed to the **ranking model** (GBDT over concatenated features + cross-features like restaurant–query similarity).
+5. The ranked list is returned in < 50 ms.
+6. Every click is pushed back to Redis and the session feature cache, so the *next* request already incorporates it.
+
+No batch job runs between user actions — the system responds in near-real time.
+
+## Key takeaways
+
+- **Session = ordered click sequence** within a time window; sequential models outperform CF when current intent differs from historical preferences.
+- **SASRec** (causal self-attention over item sequences) is the dominant architecture; it is an LLM decoder specialized to item embeddings.
+- **Real-time features** require a two-layer cache (online Redis + near-real-time store) to hit < 50 ms SLAs; training-serving skew is the biggest risk.
+- **Contextual bandits** (LinUCB, ε-greedy) inject exploration into an otherwise exploit-only ranker, preventing filter bubbles and generating unbiased feedback.
+
+## Related concepts
+
+- [**Deep & Two-Tower Recommenders**](/courses/recommender-systems/03-deep-and-two-tower) — the retrieval model whose user embedding the session encoder can replace
+- [**Feature Stores**](/courses/ml-in-practice/17-feature-stores) — the infrastructure that serves session features at low latency
+- [**Reinforcement Learning**](/courses/reinforcement-learning/01-markov-decision-processes) — the theoretical home of exploration vs exploitation
+
+<Exercise id="session-recsys-model" />
+<Exercise id="session-recsys-bandit" />
+<Exercise id="session-recsys-pipeline" />
