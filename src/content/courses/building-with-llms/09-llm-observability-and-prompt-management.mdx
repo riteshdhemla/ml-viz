@@ -1,0 +1,78 @@
+---
+title: "LLM Observability, Tracing & Prompt Management"
+description: "Operating an LLM app you can actually debug: traces and spans across a multi-step call, the token/cost/latency metrics that matter, output drift, and treating prompts as versioned, tested artifacts."
+order: 9
+type: concept
+estimatedMinutes: 19
+---
+
+# LLM Observability, Tracing & Prompt Management
+
+A traditional service fails loudly — an exception, a 500, a stack trace. An LLM app fails *quietly*: it returns a confident, well-formatted, wrong answer, and nothing in your logs flags it. **Observability** is how you see inside a non-deterministic system, and **prompt management** is how you change it without breaking it.
+
+**Real-world examples:** debugging why a RAG answer cited the wrong document three retrieval hops deep; tracking the daily token bill per feature; rolling back a prompt edit that doubled latency; finding that output quality drifted after a silent upstream model update.
+
+## Tracing: the LLM stack trace
+
+A single user request fans out into many steps — retrieval, a planning call, tool calls, a final generation. A **trace** records that whole tree as nested **spans**, each capturing its inputs, outputs, latency, token counts, and cost. Tracing is the only way to answer "*which* step produced the bad answer" in a multi-step pipeline.
+
+The metrics worth attaching to every span:
+
+- **Quality** — eval scores, user feedback (👍/👎), guardrail flags.
+- **Cost** — input + output tokens × price; aggregated per request, per feature, per user.
+- **Latency** — per step *and* end-to-end; for streaming, **time-to-first-token** matters as much as total time.
+
+A back-of-envelope cost model makes the bill predictable:
+
+$$\text{cost}_{\text{req}} = \sum_{\text{calls}} \big(n_{\text{in}}\,p_{\text{in}} + n_{\text{out}}\,p_{\text{out}}\big)$$
+
+<Callout type="info" title="Log the full context, not just the answer">
+  When an LLM step misbehaves, you need the *exact* prompt that produced it — system prompt, retrieved chunks, tool outputs, parameters, and model version. Logging only the final response makes failures irreproducible. Capture the complete resolved context per span (with PII handled), or you'll be debugging blind.
+</Callout>
+
+## Monitoring drift in production
+
+Inputs and outputs drift even when your code is frozen:
+
+- **Input drift** — users ask new things; the distribution of prompts shifts away from your eval set.
+- **Output drift** — response length, refusal rate, or format changes — often after a silent provider-side model update.
+- **Quality drift** — eval scores on sampled traffic decline.
+
+Because there's no label at inference time, monitor **proxies**: user feedback, guardrail trigger rates, retrieval relevance scores, format-validity rates, and the online eval scores from the previous lesson.
+
+## Prompt management
+
+The prompt is your app's most-edited, least-version-controlled component. Treat it like code:
+
+- **Versioning** — every prompt has a version; you know which version served which response (via the trace).
+- **A registry / templates** — prompts live in a managed store with variables, not hard-coded in scattered strings, so non-engineers can iterate and you can audit changes.
+- **Testing before rollout** — run the eval suite against a new prompt version *before* it ships; **canary** it to a fraction of traffic and compare metrics.
+- **Decoupling from code** — updating a prompt shouldn't require a full redeploy, but it *should* go through the same review and eval gates.
+
+<Callout type="warning" title="An untracked prompt edit is an unreviewed production change">
+  "Just tweaking the prompt" edits live behaviour for every user with none of the safeguards you'd demand of a code change. Without versioning + eval gating you can't tell whether yesterday's quality dip came from a prompt edit, a data change, or a silent model update — and you can't roll back cleanly. Version prompts and tie each one to its eval results.
+</Callout>
+
+<Exercise id="llmops-trace-debug" />
+
+<Exercise id="llmops-cost-estimate" />
+
+## Common mistakes
+
+1. **Logging only outputs** — irreproducible failures because the full resolved context wasn't captured.
+2. **No tracing in multi-step apps** — unable to localise which retrieval/tool/generation step failed.
+3. **Hard-coded, unversioned prompts** — production behaviour changes you can't audit or roll back.
+4. **Assuming a frozen model is a stable model** — missing output drift from silent provider updates.
+
+## Key takeaways
+
+- **Traces** of nested **spans** are the LLM stack trace — the only way to localise failure in a multi-step pipeline.
+- Attach **quality, cost, and latency** (including time-to-first-token) to every span.
+- Monitor **input/output/quality drift** via proxies, since labels aren't available at inference.
+- Manage prompts as **versioned, tested, registry-stored** artifacts — an untracked prompt edit is an unreviewed production change.
+
+## Related concepts
+
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the multi-step trajectories that most need tracing
+- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering) — the prompts this lesson asks you to version and test
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — the classical-ML monitoring this extends to LLMs

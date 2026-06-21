@@ -8735,6 +8735,273 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The number of available LLM tokens", isCorrect: false },
     ],
   },
+
+  // ── Agent Design Patterns: Tool Use, Evaluation & Deployment ─────
+  {
+    id: "adp-tool-emit-vs-execute",
+    type: "multiple-choice",
+    question:
+      "When a model 'uses a tool' via function calling, what actually happens?",
+    hint: "The model produces text/structured output — it has no ability to run code itself.",
+    explanation:
+      "The model only *emits a structured request* (the tool name + JSON arguments). Your runtime validates and executes the real function, then feeds the result back as an observation. The model never executes anything directly — which is exactly why argument validation and sandboxing live in your runtime.",
+    options: [
+      { id: "a", label: "The model executes the function inside its own process", isCorrect: false },
+      { id: "b", label: "The model emits a structured call; your runtime executes it and returns the result", isCorrect: true },
+      { id: "c", label: "The tool is compiled into the model's weights at training time", isCorrect: false },
+      { id: "d", label: "The model calls the API directly over the network", isCorrect: false },
+    ],
+  },
+  {
+    id: "adp-react-reliability",
+    type: "slider",
+    question:
+      "If a single ReAct step succeeds with probability 0.95, roughly what is the end-to-end success probability over 10 sequential steps (as a %)?",
+    hint: "Errors compound multiplicatively: pⁿ. Compute 0.95^10.",
+    explanation:
+      "0.95^10 ≈ 0.60, so a 95%-reliable step gives only ~60% reliability over ten steps. This compounding is why agents need bounded loops, validated tool I/O, and human-in-the-loop for high-stakes actions.",
+    min: 0,
+    max: 100,
+    step: 1,
+    correctRange: [55, 65],
+    unit: "%",
+  },
+  {
+    id: "adp-outcome-vs-trajectory",
+    type: "multiple-choice",
+    question: "Which question is answered by *trajectory* (process) evaluation rather than *outcome* evaluation?",
+    hint: "Outcome = did the final result satisfy the goal. Trajectory = was the path sound?",
+    explanation:
+      "'Did the agent call the right tools and avoid forbidden actions?' is about the path it took — trajectory evaluation. Whether the final patch passes the tests is outcome evaluation. Two agents with identical success rates can have very different trajectories.",
+    options: [
+      { id: "a", label: "Did the final patch pass the hidden test suite?", isCorrect: false },
+      { id: "b", label: "Does the order now show as refunded?", isCorrect: false },
+      { id: "c", label: "Did the agent call the right tools and avoid forbidden actions on the way?", isCorrect: true },
+      { id: "d", label: "Is the final answer equal to the gold answer?", isCorrect: false },
+    ],
+  },
+  {
+    id: "adp-agent-success-rate",
+    type: "multiple-choice",
+    question:
+      "An agent solves a task in 1 of 5 attempts. Why report pass@k AND consistency rather than a single run?",
+    hint: "Agents are stochastic; one run is noise.",
+    explanation:
+      "Because agents are stochastic, a single trajectory is noise. pass@k (solved in at least one of k tries) measures capability; consistency (solved in most/all tries) measures reliability. High pass@1 with low consistency means the agent is capable-but-flaky — a distinction a single-run number hides.",
+    options: [
+      { id: "a", label: "A single run is noisy; pass@k shows capability and consistency shows reliability", isCorrect: true },
+      { id: "b", label: "pass@k is the only metric regulators accept", isCorrect: false },
+      { id: "c", label: "Consistency measures latency, not correctness", isCorrect: false },
+      { id: "d", label: "Single runs are fine; multiple runs just waste tokens", isCorrect: false },
+    ],
+  },
+  {
+    id: "adp-deploy-checkpoint",
+    type: "multiple-choice",
+    question:
+      "Modelling an agent as a checkpointed state graph (persisting state after each step) directly enables which capability?",
+    hint: "Think about pausing before an irreversible action.",
+    explanation:
+      "Checkpointing after each step lets you pause and resume — which is exactly what human-in-the-loop approval, crash recovery, and time-travel debugging require. A stateless while-loop must restart the whole trajectory on any interruption.",
+    options: [
+      { id: "a", label: "Lower per-token model cost", isCorrect: false },
+      { id: "b", label: "Pause-for-approval (human-in-the-loop), resume, and crash recovery", isCorrect: true },
+      { id: "c", label: "Eliminating prompt injection", isCorrect: false },
+      { id: "d", label: "Removing the need for tool schemas", isCorrect: false },
+    ],
+  },
+  {
+    id: "adp-deploy-cost-control",
+    type: "multiple-choice",
+    question:
+      "What most reliably stops a confused agent from calling tools thousands of times and running up cost?",
+    hint: "The prompt is a suggestion; the runtime is a guarantee.",
+    explanation:
+      "A hard ceiling on steps and dollars enforced in the runtime is a guarantee that holds even when the prompt is ignored, the input is adversarial, or the model loops. Telling the model 'use at most 5 steps' in the prompt is only a suggestion it can violate.",
+    options: [
+      { id: "a", label: "Instructing the model in the prompt to use few steps", isCorrect: false },
+      { id: "b", label: "A runtime-enforced ceiling on steps and spend per task", isCorrect: true },
+      { id: "c", label: "Using a larger model", isCorrect: false },
+      { id: "d", label: "Adding more tools so it finishes faster", isCorrect: false },
+    ],
+  },
+
+  // ── ML in Practice: CI/CD/CT, Feature Stores, Registry & Governance ─
+  {
+    id: "mlp-maturity-levels",
+    type: "multiple-choice",
+    question:
+      "In Google's MLOps maturity framework, what defines Level 1 (vs Level 0)?",
+    hint: "Level 1 is about automating the training *pipeline*, with validation and continuous training.",
+    explanation:
+      "Level 1 automates the training pipeline itself — it runs on a trigger, includes data and model validation, and enables continuous training (CT). Level 0 is manual/notebook-driven. Level 2 additionally automates building and deploying the pipeline code via CI/CD.",
+    options: [
+      { id: "a", label: "Models are trained manually in notebooks and handed to ops", isCorrect: false },
+      { id: "b", label: "The training pipeline is automated with validation and continuous training", isCorrect: true },
+      { id: "c", label: "The pipeline code itself is built and deployed via full CI/CD", isCorrect: false },
+      { id: "d", label: "No model is ever retrained", isCorrect: false },
+    ],
+  },
+  {
+    id: "mlp-ct-trigger",
+    type: "multiple-choice",
+    question: "Which of these is a legitimate trigger for Continuous Training (CT)?",
+    hint: "CT exists because models decay from data/world changes.",
+    explanation:
+      "Detected data drift crossing a threshold is a classic CT trigger, alongside a schedule, new-data volume, a drop in monitored performance, or on-demand. A failing unit test triggers CI, not retraining; a code merge triggers CI/CD of the pipeline, not necessarily CT.",
+    options: [
+      { id: "a", label: "Feature/data drift crossing a threshold", isCorrect: true },
+      { id: "b", label: "A linter warning in the serving code", isCorrect: false },
+      { id: "c", label: "A new teammate joining the project", isCorrect: false },
+      { id: "d", label: "The dashboard being refreshed", isCorrect: false },
+    ],
+  },
+  {
+    id: "mlp-feature-store-skew",
+    type: "multiple-choice",
+    question: "How does a feature store eliminate train–serve skew at the source?",
+    hint: "Think about how many times a feature is *defined*.",
+    explanation:
+      "A feature is defined once and the store serves that same definition to the offline store (training) and the online store (inference). Because both worlds read from one definition, the value can't diverge — which is what skew is. Re-implementing the feature separately in training and serving is the skew bug it prevents.",
+    options: [
+      { id: "a", label: "By retraining the model more often", isCorrect: false },
+      { id: "b", label: "By defining a feature once and serving it to both training (offline) and inference (online)", isCorrect: true },
+      { id: "c", label: "By caching the model's predictions", isCorrect: false },
+      { id: "d", label: "By using a faster online database", isCorrect: false },
+    ],
+  },
+  {
+    id: "mlp-point-in-time",
+    type: "multiple-choice",
+    question:
+      "Building a training row for a label event at time t, point-in-time correctness requires using feature values with which timestamp t_f?",
+    hint: "You can only use information that existed when the decision was made.",
+    explanation:
+      "Only feature values with t_f ≤ t are admissible — the model must train on information available at or before the event. Joining the *current* (later) feature value to a past label leaks the future into training, inflating offline metrics and collapsing production accuracy.",
+    options: [
+      { id: "a", label: "t_f ≤ t (the most recent value at or before the event)", isCorrect: true },
+      { id: "b", label: "t_f = now (the current value)", isCorrect: false },
+      { id: "c", label: "Any t_f, as long as it's the same entity", isCorrect: false },
+      { id: "d", label: "t_f ≥ t (the next value after the event)", isCorrect: false },
+    ],
+  },
+  {
+    id: "mlp-registry-rollback",
+    type: "multiple-choice",
+    question:
+      "With a model registry using promotion stages, how do you roll back a bad production model fast?",
+    hint: "Deployment pulls whichever version is in the Production stage.",
+    explanation:
+      "Because the deployment system serves whatever version is tagged Production, rolling back is just re-pointing the Production stage at the previous version — no rebuild, no retrain. The registry decouples training (registering versions) from deployment (selecting a stage).",
+    options: [
+      { id: "a", label: "Retrain the previous model from scratch", isCorrect: false },
+      { id: "b", label: "Re-point the Production stage at the previous registered version", isCorrect: true },
+      { id: "c", label: "Edit the model weights by hand", isCorrect: false },
+      { id: "d", label: "Restart every serving node", isCorrect: false },
+    ],
+  },
+  {
+    id: "mlp-model-lineage",
+    type: "multiple-choice",
+    question: "To make a model version reproducible, what must you pin besides the weights?",
+    hint: "Re-running the pipeline should yield the same model.",
+    explanation:
+      "Reproducibility needs the full (code, data, config) triplet — the exact training/feature commit, the dataset version/snapshot, and the hyperparameters/seed/environment — plus the metrics that justified promotion. Versioning only the weights leaves a model you can't explain or reproduce.",
+    options: [
+      { id: "a", label: "Only the final accuracy number", isCorrect: false },
+      { id: "b", label: "The code commit, data snapshot/version, and config/seed", isCorrect: true },
+      { id: "c", label: "The name of the engineer who trained it", isCorrect: false },
+      { id: "d", label: "Nothing — the weights file is fully self-describing", isCorrect: false },
+    ],
+  },
+
+  // ── Building with LLMs: LLMOps (Eval, Observability, Guardrails) ──
+  {
+    id: "llmops-eval-judge-bias",
+    type: "multiple-choice",
+    question: "Which is a documented bias of an LLM-as-a-judge that you must design around?",
+    hint: "Think about answer order and answer length.",
+    explanation:
+      "LLM judges show position bias (favouring the first option), verbosity bias (favouring longer answers), and self-preference bias (favouring their own model family's outputs). Mitigate by swapping A/B order and averaging, controlling for length, and validating the judge against human labels.",
+    options: [
+      { id: "a", label: "It always scores every answer identically", isCorrect: false },
+      { id: "b", label: "Position bias — it tends to favour whichever answer is presented first", isCorrect: true },
+      { id: "c", label: "It can only output numbers, never comparisons", isCorrect: false },
+      { id: "d", label: "It refuses to evaluate text it didn't generate", isCorrect: false },
+    ],
+  },
+  {
+    id: "llmops-eval-method",
+    type: "multiple-choice",
+    question:
+      "You're evaluating an open-ended chatbot with no gold reference answers. Which approach fits best?",
+    hint: "Surface-overlap metrics need a reference; this task has none.",
+    explanation:
+      "With no gold answer, reference-based metrics like BLEU/ROUGE don't apply (and correlate poorly with quality anyway). A reference-free approach — pairwise LLM-as-a-judge against a rubric, validated against humans — is the scalable fit. Human eval is the gold standard but is used to calibrate, not run on every release.",
+    options: [
+      { id: "a", label: "BLEU against the system prompt", isCorrect: false },
+      { id: "b", label: "Reference-free pairwise LLM-as-a-judge against a rubric", isCorrect: true },
+      { id: "c", label: "Exact-match accuracy", isCorrect: false },
+      { id: "d", label: "Perplexity alone, since low perplexity guarantees quality", isCorrect: false },
+    ],
+  },
+  {
+    id: "llmops-trace-debug",
+    type: "multiple-choice",
+    question:
+      "Why is request tracing (nested spans) essential for a multi-step LLM app (retrieval → planning → tools → generation)?",
+    hint: "A bad final answer could originate at any step.",
+    explanation:
+      "A trace records each step as a span with its inputs, outputs, tokens, latency, and cost, so you can localise *which* step produced the bad answer — was it a bad retrieval, a wrong tool call, or the final generation? Logging only the final response makes multi-step failures impossible to diagnose.",
+    options: [
+      { id: "a", label: "It localises which step in the pipeline produced the failure", isCorrect: true },
+      { id: "b", label: "It makes the model deterministic", isCorrect: false },
+      { id: "c", label: "It removes the need for an eval suite", isCorrect: false },
+      { id: "d", label: "It prevents prompt injection automatically", isCorrect: false },
+    ],
+  },
+  {
+    id: "llmops-cost-estimate",
+    type: "slider",
+    question:
+      "A request uses 3,000 input tokens at $2 per 1M and 1,000 output tokens at $6 per 1M. What is its cost in cents?",
+    hint: "cost = 3000×2/1e6 + 1000×6/1e6 dollars, then convert to cents.",
+    explanation:
+      "Input: 3000 × $2/1M = $0.006. Output: 1000 × $6/1M = $0.006. Total $0.012 = 1.2 cents. Output tokens are pricier per token here, so generation length drives cost even though there are fewer output tokens.",
+    min: 0,
+    max: 5,
+    step: 0.1,
+    correctRange: [1.1, 1.3],
+    unit: "¢",
+  },
+  {
+    id: "llmops-prompt-injection",
+    type: "multiple-choice",
+    question: "What is *indirect* prompt injection?",
+    hint: "The malicious instruction isn't typed by the user — it's somewhere the model reads.",
+    explanation:
+      "Indirect prompt injection hides malicious instructions inside content the model ingests — a web page, email, PDF, or tool output — which then hijacks the model's behaviour and tools. It's the defining agent risk because you can't fully separate 'data' from 'instructions' in one text stream; contain the blast radius with least privilege and human-in-the-loop.",
+    options: [
+      { id: "a", label: "The user directly typing 'ignore your instructions'", isCorrect: false },
+      { id: "b", label: "Malicious instructions hidden in external content the model reads (a page, doc, or tool result)", isCorrect: true },
+      { id: "c", label: "A bug in the model's tokenizer", isCorrect: false },
+      { id: "d", label: "Encrypting the system prompt", isCorrect: false },
+    ],
+  },
+  {
+    id: "llmops-guardrail-order",
+    type: "multiple-choice",
+    question: "What is the recommended ordering when running multiple guardrails on a request?",
+    hint: "Order by cost and reliability; short-circuit early.",
+    explanation:
+      "Run cheap deterministic checks first (regexes, allow-lists, schema validators) and short-circuit on the first failure, then fall back to model-based classifiers for judgements rules can't make. Deterministic checks are faster, cheaper, and more reliable than asking another model 'is this safe?'.",
+    options: [
+      { id: "a", label: "Cheap deterministic checks first, then model-based classifiers", isCorrect: true },
+      { id: "b", label: "Always run the most expensive model-based check first", isCorrect: false },
+      { id: "c", label: "Run all checks only after the response reaches the user", isCorrect: false },
+      { id: "d", label: "Pick one guardrail and rely on it exclusively", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

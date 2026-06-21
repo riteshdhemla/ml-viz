@@ -1,0 +1,73 @@
+---
+title: "LLM Evaluation & LLM-as-a-Judge"
+description: "Why you can't ship an LLM app on vibes: offline eval suites, reference-based vs reference-free metrics, LLM-as-a-judge with its biases, and the regression testing that catches a prompt change that quietly breaks production."
+order: 8
+type: concept
+estimatedMinutes: 20
+---
+
+# LLM Evaluation & LLM-as-a-Judge
+
+An LLM app has no test suite by default. The output is open-ended text, "correct" is fuzzy, the model is stochastic, and a one-line prompt tweak can silently regress a thousand answers. **Evaluation** is the discipline that turns "it seems better" into a number you can defend — and it is the single biggest difference between a demo and a product.
+
+**Real-world examples:** deciding whether GPT-class model A or B is better for your summariser; catching that a "small" prompt edit dropped answer quality 8%; gating a RAG release on a faithfulness score before it reaches users.
+
+## The evaluation landscape
+
+Pick the cheapest method that actually measures what you care about:
+
+- **Reference-based** — compare output to a gold answer. Cheap and deterministic when a reference exists: exact match / F1 for extraction, **BLEU/ROUGE** for translation/summarisation (surface overlap), embedding similarity for "close enough".
+- **Reference-free** — no gold answer; score a property of the output directly: schema validity, toxicity, **faithfulness** to retrieved context (does the answer follow from the sources?).
+- **Human evaluation** — the gold standard for nuanced quality, but slow and expensive; used to *calibrate* the cheaper automated methods rather than run on every release.
+
+For free-running text generation, a base **perplexity** $\text{PPL} = \exp\!\big(-\tfrac{1}{N}\sum_i \log p(x_i)\big)$ measures fit to a distribution but says little about task quality — low perplexity text can still be unhelpful. Task metrics matter more than language-modelling metrics.
+
+## LLM-as-a-judge
+
+When outputs are open-ended and no reference exists, the scalable option is an **LLM-as-a-judge**: prompt a strong model to score or compare outputs against a rubric.
+
+- **Pointwise** — "rate this answer 1–5 on faithfulness." Convenient but poorly calibrated.
+- **Pairwise** — "which answer is better, A or B?" More reliable, because models rank better than they grade. This is how preference leaderboards (e.g. arena-style Elo) are built.
+
+<Callout type="warning" title="Judges are biased — design around it">
+  LLM judges exhibit measurable biases: a **position bias** (favouring the first option), a **verbosity bias** (favouring longer answers), and a **self-preference bias** (favouring outputs from the same model family). Mitigate by swapping A/B order and averaging, controlling for length, and validating the judge against human labels before trusting it. An unvalidated judge is an opinion, not a metric.
+</Callout>
+
+## Eval suites and regression testing
+
+The unit that makes evaluation *operational* is the **eval suite**: a versioned dataset of representative inputs plus the metrics to run on them, executed automatically on every prompt, model, or retrieval change — exactly like a software test suite.
+
+$$\text{score} = \frac{1}{|D|}\sum_{x \in D} \text{metric}\big(\text{system}(x)\big)$$
+
+Run it in two places:
+
+- **Offline (pre-deploy)** — gate a release: block the change if the suite score drops or any safety check fails.
+- **Online (post-deploy)** — sample real production traffic, score it continuously, and watch for drift in quality that the offline set didn't capture.
+
+<Callout type="tip" title="Curate the eval set from production failures">
+  The most valuable eval examples are the ones your system got wrong in production. Build a feedback loop: capture failures and edge cases, add them to the suite, and your evaluation gets *more* discriminating over time — while a static benchmark slowly goes stale.
+</Callout>
+
+<Exercise id="llmops-eval-judge-bias" />
+
+<Exercise id="llmops-eval-method" />
+
+## Common mistakes
+
+1. **Shipping on vibes** — a few hand-checked examples instead of a versioned eval suite.
+2. **Trusting an unvalidated judge** — using LLM-as-a-judge scores as ground truth without checking agreement with humans.
+3. **Reference metrics for open-ended tasks** — reporting BLEU/ROUGE for a chatbot, where surface overlap barely correlates with quality.
+4. **Pointwise where pairwise wins** — asking for absolute 1–5 scores when "A vs B" would be far more reliable.
+
+## Key takeaways
+
+- Choose the cheapest valid method: **reference-based** when a gold answer exists, **reference-free** for properties like faithfulness, **human** to calibrate the rest.
+- **LLM-as-a-judge** scales open-ended evaluation; prefer **pairwise** and design around position/verbosity/self-preference bias.
+- An **eval suite** is a versioned dataset + metrics, run offline as a release gate and online on sampled traffic.
+- Grow the suite from real **production failures** so it sharpens instead of staling.
+
+## Related concepts
+
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the reasoning and schemas you'll be evaluating
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — where faithfulness-to-context evaluation matters most
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — where eval gates sit in the production stack

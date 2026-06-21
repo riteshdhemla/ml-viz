@@ -1,0 +1,71 @@
+---
+title: "Feature Stores"
+description: "The system that serves the same feature values to training and inference: offline vs online stores, point-in-time correctness, and how a feature store kills train–serve skew and feature duplication."
+order: 17
+type: concept
+estimatedMinutes: 18
+---
+
+# Feature Stores
+
+Two of the worst bugs in production ML are **train–serve skew** (the feature computed at training time differs from the one computed at serving time) and **feature duplication** (five teams each re-implement "30-day average spend" slightly differently). A **feature store** is the system that solves both: a central place to define, compute, store, and serve features consistently to both training and inference.
+
+**Real-world examples:** a fraud model that needs "transactions in the last hour" at sub-10ms serving latency; a recommender sharing "user embedding" across ranking and retrieval models; a credit model that must reproduce exactly the feature values as they were *at the time each historical decision was made*.
+
+## The offline/online split
+
+A feature store has two faces backed by the same definitions:
+
+- **Offline store** — high-throughput, large-scale historical feature values (typically a warehouse or columnar files). Used to build **training sets** by joining labels to features.
+- **Online store** — low-latency key-value lookups (typically Redis/DynamoDB-class) holding the *latest* feature value per entity. Used at **inference** to fetch features in milliseconds.
+
+The store keeps them in sync (materialising offline values into the online store), so a feature defined once is served identically in both worlds. That shared definition is what eliminates train–serve skew at the source.
+
+## Point-in-time correctness
+
+The subtlest job of a feature store is **point-in-time correctness**: when building a training row for an event at time $t$, every feature must use only data **available at or before $t$**. Joining the *current* feature value to a *past* label leaks the future into training — a classic, devastating form of data leakage.
+
+Formally, for a label event at time $t$, a feature value timestamped $t_f$ is admissible only if:
+
+$$t_f \le t$$
+
+A correct training join (an **as-of join**) takes, for each label, the most recent feature value satisfying $t_f \le t$ — never a later one.
+
+<Callout type="warning" title="The leak that inflates every offline metric">
+  If your training join grabs the latest feature value instead of the as-of value, offline accuracy looks fantastic and production accuracy collapses — the model trained on information it will never have at serving time. Point-in-time joins are the single most important reason to use a feature store rather than hand-rolled SQL.
+</Callout>
+
+## What a feature store gives you
+
+- **Consistency** — one feature definition, served to training (offline) and inference (online) — no skew.
+- **Reuse & discovery** — a catalogue so teams find and share features instead of re-deriving them.
+- **Point-in-time joins** — leakage-free training sets by construction.
+- **Freshness & monitoring** — tracking how stale online values are, and drift on feature distributions.
+
+<Callout type="info" title="Not every project needs one">
+  A feature store earns its operational cost when features are **shared across models/teams**, require **low-latency online serving**, or demand **point-in-time training joins** at scale. A single batch model with a self-contained pipeline often does not — adding a feature store there is overhead, not leverage.
+</Callout>
+
+<Exercise id="mlp-feature-store-skew" />
+
+<Exercise id="mlp-point-in-time" />
+
+## Common mistakes
+
+1. **Naive joins that leak the future** — using current feature values for past labels instead of as-of values.
+2. **Two code paths for one feature** — computing it one way in the training job and another in the serving service (the skew a feature store exists to prevent).
+3. **Stale online values** — failing to monitor materialisation freshness, so inference reads hours-old features.
+4. **Adopting a feature store reflexively** — paying its complexity for a single model that doesn't share or serve features online.
+
+## Key takeaways
+
+- A **feature store** defines a feature once and serves it consistently to **offline** (training) and **online** (inference) — killing train–serve skew.
+- **Point-in-time correctness** (as-of joins, $t_f \le t$) builds leakage-free training sets.
+- It also delivers feature **reuse, discovery, freshness, and monitoring**.
+- It's worth it when features are shared, served online at low latency, or joined point-in-time at scale — not for every project.
+
+## Related concepts
+
+- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering) — the transformations a feature store stores and serves
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — the train–serve skew a feature store is built to prevent
+- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the batch/stream and OLTP/OLAP substrate underneath

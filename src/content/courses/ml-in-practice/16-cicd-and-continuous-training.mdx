@@ -1,0 +1,77 @@
+---
+title: "CI/CD, Continuous Training & MLOps Maturity"
+description: "How ML pipelines automate themselves: Google's MLOps maturity levels 0/1/2, the difference between deploying a model and deploying a training pipeline, and the CI/CD/CT triggers that retrain without humans."
+order: 16
+type: concept
+estimatedMinutes: 20
+---
+
+# CI/CD, Continuous Training & MLOps Maturity
+
+Classic software has two automated loops: **CI** (test and build on every commit) and **CD** (deploy the build). ML adds a third — **CT, Continuous Training** — because an ML system can decay even when its code never changes: the world shifts, the data drifts, and yesterday's model is wrong today. MLOps maturity is largely a story of automating these three loops.
+
+**Real-world examples:** a fraud model retrained nightly on the latest labelled transactions; a recommender that auto-retrains when feature drift crosses a threshold; a forecasting pipeline that runs the full train-evaluate-deploy sequence from a single merged pull request.
+
+## The crucial shift: ship the pipeline, not the model
+
+The defining idea of MLOps maturity is *what artifact you deploy*. In an immature setup you deploy a **trained model** — a person trains it in a notebook and hands the weights to ops. In a mature setup you deploy a **training pipeline** — an automated, reproducible sequence (ingest → validate → train → evaluate → register → serve) that *produces* models on demand.
+
+Once the pipeline is the deployable unit, retraining on fresh data is a pipeline *run*, not a research project.
+
+## Google's MLOps maturity levels
+
+Google's widely used framework defines three levels by how much of the ML process is automated:
+
+| Level | Name | What's automated | Retraining cadence |
+|-------|------|------------------|--------------------|
+| **0** | Manual process | Nothing — notebook-driven, manual hand-off to ops | Rare, manual |
+| **1** | ML pipeline automation | The *training pipeline* runs automatically with data/model validation; CT enabled | Frequent, on a trigger |
+| **2** | CI/CD pipeline automation | The *pipeline itself* is built, tested, and deployed via CI/CD | Rapid, reliable, multi-pipeline |
+
+- **Level 0** is the most common starting point: a script or notebook produces a model, someone deploys it, and nobody retrains until performance visibly degrades. The training–serving skew and drift pitfalls from earlier lessons live here.
+- **Level 1** automates the *training pipeline*. The pipeline runs on a trigger, includes **data validation** and **model validation** steps, and pushes a validated model to a registry. The team can now retrain frequently and reliably.
+- **Level 2** automates building and deploying the *pipeline code* itself. A change to feature logic or model architecture flows through CI (unit/integration tests on pipeline components) and CD (deploy the new pipeline), so the system can evolve many pipelines rapidly.
+
+<Callout type="info" title="Maturity is a means, not a goal">
+  Level 2 is not automatically "better." A model retrained quarterly on stable data may be perfectly served at Level 0. Climb the levels when **retraining frequency** and **change velocity** justify the automation cost — the right level is the lowest one that keeps the model fresh enough.
+</Callout>
+
+## What CI, CD, and CT actually test
+
+Each loop gains ML-specific responsibilities beyond standard software practice:
+
+- **CI** — besides unit tests, validate **pipeline components** (does feature code produce the expected schema?), test that the model trains for a few steps, and check that converted/serialised models load.
+- **CD** — deploy the **pipeline** (Level 2) and the **model service**; verify the served model's prediction matches the offline model (no train–serve skew) before flipping traffic.
+- **CT** — run the training pipeline on a **trigger** and gate the result on validation.
+
+A retraining trigger is one of:
+
+$$\text{retrain when} \;\in\; \{\text{schedule (e.g. nightly)},\; \text{new data volume},\; \text{drift} > \tau,\; \text{performance} < \theta,\; \text{on demand}\}$$
+
+<Callout type="warning" title="Automated retraining needs automated gates">
+  CT without **model validation** is a loop that can silently push a worse model to production. Every retraining run must clear an evaluation gate — better than the current production model on a held-out set and above an absolute floor — *before* it is registered for deployment. Automate the promotion decision, don't automate around it.
+</Callout>
+
+<Exercise id="mlp-maturity-levels" />
+
+<Exercise id="mlp-ct-trigger" />
+
+## Common mistakes
+
+1. **Deploying models instead of pipelines** — keeping a human in the training loop forever, so retraining never scales.
+2. **CT without validation gates** — automating retraining but not the check that the new model is actually better.
+3. **Chasing Level 2 prematurely** — paying for CI/CD-of-pipelines automation a stable, slow-moving model doesn't need.
+4. **Skipping the skew check in CD** — promoting a model whose served predictions differ from its offline evaluation.
+
+## Key takeaways
+
+- ML adds **CT (Continuous Training)** to CI/CD because models decay from data shift, not just code change.
+- The maturity jump is deploying a **training pipeline**, not a trained model.
+- Google's **levels 0/1/2** track automation: manual → automated pipeline (CT) → automated CI/CD of pipelines.
+- Automated retraining is only safe with automated **data and model validation gates**.
+
+## Related concepts
+
+- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking) — the runs and artifacts a pipeline produces and compares
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — the orchestrators that execute these pipelines
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — the train–serve skew and drift that CT exists to fight
