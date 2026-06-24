@@ -1,0 +1,162 @@
+---
+title: "Population Stability Index (PSI): Measuring Distribution Drift"
+description: "Step-by-step PSI computation with equal-frequency binning, a fully worked 10-bin example, the zero-bin edge case, why PSI equals the Jeffreys divergence, and an actionable response guide for each threshold band."
+topics: ["ml-systems"]
+relatedLessons:
+  - "ml-in-practice/10-monitoring-and-observability"
+  - "ml-in-practice/09-continual-learning-and-test-in-production"
+estimatedMinutes: 12
+---
+
+# Population Stability Index (PSI): Measuring Distribution Drift
+
+The **Population Stability Index** (PSI) measures how much a feature's distribution has shifted between two samples — typically a reference (training) snapshot and a current (production) window. A single scalar per feature, computed daily or per-batch, is enough to catch upstream pipeline regressions, data-collection changes, and genuine covariate shift before they silently degrade model accuracy.
+
+PSI originated in credit-risk modeling, where regulators required formal documentation that a scorecard's development population matched the one it was deployed on. It has since become the *de facto* standard for input drift monitoring in production ML systems across industries.
+
+## The formula
+
+Divide the feature range into $k$ bins. Let $p_i$ be the reference (training) proportion in bin $i$ and $q_i$ be the production proportion in bin $i$. Then:
+
+$$
+\mathrm{PSI} = \sum_{i=1}^{k} (p_i - q_i) \cdot \ln\!\left(\frac{p_i}{q_i}\right)
+$$
+
+Each term contributes the **signed difference** $(p_i - q_i)$ weighted by the **log-ratio** $\ln(p_i/q_i)$. Because the difference and the log-ratio always share the same sign — when $p_i > q_i$ both are positive, when $p_i < q_i$ both are negative — every term is non-negative. PSI = 0 only when $p_i = q_i$ for every bin. It is always finite and symmetric in $p$ and $q$ (proved below).
+
+## Threshold interpretation
+
+| PSI | Interpretation | Recommended action |
+|-----|---------------|-------------------|
+| $< 0.10$ | Stable — no significant shift | No action; continue monitoring |
+| $0.10$–$0.25$ | Moderate shift | Investigate root cause; watch for one more window |
+| $\geq 0.25$ | Significant shift | Retrain (or recalibrate) and audit the upstream pipeline |
+
+These cut-points are rules of thumb — not statistical significance levels. A feature with high natural variability (e.g. daily traffic volume) may routinely hit 0.12 without any upstream problem; a highly stable feature (e.g. a customer's birth year) should raise an alarm at 0.05. Calibrate thresholds per feature using historical windows where the model was known to be healthy.
+
+## Binning strategies
+
+### Equal-frequency bins (recommended)
+
+Sort the reference values and divide into $k$ quantile-based bins so each bin holds exactly $1/k$ of the reference population. This gives $p_i = 1/k$ for all $i$ by construction. The production proportions $q_i$ are then computed by assigning production observations to the same fixed bin edges.
+
+**Why this is better than equal-width:** Equal-width bins cut from min to max in fixed steps. A single outlier stretches one bin to hold almost all the reference mass, making the log-ratio in that bin large and volatile. Equal-frequency bins never leave a bin sparsely populated in the reference, so $\ln(p_i/q_i)$ stays well-conditioned.
+
+**Rule of thumb:** $k = 10$ (deciles) is the standard default. Use $k = 20$ for larger samples (> 10,000 rows); use $k = 5$ for very small reference sets (< 500 rows) to keep each bin stable.
+
+### Equal-width bins
+
+Suitable for categorical features or when you need bin edges to be human-readable (e.g. integer age ranges). For continuous features prefer equal-frequency.
+
+## Worked example — 10 bins, equal-frequency
+
+Reference sample: 1,000 credit-score observations, binned at deciles. Production sample: 1,000 new observations scored against the same bin edges.
+
+| Bin | Edge | Ref $n$ | Ref $p_i$ | Prod $n$ | Prod $q_i$ | $p_i-q_i$ | $\ln(p_i/q_i)$ | Term |
+|-----|------|---------|-----------|----------|------------|-----------|----------------|------|
+| 1 | ≤ 560 | 100 | 0.100 | 120 | 0.120 | −0.020 | −0.182 | 0.0036 |
+| 2 | 561–590 | 100 | 0.100 | 110 | 0.110 | −0.010 | −0.095 | 0.0010 |
+| 3 | 591–615 | 100 | 0.100 | 105 | 0.105 | −0.005 | −0.049 | 0.0002 |
+| 4 | 616–635 | 100 | 0.100 | 100 | 0.100 | 0.000 | 0.000 | 0.0000 |
+| 5 | 636–655 | 100 | 0.100 | 98 | 0.098 | 0.002 | 0.020 | 0.0000 |
+| 6 | 656–675 | 100 | 0.100 | 95 | 0.095 | 0.005 | 0.051 | 0.0003 |
+| 7 | 676–695 | 100 | 0.100 | 90 | 0.090 | 0.010 | 0.105 | 0.0011 |
+| 8 | 696–715 | 100 | 0.100 | 85 | 0.085 | 0.015 | 0.163 | 0.0024 |
+| 9 | 716–740 | 100 | 0.100 | 80 | 0.080 | 0.020 | 0.223 | 0.0045 |
+| 10 | > 740 | 100 | 0.100 | 117 | 0.117 | −0.017 | −0.157 | 0.0027 |
+| **Total** | | 1,000 | 1.000 | 1,000 | 1.000 | | **PSI** | **0.0158** |
+
+**Verdict:** PSI ≈ 0.016 — well below 0.10. The credit-score distribution is stable.
+
+Now suppose a data-pipeline bug introduced a 6-month lag in score updates, shifting the bulk of observations from bins 7–10 down to bins 1–3:
+
+| Bin | Ref $p_i$ | Prod $q_i$ | $p_i-q_i$ | $\ln(p_i/q_i)$ | Term |
+|-----|-----------|------------|-----------|----------------|------|
+| 1 | 0.100 | 0.250 | −0.150 | −0.916 | 0.1374 |
+| 2 | 0.100 | 0.180 | −0.080 | −0.588 | 0.0470 |
+| 3 | 0.100 | 0.130 | −0.030 | −0.262 | 0.0079 |
+| 4–6 | 0.300 | 0.280 | 0.020 | 0.069 | 0.0014 |
+| 7 | 0.100 | 0.060 | 0.040 | 0.511 | 0.0204 |
+| 8 | 0.100 | 0.040 | 0.060 | 0.916 | 0.0550 |
+| 9 | 0.100 | 0.030 | 0.070 | 1.204 | 0.0843 |
+| 10 | 0.100 | 0.030 | 0.070 | 1.204 | 0.0843 |
+| | | | | **PSI** | **0.4377** |
+
+**Verdict:** PSI ≈ 0.44 — far above 0.25. The distribution has shifted dramatically toward lower scores; immediate investigation and likely retraining are warranted.
+
+<Callout type="info" title="Largest terms reveal where the shift happened">
+  Sort the per-bin terms in descending order to identify *where* in the distribution the drift is concentrated. In the second example, bins 1 and 2 account for 0.184 of the 0.438 total — the low end of the score range drove almost half the PSI. That diagnostic points directly at "something suppressed recent high scores."
+</Callout>
+
+## Edge case: zero proportions
+
+If any bin has $p_i = 0$ or $q_i = 0$, the term $\ln(p_i/q_i)$ is undefined (log of zero or division by zero), and PSI blows up.
+
+**Standard fix:** replace zero proportions with a small floor $\varepsilon$ before computing:
+
+$$
+\tilde{p}_i = \max(p_i,\, \varepsilon), \quad \tilde{q}_i = \max(q_i,\, \varepsilon)
+$$
+
+then renormalize so $\sum_i \tilde{p}_i = 1$ and $\sum_i \tilde{q}_i = 1$. A common default is $\varepsilon = 10^{-4}$; another is $\varepsilon = 1/(2n)$ where $n$ is the sample size.
+
+A zero production bin is itself diagnostic: a region of the feature space that *existed* at training time has completely disappeared in production. Flag these bins separately in your dashboard — they often indicate a schema change, a category being deprecated, or a pipeline filtering error.
+
+## Why PSI equals the Jeffreys divergence
+
+PSI is the **symmetrized KL divergence** (Jeffreys divergence) between the reference and production distributions:
+
+$$
+\mathrm{PSI} = D_{\mathrm{KL}}(P \,\|\, Q) + D_{\mathrm{KL}}(Q \,\|\, P)
+$$
+
+To verify: $D_{\mathrm{KL}}(P \,\|\, Q) = \sum_i p_i \ln(p_i/q_i)$ and $D_{\mathrm{KL}}(Q \,\|\, P) = \sum_i q_i \ln(q_i/p_i) = -\sum_i q_i \ln(p_i/q_i)$. Summing:
+
+$$
+D_{\mathrm{KL}}(P \,\|\, Q) + D_{\mathrm{KL}}(Q \,\|\, P) = \sum_i (p_i - q_i)\ln\!\left(\frac{p_i}{q_i}\right) = \mathrm{PSI}
+$$
+
+This explains two properties:
+- **Symmetry:** swapping reference and production gives the same PSI value — there is no privileged direction.
+- **Non-negativity:** both KL terms are ≥ 0 by Gibbs' inequality, so PSI ≥ 0 always.
+
+KL divergence alone is directional. $D_{\mathrm{KL}}(P \,\|\, Q)$ measures the extra nats needed to encode samples drawn from $P$ using a code optimized for $Q$. Using bare KL as a drift metric forces you to choose which distribution is "reference" in the log-ratio. PSI avoids that choice by treating both symmetrically.
+
+## Categorical features
+
+PSI applies directly to categorical features. Set each level to be its own bin. The formula is identical:
+
+$$
+\mathrm{PSI} = \sum_{\ell \in \mathcal{L}} (p_\ell - q_\ell)\ln\!\left(\frac{p_\ell}{\vphantom{q}q_\ell}\right)
+$$
+
+**Grouping rare levels:** with 50+ categories, levels that appear in < 1–5 % of the reference sample will have unstable per-bin log-ratios. A standard practice is to group everything below a relative-frequency threshold into an "Other" bucket before computing PSI.
+
+**New levels in production:** a category that appears in production but not in training gets $p_\ell = 0$, which requires the $\varepsilon$-floor fix above. A new level is also worth flagging separately — it may represent a product category that didn't exist at training time.
+
+## What PSI does not capture
+
+PSI is a **marginal** metric: it operates on one feature at a time. Three blind spots:
+
+**Joint distributional shift.** If `age` and `income` were independent in training but become positively correlated in production, per-feature PSIs can both stay near zero while the joint distribution has shifted significantly. Options for joint drift: Maximum Mean Discrepancy (MMD), a two-sample permutation test on the raw feature matrix, or a classifier-based test (train a binary model to distinguish training from production; AUROC > 0.6 suggests detectable drift).
+
+**Ordering within bins.** Equal-frequency bins suppress information about the shape of shifts within a bin. A distribution that bimodally concentrates at the edges of a bin can have the same $q_i$ as a unimodal one centered in the middle of that bin.
+
+**Outcome drift.** PSI measures covariate shift — $p(x)$ changing. Label shift ($p(y)$ changing) and concept drift ($p(y|x)$ changing) are not captured. Track prediction-score distributions and, when labels arrive, rolling accuracy metrics separately.
+
+## Actionable response guide
+
+| PSI band | First steps | Decision |
+|----------|-------------|---------|
+| $< 0.10$ | None | Continue normal monitoring |
+| $0.10$–$0.25$ | Identify which bins shifted; cross-check with pipeline changelogs and upstream data sources; compare with neighboring features that share the same pipeline | Wait one more window; retrain if PSI persists or climbs |
+| $\geq 0.25$ | Determine drift type (covariate vs concept via prediction-distribution check); correlate timing with deploys or world events; inspect zero bins separately | Trigger retrain pipeline; recalibrate output confidence scores; page the data-platform team if cause is a pipeline bug |
+
+**Correlate across features.** Five related features spiking together almost always means a pipeline bug or upstream schema change — one root cause explains all. A single feature drifting in isolation more often reflects a real-world shift in that variable.
+
+**Debounce.** Require two to three consecutive windows above threshold before triggering a retrain. A single spiked window is frequently a transient (a backfill, an API returning nulls for an hour). Debouncing cuts false-alarm retrains without significantly delaying the response to genuine drift.
+
+## Related concepts
+
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — PSI as one layer of the four-layer ML monitoring stack; per-feature drift heatmaps and how to wire PSI into alerting
+- [**Continual Learning & Testing in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — PSI as a trigger for the retraining loop; the three drift flavors (covariate, label, concept) and how each maps to a different remediation
