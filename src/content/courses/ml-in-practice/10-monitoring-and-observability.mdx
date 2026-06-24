@@ -67,6 +67,10 @@ PSI is one of several options. **KL divergence** $D_{\mathrm{KL}}(P \,\|\, Q) = 
 
 **Per-feature beats summary scores.** A single "input drift" number averaged across all features is almost useless — a serious shift in one important feature gets diluted by 199 stable ones, and the alarm never fires. Compute drift *per feature*, plot a heatmap, and alert on the worst offenders. When drift correlates with a known event (a deploy, a backfill, a partner-API change), the heatmap tells you which features moved together — diagnostic information no scalar can give you.
 
+For a step-by-step derivation with equal-frequency binning, a fully worked 10-bin numerical example, the zero-bin edge case, and an actionable threshold guide:
+
+<WikiLink slug="population-stability-index" title="Population Stability Index (PSI): Measuring Distribution Drift" />
+
 ## Output drift and calibration drift
 
 Even when inputs look stable, the model's *output distribution* can shift — usually because of a retrain. The cheapest check: track the mean prediction (for regression) or per-class prediction rate (for classification) over time. A retrained fraud model that suddenly predicts 8 % fraud where it used to predict 2 % is a signal — possibly the world genuinely got worse, possibly the new model is mis-calibrated. You want to see both *before* a single false-positive complaint escalates.
