@@ -1,0 +1,140 @@
+---
+title: "Attention Mechanisms: Self, Cross, Causal, MHA, MQA, and GQA"
+description: "A unified reference for every attention variant used in modern transformers — self-attention, cross-attention, causal masking, multi-head attention, multi-query attention (MQA), grouped-query attention (GQA), and FlashAttention — with memory and complexity analysis."
+topics: ["transformers"]
+relatedLessons:
+  - "transformers/01-self-attention"
+  - "transformers/02-multi-head-and-positional"
+  - "transformers/04-modern-attention"
+estimatedMinutes: 18
+---
+
+# Attention Mechanisms: Self, Cross, Causal, MHA, MQA, and GQA
+
+All attention variants share the same $\text{softmax}(QK^\top/\sqrt{d_k})V$ engine. They differ in *where Q, K, V come from* and *what tokens are visible to each query position*.
+
+## The base operation
+
+$$\text{Attention}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)V$$
+
+$Q \in \mathbb{R}^{n_q \times d_k}$ (queries), $K \in \mathbb{R}^{n_{kv} \times d_k}$ (keys), $V \in \mathbb{R}^{n_{kv} \times d_v}$ (values). Each row of the output is a weighted blend of value rows, where the weights encode relevance.
+
+## Taxonomy
+
+| Variant | Q source | K, V source | Mask |
+|---------|----------|-------------|------|
+| Self-attention | Sequence itself | Same sequence | None (bidirectional) |
+| Causal self-attention | Sequence itself | Same sequence | Lower-triangular |
+| Cross-attention | Decoder state | Encoder output | None (over encoder) |
+| Multi-head (MHA) | $h$ projections | $h$ projections | Depends on context |
+| Multi-query (MQA) | $h$ projections | **1 shared** K/V head | — |
+| Grouped-query (GQA) | $h$ projections in $G$ groups | **$G$ shared** K/V heads | — |
+
+## Self-attention
+
+The same input sequence $X \in \mathbb{R}^{n \times d}$ is projected to all three roles:
+
+$$Q = XW_Q, \quad K = XW_K, \quad V = XW_V$$
+
+Score $(i,j)$ measures how much token $i$ should borrow from token $j$. After softmax, each output token is a context-weighted blend of all value rows — giving every token access to global context in a single parallel operation.
+
+Self-attention in an **encoder** (e.g., BERT) is *bidirectional*: no mask, so every token can see every other token. This is ideal for understanding tasks where the full input is available at once.
+
+## Causal (masked) self-attention
+
+A **decoder** generating tokens autoregressively cannot see future positions. The mask is applied *before* softmax by adding $-\infty$ to positions $(i,j)$ where $j > i$:
+
+$$\text{CausalAttn}(Q, K, V) = \text{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}} + M\right)V, \quad M_{ij} = \begin{cases}-\infty & j > i \\ 0 & j \le i\end{cases}$$
+
+After softmax, $e^{-\infty} = 0$, so masked positions contribute nothing. The computation stays fully batched — no variable-length loops.
+
+<Callout type="tip" title="The mask is just a matrix add">
+  The causal mask does not require separate code paths or ragged tensors. A static lower-triangular boolean matrix is broadcast across the batch and head dimensions. Adding $-\infty$ before softmax handles it in one fused kernel.
+</Callout>
+
+## Cross-attention
+
+Cross-attention connects two different sequences — the decoder's evolving state ($X_\text{dec}$) and the encoder's fixed output ($X_\text{enc}$):
+
+$$Q = X_\text{dec}\,W_Q, \quad K = X_\text{enc}\,W_K, \quad V = X_\text{enc}\,W_V$$
+
+For each decoder position, the query looks up which encoder positions are relevant (via $QK^\top$) and blends their value vectors. Because $K$ and $V$ are fixed for an entire decoding pass, they can be pre-computed and cached — cross-attention inference is cheap.
+
+**Decoder-only vs encoder-decoder:** Remove the encoder and the cross-attention sub-layer and you get GPT-style decoder-only models. Encoder-decoder models can attend bidirectionally over the source; decoder-only models rely on the causal self-attention stack to process the prefix in context.
+
+## Multi-Head Attention (MHA)
+
+Running one attention head gives one view of relevance. MHA runs $h$ independent heads in parallel, each projecting to dimension $d_k = d/h$, then concatenating:
+
+$$\text{MHA}(X) = \text{Concat}(\text{head}_1,\ldots,\text{head}_h)\,W_O, \quad \text{head}_i = \text{Attention}(XW_{Q_i},\, XW_{K_i},\, XW_{V_i})$$
+
+Different heads specialize: one may track syntactic dependencies, another coreference, another positional proximity. Total parameter count stays the same as one large head ($W_{Q_i}, W_{K_i}, W_{V_i}$ are smaller by factor $h$, but there are $h$ of them).
+
+**Complexity:** $O(n^2 d)$ compute, $O(n^2 h)$ activation memory for the attention score matrices. The $n^2$ term is the scaling bottleneck for long sequences.
+
+## Multi-Query Attention (MQA)
+
+MQA (Shazeer 2019) shares a single K/V head across all $h$ query heads:
+
+$$Q_i = XW_{Q_i} \quad \forall i, \qquad K = XW_K, \quad V = XW_V \text{ (shared)}$$
+
+**Memory win:** MHA stores $h$ K/V matrices per layer in the KV cache; MQA stores 1 — a factor-of-$h$ reduction. For LLaMA-2 70B with $h = 64$ heads, that is 64× smaller. The trade-off is a modest quality drop: one K/V head has less capacity to represent diverse key structures.
+
+## Grouped-Query Attention (GQA)
+
+GQA (Ainslie et al. 2023) interpolates between MHA ($G = h$) and MQA ($G = 1$):
+
+- Split the $h$ query heads into $G$ groups of size $h/G$.
+- Each group shares **one** K/V head — KV cache shrinks by $h/G$.
+- At $G = 8$, memory is $8\times$ smaller with only a small quality drop.
+
+LLaMA-3, Mistral, Gemma, Falcon, and most modern open-weight LLMs use GQA. $G = h/8$ is a common default balancing cache savings vs quality.
+
+**KV cache comparison (per layer, $n = 4096$ tokens, $d = 4096$, $h = 32$, bfloat16):**
+
+| Variant | KV heads | Cache per layer |
+|---------|----------|----------------|
+| MHA | 32 | 128 MB |
+| GQA ($G=8$) | 8 | 32 MB |
+| MQA | 1 | 4 MB |
+
+## FlashAttention
+
+Standard attention materializes the full $n \times n$ score matrix in GPU HBM (high-bandwidth memory). FlashAttention (Dao et al. 2022) tiles the computation to fit in the much-faster SRAM:
+
+- **No $O(n^2)$ activation memory** — peak memory is $O(n)$.
+- **Identical numerical result** — not an approximation; it recomputes partial softmax statistics on the fly.
+- **2–4× faster** wall-clock on A100 for typical sequence lengths due to reduced HBM bandwidth.
+
+FlashAttention-2 and -3 further optimize for modern tensor core layouts. In PyTorch, `torch.nn.functional.scaled_dot_product_attention` dispatches to FlashAttention automatically when available.
+
+## Sparse attention patterns
+
+For very long sequences, $O(n^2)$ is prohibitive even with FlashAttention. Sparse patterns restrict each query to a subset of keys:
+
+- **Sliding window (local):** each position attends to its nearest $w$ neighbors. Used in Longformer, Mistral's sliding window.
+- **Global + local:** a few designated tokens (e.g., `[CLS]`) attend globally; all others attend locally. Used in BigBird, Longformer.
+- **Linear attention:** approximate the softmax with a kernel trick to achieve $O(n)$ — quality lower than exact attention.
+
+**Complexity summary:**
+
+| Pattern | Compute | Activation memory |
+|---------|---------|------------------|
+| Full (FlashAttn) | $O(n^2 d)$ | $O(n)$ |
+| Sliding window $w$ | $O(nwd)$ | $O(nw)$ |
+| Linear (approx) | $O(nd^2)$ | $O(nd)$ |
+
+## Choosing the right variant
+
+- **Encoder for classification / understanding:** bidirectional MHA (no mask).
+- **Decoder-only LLM (training):** causal MHA; switch to GQA when deploying at scale.
+- **Translation / summarization (seq2seq):** causal decoder self-attention + cross-attention over encoder.
+- **Long documents ($n > 8{,}000$):** FlashAttention is a free upgrade; add sliding window for $n > 100{,}000$.
+- **Inference with large batches:** prefer GQA — KV cache is the dominant memory cost.
+
+## Related concepts
+
+- [**Scaled Dot-Product Attention**](/wiki/scaled-dot-product-attention) — the $\sqrt{d_k}$ derivation and a 3-token worked example
+- [**Self-Attention**](/courses/transformers/01-self-attention) — source lesson: QKV intuition and causal masking
+- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention) — lesson: cross-attention, MQA/GQA, RoPE, FlashAttention
+- [**Positional Encodings**](/wiki/positional-encodings) — how tokens know their position in the sequence
