@@ -1,0 +1,146 @@
+---
+title: "Probability Distributions: A Field Guide & Where They're Used"
+description: "A reference catalog of the distributions that show up in ML — Bernoulli, Binomial, Categorical, Poisson, Gaussian, Exponential, Gamma, Beta, Dirichlet, Laplace, Student-t and more — with parameters, mean/variance, the relationships between them, and the modeling job each one does."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/02-probability-distributions"
+  - "probability-statistics/01-thinking-in-probabilities"
+estimatedMinutes: 14
+---
+
+# Probability Distributions: A Field Guide & Where They're Used
+
+Picking the right distribution is half of probabilistic modeling. A distribution encodes your assumption about how a quantity is generated — a count, a duration, a proportion, a category — and that choice flows straight into the likelihood you optimize, the loss you minimize, and the prior you place. This page is a reference catalog: for each distribution, *what it models*, its parameters and moments, and *where it shows up in ML*.
+
+The first fork is always the same: **is the outcome discrete or continuous?**
+
+## Discrete distributions
+
+These put probability mass on a countable set of outcomes; they have a **PMF** $P(X=k)$ that sums to 1.
+
+### Bernoulli — a single yes/no
+
+One trial with success probability $p$. $P(X=1)=p$, $P(X=0)=1-p$.
+
+- **Mean / variance:** $p$ / $p(1-p)$ (variance is maximal at $p=0.5$ — maximum uncertainty).
+- **Where:** the output unit of binary classification; every sigmoid + binary-cross-entropy head is a Bernoulli likelihood. A single coin flip, click/no-click, fraud/not-fraud.
+
+### Binomial — counting successes in $n$ trials
+
+Sum of $n$ independent Bernoulli($p$) trials. $P(X=k)=\binom{n}{k}p^k(1-p)^{n-k}$.
+
+- **Mean / variance:** $np$ / $np(1-p)$.
+- **Where:** A/B-test conversion counts, number of correct predictions in a batch, sequencing read counts.
+
+### Categorical — one draw from $K$ classes
+
+The multi-class generalization of Bernoulli: outcome is one of $K$ categories with probabilities $\boldsymbol{\pi}$ summing to 1.
+
+- **Where:** the **softmax output** of every multi-class classifier and every language model — predicting the next token is a Categorical over the vocabulary. **Multinomial** is its $n$-trial count version (a bag-of-words vector is multinomial).
+
+### Poisson — counts of rare events in a fixed window
+
+Number of events when they occur independently at a constant average rate $\lambda$. $P(X=k)=\frac{\lambda^k e^{-\lambda}}{k!}$.
+
+- **Mean / variance:** both equal $\lambda$ (the signature property).
+- **Where:** Poisson regression for count targets (arrivals per hour, defects per unit, clicks per impression). When the data's variance exceeds its mean (**overdispersion**), reach for the **Negative Binomial** instead.
+
+### Geometric & Negative Binomial — waiting for successes
+
+Geometric: number of trials until the **first** success. Negative Binomial: trials until the $r$-th success (and the overdispersed count model above).
+
+- **Where:** churn / time-to-event in discrete steps; count data with variance > mean.
+
+## Continuous distributions
+
+These have a **PDF** $p(x)$ that integrates to 1; $p(x)$ is a density, not a probability (it can exceed 1).
+
+### Uniform — maximal ignorance on an interval
+
+Constant density on $[a,b]$. **Where:** non-informative priors, the seed of **inverse-transform sampling** (every sampler starts from Uniform(0,1)), random initialization ranges, dropout masks' threshold.
+
+### Gaussian (Normal) — the default for continuous quantities
+
+The bell curve $\mathcal{N}(\mu,\sigma^2)$. Justified by the **Central Limit Theorem**: sums of many small independent effects are approximately Gaussian.
+
+- **Mean / variance:** $\mu$ / $\sigma^2$.
+- **Where:** everywhere — regression noise (MSE loss *is* a Gaussian likelihood), weight initialization, VAE latent priors, Gaussian Processes, Kalman filters, diffusion-model noise. The **Multivariate Gaussian** extends it to correlated vectors via a covariance matrix $\boldsymbol{\Sigma}$.
+
+<Callout type="info" title="MSE is a Gaussian assumption in disguise">
+  Minimizing squared error is exactly maximum-likelihood under "targets = prediction + Gaussian noise of constant variance." If your residuals are heavy-tailed or skewed, that assumption is wrong — which is why a Laplace likelihood (→ MAE loss) or a Student-t likelihood (robust regression) can fit better. The loss function you pick *is* a distributional assumption.
+</Callout>
+
+### Exponential & Gamma — durations and positive quantities
+
+Exponential models the **waiting time between Poisson events** (rate $\lambda$, memoryless). Gamma is the time until the $k$-th event and, more generally, a flexible distribution over positive reals.
+
+- **Where:** survival / time-to-event modeling, the **conjugate prior** for the rate of a Poisson or precision of a Gaussian (Gamma), inter-arrival times.
+
+### Beta — a distribution over a probability
+
+Defined on $[0,1]$ with shape parameters $\alpha,\beta$; its mean is $\alpha/(\alpha+\beta)$. Because it lives on the unit interval, it models *an uncertain probability*.
+
+- **Where:** the **conjugate prior for Bernoulli/Binomial** — Beta prior + Binomial data → Beta posterior (the backbone of Bayesian A/B testing and Thompson sampling for bandits).
+
+### Dirichlet — a distribution over distributions
+
+The multivariate Beta: samples are probability vectors on the simplex (they sum to 1).
+
+- **Where:** the **conjugate prior for the Categorical/Multinomial** — topic models (LDA), Bayesian mixture weights, smoothing categorical estimates.
+
+### Laplace & Student-t — heavy tails and robustness
+
+Laplace (double-exponential) is peaked with heavier tails than Gaussian; Student-t has tunable tail weight via its degrees of freedom (→ Gaussian as df → ∞).
+
+- **Where:** **Laplace prior ↔ L1 / Lasso** sparsity; **Laplace likelihood ↔ MAE loss**; **Student-t** for robust regression and heavy-tailed financial returns where Gaussian under-models extremes.
+
+### Chi-squared, F — the sampling distributions behind tests
+
+Sums of squared Gaussians (χ²) and ratios of them (F) — the reference distributions for variance and ANOVA tests rather than data-generating models.
+
+## How they connect
+
+These are not isolated; most are special or limiting cases of one another:
+
+- **Bernoulli** is Binomial with $n=1$; **Categorical** is the $K$-outcome Bernoulli; **Multinomial** is $n$ Categorical draws.
+- **Binomial → Poisson** as $n\to\infty$, $p\to 0$ with $np=\lambda$ fixed (rare-event limit).
+- **Sum of many anything → Gaussian** (Central Limit Theorem).
+- **Exponential** is Gamma with shape 1; **Gamma → Gaussian** for large shape.
+- **Beta** generalizes to **Dirichlet**; **Gaussian** generalizes to **Multivariate Gaussian**.
+
+## The conjugate-prior cheat sheet
+
+Conjugacy means the posterior stays in the same family as the prior — closed-form Bayesian updates with no MCMC. The pairs worth memorizing:
+
+| Likelihood | Conjugate prior | Posterior | Used for |
+|------------|-----------------|-----------|----------|
+| Bernoulli / Binomial | **Beta** | Beta | A/B tests, bandits |
+| Categorical / Multinomial | **Dirichlet** | Dirichlet | topic models, smoothing |
+| Poisson | **Gamma** | Gamma | count-rate estimation |
+| Gaussian (known var), mean | **Gaussian** | Gaussian | Kalman filters, online means |
+| Gaussian (unknown var) | **Inverse-Gamma** | Inverse-Gamma | variance estimation |
+
+## A modeling chooser
+
+Start from what the quantity *is*, not from what's convenient:
+
+- **Binary outcome** → Bernoulli (sigmoid head).
+- **One of K classes** → Categorical (softmax head).
+- **Count in a fixed window** → Poisson (or Negative Binomial if overdispersed).
+- **Continuous, symmetric, light tails** → Gaussian (MSE).
+- **Continuous, heavy tails / outliers** → Student-t or Laplace (robust loss).
+- **Positive-only (durations, magnitudes)** → Exponential / Gamma / Log-Normal.
+- **A proportion in [0,1]** → Beta.
+- **A probability vector on the simplex** → Dirichlet.
+
+<Callout type="warning" title="Match the support to the data">
+  The most common modeling bug is a distribution whose **support** doesn't match the data's range: a Gaussian likelihood on strictly-positive durations puts mass on impossible negative values; a Gaussian on a bounded proportion ignores the $[0,1]$ ceiling. Check the support first — it rules out most candidates immediately.
+</Callout>
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the lesson deriving PMFs/PDFs, expectation, and variance
+- [**Thinking in Probabilities**](/courses/probability-statistics/01-thinking-in-probabilities) — the foundations these distributions are built on
+- [**Sampling Methods**](/wiki/sampling-methods) — how to draw samples from any of these distributions
+- [**Beta–Bernoulli Conjugate Posterior**](/wiki/beta-bernoulli-posterior) — the Beta/Bernoulli conjugate update worked end to end
+- [**The Gaussian Integral**](/wiki/gaussian-integral) — why the normal distribution's normalizing constant is what it is
