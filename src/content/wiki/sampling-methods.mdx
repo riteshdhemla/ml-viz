@@ -1,0 +1,80 @@
+---
+title: "Sampling Methods: Inverse Transform, Rejection & Importance Sampling"
+description: "How to draw samples from a distribution you can only evaluate — inverse-transform sampling, rejection sampling and its acceptance rate, importance sampling for hard expectations, and variance-reduction tricks, with a bridge to MCMC."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/02-probability-distributions"
+  - "generative-models/01-what-are-generative-models"
+estimatedMinutes: 13
+---
+
+# Sampling Methods: Inverse Transform, Rejection & Importance Sampling
+
+Most quantities in probabilistic ML are **expectations** $\mathbb{E}_{p}[f(x)] = \int f(x)\,p(x)\,dx$ — a predictive average, a marginal likelihood, an expected reward. When the integral has no closed form, we estimate it by drawing samples $x^{(i)} \sim p$ and averaging. The catch: how do you sample from $p$ when all you have is a uniform random number generator and a formula for the density? This page covers the foundational answers. (For resampling *data* see the bootstrap; for sampling *correlated chains* from intractable posteriors see MCMC — both linked below.)
+
+Everything starts from one primitive: `rng.random()`, a draw from $\text{Uniform}(0,1)$.
+
+## Inverse transform sampling
+
+If you can write down and invert the CDF $F(x) = P(X \le x)$, sampling is exact and one-shot:
+
+1. Draw $u \sim \text{Uniform}(0,1)$.
+2. Return $x = F^{-1}(u)$.
+
+**Why it works:** $F(X)$ is itself uniform on $(0,1)$ (the *probability integral transform*), so pushing a uniform back through $F^{-1}$ reproduces the target. For the exponential distribution $F(x) = 1 - e^{-\lambda x}$, inverting gives the well-known generator $x = -\frac{1}{\lambda}\ln(1-u)$.
+
+**Limitation:** it requires a tractable inverse CDF. For the Gaussian, $F^{-1}$ has no elementary form (hence dedicated tricks like Box–Muller); for most multivariate or unnormalized densities there is no inverse to invert. That is where the next two methods come in.
+
+## Rejection sampling
+
+When you can *evaluate* the target $p(x)$ (even unnormalized) but can't invert it, sample from an easy **proposal** $q(x)$ and throw away the samples that don't fit. Pick a constant $M$ such that $p(x) \le M\,q(x)$ everywhere, then:
+
+1. Draw a candidate $x \sim q$.
+2. Draw $u \sim \text{Uniform}(0,1)$.
+3. **Accept** $x$ if $u \le \dfrac{p(x)}{M\,q(x)}$; otherwise reject and repeat.
+
+Accepted samples are distributed *exactly* as $p$. Geometrically: throw darts uniformly under the curve $M q(x)$ and keep only those that also land under $p(x)$.
+
+<Callout type="warning" title="The acceptance rate is 1/M — and M explodes in high dimensions">
+  The fraction of proposals accepted is $1/M$, so a loose envelope wastes most draws. Worse, the smallest valid $M$ grows roughly **exponentially with dimension** when $q$ doesn't closely match $p$ — in 100-D, rejection sampling can accept essentially nothing. This curse of dimensionality is precisely why MCMC, which doesn't reject its way to the target, dominates for high-dimensional posteriors.
+</Callout>
+
+## Importance sampling
+
+Sometimes you don't need samples from $p$ at all — you only need an **expectation** under $p$, and sampling $p$ directly is hard (or you want to reuse samples from a different distribution). Importance sampling rewrites the expectation as one under a tractable proposal $q$:
+
+$$
+\mathbb{E}_{p}[f(x)] = \int f(x)\,\frac{p(x)}{q(x)}\,q(x)\,dx = \mathbb{E}_{q}\!\left[f(x)\,w(x)\right], \quad w(x) = \frac{p(x)}{q(x)}
+$$
+
+Draw $x^{(i)} \sim q$ and average $f(x^{(i)})\,w(x^{(i)})$. The **importance weights** $w$ correct for sampling from the wrong distribution. When $p$ is known only up to a constant (the usual Bayesian case), use **self-normalized** importance sampling, dividing by $\sum_i w(x^{(i)})$.
+
+**Choosing $q$ is everything.** Variance is minimized when $q(x) \propto |f(x)|\,p(x)$ — you should sample *more* where the integrand is large. The classic application is estimating rare events: to estimate $P(X > 10)$ for a standard normal, sampling from $\mathcal{N}(0,1)$ almost never lands in the tail, but a shifted proposal $\mathcal{N}(10, 1)$ puts samples exactly where they count, then reweights.
+
+<Callout type="info" title="A heavy-tailed proposal is safer than a light-tailed one">
+  If $q$ has thinner tails than $p$, the ratio $w = p/q$ blows up in the tails and a single sample can dominate the estimate — the variance can even become **infinite** while the estimate looks deceptively stable. Rule of thumb: pick a proposal at least as heavy-tailed as the target, and always inspect the distribution of weights (a few weights carrying all the mass is the warning sign).
+</Callout>
+
+## Variance reduction
+
+The Monte Carlo error of an estimate shrinks like $1/\sqrt{N}$. These tricks reduce the constant in front, buying accuracy without more samples:
+
+- **Antithetic variates** — pair each draw $u$ with its mirror $1-u$. For a monotone $f$ the two are negatively correlated, so their average has lower variance than two independent draws.
+- **Stratified sampling** — partition the domain into strata and sample a fixed quota from each, eliminating the "clumping" of pure random sampling. (Latin hypercube sampling generalizes this to many dimensions.)
+- **Control variates** — subtract a correlated quantity with known mean to cancel part of the noise.
+
+## Choosing a method
+
+| You have… | You want… | Use |
+|-----------|-----------|-----|
+| Invertible CDF | exact samples | inverse transform |
+| Evaluable density + good proposal, low-D | exact samples | rejection sampling |
+| Tractable proposal; only need an expectation | an estimate (incl. rare events) | importance sampling |
+| Unnormalized high-D density (e.g. a posterior) | samples | **MCMC** (see below) |
+
+## Related concepts
+
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the CDFs and densities these methods sample from
+- [**Generative Models**](/courses/generative-models/01-what-are-generative-models) — learned samplers; the same accept/reweight ideas appear in their training and inference
+- [**MCMC Sampling**](/wiki/mcmc-sampling) — when rejection and importance sampling break in high dimensions, build a Markov chain whose stationary distribution is the target
+- [**The Bootstrap**](/wiki/bootstrap-resampling) — resampling observed *data* rather than generating from a parametric distribution

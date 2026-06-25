@@ -1,0 +1,117 @@
+---
+title: "Gradient Descent Optimizers: SGD, Momentum, Adagrad, RMSprop & Adam"
+description: "The update rules behind every deep-learning optimizer — plain SGD, momentum and Nesterov, the adaptive family (Adagrad, RMSprop, Adadelta), Adam with bias correction, and AdamW — plus when each one fails and how to choose."
+topics: ["neural-networks"]
+relatedLessons:
+  - "neural-networks/02-gradient-descent"
+  - "calculus-for-ml/03-multivariable-optimization"
+estimatedMinutes: 14
+---
+
+# Gradient Descent Optimizers: SGD, Momentum, Adagrad, RMSprop & Adam
+
+Every optimizer answers the same question — *given the gradient, how do I update the weights?* — and they differ in how much memory of the past they keep and whether they adapt the step size per parameter. This page lays out the update rules in one consistent notation so the lineage from plain SGD to Adam is visible as a sequence of small, well-motivated patches.
+
+Throughout, $\theta$ are the parameters, $g_t = \nabla_\theta L(\theta_t)$ is the gradient at step $t$, and $\eta$ is the learning rate.
+
+## SGD — the baseline
+
+Stochastic gradient descent takes one step downhill per mini-batch:
+
+$$
+\theta_{t+1} = \theta_t - \eta\, g_t
+$$
+
+Simple, memory-free, and with a good learning-rate schedule it generalizes excellently — well-tuned SGD with momentum still wins some vision benchmarks. Its weaknesses motivate everything that follows: it crawls through **ravines** (steep in one direction, flat in another), treats every parameter with the same step size, and is sensitive to the learning rate.
+
+## Momentum — remember the direction
+
+Accumulate a running **velocity** $v$ of past gradients so consistent directions build speed and oscillations cancel:
+
+$$
+v_{t+1} = \mu\, v_t + g_t, \qquad \theta_{t+1} = \theta_t - \eta\, v_{t+1}
+$$
+
+with momentum coefficient $\mu \approx 0.9$. In a ravine, the back-and-forth components cancel across steps while the consistent downhill component accumulates — like a ball gaining speed on a long slope.
+
+**Nesterov (NAG)** evaluates the gradient at the *look-ahead* point $\theta_t - \eta\mu v_t$ rather than at $\theta_t$. By "peeking" where momentum is about to carry it, it corrects overshoot a step earlier and converges slightly faster.
+
+## The adaptive family — a per-parameter step size
+
+The next idea: scale each parameter's step by its own gradient history, so rarely-active features get large steps and frequently-updated ones get small steps.
+
+### Adagrad
+Accumulate the sum of squared gradients $G_t = \sum_{\tau \le t} g_\tau^2$ (per parameter) and divide:
+
+$$
+\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{G_t} + \epsilon}\, g_t
+$$
+
+Great for sparse features. **Fatal flaw:** $G_t$ only grows, so the effective rate $\eta/\sqrt{G_t}$ decays monotonically to zero — training **stalls** before reaching a good solution.
+
+### RMSprop
+Fix Adagrad's decay-to-zero by replacing the ever-growing sum with an **exponential moving average** of squared gradients:
+
+$$
+E_t = \rho\, E_{t-1} + (1-\rho)\, g_t^2, \qquad \theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{E_t} + \epsilon}\, g_t
+$$
+
+with $\rho \approx 0.9$. The average forgets old gradients, so the effective rate stops shrinking and training continues. **Adadelta** is a close cousin that also removes the need to set $\eta$ at all by tracking a second moving average of the updates.
+
+## Adam — momentum meets adaptivity
+
+**Adam** combines momentum (first moment) and RMSprop (second moment), each as an exponential moving average:
+
+$$
+m_t = \beta_1 m_{t-1} + (1-\beta_1) g_t, \qquad v_t = \beta_2 v_{t-1} + (1-\beta_2) g_t^2
+$$
+
+Because $m$ and $v$ start at zero, they are biased toward zero early in training. Adam applies **bias correction**:
+
+$$
+\hat{m}_t = \frac{m_t}{1 - \beta_1^t}, \qquad \hat{v}_t = \frac{v_t}{1 - \beta_2^t}, \qquad
+\theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{\hat{v}_t} + \epsilon}\, \hat{m}_t
+$$
+
+Defaults $\beta_1=0.9$, $\beta_2=0.999$, $\epsilon=10^{-8}$ work across a huge range of problems with little tuning — which is why Adam is the default for most deep learning.
+
+<Callout type="info" title="Why bias correction matters early">
+  At $t=1$ with $\beta_2=0.999$, the raw second moment is $v_1 = 0.001\,g_1^2$ — about 1000× too small, which would make the first step enormous. The correction divides by $1-\beta_2^t = 0.001$, restoring the right scale. The factors $1-\beta_1^t$ and $1-\beta_2^t$ both $\to 1$ as $t$ grows, so bias correction only affects the opening steps — exactly where it is needed.
+</Callout>
+
+### AdamW — decoupled weight decay
+Standard Adam implements L2 regularization by adding $\lambda\theta$ to the gradient, but the adaptive denominator $\sqrt{\hat v_t}$ then *scales the regularization unevenly* across parameters. **AdamW** decouples weight decay from the gradient step, applying it directly to the weights:
+
+$$
+\theta_{t+1} = \theta_t - \eta\left(\frac{\hat{m}_t}{\sqrt{\hat{v}_t}+\epsilon} + \lambda \theta_t\right)
+$$
+
+This restores proper regularization and is the **standard optimizer for training transformers**. (**Nadam** is Adam with Nesterov-style momentum; a smaller, optional tweak.)
+
+## Comparison
+
+| Optimizer | State per param | Adapts per-param rate | Notes |
+|-----------|:---:|:---:|-------|
+| SGD | none | ✗ | strong with a schedule; best generalization on some tasks |
+| Momentum | velocity | ✗ | escapes ravines; near-free upgrade over SGD |
+| Adagrad | sum of $g^2$ | ✓ | good for sparse data; **rate decays to zero** |
+| RMSprop | EMA of $g^2$ | ✓ | fixes Adagrad's stall |
+| Adam | EMA of $g$ and $g^2$ | ✓ | robust default, fast convergence |
+| AdamW | EMA of $g$ and $g^2$ | ✓ | Adam + correct weight decay — transformer default |
+
+## When each fails
+
+- **SGD without momentum** stalls in ravines and is acutely learning-rate sensitive.
+- **Adagrad** halts prematurely as its accumulated denominator grows without bound.
+- **Adam** can converge to solutions that **generalize slightly worse** than SGD on some vision tasks, and rare non-convergence cases motivated fixes like **AMSGrad**. It also still needs warmup early (unstable second-moment estimates) — see the schedules page.
+
+<Callout type="warning" title="Adaptive ≠ no tuning">
+  "Adam just works" is mostly true, but the learning rate still matters and the right value differs from SGD's (Adam's effective per-parameter scaling means its $\eta$ lives on a different scale, typically $10^{-3}$ to $10^{-4}$). And almost all modern recipes pair the optimizer with a **schedule** — AdamW + linear-warmup-cosine is the workhorse combination.
+</Callout>
+
+## Related concepts
+
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the base update and the ravine problem these optimizers solve
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — gradients, curvature, and why per-parameter scaling helps
+- [**Learning Rate Schedules**](/wiki/learning-rate-schedules) — the schedule that sits on top of any optimizer; warmup is essential for Adam
+- [**Newton's Method**](/wiki/newtons-method) — the second-order ideal these first-order methods cheaply approximate
