@@ -11,4 +11,6 @@ export interface WikiPageMeta {
   notebookUrl?: string;
   /** Flags deep, specialized topics that go beyond the core curriculum. Renders an "Advanced" badge. */
   advanced?: boolean;
+  /** Marks an applied, real-world walkthrough. Grouped into a separate "Case Studies" section on /wiki. */
+  kind?: "case-study";
 }

@@ -1,0 +1,123 @@
+---
+title: "The Kolmogorov–Smirnov Test: Comparing Distributions"
+description: "The empirical CDF, the supremum D statistic for one- and two-sample tests, how the KS distribution turns D into a p-value, a worked example, and when to reach for KS vs PSI vs Anderson–Darling for drift detection."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/07-hypothesis-testing"
+  - "ml-in-practice/10-monitoring-and-observability"
+estimatedMinutes: 12
+---
+
+# The Kolmogorov–Smirnov Test: Comparing Distributions
+
+The **Kolmogorov–Smirnov (KS) test** answers a precise question: do two samples come from the same distribution (two-sample), or does one sample come from a specified reference distribution (one-sample)? Unlike PSI it needs **no binning** — it works directly on the empirical cumulative distribution function — which makes it the natural drift detector for continuous features.
+
+Its central idea is geometric: line up the two CDFs and measure the single largest vertical gap between them. If that gap is bigger than sampling noise can plausibly explain, the distributions differ.
+
+## The empirical CDF
+
+Given a sample $x_1, \ldots, x_n$, the **empirical CDF** (ECDF) is the step function that, at any point $x$, reports the fraction of observations at or below $x$:
+
+$$
+F_n(x) = \frac{1}{n} \sum_{i=1}^{n} \mathbf{1}[x_i \le x]
+$$
+
+It rises by $1/n$ at each observed value and is flat in between. By the Glivenko–Cantelli theorem, $F_n$ converges uniformly to the true CDF $F$ as $n \to \infty$ — which is exactly what makes a CDF-gap statistic meaningful.
+
+## The D statistic
+
+### One-sample
+
+Compare the ECDF $F_n$ against a fully specified reference CDF $F_0$ (e.g. $\mathcal{N}(0,1)$). The statistic is the **supremum** of the absolute gap:
+
+$$
+D_n = \sup_x \, \bigl| F_n(x) - F_0(x) \bigr|
+$$
+
+In practice the supremum is attained at one of the data points, so it reduces to a finite maximum. Because the ECDF jumps at each $x_{(i)}$, you must check the gap on *both* sides of every jump:
+
+$$
+D_n = \max_{1 \le i \le n} \max\!\left( \left|\tfrac{i}{n} - F_0(x_{(i)})\right|,\; \left|\tfrac{i-1}{n} - F_0(x_{(i)})\right| \right)
+$$
+
+where $x_{(1)} \le \cdots \le x_{(n)}$ are the order statistics.
+
+### Two-sample
+
+Compare two ECDFs $F_n$ and $G_m$ directly — no reference distribution needed:
+
+$$
+D_{n,m} = \sup_x \, \bigl| F_n(x) - G_m(x) \bigr|
+$$
+
+This is the version used in drift monitoring: $F_n$ is the training sample, $G_m$ is the production window.
+
+<Callout type="warning" title="Check both sides of every jump">
+  Because the ECDF is a right-continuous step function, the largest gap can occur just *before* a jump, not at it. Evaluating only $|F_n(x_{(i)}) - F_0(x_{(i)})|$ understates $D$. The from-scratch implementation must take the max over both $i/n$ and $(i-1)/n$ at each point.
+</Callout>
+
+## From D to a p-value
+
+Under $H_0$ (same distribution), the scaled statistic converges to the **Kolmogorov distribution**, whose tail gives the p-value. The remarkable property: this limiting distribution is **distribution-free** — it does not depend on the underlying $F$ (for continuous data). The asymptotic tail is
+
+$$
+P\!\left(\sqrt{n}\, D_n > t\right) \to 2 \sum_{k=1}^{\infty} (-1)^{k-1} e^{-2 k^2 t^2}
+$$
+
+For the two-sample test, replace $\sqrt{n}$ with the effective size $\sqrt{\tfrac{nm}{n+m}}$. A common large-sample rejection rule at level $\alpha$:
+
+$$
+D_{n,m} > c(\alpha)\sqrt{\frac{n+m}{nm}}, \qquad c(0.05) \approx 1.36,\quad c(0.01) \approx 1.63
+$$
+
+## Worked example
+
+Two small samples:
+
+- $A = \{0.1,\ 0.2,\ 0.5,\ 0.7\}$ ($n = 4$)
+- $B = \{0.3,\ 0.6,\ 0.8,\ 0.9\}$ ($m = 4$)
+
+Walk left to right over all pooled points, tracking each ECDF (each step is $1/4 = 0.25$):
+
+| $x$ | $F_A(x)$ | $G_B(x)$ | $\lvert F_A - G_B\rvert$ |
+|-----|----------|----------|--------------------------|
+| 0.1 | 0.25 | 0.00 | 0.25 |
+| 0.2 | 0.50 | 0.00 | **0.50** |
+| 0.3 | 0.50 | 0.25 | 0.25 |
+| 0.5 | 0.75 | 0.25 | 0.50 |
+| 0.6 | 0.75 | 0.50 | 0.25 |
+| 0.7 | 1.00 | 0.50 | **0.50** |
+| 0.8 | 1.00 | 0.75 | 0.25 |
+| 0.9 | 1.00 | 1.00 | 0.00 |
+
+$D_{4,4} = 0.50$. The 5 % critical value is $1.36\sqrt{(4+4)/(4\cdot 4)} = 1.36\sqrt{0.5} \approx 0.962$. Since $0.50 < 0.962$, we **fail to reject** $H_0$ — with only 4 points each, this much separation is unremarkable. The same $D = 0.5$ with $n = m = 200$ would be wildly significant; KS power scales with sample size.
+
+## KS for drift detection
+
+KS is a standard alternative to PSI for monitoring continuous features. The two answer subtly different questions:
+
+| | KS test | PSI |
+|---|---------|-----|
+| Binning | None (works on ECDF) | Required (typically deciles) |
+| Output | $D$ + a p-value | Unitless score, no p-value |
+| Sensitivity | Largest *single* CDF gap — strongest near the distribution's center | Aggregate over all bins — spreads weight across the range |
+| Failure with huge $n$ | Hypersensitive: flags tiny, irrelevant shifts as "significant" | Threshold is sample-size-stable (proportions, not counts) |
+| Best for | Smaller windows; principled significance | Large production streams; fixed action thresholds |
+
+<Callout type="info" title="At production scale, the p-value lies">
+  With millions of rows, the KS test rejects $H_0$ for *any* difference, however trivial — statistical significance ≠ operational significance. Teams running KS on large streams either subsample to a fixed $n$, or ignore the p-value and threshold on the **effect size $D$** directly (e.g. alert at $D > 0.1$), which is closer in spirit to how PSI thresholds are used.
+</Callout>
+
+## Assumptions and limitations
+
+- **Continuous data.** The distribution-free guarantee holds for continuous distributions. With ties (discrete or heavily rounded data) the standard p-value is conservative; use a permutation-based variant instead.
+- **Most sensitive near the center.** $D$ tends to be largest where the CDF is steepest (the bulk), so KS is comparatively **weak at detecting tail differences**. If two distributions share a center but differ in the tails, KS may miss it.
+- **One-sample KS needs a fully specified $F_0$.** If you estimate $F_0$'s parameters from the same data (e.g. fit then test normality), the standard critical values are wrong — use the **Lilliefors** correction for normality testing.
+
+**When the tails matter, use Anderson–Darling.** The Anderson–Darling test weights the gap by $1/\sqrt{F_0(x)(1-F_0(x))}$, inflating sensitivity in the tails — the right choice when tail behavior is what you care about (e.g. risk, extreme values).
+
+## Related concepts
+
+- [**Hypothesis Testing: Null, Alternative & p-values**](/wiki/hypothesis-testing) — the null-hypothesis framework the KS p-value lives inside
+- [**Population Stability Index (PSI)**](/wiki/population-stability-index) — the binned drift metric KS complements; same job, different trade-offs
+- [**Bootstrap & Resampling**](/wiki/bootstrap-resampling) — the resampling route to a KS p-value when ties break the distribution-free guarantee

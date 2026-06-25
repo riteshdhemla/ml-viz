@@ -13,15 +13,23 @@ export const metadata: Metadata = {
   alternates: { canonical: absoluteUrl("/wiki") },
 };
 
-/** Group pages by their first topic tag, sections sorted alphabetically. */
+/**
+ * Group pages by their first topic tag, sections sorted alphabetically.
+ * Case studies are pulled into their own group, which always sorts last.
+ */
 function groupByTopic(pages: WikiPageMeta[]): [string, WikiPageMeta[]][] {
   const groups = new Map<string, WikiPageMeta[]>();
   for (const page of pages) {
-    const topic = page.topics?.[0] ?? "general";
-    if (!groups.has(topic)) groups.set(topic, []);
-    groups.get(topic)!.push(page);
+    const key =
+      page.kind === "case-study" ? "case-studies" : page.topics?.[0] ?? "general";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(page);
   }
-  return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+  return [...groups.entries()].sort(([a], [b]) => {
+    if (a === "case-studies") return 1;
+    if (b === "case-studies") return -1;
+    return a.localeCompare(b);
+  });
 }
 
 /** "graphical-models" → "Graphical Models" */
