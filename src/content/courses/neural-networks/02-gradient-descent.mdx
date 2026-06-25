@@ -187,6 +187,10 @@ The learning rate $\eta$ scales every step. Using the same line-fitting problem,
   training diverges, the first fix is to lower $\eta$ by 10×.
 </Callout>
 
+In practice $\eta$ is rarely held constant — it is *scheduled* to start large and shrink, often with a warmup ramp first:
+
+<WikiLink slug="learning-rate-schedules" title="Learning Rate Schedules: Warmup, Decay & Restarts" />
+
 ## Batch, stochastic, and mini-batch
 
 In the example above we summed the gradient over **all three** points before each step. That is *full-batch* gradient descent. With millions of examples, summing over the whole dataset for a single step is far too slow, so we estimate the gradient from a subset. The number of examples per step defines the variant:
@@ -213,6 +217,10 @@ Plain SGD crawls through narrow **ravines** — regions where the loss is very s
 <Callout type="info" title="Which optimizer?">
   Start with **Adam** — it works well out of the box and is the default for most deep learning. Well-tuned SGD with momentum can generalize slightly better on some vision tasks, but Adam needs far less tuning.
 </Callout>
+
+For the full lineage — Adagrad, RMSprop, Adam's bias correction, and AdamW — with every update rule and when each fails:
+
+<WikiLink slug="gradient-descent-optimizers" title="Optimizers: SGD, Momentum, Adagrad, RMSprop & Adam" />
 
 ## See it run
 

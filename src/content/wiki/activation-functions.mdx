@@ -1,0 +1,95 @@
+---
+title: "Activation Functions: From Sigmoid to GELU"
+description: "Why networks need non-linearity, the saturation and dead-neuron failure modes, and a worked comparison of sigmoid, tanh, ReLU and its variants, ELU, GELU, Swish, and softmax — with derivatives and a practical chooser."
+topics: ["neural-networks"]
+relatedLessons:
+  - "neural-networks/01-what-is-a-neuron"
+  - "neural-networks/06-weight-initialization"
+estimatedMinutes: 13
+---
+
+# Activation Functions: From Sigmoid to GELU
+
+An **activation function** is the non-linearity applied to a neuron's pre-activation $z = \mathbf{w}\cdot\mathbf{x} + b$. Without it, stacking layers is pointless: the composition of linear maps is still linear, so a 100-layer network would collapse to a single matrix multiply. The activation is what lets depth buy expressive power — and the *choice* of activation governs how gradients flow, which is the difference between a network that trains and one that stalls.
+
+## The job of an activation
+
+Two properties matter for training a deep network by gradient descent:
+
+1. **Non-linearity** — so composing layers produces genuinely new functions (curved decision boundaries, not just hyperplanes).
+2. **A well-behaved derivative** — backprop multiplies derivatives layer by layer. If each factor is much smaller than 1, the product shrinks toward zero through depth (the **vanishing gradient**); if much larger, it explodes. The activation's derivative is one factor in every one of those products.
+
+This is why "use a non-linearity" is necessary but not sufficient — sigmoid is non-linear yet trains deep nets poorly, because its derivative saturates.
+
+## Saturation and the vanishing gradient
+
+A function **saturates** when its output flattens for large $|z|$, driving its derivative toward 0. Sigmoid $\sigma(z) = 1/(1+e^{-z})$ has derivative $\sigma'(z) = \sigma(z)(1-\sigma(z))$, which **peaks at just 0.25** (at $z=0$) and is near 0 once $|z| \gtrsim 5$. Stack ten sigmoid layers and the gradient reaching the first layer is scaled by at most $0.25^{10} \approx 10^{-6}$ — the early layers barely learn.
+
+<Callout type="warning" title="Sigmoid is also not zero-centered">
+  Sigmoid outputs are all positive (in $(0,1)$), so every weight feeding into a downstream neuron receives a gradient of the same sign on a given example. That forces inefficient zig-zag updates. Tanh fixes the centering (range $(-1,1)$) but still saturates — its derivative $1-\tanh^2(z)$ peaks at 1 but vanishes in the tails just like sigmoid.
+</Callout>
+
+## ReLU and its family
+
+**ReLU** $\max(0, z)$ is the modern default for hidden layers. Its derivative is exactly **1** for $z > 0$ — it does not shrink gradients in the active region — and it costs a single comparison. That combination is why deep nets became trainable at scale.
+
+Its weakness is the **dead/dying ReLU**: a neuron whose pre-activation is negative for *every* input outputs 0 with derivative 0, so it receives no gradient and can never recover. A bad initialization or too-large a learning rate can kill a large fraction of units permanently.
+
+The variants patch this leak by giving negative inputs a small, nonzero slope:
+
+| Function | Formula ($z<0$ branch) | Negative-side gradient | Note |
+|----------|------------------------|------------------------|------|
+| **Leaky ReLU** | $\alpha z$ (e.g. $\alpha=0.01$) | constant $\alpha$ | never fully dies |
+| **PReLU** | $\alpha z$, $\alpha$ **learned** | learned per-channel | extra parameters |
+| **ELU** | $\alpha(e^z - 1)$ | smooth, $\to 0$ in tail | pushes mean activation toward 0 |
+
+## Smooth modern activations: GELU and Swish
+
+Transformers and recent vision models favor smooth, non-monotonic activations that empirically train better than ReLU at scale:
+
+- **GELU** (Gaussian Error Linear Unit): $\text{GELU}(z) = z\,\Phi(z)$, where $\Phi$ is the standard-normal CDF. It weights the input by the probability it is retained — a "soft" gate. The default in BERT, GPT, and ViT.
+- **Swish / SiLU**: $\text{SiLU}(z) = z\,\sigma(z)$. Closely related to GELU; self-gated and smooth. Used in EfficientNet and many LLMs (often as the gate in **SwiGLU** feed-forward blocks).
+
+Both are smooth everywhere (no kink at 0) and allow small negative outputs, which helps gradient flow without the dead-unit problem.
+
+## Softmax — a special case for outputs
+
+**Softmax** is not a hidden-layer activation; it is the output layer for **multi-class classification**. It maps a vector of logits to a probability distribution:
+
+$$
+\text{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
+$$
+
+It couples all outputs (they sum to 1) and pairs with cross-entropy loss, whose combined gradient simplifies to the clean $\hat{p} - y$. For numerical stability, subtract $\max_j z_j$ from every logit before exponentiating — this is exact (softmax is shift-invariant) and prevents overflow.
+
+## Derivatives at a glance
+
+| Activation | $f(z)$ | $f'(z)$ | Max of $f'$ |
+|------------|--------|---------|-------------|
+| Sigmoid | $\sigma(z)$ | $\sigma(z)(1-\sigma(z))$ | 0.25 |
+| Tanh | $\tanh(z)$ | $1-\tanh^2(z)$ | 1.0 |
+| ReLU | $\max(0,z)$ | $\mathbf{1}[z>0]$ | 1.0 |
+| Leaky ReLU | $\max(\alpha z, z)$ | $1$ if $z>0$ else $\alpha$ | 1.0 |
+| ELU | $z$ if $z>0$ else $\alpha(e^z-1)$ | $1$ if $z>0$ else $f(z)+\alpha$ | 1.0 |
+
+The pattern that matters: sigmoid's $0.25$ ceiling vs ReLU's $1.0$ is the heart of why the field moved away from saturating activations for hidden layers.
+
+## A practical chooser
+
+- **Hidden layers, default:** ReLU. Cheap, well-understood, strong baseline.
+- **ReLU units dying:** switch to Leaky ReLU / ELU, or lower the learning rate and fix initialization.
+- **Transformers / large models:** GELU (or SwiGLU in the feed-forward block).
+- **Binary classification output:** sigmoid (one logit → probability).
+- **Multi-class output:** softmax over the logits.
+- **Regression output:** usually **no activation** (linear) on the final layer.
+
+<Callout type="info" title="Initialization is tuned to the activation">
+  He initialization is designed for ReLU (variance $2/n_\text{in}$); Xavier/Glorot for tanh/sigmoid ($1/n_\text{in}$). Pairing the wrong init with an activation reintroduces vanishing or exploding signals on the very first forward pass — which is why activation choice and weight init are decided together.
+</Callout>
+
+## Related concepts
+
+- [**What Is a Neuron**](/courses/neural-networks/01-what-is-a-neuron) — where the activation sits in the single-neuron computation
+- [**Weight Initialization**](/courses/neural-networks/06-weight-initialization) — He vs Xavier, chosen to match the activation's gradient behavior
+- [**Softmax & Cross-Entropy**](/wiki/softmax-cross-entropy) — the output-layer activation and its loss, derived in full
+- [**Vanishing Gradient Analysis**](/wiki/vanishing-gradient-analysis) — the saturation problem traced through a deep network

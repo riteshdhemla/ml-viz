@@ -1,0 +1,96 @@
+---
+title: "Learning Rate Schedules: Warmup, Decay & Restarts"
+description: "Why a fixed learning rate is rarely optimal, and the schedules that fix it — step and exponential decay, cosine annealing, linear warmup, one-cycle, reduce-on-plateau, and SGDR warm restarts — with formulas and a practical chooser."
+topics: ["neural-networks"]
+relatedLessons:
+  - "neural-networks/02-gradient-descent"
+  - "model-evaluation/03-training-techniques"
+estimatedMinutes: 12
+---
+
+# Learning Rate Schedules: Warmup, Decay & Restarts
+
+The learning rate $\eta$ is the single most important training hyperparameter — but the *best* value changes over the course of training. Early on you want large steps to traverse the loss landscape quickly; near a minimum you want small steps to settle without bouncing. A **learning rate schedule** varies $\eta$ across steps to get both, and modern recipes (especially for transformers) treat the schedule as essential, not optional.
+
+## Why a constant rate is a compromise
+
+A fixed $\eta$ forces one value to serve two conflicting phases. Too large for the whole run and training oscillates around the minimum, never settling — the loss plateaus high. Too small and early training crawls, wasting compute and risking getting stuck in a poor region. Decaying the rate over time resolves the tension: big steps while far away, small steps to fine-tune. Empirically, a well-chosen decay schedule reaches a lower final loss than any constant rate.
+
+## Decay schedules
+
+Let $\eta_0$ be the base rate and $t$ the step (or epoch).
+
+### Step decay
+Drop the rate by a factor $\gamma$ every $s$ steps:
+
+$$
+\eta_t = \eta_0 \cdot \gamma^{\lfloor t / s \rfloor}
+$$
+
+Simple and a long-standing default for vision (e.g. ×0.1 at epochs 30, 60, 90). The discontinuous drops are visible as sudden loss improvements.
+
+### Exponential decay
+Smooth version of step decay: $\eta_t = \eta_0 \, e^{-\lambda t}$. No cliffs, one decay-rate knob.
+
+### Cosine annealing
+The modern default. Anneal $\eta$ along a half-cosine from $\eta_0$ down to a floor $\eta_\min$ over $T$ steps:
+
+$$
+\eta_t = \eta_\min + \tfrac{1}{2}(\eta_0 - \eta_\min)\left(1 + \cos\frac{\pi t}{T}\right)
+$$
+
+It spends a long time at high rates early, then decays gently — the shape that pairs well with warmup for transformers and large-batch training.
+
+### Polynomial / linear decay
+$\eta_t = \eta_0 (1 - t/T)^p$. With $p=1$ this is the **linear** decay-to-zero used in many LLM fine-tuning recipes.
+
+## Warmup
+
+Starting at the full learning rate can be destabilizing — especially for adaptive optimizers and large batches. **Warmup** ramps $\eta$ up from ~0 to $\eta_0$ over the first $T_w$ steps (usually linearly), then hands off to a decay schedule:
+
+$$
+\eta_t = \eta_0 \cdot \frac{t}{T_w} \quad (t \le T_w), \qquad \text{then decay for } t > T_w
+$$
+
+<Callout type="info" title="Why Adam needs warmup">
+  Adam divides each step by a running estimate of the gradient's second moment. In the first few steps that estimate is computed from almost no data, so it is high-variance — early updates can be wildly mis-scaled and shove the weights into a bad region. Warmup keeps steps tiny until the moment estimates stabilize. This is the motivation behind both linear warmup and the **RAdam** "rectified Adam" variant. The canonical transformer schedule is **linear warmup → cosine (or inverse-sqrt) decay**.
+</Callout>
+
+The original Transformer used warmup followed by inverse-square-root decay:
+
+$$
+\eta_t = d_\text{model}^{-0.5} \cdot \min\!\left(t^{-0.5},\; t \cdot T_w^{-1.5}\right)
+$$
+
+which ramps linearly to a peak at $t = T_w$, then decays as $t^{-0.5}$.
+
+## Adaptive and cyclic schedules
+
+### Reduce-on-plateau
+Rather than a fixed calendar, watch a validation metric and cut $\eta$ (e.g. ×0.1) whenever it stops improving for `patience` epochs. Robust when you don't know the right schedule in advance; reacts to the actual training dynamics.
+
+### One-cycle
+Anneal $\eta$ **up** to a large maximum over the first ~40% of training, then back **down** below the start, often with momentum moving inversely. The high-rate middle phase acts as regularization ("super-convergence") and can train some models in far fewer epochs.
+
+### Warm restarts (SGDR)
+Run cosine annealing to the floor, then **jump $\eta$ back up** and anneal again, repeating with progressively longer cycles. Each restart kicks the optimizer out of a sharp minimum; the set of models captured just before each restart also makes a cheap ensemble (**snapshot ensembling**).
+
+## A practical chooser
+
+| Situation | Schedule |
+|-----------|----------|
+| Transformers / LLM pretraining | linear warmup → cosine (or inverse-sqrt) decay |
+| LLM fine-tuning | short linear warmup → linear decay to 0 |
+| CNN from scratch | step decay, or one-cycle for speed |
+| Don't know the right schedule | reduce-on-plateau on val loss |
+| Want a cheap ensemble | cosine warm restarts (SGDR) + snapshots |
+
+<Callout type="warning" title="The schedule length must match the run">
+  Cosine and linear decay are parameterized by the *total* number of steps $T$. If you set $T$ longer than you actually train, $\eta$ never reaches its floor and the model is under-annealed; if shorter, it sits at the floor doing nothing for the tail. Always set $T$ to the real planned step count — a common silent bug when training is cut short or extended.
+</Callout>
+
+## Related concepts
+
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the update the learning rate scales, and why its size controls speed vs stability
+- [**Training Techniques**](/courses/model-evaluation/03-training-techniques) — schedules alongside early stopping, regularization, and batch size
+- [**Gradient Descent Optimizers**](/wiki/gradient-descent-optimizers) — the optimizer the schedule sits on top of; AdamW + cosine is the standard pairing
