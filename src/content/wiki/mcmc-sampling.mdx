@@ -1,0 +1,89 @@
+---
+title: "MCMC Sampling: Metropolis–Hastings & Gibbs"
+description: "Why intractable posteriors need sampling, the Metropolis–Hastings acceptance ratio and detailed balance, Gibbs sampling from full conditionals, and the practical machinery — burn-in, thinning, acceptance-rate tuning, trace plots, R-hat and effective sample size."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/04-bayesian-inference"
+  - "bayesian-methods/01-bayesian-linear-regression"
+estimatedMinutes: 14
+advanced: true
+---
+
+# MCMC Sampling: Metropolis–Hastings & Gibbs
+
+Bayesian inference produces a posterior $p(\theta \mid x) \propto p(x \mid \theta)\, p(\theta)$. The proportionality hides a problem: the normalizing constant $p(x) = \int p(x \mid \theta)\,p(\theta)\, d\theta$ is usually an intractable high-dimensional integral. **Markov Chain Monte Carlo (MCMC)** sidesteps it entirely — it draws samples from the posterior *knowing the density only up to that constant*, then answers every downstream question (means, intervals, predictions) with sample averages.
+
+## Why sampling, and why Monte Carlo works
+
+Almost every Bayesian quantity is an expectation under the posterior:
+
+$$
+\mathbb{E}[g(\theta) \mid x] = \int g(\theta)\, p(\theta \mid x)\, d\theta \approx \frac{1}{N}\sum_{i=1}^{N} g(\theta^{(i)}), \qquad \theta^{(i)} \sim p(\theta \mid x)
+$$
+
+If we can *draw samples* $\theta^{(i)}$ from the posterior, the integral becomes an average — the **Monte Carlo** estimate, which converges by the law of large numbers. The catch: we can't sample directly from a distribution we only know up to a constant. MCMC's trick is to construct a **Markov chain** whose stationary distribution *is* the posterior; run it long enough and its states are (correlated) samples from the target.
+
+## Metropolis–Hastings
+
+The general-purpose recipe. To sample from a target $\pi(\theta)$ known up to a constant:
+
+1. From the current state $\theta$, draw a candidate $\theta'$ from a **proposal** $q(\theta' \mid \theta)$ (e.g. a Gaussian centered at $\theta$).
+2. Compute the **acceptance ratio**
+
+$$
+\alpha = \min\!\left(1,\; \frac{\pi(\theta')\, q(\theta \mid \theta')}{\pi(\theta)\, q(\theta' \mid \theta)}\right)
+$$
+
+3. Accept $\theta'$ with probability $\alpha$ (set next state to $\theta'$); otherwise **stay** at $\theta$ (and record $\theta$ again).
+4. Repeat.
+
+The normalizing constant **cancels in the ratio** $\pi(\theta')/\pi(\theta)$ — which is the whole point. You only ever need the unnormalized posterior $p(x\mid\theta)p(\theta)$.
+
+When the proposal is symmetric ($q(\theta'\mid\theta) = q(\theta\mid\theta')$, as for a Gaussian random walk), the $q$ terms cancel too and the ratio collapses to the original **Metropolis** form $\alpha = \min(1, \pi(\theta')/\pi(\theta))$ — always move to higher density, sometimes move to lower.
+
+<Callout type="info" title="Detailed balance is why it works">
+  The acceptance rule is engineered so the chain satisfies **detailed balance**: $\pi(\theta)\,P(\theta \to \theta') = \pi(\theta')\,P(\theta' \to \theta)$. A chain in detailed balance with $\pi$ is reversible and has $\pi$ as its stationary distribution — so its long-run samples are distributed according to the target, whatever the (positive) proposal.
+</Callout>
+
+## Gibbs sampling
+
+When you can derive the **full conditional** distribution of each parameter given all the others, $p(\theta_j \mid \theta_{-j}, x)$, and sample from it directly, Gibbs sampling applies. Cycle through the parameters, updating one at a time from its full conditional:
+
+$$
+\theta_1^{(t+1)} \sim p(\theta_1 \mid \theta_2^{(t)}, \ldots, \theta_d^{(t)}, x), \quad
+\theta_2^{(t+1)} \sim p(\theta_2 \mid \theta_1^{(t+1)}, \theta_3^{(t)}, \ldots, x), \quad \ldots
+$$
+
+Gibbs is a special case of Metropolis–Hastings where the proposal is the full conditional and **every move is accepted** ($\alpha = 1$). It shines for **conditionally conjugate** models (hierarchical models, mixtures with latent labels) where each conditional is a standard distribution. Its weakness: when parameters are highly correlated, updating one axis at a time produces slow, zig-zag exploration.
+
+## The practical machinery
+
+A raw chain is not yet a clean set of posterior samples. Four issues to handle:
+
+- **Burn-in.** The chain starts at an arbitrary point and needs time to reach the high-density region. Discard the first $K$ samples (e.g. the first 10–50%) so the start point doesn't bias estimates.
+- **Thinning.** Consecutive states are autocorrelated. Keeping every $k$-th sample reduces storage and autocorrelation — though for estimating means it's usually better to keep everything and rely on the effective sample size. Thin only when storage or per-sample cost is the bottleneck.
+- **Acceptance rate tuning.** The proposal scale is the key knob. Too small → nearly all proposals accepted but tiny steps, glacial exploration. Too large → big jumps almost always rejected, the chain gets stuck. The classic target is **~23%** acceptance for high-dimensional random-walk Metropolis (≈44% for a single parameter).
+- **Multiple chains.** Run several chains from dispersed starts to diagnose convergence and detect multimodality a single chain might miss.
+
+## Convergence diagnostics
+
+You can never *prove* convergence, but several diagnostics catch failure:
+
+- **Trace plots.** Plot each parameter against iteration. A converged chain looks like a stationary "fuzzy caterpillar"; trends, drift, or a chain stuck in a region signal trouble.
+- **$\hat R$ (Gelman–Rubin).** Compares between-chain and within-chain variance across multiple chains. $\hat R \approx 1$ (conventionally $< 1.01$) indicates the chains have mixed to the same distribution; $\hat R$ well above 1 means they haven't.
+- **Effective sample size (ESS).** Because samples are autocorrelated, $N$ draws carry the information of fewer independent ones: $\mathrm{ESS} = N / (1 + 2\sum_{k\ge 1}\rho_k)$, where $\rho_k$ is the lag-$k$ autocorrelation. ESS is what actually determines Monte-Carlo error — report it, not the raw chain length.
+
+<Callout type="warning" title="A converged-looking chain can still be wrong">
+  Good trace plots and $\hat R \approx 1$ show the chains *agree* — not that they found the whole posterior. If every chain starts near the same mode of a multimodal posterior, they can all converge to that mode and report $\hat R = 1.00$ while missing the rest of the distribution. Disperse the starting points and, where feasible, use samplers built for multimodality (parallel tempering, HMC/NUTS).
+</Callout>
+
+## Beyond random-walk MCMC
+
+Random-walk Metropolis explores by diffusion, which scales poorly in high dimensions. **Hamiltonian Monte Carlo (HMC)** uses the gradient of the log-posterior to propose distant, high-acceptance moves; the **No-U-Turn Sampler (NUTS)** auto-tunes its trajectory length and is the default engine in Stan, PyMC, and NumPyro. When you have gradients and a continuous parameter space, HMC/NUTS typically delivers far higher ESS per second than the methods on this page — which remain the conceptual foundation and the right tool for discrete or non-differentiable targets.
+
+## Related concepts
+
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the posterior that MCMC samples from, and the intractable evidence integral it routes around
+- [**Bayesian Linear Regression**](/courses/bayesian-methods/01-bayesian-linear-regression) — a conjugate model where Gibbs full conditionals are clean and closed-form
+- [**The Bootstrap**](/wiki/bootstrap-resampling) — the frequentist resampling counterpart: approximate a sampling distribution instead of a posterior
+- [**Beta–Bernoulli Posterior**](/wiki/beta-bernoulli-posterior) — the conjugate case where you can sample the posterior directly, no MCMC required

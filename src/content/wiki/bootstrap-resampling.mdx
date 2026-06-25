@@ -1,0 +1,104 @@
+---
+title: "The Bootstrap: Resampling for Standard Errors & Confidence Intervals"
+description: "The plug-in principle, the core resample-with-replacement algorithm, percentile / basic / BCa confidence intervals, why ~63.2% of rows appear in each resample, when the bootstrap fails, and the block bootstrap for dependent data."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/06-statistical-inference"
+  - "model-evaluation/02-validation-strategies"
+estimatedMinutes: 13
+---
+
+# The Bootstrap: Resampling for Standard Errors & Confidence Intervals
+
+The **bootstrap** estimates the sampling distribution of *almost any* statistic by resampling the data you already have — no formula, no normality assumption, no closed form required. When you can compute a statistic, you can bootstrap its standard error and confidence interval. It is the workhorse behind error bars on metrics like AUC, median, and correlation, where analytic standard errors are awkward or unknown.
+
+## The plug-in principle
+
+We want to know the sampling variability of a statistic $\hat\theta = s(x_1, \ldots, x_n)$ — how much it would wobble if we could redraw the sample from the true distribution $F$ over and over. We can't redraw from $F$; we only have one sample. The bootstrap's move is to **substitute the empirical distribution $\hat F$ for the unknown $F$** (the "plug-in principle"). Sampling from $\hat F$ is just drawing from the observed data **with replacement**. The variability of the statistic across those resamples approximates its true sampling variability.
+
+## The algorithm
+
+To bootstrap any statistic $\hat\theta$:
+
+1. Draw a **resample** of size $n$ from the data *with replacement* — some rows appear multiple times, some not at all.
+2. Compute the statistic on the resample: $\hat\theta^{*(b)}$.
+3. Repeat $B$ times ($B = 1{,}000$–$10{,}000$ typical).
+4. The collection $\{\hat\theta^{*(1)}, \ldots, \hat\theta^{*(B)}\}$ is the **bootstrap distribution** — a stand-in for the sampling distribution of $\hat\theta$.
+
+The **bootstrap standard error** is just the standard deviation of that collection:
+
+$$
+\widehat{\mathrm{SE}}_{\mathrm{boot}} = \sqrt{\frac{1}{B-1} \sum_{b=1}^{B} \left( \hat\theta^{*(b)} - \bar{\theta}^{*} \right)^2}, \qquad \bar{\theta}^{*} = \frac{1}{B}\sum_b \hat\theta^{*(b)}
+$$
+
+<Callout type="info" title="Why ~63.2% of rows appear in each resample">
+  Drawing $n$ times with replacement, the chance a specific row is *never* picked is $(1 - 1/n)^n \to e^{-1} \approx 0.368$. So each resample contains about $1 - 0.368 = 63.2\%$ of the distinct original rows; the rest are duplicates. The left-out 36.8% is exactly the held-out set behind the **.632 bootstrap** estimator for model evaluation.
+</Callout>
+
+## Confidence intervals
+
+Three intervals, in increasing order of correctness (and cost):
+
+### Percentile interval
+
+Take the empirical $\alpha/2$ and $1-\alpha/2$ quantiles of the bootstrap distribution directly:
+
+$$
+\left[ \hat\theta^{*}_{(\alpha/2)},\; \hat\theta^{*}_{(1-\alpha/2)} \right]
+$$
+
+Simple and the most common in practice. It is accurate when the bootstrap distribution is roughly symmetric and unbiased, and it respects the parameter's range (a CI for a correlation stays in $[-1, 1]$).
+
+### Basic (pivotal) interval
+
+Reflects the percentiles around the point estimate, correcting for bias in the bootstrap distribution's location:
+
+$$
+\left[ 2\hat\theta - \hat\theta^{*}_{(1-\alpha/2)},\; 2\hat\theta - \hat\theta^{*}_{(\alpha/2)} \right]
+$$
+
+Better than percentile when the bootstrap distribution is shifted, but it can produce limits outside the parameter's valid range.
+
+### BCa (bias-corrected and accelerated)
+
+The gold standard. It adjusts the percentile endpoints for two things: **bias** (the bootstrap distribution not centered on $\hat\theta$) via a correction $z_0$, and **skew** (variance that changes with $\theta$) via an acceleration $a$ estimated by jackknife. BCa is **second-order accurate** — its coverage error shrinks like $1/n$ rather than $1/\sqrt{n}$ — and transformation-respecting. Prefer it when the statistic is skewed (ratios, variances, extreme quantiles) and accuracy matters.
+
+| Interval | Corrects bias | Corrects skew | Respects range | Cost |
+|----------|:---:|:---:|:---:|------|
+| Percentile | ✗ | ✗ | ✓ | low |
+| Basic | ✓ | ✗ | ✗ | low |
+| BCa | ✓ | ✓ | ✓ | higher (jackknife) |
+
+## Worked sketch — CI for the median
+
+Analytic standard errors for the median are clumsy (they depend on the unknown density at the median). The bootstrap sidesteps this entirely. Given $n = 200$ incomes:
+
+1. Resample 200 incomes with replacement; record the median. Repeat $B = 5{,}000$ times.
+2. $\widehat{\mathrm{SE}} = \mathrm{sd}$ of the 5,000 medians.
+3. 95% percentile CI = the 2.5th and 97.5th percentiles of those 5,000 medians.
+
+No density estimation, no formula — and the same three lines of code work for the trimmed mean, the Gini coefficient, or AUC.
+
+## When the bootstrap fails
+
+The bootstrap is not magic. It breaks when the plug-in distribution $\hat F$ is a poor stand-in for $F$ *in the way the statistic depends on it*:
+
+- **Extreme order statistics** — the maximum or minimum. The sample max can never exceed the largest observed value, so the bootstrap distribution of $\max$ is degenerate and badly underestimates the upper tail.
+- **Heavy-tailed data with infinite variance.** The bootstrap of the mean is inconsistent when the variance doesn't exist; the resample means don't converge to the right limit.
+- **Very small $n$.** With $n = 5$, $\hat F$ is a crude approximation of $F$; intervals are unreliable regardless of $B$.
+- **Dependent data** (time series, spatial, clustered). Plain resampling destroys the autocorrelation, so the SE is underestimated. Use a **block bootstrap** (below).
+
+<Callout type="warning" title="More resamples ≠ more data">
+  Increasing $B$ shrinks Monte-Carlo noise in the *estimate of* the bootstrap distribution, but it cannot add information beyond the original $n$ observations. If $n$ is too small or $\hat F$ is a bad proxy for $F$, no value of $B$ fixes it. $B$ controls precision of the method; $n$ controls what the method can possibly know.
+</Callout>
+
+## Block bootstrap for time series
+
+Autocorrelated data violates the i.i.d. assumption behind ordinary resampling. The **moving block bootstrap** preserves short-range dependence: instead of resampling individual points, resample contiguous **blocks** of length $\ell$ and concatenate them. Within a block the temporal structure is intact; only the joins between blocks are artificial. Choose $\ell$ large enough to capture the autocorrelation length (rules of thumb scale it like $n^{1/3}$) but small enough to still get many distinct blocks.
+
+## Related concepts
+
+- [**Statistical Inference & Sampling Distributions**](/courses/probability-statistics/06-statistical-inference) — the sampling-distribution concept the bootstrap approximates by resampling
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — cross-validation and the .632 bootstrap are the same resampling idea applied to generalization error
+- [**The Kolmogorov–Smirnov Test**](/wiki/kolmogorov-smirnov-test) — when ties break KS's distribution-free p-value, a permutation/resampling test recovers it
+- [**MCMC Sampling**](/wiki/mcmc-sampling) — the other major resampling-driven inference tool, aimed at posteriors rather than sampling distributions
