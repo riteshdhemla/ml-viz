@@ -1,0 +1,132 @@
+---
+title: "Information Theory for ML: Entropy, KL Divergence, and Cross-Entropy"
+description: "Shannon entropy as a measure of surprise and compressibility, KL divergence as the cost of using the wrong model, cross-entropy loss as negative log-likelihood under a categorical distribution, mutual information for feature selection, and how these quantities unify probabilistic ML losses."
+topics: ["probability"]
+relatedLessons:
+  - "probability-statistics/03-maximum-likelihood-estimation"
+  - "neural-networks/03-layers-and-forward-pass"
+estimatedMinutes: 14
+---
+
+# Information Theory for ML: Entropy, KL Divergence, and Cross-Entropy
+
+Shannon's information theory provides the unifying language behind probabilistic machine learning. The losses you minimize — cross-entropy, KL divergence, negative log-likelihood — are all information-theoretic quantities in disguise. This page derives them from first principles and shows where each appears in ML.
+
+## Surprisal: the atom of information
+
+The **surprisal** (self-information) of an event with probability $p$ is:
+
+$$I(x) = -\log_2 p(x) \quad \text{(bits)} \qquad \text{or} \qquad I(x) = -\ln p(x) \quad \text{(nats)}$$
+
+Rare events carry more information than common ones: if $p(x) = 1$ (certain), $I(x) = 0$ — no surprise, no information. If $p(x) = 0.001$, $I(x) \approx 10$ bits — a very surprising event.
+
+## Shannon entropy
+
+**Entropy** is the *expected surprisal* of a distribution $P$:
+
+$$H(P) = \mathbb{E}_{x \sim P}[-\log p(x)] = -\sum_x p(x) \log p(x)$$
+
+Entropy measures the average uncertainty or the minimum average bits needed to encode samples from $P$.
+
+**Key values:**
+- $H = 0$: no uncertainty — one outcome has $p = 1$ (deterministic).
+- $H = \log K$: maximum entropy — the uniform distribution over $K$ outcomes (maximum uncertainty).
+- For a fair coin ($p = 0.5$): $H = -0.5\log 0.5 - 0.5\log 0.5 = 1$ bit.
+
+**Worked example — biased coin with $p = 0.8$:**
+
+$$H = -0.8\log_2 0.8 - 0.2\log_2 0.2 = 0.8 \times 0.322 + 0.2 \times 2.322 \approx 0.722 \text{ bits}$$
+
+Less than 1 bit — because the outcome is partially predictable.
+
+## KL divergence: the cost of being wrong
+
+The **Kullback-Leibler divergence** measures the extra bits needed to encode samples from $P$ using a code designed for $Q$ instead of $P$:
+
+$$D_\text{KL}(P \| Q) = \sum_x p(x) \log \frac{p(x)}{q(x)} = \mathbb{E}_{x \sim P}\!\left[\log \frac{p(x)}{q(x)}\right]$$
+
+**Properties:**
+- $D_\text{KL}(P \| Q) \ge 0$ always, with equality iff $P = Q$ (Gibbs inequality).
+- **Not symmetric:** $D_\text{KL}(P \| Q) \ne D_\text{KL}(Q \| P)$ in general.
+- Infinite if $Q$ assigns zero probability to any event that $P$ does not.
+
+**Forward vs reverse KL — why the direction matters:**
+
+| Direction | Definition | Behavior | Used in |
+|-----------|-----------|---------|---------|
+| Forward $D_\text{KL}(P \| Q)$ | Samples from $P$, penalizes $Q \approx 0$ where $P > 0$ | **Mean-seeking** — $Q$ must cover all modes of $P$ | VAE encoder, flow training |
+| Reverse $D_\text{KL}(Q \| P)$ | Samples from $Q$, penalizes $Q > 0$ where $P \approx 0$ | **Mode-seeking** — $Q$ collapses onto one mode of $P$ | Variational inference, RL policy optimization |
+
+In a multimodal $P$, forward KL forces $Q$ to spread mass across all modes (averaging). Reverse KL lets $Q$ be a tight Gaussian locked onto one mode. Neither is "correct" — it depends on what you want the approximate posterior to do.
+
+## Cross-entropy: the training loss
+
+**Cross-entropy** is the expected code length of $P$-samples under a $Q$-code:
+
+$$H(P, Q) = -\sum_x p(x) \log q(x) = H(P) + D_\text{KL}(P \| Q)$$
+
+Since $H(P)$ is fixed (the true data distribution), minimizing cross-entropy over the parameters of $Q$ is **equivalent to minimizing** $D_\text{KL}(P \| Q)$.
+
+**The ML training loss connection:**
+
+For a classifier with output distribution $\hat{p}(y \mid x)$ and true label $y^*$:
+
+$$\mathcal{L}_\text{CE} = -\log \hat{p}(y^* \mid x) = H(\delta_{y^*},\, \hat{p})$$
+
+where $\delta_{y^*}$ is the one-hot true distribution. Summing over training examples:
+
+$$\mathcal{L} = -\frac{1}{n}\sum_{i=1}^n \log \hat{p}(y_i \mid x_i)$$
+
+This is exactly **negative log-likelihood** (NLL). Minimizing cross-entropy = maximizing likelihood = minimizing KL between the empirical distribution and the model.
+
+<Callout type="info" title="Every classification loss is a KL divergence">
+  Binary cross-entropy (sigmoid + BCE), categorical cross-entropy (softmax + CE), and even mean squared error (Gaussian NLL) are all KL divergences between the empirical label distribution and the model's output distribution. The loss function you choose encodes an assumption about the noise distribution of your labels.
+</Callout>
+
+## Mutual information: measuring statistical dependence
+
+**Mutual information** measures how much knowing $X$ reduces uncertainty about $Y$:
+
+$$I(X; Y) = H(X) - H(X \mid Y) = D_\text{KL}(P(X,Y) \| P(X)P(Y))$$
+
+- $I(X;Y) = 0$: $X$ and $Y$ are independent — knowing $X$ tells you nothing about $Y$.
+- $I(X;Y) = H(X) = H(Y)$: $X$ and $Y$ are deterministically related.
+- $I(X;Y) = I(Y;X)$ — symmetric (unlike KL divergence).
+
+**In ML:**
+- **Feature selection:** rank input features by $I(\text{feature}; \text{label})$ — high MI features are informative.
+- **Information bottleneck:** compress $X$ into a representation $Z$ that retains as much $I(Z;Y)$ (label info) as possible while discarding $I(Z;X) - I(Z;Y)$ (irrelevant detail).
+- **Contrastive learning:** maximizing MI between two views of the same example (CLIP, SimCLR) is equivalent to cross-entropy contrastive loss.
+
+## The chain connecting everything
+
+$$\underbrace{H(P, Q)}_{\text{cross-entropy loss}} = \underbrace{H(P)}_{\text{irreducible entropy}} + \underbrace{D_\text{KL}(P \| Q)}_{\text{what the model controls}}$$
+
+Minimizing cross-entropy (cross-entropy loss in code) minimizes the KL divergence between the model and the data-generating distribution. The entropy floor $H(P)$ sets the best achievable loss — a model can do no better than the irreducible randomness in the labels.
+
+## Numerical computation
+
+Cross-entropy requires computing $\log \hat{p}$. When $\hat{p}$ is produced by a softmax, numerical stability requires using log-sum-exp rather than computing softmax then log:
+
+```python
+# Numerically stable: log-softmax + NLL loss
+import torch.nn.functional as F
+
+# y_pred: raw logits (N, C); y_true: class indices (N,)
+loss = F.cross_entropy(y_pred, y_true)   # = F.nll_loss(F.log_softmax(y_pred, dim=1), y_true)
+```
+
+For KL divergence between two distributions:
+
+```python
+# p_log, q_log: log-probabilities
+kl = F.kl_div(q_log, p_log, reduction='batchmean', log_target=True)
+```
+
+## Related concepts
+
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — MLE as NLL minimization
+- [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — cross-entropy as the output layer's loss
+- [**Softmax and Cross-Entropy**](/wiki/softmax-cross-entropy) — the numerically stable log-softmax derivation
+- [**Probability Distributions**](/wiki/probability-distributions) — the distributions entropy and KL operate on
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — KL divergence in variational inference (ELBO)

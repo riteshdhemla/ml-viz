@@ -1,0 +1,112 @@
+---
+title: "Dropout: Inverted Dropout, Regularization Mechanism, and MC Dropout"
+description: "The inverted dropout algorithm and why it requires no test-time rescaling, the ensemble interpretation as training exponentially many subnetworks, spatial dropout for CNNs, the problematic interaction with batch normalization, and Monte Carlo dropout as approximate Bayesian inference for uncertainty quantification."
+topics: ["neural-networks"]
+relatedLessons:
+  - "neural-networks/05-batchnorm-and-dropout"
+  - "model-evaluation/07-calibration-and-uncertainty"
+estimatedMinutes: 12
+---
+
+# Dropout: Inverted Dropout, Regularization Mechanism, and MC Dropout
+
+Dropout (Srivastava et al. 2014) is one of the most effective and cheapest neural network regularizers. It is also — with one small modification — a practical tool for uncertainty quantification without any architectural changes.
+
+## The inverted dropout algorithm
+
+During **training**, each activation $h_j$ is independently zeroed with probability $p$ (the drop rate) and the surviving activations are scaled up:
+
+$$\tilde{h}_j = \frac{m_j}{1-p} \cdot h_j, \qquad m_j \sim \text{Bernoulli}(1-p)$$
+
+The $1/(1-p)$ scale factor ensures the **expected value is preserved**:
+
+$$\mathbb{E}[\tilde{h}_j] = \frac{1-p}{1-p} \cdot h_j = h_j$$
+
+At **test time, dropout is disabled** — the full network runs with all activations present, no rescaling needed. This is "inverted dropout," the standard used by PyTorch, TensorFlow, JAX, and virtually every modern framework. (The older convention scaled by $(1-p)$ at test time instead, which is mathematically equivalent but inconvenient.)
+
+```python
+def dropout(x: torch.Tensor, p: float, training: bool) -> torch.Tensor:
+    if not training or p == 0.0:
+        return x
+    mask = torch.bernoulli(torch.full_like(x, 1.0 - p))
+    return x * mask / (1.0 - p)
+```
+
+Calling `model.eval()` in PyTorch flips `training=False` in all `nn.Dropout` layers simultaneously.
+
+## Why it regularizes: the ensemble interpretation
+
+With $n$ neurons in a layer, there are $2^n$ distinct dropout masks — each defining a different **subnetwork**. Each training step randomly samples and trains one of these $2^n$ subnetworks; all subnetworks share parameters.
+
+At test time, running the full network with no dropout is an approximation to **averaging the predictions of all $2^n$ subnetworks** — a geometric mixture of an exponentially large ensemble. This is analogous to bagging, but exponentially more efficient because the subnetworks share weights.
+
+**Practical consequence:** neurons cannot co-adapt (rely on specific partners to correct their errors). Each neuron must learn features that are independently useful. The result is more redundant, robust representations — similar in effect to L2 weight decay on the hidden activations.
+
+## Drop rate guidelines
+
+| Context | Typical $p$ | Notes |
+|---------|------------|-------|
+| Large fully-connected layer | 0.5 | Srivastava et al. original recommendation |
+| Smaller FC or penultimate layer | 0.2–0.4 | Lower $p$ near the output |
+| Convolutional layers | 0.1–0.2 | Or use SpatialDropout2d instead |
+| Transformer attention weights | 0.1 | Applied to softmax output before multiplying $V$ |
+| LSTM / GRU inputs or outputs | 0–0.3 | Avoid dropping recurrent connections (use Zoneout instead) |
+
+## Spatial Dropout for CNNs
+
+Standard dropout kills individual activations. But adjacent pixels in a feature map are highly correlated — dropping one pixel still leaves the network with the same information from its neighbors. The regularization effect is negligible.
+
+**Spatial Dropout** (also called Channel Dropout or `nn.Dropout2d`) drops entire **feature map channels**: if channel $c$ is selected, every spatial position of that channel is zeroed. This forces redundancy across channels — a structurally meaningful ensemble.
+
+```python
+# Applied to tensors of shape (N, C, H, W)
+dropout2d = torch.nn.Dropout2d(p=0.2)
+```
+
+## Dropout vs batch normalization: a dangerous combination
+
+Dropout changes the variance of activations that survive — it inflates them relative to the no-dropout distribution. Batch normalization then re-normalizes them using the current batch's statistics. At **test time**, dropout is off but BatchNorm uses **running statistics** computed under the dropout-inflated variance — a distributional mismatch called "variance shift."
+
+**Rule:** do not use dropout directly before a BatchNorm layer. In practice, use one or the other per block:
+- Convolutional blocks with BatchNorm → no dropout.
+- Fully-connected classification heads → dropout (no BatchNorm).
+- Transformers → LayerNorm with attention dropout (LayerNorm is unaffected because it normalizes per-token, not per-batch).
+
+## Monte Carlo Dropout: uncertainty at inference time
+
+Gal & Ghahramani (2016) showed that a neural network trained with dropout, and evaluated **with dropout still active**, performs approximate variational inference in a Bayesian neural network. Running the same input through $T$ forward passes with dropout active produces $T$ stochastic predictions:
+
+```python
+def mc_predict(model, x, T=50):
+    model.train()   # keep all nn.Dropout layers active
+    with torch.no_grad():
+        preds = torch.stack([model(x) for _ in range(T)])
+    mean = preds.mean(0)
+    variance = preds.var(0)   # epistemic uncertainty
+    return mean, variance
+```
+
+The **variance across passes** estimates **epistemic uncertainty** (model uncertainty): high variance means the model is uncertain, which often correlates with out-of-distribution inputs or ambiguous examples.
+
+<Callout type="tip" title="MC Dropout is an approximation">
+  MC dropout variance underestimates true Bayesian posterior uncertainty, especially for highly confident networks. It is a cheap, practical proxy — useful for flagging uncertain examples for human review or active learning, but not a substitute for conformal prediction when coverage guarantees are needed.
+</Callout>
+
+**Practical use cases:**
+- **Active learning:** query examples with highest MC dropout variance for labeling.
+- **Anomaly / OOD detection:** flag high-variance inputs as potentially out-of-distribution.
+- **Safety-critical systems:** distinguish "confident positive" from "uncertain positive."
+
+## Common mistakes
+
+1. **Leaving dropout active at test time** — `model.eval()` is mandatory in PyTorch; forgetting it gives stochastic, degraded predictions.
+2. **Applying dropout before BatchNorm** — causes variance shift at test time.
+3. **Using $p = 0.5$ everywhere** — near the output layer, high drop rates hurt performance; start lower ($p = 0.2$) and tune.
+4. **Dropout as a substitute for enough data** — dropout reduces overfitting but does not compensate for genuinely insufficient training data or a model that is too large for the task.
+5. **Confusing MC dropout with calibration** — high variance means uncertainty, but a well-calibrated uncertainty requires proper temperature scaling or conformal prediction on top.
+
+## Related concepts
+
+- [**BatchNorm and Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — lesson covering both regularizers in context
+- [**Batch Normalization Algorithm**](/wiki/batchnorm-algorithm) — the full forward/backward pass for BatchNorm
+- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — calibration curves, ECE, conformal prediction

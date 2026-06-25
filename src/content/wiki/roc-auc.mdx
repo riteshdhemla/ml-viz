@@ -1,0 +1,120 @@
+---
+title: "ROC Curve and AUC: Derivation and Rank-Sum Interpretation"
+description: "Step-by-step ROC curve construction from sorted scores, why AUC equals the probability that a random positive ranks above a random negative (Wilcoxon-Mann-Whitney equivalence), PR-AUC for class-imbalanced data, and practical threshold selection criteria."
+topics: ["model-evaluation"]
+relatedLessons:
+  - "model-evaluation/01-classification-metrics"
+  - "model-evaluation/02-validation-strategies"
+estimatedMinutes: 12
+---
+
+# ROC Curve and AUC
+
+ROC-AUC is the most common threshold-independent metric for binary classifiers. This page derives the curve construction from scratch and establishes the probabilistic rank-sum interpretation that makes AUC meaningful beyond a raw number.
+
+## Constructing the ROC curve step by step
+
+A classifier produces a **score** $s(x) \in \mathbb{R}$ for each example. Sweeping a threshold $\tau$ from $+\infty$ down to $-\infty$ traces a path through (FPR, TPR) space. The ROC curve is the full path.
+
+$$\text{TPR}(\tau) = P(\hat{y}=1 \mid y=1) = \frac{\text{TP}(\tau)}{n_+}, \qquad \text{FPR}(\tau) = P(\hat{y}=1 \mid y=0) = \frac{\text{FP}(\tau)}{n_-}$$
+
+**Algorithm (exact, $O(n\log n)$):**
+
+1. Sort all $n$ examples by descending score.
+2. Initialize $(\text{FPR}, \text{TPR}) = (0, 0)$.
+3. Process examples in sorted order: a positive increments TPR by $1/n_+$; a negative increments FPR by $1/n_-$.
+4. Record each (FPR, TPR) point and connect the dots.
+
+**Worked example** ($n_+ = 3$, $n_- = 2$):
+
+Sorted scores and labels: $(0.92, +),\; (0.85, +),\; (0.61, -),\; (0.43, +),\; (0.18, -)$
+
+| Step | Score | Label | FPR | TPR |
+|------|-------|-------|-----|-----|
+| Start | — | — | 0 | 0 |
+| 1 | 0.92 | + | 0 | 1/3 |
+| 2 | 0.85 | + | 0 | 2/3 |
+| 3 | 0.61 | − | 1/2 | 2/3 |
+| 4 | 0.43 | + | 1/2 | 1 |
+| 5 | 0.18 | − | 1 | 1 |
+
+**AUC via the trapezoid rule** $\sum (FPR_{i+1} - FPR_i) \cdot \frac{TPR_i + TPR_{i+1}}{2}$:
+
+- Segment (0, 2/3) → (1/2, 2/3): $\Delta\text{FPR} = 1/2$, avg TPR $= 2/3$. Contribution: $1/3$.
+- Segment (1/2, 1) → (1, 1): $\Delta\text{FPR} = 1/2$, avg TPR $= 1$. Contribution: $1/2$.
+
+$$\text{AUC} = \frac{1}{3} + \frac{1}{2} = \frac{5}{6} \approx 0.833$$
+
+## The rank-sum interpretation
+
+**Theorem (Wilcoxon-Mann-Whitney equivalence):**
+
+$$\text{AUC} = P\!\left(s(x^+) > s(x^-)\right)$$
+
+where $x^+$ is drawn uniformly from the positives and $x^-$ from the negatives.
+
+**Proof sketch:** AUC $= \int_0^1 \text{TPR}(t)\,d\,\text{FPR}(t)$. By change of variables, this integral counts the fraction of $(x^+, x^-)$ pairs where the positive scores higher — exactly the Wilcoxon-Mann-Whitney U statistic normalized by $n_+ n_-$.
+
+**Verification from the worked example:** Total pairs $= 3 \times 2 = 6$. Concordant pairs (positive scores above negative):
+
+| Positive | Negative | Concordant? |
+|----------|----------|-------------|
+| 0.92 | 0.61 | ✓ |
+| 0.92 | 0.18 | ✓ |
+| 0.85 | 0.61 | ✓ |
+| 0.85 | 0.18 | ✓ |
+| 0.43 | 0.61 | ✗ |
+| 0.43 | 0.18 | ✓ |
+
+Concordant = 5. AUC $= 5/6 \approx 0.833$. ✓ Matches the curve construction.
+
+**What this means in practice:** AUC = 0.85 means the classifier ranks a random positive above a random negative 85% of the time. AUC measures **ranking quality**, not calibration — a model can have perfect AUC while being systematically overconfident.
+
+## PR curve and PR-AUC
+
+The **Precision-Recall curve** plots Precision vs Recall as $\tau$ varies, with no role for true negatives:
+
+$$\text{Precision}(\tau) = \frac{\text{TP}}{\text{TP} + \text{FP}}, \qquad \text{Recall}(\tau) = \frac{\text{TP}}{n_+}$$
+
+**Why it matters for class imbalance:** with $n_- \gg n_+$, FPR $= \text{FP} / n_-$ stays tiny even with many false positives (because $n_-$ is huge). A model can achieve ROC-AUC $\approx 0.95$ while PR-AUC is near the no-skill baseline of $n_+ / n$.
+
+**No-skill baseline:** a random classifier predicts positive at rate $p = n_+ / n$ for all thresholds, yielding constant $\text{Precision} = p$. Any useful model must beat this horizontal line.
+
+<Callout type="warning" title="ROC-AUC is misleading under severe imbalance">
+  With 1% positives, even a model that generates 100× more false positives than true positives can show ROC-AUC > 0.9 because FPR is computed against the enormous TN pool. PR-AUC exposes this directly — it would reflect the low precision. Use ROC-AUC for balanced data; use PR-AUC when the positive class is rare (fraud, disease, defect detection).
+</Callout>
+
+```python
+from sklearn.metrics import roc_auc_score, average_precision_score
+
+roc_auc = roc_auc_score(y_true, y_scores)          # AUC-ROC
+pr_auc  = average_precision_score(y_true, y_scores) # AUC-PR (also called AP)
+```
+
+## Threshold selection
+
+AUC summarizes the entire curve, but deployment requires one threshold. Common criteria:
+
+| Criterion | Definition | Use case |
+|-----------|-----------|---------|
+| **Youden's J** | $\arg\max_\tau (\text{TPR} - \text{FPR})$ | Maximize overall separation |
+| **Cost-sensitive** | $\arg\min_\tau (c_\text{FP} \cdot \text{FP} + c_\text{FN} \cdot \text{FN})$ | Asymmetric error costs (fraud, medical) |
+| **F1-optimal** | $\arg\max_\tau F_1(\tau)$ | Balanced precision / recall |
+| **Fixed recall** | $\min \tau$ s.t. $\text{Recall} \ge r$ | Guaranteed sensitivity (safety screening) |
+| **Fixed FPR** | $\max \tau$ s.t. $\text{FPR} \le f$ | Bounded false alarm rate |
+
+Always tune the threshold on the **validation set**, never on the test set — the test set gives you a point estimate of expected performance, not a tuning knob.
+
+## Common pitfalls
+
+1. **Reporting only ROC-AUC on imbalanced data** — a 0.95 AUC can coexist with near-baseline PR-AUC. Always report both.
+2. **Treating AUC as calibration** — AUC measures rank ordering. A perfectly calibrated model and a wildly overconfident model can have the same AUC if they rank examples identically.
+3. **Optimizing threshold on the test set** — leaks test data; always use the validation set.
+4. **Multi-class AUC without specifying the averaging scheme** — `sklearn`'s `roc_auc_score` defaults to macro one-vs-rest; document which you used.
+5. **Wide cross-validation variance** — a single train/test split gives a noisy AUC estimate. Report mean ± std across $k$ folds.
+
+## Related concepts
+
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — precision, recall, F1, confusion matrix
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — how to measure metrics without leaking test data
+- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — why AUC ≠ calibration; ECE and reliability diagrams

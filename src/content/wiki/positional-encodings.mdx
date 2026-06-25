@@ -1,0 +1,107 @@
+---
+title: "Positional Encodings: Sinusoidal, RoPE, ALiBi, and Learned"
+description: "How Transformers encode token position: the original sinusoidal formula and its frequency properties, learned absolute embeddings, relative position bias (T5), rotary position embeddings (RoPE), and attention with linear biases (ALiBi) — with length-extrapolation tradeoffs for each."
+topics: ["transformers"]
+relatedLessons:
+  - "transformers/02-multi-head-and-positional"
+  - "transformers/04-modern-attention"
+estimatedMinutes: 14
+---
+
+# Positional Encodings: Sinusoidal, RoPE, ALiBi, and Learned
+
+Attention is **permutation-invariant**: swapping token positions changes the Q and K rows in the score matrix, but the model has no explicit concept of *order*. Without positional encoding, "The dog bit the man" and "The man bit the dog" look identical to the attention layer — the same bag of token vectors.
+
+Positional encodings inject order information. The methods differ critically in how well they generalize to sequence lengths longer than seen during training.
+
+## Absolute sinusoidal (original Transformer)
+
+Vaswani et al. (2017) add a fixed, non-learned vector $PE_\text{pos} \in \mathbb{R}^d$ to each token embedding before the first layer:
+
+$$PE_{(\text{pos},\, 2i)} = \sin\!\left(\frac{\text{pos}}{10000^{2i/d}}\right), \qquad PE_{(\text{pos},\, 2i+1)} = \cos\!\left(\frac{\text{pos}}{10000^{2i/d}}\right)$$
+
+where $\text{pos} \in \{0, 1, \ldots\}$ is the token index and $i \in \{0, 1, \ldots, d/2 - 1\}$ indexes the dimension pair.
+
+**Frequency structure:** each dimension pair $(2i, 2i+1)$ oscillates at a different frequency. Low-index pairs oscillate slowly (long period, long-range signal); high-index pairs oscillate quickly (short period, fine-grained local signal). The base $10000$ sets the lowest frequency to period $2\pi \times 10000 \approx 62{,}832$ — longer than any practical sequence.
+
+**Key property:** the relative offset between positions $\text{pos}$ and $\text{pos}+k$ can be expressed as a *linear function* of $PE_\text{pos}$. This means attention scores $\mathbf{q}_i \cdot \mathbf{k}_j$ can encode relative distance in principle — but in practice the model must learn this through training.
+
+**Extrapolation:** the formula is defined for any position, but training only sees positions up to $L_\text{train}$. At longer lengths, attention patterns typically degrade because the absolute position values are out-of-distribution.
+
+## Learned absolute embeddings
+
+Replace the fixed formula with a learned lookup table $E \in \mathbb{R}^{L_\text{max} \times d}$ — one embedding vector per absolute position, trained end-to-end:
+
+$$\text{input}_\text{pos} = \text{token embedding}_\text{pos} + E_\text{pos}$$
+
+Used in BERT, GPT-1/2. The embeddings can adapt to the training data's position distribution, often matching or slightly outperforming sinusoidal in practice on sequences within the training length.
+
+**Hard ceiling:** there is no parameter for positions beyond $L_\text{max}$. The model cannot generalize to longer inputs without retraining or interpolation.
+
+## Relative position bias (T5 / RPE)
+
+Instead of adding position to the token embedding, inject position as a **learned bias on the attention score**:
+
+$$\text{score}(i,j) = \frac{\mathbf{q}_i \cdot \mathbf{k}_j}{\sqrt{d_k}} + b(i - j)$$
+
+where $b(\delta)$ is a scalar for relative offset $\delta = i - j$. T5 buckets the offsets logarithmically — 32 buckets cover all offsets from $-128$ to $128$, sharing parameters across similar distances.
+
+**Extrapolation:** once all offsets larger than 128 saturate into the same bucket, the model applies the same bias for all distances beyond the training range — a graceful degradation rather than a catastrophic distribution shift.
+
+## Rotary Position Embeddings (RoPE)
+
+RoPE (Su et al. 2021) encodes position by *rotating* query and key vectors in 2D subspaces, rather than adding a fixed offset. For dimension pair $(2i, 2i+1)$ at position $\text{pos}$, apply a rotation with angle $\theta_{\text{pos},i} = \text{pos} / 10000^{2i/d}$:
+
+$$\tilde{q}^{(2i)}_\text{pos} = q^{(2i)}_\text{pos}\cos\theta - q^{(2i+1)}_\text{pos}\sin\theta, \quad \tilde{q}^{(2i+1)}_\text{pos} = q^{(2i)}_\text{pos}\sin\theta + q^{(2i+1)}_\text{pos}\cos\theta$$
+
+The crucial property: the dot product of a rotated query at position $m$ with a rotated key at position $n$ depends *only on the relative offset $m - n$*:
+
+$$\tilde{\mathbf{q}}_m \cdot \tilde{\mathbf{k}}_n = f(\mathbf{q}_m, \mathbf{k}_n,\, m - n)$$
+
+So attention scores naturally encode relative position with zero extra parameters — no position embedding table to add to the residual stream.
+
+**PyTorch implementation sketch:**
+
+```python
+def apply_rope(x, cos, sin):
+    # x: (batch, seq, heads, d_head)
+    # cos, sin: (seq, d_head/2) — precomputed for each position
+    x1 = x[..., ::2]    # even dimensions
+    x2 = x[..., 1::2]   # odd dimensions
+    x_rotated = torch.stack([-x2, x1], dim=-1).flatten(-2)
+    return x * cos.repeat_interleave(2, -1) + x_rotated * sin.repeat_interleave(2, -1)
+```
+
+**Why RoPE is the de facto standard (2024):** used in LLaMA-1/2/3, Mistral, Gemma, Falcon, PaLM-2, Qwen, and most modern open-weight LLMs. Zero parameters, exact relative-position encoding, and better extrapolation than absolute methods — especially with **YaRN** or **NTK-aware interpolation**, which extend the effective context window 4–8× without full retraining.
+
+## ALiBi (Attention with Linear Biases)
+
+ALiBi (Press et al. 2022) adds a static, non-learned **linear distance penalty** to each attention score:
+
+$$\text{score}(i,j) = \frac{\mathbf{q}_i \cdot \mathbf{k}_j}{\sqrt{d_k}} - m_h \cdot |i - j|$$
+
+where $m_h = 2^{-8h/H}$ is a head-specific slope (different heads apply different strengths of recency bias).
+
+**Extrapolation:** because the penalty is a fixed, monotonically increasing function of distance, it naturally handles sequences longer than training. Far tokens receive larger penalties without any distribution shift. Models with ALiBi are trained on shorter sequences and deployed at longer ones out of the box — MPT and BLOOM use this approach.
+
+**No positional parameters at all.** The downside: the built-in recency bias may be suboptimal for tasks requiring genuine long-range attention (e.g., code completion referencing a function defined thousands of tokens earlier).
+
+## Comparison
+
+| Method | Extra params | Relative position? | Length extrapolation | Used in |
+|--------|-------------|-------------------|---------------------|---------|
+| Sinusoidal | 0 | Implicit | Poor beyond $L_\text{train}$ | Original Transformer |
+| Learned absolute | $L_\text{max} \times d$ | No | None past $L_\text{max}$ | BERT, GPT-2 |
+| T5 relative bias | ~32 per head | Yes | Graceful (bucket saturation) | T5, DeBERTa |
+| RoPE | 0 | Yes (exact) | Moderate; 4–8× with YaRN | LLaMA, Mistral, Gemma |
+| ALiBi | 0 | Yes (linear penalty) | Excellent | MPT, BLOOM |
+
+<Callout type="info" title="Length extrapolation ≠ long-context capability">
+  Extrapolating to longer positions is only useful if the model can actually retrieve information from those positions. Without architectural changes (sliding window, RoPE scaling), models often fail to attend to relevant content in the middle of a very long sequence — the "lost in the middle" phenomenon — regardless of which position encoding is used.
+</Callout>
+
+## Related concepts
+
+- [**Attention Mechanisms**](/wiki/attention-mechanisms) — self-attention, cross-attention, MHA, MQA, GQA
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — lesson covering MHA and sinusoidal encoding
+- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention) — RoPE and FlashAttention in production LLMs
