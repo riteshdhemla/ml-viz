@@ -235,6 +235,10 @@ $$
 
 Notice that $\hat{m}$ and $\hat{v}$ stay close to their "true" values (gradient $\approx 2$, squared gradient $\approx 4$) even at $t = 2$ — that is the bias correction doing its job.
 
+The clearest way to *see* the difference between these three is to drop them onto the same ill-conditioned bowl. SGD must creep along the steep axis or it zig-zags off the walls; momentum cancels the cross-valley oscillation; Adam rescales each axis so both descend at once. Press play and raise the condition number κ to widen the gap.
+
+<OptimizerPathViz />
+
 ```python
 import numpy as np
 
