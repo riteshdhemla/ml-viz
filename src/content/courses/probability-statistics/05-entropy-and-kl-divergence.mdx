@@ -74,6 +74,10 @@ print(f"identity check: H(p) + KL = {H_p + kl:.4f}")   # equals H(p,q)
   Minimizing $D_{\mathrm{KL}}(p\|q)$ (forward, used by MLE) forces $q$ to **cover** everywhere $p$ has mass — spread out, or pay infinite penalty. Minimizing $D_{\mathrm{KL}}(q\|p)$ (reverse, used by variational inference and [VAEs](/courses/generative-models/03-variational-autoencoders)) lets $q$ **lock onto one mode** of $p$ and ignore the rest. Same formula, opposite personalities.
 </Callout>
 
+Steer the single-Gaussian model $q$ below, then let each button find its own best fit. Minimizing forward KL spreads $q$ wide to cover both peaks of the truth; minimizing reverse KL collapses $q$ onto the heavier peak and abandons the other.
+
+<KLDivergenceViz />
+
 ## Where you'll meet these again
 
 - **Cross-entropy loss** — every softmax classifier and language model (perplexity is just exponentiated cross-entropy, as in [t-SNE's perplexity](/courses/pca-dimensionality/02-t-sne-and-umap))
