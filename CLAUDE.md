@@ -425,6 +425,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | CLIPSpaceViz | `visualizations/CLIPSpace/` | computer-vision/04-vision-language-models | ✅ |
 | RolloutViz | `visualizations/Rollout/` | ml-in-practice/09-continual-learning-and-test-in-production | ✅ |
 | AgentLoopViz | `visualizations/AgentLoop/` | agent-design-patterns/09-tool-use-and-mcp | ✅ |
+| VCDimensionViz | `visualizations/VCDimension/` | wiki/vc-dimension | ✅ |
 
 ---
 
