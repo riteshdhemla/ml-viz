@@ -1,0 +1,165 @@
+---
+title: "VC Dimension"
+description: "Capacity measured by shattering: the VC dimension of a hypothesis class, why a 2D linear classifier has VC dimension 3, the growth function and Sauer's lemma, and the generalization bound it yields."
+topics: ["supervised-learning"]
+relatedLessons:
+  - "model-evaluation/06-learning-theory"
+  - "knn-decision-trees/03-bias-variance"
+estimatedMinutes: 11
+---
+
+# VC Dimension
+
+How do you measure the *capacity* of a model — its raw ability to fit arbitrary
+data — independent of any particular dataset? Counting parameters fails: a single
+sine-wave classifier $\text{sign}(\sin(\omega x))$ has one parameter yet can fit
+any binary labelling of points on a line. The **Vapnik–Chervonenkis (VC)
+dimension** answers the question properly, and it is the quantity that turns
+"complex models overfit" into a provable bound.
+
+## Shattering
+
+Fix a hypothesis class $\mathcal{H}$ — the set of all classifiers a model can
+express (e.g. *all straight-line decision boundaries in the plane*). A set of
+points is **shattered** by $\mathcal{H}$ if, for **every** way of labelling those
+points $+/-$, some hypothesis in $\mathcal{H}$ realises that labelling exactly.
+
+With $m$ points there are $2^m$ possible labellings. Shattering means *all* $2^m$
+are achievable.
+
+<VCDimensionViz />
+
+## Definition
+
+> The **VC dimension** $d_{\text{VC}}(\mathcal{H})$ is the size of the **largest**
+> point set that $\mathcal{H}$ can shatter.
+
+Two things must be checked to prove $d_{\text{VC}} = d$:
+
+1. **Lower bound** ($d_{\text{VC}} \ge d$): exhibit *one* set of $d$ points that
+   $\mathcal{H}$ shatters. You only need a single good configuration — points in
+   "general position."
+2. **Upper bound** ($d_{\text{VC}} < d+1$): show that *no* set of $d+1$ points
+   can be shattered. You must rule out **every** configuration.
+
+The asymmetry matters: shattering is "there exists a set," failing to shatter is
+"for all sets."
+
+## Worked example: 2D linear classifier
+
+The class $\mathcal{H} = \{\,\text{sign}(\mathbf{w}^\top\mathbf{x} + b)\,\}$ of
+linear separators in $\mathbb{R}^2$ has $d_{\text{VC}} = 3$.
+
+**Three points can be shattered.** Place three points in a triangle (not
+collinear). All $2^3 = 8$ labellings are linearly separable — for any split into
+$+$ and $-$, a straight line cleaves them. (Try every labelling in the
+visualization above with "3 points" selected: 8 / 8.)
+
+**Four points cannot.** Take any four points. Either three are collinear /
+one lies inside the triangle of the others, or they sit in convex position. In
+the convex case, label the two diagonal points $+$ and the other two $-$ — the
+**XOR labelling**. The two $+$ points and the two $-$ points interleave around
+the hull, so no single line can separate them. Since *some* labelling always
+fails, no 4-point set is shattered. Hence $d_{\text{VC}} = 3$.
+
+<Callout type="info" title="The general pattern">
+  A linear classifier in $\mathbb{R}^d$ (with bias) has $d_{\text{VC}} = d + 1$.
+  In 1D that's 2; in 2D, 3; in 3D, 4. The "+1" is the bias term — it adds one
+  degree of freedom, equivalent to lifting the points into one higher dimension.
+</Callout>
+
+## Capacity is not parameter count
+
+VC dimension and parameter count often agree but need not:
+
+- **Linear models**: $d_{\text{VC}} = d+1$ matches the parameter count — the
+  tidy case.
+- **1-nearest-neighbor**: $d_{\text{VC}} = \infty$. It can shatter *any* finite
+  set (each point is its own nearest neighbor), yet generalizes fine in practice
+  — a hint that VC bounds are worst-case and loose.
+- **$\text{sign}(\sin(\omega x))$**: one real parameter $\omega$, yet
+  $d_{\text{VC}} = \infty$. A single well-chosen frequency realises any labelling
+  of points on the line.
+
+So capacity is about the *richness of achievable behaviours*, not the number of
+knobs.
+
+## The growth function and Sauer's lemma
+
+Define the **growth function** $\Pi_{\mathcal{H}}(m)$ as the maximum number of
+distinct labellings $\mathcal{H}$ can produce on *any* $m$ points:
+
+$$
+\Pi_{\mathcal{H}}(m) = \max_{x_1,\dots,x_m} \big|\{(h(x_1),\dots,h(x_m)) : h \in \mathcal{H}\}\big|
+$$
+
+It starts at the ceiling $2^m$ (full shattering) but **must drop below it** once
+$m > d_{\text{VC}}$. **Sauer's lemma** makes the drop precise: for
+$m \ge d = d_{\text{VC}}$,
+
+$$
+\Pi_{\mathcal{H}}(m) \le \sum_{i=0}^{d} \binom{m}{i} \le \left(\frac{e\,m}{d}\right)^{d}
+$$
+
+The growth function switches from **exponential** ($2^m$) to merely
+**polynomial** ($O(m^d)$) at the VC dimension. That phase change is exactly what
+makes generalization possible — there are far fewer "effectively different"
+hypotheses than the infinite class suggests.
+
+## The generalization bound
+
+Bounding the gap between true risk $R(h)$ and empirical risk $\hat{R}(h)$ with
+the polynomial growth function yields the classic VC bound. With probability at
+least $1 - \delta$ over a sample of size $n$, simultaneously for all
+$h \in \mathcal{H}$:
+
+$$
+R(h) \le \hat{R}(h) + \sqrt{\frac{d_{\text{VC}}\big(\ln\frac{2n}{d_{\text{VC}}} + 1\big) + \ln\frac{4}{\delta}}{n}}
+$$
+
+Read it as the slogan **gap $\sim \sqrt{d_{\text{VC}}/n}$**:
+
+- More capacity ($d_{\text{VC}}\uparrow$) loosens the bound — complex models need
+  more data.
+- More data ($n\uparrow$) tightens it — the gap shrinks like $1/\sqrt{n}$.
+- A sample roughly $n \gtrsim d_{\text{VC}}$ is the order-of-magnitude needed to
+  learn at all.
+
+<Callout type="warning" title="The bound is loose">
+  VC bounds are distribution-free and worst-case, so they are usually far too
+  pessimistic to use for actual sample-size planning. Deep networks have enormous
+  (often effectively infinite) VC dimension yet generalize — see
+  <em>double descent</em>. The value of VC theory is the <em>qualitative</em>
+  law it proves, not a tight numeric guarantee.
+</Callout>
+
+## Common mistakes
+
+1. **"Shattered = can fit this dataset."** Shattering requires fitting *all*
+   $2^m$ labellings of the points, not just the one you happen to have.
+2. **Confusing the quantifiers.** $d_{\text{VC}} \ge d$ needs *one* shatterable
+   set; $d_{\text{VC}} < d+1$ needs *every* $(d+1)$-set to fail. People prove the
+   wrong direction by checking a single 4-point set and concluding too much.
+3. **Equating VC dimension with parameter count.** 1-NN and the sine classifier
+   break this; capacity is about expressible behaviours.
+4. **Trusting the bound numerically.** It is an existence-style worst-case bound;
+   treat it as a scaling law, not a calculator.
+
+## Key takeaways
+
+- **VC dimension** = size of the largest point set a hypothesis class can
+  **shatter** (realise all $2^m$ labellings).
+- A **2D linear classifier has $d_{\text{VC}} = 3$**: a triangle is shatterable,
+  but the XOR labelling of any 4 points is not. In general a linear classifier in
+  $\mathbb{R}^d$ has $d_{\text{VC}} = d+1$.
+- **Sauer's lemma** turns the growth function from exponential to polynomial
+  $O(m^{d_{\text{VC}}})$ past the VC dimension — the reason learning is possible.
+- The **VC bound** gives gap $\sim \sqrt{d_{\text{VC}}/n}$: complex models need
+  more data. It is qualitatively right but numerically loose.
+
+## Related concepts
+
+- [**Learning Theory & Generalization**](/courses/model-evaluation/06-learning-theory) — where VC dimension sits among ERM, the generalization gap, and double descent
+- [**Bias-Variance Decomposition**](/wiki/bias-variance-decomposition) — the other lens on capacity vs. error
+- [**The Bias–Variance Tradeoff**](/courses/knn-decision-trees/03-bias-variance) — capacity dials ($k$, tree depth) seen interactively
+- [**Regularization: Ridge & Lasso**](/courses/linear-regression/03-regularization) — constraining effective capacity to shrink the gap
