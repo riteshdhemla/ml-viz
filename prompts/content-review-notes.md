@@ -83,6 +83,92 @@ not substitutes for the full pass.
 
 ---
 
+## linear-algebra — 2026-07-02
+
+Scope: index + 4 lessons + quiz, 10 registry exercises, all 4 notebooks
+(skimmed for structure). Assumed prerequisites: none (course lists `[]`).
+
+### linear-algebra/01-vectors-and-spaces — grasp 5/5
+- P3: the house example packs the *target* (price) into the feature vector
+  `[1500, 3, 300000]`; every later lesson separates x and y → add a clause
+  ("here we treat price as just another coordinate") or drop price.
+- P3: "linearly independent" is used in the basis definition one section
+  *before* it is defined → swap the two sections or add "(defined below)".
+- P3: all three exercises sit below "Related concepts" at the very bottom;
+  `linalg-dot-product` would land better right after the projection section
+  (course-wide pattern — see themes).
+- Otherwise exemplary: numeric worked examples, VectorViz placed exactly where
+  the dot product is taught, and the "Connection to ML" section is the best
+  motivation block in the foundations cluster.
+
+### linear-algebra/02-matrices-and-transformations — grasp 4/5
+- P2: the worked example composes "do S (scale), then R (rotate)" as RS, but
+  the code block beneath uses different letters *and the opposite order*
+  (A=scale, B=rotate, `A @ B` = rotate-then-scale). A learner checking the code
+  against the math gets a false confirmation → reuse R/S and compose `R @ S`.
+- P3: the composition snippet prints a result with no expected-output comment;
+  every other snippet in the course annotates results inline.
+- P3: PSD appears in the special-matrices table as a bare quadratic form with
+  no intuition, then resurfaces in lesson 03's SVD callout → one clause
+  ("directions are never flipped; variances can't be negative").
+- P3: MatrixTransformViz sits directly under the "The determinant" heading
+  *before* the determinant is defined → move it after the definition paragraph
+  or give it a one-line lead-in.
+
+### linear-algebra/03-eigenvalues-and-eigenvectors — grasp 4/5
+- P2: "We used SVD briefly in the PCA connection above" is false — the PCA
+  section never mentions SVD; the dangling reference sends the reader scrolling
+  back for something that isn't there → rewrite the SVD section opener.
+- P2: the SVD section predates lesson 04 and now duplicates it (worse) — trim
+  to a 3-sentence teaser + forward link to
+  `/courses/linear-algebra/04-svd-and-low-rank`, and add lesson 04 to Related
+  concepts (currently absent). This also fixes the P2 above.
+- P3: PCA snippet lacks `import numpy as np` and an rng seed (course
+  convention elsewhere is seeded, self-contained snippets).
+- P3: "Trace = total variance preserved" is asserted for general matrices;
+  it's a covariance-matrix statement → qualify.
+- Good: the `eigenvalue-computation` WikiLink is exactly the right extraction;
+  the 2×2 worked example including the null-space step is complete.
+
+### linear-algebra/04-svd-and-low-rank — grasp 5/5
+- Strongest lesson in the course: geometric rotate–stretch–rotate framing,
+  numeric Eckart–Young example, code that *verifies* the theorem, viz sweep,
+  and a genuinely transfer-level exercise.
+- P3: it name-drops "the spectral theorem" as if known; lesson 03's symmetric
+  callout teaches the fact but never names it → add the name in 03 for
+  continuity.
+
+### linear-algebra/05-quiz — grasp 3/5
+- P2: the quiz reuses six exercise ids the learner already answered inline in
+  lessons 01–03 — zero new assessment, and since results key by exercise id in
+  the progress store they can render pre-answered. → new ids with fresh
+  numbers/scenarios, ideally at the transfer level of `linalg-svd-rank`.
+- P2: no question covers lesson 04 even though `linalg-svd-rank` exists →
+  add it to the quiz.
+
+### Exercises (registry)
+- Well-formed throughout: hints, explanations, plausible distractors (e.g.
+  `linalg-dot-product`'s 14 = catching pairwise-max confusion). Mostly
+  recall/compute level; `linalg-svd-rank` shows the transfer-level bar the
+  rest could aim for. `linalg-orthogonality`'s distractor "Depends on the
+  norms" is a nice misconception catch.
+
+### Notebooks
+- All four follow the standard structure (back-link, dark style, "Your turn"
+  with `TODO(you)` + silent asserts). No issues found on structural skim.
+
+### Course meta
+- P3: `CLAUDE.md` roadmap says "course + 3 lessons" (it's 4 + quiz), and
+  LowRankViz is missing from the viz registry table.
+- `estimatedHours: 3` checks out (68 lesson-min × 2.5 / 60 ≈ 2.83 → 3.0). ✓
+
+### Themes reinforced
+- Exercises stacked at lesson bottom instead of after the concept they test
+  (also seen in seed notes) — worth a course-wide convention decision.
+- Snippets should be self-contained (imports + seed) — violated once here.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
