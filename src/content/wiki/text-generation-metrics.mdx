@@ -1,0 +1,122 @@
+---
+title: "Text Generation Metrics: BLEU, ROUGE & METEOR"
+description: "The classic n-gram-overlap metrics for scoring machine translation and summarization against a reference: BLEU's modified precision + brevity penalty, ROUGE's recall-oriented n-gram/LCS overlap, and METEOR's precision/recall harmonic mean with stemming and a fragmentation penalty — worked by hand on one candidate sentence."
+topics: ["nlp"]
+relatedLessons:
+  - "building-with-llms/08-llm-evaluation"
+  - "nlp/03-sequence-models-to-bert"
+estimatedMinutes: 13
+---
+
+# Text Generation Metrics: BLEU, ROUGE & METEOR
+
+Before "ask a strong LLM to judge it" was an option, machine translation and summarization were scored by comparing a **candidate** string to one or more **reference** strings using nothing but n-gram overlap counts. **BLEU** (2002), **ROUGE** (2004), and **METEOR** (2005) predate LLM-as-a-judge by two decades, and they are still the metrics reported in translation/summarization papers and DML-style coding problems — cheap, deterministic, no model call required. They also have well-known blind spots that motivate the reference-free, model-based evaluation covered elsewhere.
+
+## 1 — BLEU: modified n-gram precision + brevity penalty
+
+BLEU (Bilingual Evaluation Understudy) asks: *of the n-grams the candidate produced, how many actually appear in the reference?* It is precision-oriented — it does not care whether the candidate covered everything in the reference, only whether what it said is supported.
+
+**Step 1 — modified n-gram precision.** For each n-gram length $n$ (typically 1–4), count matches with **clipping**: a candidate n-gram can only match up to as many times as it occurs in the reference (this stops "the the the the" from scoring perfectly against a reference containing "the" once).
+
+$$
+p_n = \frac{\sum_{\text{n-gram} \in C} \min\big(\text{count}_C(\text{n-gram}),\ \text{count}_R(\text{n-gram})\big)}{\sum_{\text{n-gram} \in C} \text{count}_C(\text{n-gram})}
+$$
+
+**Step 2 — combine precisions geometrically.** Take the geometric mean of $p_1, \ldots, p_N$ (usually $N=4$), optionally with weights $w_n$ (typically uniform, $w_n = 1/N$):
+
+$$
+\text{BP-free score} = \exp\left(\sum_{n=1}^N w_n \log p_n\right)
+$$
+
+**Step 3 — brevity penalty (BP).** Precision alone rewards short, cautious candidates (a one-word candidate that happens to match the reference gets $p_n = 1$ for every $n$ it has n-grams for). BLEU penalizes candidates shorter than the reference:
+
+$$
+\text{BP} = \begin{cases} 1 & \text{if } c > r \\ e^{(1 - r/c)} & \text{if } c \le r \end{cases}
+$$
+
+where $c$ is candidate length and $r$ is reference length. Final score:
+
+$$
+\text{BLEU} = \text{BP} \cdot \exp\left(\sum_{n=1}^N w_n \log p_n\right)
+$$
+
+<Callout type="info" title="Why geometric mean, why clipping">
+  The geometric mean means **any** $p_n = 0$ (no matching 4-gram at all) zeroes out the whole score — BLEU is unforgiving of candidates that get the right words but never in the right 4-word order. Clipping is what stops precision from being gamed by repeating a frequent token.
+</Callout>
+
+## 2 — ROUGE-N and ROUGE-L: recall-oriented overlap
+
+ROUGE (Recall-Oriented Understudy for Gisting Evaluation) flips the question BLEU asks: *of the n-grams in the reference, how many did the candidate reproduce?* This recall orientation is why ROUGE is the standard for **summarization** — a good summary should cover the reference's key content, and missing content is the failure mode that matters more than a slightly different word order.
+
+**ROUGE-N** (recall form):
+
+$$
+\text{ROUGE-N} = \frac{\sum_{\text{n-gram} \in R} \min\big(\text{count}_C(\text{n-gram}),\ \text{count}_R(\text{n-gram})\big)}{\sum_{\text{n-gram} \in R} \text{count}_R(\text{n-gram})}
+$$
+
+Same clipped-overlap numerator as BLEU's precision, but divided by the **reference's** n-gram count instead of the candidate's — recall instead of precision. In practice, tools report an F-measure that combines both directions once precision is also computed the same way with the candidate's count in the denominator.
+
+**ROUGE-L** replaces fixed-length n-grams with the **Longest Common Subsequence (LCS)** between candidate and reference — a subsequence, not necessarily contiguous, so it naturally rewards preserving word *order* without demanding an unbroken n-gram match. With $\ell = \text{LCS}(C, R)$ length, candidate length $c$, and reference length $r$:
+
+$$
+P_{\text{lcs}} = \frac{\ell}{c}, \qquad R_{\text{lcs}} = \frac{\ell}{r}, \qquad F_{\text{lcs}} = \frac{(1+\beta^2)\, P_{\text{lcs}} R_{\text{lcs}}}{R_{\text{lcs}} + \beta^2 P_{\text{lcs}}}
+$$
+
+with $\beta$ usually set to favor recall ($\beta > 1$) since summarization cares more about coverage.
+
+## 3 — METEOR: precision/recall harmonic mean with matching stages and a fragmentation penalty
+
+METEOR (Metric for Evaluation of Translation with Explicit ORdering) was designed to fix BLEU's two weak spots: it has no recall term, and it only counts **exact** token matches. METEOR aligns candidate and reference tokens in three passes — **exact match**, then **stemmed match** (e.g. "running" ↔ "run"), then **synonym match** (via a resource like WordNet) — and unmatched tokens simply don't align.
+
+Given the alignment, compute unigram precision $P$ and recall $R$ over matched tokens, then combine with recall weighted more heavily than precision (opposite of BLEU's precision-only view):
+
+$$
+F_{\text{mean}} = \frac{10\, P R}{R + 9P}
+$$
+
+**Fragmentation penalty.** A candidate can match every reference word yet scramble their order into disconnected chunks ("fragments"). METEOR groups matched tokens into the fewest contiguous **chunks** possible in both strings, and penalizes more chunks (more fragmentation) for the same match count:
+
+$$
+\text{Penalty} = 0.5 \cdot \left(\frac{\#\text{chunks}}{\#\text{matches}}\right)^3
+$$
+
+$$
+\text{METEOR} = F_{\text{mean}} \cdot (1 - \text{Penalty})
+$$
+
+Fewer, longer contiguous chunks (word order close to the reference) → smaller penalty → score closer to $F_{\text{mean}}$; many single-token chunks (words matched but scattered) → penalty approaches its cap of 0.5.
+
+## Worked example
+
+Reference: **"the cat sat on the mat"** (6 tokens). Candidate: **"the cat sat on mat"** (5 tokens) — it dropped "the" before "mat".
+
+**BLEU (unigrams and bigrams only, for brevity):**
+
+- Unigrams in candidate: $\{\text{the, cat, sat, on, mat}\}$, each appears once. All 5 exist in the reference with count ≥ 1, and "the" is clipped to $\min(1, 2) = 1$. Clipped matches $= 5$, candidate unigram count $= 5$ → $p_1 = 5/5 = 1$.
+- Bigrams in candidate: (the,cat), (cat,sat), (sat,on), (on,mat) — 4 total. Reference bigrams: (the,cat), (cat,sat), (sat,on), (on,the), (the,mat). Three of the candidate's four bigrams match ((the,cat), (cat,sat), (sat,on)); (on,mat) does not appear in the reference → $p_2 = 3/4 = 0.75$.
+- Brevity: $c=5 < r=6$, so $\text{BP} = e^{(1 - 6/5)} = e^{-0.2} \approx 0.819$.
+- $\text{BLEU}_{1,2} = 0.819 \cdot \sqrt{1 \times 0.75} \approx 0.819 \times 0.866 \approx 0.709$.
+
+**ROUGE-1 (recall) and ROUGE-L:**
+
+- Reference unigrams: $\{\text{the}{\times}2, \text{cat, sat, on, mat}\}$ = 6 tokens. Clipped overlap: the candidate contributes "the" once (clipped at $\min(1,2)=1$), plus cat, sat, on, mat = 5 matched reference tokens out of 6 → $\text{ROUGE-1 recall} = 5/6 \approx 0.833$.
+- LCS(candidate, reference) = "the cat sat on mat" is a subsequence of "the cat sat on **the** mat" → $\ell = 5$. $P_{\text{lcs}} = 5/5 = 1$, $R_{\text{lcs}} = 5/6 \approx 0.833$, and with $\beta=1$: $F_{\text{lcs}} = \frac{2 \times 1 \times 0.833}{1 + 0.833} \approx 0.909$.
+
+**METEOR (exact matches only, no stemming needed here):**
+
+- All 5 candidate tokens align exactly to 5 of the reference's 6 tokens (unmatched: the second "the"). $P = 5/5 = 1$, $R = 5/6 \approx 0.833$.
+- $F_{\text{mean}} = \frac{10 \times 1 \times 0.833}{0.833 + 9} \approx \frac{8.33}{9.833} \approx 0.847$.
+- Matched positions are (candidate $i$, reference $j$): $(0,0), (1,1), (2,2), (3,3), (4,5)$ — the first four are contiguous in both strings, but the last jumps from reference index 3 to 5 (the skipped "the" breaks contiguity), so this is $\#\text{chunks} = 2$ over $\#\text{matches} = 5$: $\text{Penalty} = 0.5 \times (2/5)^3 = 0.5 \times 0.064 = 0.032$.
+- $\text{METEOR} \approx 0.847 \times (1 - 0.032) \approx 0.820$.
+
+All three metrics agree the candidate is close but imperfect — dropping a function word costs BLEU the most (a whole bigram breaks), while METEOR's small fragmentation penalty reflects that only one short gap separates two otherwise-contiguous matched runs.
+
+<Callout type="warning" title="Where these metrics fail for open-ended generation">
+  BLEU/ROUGE/METEOR assume there is a small set of acceptable references to overlap against — true for translation and extractive-ish summarization, false for open-ended chat, creative writing, or long-form RAG answers where many differently-worded responses are equally correct. A candidate that paraphrases the reference perfectly (no shared n-grams) scores near zero; a candidate that copies reference words into a nonsensical order can score deceptively high. Surface overlap also can't detect factual inconsistency (hallucination) if the hallucinated span happens to reuse reference vocabulary. This is exactly the gap that **LLM-as-a-judge** (see the [LLM Evaluation lesson](/courses/building-with-llms/08-llm-evaluation)) fills — it scores meaning and faithfulness rather than string overlap, at the cost of needing a model call per evaluation.
+</Callout>
+
+## Related concepts
+
+- [**LLM Evaluation & LLM-as-a-Judge**](/courses/building-with-llms/08-llm-evaluation) — the model-based evaluation these n-gram metrics predate and motivate
+- [**Sequence Models to BERT**](/courses/nlp/03-sequence-models-to-bert) — the seq2seq/translation systems BLEU was originally built to score
+- [**LLM-as-a-Judge: Automated LLM Evaluation**](/wiki/llm-as-judge) — the reference-free alternative for open-ended generation
