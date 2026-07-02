@@ -132,6 +132,10 @@ def dropout(h, p, training=True, seed=None):
 | **Not effective for** | Very small batches (< 4) | Convolutional feature maps (use SpatialDropout) |
 | **Modern substitute** | LayerNorm (Transformers) | Weight decay / data augmentation |
 
+For CNNs specifically — where batch size is often small (large images, detection/segmentation) but LayerNorm's "pool everything" reduction is too coarse — **GroupNorm** and **InstanceNorm** offer a middle ground, each normalizing per-sample so neither needs running statistics at all:
+
+<WikiLink slug="groupnorm-and-instancenorm" title="GroupNorm & InstanceNorm: Batch-Independent Normalization" />
+
 <Callout type="tip" title="Ordering: BN before or after activation?">
   The original BatchNorm paper normalizes pre-activations (before the activation function). In practice, "BN after activation" sometimes works better. Transformers mostly use LayerNorm applied *before* the sublayer (Pre-LN). Try both and pick whichever stabilizes training in your setting.
 </Callout>
