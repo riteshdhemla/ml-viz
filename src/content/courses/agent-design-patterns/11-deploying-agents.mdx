@@ -41,6 +41,10 @@ Two non-negotiable operational layers:
 - **Guardrails** run *around* the loop: input filters (prompt-injection, PII), output filters (toxicity, schema, policy), and action gates (allow-lists, spend caps, confirmation for destructive tools). Run cheap deterministic checks first, model-based checks second.
 - **Observability** captures every Thought / Action / Observation as a **trace** of spans, with token counts, latency, cost, and tool errors attached. You cannot debug a non-deterministic system you can't replay — tracing is the agent equivalent of a stack trace.
 
+Agent traces have their own failure signatures — reasoning loops, budget burn, delegation across trust boundaries — and their own metrics to alert on. The deep dive covers what to capture and watch:
+
+<WikiLink slug="agent-observability" title="Observability for Agents" />
+
 ## Rolling out changes safely
 
 An agent is never "done" — you constantly change prompts, tools, and the underlying model. Ship those changes the way you ship any production system: **shadow** the new version against live traffic with its actions discarded, **canary** it to a small fraction of users, or run a **50/50 A/B** to measure outcomes. The same risk/signal trade-off applies to agents as to any model:

@@ -1,0 +1,110 @@
+---
+title: "Langfuse & OpenTelemetry: Instrumenting LLM Apps"
+description: "The concrete instrumentation stack behind LLM observability — OpenTelemetry's trace/span model and GenAI semantic conventions, Langfuse's trace → observation → score data model, and how a multi-step request becomes a queryable trace."
+topics: ["building-with-llms"]
+relatedLessons:
+  - "building-with-llms/09-llm-observability-and-prompt-management"
+  - "ml-in-practice/10-monitoring-and-observability"
+  - "agent-design-patterns/11-deploying-agents"
+estimatedMinutes: 13
+---
+
+# Langfuse & OpenTelemetry: Instrumenting LLM Apps
+
+The [observability lesson](/courses/building-with-llms/09-llm-observability-and-prompt-management) argues that traces of nested spans are the LLM stack trace. This page covers the *how*: the open standard that defines what a trace **is** (OpenTelemetry), the vocabulary that makes LLM spans comparable across tools (the GenAI semantic conventions), and a purpose-built LLM observability platform (Langfuse) that stores, scores, and lets you query those traces. Instrument once against the standard and you can swap backends without re-instrumenting your app.
+
+## OpenTelemetry in one section
+
+**OpenTelemetry (OTel)** is the CNCF open standard for emitting telemetry from any service. It defines three **signals**:
+
+| Signal | What it captures | LLM-app use |
+|---|---|---|
+| **Traces** | A tree of timed operations for one request | The retrieval → LLM → tool call tree |
+| **Metrics** | Aggregated numbers over time | Token throughput, error rates, cost per hour |
+| **Logs** | Timestamped events | Guardrail triggers, parsing failures |
+
+Traces are the signal that matters most for LLM apps. The data model:
+
+- A **trace** is identified by a `trace_id` and represents one end-to-end request.
+- A **span** is one timed operation inside it — with a `span_id`, a `parent_span_id` (forming the tree), a start/end timestamp, and a bag of key–value **attributes**.
+- **Context propagation** carries the `trace_id` across service boundaries (the W3C `traceparent` HTTP header), so a request that hops from your API to a retrieval service to a model gateway still forms *one* trace.
+
+The pipeline is: your code (instrumented via an OTel SDK) → **OTLP** (the wire protocol) → an optional **Collector** (batching, filtering, routing) → any backend that accepts OTLP. That last step is the point: the emitting side is standardized, the storage/UI side is pluggable.
+
+$$\text{span duration} = t_{\text{end}} - t_{\text{start}}, \qquad \text{trace duration} = \max_{\text{spans}} t_{\text{end}} - \min_{\text{spans}} t_{\text{start}}$$
+
+Trace duration is *not* the sum of span durations — parallel spans overlap, which is exactly what a trace waterfall view makes visible.
+
+## The GenAI semantic conventions
+
+Raw spans are just labelled time intervals. **Semantic conventions** are OTel's agreed attribute names, so every tool means the same thing by "input tokens". The **GenAI conventions** (still marked *in development*, so expect renames) standardize LLM spans:
+
+| Attribute | Example value | Meaning |
+|---|---|---|
+| `gen_ai.operation.name` | `chat`, `embeddings`, `execute_tool`, `invoke_agent` | What kind of GenAI step this span is |
+| `gen_ai.provider.name` | `anthropic`, `openai` | Which provider served it |
+| `gen_ai.request.model` | `claude-sonnet-5` | Model you asked for |
+| `gen_ai.response.model` | the resolved model version | Model that actually answered |
+| `gen_ai.usage.input_tokens` | `1742` | Prompt tokens billed |
+| `gen_ai.usage.output_tokens` | `319` | Completion tokens billed |
+| `gen_ai.request.temperature` | `0.2` | Sampling parameters |
+
+Span names follow `"{operation} {model}"` — e.g. `chat claude-sonnet-5`. Prompt and completion *content* is deliberately **opt-in** (it can contain PII), captured as span events or attributes only when you enable content capture. The conventions also define standard metrics (`gen_ai.client.token.usage`, `gen_ai.client.operation.duration`) so dashboards transfer across stacks.
+
+<Callout type="info" title="Why conventions beat clever logging">
+  The value is *comparability*. If your RAG service, your gateway, and your eval runner all write `gen_ai.usage.input_tokens`, then "cost per feature this week" is one query — not a joins-and-regex archaeology project over three bespoke log formats.
+</Callout>
+
+## Langfuse: an LLM-native trace backend
+
+**Langfuse** is an open-source (self-hostable or cloud) LLM engineering platform. Where a generic APM shows you time intervals, Langfuse's data model is LLM-shaped:
+
+- **Trace** — one request/interaction; carries `userId`, `sessionId`, tags, and metadata.
+- **Observation** — a node in the trace tree, one of three types:
+  - **Span** — any timed step (retrieval, re-ranking, guardrail check),
+  - **Generation** — an LLM call, with model, parameters, prompt/completion, token usage, and **cost** (computed from model price tables),
+  - **Event** — a point-in-time marker.
+- **Score** — a numeric/categorical/boolean judgment attached to a trace or observation: user feedback (👍/👎), guardrail flags, LLM-as-judge grades, human annotations. Scores are what turn traces from a debugging tool into an **evaluation dataset** — filter to `score < threshold`, inspect the exact resolved context, add the failure to a test set.
+- **Session / User** — group traces into conversations and per-user histories.
+
+Instrumentation options, in increasing generality: drop-in SDK wrappers for popular clients, an `@observe()` decorator that turns any Python function into a span, framework callbacks (LangChain, LlamaIndex), and — the standards route — a native **OTLP endpoint**: anything that emits OTel spans with GenAI attributes can point at Langfuse, which maps the semantic conventions onto its trace/observation model. Langfuse's own SDK is itself built on OpenTelemetry, so both routes converge.
+
+Langfuse also hosts the **prompt management** workflow from the lesson: versioned prompts with labels (e.g. `production`, `staging`), fetched at runtime and linked to the generations they produced — so "which prompt version served this bad answer" is a lookup, not a guess.
+
+## A worked trace
+
+One RAG request, as a trace tree (durations in ms, costs from token usage):
+
+```text
+TRACE  rag-answer                    user=u_812  session=s_33   1,910 ms
+└── SPAN  guardrail:input               12 ms   flagged=false
+└── SPAN  retrieval                    180 ms   k=8, index=docs-v3
+│   └── GENERATION  embeddings          95 ms   in=41 tok             $0.000004
+└── GENERATION  chat claude-sonnet-5  1,650 ms  in=1,742  out=319 tok  $0.010
+│      prompt v14 ("rag-answer")  temperature=0.2
+└── SPAN  guardrail:output              backed by regex, 3 ms
+      SCORE  user-feedback = 👎        SCORE  judge-faithfulness = 0.4
+```
+
+Reading it: the answer was bad (two low scores), the model call dominated latency, and the resolved prompt (version 14, with the 8 retrieved chunks) is captured on the generation — everything needed to reproduce the failure offline. Cost per request is the sum over generations:
+
+$$\text{cost}_{\text{req}} = \sum_{\text{generations}} \big(n_{\text{in}}\, p_{\text{in}} + n_{\text{out}}\, p_{\text{out}}\big) \approx \$0.01$$
+
+<Callout type="warning" title="Content capture is a privacy decision">
+  Full prompts and completions are the most useful *and* most sensitive fields in a trace. Decide deliberately: enable content capture where you can (with PII masking at the SDK/collector layer), restrict access, and set retention. "Log everything forever" and "log nothing" are both failure modes — the first is a breach waiting to happen, the second makes every incident irreproducible.
+</Callout>
+
+## Common mistakes
+
+1. **Instrumenting against one vendor's proprietary SDK only** — you rebuild instrumentation when you switch backends; emit OTel + GenAI conventions and keep the exit door open.
+2. **Tracing only the LLM call** — the bad answer usually originates in retrieval or a tool step; trace the *whole* request tree.
+3. **No scores on traces** — without user feedback / judge scores attached, you can't filter millions of traces down to the interesting failures.
+4. **Forgetting the conventions are still evolving** — the GenAI semconv is marked "in development"; pin instrumentation library versions and expect attribute renames.
+
+## Related concepts
+
+- [**LLM Observability, Tracing & Prompt Management**](/courses/building-with-llms/09-llm-observability-and-prompt-management) — the concepts this stack implements
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — classical-ML monitoring that OTel metrics extend
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — why tracing is non-negotiable for agent runtimes
+- [**Observability for Agents**](/wiki/agent-observability) — what changes when the traced system is an autonomous agent
+- [**LLM-as-a-Judge**](/wiki/llm-as-judge) — the evaluators whose outputs become scores on traces

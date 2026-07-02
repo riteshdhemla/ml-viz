@@ -1,0 +1,87 @@
+---
+title: "Observability for Agents"
+description: "What changes when the traced system is an autonomous agent — trajectory traces with agent/tool/sub-agent spans, the agent-specific metrics that catch loops and budget burn, replay for debugging, and online evals over sampled trajectories."
+topics: ["agents"]
+relatedLessons:
+  - "agent-design-patterns/11-deploying-agents"
+  - "agent-design-patterns/10-evaluating-agents"
+  - "building-with-llms/09-llm-observability-and-prompt-management"
+estimatedMinutes: 12
+---
+
+# Observability for Agents
+
+[LLM observability](/courses/building-with-llms/09-llm-observability-and-prompt-management) traces a *pipeline you wrote*: the steps are known, only the outputs vary. An **agent** decides its own next step at runtime, so the trace is no longer a picture of your code — it is the only record of *what the agent chose to do*. That shifts observability from "nice for debugging" to the primary artifact: without the trajectory you cannot debug, evaluate, bill, or audit an agent at all.
+
+## What's different about observing an agent
+
+Four properties break the assumptions of ordinary app tracing:
+
+1. **The structure is emergent.** A RAG pipeline always has the same span tree; an agent's tree differs per request — 3 steps or 40, tools you didn't predict, sub-agents spawned mid-task.
+2. **Failures are behavioural, not exceptional.** The worst trajectories *complete successfully*: the agent loops, burns budget, takes an unsafe-but-permitted action, or reaches the right answer by an unjustifiable path. No error is thrown; only the trace shows it.
+3. **Tasks are long-lived and interactive.** A trajectory can span minutes to days, pause for human approval, and resume on another worker — the trace must survive checkpointing and stitch across resumptions.
+4. **Delegation crosses trust boundaries.** With [MCP tools and A2A peers](/wiki/agent-protocols-mcp-a2a), part of the trajectory executes in systems you don't own; context propagation is what keeps the pieces in one trace.
+
+## The trajectory as a trace tree
+
+The mapping from the agent loop to spans is direct — each Thought / Action / Observation step becomes a subtree. The OTel GenAI conventions define agent-flavoured operation names (`invoke_agent`, `execute_tool`, `create_agent`) alongside `chat`, so an agent trace looks like:
+
+```text
+SPAN invoke_agent "support-agent"          task=refund-request     14.2 s  $0.084
+├── GENERATION chat (planning)             in=2.1k out=140 tok
+├── SPAN execute_tool "lookup_order"       order=#4471   ok   180 ms
+├── GENERATION chat (reasoning)            in=2.4k out=210 tok
+├── SPAN invoke_agent "billing-agent"      A2A delegation          6.0 s
+│   ├── GENERATION chat                    in=1.8k out=95 tok
+│   └── SPAN execute_tool "issue_refund"   HITL: approved ✓  gated action
+└── GENERATION chat (final answer)         in=3.0k out=260 tok
+```
+
+Attach to every step: the **resolved context** (system prompt, transcript so far, tool schemas), the **structured tool I/O**, token counts, and any **guardrail verdicts**. The delegation span is where context propagation earns its keep — the billing agent's sub-trace carries the same `trace_id`, so the refund is auditable end-to-end.
+
+## Agent-specific metrics
+
+Beyond the universal quality/cost/latency triple, trajectories have shape — and the shape metrics are where agent pathologies show up first:
+
+| Metric | Formula / signal | Pathology it catches |
+|---|---|---|
+| **Steps per task** | $S$ = LLM calls + tool calls | Task drift, thrashing |
+| **Loop score** | repeated (tool, args) pairs within a trajectory | Reasoning loops |
+| **Tool error rate** | failed calls / total calls, *per tool* | A broken or misused tool |
+| **Budget burn** | $\sum_s \text{tokens}_s$ vs. per-task ceiling | Runaway cost before it completes |
+| **Handoff count** | sub-agent delegations per task | Over-decomposition |
+| **HITL rate** | gated actions / task | Guardrails too tight or too loose |
+
+Cost grows *superlinearly* with steps, because each step re-sends the growing transcript:
+
+$$\text{tokens}_{\text{task}} \approx \sum_{s=1}^{S} (c_0 + s\,\bar{m}) = S c_0 + \frac{S(S+1)}{2}\,\bar{m}$$
+
+where $c_0$ is the fixed context and $\bar{m}$ the average tokens added per step — a 2× longer trajectory costs roughly 4× the tokens. This is why the loop score and step count deserve alerts, not just dashboards.
+
+<Callout type="warning" title="Alert on trajectory shape, not just errors">
+  An agent that loops 200 times before hitting its cap raises no exception and returns a polite apology. Error-rate alerting sees nothing. Alert on the *shape*: steps per task above the p95 baseline, loop score > 0, budget burn > 80% of ceiling, tool error rate spiking for one tool.
+</Callout>
+
+## From traces to evaluation and replay
+
+The trace store closes two loops from the [evaluation lesson](/courses/agent-design-patterns/10-evaluating-agents):
+
+- **Online evals** — sample completed trajectories and score them: programmatic checks on the outcome, an [LLM-as-judge](/wiki/llm-as-judge) on the *path* ("was each action justified by the preceding thought?"). Scores attach to the trace, so "show me trajectories where the judge flagged an unjustified action" is a filter, not a fishing trip.
+- **Replay debugging** — because each span captured the full resolved context, you can re-run any single step offline with the exact inputs, or replay the whole trajectory up to the step where it derailed and try a fix from there. Combined with checkpointing this is *time-travel debugging* for a non-deterministic system.
+- **Regression sets** — every interesting production failure, exported with its context, becomes a test case the next prompt/model/tool change must pass.
+
+Grouping matters more for agents than for single calls: **sessions** stitch multi-turn conversations, **user** ties trajectories to accounts for billing and abuse detection, and **agent version tags** (prompt vX, toolset vY, model vZ) let you A/B trajectory metrics across rollouts.
+
+## Common mistakes
+
+1. **Logging steps as flat log lines** — without span nesting and a shared `trace_id`, a 30-step trajectory with one delegation is unreconstructable.
+2. **Capturing outputs but not resolved context** — you can see *that* step 17 was wrong but never reproduce *why*.
+3. **Losing the trace at delegation boundaries** — sub-agents and MCP tool servers that don't propagate context turn one task into disconnected fragments.
+4. **Dashboarding averages only** — agent failures live in the tail; p95/p99 steps-per-task and per-tool error rates carry the signal.
+
+## Related concepts
+
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — checkpointing, guardrails, and budget ceilings that observability verifies
+- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents) — outcome vs. trajectory evaluation that runs over these traces
+- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry) — the instrumentation stack and GenAI semantic conventions used here
+- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a) — the delegation edges a trace must cross
