@@ -74,7 +74,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 (replace with two sub-items) rather than half-reviewed.
 
 ### Courses — foundations
-- [ ] linear-algebra
+- [~] linear-algebra <!-- claimed 2026-07-02 -->
 - [ ] calculus-for-ml
 - [ ] probability-statistics
 - [ ] optimization-ml
