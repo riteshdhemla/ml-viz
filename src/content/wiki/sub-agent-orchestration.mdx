@@ -1,0 +1,99 @@
+---
+title: "Sub-Agent Types: Sequential, Parallel & Loop Agents"
+description: "The three deterministic workflow-agent primitives — sequential pipelines, parallel fan-out/fan-in, and bounded loops — how they compose into hierarchies, their latency/cost/failure profiles, and when to use each instead of LLM-driven delegation."
+topics: ["agents"]
+relatedLessons:
+  - "agent-design-patterns/07-multi-agent-cooperation-patterns"
+  - "agent-design-patterns/11-deploying-agents"
+  - "building-with-llms/05-agents-and-tool-use"
+estimatedMinutes: 12
+---
+
+# Sub-Agent Types: Sequential, Parallel & Loop Agents
+
+The [cooperation-patterns lesson](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) covers *who* the agents are (voters, roles, debaters). This page covers *how control flows between them*. Multi-agent frameworks (Google's ADK, LangGraph, OpenAI's Agents SDK, and others) converge on the same small algebra: a **sub-agent** is any agent invoked as a child of another, and there are exactly two ways to decide which sub-agent runs next — a **deterministic workflow** you wrote, or an **LLM deciding at runtime**. The deterministic side reduces to three primitives.
+
+## Workflow agents vs. LLM-driven delegation
+
+- **Workflow agents** are orchestrators whose control flow is *code*: the order of sub-agents is fixed before the request arrives. Predictable, testable, cheap — no LLM call is spent deciding what to do next.
+- **LLM-driven delegation** (orchestrator/router agents, A2A handoffs) asks a model to choose the next sub-agent from the descriptions it can see. Flexible, but every routing decision is a paid, fallible inference.
+
+<Callout type="tip" title="Same rule as the deployment lesson">
+  Reach for a workflow before an agent: if the decomposition is known in advance, encode it as a sequential/parallel/loop structure and spend LLM calls only *inside* the sub-agents. Reserve LLM-driven routing for the part of the task that genuinely can't be predetermined.
+</Callout>
+
+## Sequential agents
+
+**Structure.** Sub-agents $A_1 \to A_2 \to \cdots \to A_K$ run in a fixed order; each reads the shared state the previous one wrote (outline → draft → edit; extract → transform → validate).
+
+- **Latency and cost add up:** $T = \sum_k T_k$, $C = \sum_k C_k$.
+- **Use when** steps genuinely depend on each other's output, or each step needs a different prompt/model/toolset (the role-based pipeline from the lesson is a sequential agent).
+- **Failure mode: cascading errors.** A wrong $A_1$ output silently poisons every later stage. Mitigate with validation between stages — a schema check or critic gate after each step, failing fast instead of forwarding garbage.
+
+```text
+state: {topic} ─▶ [Researcher] ─▶ {notes} ─▶ [Writer] ─▶ {draft} ─▶ [Editor] ─▶ {final}
+```
+
+## Parallel agents
+
+**Structure.** Sub-agents $A_1, \dots, A_N$ run *concurrently* on independent sub-tasks (fan-out); an aggregation step merges their outputs (fan-in) — search three sources at once, generate $N$ candidates for voting, review code for security/style/performance simultaneously.
+
+- **Latency is the max, not the sum:** $T = \max_n T_n + T_{\text{merge}}$ — the whole point. Cost still adds up: $C = \sum_n C_n$.
+- **Use when** sub-tasks share no dependencies and you want wall-clock speed (or independent samples for a [voting pattern](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns)).
+- **Failure modes:** a straggler sets the latency (add per-branch timeouts); branches writing the *same* state key clobber each other (give each branch its own output slot and merge explicitly); and "parallel" branches that secretly depend on each other, which deadlock or silently read stale state.
+
+```text
+                 ┌─▶ [Security reviewer] ─▶ {sec}  ─┐
+{diff} ─ fan-out ─┼─▶ [Style reviewer]    ─▶ {style} ─┼─ fan-in ─▶ [Merger] ─▶ {review}
+                 └─▶ [Perf reviewer]     ─▶ {perf} ─┘
+```
+
+## Loop agents
+
+**Structure.** A body of sub-agents runs repeatedly — generate → critique → revise — until a **termination condition** fires: a critic approves, a test passes, the output stops changing, or a hard iteration cap $k_{\max}$ is hit.
+
+- **Cost and latency are unbounded by design:** $T = \sum_{i=1}^{k} T_{\text{body}}$ where $k$ is unknown in advance. The cap converts "unknown" into "bounded".
+- **Use when** quality comes from iteration and you have a *checkable* stopping signal — the [reflection pattern](/courses/agent-design-patterns/06-reflection-patterns) run under a workflow harness.
+- **Failure modes:** never converging (oscillating between two drafts), a rubber-stamp critic that exits on iteration 1, and the classic — no cap at all.
+
+<Callout type="warning" title="Every loop gets a cap — in the runtime, not the prompt">
+  A loop agent whose exit relies on a model's judgment will eventually meet an input where that judgment never fires. Enforce $k_{\max}$ (and a token/dollar budget) in the orchestration code. On cap-out, return the best iterate so far with a "did not converge" flag rather than failing the whole task.
+</Callout>
+
+## Composition: it's an algebra
+
+The primitives nest — each workflow agent is itself a sub-agent to its parent. A realistic research pipeline:
+
+```text
+Sequential(
+  Planner,
+  Parallel(WebResearcher, PaperResearcher, DataAnalyst),   # independent gathering
+  Loop(Writer → Critic, until approved, k_max = 3),        # iterative drafting
+  Formatter
+)
+```
+
+An LLM-driven orchestrator can sit at any node too — e.g. a router that picks *which* sequential pipeline to run, with everything below it deterministic. Hierarchy bounds each decision: the router chooses among 3 pipelines, not among 12 raw agents.
+
+| Primitive | Latency | Cost | Termination | Primary failure mode |
+|---|---|---|---|---|
+| **Sequential** | $\sum_k T_k$ | $\sum_k C_k$ | after step $K$ | cascading upstream error |
+| **Parallel** | $\max_n T_n$ | $\sum_n C_n$ | after fan-in | stragglers; state clobbering |
+| **Loop** | $k \cdot T_{\text{body}}$ | $k \cdot C_{\text{body}}$ | condition **or** $k_{\max}$ | non-convergence, rubber-stamp critic |
+| **LLM router** | + one LLM call per hop | + routing tokens | model decides | mis-routing, unpredictable paths |
+
+## Common mistakes
+
+1. **Using an LLM router for a fixed pipeline** — paying inference (and accepting mis-routes) to rediscover an order you already knew.
+2. **Parallel branches sharing a mutable state key** — last-writer-wins clobbering that only surfaces under race timing.
+3. **Loops without a runtime cap** — the prompt is a suggestion; the cap is a guarantee.
+4. **Sequential chains with no inter-stage validation** — every stage runs at full cost on garbage input after an early failure.
+5. **Deep nesting without tracing** — a hierarchy of workflow agents is undebuggable unless each sub-agent invocation is a span in [one trace](/wiki/agent-observability).
+
+## Related concepts
+
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — voting/role/debate, the *who* that these primitives schedule
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — orchestration topologies, checkpointing, and budget ceilings
+- [**LangGraph: Agents as State Graphs**](/wiki/langgraph) — a graph runtime where these primitives are nodes and edges
+- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a) — delegation across process and vendor boundaries
+- [**Observability for Agents**](/wiki/agent-observability) — tracing nested sub-agent invocations

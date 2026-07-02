@@ -30,6 +30,10 @@ $$\text{cost}_{\text{req}} = \sum_{\text{calls}} \big(n_{\text{in}}\,p_{\text{in
   When an LLM step misbehaves, you need the *exact* prompt that produced it — system prompt, retrieved chunks, tool outputs, parameters, and model version. Logging only the final response makes failures irreproducible. Capture the complete resolved context per span (with PII handled), or you'll be debugging blind.
 </Callout>
 
+In practice you don't invent this trace format: **OpenTelemetry** standardizes the span model and the GenAI attribute names (`gen_ai.usage.input_tokens`, …), and platforms like **Langfuse** store, price, and score the resulting traces. For the concrete instrumentation stack, see the deep dive:
+
+<WikiLink slug="langfuse-and-opentelemetry" title="Langfuse & OpenTelemetry: Instrumenting LLM Apps" />
+
 ## Monitoring drift in production
 
 Inputs and outputs drift even when your code is frozen:
