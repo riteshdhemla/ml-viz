@@ -169,6 +169,88 @@ Scope: index + 4 lessons + quiz, 10 registry exercises, all 4 notebooks
 
 ---
 
+## calculus-for-ml — 2026-07-02
+
+Scope: index + 4 lessons + quiz, 12 registry exercises, all 4 notebooks
+(structural skim: back-link, Your-turn, TODO(you), asserts all present ✓).
+Assumed prerequisites: none (course lists `[]`).
+
+### calculus-for-ml/01-derivatives-and-gradients — grasp 5/5
+- P3: the ReLU derivative case statement silently omits $x = 0$ — the first
+  question a careful learner asks → add "undefined at 0; frameworks just pick
+  0 (a subgradient)".
+- P3: the directional-derivative paragraph defines the same concept twice in
+  consecutive sentences with two different direction symbols ($\hat{v}$, then
+  $\hat{d}$) → merge into one definition with one symbol.
+- P3: Common-mistake #2 is about chain-rule ordering, which isn't taught until
+  lesson 02 → move it there or add a forward link.
+- Strong: sigmoid-derivative derivation ends in a numeric saturation check;
+  the gradient-checking snippet annotates expected outputs.
+
+### calculus-for-ml/02-chain-rule-and-backpropagation — grasp 5/5
+- Best-in-class lesson: the numeric backward pass ($w{=}2, x{=}3, y{=}5$) plus
+  the "upstream × local" framing makes backprop mechanical, and the
+  BCE+sigmoid collapse is derived rather than asserted.
+- P3: code snippet uses unseeded `np.random.randn` — course convention
+  elsewhere is seeded, reproducible snippets.
+- P3: ComputationalGraphViz appears *above* the "Computational graphs"
+  section that explains what it depicts → move below that section's intro
+  paragraph or add a one-line lead-in.
+
+### calculus-for-ml/03-multivariable-optimization — grasp 4/5
+- P2: the callout attributes "any local minimum is close to the global one" to
+  "the lottery ticket intuition" — mislabel: the lottery-ticket hypothesis is
+  about sparse trainable subnetworks, not loss-landscape minima quality →
+  drop the parenthetical (or reference loss-landscape results instead).
+- P2: "the fastest *stable* choice that balances both directions is
+  $\eta^* = 1/\lambda_{\max} = 0.25$" — for this quadratic the balanced
+  optimum is $2/(\lambda_{\max}{+}\lambda_{\min}) = 0.4$ (contraction 0.6 in
+  both directions vs 0.75 at $\eta{=}0.25$). $1/\lambda_{\max}$ is a safe
+  default, not the fastest balanced rate → reword or teach the real formula.
+- P3: "the Lipschitz constant $L$" — of the *gradient*; unstated as written.
+- P3: the Lagrange section is the only one in the course with no worked
+  example and no exercise → add a forward link to SVM max-margin where the
+  learner will actually use it.
+- Strong: one running example threads critical point → Hessian → eigenvalue
+  classification; the divergence-threshold example ties into the notebook.
+
+### calculus-for-ml/04-jacobians — grasp 4/5
+- P2: the cost table claims "VJP $O(n)$ per layer" vs "Full Jacobian $O(mn)$"
+  — a VJP through a dense $W \in \mathbb{R}^{m\times n}$ costs $O(mn)$ (one
+  matrix–vector product). The honest comparison is "one VJP ≈ one forward
+  pass; a full Jacobian = $m$ VJPs". As written it overstates the speedup and
+  breaks under flop-counting → fix the table.
+- P3: the two-layer Jacobian passage defines $\mathbf{z}_1 = \mathbf{W}_1\mathbf{x}$
+  inline, then the "where" clause re-defines it *with* $\mathbf{b}_1$ → pick one.
+- Strong: softmax Jacobian with numeric zero-row-sum check; dying ReLU read
+  as a zero row/column; condition-number section motivating init/normalization.
+
+### calculus-for-ml/05-quiz — grasp 3/5
+- P2: same pattern as the linear-algebra quiz — reuses six already-answered
+  lesson exercise ids and adds nothing new; no question covers lesson 04 even
+  though `calc-jacobian-shape/linear/vjp` exist in the registry → fresh ids,
+  and include at least one Jacobian/VJP question.
+
+### Exercises (registry)
+- Well-formed; good distractors (`calc-partial-derivative`'s "6xy + 2y"
+  catches differentiating the $y^2$ term by $x$).
+- P3: `calc-gradient-direction` distractor "Neither — it's perpendicular to
+  level sets" is a *true property* of the gradient offered as a wrong answer;
+  correct-but-not-responsive distractors read as trick questions → reword.
+
+### Course meta
+- `estimatedHours: 3` checks out (70 lesson-min × 2.5 / 60 ≈ 2.92 → 3.0). ✓
+- P3: `CLAUDE.md` roadmap says "course + 3 lessons" (it's 4 + quiz) — same
+  staleness as linear-algebra.
+
+### Themes reinforced
+- **Quiz-reuse pattern is now 2 for 2** — quizzes recycle lesson exercise ids
+  verbatim and skip the newest (04) lesson. Likely systemic across courses;
+  worth a single decision + batch fix.
+- Unseeded random snippets and bottom-stacked exercises recur.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
