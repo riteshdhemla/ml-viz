@@ -41,6 +41,8 @@ $$
 \frac{d}{dx} \max(0, x) = \begin{cases} 1 & x > 0 \\ 0 & x < 0 \end{cases}
 $$
 
+(At $x = 0$ the derivative is undefined — the kink has no unique tangent. Frameworks simply use $0$ there; any value in $[0, 1]$ works in practice.)
+
 **Sigmoid derivative.** With $\sigma(x) = (1 + e^{-x})^{-1}$, apply the chain rule to the inner $1 + e^{-x}$:
 
 $$
@@ -122,7 +124,7 @@ print("Numerical: ", numerical_grad(f, x))  # ≈ [4., 9.]
 
 ## Directional derivatives
 
-The **directional derivative** $\nabla_{\mathbf{v}} f$ measures the rate of change of $f$ along direction $\mathbf{v}$, computed as $\nabla f \cdot \hat{\mathbf{v}}$ (the dot product of the gradient with the unit vector in that direction). More precisely, the rate of change of $f$ in any direction $\hat{\mathbf{d}}$ (unit vector) is:
+The **directional derivative** measures the rate of change of $f$ along any unit direction $\hat{\mathbf{d}}$ — and it is simply the dot product of the gradient with that direction:
 
 $$
 D_{\hat{\mathbf{d}}} f = \nabla f \cdot \hat{\mathbf{d}} = \|\nabla f\| \cos\theta

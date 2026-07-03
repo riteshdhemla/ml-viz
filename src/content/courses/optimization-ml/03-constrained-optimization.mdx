@@ -106,19 +106,23 @@ The **Karush-Kuhn-Tucker (KKT)** conditions are necessary (and under convexity, 
   For convex $f$ and convex inequality constraints (convex $g_i$, affine $h_j$), the KKT conditions are also **sufficient** for global optimality. This is why the SVM dual derivation is exact — the primal SVM is convex.
 </Callout>
 
-### Worked LP example
+### Worked example: a linear program (LP)
 
 **Minimize** $-2x - y$ **subject to** $x + y \leq 4$, $x \leq 3$, $y \leq 3$, $x, y \geq 0$.
 
 Rewrite constraints as $g_i \leq 0$: $g_1 = x+y-4$, $g_2 = x-3$, $g_3 = y-3$, $g_4 = -x$, $g_5 = -y$.
 
-At the vertex $(3, 1)$: $g_1 = g_2 = 0$ (both active), $g_3 = g_4 = g_5 < 0$ (inactive) — but is it optimal?
+The feasible region is a polygon, and a linear objective always attains its optimum at a vertex — so evaluate them all:
 
-At the vertex $(1, 3)$: $g_3 = 0$ (active), objective $= -2-3 = -5$.
+| Vertex | Objective $-2x - y$ | Active constraints |
+|---|---|---|
+| $(0, 0)$ | $0$ | $g_4, g_5$ |
+| $(3, 0)$ | $-6$ | $g_2, g_5$ |
+| $(0, 3)$ | $-3$ | $g_3, g_4$ |
+| $(1, 3)$ | $-5$ | $g_1, g_3$ |
+| $(3, 1)$ | $\mathbf{-7}$ ← best | $g_1, g_2$ |
 
-At the vertex $(3, 1)$: objective $= -6-1 = -7$ — better. Check the last vertex: $(3, 1)$ has $g_1 = 0$ as well (both $g_1$ and $g_2$ active).
-
-**Optimal point:** $(3, 1)$. Verify KKT stationarity: $\nabla(-2x-y) = (-2,-1)$, so we need $\mu_1 \cdot (1,1) + \mu_2 \cdot (1,0) = (2,1)$, giving $\mu_1 = 1 \geq 0$, $\mu_2 = 1 \geq 0$. ✅ Complementary slackness: $\mu_3 g_3 = 0$ since $g_3 = 1-3 = -2 \neq 0$ forces $\mu_3 = 0$ ✅.
+**Optimal point:** $(3, 1)$, where $g_1$ and $g_2$ are active and the rest are slack. Now verify the KKT conditions there. Stationarity: $\nabla(-2x-y) = (-2,-1)$, so we need $\mu_1 \cdot (1,1) + \mu_2 \cdot (1,0) = (2,1)$, giving $\mu_1 = 1 \geq 0$, $\mu_2 = 1 \geq 0$ ✅ (dual feasibility included). Complementary slackness: the slack constraints get zero multipliers, e.g. $g_3 = 1-3 = -2 < 0$ forces $\mu_3 = 0$ ✅. All four conditions hold — $(3,1)$ is confirmed optimal.
 
 ## The SVM dual as KKT
 

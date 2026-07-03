@@ -152,19 +152,19 @@ $$
 \mathbf{J}_{\mathbf{h}}(\mathbf{x}) = \mathbf{J}_{\mathbf{g}}(\mathbf{f}(\mathbf{x})) \cdot \mathbf{J}_{\mathbf{f}}(\mathbf{x})
 $$
 
-For a two-layer network with weight matrices $\mathbf{W}_1, \mathbf{W}_2$, element-wise activation $\phi$, and first-layer pre-activations $\mathbf{z}_1 = \mathbf{W}_1\mathbf{x}$ (so $\phi'(\mathbf{z}_1)$ is the activation's derivative at each unit):
+For a two-layer network with weight matrices $\mathbf{W}_1, \mathbf{W}_2$, element-wise activation $\phi$, and first-layer pre-activations $\mathbf{z}_1 = \mathbf{W}_1\mathbf{x} + \mathbf{b}_1$ (so $\phi'(\mathbf{z}_1)$ is the activation's derivative at each unit):
 
 $$
 \mathbf{J}_{\text{net}}(\mathbf{x}) = \mathbf{W}_2 \cdot \operatorname{diag}(\phi'(\mathbf{z}_1)) \cdot \mathbf{W}_1
 $$
 
-where $\mathbf{z}_1 = \mathbf{W}_1 \mathbf{x} + \mathbf{b}_1$. This is the matrix product that backpropagation computes — the "credit assignment" chain.
+This is the matrix product that backpropagation computes — the "credit assignment" chain.
 
 <ComputationalGraphViz />
 
 ## VJPs and backpropagation
 
-Computing the full $m \times n$ Jacobian has cost $O(mn)$ — too expensive when $m$ and $n$ are millions. In ML we never need the full Jacobian. We need to compute
+Materializing the full $m \times n$ Jacobian of a network means running one backward pass *per output* — $m$ of them, hopeless when $m$ is large. In ML we never need it. We need to compute
 
 $$
 \mathbf{v}^\top \mathbf{J} \quad \text{(a vector-Jacobian product, or VJP)}
@@ -176,9 +176,9 @@ where $\mathbf{v}$ is the **upstream gradient** (the gradient of the loss w.r.t.
 
 | Operation | Cost | What it computes |
 |-----------|------|-----------------|
-| Full Jacobian | $O(mn)$ | All partial derivatives |
-| VJP $\mathbf{v}^\top \mathbf{J}$ | $O(n)$ per layer | Gradient of loss w.r.t. inputs |
-| JVP $\mathbf{J}\mathbf{u}$ | $O(m)$ per layer | Gradient of output w.r.t. direction $\mathbf{u}$ |
+| Full Jacobian | $m$ VJPs — $m\times$ the forward-pass cost | All partial derivatives |
+| VJP $\mathbf{v}^\top \mathbf{J}$ | ≈ one forward pass | Gradient of loss w.r.t. inputs |
+| JVP $\mathbf{J}\mathbf{u}$ | ≈ one forward pass | Directional derivative of the outputs along $\mathbf{u}$ |
 
 Backpropagation is **reverse-mode** automatic differentiation: it computes VJPs from the output layer backwards. Forward-mode autodiff computes JVPs and is efficient when $n \ll m$ (few inputs, many outputs) — for example, in scientific simulation.
 

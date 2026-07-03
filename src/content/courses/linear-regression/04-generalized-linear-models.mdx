@@ -24,7 +24,7 @@ $$
 - $b(y)$ — a base measure independent of $\eta$
 
 <Callout type="info" title="Why this matters">
-  The exponential family is a single algebraic form that contains **Gaussian, Bernoulli, Poisson, Exponential, Gamma, Multinomial**, and many other distributions. Any distribution in this family admits the same EM-style MLE algorithm, and GLMs are built exactly on top of this structure.
+  The exponential family is a single algebraic form that contains **Gaussian, Bernoulli, Poisson, Exponential, Gamma, Multinomial**, and many other distributions. Every member has a concave log-likelihood with the same clean gradient structure, so one fitting recipe covers them all — and GLMs are built exactly on top of this structure.
 </Callout>
 
 ### Bernoulli as exponential family
@@ -127,8 +127,8 @@ Suppose we have two classes of 2D points:
 
 GDA fit:
 1. Compute class means $\hat\mu_0 = (-2,0)$, $\hat\mu_1 = (2,0)$
-2. Pool all residuals to estimate $\hat\Sigma$
-3. Decision boundary: the vertical line $x_1 = 0$ (midpoint of the two means, scaled by $\Sigma^{-1}$)
+2. Pool all residuals to estimate $\hat\Sigma \approx I$
+3. Read off the boundary. The posterior's weight vector is $\theta = \Sigma^{-1}(\mu_1 - \mu_0) = I \cdot (4, 0) = (4, 0)$, and with balanced classes ($\phi = 0.5$) the bias is $-\tfrac{1}{2}\big(\mu_1^\top\Sigma^{-1}\mu_1 - \mu_0^\top\Sigma^{-1}\mu_0\big) = -\tfrac{1}{2}(4 - 4) = 0$. So $P(y{=}1 \mid x) = \sigma(4x_1)$, and the decision boundary $\sigma(4x_1) = 0.5$ is the vertical line $x_1 = 0$ — the perpendicular bisector of the two means.
 
 ---
 

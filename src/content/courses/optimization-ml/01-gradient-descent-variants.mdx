@@ -262,6 +262,10 @@ for t in range(1, 6):
     print(f"t={t}: θ={theta:.6f}  m={m:.6f}  v={v:.8f}  m̂={m_hat:.4f}  v̂={v_hat:.4f}")
 ```
 
+For the full family tree — AdaGrad, AdamW's decoupled weight decay, Nadam — with every update rule derived and compared on the same problem:
+
+<WikiLink slug="gradient-descent-optimizers" title="Gradient Descent Optimizers: SGD, Momentum, Adagrad, RMSprop & Adam" />
+
 <Callout type="warning" title="Adam does not always generalize best">
   Adam converges faster than SGD in most settings, but on image classification
   benchmarks, well-tuned SGD + momentum often achieves 1–2% lower test error.
@@ -305,6 +309,10 @@ $$
 $$
 
 Why? At initialization, the model's weights are random and its gradient estimates are unreliable. A large initial learning rate can cause catastrophic parameter updates before the gradient signal stabilizes. The warm-up gives the optimizer a few steps to build up accurate first- and second-moment estimates before taking large steps.
+
+For schedule shapes beyond these — one-cycle, inverse square root, and how to pick warm-up length — see the deep dive:
+
+<WikiLink slug="learning-rate-schedules" title="Learning Rate Schedules: Warmup, Decay & Restarts" />
 
 <Callout type="info" title="Adam + cosine is the standard transformer recipe">
   The original Transformer paper used Adam with $\beta_1=0.9$, $\beta_2=0.98$,

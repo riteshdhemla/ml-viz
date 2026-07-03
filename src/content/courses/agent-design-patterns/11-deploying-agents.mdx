@@ -34,12 +34,16 @@ A reliable agent loop must be **persistable**. Modelling the agent as a state gr
 - **Recovery** — on crash or timeout, resume from the last good checkpoint instead of restarting the whole trajectory.
 - **Time-travel debugging** — replay a trajectory to the step where it went wrong.
 
+The canonical implementation of this state-graph model — typed state, reducers, checkpointing, and HITL interrupts — is covered in the deep dive:
+
+<WikiLink slug="langgraph" title="LangGraph: Agents as State Graphs" />
+
 ## Guardrails and observability at runtime
 
 Two non-negotiable operational layers:
 
 - **Guardrails** run *around* the loop: input filters (prompt-injection, PII), output filters (toxicity, schema, policy), and action gates (allow-lists, spend caps, confirmation for destructive tools). Run cheap deterministic checks first, model-based checks second.
-- **Observability** captures every Thought / Action / Observation as a **trace** of spans, with token counts, latency, cost, and tool errors attached. You cannot debug a non-deterministic system you can't replay — tracing is the agent equivalent of a stack trace.
+- **Observability** captures every Thought / Action / Observation of the [ReAct loop](/courses/building-with-llms/05-agents-and-tool-use) as a **trace** of spans, with token counts, latency, cost, and tool errors attached. You cannot debug a non-deterministic system you can't replay — tracing is the agent equivalent of a stack trace.
 
 Agent traces have their own failure signatures — reasoning loops, budget burn, delegation across trust boundaries — and their own metrics to alert on. The deep dive covers what to capture and watch:
 

@@ -307,13 +307,14 @@ surface-border   — borders
 ## Comprehensive ML Content Roadmap
 
 ### Foundations
-- [x] **Linear Algebra for ML** — vectors, matrices, dot products, eigendecomposition *(course + 3 lessons)*
-- [x] **Calculus for ML** — derivatives, chain rule, Jacobians, Hessians *(course + 3 lessons)*
-- [x] **Probability & Statistics** — distributions, MLE, MAP, Bayes' theorem *(course + 3 lessons)*
+- [x] **Linear Algebra for ML** — vectors, matrices, dot products, eigendecomposition, SVD *(course + 4 lessons + quiz)*
+- [x] **Calculus for ML** — derivatives, chain rule, Jacobians, Hessians *(course + 4 lessons + quiz)*
+- [x] **Probability & Statistics** — distributions, MLE, MAP, Bayes, entropy/KL, inference, hypothesis testing *(course + 7 lessons + quiz)*
+- [x] **Optimization for ML** — GD variants (SGD/momentum/Adam), convexity, KKT, loss functions, HPO *(course + 5 lessons + quiz)*
 
 ### Supervised Learning — Beginner
 - [x] **Neural Networks** — perceptron, forward pass, backprop *(course + 3 lessons)*
-- [x] **Linear & Logistic Regression** — OLS, Ridge, Lasso, regularization, decision boundary *(course + 3 lessons + quiz)*
+- [x] **Linear & Logistic Regression** — OLS, regularization, decision boundary, GLMs & GDA *(course + 4 lessons + quiz)*
 - [x] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity, bias-variance *(course + 3 lessons + quiz)*
 
 ### Supervised Learning — Intermediate
@@ -426,6 +427,9 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | RolloutViz | `visualizations/Rollout/` | ml-in-practice/09-continual-learning-and-test-in-production | ✅ |
 | AgentLoopViz | `visualizations/AgentLoop/` | agent-design-patterns/09-tool-use-and-mcp | ✅ |
 | VCDimensionViz | `visualizations/VCDimension/` | wiki/vc-dimension | ✅ |
+| LowRankViz | `visualizations/LowRank/` | linear-algebra/04-svd-and-low-rank | ✅ |
+| KLDivergenceViz | `visualizations/KLDivergence/` | probability-statistics/05-entropy-and-kl-divergence | ✅ |
+| OptimizerPathViz | `visualizations/OptimizerPath/` | optimization-ml/01-gradient-descent-variants | ✅ |
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 
 ---

@@ -63,13 +63,13 @@ $$
 
 ### Application: cross-entropy ≥ entropy
 
-Let $p$ be the true distribution and $q$ the model distribution. Since $-\log$ is convex:
+Let $p$ be the true distribution and $q$ the model distribution. The gap between cross-entropy and entropy is an expectation of a log-ratio, and Jensen (applied to the convex $-\log$, with expectations under $p$) pins its sign:
 
 $$
-H(p, q) = -\sum_x p(x) \log q(x) \geq -\sum_x p(x) \log p(x) = H(p)
+H(p, q) - H(p) = \mathbb{E}_p\!\left[-\log \frac{q(x)}{p(x)}\right] \;\geq\; -\log \mathbb{E}_p\!\left[\frac{q(x)}{p(x)}\right] = -\log \sum_x q(x) = -\log 1 = 0
 $$
 
-The cross-entropy loss is always at least as large as the entropy of the true distribution — equality holds only when $q = p$.
+So $H(p, q) \geq H(p)$, with equality only when $q = p$ — the cross-entropy loss can never beat the entropy of the truth, and the gap is exactly the KL divergence $D_{\mathrm{KL}}(p\|q)$.
 
 ### Worked example: log-sum-exp
 
