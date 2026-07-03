@@ -6874,6 +6874,65 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It is limited by host↔device transfer; the fix is more PCIe lanes", isCorrect: false },
     ],
   },
+  {
+    id: "gpu-dist-dp-memory",
+    type: "multiple-choice",
+    question:
+      "You double the number of GPUs used for naive data parallelism (full model replicated on each). What happens to the per-GPU memory needed for parameters, gradients, and optimizer state?",
+    hint: "Data parallelism shards the batch, not the model state.",
+    explanation:
+      "Data parallelism replicates the full parameters, gradients, and optimizer state on every GPU — it shards the batch, not the state. Adding GPUs raises total compute throughput but leaves per-GPU memory for model state exactly the same. Shrinking it requires sharding the state itself (ZeRO/FSDP), not just adding more replicas.",
+    options: [
+      { id: "a", label: "It stays exactly the same — DP replicates state, it doesn't shard it", isCorrect: true },
+      { id: "b", label: "It is cut in half, since each GPU does half the work", isCorrect: false },
+      { id: "c", label: "It doubles, because gradient all-reduce needs a second buffer", isCorrect: false },
+      { id: "d", label: "It is cut by a factor equal to the number of GPUs", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-dist-zero-stage",
+    type: "multiple-choice",
+    question:
+      "For mixed-precision Adam training, total model state is 16Ψ bytes per parameter (2Ψ fp16 params + 2Ψ fp16 grads + 12Ψ fp32 optimizer state). Which ZeRO stage first shrinks per-GPU memory to scale down with the number of GPUs G, and what is it at full sharding?",
+    hint: "ZeRO-1 shards only the optimizer state; ZeRO-3 shards everything.",
+    explanation:
+      "ZeRO-1 already shards the 12Ψ optimizer state across G GPUs (4Ψ + 12Ψ/G), so per-GPU memory starts shrinking with G at stage 1. Full sharding is ZeRO-3, which also shards the fp16 params and grads, giving 16Ψ/G — the whole model state divided by the GPU count.",
+    options: [
+      { id: "a", label: "ZeRO-1 already scales down with G; ZeRO-3 reaches 16Ψ/G at full sharding", isCorrect: true },
+      { id: "b", label: "Only ZeRO-3 scales down with G; earlier stages stay at 16Ψ regardless of G", isCorrect: false },
+      { id: "c", label: "None of the stages reduce per-GPU memory — ZeRO only reduces communication", isCorrect: false },
+      { id: "d", label: "ZeRO-2 is the first stage to scale, since gradients dominate model state", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-dist-pipeline-bubble",
+    type: "slider",
+    question:
+      "A pipeline-parallel run splits the model across P = 5 stages and uses M = 15 micro-batches. Using bubble fraction = (P−1)/(P−1+M), what fraction of the time is spent in the pipeline bubble (idle)?",
+    hint: "(5−1) / (5−1+15) = 4/19.",
+    explanation:
+      "Bubble fraction = (P−1)/(P−1+M) = 4/19 ≈ 0.21, so about 21% of the pipeline's time is idle bubble. Increasing the number of micro-batches M shrinks this fraction without changing P, which is why pipeline-parallel training always uses many small micro-batches rather than a few large ones.",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    correctRange: [0.19, 0.23],
+    unit: "",
+  },
+  {
+    id: "gpu-quiz-distributed",
+    type: "multiple-choice",
+    question:
+      "A model's parameters fit on one GPU, but its optimizer state does not. Which is the smallest change that fixes this without adding tensor or pipeline parallelism?",
+    hint: "Start from the lowest ZeRO stage and stop as soon as it fits.",
+    explanation:
+      "ZeRO-1 shards exactly the optimizer state across the data-parallel group while leaving parameters and gradients replicated — the minimal fix for an optimizer-state-only memory problem. Reaching for tensor or pipeline parallelism would solve it too, but at the cost of splitting the model itself and adding per-layer communication that isn't needed here.",
+    options: [
+      { id: "a", label: "Enable ZeRO-1 to shard the optimizer state across the data-parallel GPUs", isCorrect: true },
+      { id: "b", label: "Switch to tensor parallelism to split every matmul across GPUs", isCorrect: false },
+      { id: "c", label: "Add more data-parallel replicas of the full model", isCorrect: false },
+      { id: "d", label: "Switch to pipeline parallelism to split the model by layer", isCorrect: false },
+    ],
+  },
 
   // ── Statistical Inference & Hypothesis Testing ──────────────────
   {

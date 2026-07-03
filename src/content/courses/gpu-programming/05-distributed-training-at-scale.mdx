@@ -1,0 +1,113 @@
+---
+title: "Distributed Training at Scale"
+description: "Why one GPU isn't enough for a foundation model — data parallelism and all-reduce, the ZeRO/FSDP memory-sharding stages, and model/pipeline parallelism for networks too big to fit on one device."
+order: 5
+type: concept
+estimatedMinutes: 18
+---
+
+# Distributed Training at Scale
+
+Lesson 4 mapped a neural network onto a single GPU. Foundation models blow past what a single GPU — even a single *node* — can hold or compute in a reasonable time. This lesson covers the two walls that force training onto many GPUs at once, and the three families of parallelism that get around them.
+
+**Real-world examples:** GPT- and Llama-scale pretraining runs on thousands of GPUs simultaneously; PyTorch's `FSDP` and Microsoft's `DeepSpeed` (ZeRO) are the memory-sharding libraries every large training run sits on top of; Megatron-LM's tensor-parallel matmul splitting; the reason LoRA/QLoRA (`fine-tuning-alignment`) are popular is that they let you dodge almost everything in this lesson by only training a small adapter.
+
+## Two walls, not one
+
+- **The compute wall.** A frontier model needs more FLOPs than one GPU can deliver in an acceptable wall-clock time, even running flat out.
+- **The memory wall.** A 70B-parameter model's weights, gradients, and optimizer state don't fit in one GPU's memory — regardless of how fast that GPU is.
+
+These are different problems with different fixes. Compute wall → parallelize the *work*. Memory wall → shard the *state*. Confusing the two is the single most common conceptual mistake in this area.
+
+## Data parallelism: parallelize the work
+
+**Data parallelism (DP)** replicates the full model on every GPU and shards the *batch* — each GPU runs forward/backward on its own slice of data, producing its own local gradients. Before the optimizer step, an **all-reduce** averages the gradients across all GPUs so every replica applies the identical update:
+
+$$
+g = \frac{1}{G}\sum_{i=1}^{G} g_i
+$$
+
+where $G$ is the number of GPUs and $g_i$ is GPU $i$'s local gradient. A ring all-reduce moves $\approx 2\Psi(G-1)/G$ worth of gradient data per GPU ($\Psi$ = parameter count) — bandwidth cost that is nearly *independent of $G$* for large $G$, which is why DP scales well, provided the all-reduce overlaps with backward compute rather than stalling after it.
+
+<Callout type="warning" title="DP solves compute, not memory">
+  Every GPU still holds a full copy of the parameters, gradients, and optimizer state. Doubling the GPU count doubles your throughput, but does nothing for a model whose optimizer state alone is too big for one GPU. That's the memory wall, and DP alone never touches it.
+</Callout>
+
+## The memory wall, in bytes
+
+For mixed-precision training with Adam, each parameter carries far more than its own 2 bytes. A standard accounting (fp16 weights + fp16 gradients + fp32 master weights + fp32 momentum + fp32 variance):
+
+$$
+\underbrace{2\Psi}_{\text{fp16 params}} + \underbrace{2\Psi}_{\text{fp16 grads}} + \underbrace{4\Psi + 4\Psi + 4\Psi}_{\text{fp32 optimizer state}} = 16\Psi \text{ bytes}
+$$
+
+A 7B-parameter model needs **112 GB** of model state under this accounting — before a single activation is stored. Naive DP puts all $16\Psi$ bytes on *every* GPU, so adding GPUs never shrinks this number.
+
+## ZeRO / FSDP: shard the state instead of replicating it
+
+**ZeRO** (Zero Redundancy Optimizer — the idea behind PyTorch's `FSDP`) keeps DP's batch-sharding but stops replicating state that doesn't need to be replicated. It shards the $16\Psi$ bytes across the $G$ data-parallel GPUs in three increasing stages:
+
+| Stage | Shards | Per-GPU memory |
+|---|---|---|
+| Baseline DP | nothing | $16\Psi$ |
+| ZeRO-1 ($P_{os}$) | optimizer state | $4\Psi + 12\Psi/G$ |
+| ZeRO-2 ($P_{os+g}$) | + gradients | $2\Psi + 14\Psi/G$ |
+| ZeRO-3 ($P_{os+g+p}$) | + parameters | $16\Psi/G$ |
+
+Each stage shards one more piece of state across the $G$ GPUs, gathering it back only for the instant it's needed (e.g. all-gathering a shard's parameters just before that shard's forward pass) and freeing it right after. ZeRO-3's $16\Psi/G$ is the payoff: per-GPU memory now scales *down* with GPU count, exactly what naive DP couldn't do.
+
+<DistributedTrainingViz />
+
+<Callout type="info" title="More sharding, more communication">
+  Each ZeRO stage trades memory for communication: ZeRO-3 needs an extra all-gather of parameters on every forward and backward pass, on top of the gradient all-reduce DP already pays. This is why teams pick the *lowest* ZeRO stage that fits in memory rather than defaulting to ZeRO-3 — stage 1 or 2 is often enough and communicates less.
+</Callout>
+
+## When sharding still isn't enough: model and pipeline parallelism
+
+ZeRO shards *state*, but every GPU still needs to materialize the full activations of every layer during its forward pass. When a single layer is too large for that — or DP communication itself becomes the bottleneck — the model itself is split:
+
+- **Tensor parallelism** splits an individual matmul across GPUs — e.g. a weight matrix's columns live on different GPUs, each computing a partial GEMM (the same GEMM from Lesson 4, just partitioned), with a small all-reduce/all-gather to combine partial results. Communication is frequent and latency-sensitive, so tensor parallelism is normally kept *within* a fast-interconnect node.
+- **Pipeline parallelism** splits the model by *layer*: GPU 1 holds layers 1–8, GPU 2 holds layers 9–16, and so on, with activations passed forward between them like a pipeline. To keep every GPU busy, the batch is cut into $M$ **micro-batches** that flow through the stages back-to-back.
+
+Pipeline parallelism's cost is the **bubble**: with $P$ pipeline stages, the first stage sits idle while later stages haven't started, and the last stage sits idle while earlier stages finish. The idle fraction is
+
+$$
+\text{bubble fraction} = \frac{P - 1}{P - 1 + M}
+$$
+
+More micro-batches ($M$) shrink the bubble — at the cost of smaller per-microbatch activations and more scheduling overhead.
+
+## Putting it together: 3D parallelism
+
+Production training runs (Megatron-LM, DeepSpeed) combine all three axes at once — data parallelism *across* groups of GPUs, tensor parallelism *within* a node, pipeline parallelism *across* nodes — because each axis answers a different question:
+
+| Symptom | Axis that helps |
+|---|---|
+| Training is too slow | Data parallelism (more GPUs on the batch) |
+| Optimizer/gradients don't fit | ZeRO stage 1 or 2 |
+| Parameters themselves don't fit | ZeRO-3, or tensor parallelism |
+| A single layer's activations don't fit | Tensor or pipeline parallelism |
+
+## Common mistakes
+
+1. **Expecting data parallelism to solve a memory problem.** DP replicates state; it never shards it. More GPUs under naive DP means more copies of the same too-big state, not a smaller one.
+2. **Not overlapping the gradient all-reduce with backward compute.** A DP implementation that waits for backward to finish before starting communication throws away most of DP's scalability.
+3. **Reaching for tensor or pipeline parallelism before exhausting ZeRO.** They solve a real problem (a layer or the full parameter set doesn't fit) but add real complexity and communication; ZeRO-1/2 alone is enough for most models that merely have a large optimizer footprint.
+4. **Picking a micro-batch count without checking the bubble.** Too few micro-batches leaves pipeline stages idle a large fraction of the time; the bubble fraction formula tells you directly how many you need.
+
+## Key takeaways
+
+- **Two distinct walls**: compute (not enough FLOPs) and memory (state doesn't fit) — and they need different fixes.
+- **Data parallelism** replicates the model, shards the batch, and syncs gradients with all-reduce — it scales compute but not memory.
+- **ZeRO/FSDP** shards optimizer state, then gradients, then parameters across the data-parallel group, taking per-GPU memory from $16\Psi$ down to $16\Psi/G$ at full sharding (stage 3), at the cost of extra communication.
+- **Tensor and pipeline parallelism** split the model itself when sharding state still isn't enough; pipeline parallelism pays an idle "bubble" that shrinks with more micro-batches.
+
+## Related concepts
+
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — the GEMM that tensor parallelism partitions, and the memory/compute-bound framing this lesson builds on
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — where distributed-training job schedulers (Ray, Kubernetes) fit into the wider platform
+- [**PEFT / LoRA / QLoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — why training a small adapter instead of the full model sidesteps most of this lesson's memory wall
+
+<Exercise id="gpu-dist-dp-memory" />
+<Exercise id="gpu-dist-zero-stage" />
+<Exercise id="gpu-dist-pipeline-bubble" />
