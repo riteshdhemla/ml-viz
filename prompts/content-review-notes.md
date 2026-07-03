@@ -251,6 +251,99 @@ Assumed prerequisites: none (course lists `[]`).
 
 ---
 
+## probability-statistics — 2026-07-02
+
+Scope: index + 7 lessons + quiz, 20 registry exercises, all 7 notebooks
+(structural skim ✓). Assumed prerequisites: none. Overall the strongest
+course reviewed so far — lessons 03–07 are exemplary. The issues cluster in
+the 01/02 seam.
+
+### probability-statistics/01-thinking-in-probabilities — grasp 5/5
+- Excellent: conversational, worked LLN snippet with seeded rng, the
+  density-can-exceed-1 `<Details>`, and the frequentist/Bayesian callout.
+- P3: only one exercise; the conditional-probability section (the lesson's
+  hardest idea) has none → add a product-rule question.
+
+### probability-statistics/02-probability-distributions — grasp 3/5
+- P2: **heavy overlap with lesson 01**, which was clearly added later: 02
+  re-teaches random variables, expectation, variance, PMF vs PDF,
+  density > 1 (as a Callout; 01 has the same as a Details), conditional
+  probability, independence, and the product rule. Reading in order, half of
+  02 is a rerun with no "recall from lesson 01" framing → dedupe: open 02
+  directly with the distribution catalog and compress the shared vocabulary
+  into a 3-line recall box linking back to 01.
+- P2: the **KL-divergence callout** sits unmotivated inside "sum and product
+  rules" and duplicates lesson 05's core content → replace with a one-line
+  forward pointer to 05.
+- P2: the closing likelihood section fully derives the Bernoulli MLE
+  ($\hat\theta = s/n$) — the exact centrepiece derivation of lesson 03,
+  making 03's payoff a rerun → trim to *pose* the question ("which θ makes
+  the data most probable? Next lesson") without solving it.
+- P3: the Categorical section is two lines with no example — fine, but jarring
+  next to the fully derived Bernoulli.
+- Strong: Bernoulli mean/variance derived step by step; the variance
+  shortcut derived once in a callout and reused.
+
+### probability-statistics/03-maximum-likelihood-estimation — grasp 5/5
+- Exemplary: bent-coin hook, 5-step Bernoulli derivation, grid-search-vs-
+  closed-form code, and the cross-entropy identity treated as recognition
+  rather than proof. Wiki extraction (`mle-gaussian`) is exactly right.
+- P3: "likelihood is not a probability over θ" appears three times (callout,
+  a dedicated section, and common-mistake #1) → keep two at most.
+- P3: the `information-theory` WikiLink dangles after Related concepts with
+  no lead-in sentence — every other WikiLink in the course gets one.
+
+### probability-statistics/04-bayesian-inference — grasp 5/5
+- Exemplary: base-rate medical example computed in full, MAP→L2 derivation in
+  a callout, MLE/MAP/posterior-mean compared on the same numbers.
+- no further issues.
+
+### probability-statistics/05-entropy-and-kl-divergence — grasp 5/5
+- Tight surprise → entropy → cross-entropy → KL arc; the forward/reverse-KL
+  callout plus interactive viz is the best explanation of mode-seeking vs
+  mean-covering in the repo.
+- P3: single exercise; an entropy-computation or forward/reverse-KL
+  discrimination question would cover the two core skills.
+- P3: KLDivergenceViz is missing from `CLAUDE.md`'s viz registry table.
+
+### probability-statistics/06-statistical-inference — grasp 5/5
+- Excellent: SE vs SD callout, "4× data for half the error", the
+  what-95%-means callout, and a model-accuracy CI worked example that lands
+  in ML territory. Bootstrap wiki link well placed.
+- no further issues.
+
+### probability-statistics/07-hypothesis-testing — grasp 5/5
+- Excellent: never-accept-H₀ and what-p-is-NOT callouts hit the two classic
+  misconceptions; error-type table + power; peeking flagged; code verifies
+  the z-test numerically.
+- no further issues.
+
+### probability-statistics/08-quiz — grasp 3.5/5
+- P2: same reuse pattern for the older material — 6 of 8 questions recycle
+  lesson exercise ids (`prob-*`, `mle-*`, `bayes-posterior`) — **but** the
+  newer stats lessons contributed two fresh quiz-only ids
+  (`stats-quiz-standard-error`, `stats-quiz-p-value`), which is the right
+  model → backfill fresh ids for the older lessons; add entropy/KL coverage
+  (lesson 05 has no quiz question at all).
+
+### Exercises (registry) & notebooks
+- All referenced ids exist; 20 exercises, hints/explanations present.
+- All 7 notebooks structurally complete (back-link, Your-turn, TODO(you),
+  asserts). ✓
+
+### Course meta
+- `estimatedHours: 4.5` checks out (112 min × 2.5 / 60 ≈ 4.67 → 4.5). ✓
+- P3: `CLAUDE.md` roadmap says "course + 3 lessons" (it's 7 + quiz).
+
+### Themes reinforced
+- Quiz-reuse now 3/3, but this course shows the fix pattern in situ
+  (`stats-quiz-*` fresh ids).
+- New theme: **later-added lessons create seams** — 01 was added before 02
+  without deduping (same likely for 02's likelihood bridge vs 03). When
+  inserting a lesson, sweep its neighbours for newly redundant material.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
