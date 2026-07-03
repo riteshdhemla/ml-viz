@@ -344,6 +344,86 @@ the 01/02 seam.
 
 ---
 
+## optimization-ml — 2026-07-02
+
+Scope: index + 5 lessons + quiz, 20 registry exercises, all 5 notebooks
+(structural skim ✓). Assumed prerequisites: calculus-for-ml. A strong,
+recent course — quiz follows the all-fresh-ids pattern.
+
+### optimization-ml/01-gradient-descent-variants — grasp 5/5
+- P2: **disconnected from its own wiki deep dives.** The lesson covers
+  optimizers and LR schedules at length, and `wiki/gradient-descent-optimizers`
+  + `wiki/learning-rate-schedules` cover the same ground deeper — but the
+  lesson has no WikiLink to either, and neither wiki page lists this course in
+  `relatedLessons` (both predate the course) → link both directions.
+- P3: OptimizerPathViz missing from `CLAUDE.md`'s viz registry table.
+- Strong: heavy-ball vs EMA callout preempts the classic PyTorch/textbook
+  confusion; momentum and Adam worked traces verified numerically ✓; honest
+  "Adam doesn't always generalize best" caveat; when-to-use table.
+
+### optimization-ml/02-convex-optimization — grasp 4/5
+- P2: "cross-entropy ≥ entropy" is presented as following from convexity of
+  $-\log$, but the actual Jensen step (Gibbs: $\mathbb{E}_p[\log(q/p)] \le
+  \log \mathbb{E}_p[q/p] = 0$) is skipped — in the lesson *about* Jensen, the
+  showcase application isn't reproducible from what's on the page → add the
+  two-line derivation.
+- P3: the log-sum-exp "worked example" is really a derivation sketch that
+  lands on the ELBO with no payoff link → forward-link VAEs/variational
+  inference.
+- P3: sklearn snippet's output ("same answer from both solvers") not shown as
+  annotated values, unlike other snippets in the course.
+
+### optimization-ml/03-constrained-optimization — grasp 4/5
+- P2: the **worked LP example is muddled**: vertices are visited in a
+  confusing order, $(3,1)$ is introduced three times, and "Check the last
+  vertex: (3, 1)" reads as a non-sequitur. The math is correct (KKT
+  multipliers verified ✓) but the prose can't be followed linearly → rewrite
+  as a small vertex/objective table, then verify KKT once at the winner.
+- P3: "LP" never expanded to "linear program".
+- P3: the "multiplier measures constraint pushback" sentence appears twice
+  within 12 lines.
+- Strong: Lagrangian → KKT → SVM dual is exactly the right arc; the
+  complementary-slackness → support-vectors payoff and the kernel-trick
+  callout close the loop the SVM course opens.
+
+### optimization-ml/04-loss-functions — grasp 5/5
+- Tight; the loss-decides-what-you-predict callout (mean vs median) and the
+  loss=NLL section close the loop with probability-statistics/03.
+- P3: only lesson in the course without a code snippet — a 5-line
+  Huber-vs-MSE-on-an-outlier demo would be cheap and on-theme.
+- P3: focal loss's $\gamma$ never named in words (focusing parameter), and
+  the formula covers the positive class only.
+
+### optimization-ml/05-hyperparameter-optimization — grasp 5/5
+- Clean scoping: defers Bayesian optimization to the bayesian-methods course
+  instead of re-teaching it; random-beats-grid callout gives the *reason*,
+  not just the claim; ASHA/Hyperband framing is practical.
+- no further issues.
+
+### optimization-ml/06-quiz — grasp 4.5/5
+- All five ids are fresh quiz-only questions (`opt-quiz-*`) — this is the
+  model pattern the older courses should adopt.
+- P3: no question covers lesson 05 (HPO) → add one.
+
+### Exercises (registry) & notebooks
+- 20 exercises, all referenced ids exist. All 5 notebooks structurally
+  complete (Your-turn, TODO(you), asserts). ✓
+
+### Course meta
+- `estimatedHours: 3.5` checks out (86 min × 2.5 / 60 ≈ 3.58 → 3.5). ✓
+- P3: **optimization-ml is absent from `CLAUDE.md`'s roadmap entirely** (the
+  Foundations cluster lists only linear-algebra, calculus, prob-stats).
+
+### Themes reinforced
+- Quiz pattern correlates with course age: newer content (optimization-ml,
+  the stats lessons) uses fresh quiz ids; older courses recycle. One batch
+  fix for the old courses would close the theme.
+- New theme instance: **content added later isn't back-linked** — wiki pages
+  that predate a course don't list it in `relatedLessons` (mirror of the
+  lesson-insertion seams found in probability-statistics).
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
