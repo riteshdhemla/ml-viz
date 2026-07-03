@@ -80,7 +80,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] optimization-ml <!-- reviewed 2026-07-02 -->
 
 ### Courses — classical ML
-- [~] linear-regression <!-- claimed 2026-07-02 -->
+- [x] linear-regression <!-- reviewed 2026-07-02 -->
 - [ ] knn-decision-trees
 - [ ] svm
 - [ ] ensemble-methods

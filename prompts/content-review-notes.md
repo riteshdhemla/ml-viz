@@ -424,6 +424,87 @@ recent course — quiz follows the all-fresh-ids pattern.
 
 ---
 
+## linear-regression — 2026-07-02
+
+Scope: index + 4 lessons + quiz, 20 registry exercises (15 lesson + 5 quiz),
+all 4 notebooks (structural skim ✓). The course's biggest issue is an
+internal duplication seam between lessons 01 and 03.
+
+### linear-regression/01-linear-regression — grasp 4/5
+- P2: **lessons 01 and 03 teach the same material twice.** Lesson 01's back
+  half covers Ridge and Lasso in depth (objectives, closed form, sklearn
+  snippets, comparison table, correlated-features callout) — and lesson 03 is
+  *entirely* Ridge & Lasso, with the better treatment (viz, geometric
+  picture, wiki deep-dive link). A learner reads near-identical content twice
+  two lessons apart → trim 01 to OLS + the overfitting *problem*, ending on a
+  forward link to 03 as the solution; move anything unique (the λI
+  invertibility derivation) into 03. Update 01's frontmatter description
+  ("OLS, Ridge, Lasso") accordingly.
+- P2: the Ridge/Lasso snippets reference undefined `X_train/y_train/X_test/
+  y_test` — the only non-runnable code in the foundations/classical courses
+  reviewed so far; a learner pasting them gets a NameError → define a small
+  dataset or fold into 03's treatment.
+- Strong: the 3-point OLS fit with residuals and R² computed by hand and then
+  *reproduced in the code block* is exactly the worked-trace pattern; good
+  wiki extraction (`ols-normal-equation`).
+
+### linear-regression/02-logistic-regression — grasp 5/5
+- Excellent: log-odds identity derived, boundary geometry via subtracting two
+  boundary points, cross-entropy derived from MLE in four labeled steps, and
+  the gradient collapse extracted to a wiki page with the headline result
+  kept in-lesson.
+- P2: the Limitations callout claims logistic regression "assumes features
+  are independent" — it doesn't (that's naive Bayes); multicollinearity
+  affects coefficient stability, not a model assumption → reword to
+  "correlated features make coefficients unstable/hard to interpret".
+- P3: the GD snippet keeps bias `b` separate while lesson 01 absorbs it into
+  `w` via the ones column — inconsistent conventions two lessons apart.
+
+### linear-regression/03-regularization — grasp 5/5
+- The model regularization lesson: penalty-gradient intuition (proportional
+  vs constant force), the diamond/circle picture, a viz with signal/echo/
+  noise weights, and honest λ guidance.
+- P3: missing the standard end-matter — no Common mistakes and no Related
+  concepts section (the only such lesson reviewed so far); one exercise only.
+
+### linear-regression/04-generalized-linear-models — grasp 4/5
+- P2: "Any distribution in this family admits the same EM-style MLE
+  algorithm" — wrong label: exponential-family MLE is moment matching via
+  sufficient statistics; EM is for latent-variable models. As written it
+  plants a false association → delete "EM-style" or say "closed-form/convex
+  MLE".
+- P3: the GDA "Worked example" lists steps but computes nothing — no numbers,
+  unlike every other worked example in the course → either add the arithmetic
+  (means, pooled Σ, resulting boundary) or retitle to "Sketch".
+- P3: only lesson in the course with neither code nor viz; a 10-line GDA-fit
+  snippet would ground it.
+- P3: uses `---` horizontal rules between sections; no Common mistakes
+  section — template drift.
+
+### linear-regression/05-quiz — grasp 4.5/5
+- All five ids are fresh (`linreg-quiz-*`) ✓ — newer-course pattern again.
+- P3: no question covers lesson 04 (GLMs/GDA) despite `glm-*`/`gda-*`
+  exercises existing in the registry.
+
+### Exercises & notebooks
+- All referenced ids exist (15 lesson + 5 quiz). All 4 notebooks structurally
+  complete. ✓
+
+### Course meta
+- `estimatedHours: 3.0` checks out (69 min × 2.5 / 60 ≈ 2.88 → 3.0). ✓
+- P3: CLAUDE.md roadmap says "3 lessons + quiz" (it's 4 + quiz).
+
+### Themes reinforced
+- **Duplication seams (3rd instance):** 01↔03 here, 01↔02 and 02↔03 in
+  probability-statistics — all from content added at different times. The
+  authoring prompts should require a neighbour-dedup pass when adding a
+  lesson to an existing course.
+- Quiz-freshness correlates with recency again; quizzes skip the newest
+  lesson (04 here, 04 in calculus, 04 in linear-algebra) — quizzes are not
+  updated when lessons are appended.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
