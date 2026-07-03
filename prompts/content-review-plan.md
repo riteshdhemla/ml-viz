@@ -77,7 +77,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] linear-algebra <!-- reviewed 2026-07-02 -->
 - [x] calculus-for-ml <!-- reviewed 2026-07-02 -->
 - [x] probability-statistics <!-- reviewed 2026-07-02 -->
-- [~] optimization-ml <!-- claimed 2026-07-02 -->
+- [x] optimization-ml <!-- reviewed 2026-07-02 -->
 
 ### Courses — classical ML
 - [ ] linear-regression
