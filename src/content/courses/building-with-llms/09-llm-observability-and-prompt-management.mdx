@@ -26,6 +26,8 @@ A back-of-envelope cost model makes the bill predictable:
 
 $$\text{cost}_{\text{req}} = \sum_{\text{calls}} \big(n_{\text{in}}\,p_{\text{in}} + n_{\text{out}}\,p_{\text{out}}\big)$$
 
+where $n$ counts tokens in and out of each call and $p$ is the per-token price for each direction.
+
 <Callout type="info" title="Log the full context, not just the answer">
   When an LLM step misbehaves, you need the *exact* prompt that produced it — system prompt, retrieved chunks, tool outputs, parameters, and model version. Logging only the final response makes failures irreproducible. Capture the complete resolved context per span (with PII handled), or you'll be debugging blind.
 </Callout>
@@ -43,6 +45,8 @@ Inputs and outputs drift even when your code is frozen:
 - **Quality drift** — eval scores on sampled traffic decline.
 
 Because there's no label at inference time, monitor **proxies**: user feedback, guardrail trigger rates, retrieval relevance scores, format-validity rates, and the online eval scores from the previous lesson.
+
+**Example:** a provider silently updates the model behind your API. Answers get slightly longer and the JSON format-validity rate drops from 99% to 91% overnight — no deploy happened, no error fired, but the output distribution moved. The proxy metric catches what your logs can't.
 
 ## Prompt management
 

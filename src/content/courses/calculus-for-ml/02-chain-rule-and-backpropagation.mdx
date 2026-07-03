@@ -50,11 +50,11 @@ $$
 \frac{\partial z}{\partial \mathbf{w}} = \frac{\partial z}{\partial \mathbf{x}} \cdot \frac{\partial \mathbf{x}}{\partial \mathbf{w}}
 $$
 
-<ComputationalGraphViz />
-
 ## Computational graphs
 
 A **computational graph** represents a function as a directed acyclic graph (DAG): nodes are operations, edges carry values forward (forward pass) and gradients backward (backward pass).
+
+<ComputationalGraphViz />
 
 **Example graph:** $L = (\mathbf{w}^\top \mathbf{x} - y)^2$
 
@@ -168,6 +168,7 @@ def sigmoid(z): return 1 / (1 + np.exp(-z))
 def relu(z):    return np.maximum(0, z)
 
 # Forward pass
+np.random.seed(0)                 # reproducible
 x  = np.array([1.0, 2.0, 3.0])
 W1 = np.random.randn(4, 3) * 0.1
 b1 = np.zeros(4)

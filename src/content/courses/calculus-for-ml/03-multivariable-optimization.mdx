@@ -68,7 +68,7 @@ Then $x = -2(-1) = 2$. The single critical point is $\mathbf{x}^* = (2, -1)$.
 We still do not know *what kind* of critical point it is — for that we need the Hessian.
 
 <Callout type="info" title="Deep networks rarely hit local minima">
-  Research has shown that most critical points in deep network loss landscapes are saddle points, not poor local minima. The loss value at any local minimum in a large network tends to be close to the global minimum (this is the "lottery ticket" intuition). Saddle points are more problematic because gradient descent slows down — the gradient is near zero.
+  Research has shown that most critical points in deep network loss landscapes are saddle points, not poor local minima. The loss value at any local minimum in a large network tends to be close to the global minimum. Saddle points are more problematic because gradient descent slows down — the gradient is near zero.
 </Callout>
 
 ## The Hessian matrix
@@ -222,10 +222,10 @@ print(classify(np.array([[1., 2.], [2., 1.]])))  # ('saddle point',  [-1.,  3.])
 
 ## Learning rate and curvature
 
-The optimal gradient descent step size is related to the largest eigenvalue of $\mathbf{H}$ (the **Lipschitz constant** $L$):
+The safe gradient descent step size is set by the largest eigenvalue of $\mathbf{H}$ (the **Lipschitz constant of the gradient**, $L$):
 
 $$
-\eta^* = \frac{1}{L} = \frac{1}{\lambda_{\max}(\mathbf{H})}
+\eta = \frac{1}{L} = \frac{1}{\lambda_{\max}(\mathbf{H})}
 $$
 
 - **Too large $\eta$:** overshoots; oscillates or diverges if $\eta > 2/L$
@@ -252,7 +252,7 @@ $$
 \eta > \frac{2}{\lambda_{\max}} = \frac{2}{4} = 0.5.
 $$
 
-The fastest *stable* choice that balances both directions is $\eta^* = 1/\lambda_{\max} = 0.25$. The notebook runs $\eta \in \{0.05, 0.2, 0.49, 0.51\}$ and shows the last value blowing up — exactly the $0.5$ threshold predicted here.
+A standard safe choice is $\eta = 1/\lambda_{\max} = 0.25$, which kills the error along the steepest direction in one step. The rate that optimally balances *both* directions is $\eta^* = 2/(\lambda_{\max} + \lambda_{\min}) = 0.4$ — it contracts each coordinate by the same factor $0.6$ per step. The notebook runs $\eta \in \{0.05, 0.2, 0.49, 0.51\}$ and shows the last value blowing up — exactly the $0.5$ threshold predicted here.
 
 This is why the curvature of the loss landscape determines the best learning rate — and why adaptive methods like Adam use per-parameter estimates of curvature.
 
@@ -282,7 +282,7 @@ At the constrained optimum, $\nabla f = -\lambda \nabla g$ — the gradient of t
 
 - Critical points have $\nabla f = 0$; the **Hessian** determines whether they're minima, maxima, or saddle points.
 - **Convex** losses have guaranteed global optima; neural networks are non-convex.
-- Optimal learning rate is $1/\lambda_{\max}(\mathbf{H})$ — too large and you diverge.
+- Curvature sets the learning rate: $\eta = 1/\lambda_{\max}(\mathbf{H})$ is the safe default, and beyond $2/\lambda_{\max}$ you diverge.
 - Saddle points slow training; SGD noise, momentum, and adaptive methods help escape.
 
 ## Related concepts

@@ -158,11 +158,11 @@ print("Closed-form k/n:  p = {:.3f}".format(data.mean()))  # 0.700 — same!
 | **Invariant** | $\widehat{f(\theta)} = f(\hat{\theta})$ for any invertible transform |
 | **Biased** | May be biased in finite samples (e.g., Gaussian variance) |
 
-## Common mistake: confusing likelihood and probability
-
-This trips up almost everyone at first. $L(\theta) = p(\mathcal{D} \mid \theta)$ is a function of $\theta$ with the **data fixed** — it answers "how plausible is this parameter given what I saw?" It is **not** a probability distribution over $\theta$: it does not integrate to 1 over $\theta$, and "the probability that $\mu = 3$" is not something MLE can give you.
-
 To reason about uncertainty in $\theta$ itself — to put a probability distribution *on the parameters* — you need a prior, which is **Bayesian inference** (next lesson).
+
+The information-theoretic view of the same objects — entropy, KL divergence, and why minimizing cross-entropy minimizes the KL to the data distribution — is developed in the deep dive:
+
+<WikiLink slug="information-theory" title="Information Theory for ML: Entropy, KL Divergence, and Cross-Entropy" />
 
 ## Common mistakes
 
@@ -184,8 +184,6 @@ To reason about uncertainty in $\theta$ itself — to put a probability distribu
 - [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the distributions MLE fits
 - [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — adds a prior to MLE
 - [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimizer that maximizes likelihood in deep models
-
-<WikiLink slug="information-theory" title="Information Theory for ML: Entropy, KL Divergence, and Cross-Entropy" />
 
 <Exercise id="mle-gaussian" />
 <Exercise id="mle-loss-connection" />

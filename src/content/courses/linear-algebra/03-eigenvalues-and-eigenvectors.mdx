@@ -54,7 +54,7 @@ $$
 where $\mathbf{V} = [\mathbf{v}_1 | \cdots | \mathbf{v}_n]$ and $\boldsymbol{\Lambda} = \text{diag}(\lambda_1, \ldots, \lambda_n)$.
 
 <Callout type="info" title="Symmetric matrices are special">
-  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal. Covariance matrices are symmetric — this is why PCA always gives orthogonal components.
+  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal — a guarantee known as the **spectral theorem**. Covariance matrices are symmetric — this is why PCA always gives orthogonal components.
 </Callout>
 
 ## Connection to PCA
@@ -71,7 +71,10 @@ $$
 
 ```python
 # PCA via eigendecomposition
-X = np.random.randn(100, 5)       # 100 samples, 5 features
+import numpy as np
+
+rng = np.random.default_rng(0)
+X = rng.standard_normal((100, 5))  # 100 samples, 5 features
 X -= X.mean(axis=0)               # center the data
 
 C = (X.T @ X) / len(X)           # covariance matrix
@@ -95,28 +98,21 @@ $$
 \text{tr}(\mathbf{A}) = \sum_i A_{ii} = \sum_i \lambda_i, \qquad \det(\mathbf{A}) = \prod_i \lambda_i
 $$
 
-- **Trace** = sum of eigenvalues = total variance preserved.
+- **Trace** = sum of eigenvalues (for a covariance matrix, that sum is the total variance).
 - **Determinant** = product of eigenvalues = signed volume scaling factor.
   - $\det = 0$ means at least one eigenvalue is 0 → matrix is singular, not invertible.
 
 ## Singular Value Decomposition (SVD)
 
-We used SVD briefly in the PCA connection above — here is the full picture. For **any** matrix (not just square or symmetric), SVD generalizes eigendecomposition:
+Eigendecomposition is picky: it needs a square matrix, and its cleanest guarantees need symmetry. For **any** matrix, the **singular value decomposition** generalizes the idea:
 
 $$
 \mathbf{A} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^\top
 $$
 
-- $\mathbf{U}$: left singular vectors (orthonormal)
-- $\boldsymbol{\Sigma}$: diagonal matrix of singular values $\sigma_i \geq 0$
-- $\mathbf{V}$: right singular vectors (orthonormal)
+with orthonormal $\mathbf{U}, \mathbf{V}$ and non-negative singular values $\sigma_i$ on the diagonal of $\boldsymbol{\Sigma}$. For a square symmetric PSD matrix — like a covariance matrix — the two decompositions coincide: $\sigma_i = \lambda_i$ and $\mathbf{U} = \mathbf{V} = \mathbf{Q}$.
 
-SVD is used for **low-rank approximations** (keeping only the top-$k$ singular values), matrix completion (Netflix Prize), and computing the pseudo-inverse.
-
-<Callout type="tip" title="SVD everywhere in ML">
-  For a square symmetric PSD matrix like a covariance matrix, SVD and eigendecomposition coincide: $\sigma_i = \lambda_i$ and $\mathbf{U} = \mathbf{V} = \mathbf{Q}$.
-  For general weight matrices in neural networks, SVD reveals the effective rank and is used for compression.
-</Callout>
+Where $\mathbf{U}$, $\boldsymbol{\Sigma}$, $\mathbf{V}$ come from, why truncating them gives the *best* low-rank approximation (Eckart–Young), and the compression applications are the [next lesson](/courses/linear-algebra/04-svd-and-low-rank).
 
 ## Common mistakes
 
@@ -135,6 +131,7 @@ SVD is used for **low-rank approximations** (keeping only the top-$k$ singular v
 ## Related concepts
 
 - [**Matrices and Transformations**](/courses/linear-algebra/02-matrices-and-transformations) — what eigendecomposition decomposes
+- [**SVD & Low-Rank Approximation**](/courses/linear-algebra/04-svd-and-low-rank) — the generalization to any matrix, continued next
 - [**PCA & Dimensionality Reduction**](/courses/pca-dimensionality/01-pca) — eigendecomposition applied
 - [**Calculus for ML: Derivatives**](/courses/calculus-for-ml/01-derivatives-and-gradients) — gradients point in the eigenvector direction at optima
 

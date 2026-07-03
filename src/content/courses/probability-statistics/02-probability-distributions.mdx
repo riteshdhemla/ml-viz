@@ -14,7 +14,7 @@ Machine learning is fundamentally about uncertainty — uncertain data, uncertai
 
 ## Random variables and distributions
 
-A **random variable** $X$ maps outcomes to numbers. Its **probability distribution** describes how likely each value (or range of values) is. There are two flavours, and the difference matters.
+Recall from [Thinking in Probabilities](/courses/probability-statistics/01-thinking-in-probabilities): a **random variable** $X$ maps outcomes to numbers, and its **probability distribution** describes how likely each value (or range of values) is. There are two flavours, and the difference matters enough to restate precisely before we meet the named distributions.
 
 ### PMF vs PDF — the one distinction to get right
 
@@ -153,7 +153,7 @@ For the full catalog — Poisson, Exponential, Gamma, Beta, Dirichlet, Laplace, 
 
 ## Conditional probability and independence
 
-So far we've described variables in isolation. But inference is almost always about *relationships* — how knowing one thing changes our belief about another. **Conditional probability** is the tool: the probability of $A$ given that $B$ occurred.
+[Lesson 01](/courses/probability-statistics/01-thinking-in-probabilities) introduced conditioning as *zooming in* on the worlds where $B$ happened. Here is the same idea as a ratio — the form you'll actually compute with — plus a worked belief update.
 
 $$
 P(A | B) = \frac{P(A \cap B)}{P(B)}
@@ -183,11 +183,7 @@ $$
 P(A | B) = \frac{P(B | A)\, P(A)}{P(B)}
 $$
 
-<Callout type="info" title="KL divergence — comparing distributions">
-  The **Kullback–Leibler divergence** measures how different distribution $q$ is from distribution $p$:
-  $$D_\text{KL}(p \| q) = \int p(x) \ln \frac{p(x)}{q(x)} dx \geq 0$$
-  $D_\text{KL}(p\|q) = 0$ iff $p = q$. KL divergence appears in the VAE loss, reinforcement learning policy gradient, and variational inference.
-</Callout>
+Comparing two whole distributions — how far your model $q$ sits from the truth $p$ — has its own toolkit (entropy, cross-entropy, and KL divergence), built from scratch in [Entropy & KL Divergence](/courses/probability-statistics/05-entropy-and-kl-divergence).
 
 ## From distributions to ML: the likelihood
 
@@ -205,19 +201,7 @@ $$
 \ell(\theta) = \log L(\theta) = \sum_{i=1}^n \log p(x_i \mid \theta).
 $$
 
-**Worked example — fitting a Bernoulli.** Say we flip a coin $n$ times and see $s$ heads. Using $p(x_i \mid \theta) = \theta^{x_i}(1-\theta)^{1-x_i}$:
-
-$$
-\ell(\theta) = \sum_{i=1}^n \big[x_i \log\theta + (1-x_i)\log(1-\theta)\big] = s\log\theta + (n-s)\log(1-\theta).
-$$
-
-To maximize, set the derivative to zero:
-
-$$
-\frac{d\ell}{d\theta} = \frac{s}{\theta} - \frac{n-s}{1-\theta} = 0 \;\Longrightarrow\; s(1-\theta) = (n-s)\theta \;\Longrightarrow\; \hat\theta = \frac{s}{n}.
-$$
-
-The best-fit success probability is simply the **fraction of heads** — exactly the intuitive answer, now derived from first principles. This same recipe (write the likelihood, take its log, maximize) is how logistic regression, linear regression, and neural-network classifiers are all trained; their loss functions are *negative* log-likelihoods in disguise. We pick this idea apart in the next lesson.
+**Preview — fitting a Bernoulli.** Flip a coin $n$ times and see $s$ heads: which $\theta$ makes that outcome most probable? Intuition says the fraction of heads, $s/n$ — and maximizing $\ell(\theta)$ confirms it. The [next lesson](/courses/probability-statistics/03-maximum-likelihood-estimation) derives that answer step by step and shows the same recipe (write the likelihood, take its log, maximize) is how logistic regression, linear regression, and neural-network classifiers are all trained — their loss functions are *negative* log-likelihoods in disguise.
 
 ## Common mistakes
 

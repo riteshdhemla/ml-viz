@@ -94,3 +94,21 @@ plt.rcParams['axes.edgecolor'] = '#2e3347'
 ```
 
 See `notebooks/neural-networks/01-what-is-a-neuron.ipynb` as a reference.
+
+---
+
+## When inserting a lesson into an existing course
+
+Content added later creates **redundancy seams**. Before finishing:
+
+1. **Sweep the neighbours.** Read the lessons immediately before and after the
+   new one; trim anything they teach that the new lesson now covers better
+   (leave a 2–3 line recall + link, not a re-teach), and remove any forward
+   material the new lesson supersedes.
+2. **Update the quiz.** Add coverage for the new lesson (prefer fresh
+   quiz-only exercise ids over reusing in-lesson ids).
+3. **Back-link.** Add the new lesson to the `relatedLessons` of any wiki page
+   that covers the same topic, and add WikiLinks from the lesson to those
+   pages.
+4. **Recompute** the course's `estimatedHours` and update `CLAUDE.md`'s
+   roadmap lesson count.

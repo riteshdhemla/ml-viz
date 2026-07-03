@@ -508,3 +508,67 @@ internal duplication seam between lessons 01 and 03.
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
+
+---
+
+## Fix pass #1 — 2026-07-02 (covers all findings through linear-regression)
+
+**Applied (P2s):**
+- linear-algebra/02: worked example and code now compose the same order with
+  the same letters (R@S), expected outputs annotated
+- linear-algebra/03: dangling "we used SVD above" removed; SVD section trimmed
+  to a teaser + forward link to lesson 04 (also added to Related concepts)
+- calculus-for-ml/03: lottery-ticket mislabel removed; η=1/λmax reframed as
+  the safe default with the true balanced optimum 2/(λmax+λmin)=0.4 shown;
+  "Lipschitz constant of the gradient" clarified (incl. key takeaway)
+- calculus-for-ml/04: VJP cost table corrected (one VJP ≈ one forward pass;
+  full Jacobian = m VJPs); duplicate z₁ definition unified
+- probability-statistics/02: recall-from-01 framing added (RV + conditioning
+  sections); KL callout → forward pointer to lesson 05; Bernoulli-MLE
+  derivation trimmed to a preview that hands off to lesson 03
+- probability-statistics/03: triple-stated "likelihood ≠ probability" cut to
+  two; info-theory WikiLink moved above Related concepts with a lead-in
+- optimization-ml/01: WikiLinks added to gradient-descent-optimizers and
+  learning-rate-schedules; both wiki pages now back-link via relatedLessons
+- optimization-ml/02: Gibbs/Jensen two-step derivation added to the
+  cross-entropy ≥ entropy application
+- optimization-ml/03: LP worked example rewritten as a vertex table + single
+  KKT verification; "linear program (LP)" expanded
+- linear-regression/01↔03 dedup: 01's Ridge/Lasso half replaced by a short
+  "The fix: regularization" bridge (keeps the λI insight) + forward link;
+  non-runnable snippets removed by the trim; description/frontmatter, common
+  mistakes, takeaways, related concepts updated; ridge-vs-lasso exercise
+  moved to 03; 03 gained Common mistakes + Related concepts sections
+- linear-regression/02: false "assumes features are independent" reworded to
+  coefficient-stability framing
+- linear-regression/04: "EM-style MLE" mislabel fixed; GDA example now
+  computes θ=(4,0), bias 0, boundary x₁=0 with the arithmetic shown
+- agent-design-patterns/07: undefined score() equation replaced with rubric
+  prose; Condorcet table added (N=1/5/11/25 → .70/.84/.92/.98, fixing the
+  slightly-off 91% claim); Borda one-line worked example added
+- agent-design-patterns/11: langgraph WikiLink added at the state-graph
+  section; ReAct-loop back-link added at first Thought/Action/Observation use
+- building-with-llms/09: drift-proxy worked example added; cost-formula
+  symbols defined
+- wiki/agent-protocols-mcp-a2a: JSON-RPC one-line gloss added
+
+**Applied (quiz coverage, partial):** added missing-lesson coverage using
+existing registry ids — linalg-svd-rank, calc-jacobian-shape + calc-vjp,
+prob-kl-asymmetry, glm-identify-distribution, hpo-random-vs-grid.
+
+**Applied (meta):** CLAUDE.md roadmap rows corrected (linear-algebra 4+quiz,
+calculus 4+quiz, prob-stats 7+quiz, linear-regression 4+quiz) and
+optimization-ml added; LowRankViz/KLDivergenceViz/OptimizerPathViz added to
+the viz registry; prompts/new-lesson.md gained a "when inserting a lesson"
+checklist (neighbour dedup, quiz update, back-links, hours recompute).
+
+**Deferred (still open):**
+- Fresh quiz-id backfill for older courses (current fix reuses lesson ids
+  for coverage; the reuse theme itself stands)
+- New viz components: TraceWaterfallViz (bwl/09 + adp/11), Condorcet
+  P-vs-N mini plot (adp/07)
+- Deeper probstat 01↔02 dedup (expectation/variance still taught twice)
+- Course-wide exercise-placement convention (mid-lesson vs bottom-stacked)
+- probstat/05 + linreg/03 second exercises; linreg/04 code snippet
+- calc/01 P3s (applied: ReLU x=0 note, directional-derivative dedup;
+  still open: chain-rule common-mistake forward link)

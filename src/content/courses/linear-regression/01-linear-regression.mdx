@@ -1,6 +1,6 @@
 ---
 title: "Linear Regression"
-description: "Fitting a line to data — Ordinary Least Squares, Ridge, and Lasso."
+description: "Fitting a line to data — the model, Ordinary Least Squares, residuals and R², and why overfitting calls for regularization."
 order: 1
 type: concept
 estimatedMinutes: 16
@@ -123,95 +123,37 @@ With many features (or correlated features), $X^T X$ can be nearly singular, cau
 - Weight magnitudes are very large
 - Small changes in data cause wild weight swings
 
-## Ridge regression (L2 regularization)
+## The fix: regularization
 
-Add a penalty on the **magnitude** of the weights:
-
-$$
-\mathcal{L}_{\text{Ridge}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|^2
-$$
-
-The derivation mirrors OLS. The extra penalty $\lambda\|\mathbf{w}\|^2 = \lambda\,\mathbf{w}^\top\mathbf{w}$ has gradient $2\lambda\mathbf{w}$, so setting the full gradient to zero gives:
-
-$$
--2X^\top\mathbf{y} + 2X^\top X\mathbf{w} + 2\lambda\mathbf{w} = \mathbf{0}
-\;\Longrightarrow\;
-(X^\top X + \lambda I)\,\mathbf{w} = X^\top\mathbf{y}
-$$
-
-so the closed-form solution becomes:
+Both symptoms — huge unstable weights and a (nearly) singular $X^\top X$ — have the same cure: **penalize weight magnitude** so the model must earn its complexity. The Ridge penalty $\lambda\|\mathbf{w}\|^2$ even repairs the algebra: its gradient adds $2\lambda\mathbf{w}$ to the normal equation, so the closed form becomes
 
 $$
 \mathbf{w}^* = (X^\top X + \lambda I)^{-1} X^\top \mathbf{y}
 $$
 
-The $\lambda I$ term adds a positive amount to every eigenvalue of $X^\top X$, which guarantees $X^\top X + \lambda I$ is always invertible (even when $X^\top X$ alone is singular) and shrinks all weights toward zero.
+and the $\lambda I$ term lifts every eigenvalue of $X^\top X$ above zero — the numerical fix and the statistical fix are the same fix.
 
-<Callout type="info" title="Effect of λ">
-  $\lambda = 0$: equivalent to OLS. As $\lambda \to \infty$: all weights shrink to zero (model predicts the mean). The optimal $\lambda$ balances fit and complexity — typically found via cross-validation.
-</Callout>
-
-```python
-from sklearn.linear_model import Ridge
-
-ridge = Ridge(alpha=1.0)  # alpha = λ
-ridge.fit(X_train, y_train)
-print(f"Ridge weights: {ridge.coef_}")
-print(f"Training R²: {ridge.score(X_train, y_train):.3f}")
-print(f"Test R²: {ridge.score(X_test, y_test):.3f}")
-```
-
-## Lasso regression (L1 regularization)
-
-Replace the L2 penalty with an L1 penalty:
-
-$$
-\mathcal{L}_{\text{Lasso}} = \| \mathbf{y} - X\mathbf{w} \|^2 + \lambda \| \mathbf{w} \|_1
-$$
-
-Unlike Ridge, Lasso can set weights **exactly to zero** — performing automatic feature selection. This is because the L1 penalty creates a diamond-shaped constraint region whose corners touch the axes.
-
-```python
-from sklearn.linear_model import Lasso
-
-lasso = Lasso(alpha=0.1)
-lasso.fit(X_train, y_train)
-print(f"Lasso weights: {lasso.coef_}")
-# Some weights may be exactly 0.0 — feature selection!
-print(f"Features selected: {np.sum(lasso.coef_ != 0)} / {len(lasso.coef_)}")
-```
-
-## Comparison
-
-| Regularization | Penalty | Effect | When to use |
-|----------------|---------|--------|-------------|
-| None (OLS) | — | Can overfit with many features | Few features, clean data |
-| Ridge (L2) | $\lambda \sum w_i^2$ | Shrinks weights, keeps all features | Many features, all potentially useful |
-| Lasso (L1) | $\lambda \sum |w_i|$ | Sparse solutions, feature selection | Many features, suspect most are irrelevant |
-
-<Callout type="warning" title="Correlated features">
-  When features are highly correlated, Ridge tends to distribute weight across them while Lasso picks one and zeros the rest. Neither is strictly better — it depends on whether you believe all correlated features matter. Elastic Net combines both penalties.
-</Callout>
+How Ridge (L2) and Lasso (L1) differ — why L1 zeroes features out entirely while L2 only shrinks them, and how to choose $\lambda$ — is the subject of [Regularization: Ridge & Lasso](/courses/linear-regression/03-regularization).
 
 ## Common mistakes
 
-1. **Forgetting to standardize features** — Ridge and Lasso are sensitive to feature scales. Always standardize before regularizing.
-2. **Tuning λ on the test set** — Use cross-validation on the training set to select λ. The test set is for final evaluation only.
+1. **Comparing raw weight magnitudes across features** — a weight's size depends on its feature's scale; standardize features before reading $w_j$ as importance.
+2. **Evaluating on training data alone** — a high training $R^2$ with many features says little; check held-out error to catch overfitting.
 3. **Assuming linear means simple** — Linear regression with polynomial features, interactions, and transforms can model complex relationships while remaining interpretable.
 
 ## Key takeaways
 
 - Linear regression fits $y = \mathbf{w}^\top\mathbf{x}$ by minimizing squared error.
 - **OLS** has a closed form: $\mathbf{w}^* = (X^\top X)^{-1}X^\top\mathbf{y}$.
-- **Ridge (L2)** shrinks weights smoothly; **Lasso (L1)** zeros some out for sparse models.
-- Regularization trades a little bias for much lower variance — the cure for overfitting.
+- $R^2$ measures the fraction of variance explained; residuals show where the fit misses.
+- Overfitting shows up as huge, unstable weights — the cure is **regularization**, covered in [Ridge & Lasso](/courses/linear-regression/03-regularization).
 
 ## Related concepts
 
+- [**Regularization: Ridge & Lasso**](/courses/linear-regression/03-regularization) — the cure for the overfitting problem raised here
 - [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — the classification cousin of the same linear model
 - [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the iterative alternative to the closed-form solution
 - [**Bagging & Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests) — non-linear models when a line isn't enough
 
 <Exercise id="ols-formula" />
-<Exercise id="ridge-vs-lasso" />
 <Exercise id="ols-worked-example" />

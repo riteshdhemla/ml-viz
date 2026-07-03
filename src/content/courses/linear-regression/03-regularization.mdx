@@ -73,9 +73,23 @@ $\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick th
 
 <Exercise id="linreg-regularization-lambda" />
 
+<Exercise id="ridge-vs-lasso" />
+
+## Common mistakes
+
+1. **Regularizing unstandardized features** — the penalty treats all weights alike, so a feature measured in large units gets an unfairly small weight. Standardize first.
+2. **Penalizing the intercept** — the bias term shouldn't pay the complexity tax; exclude it from $\Omega(\mathbf{w})$ (libraries do this by default).
+3. **Tuning $\lambda$ on the test set** — choose $\lambda$ by cross-validation on training data; the test set is touched once, at the end.
+
 ## Key takeaways
 
 - Regularization adds a weight penalty so the model must *earn* its complexity
 - Ridge (L2) shrinks weights smoothly; great with correlated features; never sparse
 - Lasso (L1) zeroes out weak features entirely — built-in feature selection
 - $\lambda$ trades bias for variance; tune it with cross-validation, never on training error
+
+## Related concepts
+
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — the OLS model these penalties tame
+- [**Bias-Variance Tradeoff**](/courses/knn-decision-trees/03-bias-variance) — the trade-off $\lambda$ dials
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — Ridge is MAP with a Gaussian prior; Lasso, a Laplace prior

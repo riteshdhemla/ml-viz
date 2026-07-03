@@ -38,7 +38,7 @@ Three forces push us toward multi-agent designs:
 | **Weighted vote** | Each agent's vote is scaled by a confidence score | Agents have different track records |
 | **Borda count** | Agents rank all options; ranks are summed; lowest total wins | Multiple options, no clear majority |
 
-Majority vote is the default because it requires no calibration. Weighted voting improves accuracy when you can estimate per-agent reliability from historical data. Borda count is useful when the task is inherently comparative (e.g. ranking search results).
+Majority vote is the default because it requires no calibration. Weighted voting improves accuracy when you can estimate per-agent reliability from historical data. Borda count is useful when the task is inherently comparative (e.g. ranking search results) — with three options and three agents ranking $ABC$, $ACB$, $BAC$, the rank-sums are $A{=}4$, $B{=}6$, $C{=}8$, so $A$ wins even though it wasn't unanimous.
 
 ### Condorcet's jury theorem
 
@@ -50,7 +50,11 @@ The mathematical backbone of majority voting comes from political philosophy. **
 >
 > and this probability **approaches 1 as $N \to \infty$**.
 
-For example, with $p = 0.7$ and $N = 5$ agents the majority is correct $\approx 83\%$ of the time; at $N = 11$ it rises to $\approx 91\%$.
+Watch how fast the guarantee compounds for $p = 0.7$:
+
+| Agents $N$ | 1 | 5 | 11 | 25 |
+|---|---|---|---|---|
+| $P(\text{majority correct})$ | 0.70 | 0.84 | 0.92 | 0.98 |
 
 <Callout type="warning" title="The independence assumption">
   The theorem requires that agent errors are **independent**. If all agents share the same base model, they will make correlated errors on the same inputs. Independence is best approximated by varying temperature, system prompts, or model family. Correlated errors mean the law of large numbers doesn't help you — a majority can still be confidently wrong.
@@ -119,9 +123,7 @@ The protocol:
 
 1. **Initialisation.** The mediator presents the question. Agent A argues *for* position X; Agent B argues *against* (or for position Y).
 2. **Debate rounds.** Each agent reads the other's last argument and responds, attempting to rebut weak points and reinforce strong ones.
-3. **Synthesis.** After $K$ rounds, the mediator scores each agent's reasoning quality and produces a final answer that incorporates the most defensible claims.
-
-$$\text{answer} = \text{Synthesise}\!\left(\arg\max_{r} \text{score}(A_r),\ \arg\max_{r} \text{score}(B_r)\right)$$
+3. **Synthesis.** After $K$ rounds, the mediator grades each side's arguments against a rubric — logical validity, evidence cited, responsiveness to the opponent's rebuttals — picks each side's strongest round, and produces a final answer that incorporates the most defensible claims from both.
 
 ### Why debate produces higher quality
 
