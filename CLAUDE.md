@@ -426,6 +426,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | RolloutViz | `visualizations/Rollout/` | ml-in-practice/09-continual-learning-and-test-in-production | ✅ |
 | AgentLoopViz | `visualizations/AgentLoop/` | agent-design-patterns/09-tool-use-and-mcp | ✅ |
 | VCDimensionViz | `visualizations/VCDimension/` | wiki/vc-dimension | ✅ |
+| DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 
 ---
 

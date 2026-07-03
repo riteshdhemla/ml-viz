@@ -83,6 +83,7 @@ import { OptimizerPathViz } from "@/components/visualizations/OptimizerPath/Opti
 import { KLDivergenceViz } from "@/components/visualizations/KLDivergence/KLDivergenceViz";
 import { LowRankViz } from "@/components/visualizations/LowRank/LowRankViz";
 import { VCDimensionViz } from "@/components/visualizations/VCDimension/VCDimensionViz";
+import { DistributedTrainingViz } from "@/components/visualizations/DistributedTraining/DistributedTrainingViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -172,4 +173,5 @@ export const mdxComponents: MDXComponents = {
   KLDivergenceViz,
   LowRankViz,
   VCDimensionViz,
+  DistributedTrainingViz,
 };
