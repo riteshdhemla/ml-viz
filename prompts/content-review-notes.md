@@ -629,6 +629,45 @@ imports + idiom labels, exercise placements. Nothing deferred.
 
 ---
 
+## clustering — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 12 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 2.0` ✓ (54 min × 2.5/60 = 2.25 → 2.0/2.5 boundary; fine).
+Quiz all-fresh `clustering-quiz-*`, covers all lessons ✓.
+
+### clustering/01-k-means — grasp 4/5 → fixed
+- P2 (fixed): **seam #6 + broken snippets** — the "Choosing K: Elbow" and
+  "Silhouette Score" sections duplicated lesson 03 (which teaches both with
+  a worked example, the metric's blind spots, and SilhouetteViz), *and*
+  both snippets crashed as written: they looped K up to 10 (elbow) and 7
+  (silhouette) on the lesson's 5-point dataset — sklearn raises for
+  n_clusters > n_samples → replaced with a "Choosing K" bridge explaining
+  why the objective can't pick K, forward-linking 03; `choosing-k` exercise
+  moved to 03.
+- Strong: convergence argument sketched then extracted to the wiki; magnet
+  analogy; limitations table.
+- P3 (fixed): remaining exercises placed before Common mistakes; 03 added
+  to Related concepts.
+
+### clustering/02-hierarchical-and-dbscan — grasp 4.5/5
+- Good compression for 10 minutes: linkage numbers verified ✓ (√2 merges,
+  8.49/9.90/11.31 heights), both algorithms extracted to wiki pages at the
+  right altitude, honest varying-density warning.
+- P3 (fixed): exercises moved before Common mistakes. No other issues.
+
+### clustering/03-evaluating-clusters — grasp 5/5
+- Excellent: "K-Means will happily carve pure noise into k pieces" hook,
+  worked silhouette (verified ✓ s(2) ≈ 0.85), metrics-inherit-assumptions
+  callout, stability check as the label-free gold standard.
+- P3 (fixed): was missing Related concepts → added; gained the moved
+  `choosing-k` exercise.
+
+### Applied in this iteration
+Seam #6 closed (01→03 handoff) — which also deleted the two crash-prone
+snippets; exercise moves; Related-concepts additions. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
