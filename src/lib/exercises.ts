@@ -9744,6 +9744,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It doesn't — grid search is always at least as good", isCorrect: false },
     ],
   },
+  {
+    id: "eval-quiz-bpb",
+    type: "multiple-choice",
+    question:
+      "Model A (256k-token vocabulary) reports lower perplexity than Model B (32k vocabulary) on the same corpus. What can you conclude?",
+    hint: "What does per-token cross-entropy depend on besides the model?",
+    explanation:
+      "Very little — perplexity is per-token, and the two tokenizers produce different token counts for the same text, so the numbers aren't comparable. A coarser vocabulary yields fewer, more predictable tokens. Compare bits-per-byte instead: bytes are fixed by the corpus, not the tokenizer.",
+    options: [
+      { id: "a", label: "Nothing yet — perplexity isn't comparable across tokenizers; use bits-per-byte", isCorrect: true },
+      { id: "b", label: "Model A is the better language model", isCorrect: false },
+      { id: "c", label: "Model B is overfitting", isCorrect: false },
+      { id: "d", label: "Model A has lower cross-entropy per byte", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-temp-scaling",
+    type: "multiple-choice",
+    question:
+      "You apply temperature scaling (dividing all logits by a tuned T > 1) to an overconfident classifier. What happens to its top-1 accuracy?",
+    hint: "Is dividing every logit by the same positive constant monotonic?",
+    explanation:
+      "Nothing — dividing all logits by the same positive T preserves their ordering, so the argmax (predicted class) is identical on every input. Only the confidence values move, which is exactly why temperature scaling improves calibration for free.",
+    options: [
+      { id: "a", label: "Unchanged — the ranking of classes is preserved", isCorrect: true },
+      { id: "b", label: "It decreases, since confidence is lower", isCorrect: false },
+      { id: "c", label: "It increases, since overconfidence is removed", isCorrect: false },
+      { id: "d", label: "Depends on the number of classes", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-double-descent",
+    type: "multiple-choice",
+    question:
+      "A neural network reaches zero training error, and you keep growing it further. According to double descent, what can happen to test error?",
+    hint: "What happens past the interpolation threshold?",
+    explanation:
+      "Test error can fall again. Past the interpolation threshold, many models fit the training data perfectly, and gradient descent tends to find smooth, low-norm ones that generalize — capacity alone is the wrong axis, and implicit regularization decides.",
+    options: [
+      { id: "a", label: "It can decrease again — the second descent", isCorrect: true },
+      { id: "b", label: "It must increase monotonically (classical overfitting)", isCorrect: false },
+      { id: "c", label: "It stays exactly at its interpolation-threshold value", isCorrect: false },
+      { id: "d", label: "It becomes equal to training error", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

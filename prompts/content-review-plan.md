@@ -89,7 +89,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] clustering <!-- reviewed + fixed 2026-07-04 -->
 - [x] pca-dimensionality <!-- reviewed + fixed 2026-07-04 -->
 - [x] probabilistic-models <!-- reviewed + fixed 2026-07-04 -->
-- [ ] model-evaluation
+- [x] model-evaluation <!-- reviewed + fixed 2026-07-04 -->
 - [ ] bayesian-methods
 - [ ] causal-inference
 - [ ] time-series
