@@ -92,10 +92,10 @@ $$
 So the optimum $\mathbf{v}$ is an **eigenvector** of $C$. Left-multiplying by $\mathbf{v}^\top$ gives the variance it captures: $\mathbf{v}^\top C \mathbf{v} = \lambda\, \mathbf{v}^\top\mathbf{v} = \lambda$. To **maximize** variance, pick the eigenvector with the **largest eigenvalue** — that's PC1. PC2 is the next-largest (automatically orthogonal, since $C$ is symmetric), and so on. The eigenvalue *is* the variance along that component.
 
 ```python
+# The idiom (for your own feature matrix X):
 import numpy as np
 from sklearn.decomposition import PCA
 
-# Standard PCA
 pca = PCA(n_components=2)
 X_reduced = pca.fit_transform(X)
 
@@ -140,39 +140,7 @@ print("variance ratio:", np.round(eigvals[::-1]/eigvals.sum(), 3))  # [0.9, 0.1]
 
 ## Choosing the number of components
 
-### Cumulative explained variance
-
-```python
-pca = PCA(n_components=None)  # keep all components
-pca.fit(X)
-
-cumulative_var = np.cumsum(pca.explained_variance_ratio_)
-
-import matplotlib.pyplot as plt
-plt.figure(figsize=(8, 5))
-plt.plot(range(1, len(cumulative_var)+1), cumulative_var, 'bo-')
-plt.axhline(y=0.95, color='r', linestyle='--', label='95% threshold')
-plt.xlabel('Number of components')
-plt.ylabel('Cumulative variance explained')
-plt.title('Scree Plot')
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.show()
-
-# Choose k where cumulative variance ≥ 95%
-k = np.argmax(cumulative_var >= 0.95) + 1
-print(f"Need {k} components for 95% variance")
-```
-
-### Scree plot
-
-Plot eigenvalues vs component index. Look for the "elbow" — where the curve levels off. Components after the elbow explain mostly noise.
-
-<Callout type="info" title="Rules of thumb">
-  - **95% variance:** Keep components explaining ≥ 95% of total variance
-  - **Kaiser criterion:** Keep components with eigenvalue > 1 (on standardized data)
-  - **Scree plot:** Keep components before the elbow
-</Callout>
+The eigenvalues rank the components, but how many should you *keep*? The standard answers — cumulative explained variance thresholds, the scree elbow, and (most principled) cross-validating the downstream model — plus reconstruction error and whitening, are the subject of [PCA in Practice](/courses/pca-dimensionality/03-pca-in-practice).
 
 ## SVD connection
 
@@ -220,23 +188,9 @@ plt.title('Iris dataset — PCA projection')
 plt.show()
 ```
 
-### Noise reduction
-Project to fewer components, then reconstruct:
+### Noise reduction and preprocessing
 
-```python
-pca = PCA(n_components=10)  # keep top 10 components
-X_denoised = pca.fit_transform(X_noisy)
-X_reconstructed = pca.inverse_transform(X_denoised)
-```
-
-### Feature preprocessing
-Before training a model on high-dimensional data:
-
-```python
-pca = PCA(n_components=50)
-X_train_pca = pca.fit_transform(X_train)  # fit on train only!
-X_test_pca = pca.transform(X_test)        # transform test
-```
+Projecting to fewer components and reconstructing (`inverse_transform`) denoises data, and feeding the projection to a model shrinks its input dimension — both workflows, including the fit-on-train-only rule and reconstruction error, are covered in [PCA in Practice](/courses/pca-dimensionality/03-pca-in-practice).
 
 ## Limitations
 
@@ -251,6 +205,12 @@ X_test_pca = pca.transform(X_test)        # transform test
 <Callout type="warning" title="PCA maximizes variance, not accuracy">
   PCA finds directions of maximum variance, but these may not be the best for classification. If you want class-discriminative projections, use **Linear Discriminant Analysis (LDA)** instead.
 </Callout>
+
+<Exercise id="pca-projection" />
+
+<Exercise id="pca-variance" />
+
+<Exercise id="pca-scaling" />
 
 ## Common mistakes
 
@@ -268,9 +228,6 @@ X_test_pca = pca.transform(X_test)        # transform test
 ## Related concepts
 
 - [**t-SNE & UMAP**](/courses/pca-dimensionality/02-t-sne-and-umap) — non-linear methods for visualization
+- [**PCA in Practice**](/courses/pca-dimensionality/03-pca-in-practice) — choosing k, reconstruction, whitening
 - [**K-Means Clustering**](/courses/clustering/01-k-means) — a common use: reduce, then cluster
 - [**Autoencoders**](/courses/generative-models/02-autoencoders) — the non-linear, learned generalization of PCA
-
-<Exercise id="pca-projection" />
-<Exercise id="pca-variance" />
-<Exercise id="pca-scaling" />

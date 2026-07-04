@@ -668,6 +668,45 @@ snippets; exercise moves; Related-concepts additions. Nothing deferred.
 
 ---
 
+## pca-dimensionality — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 12 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 3` ✓ (68 min × 2.5/60 ≈ 2.83). Quiz all-fresh `pca-quiz-*`,
+covers all lessons ✓.
+
+### pca-dimensionality/01-pca — grasp 4.5/5 → fixed
+- P2 (fixed): **seam #7** — "Choosing the number of components" (cumvar
+  code, scree, Kaiser callout) and the noise-reduction/preprocessing
+  application snippets duplicated lesson 03's "How many components?" and
+  reconstruction/pipeline sections, which are better (they add the
+  downstream-performance principle and the leak warning) → both trimmed to
+  pointers; 03 added to Related concepts.
+- Strong: the Lagrange derivation of "PC1 = top eigenvector" in-lesson, and
+  the 4-point worked example (verified ✓ λ = 6.0/0.667, 90%) mirrored in a
+  runnable snippet.
+- P3 (fixed): first sklearn snippet used undefined X → idiom label;
+  exercises moved before Common mistakes.
+
+### pca-dimensionality/02-t-sne-and-umap — grasp 5/5
+- Excellent: the actual p/q formulas with the symmetrization rationale, the
+  force-law gradient, and the perplexity-as-effective-neighbors worked
+  mini-example (verified ✓ H=2 → perplexity 4; peaked → ≈1.18). The
+  don't-over-interpret callout is the single most important thing a t-SNE
+  user needs.
+- P3 (fixed): exercises moved before Common mistakes. No other issues.
+
+### pca-dimensionality/03-pca-in-practice — grasp 5/5
+- Excellent: three answers to "how many components" in increasing order of
+  principle, reconstruction error = discarded eigenvalues, eigenfaces story,
+  whitening trade-off, PCA+t-SNE as teammates.
+- P3 (fixed): was missing Related concepts → added (01, SVD lesson, 02).
+
+### Applied in this iteration
+Seam #7 closed (01→03 handoffs ×2), idiom label, exercise placements,
+Related-concepts addition. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
