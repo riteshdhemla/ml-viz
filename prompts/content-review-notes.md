@@ -809,6 +809,42 @@ placements across all 7 lessons. Nothing deferred.
 
 ---
 
+## bayesian-methods — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 14 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 2.5` ✓ (60 min × 2.5/60 = 2.5 exactly). Quiz all-fresh
+`bayes-quiz-*`, covers all lessons ✓.
+
+### bayesian-methods/01-bayesian-linear-regression — grasp 5/5
+- Excellent: distribution-over-lines framing, closed-form posterior with the
+  ridge-is-MAP callout, two-part predictive variance, and the
+  why-marginalize section answering the question a learner actually asks.
+- P3 (fixed): exercises moved before Common mistakes. No other issues.
+
+### bayesian-methods/02-gaussian-processes — grasp 5/5
+- Excellent: kernel-is-the-prior framing, closed-form posterior with the
+  pinch/balloon callout, kernel composition table, honest O(N³) wall, and
+  the infinite-features connection back to lesson 01 and the SVM kernel
+  trick.
+- P3 (fixed): exercises moved. No other issues.
+
+### bayesian-methods/03-bayesian-optimization — grasp 5/5
+- Excellent: expensive/black-box/derivative-free setup, UCB and EI with the
+  maximize-vs-minimize footnote, the 4-line loop, and the honest
+  "sequential — random/Hyperband can win when trials parallelize" caveat
+  that matches optimization-ml/05's framing exactly (no seam: each course
+  defers to the other correctly).
+- P3 (fixed): exercises moved; Related concepts gained the
+  optimization-ml/05 back-link (the forward link already existed).
+
+### Applied in this iteration
+Exercise placements ×3, one back-link. **No P2s found** — the first course
+with none; consistent cross-course boundaries (BO deferred here from
+optimization-ml/05, GP math deferred here from model-evaluation/03's old
+copy which fix #8 removed). This is what the seam-free pattern looks like.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*

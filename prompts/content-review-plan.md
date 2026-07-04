@@ -90,7 +90,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] pca-dimensionality <!-- reviewed + fixed 2026-07-04 -->
 - [x] probabilistic-models <!-- reviewed + fixed 2026-07-04 -->
 - [x] model-evaluation <!-- reviewed + fixed 2026-07-04 -->
-- [ ] bayesian-methods
+- [x] bayesian-methods <!-- reviewed + fixed 2026-07-04 -->
 - [ ] causal-inference
 - [ ] time-series
 
