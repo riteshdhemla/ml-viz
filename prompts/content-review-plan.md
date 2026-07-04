@@ -84,7 +84,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 ### Courses — classical ML
 - [x] linear-regression <!-- reviewed 2026-07-02 -->
 - [x] knn-decision-trees <!-- reviewed + fixed 2026-07-04 -->
-- [ ] svm
+- [x] svm <!-- reviewed + fixed 2026-07-04 -->
 - [ ] ensemble-methods
 - [ ] clustering
 - [ ] pca-dimensionality

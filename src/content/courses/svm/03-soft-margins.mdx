@@ -71,7 +71,30 @@ The $\max(0, 1 - \text{margin})$ term is the **hinge loss**: zero for points bey
 1. Points outside the margin contribute *nothing* — gradient zero. Only margin violators and boundary points (the support vectors) shape the solution.
 2. The SVM is "just" a linear model with hinge loss plus L2 regularization, where $1/C$ plays the role of the regularization strength $\lambda$. The same bias–variance dial as everywhere else.
 
+Plotting hinge against its neighbours makes the shape memorable — a free-pass region beyond the margin, then a straight-line penalty, versus log-loss which never reaches zero:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+
+z = np.linspace(-2, 3, 100)
+hinge = np.maximum(0, 1 - z)
+zero_one = (z < 0).astype(float)          # 0-1 loss: 1 iff misclassified (y·f(x) < 0)
+log_loss = -np.log(np.clip(1/(1+np.exp(-z)), 0.01, 0.99))
+
+plt.plot(z, hinge, label='Hinge loss', linewidth=2)
+plt.plot(z, zero_one, label='0-1 loss', linewidth=2, linestyle='--')
+plt.plot(z, log_loss, label='Log loss', linewidth=2, linestyle=':')
+plt.xlabel('y · f(x)'); plt.ylabel('Loss'); plt.legend()
+plt.title('Hinge vs 0-1 vs log loss'); plt.grid(True, alpha=0.3)
+plt.show()
+```
+
 <Exercise id="svm-slack-meaning" />
+
+<Exercise id="svm-c-parameter" />
+
+<Exercise id="slider-svm-c" />
 
 ## Key takeaways
 
@@ -79,3 +102,9 @@ The $\max(0, 1 - \text{margin})$ term is the **hinge loss**: zero for points bey
 - $C$ is that price: small $C$ → wide tolerant margin, large $C$ → strict narrow margin, $C \to \infty$ → hard margin
 - Soft-margin SVM ≡ hinge loss + L2 regularization with $\lambda = 1/C$
 - Tune $C$ (and $\gamma$ for RBF) jointly, on a log grid, with cross-validation
+
+## Related concepts
+
+- [**Maximum Margin Classification**](/courses/svm/01-maximum-margin) — the hard-margin ideal this lesson relaxes
+- [**The Kernel Trick**](/courses/svm/02-kernel-trick) — the $\gamma$ that $C$ must be tuned with
+- [**Loss Functions**](/courses/optimization-ml/04-loss-functions) — hinge alongside MSE, MAE, and cross-entropy

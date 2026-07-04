@@ -157,6 +157,7 @@ Only support vectors (where $\alpha_i > 0$) contribute to the prediction.
 ### Hyperparameter tuning
 
 ```python
+# The idiom (for your own X_train / y_train / X_test / y_test):
 from sklearn.model_selection import GridSearchCV
 
 param_grid = {
@@ -180,11 +181,19 @@ print(f"Test accuracy: {grid.score(X_test, y_test):.3f}")
   - Gradient-boosted trees (XGBoost, LightGBM)
 </Callout>
 
+<Exercise id="kernel-computation" />
+
+<Exercise id="kernel-choice" />
+
+<Exercise id="kernel-gamma" />
+
+<Exercise id="slider-rbf-gamma" />
+
 ## Common mistakes
 
 1. **Using RBF on high-dimensional data** — In high dimensions, all points are equidistant. Use linear kernel when $d > n$ (more features than samples).
 2. **Not scaling features** — Kernels compute distances. Unscaled features dominate the distance metric.
-3. **Default $\gamma$ on small datasets** — Use `gamma='scale'` or `'auto'`, or tune via grid search. The formula is $\gamma = 1 / (n \cdot \text{var}(X))$.
+3. **Default $\gamma$ on small datasets** — Use `gamma='scale'` or `'auto'`, or tune via grid search. (`'scale'` sets $\gamma = 1 / (n_{\text{features}} \cdot \text{var}(X))$ — features, not samples.)
 
 ## Key takeaways
 
@@ -196,9 +205,5 @@ print(f"Test accuracy: {grid.score(X_test, y_test):.3f}")
 ## Related concepts
 
 - [**Maximum Margin**](/courses/svm/01-maximum-margin) — the linear SVM that kernels extend
+- [**Constrained Optimization & KKT**](/courses/optimization-ml/03-constrained-optimization) — the dual derivation that makes the kernel substitution legal
 - [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — another view of transforming feature spaces
-
-<Exercise id="kernel-computation" />
-<Exercise id="kernel-choice" />
-<Exercise id="kernel-gamma" />
-<Exercise id="slider-rbf-gamma" />
