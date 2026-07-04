@@ -95,7 +95,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] time-series <!-- reviewed + fixed 2026-07-04 -->
 
 ### Courses — deep learning
-- [ ] neural-networks
+- [x] neural-networks <!-- reviewed + fixed 2026-07-04 -->
 - [ ] cnns
 - [ ] rnns
 - [ ] transformers

@@ -9862,6 +9862,21 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Nothing — coherence doesn't matter in practice", isCorrect: false },
     ],
   },
+  {
+    id: "nn-quiz-dropout-scale",
+    type: "multiple-choice",
+    question:
+      "With inverted dropout at rate p = 0.5, what happens to the surviving activations during TRAINING, and why?",
+    hint: "The expected activation seen by the next layer should not depend on whether dropout is on.",
+    explanation:
+      "Survivors are scaled up by 1/(1−p) = 2× during training, so the expected value of each activation matches what the next layer will see at test time — when dropout is off and nothing is scaled. Without the correction, turning dropout off at inference would double the activation magnitudes the network was trained on.",
+    options: [
+      { id: "a", label: "Scaled up by 1/(1−p) = 2×, so expected activations match test time", isCorrect: true },
+      { id: "b", label: "Left unchanged — scaling happens at test time instead", isCorrect: false },
+      { id: "c", label: "Scaled down by p to compensate for the dropped units", isCorrect: false },
+      { id: "d", label: "Re-normalized to unit variance like BatchNorm", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

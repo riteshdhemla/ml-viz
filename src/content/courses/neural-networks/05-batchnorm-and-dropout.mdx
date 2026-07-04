@@ -122,6 +122,10 @@ def dropout(h, p, training=True, seed=None):
     return h * mask / (1.0 - p)
 ```
 
+For inverted-dropout scaling in full, the regularization math, and MC dropout as uncertainty estimation:
+
+<WikiLink slug="dropout" title="Dropout: Inverted Dropout, Regularization Mechanism, and MC Dropout" />
+
 ## BatchNorm vs. Dropout: when to use which
 
 | | BatchNorm | Dropout |
@@ -139,6 +143,12 @@ For CNNs specifically — where batch size is often small (large images, detecti
 <Callout type="tip" title="Ordering: BN before or after activation?">
   The original BatchNorm paper normalizes pre-activations (before the activation function). In practice, "BN after activation" sometimes works better. Transformers mostly use LayerNorm applied *before* the sublayer (Pre-LN). Try both and pick whichever stabilizes training in your setting.
 </Callout>
+
+<Exercise id="nn-batchnorm-step" />
+
+<Exercise id="nn-dropout-inverted" />
+
+<Exercise id="nn-regularizer-type" />
 
 ## Common mistakes
 
@@ -158,9 +168,3 @@ For CNNs specifically — where batch size is often small (large images, detecti
 - [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the layers these techniques modify
 - [**Regularization**](/courses/linear-regression/03-regularization) — L1/L2, the explicit regularization family
 - [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — uses LayerNorm instead of BatchNorm
-
-<WikiLink slug="dropout" title="Dropout: Inverted Dropout, Regularization Mechanism, and MC Dropout" />
-
-<Exercise id="nn-batchnorm-step" />
-<Exercise id="nn-dropout-inverted" />
-<Exercise id="nn-regularizer-type" />
