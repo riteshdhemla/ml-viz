@@ -98,11 +98,12 @@ Everything in KNN depends on the word **"close."** The Euclidean distance ($\sqr
 </Callout>
 
 ```python
+# The idiom (for your own X_train / X_test):
 from sklearn.preprocessing import StandardScaler
 
 scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)  # use same scaler!
+X_train_scaled = scaler.fit_transform(X_train)   # fit on training data only
+X_test_scaled = scaler.transform(X_test)         # reuse the SAME scaler — never refit
 ```
 
 ## Choosing k: the bias–variance tradeoff
@@ -187,6 +188,11 @@ By $d = 1000$ the closest neighbor is only about 10% nearer than the farthest on
 
 This is why KNN is called a **lazy learner** — all the work happens at prediction time.
 
+<Exercise id="knn-k-choice" />
+<Exercise id="slider-knn-k" />
+<Exercise id="knn-distance-metric" />
+<Exercise id="knn-curse" />
+
 ## Common mistakes
 
 1. **Forgetting to scale features** — The #1 KNN mistake. Always standardize.
@@ -205,8 +211,3 @@ This is why KNN is called a **lazy learner** — all the work happens at predict
 - [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — the other classic non-parametric baseline
 - [**K-Means Clustering**](/courses/clustering/01-k-means) — another distance-based, centroid method
 - [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — fighting the curse of dimensionality before KNN
-
-<Exercise id="knn-k-choice" />
-<Exercise id="slider-knn-k" />
-<Exercise id="knn-distance-metric" />
-<Exercise id="knn-curse" />

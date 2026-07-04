@@ -505,6 +505,41 @@ internal duplication seam between lessons 01 and 03.
 
 ---
 
+## knn-decision-trees — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 12 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 2.0` ✓ (50 min × 2.5/60 ≈ 2.08). Quiz: all-fresh
+`knntree-quiz-*` ids ✓, covers all three lessons ✓.
+
+### knn-decision-trees/01-knn — grasp 5/5
+- Exemplary: fully verified worked example with the k=3 → k=5 flip
+  observation, curse-of-dimensionality ratio table, wiki extraction.
+- P3 (fixed): scaling snippet used undefined `X_test` with no signal it was
+  an idiom fragment → labeled and annotated ("fit on train only / never
+  refit").
+- P3 (fixed): exercises stranded after Related concepts → moved before
+  Common mistakes.
+
+### knn-decision-trees/02-decision-trees — grasp 4.5/5
+- Strong running example (loan approvals); root-Gini quick check in-lesson
+  with the full trace extracted to the wiki; IG = 0.3333 claim verified ✓.
+- P3 (fixed): `best_split` snippet called `gini()`/`np` without defining or
+  importing them → added a 4-line `gini` + import so it runs as pasted.
+- P3 (fixed): feature-importance snippet imported matplotlib and never
+  plotted → import dropped; pruning snippet labeled as an idiom fragment.
+- P3 (fixed): exercises moved before Common mistakes.
+
+### knn-decision-trees/03-bias-variance — grasp 5/5
+- Tight capstone: dial framing (k, depth), decomposition deferred to the
+  wiki, resampling viz placed exactly at the "many training sets" sentence,
+  and the diagnose-by-gap callout. No issues.
+
+### Applied in this iteration
+Exercise moves (01, 02), runnable `best_split`, snippet idiom labels,
+dropped dead import. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
