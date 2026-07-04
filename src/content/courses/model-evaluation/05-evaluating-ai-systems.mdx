@@ -125,12 +125,18 @@ Headline dollars per 1k tokens is one input to the real cost. The full per-query
 
 The metrics that matter in production go further than "did the model get the answer right?":
 
-- **Calibration.** Does the model know what it doesn't know? A well-calibrated model says "I'm not sure" on hard queries and is confident on easy ones. Overconfident wrong answers are the most expensive failure mode; calibration curves (predicted probability vs empirical accuracy) and ECE (expected calibration error) quantify this.
+- **Calibration.** Does the model know what it doesn't know? A well-calibrated model says "I'm not sure" on hard queries and is confident on easy ones. Overconfident wrong answers are the most expensive failure mode; reliability diagrams and ECE quantify this — measured and fixed in [Calibration & Uncertainty](/courses/model-evaluation/07-calibration-and-uncertainty).
 - **Refusal / safety eval.** The rate of correctly-refused unsafe prompts and incorrectly-refused safe ones. Both ends matter — an over-refusing model is unusable; an under-refusing model is a liability.
 - **Hallucination rate against grounded answers.** For RAG and tool-using systems, score how often the model invents facts not present in the retrieved context. The eval set needs a "grounded answer" column.
 - **Robustness to adversarial prompts.** Prompt injection, jailbreaks, and confused-deputy attacks. The defences live in [AI-Engineering Architecture](/courses/building-with-llms/06-ai-engineering-architecture) (input/output guardrails, least-privilege tool access, separation of instructions and untrusted data). The eval is a curated adversarial set against which every candidate model is scored.
 
 A model that wins on accuracy but is poorly calibrated, refuses inappropriately, or is easy to jailbreak is the wrong production pick — and none of those failure modes show up on a generic benchmark leaderboard.
+
+<Exercise id="eval-systems-build-vs-buy" />
+
+<Exercise id="eval-systems-cost-latency" />
+
+<Exercise id="eval-systems-benchmark-limits" />
 
 ## Common mistakes
 
@@ -157,7 +163,3 @@ A model that wins on accuracy but is poorly calibrated, refuses inappropriately,
 - [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — the production architecture in which routing, caching, gateways, and guardrails live. Cost / latency / routing decisions get implemented there.
 - [**Supervised Fine-Tuning & Instruction Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the *"is RAG enough or do I need to fine-tune?"* decision is one of the most expensive build-vs-buy variants. SFT often clears the bar for a smaller open-weights model to replace a frontier API.
 - [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — the underlying capability curves. Scaling laws explain why the gap between frontier and mid-tier models is wide on hard tasks and narrow on easy ones; the router exploits exactly that gap.
-
-<Exercise id="eval-systems-build-vs-buy" />
-<Exercise id="eval-systems-cost-latency" />
-<Exercise id="eval-systems-benchmark-limits" />

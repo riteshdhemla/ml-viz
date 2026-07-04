@@ -744,6 +744,71 @@ Related-concepts addition. Nothing deferred.
 
 ---
 
+## model-evaluation — 2026-07-04 (review + fix mode)
+
+Scope: index + 7 lessons + quiz, 24+ exercises, 7 notebooks (structural ✓).
+`estimatedHours: 5.5` ✓ (131 min × 2.5/60 ≈ 5.46).
+
+### model-evaluation/01-classification-metrics — grasp 5/5
+- Excellent: spam-filter confusion matrix computed through four metrics
+  (verified ✓), ROC-vs-PR imbalance warning, no-skill PR baseline.
+- P3 (fixed): ROC wiki link dangled after Related concepts → moved above
+  the exercises with a lead-in; exercises moved before Common mistakes.
+
+### model-evaluation/02-validation-strategies — grasp 5/5
+- Excellent: leakage taxonomy with wrong-vs-correct code, .632 estimator,
+  LOO variance explanation, Pipeline callout. No issues beyond exercise
+  placement (fixed).
+
+### model-evaluation/03-training-techniques — grasp 3.5/5 → fixed
+- P2 (fixed): **seam #8, the largest yet** — the LR-schedules section
+  (step/cosine/SGDR/warm-up formulas) duplicated optimization-ml/01 + the
+  learning-rate-schedules wiki page, and the grid/random/Bayesian/
+  successive-halving sections (~90 lines) duplicated optimization-ml/05.
+  Both post-date this lesson. → schedules compressed to the chooser table +
+  the Adam-warm-up insight + WikiLink; search strategies compressed to one
+  "briefly" section retaining exactly what the lesson's exercises and the
+  course quiz test (random-beats-grid reason, GP+EI sketch, halving idea)
+  with a forward link to optimization-ml/05. Early stopping and data
+  augmentation — the lesson's unique content — kept in full.
+- Strong: early-stopping worked table, the L2-equivalence note, TTA.
+
+### model-evaluation/04-llm-evaluation — grasp 5/5
+- Outstanding: BPB as the tokenizer-invariant fix (with the *why*),
+  judge-bias taxonomy + mitigations, Bradley–Terry/Elo tied to reward
+  models, contamination + Goodhart pitfalls.
+- P3 (fixed): AI-as-a-judge section now links wiki/llm-as-judge; exercises
+  moved. Cross-course overlap with building-with-llms/08 to be checked when
+  that course is reviewed (noted, not assumed).
+
+### model-evaluation/05-evaluating-ai-systems — grasp 5/5
+- Outstanding systems companion: 5-step selection workflow, break-even
+  V* = C/p, cost-per-correct-answer, tail-latency metrics, routing/caching.
+- P3 (fixed): calibration bullet now forward-links lesson 07; exercises
+  moved.
+
+### model-evaluation/06-learning-theory — grasp 5/5
+- Excellent: ERM → gap → bias-variance → VC → double descent in 18 min
+  with the right extractions (VC wiki). ASCII double-descent curve works.
+- P3 (fixed): exercises moved.
+
+### model-evaluation/07-calibration-and-uncertainty — grasp 5/5
+- Excellent: promise framing, ECE with its binning caveat, the
+  temperature-can't-change-argmax callout, aleatoric/epistemic table.
+- P3 (fixed): exercises moved.
+
+### model-evaluation/08-quiz — grasp 3.5/5 → fixed
+- P2 (fixed): 5 fresh ids but zero coverage of lessons 04–07 (the
+  quizzes-skip-late-lessons theme) → added three fresh quiz-only ids:
+  `eval-quiz-bpb`, `eval-quiz-temp-scaling`, `eval-quiz-double-descent`.
+
+### Applied in this iteration
+Seam #8 closed (~120 lines of duplication compressed to summaries +
+links), 3 new quiz exercises, 2 cross-links, WikiLink placement, exercise
+placements across all 7 lessons. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*

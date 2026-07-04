@@ -77,6 +77,10 @@ It is enormously cheaper than human raters and scales to tens of thousands of co
 The single most effective fix for position bias is to randomly swap A and B independently for every comparison. If you run $1000$ pairs and the judge has a $60/40$ first-position bias, fixed ordering gives a $60$-point skew; randomised ordering gives an unbiased estimator with the same noise. The notebook for this lesson shows exactly this experiment.
 </Callout>
 
+For rubric design, judge-model selection, and validating a judge against human raters, see the deep dive:
+
+<WikiLink slug="llm-as-judge" title="LLM-as-a-Judge: Automated LLM Evaluation" />
+
 ## Pairwise comparative eval and Elo ratings
 
 Even with bias-corrected judges, **absolute** numeric scores ("rate this answer from 1 to 10") are noisy and drift between raters. The cleaner protocol is **pairwise comparison**: show the rater two candidates from two different models, ask which is better. The output is a sequence of head-to-head wins.
@@ -103,6 +107,12 @@ Absolute rubric scoring conflates *the model's quality* with *the rater's calibr
 - **Tokenizer-dependent metrics.** Already covered — if you must compare across architectures, report bits-per-byte, not perplexity.
 - **Goodhart on the proxy.** Once a benchmark becomes the headline metric, training pipelines start optimising for it directly. MMLU-tuned models can post strong MMLU scores without being broadly better at the underlying tasks; reward-model-tuned models can game the reward model without becoming more helpful. This is the same failure mode as **reward hacking** in RLHF — the proxy and the true objective diverge, and the model exploits the gap.
 
+<Exercise id="eval-cross-entropy" />
+
+<Exercise id="eval-perplexity-bpb" />
+
+<Exercise id="eval-judge-bias" />
+
 ## Common mistakes
 
 1. **Comparing perplexity across tokenizers.** A 256 k-vocab model "winning" on PPL against a 32 k-vocab model often just reflects the tokenization. Use bits-per-byte.
@@ -127,7 +137,3 @@ Absolute rubric scoring conflates *the model's quality* with *the rater's calibr
 - [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the Bradley–Terry / Elo math from this lesson reappears as the RLHF reward model fit on human pairwise preferences.
 - [**Decoding & Sampling Strategies**](/courses/nlp/05-decoding-and-sampling) — perplexity is computed under teacher forcing on the true next token; at inference the same distribution is consumed by a decoder, and the choice of decoder is part of the system you are evaluating.
 - [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — scaling-law curves are fit to held-out cross-entropy / bits-per-byte; without a tokenizer-invariant metric, scaling laws across architectures are not comparable.
-
-<Exercise id="eval-cross-entropy" />
-<Exercise id="eval-perplexity-bpb" />
-<Exercise id="eval-judge-bias" />

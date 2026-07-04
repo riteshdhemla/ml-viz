@@ -55,33 +55,7 @@ restore_weights(model, best_weights)
 
 ## Learning rate schedules
 
-A fixed learning rate is rarely optimal throughout training. Common schedules:
-
-**Step decay:** reduce $\eta$ by a factor $\gamma$ every $M$ epochs.
-
-$$
-\eta_t = \eta_0 \cdot \gamma^{\lfloor t / M \rfloor}
-$$
-
-Simple and effective; $\gamma = 0.1$, $M = 30$ is a common ResNet default.
-
-**Cosine annealing:** smoothly decays from $\eta_{\max}$ to $\eta_{\min}$:
-
-$$
-\eta_t = \eta_{\min} + \frac{1}{2}(\eta_{\max} - \eta_{\min})\left(1 + \cos\!\left(\frac{\pi t}{T}\right)\right)
-$$
-
-At $t=0$: $\eta = \eta_{\max}$. At $t=T$: $\eta = \eta_{\min}$. The smooth curve avoids abrupt drops that can destabilize training.
-
-**Cosine annealing with warm restarts (SGDR):** after reaching $\eta_{\min}$, reset to $\eta_{\max}$ and restart the cycle — each restart is a "fresh start" that can escape local minima.
-
-**Warm-up + decay:** linearly increase $\eta$ from 0 to $\eta_{\max}$ over the first $W$ steps, then decay:
-
-$$
-\eta_t = \begin{cases} \eta_{\max} \cdot t / W & t \leq W \\ \text{decay schedule} & t > W \end{cases}
-$$
-
-Warm-up is essential for Transformers trained with Adam: at $t=1$, Adam's second-moment estimate $\hat{v}_t \approx 0$, making the effective step size unstable. Warm-up gives the optimizer time to accumulate reliable statistics.
+A fixed learning rate is rarely optimal throughout training — the standard schedules and when to reach for each:
 
 | Schedule | Best for | Key parameter |
 |----------|---------|---------------|
@@ -90,79 +64,19 @@ Warm-up is essential for Transformers trained with Adam: at $t=1$, Adam's second
 | Warm-up + cosine | Transformers, BERT, ViT | warmup_steps |
 | Reduce on plateau | When you don't know T | patience, factor |
 
-## Grid search
+**Warm-up is essential for Transformers trained with Adam:** at $t=1$, Adam's second-moment estimate $\hat{v}_t \approx 0$, making the effective step size unstable — a linear ramp over the first few hundred steps lets the optimizer accumulate reliable statistics first.
 
-**Exhaustive enumeration** of a hyperparameter grid. For $k$ hyperparameters with $n$ values each, cost is $O(n^k)$.
+The schedule formulas, SGDR warm restarts, and how each interacts with the optimizer are covered in [Gradient Descent Variants](/courses/optimization-ml/01-gradient-descent-variants) and the deep dive:
 
-```python
-from sklearn.model_selection import GridSearchCV
+<WikiLink slug="learning-rate-schedules" title="Learning Rate Schedules: Warmup, Decay & Restarts" />
 
-param_grid = {
-    'lr':      [1e-4, 1e-3, 1e-2],
-    'dropout': [0.1, 0.3, 0.5],
-}
-# 3 × 3 = 9 combinations
-gs = GridSearchCV(model, param_grid, cv=5)
-gs.fit(X_train, y_train)
-```
+## Hyperparameter search, briefly
 
-Grid search works well for 1–2 hyperparameters with a small, known range. Beyond 3 dimensions, the exponential cost makes it impractical.
+Three strategies in increasing sophistication — **grid** (exhaustive, exponential in dimensions), **random** (beats grid because each of $n$ trials samples a *fresh* value of every hyperparameter, so the dimensions that matter get $n$ distinct values instead of $\sqrt[k]{n}$), and **Bayesian optimization** (a Gaussian-Process surrogate plus an acquisition function like Expected Improvement steers each expensive evaluation toward promising-or-uncertain regions; typically 3–5× fewer runs than random). **Successive halving / Hyperband** add early stopping to the search itself: start many configs cheaply, keep the best half, double their budget, repeat.
 
-<Callout type="info" title="Use log-scale grids for learning rate">
-  Learning rate effects are multiplicative, not additive. A grid of `[0.001, 0.01, 0.1]` (log-spaced) is more informative than `[0.001, 0.034, 0.067, 0.1]` (linearly-spaced). Same principle applies to regularization strength λ.
-</Callout>
+Two rules survive every strategy: sample the learning rate and regularization strength on a **log scale** (their effects are multiplicative), and score configurations with **cross-validation on training data only**.
 
-## Random search
-
-**Randomly sample** hyperparameter configurations from specified distributions. Each trial is independent.
-
-```python
-from sklearn.model_selection import RandomizedSearchCV
-from scipy.stats import loguniform
-
-param_dist = {
-    'lr':      loguniform(1e-5, 1e-1),
-    'dropout': [0.0, 0.1, 0.2, 0.3, 0.5],
-}
-rs = RandomizedSearchCV(model, param_dist, n_iter=50, cv=5)
-```
-
-**Why random search beats grid search:** if you run 25 trials on a 5×5 grid, each hyperparameter gets only 5 distinct values. With random search, each of the 25 trials samples the learning rate independently — you explore 25 distinct learning rate values. Since important hyperparameters (like learning rate) vary rapidly across the performance landscape and unimportant ones (like batch size) don't, more coverage of the important axes wins.
-
-| Strategy | Evaluations covering each dim | Best for |
-|----------|------|---------|
-| Grid search (5×5) | 5 per dim | ≤2 hyperparams, known range |
-| Random search (25) | 25 per dim | ≥3 hyperparams, uncertain ranges |
-| Bayesian opt (25) | 25 but informed | Expensive evaluations |
-
-## Bayesian optimization
-
-When each model training run costs hours, random search wastes evaluations on bad regions. **Bayesian optimization** uses a probabilistic surrogate model to guide the search.
-
-**Algorithm:**
-
-1. Evaluate a few initial random configurations
-2. Fit a **Gaussian Process** (GP) surrogate to all observed (config, loss) pairs
-3. Use an **acquisition function** (e.g., Expected Improvement) to pick the next config — it trades off **exploitation** (near known good points) vs. **exploration** (uncertain regions)
-4. Evaluate the selected config; update the GP; repeat
-
-$$
-\text{EI}(x) = \mathbb{E}[\max(f^* - f(x), 0)]
-$$
-
-where $f^*$ is the best observed value so far. EI is high where the GP predicts improvement or has high uncertainty.
-
-**Sample efficiency:** Bayesian optimization typically needs 3–5× fewer evaluations than random search to find an equivalently good configuration. Tools: Optuna, Ax, HyperOpt.
-
-## Successive halving and Hyperband
-
-For neural networks, you don't need a full training run to know a configuration is bad. **Successive halving** exploits this:
-
-1. Start with $n$ configurations, give each $r$ resources (epochs)
-2. Keep the top half; give each $2r$ resources
-3. Repeat until one configuration remains
-
-**Hyperband** runs multiple successive-halving brackets in parallel, balancing aggressive early elimination against thorough evaluation. It's the basis of modern AutoML systems (KerasTuner, Ray Tune, ASHA scheduler).
+The full treatment — search-space design, when each method wins, and the AutoML/NAS landscape — is [Hyperparameter Optimization & AutoML](/courses/optimization-ml/05-hyperparameter-optimization).
 
 ## Data augmentation
 
@@ -185,6 +99,12 @@ For neural networks, you don't need a full training run to know a configuration 
 
 **Test-Time Augmentation (TTA):** at inference, apply multiple augmentations to each test image and average the predictions. This can add 0.5–2% accuracy at the cost of k× inference time.
 
+<Exercise id="eval-early-stopping" />
+
+<Exercise id="eval-lr-schedule" />
+
+<Exercise id="eval-random-search" />
+
 ## Common mistakes
 
 1. **Monitoring training loss instead of validation loss for early stopping** — training loss always decreases; you need validation loss to detect overfitting.
@@ -204,8 +124,5 @@ For neural networks, you don't need a full training run to know a configuration 
 ## Related concepts
 
 - [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — learning rate schedules applied to optimizers
+- [**Hyperparameter Optimization & AutoML**](/courses/optimization-ml/05-hyperparameter-optimization) — the full search-strategy treatment
 - [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — how to avoid leakage during hyperparameter search
-
-<Exercise id="eval-early-stopping" />
-<Exercise id="eval-lr-schedule" />
-<Exercise id="eval-random-search" />
