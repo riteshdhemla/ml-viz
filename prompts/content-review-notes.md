@@ -845,6 +845,39 @@ copy which fix #8 removed). This is what the seam-free pattern looks like.
 
 ---
 
+## causal-inference — 2026-07-04 (review + fix mode)
+
+Scope: index + 2 lessons + quiz, 11 exercises, 2 notebooks (structural ✓).
+`estimatedHours: 2` ✓ (44 min × 2.5/60 ≈ 1.83). Quiz all-fresh
+`causal-quiz-*`; the collider question is answerable from the lessons'
+collider callouts ✓.
+
+### causal-inference/01-correlation-and-confounding — grasp 5/5
+- Excellent: P(Y|X) vs P(Y|do(X)) drawn immediately, the
+  can't-detect-confounding-from-data callout (the single most important
+  sentence in the course), Simpson's paradox with the "which analysis is
+  right depends on causal roles" punchline, and a Why-ML-cares section
+  covering actionability/shift/fairness/proxy-Goodhart.
+- P3 (fixed): exercises moved before Common mistakes. No other issues.
+
+### causal-inference/02-interventions-and-potential-outcomes — grasp 5/5
+- Excellent: fundamental problem stated as a missing-data problem, naive
+  difference = ATE + bias decomposition, do-operator as arrow deletion,
+  backdoor formula in words, three assumptions with "the big one" flagged,
+  don't-adjust-for-everything callout.
+- P3 (fixed): the uplift-modeling wiki page pointed here but the lesson
+  never linked back → WikiLink added after the estimators section (uplift =
+  per-individual effects, the natural next question). The collider callout
+  now names and links d-separation (graphical-models/01) as the
+  path-blocking machinery. Exercises moved.
+
+### Applied in this iteration
+Exercise placements, uplift WikiLink (one-directional-gap theme), d-sep
+cross-link. **No P2s** — second seam-free course in a row; both lessons are
+compact-form with correct end-matter.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
