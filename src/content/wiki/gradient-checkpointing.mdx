@@ -1,0 +1,101 @@
+---
+title: "Gradient Checkpointing"
+description: "The memory/compute trade-off that makes training deep models feasible: instead of caching every layer's activations for backprop, cache only a handful of checkpoints and recompute the rest on demand, trading O(L) activation memory for O(√L) memory at the cost of one extra forward pass."
+topics: ["ml-systems"]
+relatedLessons:
+  - "gpu-programming/04-gpus-for-deep-learning"
+  - "ml-in-practice/11-mlops-infrastructure-and-orchestration"
+estimatedMinutes: 12
+---
+
+# Gradient Checkpointing
+
+Backpropagation needs every layer's intermediate activations to compute gradients — the standard implementation caches all of them during the forward pass and consumes them during the backward pass. For a network with $L$ layers, that's activation memory that grows **linearly in depth**, and for today's deep models it is often the single biggest consumer of GPU memory, larger than the parameters or optimizer state. **Gradient checkpointing** (a.k.a. activation checkpointing, or "rematerialization") breaks this by storing only a sparse set of activations — the *checkpoints* — and **recomputing** the discarded ones on the fly during the backward pass. It trades extra forward compute for a memory footprint that grows only as $O(\sqrt{L})$.
+
+## 1 — Why plain backprop is $O(L)$ in memory
+
+For a feed-forward network with layers $f_1, \dots, f_L$ and activations $a_0$ (input) through $a_L$ (output):
+
+$$
+a_i = f_i(a_{i-1}), \qquad i = 1, \dots, L
+$$
+
+The backward pass needs $a_{i-1}$ to compute $\partial \mathcal{L}/\partial \theta_i$ and $\partial \mathcal{L}/\partial a_{i-1}$ at every layer $i$, via the chain rule. The straightforward implementation keeps **all** $L{+}1$ activations alive simultaneously — from the moment they're produced in the forward pass until the backward pass consumes them in reverse order:
+
+$$
+\text{memory}_{\text{no-checkpoint}} = O(L)
+$$
+
+## 2 — The checkpoint-and-recompute idea
+
+Partition the $L$ layers into segments of size $m$, and during the forward pass, **only store the activation at the start of each segment** (the checkpoint) — discard everything computed inside a segment once it has been passed forward.
+
+During the backward pass, process segments in reverse order. To get the gradients for the layers *inside* a segment, first **replay a local forward pass** from that segment's checkpoint to regenerate its intermediate activations, then run the ordinary backward pass through that freshly recomputed segment. Once that segment's gradients are obtained, discard the recomputed activations again and move to the previous segment.
+
+1. **Forward pass:** run $a_0 \to a_L$ as usual, but only retain $a_0, a_m, a_{2m}, a_{3m}, \dots$ (one activation per segment boundary). Discard every intra-segment activation immediately after it has been consumed by the next layer.
+2. **Backward pass, per segment (last segment first):** load the segment's checkpoint (its input activation), and re-run the forward computation *only across that segment* to reconstruct its intra-segment activations.
+3. Run ordinary backprop through the freshly recomputed segment, accumulating parameter gradients and the gradient flowing into the segment's input.
+4. Discard the recomputed activations (they've done their job) and move to the previous segment, chaining in the incoming gradient.
+5. Repeat until segment 1, arriving back at $a_0$.
+
+<Callout type="info" title="What's actually being traded">
+  Gradient checkpointing doesn't reduce the *total* amount of forward computation ever performed in an absolute sense — it performs it **twice** for the layers inside each segment (once during the real forward pass, once during recomputation). What it eliminates is the need to **hold every layer's activation in memory at once**. That's the trade: a bounded, fixed increase in FLOPs for an asymptotic reduction in peak memory — which is what lets a model that would otherwise OOM actually fit on the GPU.
+</Callout>
+
+## 3 — Choosing the segment size: why $\sqrt{L}$
+
+Peak memory during the backward pass is the sum of two pools: the checkpoints still held for segments not yet processed, and the intra-segment activations currently being recomputed. With segment size $m$ (so there are $L/m$ checkpoints) and up to $m$ activations live inside whichever segment is currently being replayed:
+
+$$
+\text{peak memory}(m) \;\approx\; \underbrace{\frac{L}{m}}_{\text{checkpoints}} + \underbrace{m}_{\text{current segment}}
+$$
+
+Minimize over $m$ by setting the derivative to zero:
+
+$$
+\frac{d}{dm}\left(\frac{L}{m} + m\right) = -\frac{L}{m^2} + 1 = 0 \quad\Longrightarrow\quad m = \sqrt{L}
+$$
+
+Substituting back gives the optimal peak memory:
+
+$$
+\text{peak memory}(\sqrt{L}) = \frac{L}{\sqrt{L}} + \sqrt{L} = 2\sqrt{L} = O(\sqrt{L})
+$$
+
+This is the standard heuristic: **checkpoint every $\sqrt{L}$ layers.** Too few checkpoints (large $m$) means each recompute is expensive in memory; too many checkpoints (small $m$) means the checkpoints themselves dominate memory. $m = \sqrt{L}$ balances the two pools exactly.
+
+## 4 — Why the extra compute is only ~30–40%, not 2×
+
+It's tempting to assume checkpointing roughly doubles training cost, since every checkpointed layer's forward is repeated. But the *recomputation* only replays the forward pass — it never repeats the backward pass, which is the more expensive half. Using the standard rule of thumb that a full training step costs about 1 unit of forward FLOPs and about 2 units of backward FLOPs (backward touches both the input and weight gradients):
+
+$$
+\text{no checkpointing: } 1\,(\text{fwd}) + 2\,(\text{bwd}) = 3 \text{ units}
+$$
+
+$$
+\text{with checkpointing: } 1\,(\text{fwd}) + 1\,(\text{recompute fwd}) + 2\,(\text{bwd}) = 4 \text{ units}
+$$
+
+$$
+\text{extra compute} = \frac{4-3}{3} \approx 33\%
+$$
+
+The recomputed segments sum to exactly one extra full forward pass over the whole network (each layer is recomputed exactly once, regardless of how many segments it's split into), so the ~30–40% overhead is roughly constant — it doesn't get worse as $L$ grows, while the memory savings keep improving.
+
+## Worked example: toy $L$-layer MLP
+
+Take a toy MLP where each layer's activation costs 1 "unit" of memory, and compare no-checkpointing against checkpointing with segment size $m = \sqrt{L}$:
+
+| $L$ (layers) | $\sqrt{L}$ (segment size) | checkpoints stored | peak memory (checkpoints + current segment) | memory: no-checkpoint | reduction factor | extra forward compute |
+|---:|---:|---:|---:|---:|---:|---:|
+| 16   | 4  | 4  | 8  | 16   | 2×  | ~33% |
+| 64   | 8  | 8  | 16 | 64   | 4×  | ~33% |
+| 256  | 16 | 16 | 32 | 256  | 8×  | ~33% |
+| 1024 | 32 | 32 | 64 | 1024 | 16× | ~33% |
+
+Reading the $L=64$ row concretely: without checkpointing you hold all 64 layer activations simultaneously (64 units). With checkpointing every $8$ layers, you store 8 checkpoints (at layers $0, 8, 16, \dots, 56$); when the backward pass reaches the segment for layers $48$–$56$, it replays that segment's forward pass, transiently holding up to 8 more activations — a peak of $8 + 8 = 16$ units, a $4\times$ reduction — for a fixed ~33% increase in forward FLOPs. As $L$ grows the memory reduction factor grows like $\sqrt{L}/2$, while the compute tax stays flat: exactly the trade that makes checkpointing more valuable the deeper the model gets.
+
+## Related concepts
+
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — mixed precision is the sibling memory-saving technique (halves activation *size*); checkpointing reduces activation *count* instead
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — the resource-management trade-offs that make techniques like checkpointing part of a production training stack

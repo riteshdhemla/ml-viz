@@ -42,6 +42,10 @@ Training in pure FP32 wastes the tensor cores and doubles memory traffic. **Mixe
 
 The accumulation is still done in FP32 inside the tensor core, so accuracy is preserved while the expensive multiplies run in 16-bit.
 
+Mixed precision saves memory by shrinking each activation's *size*. A sibling technique, **gradient checkpointing**, instead saves memory by shrinking the *number* of activations kept around — only a $\sqrt{L}$-spaced subset is cached, and the rest are recomputed during backprop.
+
+<WikiLink slug="gradient-checkpointing" title="Gradient Checkpointing" />
+
 ## Kernel fusion
 
 Each kernel launch reads its inputs from global memory and writes its outputs back. A chain of small element-wise ops — `bias → activation → dropout` — pays that round-trip *every step*, even though each op does almost no arithmetic. These ops are **memory-bound** (low arithmetic intensity from Lesson 3).
