@@ -9789,6 +9789,79 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It becomes equal to training error", isCorrect: false },
     ],
   },
+  {
+    id: "ts-quiz-stationarity",
+    type: "multiple-choice",
+    question:
+      "A monthly sales series has an upward trend AND seasonal swings that grow with the level. What's the standard transform sequence before fitting ARIMA?",
+    hint: "One transform stabilizes variance, another removes trend — order matters.",
+    explanation:
+      "Log first (converts proportional seasonal amplitude into constant amplitude and stabilizes variance), then difference (removes the trend). Differencing before logging leaves the growing variance untouched.",
+    options: [
+      { id: "a", label: "Log-transform, then difference", isCorrect: true },
+      { id: "b", label: "Difference, then log-transform", isCorrect: false },
+      { id: "c", label: "Difference twice — logs are only cosmetic", isCorrect: false },
+      { id: "d", label: "Neither — ARIMA handles non-stationarity internally", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-quiz-fingerprint",
+    type: "multiple-choice",
+    question:
+      "On a stationary series, the PACF cuts off sharply after lag 2 while the ACF tails off gradually. Which model does this fingerprint suggest?",
+    hint: "Which component makes the PACF cut off?",
+    explanation:
+      "AR(2): an autoregressive model of order p has a PACF that cuts off after lag p and an ACF that decays gradually. The MA fingerprint is the mirror image — ACF cuts off, PACF tails off.",
+    options: [
+      { id: "a", label: "AR(2)", isCorrect: true },
+      { id: "b", label: "MA(2)", isCorrect: false },
+      { id: "c", label: "White noise", isCorrect: false },
+      { id: "d", label: "A series needing more differencing", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-quiz-horizon",
+    type: "multiple-choice",
+    question: "Why do ARIMA forecast intervals widen as the horizon h grows?",
+    hint: "What does the model know about the shocks between now and T+h?",
+    explanation:
+      "Each future step involves shocks ε that haven't happened yet; their uncertainty accumulates with every step ahead, so the predictive variance — and the interval — grows with h. Near-term forecasts are anchored by observed data; far-term ones are not.",
+    options: [
+      { id: "a", label: "Unrealized future shocks accumulate — uncertainty compounds with each step", isCorrect: true },
+      { id: "b", label: "The parameters are re-estimated at each horizon", isCorrect: false },
+      { id: "c", label: "It's a plotting convention, not a statistical statement", isCorrect: false },
+      { id: "d", label: "Differencing amplifies the mean forecast", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-quiz-walkforward",
+    type: "multiple-choice",
+    question: "Why is shuffled k-fold cross-validation invalid for time-series models?",
+    hint: "What information crosses the fold boundary when you shuffle?",
+    explanation:
+      "Shuffling puts future observations in the training folds, so the model trains on information from after its validation points — leakage that inflates scores and evaporates in production. Walk-forward validation (train on the past, validate on the next window) preserves the arrow of time.",
+    options: [
+      { id: "a", label: "Shuffling lets the model train on the future — use walk-forward validation", isCorrect: true },
+      { id: "b", label: "k-fold is too expensive for long series", isCorrect: false },
+      { id: "c", label: "Time series are too short for 5 folds", isCorrect: false },
+      { id: "d", label: "It's valid as long as folds are stratified", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-quiz-hierarchy",
+    type: "multiple-choice",
+    question:
+      "You forecast demand per store and per region independently, and the store forecasts don't sum to the regional forecast. What's the standard fix?",
+    hint: "The forecasts must respect the aggregation tree.",
+    explanation:
+      "Reconciliation: adjust the independent forecasts so they're coherent with the hierarchy (bottom-up, top-down, or optimal/MinT reconciliation). Independent forecasts are almost never coherent by accident, and downstream planning needs numbers that add up.",
+    options: [
+      { id: "a", label: "Reconcile the forecasts against the hierarchy (bottom-up / top-down / MinT)", isCorrect: true },
+      { id: "b", label: "Average the two totals", isCorrect: false },
+      { id: "c", label: "Only ever forecast at the top level", isCorrect: false },
+      { id: "d", label: "Nothing — coherence doesn't matter in practice", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

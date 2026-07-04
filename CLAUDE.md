@@ -338,6 +338,12 @@ surface-border   — borders
 ### Reinforcement Learning
 - [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course + 4 lessons)*
 
+### Evaluation & Statistical ML
+- [x] **Model Evaluation** — metrics, validation, training techniques, LLM & AI-system eval, learning theory, calibration *(course + 7 lessons + quiz)*
+- [x] **Bayesian Methods** — Bayesian linear regression, Gaussian processes, Bayesian optimization *(course + 3 lessons + quiz)*
+- [x] **Causal Inference** — confounding, Simpson's paradox, potential outcomes, do-calculus, backdoor adjustment *(course + 2 lessons + quiz)*
+- [x] **Time Series** — stationarity/ACF, ARIMA/SARIMA, deep learning for forecasting, demand forecasting in production *(course + 4 lessons + quiz)*
+
 ### Applied & Production AI
 - [x] **Building with LLMs** — prompt engineering & in-context learning, decoding/sampling, chain-of-thought & structured output, embeddings & semantic search, RAG, agents & tool use, AI-engineering architecture *(course + 6 lessons + quiz)*
 - [~] **Fine-Tuning & Alignment** — SFT, instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO *(in progress: course + Lesson 01 shipped; Lessons 02–06 + RL bridge queued in `prompts/content-build-checklist.md`)*
@@ -432,6 +438,9 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | OptimizerPathViz | `visualizations/OptimizerPath/` | optimization-ml/01-gradient-descent-variants | ✅ |
 | TraceWaterfallViz | `visualizations/TraceWaterfall/` | building-with-llms/09-llm-observability-and-prompt-management (+ agent-design-patterns/11) | ✅ |
 | CondorcetViz | `visualizations/Condorcet/` | agent-design-patterns/07-multi-agent-cooperation-patterns | ✅ |
+| DecompositionViz | `visualizations/Decomposition/` | time-series/01-time-series-fundamentals | ✅ |
+| ACFViz | `visualizations/ACF/` | time-series/02-arima-models | ✅ |
+| ARIMAForecastViz | `visualizations/ARIMAForecast/` | time-series/03-deep-learning-for-time-series | ✅ |
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 
 ---
