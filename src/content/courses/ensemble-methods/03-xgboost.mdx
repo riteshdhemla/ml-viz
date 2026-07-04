@@ -47,6 +47,34 @@ Borrowing from [Random Forests](/courses/ensemble-methods/01-bagging-and-random-
   `eta=0.05`, `max_depth=6`, `subsample=0.8`, `colsample_bytree=0.8`, `n_estimators` large with `early_stopping_rounds=50`. Then tune `max_depth` (capacity), `min_child_weight` (leaf conservatism), and the regularizers `lambda`/`gamma` — in that order. Resist tuning ten knobs at once.
 </Callout>
 
+That configuration, in code (for your own train/test split — XGBoost and LightGBM share the same shape):
+
+```python
+import xgboost as xgb
+import lightgbm as lgb
+
+xgb_model = xgb.XGBClassifier(
+    n_estimators=500,
+    max_depth=6,
+    learning_rate=0.05,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    eval_metric='logloss',
+    early_stopping_rounds=50,
+)
+xgb_model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
+
+lgb_model = lgb.LGBMClassifier(
+    n_estimators=500,
+    max_depth=6,
+    learning_rate=0.05,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    early_stopping_round=50,
+)
+lgb_model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
+```
+
 ## Why trees still beat neural nets on tables
 
 On heterogeneous tabular data — mixed scales, missing values, categorical features, low sample counts — gradient-boosted trees remain the strongest default:
@@ -59,9 +87,17 @@ Deep learning wins when there's structure to exploit — images, text, audio, hu
 
 <Exercise id="ensemble-xgb-eta" />
 
+<Exercise id="xgb-tuning" />
+
 ## Key takeaways
 
 - XGBoost = gradient boosting + regularization at every level: penalized leaves ($\gamma$, $\lambda$), shrinkage ($\eta$), and row/column subsampling
 - Second-order (gradient + Hessian) approximation gives principled split scores and leaf values
 - Lower learning rate + more trees + early stopping is the most dependable tuning move
 - For tabular data, gradient-boosted trees are still the default champion
+
+## Related concepts
+
+- [**Boosting**](/courses/ensemble-methods/02-boosting) — the algorithm this system industrializes
+- [**Bagging & Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests) — where the row/column subsampling idea comes from
+- [**Hyperparameter Optimization**](/courses/optimization-ml/05-hyperparameter-optimization) — searching the knobs beyond the sane defaults

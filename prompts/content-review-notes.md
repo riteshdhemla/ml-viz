@@ -583,6 +583,52 @@ the optimization course. Nothing deferred.
 
 ---
 
+## ensemble-methods — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 13 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 3` ✓ (70 min × 2.5/60 ≈ 2.92). Quiz all-fresh
+`ensemble-quiz-*`, covers all lessons ✓.
+
+### ensemble-methods/01-bagging-and-random-forests — grasp 4.5/5 → fixed
+- P2 (fixed): the "Why bagging works" callout asserted trees are
+  *uncorrelated* and variance drops by a factor of B — exactly the claim the
+  very next section (the ρ-floor decomposition, the lesson's best material)
+  goes on to debunk → callout reworded to the conditional, handing off to
+  that section.
+- P3 (fixed): mistake #1 self-contradicted ("don't skip max_depth… start
+  with max_depth=None") → reworded as either/or with min_samples_leaf.
+- P3 (fixed): missing `import numpy` in the MDI snippet; idiom label on the
+  bagging snippet; exercises moved before Common mistakes.
+- Strong: ρσ² + (1−ρ)/B·σ² decomposition motivating RF, and the OOB ≈ 37%
+  limit derived rather than asserted.
+
+### ensemble-methods/02-boosting — grasp 4.5/5 → fixed
+- P2 (fixed): **seam #5** — the "XGBoost and LightGBM" section, its code, the
+  feature-importance snippet (with undefined np/plt/xgb_model), and the
+  `xgb-tuning` exercise all pre-empted lesson 03, which owns XGBoost →
+  replaced with a three-line pointer; code moved to 03 (which had none);
+  exercise moved to 03; related-concepts forward link added.
+- P3 (fixed): "variance reduction: Yes (via shrinkage)" overstated →
+  "Some (via shrinkage + subsampling)"; exercises moved before Common
+  mistakes.
+- Strong: the gradient-boosting worked trace (verified ✓ — residuals, stump
+  means, η-scaled updates all correct), AdaBoost α-minimizer note with wiki
+  extraction.
+
+### ensemble-methods/03-xgboost — grasp 5/5
+- Excellent conceptual lesson: two-penalty objective read line by line,
+  shrinkage-vs-trees viz, honest trees-vs-nets framing.
+- P3 (fixed): was the only lesson in the course with zero code → gained the
+  XGBoost/LightGBM starting-config snippet (moved from 02, matching its own
+  "sane configuration" callout) plus a Related concepts section and the
+  moved `xgb-tuning` exercise.
+
+### Applied in this iteration
+Callout contradiction fix, seam #5 closed (02→03 handoff), snippet moves +
+imports + idiom labels, exercise placements. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*

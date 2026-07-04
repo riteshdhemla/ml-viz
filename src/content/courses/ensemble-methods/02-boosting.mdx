@@ -108,47 +108,9 @@ print(f"GBM accuracy: {gbm.score(X_test, y_test):.3f}")
   These are inversely related. Lower learning rate → need more trees → better generalization. The sweet spot: $\eta = 0.01$-$0.1$ with 500-2000 trees. Always use early stopping to find the optimal number of trees.
 </Callout>
 
-## XGBoost and LightGBM
+## From the idea to the engines
 
-Modern gradient boosting implementations with significant speedups:
-
-### XGBoost
-- Regularized objective (L1 + L2)
-- Sparse-aware algorithms
-- GPU training support
-
-### LightGBM
-- Histogram-based splitting (faster)
-- Leaf-wise growth (better accuracy)
-- Native categorical feature support
-
-```python
-import xgboost as xgb
-import lightgbm as lgb
-
-# XGBoost
-xgb_model = xgb.XGBClassifier(
-    n_estimators=500,
-    max_depth=6,
-    learning_rate=0.05,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    eval_metric='logloss',
-    early_stopping_rounds=50
-)
-xgb_model.fit(X_train, y_train, eval_set=[(X_test, y_test)], verbose=False)
-
-# LightGBM
-lgb_model = lgb.LGBMClassifier(
-    n_estimators=500,
-    max_depth=6,
-    learning_rate=0.05,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    early_stopping_round=50
-)
-lgb_model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
-```
+Modern gradient boosting lives in three libraries — **XGBoost** (regularized objective, sparse-aware, GPU), **LightGBM** (histogram splits, leaf-wise growth, native categoricals), and **CatBoost**. What separates them from the plain algorithm above — the regularized objective, shrinkage tuning, and subsampling — is the [next lesson](/courses/ensemble-methods/03-xgboost).
 
 ## Boosting vs Bagging
 
@@ -156,7 +118,7 @@ lgb_model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
 |----------|---------|----------|
 | Training | Parallel | Sequential |
 | Bias reduction | No | Yes |
-| Variance reduction | Yes | Yes (via shrinkage) |
+| Variance reduction | Yes | Some (via shrinkage + subsampling) |
 | Overfitting risk | Low | High (if too many trees) |
 | Speed | Fast (parallel) | Slow (sequential) |
 | Sensitive to noise | No | Yes |
@@ -169,20 +131,6 @@ lgb_model.fit(X_train, y_train, eval_set=[(X_test, y_test)])
   - Tree constraints (max_depth, min_samples_leaf)
 </Callout>
 
-## Feature importance in boosting
-
-```python
-# XGBoost feature importance
-importances = xgb_model.feature_importances_
-for i in np.argsort(importances)[::-1][:10]:
-    print(f"Feature {i}: {importances[i]:.3f}")
-
-# Plot
-xgb.plot_importance(xgb_model, max_num_features=10, importance_type='gain')
-plt.tight_layout()
-plt.show()
-```
-
 ## When to use what
 
 | Scenario | Best choice |
@@ -193,6 +141,12 @@ plt.show()
 | Need fast inference | Random Forest (parallel) |
 | Kaggle competition | LightGBM or XGBoost |
 | Text classification | Linear SVM or Naive Bayes |
+
+<Exercise id="boosting-vs-bagging" />
+
+<Exercise id="learning-rate-tradeoff" />
+
+<Exercise id="slider-boosting-n-trees" />
 
 ## Common mistakes
 
@@ -210,9 +164,5 @@ plt.show()
 ## Related concepts
 
 - [**Bagging & Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests) — the parallel, variance-reducing ensemble
+- [**Gradient Boosting in Practice: XGBoost**](/courses/ensemble-methods/03-xgboost) — the regularized engine built on this recipe
 - [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — the weak learner that gets boosted
-
-<Exercise id="boosting-vs-bagging" />
-<Exercise id="learning-rate-tradeoff" />
-<Exercise id="xgb-tuning" />
-<Exercise id="slider-boosting-n-trees" />
