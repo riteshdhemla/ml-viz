@@ -928,6 +928,53 @@ section + 3 viz rows. Nothing deferred. **Classical-ML block complete.**
 
 ---
 
+## neural-networks — 2026-07-04 (review + fix mode)
+
+Scope: index + 6 lessons + quiz, 19+ exercises, 6 notebooks (structural ✓).
+`estimatedHours: 4` ✓ (95 min × 2.5/60 ≈ 3.96). Quiz all-fresh `nn-quiz-*`.
+
+### neural-networks/01-what-is-a-neuron — grasp 5/5
+- Exemplary: term-by-term forward pass, the nudge-one-weight section that
+  *derives* ∂z/∂wᵢ = xᵢ from arithmetic before naming it, saturation shown
+  numerically, correct extractions (activation-functions wiki).
+- P3 (fixed): exercises moved before Common mistakes.
+
+### neural-networks/02-gradient-descent — grasp 5/5
+- The best worked trace in the repo: two full hand iterations of MSE line
+  fitting (all numbers verified ✓) mirrored exactly in code, the
+  learning-rate table from the same problem, and correctly scoped optimizer
+  coverage (intuition here, zoo deferred to wiki/optimization-ml). Momentum
+  sign convention differs from optimization-ml/01 (w+v vs w−ηv forms) —
+  both valid, noted, not worth harmonizing.
+- P3 (fixed): exercises moved.
+
+### neural-networks/03-layers-and-forward-pass — grasp 5/5
+- Excellent: shape-rule callout ("rows = outputs"), fully worked 2→2→1 pass
+  (verified ✓ σ(2) ≈ 0.881) with the inactive-ReLU observation.
+- P3 (fixed): exercises moved.
+
+### neural-networks/04–06 (xor-mlp, batchnorm-dropout, weight-init) — grasp 4.5/5 (outline+spot read)
+- Well-structured with the right wiki extractions (perceptron-learning,
+  softmax-cross-entropy, batchnorm-algorithm, dropout, groupnorm).
+- P3 (fixed): lesson 05's dropout WikiLink dangled *after* Related concepts
+  → relocated into the Dropout section with a lead-in; exercises moved in
+  all three.
+
+### neural-networks/07-quiz — grasp 4.5/5 → fixed
+- All-fresh ids but no lesson-05 coverage → added `nn-quiz-dropout-scale`
+  (inverted-dropout scaling, the lesson's core mechanic).
+
+### Course meta
+- P3 (fixed): CLAUDE.md roadmap said "course + 3 lessons"; it's 6 + quiz.
+
+### Applied in this iteration
+WikiLink relocation, exercise placements ×6, 1 fresh quiz exercise,
+roadmap row. No P2s — the oldest course held up remarkably well (its
+optimizer/backprop scope boundaries with calculus-for-ml and
+optimization-ml are correct in both directions).
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*

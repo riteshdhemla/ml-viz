@@ -313,7 +313,7 @@ surface-border   — borders
 - [x] **Optimization for ML** — GD variants (SGD/momentum/Adam), convexity, KKT, loss functions, HPO *(course + 5 lessons + quiz)*
 
 ### Supervised Learning — Beginner
-- [x] **Neural Networks** — perceptron, forward pass, backprop *(course + 3 lessons)*
+- [x] **Neural Networks** — neuron, gradient descent, forward pass, XOR/MLP, batchnorm & dropout, initialization *(course + 6 lessons + quiz)*
 - [x] **Linear & Logistic Regression** — OLS, regularization, decision boundary, GLMs & GDA *(course + 4 lessons + quiz)*
 - [x] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity, bias-variance *(course + 3 lessons + quiz)*
 
