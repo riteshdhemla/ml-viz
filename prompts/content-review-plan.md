@@ -86,7 +86,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] knn-decision-trees <!-- reviewed + fixed 2026-07-04 -->
 - [x] svm <!-- reviewed + fixed 2026-07-04 -->
 - [x] ensemble-methods <!-- reviewed + fixed 2026-07-04 -->
-- [ ] clustering
+- [x] clustering <!-- reviewed + fixed 2026-07-04 -->
 - [ ] pca-dimensionality
 - [ ] probabilistic-models
 - [ ] model-evaluation

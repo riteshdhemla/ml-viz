@@ -50,52 +50,9 @@ print(f"Inertia: {kmeans.inertia_:.2f}")
 
 <KMeansViz />
 
-## Choosing K: The Elbow Method
+## Choosing K
 
-Plot inertia (within-cluster sum of squares) vs. $K$ and look for the "elbow" — the point where adding more clusters gives diminishing returns:
-
-```python
-inertias = []
-K_range = range(1, 11)
-
-for k in K_range:
-    km = KMeans(n_clusters=k, random_state=42, n_init=10)
-    km.fit(X)
-    inertias.append(km.inertia_)
-
-import matplotlib.pyplot as plt
-plt.figure(figsize=(8, 5))
-plt.plot(K_range, inertias, 'bo-', linewidth=2, markersize=8)
-plt.xlabel('Number of clusters (K)')
-plt.ylabel('Inertia')
-plt.title('Elbow Method')
-plt.grid(True, alpha=0.3)
-plt.show()
-```
-
-## Silhouette Score
-
-Measures how well each point fits its cluster vs. neighboring clusters:
-
-$$
-s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}
-$$
-
-where $a(i)$ = average distance to same cluster, $b(i)$ = average distance to nearest other cluster.
-
-- $s(i) \approx 1$: well-clustered
-- $s(i) \approx 0$: on boundary
-- $s(i) < 0$: probably in wrong cluster
-
-```python
-from sklearn.metrics import silhouette_score
-
-for k in range(2, 8):
-    km = KMeans(n_clusters=k, random_state=42, n_init=10)
-    labels = km.fit_predict(X)
-    score = silhouette_score(X, labels)
-    print(f"K={k}: silhouette={score:.3f}")
-```
+K-Means never complains about a bad $K$ — its objective $J$ *always* decreases as $K$ grows, all the way to the trivial $K = n$. Picking $K$ therefore needs evidence from outside the objective: the **elbow method** (where does adding a cluster stop paying?) and the **silhouette score** (is each point closer to its own cluster than to the next one?). Both — with a worked silhouette calculation, the metric's blind spots, and the stability check — are the subject of [Evaluating Clusters & Choosing k](/courses/clustering/03-evaluating-clusters).
 
 ## K-Means++ initialization
 
@@ -132,10 +89,14 @@ kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, random_state=42)
   K-Means uses Euclidean distance. If features have different scales (e.g., age in years vs. income in dollars), the larger-scale feature will dominate. Always standardize before clustering.
 </Callout>
 
+<Exercise id="kmeans-iteration" />
+
+<Exercise id="kmeans-scaling" />
+
 ## Common mistakes
 
 1. **Not standardizing features** — The #1 K-Means mistake. Always use `StandardScaler`.
-2. **Using K=1 or K=n** — Trivial solutions. Use the elbow method or silhouette score.
+2. **Using K=1 or K=n** — Trivial solutions. Use the elbow method or silhouette score (next-next lesson).
 3. **Ignoring the initialization** — Always use K-Means++ and `n_init ≥ 10`.
 
 ## Key takeaways
@@ -148,9 +109,6 @@ kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, random_state=42)
 ## Related concepts
 
 - [**Hierarchical & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan) — clustering without choosing K, and arbitrary shapes
+- [**Evaluating Clusters & Choosing k**](/courses/clustering/03-evaluating-clusters) — elbow, silhouette, and stability
 - [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the soft, probabilistic version of K-Means
 - [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — reducing dimensions before clustering
-
-<Exercise id="kmeans-iteration" />
-<Exercise id="choosing-k" />
-<Exercise id="kmeans-scaling" />
