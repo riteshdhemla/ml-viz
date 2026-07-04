@@ -85,7 +85,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] linear-regression <!-- reviewed 2026-07-02 -->
 - [x] knn-decision-trees <!-- reviewed + fixed 2026-07-04 -->
 - [x] svm <!-- reviewed + fixed 2026-07-04 -->
-- [ ] ensemble-methods
+- [x] ensemble-methods <!-- reviewed + fixed 2026-07-04 -->
 - [ ] clustering
 - [ ] pca-dimensionality
 - [ ] probabilistic-models

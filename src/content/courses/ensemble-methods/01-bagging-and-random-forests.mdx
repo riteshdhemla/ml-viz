@@ -29,7 +29,7 @@ Watch how bootstrap resampling creates diverse trees — and how majority vote s
 <BaggingViz />
 
 <Callout type="tip" title="Why bagging works">
-  Individual trees are uncorrelated because they see different data. When you average $B$ uncorrelated estimates, the variance *of the average* drops by a factor of $B$. Even if individual trees are noisy, the average is stable. Think of it like polling — one poll is noisy, but averaging 1000 polls gives a reliable estimate.
+  Different bootstrap samples produce *different* trees, and averaging diverse estimates cancels their individual noise — like polling: one poll is noisy, but averaging 1000 polls gives a reliable estimate. If the trees were perfectly uncorrelated, the variance of the average would drop by a full factor of $B$; the next section shows how close bagging actually gets.
 </Callout>
 
 ### How much does variance actually drop?
@@ -52,6 +52,7 @@ This is the key insight behind random forests: once you have enough trees, the o
 5 trees predict [cat, dog, cat, cat, dog] for a new image. Majority vote: **cat** (3 vs 2).
 
 ```python
+# The idiom (for your own X_train / y_train / X_test / y_test):
 from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 
@@ -108,6 +109,8 @@ Two main methods:
 Sum the impurity decrease at each split across all trees, weighted by the number of samples reaching that split.
 
 ```python
+import numpy as np
+
 importances = rf.feature_importances_
 for i in np.argsort(importances)[::-1][:5]:
     print(f"Feature {i}: {importances[i]:.3f}")
@@ -160,9 +163,15 @@ print(f"OOB accuracy: {rf.oob_score_:.3f}")  # ~same as test accuracy
   If you have structured/tabular data and don't know where to start, try Random Forests first. They require minimal tuning, are robust to overfitting, and provide feature importance. Only move to gradient boosting if you need more accuracy.
 </Callout>
 
+<Exercise id="bagging-variance" />
+
+<Exercise id="rf-feature-importance" />
+
+<Exercise id="rf-oob" />
+
 ## Common mistakes
 
-1. **Not limiting `max_depth`** — Untuned trees can grow very deep and overfit. Start with `max_depth=10` or `max_depth=None` with `min_samples_leaf=5`.
+1. **Leaving trees completely unconstrained** — cap complexity one way or the other: either `max_depth=10`, or if you keep `max_depth=None`, set `min_samples_leaf=5` so leaves can't chase single points.
 2. **Using too few trees** — 10 trees is not enough. Use 100-500. More trees rarely hurt (diminishing returns), but few trees give noisy estimates.
 3. **Ignoring feature scaling** — Random Forests don't need scaling! They're invariant to monotonic transformations. Don't waste time preprocessing.
 
@@ -177,7 +186,3 @@ print(f"OOB accuracy: {rf.oob_score_:.3f}")  # ~same as test accuracy
 
 - [**Boosting**](/courses/ensemble-methods/02-boosting) — the sequential, bias-reducing ensemble
 - [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — the base learner being averaged
-
-<Exercise id="bagging-variance" />
-<Exercise id="rf-feature-importance" />
-<Exercise id="rf-oob" />
