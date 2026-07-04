@@ -165,6 +165,14 @@ $$
 Less penalty than BIC — may select more complex models.
 
 ```python
+import matplotlib.pyplot as plt
+
+# Enough data to actually compare 1-7 components
+rng = np.random.default_rng(42)
+X = np.vstack([rng.normal([0, 0], 1.0, (150, 2)),
+               rng.normal([5, 5], 1.5, (150, 2)),
+               rng.normal([0, 6], 0.8, (150, 2))])   # 3 true clusters
+
 n_components_range = range(1, 8)
 bics = []
 aics = []
@@ -174,6 +182,7 @@ for n in n_components_range:
     gmm.fit(X)
     bics.append(gmm.bic(X))
     aics.append(gmm.aic(X))
+# Both criteria bottom out at n=3 — the true number of clusters
 
 plt.figure(figsize=(8, 5))
 plt.plot(n_components_range, bics, 'bo-', label='BIC')
@@ -188,6 +197,12 @@ plt.show()
 <Callout type="info" title="BIC vs AIC">
   BIC penalizes complexity more heavily (grows with $\ln n$). Use BIC when you want a parsimonious model. Use AIC when you suspect the true model is complex. For small datasets, BIC is safer.
 </Callout>
+
+<Exercise id="gmm-responsibility" />
+
+<Exercise id="gmm-covariance" />
+
+<Exercise id="gmm-bic-aic" />
 
 ## Common mistakes
 
@@ -207,7 +222,3 @@ plt.show()
 - [**The EM Algorithm**](/courses/probabilistic-models/02-em-algorithm) — the algorithm that fits a GMM
 - [**K-Means Clustering**](/courses/clustering/01-k-means) — the hard-assignment special case of a GMM
 - [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — EM applied to sequences
-
-<Exercise id="gmm-responsibility" />
-<Exercise id="gmm-covariance" />
-<Exercise id="gmm-bic-aic" />
