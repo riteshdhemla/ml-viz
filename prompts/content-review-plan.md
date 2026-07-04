@@ -92,7 +92,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] model-evaluation <!-- reviewed + fixed 2026-07-04 -->
 - [x] bayesian-methods <!-- reviewed + fixed 2026-07-04 -->
 - [x] causal-inference <!-- reviewed + fixed 2026-07-04 -->
-- [ ] time-series
+- [x] time-series <!-- reviewed + fixed 2026-07-04 -->
 
 ### Courses — deep learning
 - [ ] neural-networks

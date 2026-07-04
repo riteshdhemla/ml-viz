@@ -878,6 +878,56 @@ compact-form with correct end-matter.
 
 ---
 
+## time-series — 2026-07-04 (review + fix mode)
+
+Scope: index + 4 lessons (+ new quiz), 9 lesson exercises + 5 new quiz
+exercises, 4 notebooks (structural ✓).
+
+### time-series/01-time-series-fundamentals — grasp 5/5
+- Excellent: components → stationarity → transforms → ACF/PACF arc; the ADF
+  is-not-omniscient callout; log-then-difference worked example verified ✓;
+  a full 5-step airline-data walkthrough; correct wiki extraction
+  (acf-pacf-interpretation).
+- P3 (fixed): exercises moved before Key takeaways.
+
+### time-series/02-arima-models — grasp 5/5
+- Excellent: AR/MA intuitions, memory-fingerprint callout, worked
+  ARIMA(1,1,1) forecast with widening intervals (half-widths verified ✓),
+  AIC/BIC with the T=100 penalty comparison, airline-model SARIMA note,
+  full simulate→test→fit→forecast code. Wiki extractions (ADF, Box-Jenkins)
+  at the right altitude.
+- P3 (fixed): exercises moved.
+
+### time-series/03-deep-learning-for-time-series — grasp 4.5/5 (outline+spot read)
+- Well-structured: sliding window with a printed example, LSTM/TCN/
+  transformer progression, metrics, walk-forward wiki link, decision guide,
+  end-to-end PyTorch pipeline with chronological split.
+- P3 (fixed): exercises moved.
+
+### time-series/04-demand-forecasting-in-production — grasp 4.5/5 (outline+spot read)
+- Good production arc: hierarchy/reconciliation (wiki-extracted), Prophet
+  events, quantile-regression ETA, ensembles, architecture.
+- P3 (fixed): exercises moved.
+
+### Course meta — the substantive findings
+- P2 (fixed): **no quiz existed** — the only reviewed course without one →
+  created `05-quiz.mdx` with 5 fresh `ts-quiz-*` exercises (log-then-
+  difference, AR fingerprint, widening intervals, walk-forward leakage,
+  reconciliation), one per major theme.
+- P3 (fixed): with the quiz, `estimatedHours: 4` is now arithmetically
+  right (90 min × 2.5/60 = 3.75 → 4); it was 0.5 high before.
+- P3 (fixed): CLAUDE.md — course was absent from the roadmap (added a new
+  "Evaluation & Statistical ML" section also covering model-evaluation,
+  bayesian-methods, causal-inference, all previously missing) and three viz
+  (DecompositionViz, ACFViz, ARIMAForecastViz) were missing from the
+  registry table.
+
+### Applied in this iteration
+New quiz (5 fresh exercises), exercise placements ×4, CLAUDE.md roadmap
+section + 3 viz rows. Nothing deferred. **Classical-ML block complete.**
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
