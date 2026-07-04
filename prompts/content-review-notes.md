@@ -707,6 +707,43 @@ Related-concepts addition. Nothing deferred.
 
 ---
 
+## probabilistic-models — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 12 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 3` ✓ (66 min × 2.5/60 = 2.75 boundary). Quiz all-fresh
+`probmodel-quiz-*`, covers all lessons ✓.
+
+### probabilistic-models/01-gaussian-mixture-models — grasp 5/5 → fixed
+- P2 (fixed): **crash-in-context snippet** (same class as clustering/01) —
+  the BIC/AIC snippet fit up to 7 components while the lesson's running `X`
+  was the 4-point toy from the responsibilities demo; sklearn raises for
+  n_components > n_samples → snippet now generates a 450-point 3-cluster
+  dataset inline (with the "both criteria bottom out at n=3" payoff comment)
+  and imports matplotlib.
+- Strong: responsibility worked example verified ✓ (0.0540/0.00443 →
+  γ = 0.924/0.076); the M-step-equals-soft-K-Means framing; the `tied`
+  covariance clarification.
+- P3 (fixed): exercises moved before Common mistakes.
+
+### probabilistic-models/02-em-algorithm — grasp 5/5
+- Excellent: detective analogy, from-scratch EM with regularized
+  covariances, ELBO summary with the full derivation + hand trace extracted
+  to the wiki, "EM beyond GMMs" table.
+- P3 (fixed): exercises moved before Common mistakes. No other issues.
+
+### probabilistic-models/03-naive-bayes — grasp 5/5
+- Excellent compact lesson: 2^d → d collapse motivating the assumption,
+  training-is-counting framing, the mandatory-smoothing veto argument, and
+  the calibration-vs-argmax explanation of why the wrong assumption works.
+- P3 (fixed): was missing Related concepts → added (Bayes inference, GDA
+  as the sibling generative classifier, logistic regression).
+
+### Applied in this iteration
+Self-contained BIC/AIC snippet (crash-class fix #3), exercise placements,
+Related-concepts addition. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
