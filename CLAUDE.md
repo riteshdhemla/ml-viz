@@ -318,7 +318,7 @@ surface-border   — borders
 - [x] **KNN & Decision Trees** — distance metrics, info gain, Gini impurity, bias-variance *(course + 3 lessons + quiz)*
 
 ### Supervised Learning — Intermediate
-- [x] **Convolutional Neural Networks** — kernels, feature maps, pooling *(course + 3 lessons)*
+- [x] **Convolutional Neural Networks** — kernels, pooling, visualization & adversarial attacks, transfer learning, modern architectures *(course + 5 lessons + quiz)*
 - [x] **Support Vector Machines** — max-margin, kernel trick, RBF, soft margins *(course + 3 lessons + quiz)*
 - [x] **Ensemble Methods** — bagging, boosting, Random Forest, XGBoost *(course + 3 lessons + quiz)*
 
@@ -405,7 +405,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | GaussianProcessViz | `visualizations/GaussianProcess/` | bayesian-methods/02-gaussian-processes | ✅ |
 | MoERoutingViz | `visualizations/MoERouting/` | transformers/06-mixture-of-experts | ✅ |
 | CalibrationViz | `visualizations/Calibration/` | model-evaluation/07-calibration-and-uncertainty | ✅ |
-| TransferLearningViz | `visualizations/TransferLearning/` | cnns/03-transfer-learning | ✅ |
+| TransferLearningViz | `visualizations/TransferLearning/` | cnns/04-transfer-learning | ✅ |
 | PositionalEncodingViz | `visualizations/PositionalEncoding/` | transformers/02-multi-head-and-positional | ✅ |
 | GMMResponsibilityViz | `visualizations/GMM/` | probabilistic-models/01-gaussian-mixture-models | ✅ |
 | HMMViterbiViz | `visualizations/HMMViterbi/` | graphical-models/03-hidden-markov-models | ✅ |
