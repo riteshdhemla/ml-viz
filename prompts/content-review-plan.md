@@ -31,8 +31,10 @@ Run each iteration in a Claude Code session (use the strongest model available
 3. **Score and note.** For each lesson/page, apply the rubric below: assign a
    **grasp score (1–5)** and write severity-tagged notes. No finding is also a
    finding — record `no issues` explicitly.
-4. **Do not fix anything** beyond typo-level corrections. Structural fixes go
-   in the notes as proposals.
+4. **Apply fixes in the same iteration** (mode changed 2026-07-04, previously
+   notes-only): fix all P2s and cheap P3s immediately after writing the notes;
+   record what was applied vs deferred in the item's notes section. Defer only
+   large builds (new viz components, restructures spanning other courses).
 5. **Append** the item's section to `prompts/content-review-notes.md`
    (format spec is at the top of that file). Check the item off (`[~]` → `[x]`).
 6. **Commit + push** (`content review: <item>`), then stop.
@@ -81,7 +83,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 
 ### Courses — classical ML
 - [x] linear-regression <!-- reviewed 2026-07-02 -->
-- [ ] knn-decision-trees
+- [~] knn-decision-trees <!-- claimed 2026-07-04 -->
 - [ ] svm
 - [ ] ensemble-methods
 - [ ] clustering
