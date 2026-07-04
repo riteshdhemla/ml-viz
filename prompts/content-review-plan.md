@@ -87,7 +87,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] svm <!-- reviewed + fixed 2026-07-04 -->
 - [x] ensemble-methods <!-- reviewed + fixed 2026-07-04 -->
 - [x] clustering <!-- reviewed + fixed 2026-07-04 -->
-- [ ] pca-dimensionality
+- [x] pca-dimensionality <!-- reviewed + fixed 2026-07-04 -->
 - [ ] probabilistic-models
 - [ ] model-evaluation
 - [ ] bayesian-methods
