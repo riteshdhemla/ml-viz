@@ -91,7 +91,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] probabilistic-models <!-- reviewed + fixed 2026-07-04 -->
 - [x] model-evaluation <!-- reviewed + fixed 2026-07-04 -->
 - [x] bayesian-methods <!-- reviewed + fixed 2026-07-04 -->
-- [ ] causal-inference
+- [x] causal-inference <!-- reviewed + fixed 2026-07-04 -->
 - [ ] time-series
 
 ### Courses — deep learning

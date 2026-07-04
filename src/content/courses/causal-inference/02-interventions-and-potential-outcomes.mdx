@@ -61,9 +61,19 @@ In words: estimate the effect *within each stratum* of the confounders, then ave
 - **Doubly-robust estimators** — combine an outcome model and a propensity model; consistent if *either* is correct.
 - **Randomize when you can** — an RCT/A-B test makes $Z$ irrelevant by design; adjustment is the fallback when experiments are impossible or unethical.
 
+Estimating *per-individual* effects — who benefits most from treatment, the targeting question behind marketing and medicine — is uplift modeling, built exactly on this machinery:
+
+<WikiLink slug="uplift-modeling" title="Uplift Modeling & Causal Treatment Effects" />
+
 <Callout type="tip" title="Don't adjust for everything">
-  Adjusting for confounders removes bias — but adjusting for a **collider** (a common *effect* of $T$ and $Y$) or a **mediator** (a variable *on* the causal path) introduces bias. "Control for more variables" is not safe; the causal graph tells you which $Z$ is valid. This is the practical payoff of drawing the structure first.
+  Adjusting for confounders removes bias — but adjusting for a **collider** (a common *effect* of $T$ and $Y$) or a **mediator** (a variable *on* the causal path) introduces bias. "Control for more variables" is not safe; the causal graph tells you which $Z$ is valid — the path-blocking machinery is [d-separation](/courses/graphical-models/01-bayesian-networks). This is the practical payoff of drawing the structure first.
 </Callout>
+
+<Exercise id="causal-ate" />
+
+<Exercise id="causal-do-operator" />
+
+<Exercise id="causal-backdoor" />
 
 ## Common mistakes
 
@@ -84,7 +94,3 @@ In words: estimate the effect *within each stratum* of the confounders, then ave
 - [**Correlation, Causation & Confounding**](/courses/causal-inference/01-correlation-and-confounding) — the intuition this lesson formalizes
 - [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the conditional-probability machinery behind the adjustment formula
 - [**Hypothesis Testing & p-values**](/courses/probability-statistics/07-hypothesis-testing) — how the estimated effect's significance is judged
-
-<Exercise id="causal-ate" />
-<Exercise id="causal-do-operator" />
-<Exercise id="causal-backdoor" />
