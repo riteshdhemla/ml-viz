@@ -27,9 +27,7 @@ The signed distance from a point $\mathbf{x}$ to the hyperplane $\mathbf{w}^\top
 - the $+1$ margin hyperplane is $\mathbf{w}^\top\mathbf{x}+b=+1$,
 - the $-1$ margin hyperplane is $\mathbf{w}^\top\mathbf{x}+b=-1$.
 
-The distance from the boundary to either is $\dfrac{|\pm 1|}{\|\mathbf{w}\|}=\dfrac{1}{\|\mathbf{w}\|}$, so the full street width is $\dfrac{2}{\|\mathbf{w}\|}$. **Maximizing** the margin therefore means **minimizing** $\|\mathbf{w}\|$ (equivalently $\tfrac12\|\mathbf{w}\|^2$, which is smooth):
-
-SVMs maximize this margin subject to the constraint that all points are correctly classified:
+The distance from the boundary to either is $\dfrac{|\pm 1|}{\|\mathbf{w}\|}=\dfrac{1}{\|\mathbf{w}\|}$, so the full street width is $\dfrac{2}{\|\mathbf{w}\|}$. **Maximizing** the margin therefore means **minimizing** $\|\mathbf{w}\|$ — equivalently $\tfrac12\|\mathbf{w}\|^2$, which is smooth. The SVM solves this minimization subject to every point being correctly classified with room to spare:
 
 $$
 \min_{\mathbf{w}, b} \frac{1}{2} \|\mathbf{w}\|^2 \quad \text{subject to} \quad y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 \quad \forall i
@@ -90,83 +88,11 @@ This makes SVMs memory-efficient: at prediction time, you only need the support 
   In our example, only $(2,2)$ and $(0,0)$ are support vectors. Moving $(3,3)$ anywhere (as long as it stays on the correct side) doesn't change the boundary. This is why SVMs generalize well — they focus on the hardest examples.
 </Callout>
 
-## Hard margin vs soft margin
+## When the data isn't separable
 
-### Hard margin SVM
+Everything above assumed a **hard margin**: every point classified correctly, with room to spare. Real datasets have label noise and overlap — demand perfect separation and either no solution exists, or one mislabeled point swings the whole boundary. The fix is the **soft margin**: let points violate the margin, but charge a price $C$ per unit of violation. Written without constraints, that price becomes the **hinge loss** — zero for confidently-correct points, growing linearly for violators.
 
-Used for perfectly separable data:
-
-$$
-y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 \quad \forall i
-$$
-
-No violations allowed. Fails if data isn't linearly separable.
-
-### Soft margin SVM
-
-Handles non-separable data by allowing violations ($\xi_i$):
-
-$$
-\min_{\mathbf{w}, b, \xi} \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^n \xi_i
-$$
-
-subject to: $y_i(\mathbf{w}^T \mathbf{x}_i + b) \geq 1 - \xi_i$ and $\xi_i \geq 0$
-
-The parameter $C$ controls the tradeoff:
-- **Large $C$:** Few violations, narrow margin (risk of overfitting)
-- **Small $C$:** More violations, wide margin (more regularization)
-
-```python
-# Compare different C values
-for C in [0.01, 1, 100]:
-    svm = SVC(kernel='linear', C=C)
-    svm.fit(X_train, y_train)
-    train_acc = svm.score(X_train, y_train)
-    test_acc = svm.score(X_test, y_test)
-    n_sv = len(svm.support_vectors_)
-    print(f"C={C:5.2f}: train={train_acc:.3f}, test={test_acc:.3f}, support_vectors={n_sv}")
-```
-
-<Callout type="warning" title="C is inverse of regularization">
-  Unlike $\lambda$ in Ridge/Lasso (where larger = more regularization), in SVMs, larger $C$ means **less** regularization. This is confusing — just remember: $C$ = how much you care about misclassification.
-</Callout>
-
-## Hinge loss
-
-The soft margin SVM objective can be written as:
-
-$$
-\mathcal{L} = \frac{1}{2} \|\mathbf{w}\|^2 + C \sum_{i=1}^n \max(0, 1 - y_i \cdot f(\mathbf{x}_i))
-$$
-
-where $\max(0, 1 - y_i \cdot f(\mathbf{x}_i))$ is the **hinge loss**:
-
-| $y_i \cdot f(\mathbf{x}_i)$ | Hinge Loss | Interpretation |
-|----------------------------|------------|----------------|
-| $\geq 1$ | 0 | Correct and confident |
-| $0.5$ | 0.5 | Correct but not confident |
-| $0$ | 1 | On the boundary |
-| $< 0$ | $> 1$ | Misclassified |
-
-```python
-import matplotlib.pyplot as plt
-
-z = np.linspace(-2, 3, 100)
-hinge = np.maximum(0, 1 - z)
-zero_one = (z < 1).astype(float)
-log_loss = -np.log(np.clip(1/(1+np.exp(-z)), 0.01, 0.99))
-
-plt.figure(figsize=(8, 5))
-plt.plot(z, hinge, label='Hinge loss', linewidth=2)
-plt.plot(z, zero_one, label='0-1 loss', linewidth=2, linestyle='--')
-plt.plot(z, log_loss, label='Log loss', linewidth=2, linestyle=':')
-plt.xlabel('y · f(x)')
-plt.ylabel('Loss')
-plt.legend()
-plt.title('Comparison of Loss Functions')
-plt.grid(True, alpha=0.3)
-plt.show()
-```
+Slack variables, what $C$ really tunes, and why a soft-margin SVM is exactly hinge loss + L2 regularization with $\lambda = 1/C$ is the subject of [Soft Margins & Tuning C](/courses/svm/03-soft-margins).
 
 ## SVM vs Logistic Regression
 
@@ -183,6 +109,10 @@ plt.show()
   SVMs are great when you have many features and want robust margins. Logistic regression is better when you need calibrated probabilities. For large datasets (> 100K), logistic regression is typically faster.
 </Callout>
 
+<Exercise id="margin-calculation" />
+
+<Exercise id="svm-scaling" />
+
 ## Common mistakes
 
 1. **Forgetting to scale features** — SVMs are sensitive to feature scales. Always standardize.
@@ -193,16 +123,12 @@ plt.show()
 
 - SVM finds the separating hyperplane with the **maximum margin** to the nearest points.
 - Only the **support vectors** (points on the margin) define the boundary.
-- **Soft margin** ($C$) allows violations to handle noisy, overlapping data.
-- **Hinge loss** is the soft-margin objective; standardize features first.
+- Real data isn't separable — the **soft margin** (next-next lesson) prices violations via $C$ and the hinge loss.
+- Standardize features first; SVMs live and die by distances.
 
 ## Related concepts
 
 - [**The Kernel Trick**](/courses/svm/02-kernel-trick) — going non-linear with kernels
+- [**Soft Margins & Tuning C**](/courses/svm/03-soft-margins) — what happens when the street must bend
 - [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — a different objective for a linear boundary
-- [**K-Nearest Neighbors**](/courses/knn-decision-trees/01-knn) — an instance-based alternative classifier
-
-<Exercise id="margin-calculation" />
-<Exercise id="svm-c-parameter" />
-<Exercise id="slider-svm-c" />
-<Exercise id="svm-scaling" />
+- [**Constrained Optimization & KKT**](/courses/optimization-ml/03-constrained-optimization) — where the SVM dual and support-vector sparsity come from

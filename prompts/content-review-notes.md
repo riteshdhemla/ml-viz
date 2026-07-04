@@ -540,6 +540,49 @@ dropped dead import. Nothing deferred.
 
 ---
 
+## svm — 2026-07-04 (review + fix mode)
+
+Scope: index + 3 lessons + quiz, 14 exercises, 3 notebooks (structural ✓).
+`estimatedHours: 3` ✓ (70 min × 2.5/60 ≈ 2.92). Quiz all-fresh `svm-quiz-*`
+covering all lessons ✓.
+
+### svm/01-maximum-margin — grasp 4/5 → fixed
+- P2 (fixed): **duplication seam #4** — 01's "Hard margin vs soft margin" +
+  "Hinge loss" sections re-taught everything in lesson 03 (slack, the C
+  objective, the C tradeoff, hinge loss), and 03 does it better (worked
+  penalty numbers, viz, λ=1/C). → replaced with a "When the data isn't
+  separable" bridge + forward link; moved the two C exercises
+  (`svm-c-parameter`, `slider-svm-c`) to 03; takeaways/related updated.
+- P3 (fixed): dangling-colon sentence seam before the optimization problem.
+- P3 (fixed): non-runnable C-comparison snippet (undefined X_train) removed
+  by the trim; remaining exercises placed before Common mistakes.
+- Strong: the margin derivation and the hand-solved (2,2)/(0,0) example
+  (verified ✓: w=(0.5,0.5), b=−1, margin 2√2 = support-vector gap).
+
+### svm/02-kernel-trick — grasp 5/5
+- Best lesson in the course: φ-expansion shows *why* the √2 factors exist,
+  numeric kernel check verified ✓ (both routes give 4), Mercer callout,
+  dual connection, honest scaling warning.
+- P3 (fixed): mistake #3's `gamma='scale'` formula said "1/(n·var)" with n
+  ambiguous → now explicitly n_features, not samples.
+- P3 (fixed): GridSearchCV snippet labeled as an idiom; related-concepts now
+  links optimization-ml/03 (where the dual it relies on is derived);
+  exercises moved before Common mistakes.
+
+### svm/03-soft-margins — grasp 5/5
+- Excellent: slack taxonomy (0 / (0,1) / >1), priced-violation framing,
+  worked penalty arithmetic at two C values, retrain-per-slider viz, λ=1/C.
+- P3 (fixed): gained the hinge-vs-0-1-vs-log plot snippet (moved from 01,
+  with the 0-1 step corrected to z<0 — the old version stepped at z<1),
+  the two moved C exercises, and a Related concepts section (was missing).
+
+### Applied in this iteration
+Lesson 01 trim + bridge (seam #4 closed), exercise moves/placements,
+0-1-loss step fix, γ-formula disambiguation, idiom labels, cross-links to
+the optimization course. Nothing deferred.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*
