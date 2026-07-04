@@ -9437,6 +9437,313 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The image is converted to a text caption by an independent model before the LLM sees it", isCorrect: false },
     ],
   },
+
+  // ── Quiz backfill: fresh quiz-only ids for the foundation courses ──
+  // (quizzes previously reused in-lesson exercise ids; these are new
+  //  variants so each quiz re-tests the concept instead of replaying it)
+  {
+    id: "linalg-quiz-dot",
+    type: "multiple-choice",
+    question: "u = [1, 2] and v = [3, −1]. What is u · v?",
+    hint: "Multiply component-wise, then sum.",
+    explanation:
+      "1×3 + 2×(−1) = 3 − 2 = 1. A small positive dot product: the vectors point in loosely similar directions, closer to perpendicular than parallel.",
+    options: [
+      { id: "a", label: "1", isCorrect: true },
+      { id: "b", label: "5", isCorrect: false },
+      { id: "c", label: "−1", isCorrect: false },
+      { id: "d", label: "7", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-quiz-orthogonal",
+    type: "multiple-choice",
+    question: "Which vector is orthogonal to [2, 1]?",
+    hint: "Orthogonal means the dot product is zero.",
+    explanation:
+      "[−1, 2] · [2, 1] = −2 + 2 = 0. Swapping the components and negating one always produces a perpendicular vector in 2D. The others give dot products 4, −5, and 10.",
+    options: [
+      { id: "a", label: "[1, 2]", isCorrect: false },
+      { id: "b", label: "[−1, 2]", isCorrect: true },
+      { id: "c", label: "[−2, −1]", isCorrect: false },
+      { id: "d", label: "[4, 2]", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-quiz-matmul-basis",
+    type: "multiple-choice",
+    question: "A = [[5, 7], [1, 3]]. What is A·e₂, where e₂ = [0, 1]?",
+    hint: "Multiplying by a standard basis vector selects something.",
+    explanation:
+      "A·e₂ picks out the second column of A: [7, 3]. The columns of a matrix are exactly where the basis vectors land — the column perspective.",
+    options: [
+      { id: "a", label: "[5, 1]", isCorrect: false },
+      { id: "b", label: "[7, 3]", isCorrect: true },
+      { id: "c", label: "[7, 1]", isCorrect: false },
+      { id: "d", label: "[5, 3]", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-quiz-rank-ones",
+    type: "multiple-choice",
+    question: "A 4×4 matrix has every entry equal to 1. What is its rank?",
+    hint: "How many linearly independent columns are there?",
+    explanation:
+      "All four columns are identical, so only one is linearly independent: rank 1. The matrix is the outer product 𝟙𝟙ᵀ — a matrix's size says nothing about its rank.",
+    options: [
+      { id: "a", label: "4", isCorrect: false },
+      { id: "b", label: "1", isCorrect: true },
+      { id: "c", label: "0", isCorrect: false },
+      { id: "d", label: "2", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-quiz-eigen-diag",
+    type: "multiple-choice",
+    question: "What are the eigenvalues of the diagonal matrix diag(3, −2)?",
+    hint: "What does a diagonal matrix do to the standard basis vectors?",
+    explanation:
+      "A diagonal matrix scales e₁ by 3 and e₂ by −2 without rotating them — the basis vectors are its eigenvectors and the diagonal entries 3 and −2 are the eigenvalues. Eigenvalues can be negative (a flip-and-scale).",
+    options: [
+      { id: "a", label: "3 and −2", isCorrect: true },
+      { id: "b", label: "3 and 2 — eigenvalues are never negative", isCorrect: false },
+      { id: "c", label: "−6, the determinant", isCorrect: false },
+      { id: "d", label: "Cannot tell without solving det(A − λI) = 0 numerically", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-quiz-svd-store",
+    type: "multiple-choice",
+    question:
+      "A 1000×500 matrix is effectively rank 10. Roughly how many numbers does the truncated SVD need to store it, versus 500,000 for the full matrix?",
+    hint: "A rank-k SVD keeps k left vectors, k right vectors, and k singular values.",
+    explanation:
+      "k(m + n + 1) = 10 × (1000 + 500 + 1) ≈ 15,000 numbers — a 33× compression with almost no reconstruction error (Eckart–Young). Store the factors, not the matrix.",
+    options: [
+      { id: "a", label: "≈ 15,000", isCorrect: true },
+      { id: "b", label: "500,000 — SVD reorganizes but never compresses", isCorrect: false },
+      { id: "c", label: "≈ 1,500", isCorrect: false },
+      { id: "d", label: "10", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-partial",
+    type: "multiple-choice",
+    question: "f(x, y) = x²y³. What is ∂f/∂y?",
+    hint: "Treat x as a constant.",
+    explanation:
+      "Holding x² fixed, d/dy(y³) = 3y², so ∂f/∂y = 3x²y². Differentiating with respect to the wrong variable gives 2xy³.",
+    options: [
+      { id: "a", label: "3x²y²", isCorrect: true },
+      { id: "b", label: "2xy³", isCorrect: false },
+      { id: "c", label: "x²y²", isCorrect: false },
+      { id: "d", label: "6xy²", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-gd-step",
+    type: "multiple-choice",
+    question:
+      "Minimize f(w) = w² by gradient descent from w = 2 with learning rate η = 0.25. Where is w after one step?",
+    hint: "w ← w − η·f′(w), and f′(w) = 2w.",
+    explanation:
+      "The gradient at w = 2 is 2×2 = 4, so w ← 2 − 0.25×4 = 1. One step halves the distance to the minimum at 0 — and would do so again next step.",
+    options: [
+      { id: "a", label: "1", isCorrect: true },
+      { id: "b", label: "1.5", isCorrect: false },
+      { id: "c", label: "0", isCorrect: false },
+      { id: "d", label: "2.5 — the step moves uphill", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-chain",
+    type: "multiple-choice",
+    question: "What is d/dx of sin(x²)?",
+    hint: "Outer derivative evaluated at the inner value, times the inner derivative.",
+    explanation:
+      "Chain rule: cos(x²) · d/dx(x²) = 2x·cos(x²). Forgetting to multiply by the inner derivative leaves cos(x²) — the classic slip.",
+    options: [
+      { id: "a", label: "2x·cos(x²)", isCorrect: true },
+      { id: "b", label: "cos(x²)", isCorrect: false },
+      { id: "c", label: "2x·sin(x²)", isCorrect: false },
+      { id: "d", label: "cos(2x)", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-hessian-classify",
+    type: "multiple-choice",
+    question:
+      "At a critical point, the Hessian has eigenvalues 2 and −3. What kind of critical point is it?",
+    hint: "Mixed signs mean the surface curves up in one direction and down in another.",
+    explanation:
+      "One positive and one negative eigenvalue → the surface curves up along one eigendirection and down along the other: a saddle point. A minimum needs all eigenvalues positive; a maximum, all negative.",
+    options: [
+      { id: "a", label: "Saddle point", isCorrect: true },
+      { id: "b", label: "Local minimum", isCorrect: false },
+      { id: "c", label: "Local maximum", isCorrect: false },
+      { id: "d", label: "Cannot classify without third derivatives", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-jacobian-shape",
+    type: "multiple-choice",
+    question: "f maps R⁴ → R². What is the shape of its Jacobian?",
+    hint: "Rows index outputs, columns index inputs.",
+    explanation:
+      "The Jacobian is (outputs × inputs) = 2×4: each of the 2 rows collects one output's partial derivatives with respect to all 4 inputs.",
+    options: [
+      { id: "a", label: "2×4", isCorrect: true },
+      { id: "b", label: "4×2", isCorrect: false },
+      { id: "c", label: "4×4", isCorrect: false },
+      { id: "d", label: "2×2", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-backprop-cost",
+    type: "multiple-choice",
+    question:
+      "A network has a million parameters and one scalar loss. Roughly what does computing ALL the loss gradients via backpropagation cost?",
+    hint: "Backprop is one vector-Jacobian product per layer, reusing cached activations.",
+    explanation:
+      "One backward pass costs a small constant times one forward pass, regardless of parameter count — the point of reverse-mode autodiff. Finite differences would need a forward pass per parameter: a million of them.",
+    options: [
+      { id: "a", label: "About one forward pass (times a small constant)", isCorrect: true },
+      { id: "b", label: "One forward pass per parameter", isCorrect: false },
+      { id: "c", label: "It must materialize the full Jacobian first", isCorrect: false },
+      { id: "d", label: "Quadratic in the number of layers", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-expectation",
+    type: "multiple-choice",
+    question: "X is 0 with probability 0.5 and 10 with probability 0.5. What is E[X]?",
+    hint: "Probability-weighted average.",
+    explanation:
+      "E[X] = 0×0.5 + 10×0.5 = 5 — a value X never actually takes. Expectation is the center of mass of belief, not a prediction of any single outcome.",
+    options: [
+      { id: "a", label: "5", isCorrect: true },
+      { id: "b", label: "10", isCorrect: false },
+      { id: "c", label: "0", isCorrect: false },
+      { id: "d", label: "Undefined — X never equals 5", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-density",
+    type: "multiple-choice",
+    question:
+      "A Gaussian with σ = 0.1 has PDF value ≈ 3.99 at its peak. Is this a valid probability density?",
+    hint: "What must equal 1 — the values, or the area?",
+    explanation:
+      "Perfectly valid: a density is probability per unit length, not a probability. Only the area under the curve must equal 1 — a narrow distribution trades width for height.",
+    options: [
+      { id: "a", label: "Yes — only the area under the PDF must equal 1", isCorrect: true },
+      { id: "b", label: "No — PDF values can never exceed 1", isCorrect: false },
+      { id: "c", label: "Only if the variable is discrete", isCorrect: false },
+      { id: "d", label: "No — the curve must be renormalized first", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-bayes-base-rate",
+    type: "multiple-choice",
+    question:
+      "A disease affects 2% of people. A test catches 90% of cases but false-positives on 10% of healthy people. You test positive — roughly what is the chance you're sick?",
+    hint: "Weigh true positives (0.9 × 0.02) against false positives (0.1 × 0.98).",
+    explanation:
+      "P(D|+) = 0.9×0.02 / (0.9×0.02 + 0.1×0.98) = 0.018/0.116 ≈ 16%. The huge healthy majority produces far more false positives than the sick minority produces true ones — the base rate dominates the test's headline accuracy.",
+    options: [
+      { id: "a", label: "≈ 16%", isCorrect: true },
+      { id: "b", label: "≈ 90%", isCorrect: false },
+      { id: "c", label: "≈ 80%", isCorrect: false },
+      { id: "d", label: "≈ 50%", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-mle-loss",
+    type: "multiple-choice",
+    question:
+      "You assume Laplace-distributed noise on your regression targets and fit by maximum likelihood. Which loss are you effectively minimizing?",
+    hint: "The Laplace log-density contains |y − ŷ|.",
+    explanation:
+      "The Laplace negative log-likelihood is proportional to the absolute error, so MLE under Laplace noise = minimizing MAE. Gaussian noise gives MSE; Bernoulli labels give cross-entropy — every standard loss is a noise model in disguise.",
+    options: [
+      { id: "a", label: "MAE (absolute error)", isCorrect: true },
+      { id: "b", label: "MSE (squared error)", isCorrect: false },
+      { id: "c", label: "Cross-entropy", isCorrect: false },
+      { id: "d", label: "Hinge loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-map",
+    type: "multiple-choice",
+    question: "How does the MAP objective differ from the MLE objective?",
+    hint: "Take the log of posterior ∝ likelihood × prior.",
+    explanation:
+      "MAP maximizes log-likelihood PLUS the log-prior — a penalty pulling parameters toward prior beliefs (a Gaussian prior gives exactly L2 regularization). With a flat prior, MAP collapses back to MLE.",
+    options: [
+      { id: "a", label: "It adds the log-prior as a penalty term to the log-likelihood", isCorrect: true },
+      { id: "b", label: "It integrates over the full posterior instead of maximizing", isCorrect: false },
+      { id: "c", label: "It requires more data to be well-defined", isCorrect: false },
+      { id: "d", label: "It normalizes by the evidence p(D), which moves the maximizer", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-entropy-max",
+    type: "multiple-choice",
+    question: "Which distribution over 4 outcomes has the MAXIMUM entropy?",
+    hint: "Entropy measures unpredictability.",
+    explanation:
+      "The uniform [0.25, 0.25, 0.25, 0.25] maximizes entropy (log 4 = 2 bits) — every outcome is equally surprising. Any concentration of mass lowers entropy; [1, 0, 0, 0] has entropy 0.",
+    options: [
+      { id: "a", label: "[0.25, 0.25, 0.25, 0.25]", isCorrect: true },
+      { id: "b", label: "[0.7, 0.1, 0.1, 0.1]", isCorrect: false },
+      { id: "c", label: "[1, 0, 0, 0]", isCorrect: false },
+      { id: "d", label: "[0.4, 0.3, 0.2, 0.1]", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-cross-entropy-identity",
+    type: "multiple-choice",
+    question: "The cross-entropy H(p, q) always decomposes as which of the following?",
+    hint: "What's the 'extra surprise' term for using the wrong codebook?",
+    explanation:
+      "H(p, q) = H(p) + KL(p‖q): the truth's own unavoidable entropy plus the extra surprise you pay for modeling p with q. Since KL ≥ 0, cross-entropy can never drop below H(p) — training on log-loss is minimizing exactly the KL term.",
+    options: [
+      { id: "a", label: "H(p) + KL(p‖q)", isCorrect: true },
+      { id: "b", label: "H(p) − KL(p‖q)", isCorrect: false },
+      { id: "c", label: "H(q) + KL(q‖p)", isCorrect: false },
+      { id: "d", label: "H(p) × KL(p‖q)", isCorrect: false },
+    ],
+  },
+  {
+    id: "linreg-quiz-glm",
+    type: "multiple-choice",
+    question:
+      "You're predicting the number of support tickets per day (0, 1, 2, …). Which GLM fits naturally?",
+    hint: "The outcome is a non-negative count.",
+    explanation:
+      "Poisson regression: λ = exp(θᵀx) keeps the predicted rate positive and the Poisson likelihood matches count data. Linear regression can predict −3 tickets; logistic regression only handles binary outcomes.",
+    options: [
+      { id: "a", label: "Poisson regression (log link)", isCorrect: true },
+      { id: "b", label: "Linear regression (identity link)", isCorrect: false },
+      { id: "c", label: "Logistic regression (sigmoid link)", isCorrect: false },
+      { id: "d", label: "Any of them — the link function doesn't matter", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-quiz-hpo",
+    type: "multiple-choice",
+    question:
+      "You have a budget of 20 training runs to tune 5 hyperparameters, and (unknown to you) only one of them really matters. Why does random search beat grid search here?",
+    hint: "Count the distinct values each method tries along the important dimension.",
+    explanation:
+      "A 20-point grid spread over 5 dimensions tries only ~2 distinct values per hyperparameter — including the one that matters. Random search draws a fresh value of every hyperparameter each run, giving ~20 distinct values of the important one for the same budget.",
+    options: [
+      { id: "a", label: "Random tries ~20 distinct values of the important hyperparameter; grid tries ~2", isCorrect: true },
+      { id: "b", label: "Random search runs faster per trial", isCorrect: false },
+      { id: "c", label: "Grid search can't handle continuous hyperparameters at all", isCorrect: false },
+      { id: "d", label: "It doesn't — grid search is always at least as good", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

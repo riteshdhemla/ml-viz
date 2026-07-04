@@ -97,6 +97,16 @@ See `notebooks/neural-networks/01-what-is-a-neuron.ipynb` as a reference.
 
 ---
 
+## Exercise placement
+
+Place each `<Exercise />` **immediately after the section that teaches its
+concept** (or, at latest, after the last content section — always *before*
+"## Common mistakes" / "## Key takeaways"). Never stack exercises at the very
+bottom after "Related concepts": learners navigate away at the link list and
+miss them. Quizzes are the exception — they are exercise-only pages.
+
+---
+
 ## When inserting a lesson into an existing course
 
 Content added later creates **redundancy seams**. Before finishing:

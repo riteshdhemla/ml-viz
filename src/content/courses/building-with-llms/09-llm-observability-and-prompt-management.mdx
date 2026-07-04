@@ -16,6 +16,10 @@ A traditional service fails loudly — an exception, a 500, a stack trace. An LL
 
 A single user request fans out into many steps — retrieval, a planning call, tool calls, a final generation. A **trace** records that whole tree as nested **spans**, each capturing its inputs, outputs, latency, token counts, and cost. Tracing is the only way to answer "*which* step produced the bad answer" in a multi-step pipeline.
 
+<TraceWaterfallViz />
+
+The waterfall also answers the *latency* question at a glance: the model call dominates, and the two independent steps (retrieval, the tool call) are running one after the other for no reason — toggle them parallel and the trace shortens while the bill stays identical.
+
 The metrics worth attaching to every span:
 
 - **Quality** — eval scores, user feedback (👍/👎), guardrail flags.

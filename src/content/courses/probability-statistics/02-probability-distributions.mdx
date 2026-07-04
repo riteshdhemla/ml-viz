@@ -40,13 +40,7 @@ In both cases the total "stuff" sums (discrete) or integrates (continuous) to ex
 
 ## Expectation and variance
 
-The **expected value** (mean) is the probability-weighted average of $X$ — its long-run average over infinitely many draws:
-
-$$
-\mathbb{E}[X] = \sum_k k \cdot p(k) \quad \text{(discrete)}, \qquad \mathbb{E}[X] = \int x\, p(x)\, dx \quad \text{(continuous)}
-$$
-
-The **variance** measures spread around the mean. The most useful form is the "mean of the square minus the square of the mean", which we will derive once and reuse:
+Lesson 01 defined **expectation** as the probability-weighted average, $\mathbb{E}[X] = \sum_k k\,p(k)$ (or $\int x\,p(x)\,dx$), and **variance** as the spread around it. What's new here is the workhorse identity — "mean of the square minus the square of the mean" — which we derive once and reuse for every distribution below:
 
 $$
 \text{Var}(X) = \mathbb{E}\left[(X - \mathbb{E}[X])^2\right] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2
@@ -203,6 +197,10 @@ $$
 
 **Preview — fitting a Bernoulli.** Flip a coin $n$ times and see $s$ heads: which $\theta$ makes that outcome most probable? Intuition says the fraction of heads, $s/n$ — and maximizing $\ell(\theta)$ confirms it. The [next lesson](/courses/probability-statistics/03-maximum-likelihood-estimation) derives that answer step by step and shows the same recipe (write the likelihood, take its log, maximize) is how logistic regression, linear regression, and neural-network classifiers are all trained — their loss functions are *negative* log-likelihoods in disguise.
 
+<Exercise id="prob-expectation" />
+<Exercise id="prob-gaussian" />
+<Exercise id="prob-independence" />
+
 ## Common mistakes
 
 1. Thinking a **PDF value** is a probability — the PDF can exceed 1 for continuous distributions; only integrals over intervals give probabilities.
@@ -222,7 +220,3 @@ $$
 - [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — reasoning about uncertainty with priors
 - [**Probabilistic Models & EM**](/courses/probabilistic-models/01-gaussian-mixture-models) — Gaussian mixtures in practice
 - [**Sampling Methods**](/wiki/sampling-methods) — how to draw samples from these distributions: inverse transform, rejection, and importance sampling
-
-<Exercise id="prob-expectation" />
-<Exercise id="prob-gaussian" />
-<Exercise id="prob-independence" />

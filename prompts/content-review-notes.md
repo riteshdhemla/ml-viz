@@ -562,13 +562,36 @@ optimization-ml added; LowRankViz/KLDivergenceViz/OptimizerPathViz added to
 the viz registry; prompts/new-lesson.md gained a "when inserting a lesson"
 checklist (neighbour dedup, quiz update, back-links, hours recompute).
 
-**Deferred (still open):**
-- Fresh quiz-id backfill for older courses (current fix reuses lesson ids
-  for coverage; the reuse theme itself stands)
-- New viz components: TraceWaterfallViz (bwl/09 + adp/11), Condorcet
-  P-vs-N mini plot (adp/07)
-- Deeper probstat 01↔02 dedup (expectation/variance still taught twice)
-- Course-wide exercise-placement convention (mid-lesson vs bottom-stacked)
-- probstat/05 + linreg/03 second exercises; linreg/04 code snippet
-- calc/01 P3s (applied: ReLU x=0 note, directional-derivative dedup;
-  still open: chain-rule common-mistake forward link)
+**Deferred → completed in Fix pass #2 (below).**
+
+---
+
+## Fix pass #2 — 2026-07-04 (clears the deferred list)
+
+- **New viz components** (pure-SVG, viz-kit conventions, registered in
+  `mdxComponents.tsx` + CLAUDE.md registry):
+  - `TraceWaterfallViz` — span waterfall with a sequential/parallel toggle;
+    latency drops to the slowest branch while cost stays fixed. Wired into
+    building-with-llms/09 (tracing section) and agent-design-patterns/11
+    (cost/latency section).
+  - `CondorcetViz` — P(majority correct) vs N with a slider for per-agent
+    accuracy p; dragging p below 0.5 shows the majority getting *worse*.
+    Wired into agent-design-patterns/07 under the Condorcet table.
+- **Fresh quiz-id backfill**: 21 new quiz-only exercises added to the
+  registry (`linalg-quiz-*` ×6, `calc-quiz-*` ×6, `prob-quiz-*` ×6,
+  `linreg-quiz-glm`, `opt-quiz-hpo`, plus `prob-cross-entropy-identity` for
+  lesson 05). All five foundation/classical quizzes now contain **zero**
+  reused lesson ids and cover every lesson including the newest.
+- **probstat 01↔02 deeper dedup**: lesson 02's expectation/variance section
+  now recalls lesson 01's definitions in one line and keeps only the new
+  material (the variance shortcut identity).
+- **Exercise-placement convention**: trailing exercise blocks (stranded
+  after "Related concepts") relocated to before the end-matter sections in
+  20 lessons across the five reviewed courses; convention documented in
+  `prompts/new-lesson.md` ("Exercise placement" section).
+- **Small items**: linreg/04 gained a seeded NumPy GDA-fit snippet matching
+  its worked example; probstat/05 gained a second exercise
+  (`prob-cross-entropy-identity`); calc/01's out-of-scope chain-rule common
+  mistake replaced with a directional-derivative normalization mistake.
+
+Nothing remains deferred from the first six review iterations.
