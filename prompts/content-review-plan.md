@@ -96,7 +96,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 
 ### Courses — deep learning
 - [x] neural-networks <!-- reviewed + fixed 2026-07-04 -->
-- [ ] cnns
+- [x] cnns <!-- reviewed + fixed 2026-07-04 -->
 - [ ] rnns
 - [ ] transformers
 - [ ] generative-models

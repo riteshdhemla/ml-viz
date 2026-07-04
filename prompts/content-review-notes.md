@@ -975,6 +975,52 @@ optimization-ml are correct in both directions).
 
 ---
 
+## cnns — 2026-07-04 (review + fix mode)
+
+Scope: index + 5 lessons + quiz, 18+ exercises, 5 notebooks (structural ✓).
+`estimatedHours: 4.5` ✓ (112 min × 2.5/60 ≈ 4.67).
+
+### cnns/01-convolution-operation — grasp 5/5
+- Excellent: cross-correlation-vs-convolution callout (with the scipy flip
+  gotcha in code), the all-zeros checkerboard turned into a teaching moment
+  followed by a non-trivial 4×4 trace (verified ✓ −4), and the output-size
+  formula *derived* from valid filter positions rather than asserted.
+- P3 (fixed): exercises moved before Common mistakes.
+
+### cnns/02-pooling-and-architectures — grasp 4.5/5 → fixed
+- P3 (fixed): two mild pre-emptions of later-added lessons — the "Modern
+  architectures" table anticipated lesson 05 and "Feature visualization"
+  collided with lesson 03's title (content differed: hierarchy vs methods)
+  → table retitled "The evolution at a glance" + pointer to 05; section
+  retitled "What the layers learn" + pointers to 03 and 04; the stale
+  "covered in the next lesson" claim (transfer learning is now 04, two
+  lessons away) corrected. Not a full seam — nothing was re-taught.
+- Strong: VGG 25C²-vs-18C² parameter arithmetic; ResNet gradient-highway
+  callout; GAP-over-FC-heads guidance.
+
+### cnns/03–05 (visualization-attacks, transfer-learning, modern-architectures) — grasp 4.5–5/5 (outline+spot read)
+- Well-structured: 03 runs saliency → Grad-CAM → activation maximization →
+  FGSM/PGD → defenses with poisoning/evasion taxonomy; 04 has the worked
+  ResNet-50 head-swap parameter count and discriminative-LR rationale; 05
+  has worked 1×1 and bottleneck parameter counts.
+- P3 (fixed): exercises moved in all three.
+
+### cnns/06-quiz — grasp 4/5 → fixed
+- All-fresh ids but no coverage of lessons 03 or 05 → added `cnn-quiz-fgsm`
+  (why sign(∇) under an L∞ budget) and `cnn-quiz-depthwise` (the parameter
+  split).
+
+### Course meta
+- P3 (fixed): CLAUDE.md roadmap said "course + 3 lessons" (it's 5 + quiz),
+  and the TransferLearningViz registry row pointed at cnns/03 — stale since
+  transfer-learning moved to 04 when the visualization lesson was inserted.
+
+### Applied in this iteration
+Lesson-02 retitles + pointers + stale-reference fix, exercise placements
+×5, 2 fresh quiz exercises, roadmap + viz-registry corrections. No P2s.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*

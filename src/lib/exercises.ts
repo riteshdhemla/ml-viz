@@ -9877,6 +9877,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Re-normalized to unit variance like BatchNorm", isCorrect: false },
     ],
   },
+  {
+    id: "cnn-quiz-fgsm",
+    type: "multiple-choice",
+    question:
+      "FGSM perturbs an image by ε·sign(∇ₓL). Why use the SIGN of the gradient instead of the gradient itself?",
+    hint: "The attack budget is a max-per-pixel constraint (L∞), not a total-energy constraint.",
+    explanation:
+      "Under an L∞ budget — every pixel may move at most ε — the loss-maximizing step moves each pixel the full ε in the direction its gradient points. sign(∇ₓL) does exactly that; using the raw gradient would waste budget on pixels with small gradients and exceed nothing on pixels with large ones.",
+    options: [
+      { id: "a", label: "The sign maximizes loss under the max-per-pixel (L∞) budget — every pixel moves the full ε", isCorrect: true },
+      { id: "b", label: "The raw gradient is too expensive to compute", isCorrect: false },
+      { id: "c", label: "Signs make the perturbation invisible to humans", isCorrect: false },
+      { id: "d", label: "It guarantees the attack transfers to other models", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-quiz-depthwise",
+    type: "multiple-choice",
+    question:
+      "Why do depthwise separable convolutions (MobileNet) use far fewer parameters than standard convolutions?",
+    hint: "They split one job into two: filter within channels, then mix across channels.",
+    explanation:
+      "A standard conv filters spatially AND mixes channels in one f×f×C_in×C_out block. Depthwise separable splits this: a depthwise f×f filter per input channel (spatial only), then a 1×1 pointwise conv to mix channels — roughly f²·C_in + C_in·C_out parameters instead of f²·C_in·C_out, typically ~8–9× fewer for 3×3 filters.",
+    options: [
+      { id: "a", label: "They split spatial filtering (depthwise) from channel mixing (1×1 pointwise)", isCorrect: true },
+      { id: "b", label: "They use smaller images", isCorrect: false },
+      { id: "c", label: "They quantize the weights to 8 bits", isCorrect: false },
+      { id: "d", label: "They share one filter across all layers", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

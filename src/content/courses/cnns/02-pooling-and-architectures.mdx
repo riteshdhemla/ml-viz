@@ -162,7 +162,7 @@ class ResidualBlock(nn.Module):
         return F.relu(out)
 ```
 
-### Modern architectures
+### The evolution at a glance
 
 | Architecture | Year | Key Innovation | Params |
 |-------------|------|----------------|--------|
@@ -172,9 +172,11 @@ class ResidualBlock(nn.Module):
 | ResNet-50 | 2015 | Skip connections | 25M |
 | EfficientNet | 2019 | Compound scaling | 5M-66M |
 
-## Feature visualization
+The mechanics behind the modern rows — 1×1 convolutions, bottleneck blocks, depthwise separability, compound scaling — are [Modern Architectures](/courses/cnns/05-modern-architectures).
 
-What do CNN layers learn?
+## What the layers learn
+
+Peeking inside a trained CNN reveals a hierarchy:
 
 - **Layer 1:** Edges, colors, simple textures
 - **Layer 2:** Corners, patterns, textures
@@ -184,8 +186,14 @@ What do CNN layers learn?
 This **hierarchical feature learning** is what makes CNNs powerful — they automatically discover the right representations.
 
 <Callout type="tip" title="Practical tip">
-  When using a pretrained CNN, the early layers already detect useful features. You can reuse them for new tasks — this is the foundation of transfer learning (covered in the next lesson).
+  When using a pretrained CNN, the early layers already detect useful features. You can reuse them for new tasks — the foundation of [transfer learning](/courses/cnns/04-transfer-learning). And the tools that *show* you these features (saliency maps, Grad-CAM) are in [CNN Visualization & Adversarial Attacks](/courses/cnns/03-cnn-visualization-and-attacks).
 </Callout>
+
+<Exercise id="pooling-output" />
+
+<Exercise id="resnet-skip" />
+
+<Exercise id="arch-comparison" />
 
 ## Common mistakes
 
@@ -205,7 +213,3 @@ This **hierarchical feature learning** is what makes CNNs powerful — they auto
 - [**The Convolution Operation**](/courses/cnns/01-convolution-operation) — the operation these networks are built from
 - [**Transfer Learning**](/courses/cnns/04-transfer-learning) — reusing these pretrained architectures
 - [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — how deep stacks are trained
-
-<Exercise id="pooling-output" />
-<Exercise id="resnet-skip" />
-<Exercise id="arch-comparison" />
