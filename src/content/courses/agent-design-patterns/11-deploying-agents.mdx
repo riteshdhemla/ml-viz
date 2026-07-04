@@ -63,6 +63,10 @@ $$\text{cost} \approx \sum_{s=1}^{S} (\text{prompt tokens}_s + \text{output toke
 
 The highest-leverage controls: **cap the step budget**, **parallelise independent tool calls**, **cache** repeated retrievals and tool results, **trim/summarise context** as the transcript grows, and **route by difficulty** — send easy steps to a small cheap model and reserve the frontier model for hard ones.
 
+The first two controls are visible in a single trace — the waterfall shows exactly which steps are independent and what parallelising them buys (and doesn't):
+
+<TraceWaterfallViz />
+
 <Callout type="warning" title="Set a hard budget ceiling">
   A bug, an adversarial input, or a reasoning loop can make an agent call tools thousands of times. Enforce a per-task ceiling on steps **and** on dollars at the runtime level, independent of whatever limit you put in the prompt — the prompt is a suggestion, the runtime cap is a guarantee.
 </Callout>

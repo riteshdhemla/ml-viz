@@ -430,6 +430,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | LowRankViz | `visualizations/LowRank/` | linear-algebra/04-svd-and-low-rank | ✅ |
 | KLDivergenceViz | `visualizations/KLDivergence/` | probability-statistics/05-entropy-and-kl-divergence | ✅ |
 | OptimizerPathViz | `visualizations/OptimizerPath/` | optimization-ml/01-gradient-descent-variants | ✅ |
+| TraceWaterfallViz | `visualizations/TraceWaterfall/` | building-with-llms/09-llm-observability-and-prompt-management (+ agent-design-patterns/11) | ✅ |
+| CondorcetViz | `visualizations/Condorcet/` | agent-design-patterns/07-multi-agent-cooperation-patterns | ✅ |
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 
 ---
