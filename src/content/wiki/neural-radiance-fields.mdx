@@ -71,6 +71,45 @@ Uniformly sampling along each ray wastes computation on empty space. NeRF trains
 1. A **coarse** network sampled uniformly, whose densities reveal where the surface likely is
 2. A **fine** network that samples more densely near the high-density regions found by the coarse pass (importance sampling)
 
+## A worked example — compositing one ray
+
+The continuous integral becomes a discrete sum you can do by hand. March a ray through 3 samples; the MLP returns a density $\sigma_i$ and color $c_i$ (grayscale here) at each, with segment length $\delta = 1$. Each sample's **opacity** is $\alpha_i = 1 - e^{-\sigma_i \delta}$, and its **transmittance** $T_i$ is the product of $(1-\alpha)$ over everything in front of it:
+
+| sample | $\sigma_i$ | $\alpha_i = 1-e^{-\sigma_i}$ | $T_i = \prod_{j<i}(1-\alpha_j)$ | weight $T_i\alpha_i$ | color $c_i$ |
+|---|---|---|---|---|---|
+| 1 (air) | 0.1 | 0.095 | 1.000 | 0.095 | 0.2 |
+| 2 (surface) | 2.0 | 0.865 | 0.905 | 0.782 | 0.9 |
+| 3 (behind) | 3.0 | 0.950 | 0.122 | 0.116 | 0.1 |
+
+Final pixel color $C = \sum_i T_i\alpha_i c_i = 0.095(0.2) + 0.782(0.9) + 0.116(0.1) = \mathbf{0.735}$.
+
+Read the `weight` column: the near-empty air (sample 1) and the *occluded* point behind the surface (sample 3) contribute almost nothing, while the surface (sample 2) dominates — because transmittance $T_3 = 0.122$ has already collapsed by the time the ray reaches sample 3. That automatic "stuff behind a surface is hidden" behavior is what makes the render physically correct, and it is fully differentiable in $\sigma$ and $c$.
+
+## In code — the volume-rendering quadrature
+
+The whole compositing step is a few numpy lines — this is the differentiable core NeRF backprops through:
+
+```bash
+pip install numpy
+```
+
+```python
+import numpy as np
+
+sigma = np.array([0.1, 2.0, 3.0])     # densities along one ray (from the MLP)
+color = np.array([0.2, 0.9, 0.1])     # per-sample color
+delta = 1.0                            # distance between samples
+
+alpha = 1 - np.exp(-sigma * delta)                     # opacity per sample
+T = np.concatenate([[1.0], np.cumprod(1 - alpha)[:-1]])  # transmittance in front
+weights = T * alpha
+C = (weights * color).sum()
+print("weights:", weights.round(3))    # [0.095 0.782 0.116]
+print("pixel color:", round(C, 3))     # 0.735
+```
+
+It reproduces the hand table exactly. A real NeRF wraps this in PyTorch so gradients flow back into the MLP; the standard high-level toolkit for training NeRFs and Gaussian Splatting is `nerfstudio`.
+
 ## Strengths and limitations
 
 | Strengths | Limitations |
