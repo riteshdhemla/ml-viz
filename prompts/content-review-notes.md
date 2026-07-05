@@ -1917,6 +1917,51 @@ across 8 lessons; all 7 pages now bidirectionally linked.
 
 ---
 
+## wiki: reinforcement-learning + graphical-models (7 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** grpo-objective, imitation-learning, inverse-reinforcement-learning,
+multi-agent-rl, pomdps (RL); baum-welch, variable-elimination (graphical-models).
+(Plan said "6 pages"; there are 7 whose topic tag is rl/graphical-models.
+`random-walk` shows up via an rl relatedLesson but its topic is
+probability-statistics — left for the misc batch.)
+
+**Grasp scores:** all 7 deep-read at 5. grpo-objective (critic-free group-
+relative advantage, clipped per-token surrogate, KL to reference),
+baum-welch (forward-backward → γ, ξ → closed-form M-step), and
+variable-elimination (worked Bayes-net query) are especially clean.
+
+**Math hand-verified:**
+- grpo worked trace: rewards [1,0,1,0] → mean 0.5, std 0.5 (population),
+  advantages [+1,−1,+1,−1] — correct.
+- variable-elimination worked example (Rain→Sprinkler→Wet): g(Wet=T)=
+  0.01·0.99+0.99·0.80=0.8019, g(Wet=F)=0.01·0.01+0.99·0.20=0.1981, sum=1.000,
+  P(Wet=T|Rain=T)≈0.802 — all correct.
+- imitation-learning BC error O(εT²) vs DAgger O(εT); GAIL minimax and MaxEnt
+  IRL P(τ)∝exp(ΣR) with gradient μ_expert−E[μ] — all standard and correct.
+- baum-welch α/β recursions, γ, ξ, and (π̂,Â,b̂) re-estimation ratios correct.
+
+**Findings — same systemic gap as the agents batch:**
+
+- **P2 (fixed): 7 relatedLessons entries had no backlink** ("Referenced by"
+  footer overstated). All natural fits, so added the backlinks to 4 host
+  lessons' Related-concepts sections:
+    - grpo-objective → ft-alignment/04-rlhf-and-dpo, rl/06-policy-gradient-to-rlhf
+    - imitation-learning → rl/06, rl/04-policy-gradient
+    - inverse-reinforcement-learning → rl/06
+    - multi-agent-rl → rl/04-policy-gradient
+    - pomdps → rl/01-markov-decision-processes
+- **P3 (fixed): 4 RL pages had no "## Related concepts" section**
+  (imitation-learning, inverse-reinforcement-learning, multi-agent-rl, pomdps —
+  older/terser pages). Added one to each, cross-linking host lessons and
+  sibling wiki pages (IRL↔imitation, pomdps→HMM/LSTM, etc.).
+- **no issues:** both graphical-models pages (baum-welch, variable-elimination)
+  were already fully bidirectional with RC sections; all 7 have notebooks.
+
+**Applied in this iteration:** 4 new Related-concepts sections; 7 backlinks
+across 4 lessons; all 7 pages now bidirectionally linked.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
