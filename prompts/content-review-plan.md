@@ -129,5 +129,5 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] wiki: misc (11 pages) <!-- reviewed + fixed 2026-07-05 -->
 
 ### After the queue
-- [ ] Triage all P1s into a fix queue at the bottom of the notes file
-- [ ] Roll recurring P2 themes into `prompts/new-lesson.md` / `new-wiki-page.md` so new content doesn't repeat them
+- [x] Triage all P1s into a fix queue at the bottom of the notes file <!-- done 2026-07-05: 1 P1, already fixed in-iteration -->
+- [x] Roll recurring P2 themes into `prompts/new-lesson.md` / `new-wiki-page.md` so new content doesn't repeat them <!-- done 2026-07-05 -->

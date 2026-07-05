@@ -117,8 +117,12 @@ Content added later creates **redundancy seams**. Before finishing:
    material the new lesson supersedes.
 2. **Update the quiz.** Add coverage for the new lesson (prefer fresh
    quiz-only exercise ids over reusing in-lesson ids).
-3. **Back-link.** Add the new lesson to the `relatedLessons` of any wiki page
-   that covers the same topic, and add WikiLinks from the lesson to those
-   pages.
+3. **Back-link (make it reciprocal).** Add the new lesson to the
+   `relatedLessons` of any wiki page that covers the same topic **and** add a
+   `<WikiLink>` / `/wiki/[slug]` link from the lesson back to each such page.
+   Both directions are required: a wiki page's "Referenced by" footer asserts
+   the lesson links back, and the integrity test does *not* verify it — a
+   one-sided link silently overstates. (This was the single most common defect
+   found in the site-wide content review.)
 4. **Recompute** the course's `estimatedHours` and update `CLAUDE.md`'s
    roadmap lesson count.

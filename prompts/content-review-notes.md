@@ -2160,7 +2160,41 @@ gpu-programming/04, already linked it) — added. **All 77 wiki pages now review
 
 ## Fix queue (populate after review queue completes)
 
-*(empty — triage P1s first, then high-frequency P2 themes)*
+**Status: review queue complete (all courses + 77/77 wiki pages). No outstanding
+fixes — every finding was applied in the iteration that found it.**
+
+### P1 triage
+
+Exactly **one P1** was logged across the entire review: transformers/04
+KV-cache arithmetic wrong by 2× (268 MB/21 GB → 134 MB/10.7 GB). It was **fixed
+in-iteration**. No P1 is outstanding.
+
+### Recurring P2 themes (and where they were rolled forward)
+
+1. **"Referenced by" backlink non-reciprocity** — *by far the most frequent
+   defect* (~45 backlinks added across the wiki batches). Wiki pages listed
+   `relatedLessons` that the host lesson never linked back to, so the
+   auto-generated footer asserted references that didn't exist (a few pages,
+   e.g. text-to-sql, were full orphans). Root cause: the wiki-integrity test
+   checks that `relatedLessons` targets *exist* but not that they *link back*.
+   → Rolled into `prompts/new-wiki-page.md` (explicit reciprocity rule) and
+   `prompts/new-lesson.md` (item 3, reciprocal back-link).
+   → **Candidate CI hardening:** extend `wiki-integrity.test.ts` to assert each
+   `relatedLessons` lesson contains the page slug.
+2. **Missing "## Related concepts" section** — ~14 older wiki pages shipped with
+   only the auto footer and no prose RC section (llm-as-judge, text-to-sql,
+   pomdps, imitation-learning, IRL, multi-agent-rl, factor-analysis, ICA, the 4
+   recsys/cv pages, dependency-parsing, graph-fraud-detection, uplift-modeling).
+   → Rolled into `prompts/new-wiki-page.md` ("RC section is required").
+3. **Worked-example numeric slips** — the substantive correctness defects:
+   transformers/04 KV-cache (2×), hierarchical-forecasting's non-worked & self-
+   contradictory example, bpe merge trace mutating "low", attention KV-cache
+   table fp32-vs-bf16, random-walk (1.0408)^100 ≈54.6 not 57.0, graphical-models
+   MRF denoising claim. → Rolled into `prompts/new-wiki-page.md` ("hand-verify
+   every worked number; keep prose consistent with embedded code").
+4. **Lesson-side (from the course passes):** exercise placement after "Related
+   concepts", and quizzes covering only early lessons. → Already captured in
+   `prompts/new-lesson.md` (§ Exercise placement; § "When inserting a lesson").
 
 ---
 
