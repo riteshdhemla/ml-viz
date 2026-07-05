@@ -2058,6 +2058,49 @@ dbscan-algorithm, and hierarchical-clustering are exemplary worked-example pages
 
 ---
 
+## wiki: recommender-systems + computer-vision + generative-models (6 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** ad-auction-and-bidding, cold-start-problem, session-based-recommendations
+(recommender-systems); ddim-sampling (generative-models); neural-radiance-fields,
+nms-algorithm (computer-vision).
+
+**Grasp scores:** all 6 deep-read at 5. nms-algorithm and ddim-sampling are
+tight worked/derivation pages; cold-start-problem and session-based-recommendations
+are thorough production-pattern references.
+
+**Math hand-verified (all correct):**
+- nms-algorithm: 4-box trace keeps [0.92,0.61,0.55], suppresses 0.87 at
+  IoU 0.73>0.5, keeps 0.55 at IoU 0.28<0.5. Verified the Python's box coords
+  give IoU(0,1)=1369/1831≈0.75 and IoU(2,3)=640/2560=0.25 → kept [0,2,3].
+- ddim-sampling: x̂₀=(x_t−√(1−ᾱ_t)ε̂)/√ᾱ_t and the deterministic re-noise step
+  are the correct η=0 DDIM equations.
+- NeRF volume-rendering integral, transmittance, and Fourier positional
+  encoding all correct; ad-auction Vickrey/GSP formulas correct.
+
+**Findings:**
+
+- **P2 (fixed): 3 relatedLessons entries had no backlink.** Added: cold-start
+  → recsys/01-the-recommendation-problem; neural-radiance-fields →
+  cv/03-backbones-in-practice and gen/05-diffusion-models.
+- **P3 (fixed): 4 pages had no "## Related concepts" section**
+  (ad-auction-and-bidding, cold-start-problem, session-based-recommendations,
+  neural-radiance-fields). Added one to each.
+- **Caught a self-inflicted duplicate:** when adding the NeRF backlink to
+  gen/05, the same script added a DDIM markdown bullet, but gen/05 already
+  links ddim-sampling via an inline `<WikiLink>` (which my `/wiki/…` check
+  didn't see). Removed the redundant bullet so gen/05 references DDIM once.
+- **P3 (noted, not edited): ad-auction VCG payment formula** is schematic
+  (`Σ αⱼ(bⱼ₊₁−bⱼ)·(externality term)` with a literal "(externality term)"
+  factor). Left as-is — the prose correctly explains "pay your externality,"
+  the formula is decorative, and a subtle VCG rewrite risks a new error.
+- **no issues:** ddim-sampling and nms-algorithm were already fully
+  bidirectional with RC sections; all 6 have notebooks.
+
+**Applied in this iteration:** 4 new RC sections; 3 backlinks; 1 duplicate
+removed. All 6 pages now bidirectionally linked.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
