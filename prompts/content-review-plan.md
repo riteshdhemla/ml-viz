@@ -103,7 +103,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] computer-vision <!-- reviewed + fixed 2026-07-05 -->
 - [x] nlp <!-- reviewed + fixed 2026-07-05 -->
 - [x] speech-audio <!-- reviewed + fixed 2026-07-05 -->
-- [ ] graphical-models
+- [x] graphical-models <!-- reviewed + fixed 2026-07-05 -->
 - [ ] reinforcement-learning
 - [ ] recommender-systems
 - [ ] gpu-programming

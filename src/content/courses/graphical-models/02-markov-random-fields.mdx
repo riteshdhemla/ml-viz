@@ -96,7 +96,7 @@ $$
 - **Smoothness term** $-\eta \sum_{\{i,j\}} x_i x_j$: assigns low energy when neighbouring pixels agree ($x_i = x_j$ → product $+1$). Larger $\eta$ = stronger smoothing.
 - **Data term** $-\beta \sum_i y_i x_i$: assigns low energy when each pixel matches its observed noisy value. Larger $\beta$ = more faithful to the noisy input.
 
-The denoised image is $\arg\min_\mathbf{x} E(\mathbf{x})$. With $\eta=1.0, \beta=2.0$ a noisy pixel will be "corrected" only if at least 3 of its 4 neighbours disagree with the noisy observation — otherwise the data term wins.
+The denoised image is $\arg\min_\mathbf{x} E(\mathbf{x})$. Work out when flipping one pixel pays: if $d$ of its 4 neighbours disagree with the observation $y_i$, flipping $x_i$ away from $y_i$ changes the energy by $\Delta E = 2\eta(4 - 2d) + 2\beta$. With $\eta=1.0, \beta=2.0$ that is $\Delta E = 12 - 4d$: at $d = 3$ the smoothness and data terms exactly tie ($\Delta E = 0$), and only a pixel contradicted by **all four** neighbours ($d = 4$, $\Delta E = -4$) is strictly corrected — otherwise the data term wins.
 
 Exact minimization is NP-hard for general graphs. **Graph cuts** find the global optimum in polynomial time for binary MRFs with submodular pairwise potentials (the image denoising case qualifies). **Loopy belief propagation** is an approximate iterative method for higher-order or non-submodular cases.
 
@@ -107,6 +107,12 @@ A **CRF** is the discriminative cousin: it models $P(\mathbf{y} \mid \mathbf{x})
 <Callout type="warning" title="Z is why MRFs are hard">
   Almost every MRF difficulty traces back to the partition function $Z$. Evaluating a configuration's *relative* probability is cheap; getting an *absolute* probability or a likelihood gradient is not. Plan for approximate inference from the start.
 </Callout>
+
+<Exercise id="mrf-partition-function" />
+
+<Exercise id="mrf-vs-bn" />
+
+<Exercise id="mrf-potentials" />
 
 ## Common mistakes
 
@@ -125,7 +131,3 @@ A **CRF** is the discriminative cousin: it models $P(\mathbf{y} \mid \mathbf{x})
 
 - [**Bayesian Networks**](/courses/graphical-models/01-bayesian-networks) — the directed counterpart
 - [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — a tractable sequence model
-
-<Exercise id="mrf-partition-function" />
-<Exercise id="mrf-vs-bn" />
-<Exercise id="mrf-potentials" />

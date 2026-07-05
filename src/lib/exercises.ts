@@ -10102,6 +10102,21 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Cross-encoders only work on pairs of identical length", isCorrect: false },
     ],
   },
+  {
+    id: "graphical-quiz-partition",
+    type: "multiple-choice",
+    question:
+      "In a Markov Random Field, computing the unnormalized score of one configuration is cheap. What makes probabilities, marginals, and likelihood gradients hard?",
+    hint: "What does the denominator of P(x) = (1/Z)∏ψ sum over?",
+    explanation:
+      "The partition function Z sums the product of potentials over every joint configuration — 2ⁿ terms for n binary nodes. Relative scores need only the numerator, but absolute probabilities, marginals, and ∇log Z all require this intractable global sum, which is why MRF learning leans on approximations like pseudo-likelihood, contrastive divergence, or sampling.",
+    options: [
+      { id: "a", label: "The partition function Z sums over exponentially many configurations", isCorrect: true },
+      { id: "b", label: "Potentials can be negative, so probabilities may be ill-defined", isCorrect: false },
+      { id: "c", label: "Undirected edges make the graph cyclic, so no factorization exists", isCorrect: false },
+      { id: "d", label: "Clique potentials must be re-derived after each observation", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -1330,6 +1330,43 @@ lessons; CLAUDE.md roadmap row.
 
 ---
 
+## graphical-models <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 3 lessons + quiz. estimatedHours math ✓ (77 min × 2.5 / 60 = 3.21 → 3).
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5
+
+Excellent course — every lesson has a hand-verified worked trace (Sprinkler
+param count 15→9; 2-spin Ising Z = 6.18 with P(aligned) = 0.88; Viterbi
+δ₂ = 0.0384/0.0432 with backpointer table). Correct extractions to wiki
+(variable-elimination, baum-welch) with summaries in place. The forward-vs-
+Viterbi "same recursion, one operator swapped" framing and "HMMs are GMMs with
+a Markov chain" are model landings.
+
+**Findings:**
+
+- **P2 (fixed): lesson 02 denoising claim was numerically wrong.** It said a
+  noisy pixel is corrected "if at least 3 of its 4 neighbours disagree" at
+  η=1, β=2 — but the flip energy is ΔE = 2η(4−2d) + 2β = 12 − 4d, so d=3 is an
+  exact tie and only d=4 strictly flips. Replaced with the ΔE derivation and the
+  correct all-four-neighbours condition.
+- **P2 (fixed): quiz had no MRF question** (5 ids: BN ×2, HMM ×3; lesson 02
+  uncovered). Added `graphical-quiz-partition` (why Z makes MRFs hard). Quiz
+  description updated.
+- **P2 (fixed): exercise placement** — all 3 lessons; moved before Common
+  mistakes.
+- **P3 (fixed): CLAUDE.md roadmap row said "(course + 3 lessons)"** — quiz
+  exists; updated to "+ quiz".
+- **no issues:** all 9 lesson + 6 quiz exercise ids resolve; notebook scaffolds
+  present; DSeparationViz + HMMViterbiViz wiring matches registry; cross-course
+  links correct in both directions (EM → probabilistic-models, causal caveat →
+  causal-inference territory, CTC/HMM DP link from speech-audio lands here).
+
+**Applied in this iteration:** denoising ΔE correction; 1 new quiz exercise +
+quiz description; exercise placement in 3 lessons; roadmap row "+ quiz".
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
