@@ -1757,6 +1757,32 @@ wiki exists for.
 
 ---
 
+## wiki: supervised-learning (8 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** adaboost-algorithm, bias-variance-decomposition,
+decision-tree-information-gain, logistic-gradient-derivation,
+minkowski-distances, ols-normal-equation, ridge-lasso-paths, vc-dimension.
+
+**Grasp scores:** logistic-gradient-derivation: 5 (deep-read — the link-by-link
+chain rule with the "σ′ cancels exactly" punchline stated up front is the model
+wiki derivation); remaining 7 structure-audited.
+
+**Findings:**
+
+- **P2 (fixed): vc-dimension's relatedLessons claimed knn-decision-trees/03**
+  but that lesson never mentioned VC dimension (footer would overstate). Also
+  knn/03 had **no Related concepts section at all** (ends at Key takeaways) —
+  added one linking both bias-variance-decomposition and vc-dimension, making
+  the footer claim true and fixing the missing section in one move.
+- **no issues:** all 8 have notebooks; all relatedLessons resolve; every page
+  is bidirectionally linked from its host lesson (checked with both WikiLink
+  and markdown-link syntaxes); page lengths 114–198 lines, derivation-grade.
+
+**Applied in this iteration:** Related-concepts section + 2 wiki links in
+knn-decision-trees/03.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
