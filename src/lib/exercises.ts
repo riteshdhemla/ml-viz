@@ -9922,6 +9922,66 @@ const allExercises: Exercise[] = [
       { id: "d", label: "They process only a fixed-length suffix of the sequence", isCorrect: false },
     ],
   },
+  {
+    id: "transformer-quiz-block",
+    type: "multiple-choice",
+    question:
+      "In a standard Transformer layer (d_ff = 4·d_model), where do most of the parameters live?",
+    hint: "Compare 4·d² (attention) with 2·d·d_ff (FFN).",
+    explanation:
+      "Attention has four d×d projections = 4d² parameters; the FFN has 2·d·(4d) = 8d² — roughly two-thirds of the layer. Attention mixes information between tokens, but the per-token FFN is where most of the weights (and most of the stored knowledge) live.",
+    options: [
+      { id: "a", label: "The feed-forward network — about ⅔ of the layer's parameters", isCorrect: true },
+      { id: "b", label: "The attention projections — heads multiply the parameter count", isCorrect: false },
+      { id: "c", label: "The LayerNorms — one scale and shift per feature per layer", isCorrect: false },
+      { id: "d", label: "It's an even 50/50 split between attention and FFN", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-kv-cache",
+    type: "multiple-choice",
+    question:
+      "Grouped-query attention (GQA) is used by LLaMA and Mistral primarily to reduce…",
+    hint: "What buffer grows with every generated token, per layer, at inference time?",
+    explanation:
+      "GQA shares K/V heads across groups of query heads, shrinking the KV cache — the per-sequence inference buffer that stores keys and values for every past token in every layer — by h/G. It's an inference-memory optimization, not a quality or training-speed improvement.",
+    options: [
+      { id: "a", label: "KV cache memory during autoregressive inference", isCorrect: true },
+      { id: "b", label: "Training loss, by regularizing the attention heads", isCorrect: false },
+      { id: "c", label: "The number of layers needed for the same quality", isCorrect: false },
+      { id: "d", label: "The O(N²) FLOPs of the attention score computation", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-chinchilla",
+    type: "multiple-choice",
+    question:
+      "Under a fixed compute budget, the Chinchilla scaling result says you should train…",
+    hint: "Chinchilla-70B beat Gopher-280B at the same compute. How?",
+    explanation:
+      "Chinchilla's compute-optimal recipe is roughly 20 training tokens per parameter — earlier models like GPT-3 and Gopher were far too big for their data budget. At equal compute, a smaller model fed proportionally more tokens reaches lower loss (and is cheaper to serve afterwards).",
+    options: [
+      { id: "a", label: "A smaller model on more data — about 20 tokens per parameter", isCorrect: true },
+      { id: "b", label: "The largest model the budget allows, on whatever data is left", isCorrect: false },
+      { id: "c", label: "Any size — only total FLOPs matter, the N/D split is irrelevant", isCorrect: false },
+      { id: "d", label: "A bigger model for more epochs over a small curated corpus", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-moe",
+    type: "multiple-choice",
+    question:
+      "Mixtral 8×7B has ~47B total parameters but runs each token through only ~13B. What makes this possible?",
+    hint: "How many of the 8 expert FFNs does the router pick per token?",
+    explanation:
+      "MoE replaces each block's single FFN with N expert FFNs plus a learned router that activates only the top-k (k=2 for Mixtral) per token. Total parameters scale with N while per-token compute scales with k — capacity is decoupled from cost. The price is memory: all experts must stay resident.",
+    options: [
+      { id: "a", label: "A router activates only the top-k expert FFNs per token", isCorrect: true },
+      { id: "b", label: "The unused parameters are quantized to zero bits", isCorrect: false },
+      { id: "c", label: "Layers are skipped at random during inference", isCorrect: false },
+      { id: "d", label: "Most parameters are only used during training, then pruned", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

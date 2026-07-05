@@ -190,11 +190,17 @@ class TinyGPT(nn.Module):
 
 ## Scale is the story
 
-Transformers improved largely by getting **bigger** — more layers, wider dimensions, more data. Empirically, loss falls as a smooth power law in parameters, data, and compute (the **scaling laws**). GPT-3 (175B params) and beyond are "just" this same block, stacked very high and trained on enormous corpora.
+Transformers improved largely by getting **bigger** — more layers, wider dimensions, more data. Empirically, loss falls as a smooth power law in parameters, data, and compute (the **scaling laws**, covered in [Foundation Models & Scaling Laws](/courses/transformers/05-foundation-models-and-scaling)). GPT-3 (175B params) and beyond are "just" this same block, stacked very high and trained on enormous corpora.
 
 <Callout type="warning" title="Quadratic cost is the ceiling">
-  Self-attention is $O(n^2)$ in sequence length. Doubling context quadruples attention compute and memory. Extending context length (FlashAttention, sparse/linear attention, RoPE scaling) is one of the most active areas in the field.
+  Self-attention is $O(n^2)$ in sequence length. Doubling context quadruples attention compute and memory. Extending context length (FlashAttention, sparse/linear attention, RoPE scaling) is one of the most active areas in the field — the [next lesson](/courses/transformers/04-modern-attention) covers these techniques in detail.
 </Callout>
+
+<Exercise id="transformer-ffn" />
+
+<Exercise id="transformer-residual" />
+
+<Exercise id="transformer-families" />
 
 ## Common mistakes
 
@@ -213,7 +219,3 @@ Transformers improved largely by getting **bigger** — more layers, wider dimen
 
 - [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — the attention and positioning inside each block
 - [**Self-Attention**](/courses/transformers/01-self-attention) — the core mechanism it's built on
-
-<Exercise id="transformer-ffn" />
-<Exercise id="transformer-residual" />
-<Exercise id="transformer-families" />

@@ -63,7 +63,7 @@ $$
 \text{KV cache} = 2 \times N \times h \times d_k \times \text{bytes per element}
 $$
 
-where $N$ is the current sequence length and $h$ is the number of heads. For LLaMA-2 70B: $h = 64$ heads, $d_k = 128$, $N = 4096$ tokens, bfloat16 (2 bytes) → $2 \times 4096 \times 64 \times 128 \times 2 = 268$ MB **per layer**, times 80 layers ≈ **21 GB** just for the KV cache at max context. Multi-query and grouped-query attention attack this directly.
+where $N$ is the current sequence length and $h$ is the number of heads. For a LLaMA-2-70B-scale model *with full MHA*: $h = 64$ heads, $d_k = 128$, $N = 4096$ tokens, bfloat16 (2 bytes) → $2 \times 4096 \times 64 \times 128 \times 2 = 134{,}217{,}728$ bytes ≈ **134 MB per layer**, times 80 layers ≈ **10.7 GB** just for the KV cache at max context — per sequence being served. Multi-query and grouped-query attention attack this directly.
 
 **Multi-Query Attention (MQA)**
 
@@ -77,7 +77,7 @@ KV cache shrinks by a factor of $h$: instead of storing $h$ copies of $K$ and $V
 
 **Grouped-Query Attention (GQA)**
 
-GQA generalizes MQA: split the $h$ query heads into $G$ groups ($1 \le G \le h$). Each group shares one $K$ and one $V$ head. $G = 1$ is MQA; $G = H$ is standard MHA.
+GQA generalizes MQA: split the $h$ query heads into $G$ groups ($1 \le G \le h$). Each group shares one $K$ and one $V$ head. $G = 1$ is MQA; $G = h$ is standard MHA.
 
 $$
 \text{GQA with } G \text{ groups:} \quad h_Q = h,\; h_K = h_V = G
@@ -282,6 +282,12 @@ print("SwiGLU output shape:", out.shape)  # (3, 4) — same as input
   SwiGLU adds a third projection matrix $W_3$ compared to the standard FFN. To keep total parameter count the same, the hidden dimension is reduced: instead of $d_{ff} = 4\,d_{\text{model}}$, SwiGLU uses $d_{ff} = \tfrac{8}{3}\,d_{\text{model}}$ (rounded up to a multiple of 64 for hardware efficiency). LLaMA uses this ratio throughout.
 </Callout>
 
+<Exercise id="transformer-cross-attention" />
+
+<Exercise id="transformer-gqa" />
+
+<Exercise id="transformer-rope" />
+
 ## Common mistakes
 
 1. **Cross-attention Q/K/V source confusion** — Q comes from the decoder; K and V come from the encoder. Reversing this makes the decoder unable to query the source.
@@ -305,7 +311,3 @@ print("SwiGLU output shape:", out.shape)  # (3, 4) — same as input
 - [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — the MHA foundation that MQA/GQA extend
 - [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — residuals, LayerNorm, encoder/decoder families
 - [**Self-Attention**](/courses/transformers/01-self-attention) — the core QKV mechanism
-
-<Exercise id="transformer-cross-attention" />
-<Exercise id="transformer-gqa" />
-<Exercise id="transformer-rope" />

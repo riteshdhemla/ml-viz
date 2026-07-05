@@ -1064,6 +1064,65 @@ Also this iteration: retired the cron /loop from the plan's run
 instructions (session-scoped jobs die with the session) — the queue is
 now worked directly, one item per turn.
 
+## transformers <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 6 lessons + quiz (`01-self-attention` … `06-mixture-of-experts`, `07-quiz`). estimatedHours math ✓ (134 min × 2.5 / 60 = 5.58 → 5.5).
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 4.5 · 05: 5 · 06: 4.5
+
+This is one of the strongest courses on the site. Lessons 02/03 are the reference
+pattern for worked math: dimension bookkeeping table, param counts, PE-by-hand and
+LayerNorm-by-hand traces all verified digit-by-digit (sin 1 = 0.8415, μ = 40/8 = 5,
+σ² = 32/8 = 4, layer total 3,147,776, FFN share 66.6% — all ✓). Lesson 05's numbers
+also all check (−ln 0.18 ≈ 1.71, e^1.9 ≈ 6.7, N* = √(C/120) from C = 6ND with D = 20N,
+all D/N table ratios ✓). Course correctly defers the full 3-token attention trace to
+the `scaled-dot-product-attention` wiki page and post-training to fine-tuning-alignment
+— cross-course deferral done right in both directions.
+
+**Findings:**
+
+- **P1 (fixed): lesson 04 KV-cache arithmetic wrong by 2×.** Stated
+  2×4096×64×128×2 B = 268 MB/layer → 21 GB over 80 layers; actual product is
+  134,217,728 B ≈ 134 MB/layer → ≈10.7 GB. Also the example was framed as
+  "LLaMA-2 70B" which actually uses GQA (as the lesson's own callout says three
+  paragraphs later). Fixed numbers and reworded to "LLaMA-2-70B-scale model *with
+  full MHA*", added "per sequence being served". Notebook 04 was checked and uses
+  correct formulas (no propagation).
+- **P2 (fixed): quiz covered only lessons 01–02.** The 5 existing
+  `transformer-quiz-*` ids are fresh and well-made but test attention/scale/
+  multihead/posenc/vs-rnn only — lessons 03–06 (architecture, modern attention,
+  scaling laws, MoE) had zero quiz coverage. Added 4 fresh exercises:
+  `transformer-quiz-block` (FFN ≈ ⅔ of layer params), `transformer-quiz-kv-cache`
+  (GQA reduces KV cache, not FLOPs/quality), `transformer-quiz-chinchilla`
+  (20 tokens/param at fixed compute), `transformer-quiz-moe` (Mixtral top-k
+  routing decouples params from compute). Quiz description updated to match.
+- **P2 (fixed): exercise placement.** All 6 lessons stacked exercises after
+  Related concepts; moved before Common mistakes (site convention).
+- **P3 (fixed): lesson 03 "Scale is the story" + quadratic-ceiling callout**
+  named scaling laws and FlashAttention/sparse attention with no forward links —
+  added links to lessons 05 and 04.
+- **P3 (fixed): lesson 04 typo** "$G = H$ is standard MHA" → lowercase $h$
+  (the variable used everywhere else).
+- **P3 (fixed): lesson 06 had no concrete numbers** for the params≫compute
+  headline — added Mixtral 8×7B (46.7 B total / ≈12.9 B active, k=2 of 8).
+- **P3 (noted, not applied): lesson 04 is dense** — five major mechanisms in 18
+  estimated minutes (cross-attention, MQA/GQA, RoPE, FlashAttention, sliding
+  window, RMSNorm/SwiGLU). Each section is individually clear and the six-item
+  Common mistakes list matches the body, so leaving as-is; if it ever grows,
+  split RMSNorm/SwiGLU + RoPE into an "architecture refinements" lesson.
+- **no issues:** duplication seams (03's brief decoder-sublayer preview vs 04's
+  deep cross-attention treatment is bridge-appropriate); notebook scaffolds
+  present in all 6; all 18 lesson exercise ids + 9 quiz ids resolve; WikiLinks
+  (scaled-dot-product-attention, attention-mechanisms, positional-encodings) in
+  sensible places.
+
+**Applied in this iteration:** KV-cache numeric fix; 4 new quiz exercises + quiz
+mdx update; exercise placement in 6 lessons; forward links in lesson 03; GQA typo;
+Mixtral numbers; CLAUDE.md roadmap row ("3 lessons" → "6 lessons + quiz" with
+current topic list).
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
