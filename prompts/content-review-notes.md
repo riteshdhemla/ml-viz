@@ -1367,6 +1367,45 @@ quiz description; exercise placement in 3 lessons; roadmap row "+ quiz".
 
 ---
 
+## reinforcement-learning <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 6 lessons + quiz. estimatedHours math ✓ (144 min × 2.5 / 60 = 6.0).
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 5 · 05: 4.5 · 06: 5
+
+One of the site's best courses. Every lesson has a hand-verified numeric trace
+(γ^10 ≈ 0.35; one Q-update 5 → 5.6; full DQN step y = −0.109, δ = −0.809,
+L = 0.654; advantage sign +2; 0.99^50 ≈ 60%). Narrative arc is textbook-grade:
+Bellman → sample it (TD) → approximate it (DQN, with the two stability pillars)
+→ skip values entirely (PG) → tame the variance (actor-critic) → tame the step
+(PPO) → RLHF as PPO-on-tokens. Lesson 06 is an exemplary bridge lesson — the
+RL-concept ↔ LLM-translation table and the per-token KL-in-the-reward detail are
+exactly what the fine-tuning-alignment course needs pre-loaded.
+
+**Findings:**
+
+- **P2 (fixed): quiz skipped lessons 05–06.** Added `rl-quiz-model-rollouts`
+  (compounding model error → short rollouts) and `rl-quiz-ppo-clip` (gradient
+  zero past the clip band). Quiz description updated.
+- **P2 (fixed): exercise placement** — all 6 lessons stacked exercises at the
+  bottom; moved before Common mistakes.
+- **P3 (fixed): lesson 05 had no Common mistakes section** (only lesson without
+  one) — added 4 entries (blind exploration, bonus scale, long rollouts, noisy-TV).
+- **P3 (fixed): lesson 05 re-taught ε-greedy** with the same formula as lesson
+  02 without a pointer — added the back-reference framing it as recap.
+- **P3 (fixed): CLAUDE.md roadmap row said 4 lessons** — actual 6 + quiz;
+  updated with new topics (exploration & model-based, PPO→RLHF).
+- **no issues:** all 19 lesson + 7 quiz exercise ids resolve (incl. two slider
+  exercises); notebook scaffolds in all 6; GridWorldViz/QTableViz/
+  PolicyGradientViz wiring matches registry (PolicyGradientViz correctly reused
+  in 06); cross-course links to fine-tuning-alignment are bidirectional.
+
+**Applied in this iteration:** 2 new quiz exercises + quiz description; exercise
+placement in 6 lessons; Common mistakes section + ε-greedy back-reference in
+lesson 05; CLAUDE.md roadmap row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

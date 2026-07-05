@@ -104,7 +104,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] nlp <!-- reviewed + fixed 2026-07-05 -->
 - [x] speech-audio <!-- reviewed + fixed 2026-07-05 -->
 - [x] graphical-models <!-- reviewed + fixed 2026-07-05 -->
-- [ ] reinforcement-learning
+- [x] reinforcement-learning <!-- reviewed + fixed 2026-07-05 -->
 - [ ] recommender-systems
 - [ ] gpu-programming
 

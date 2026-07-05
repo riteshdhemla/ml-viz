@@ -10117,6 +10117,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Clique potentials must be re-derived after each observation", isCorrect: false },
     ],
   },
+  {
+    id: "rl-quiz-model-rollouts",
+    type: "multiple-choice",
+    question:
+      "Model-based RL (Dyna, MBPO) generates synthetic experience from a learned world model — but keeps the imagined rollouts short. Why?",
+    hint: "What happens to a 1%-per-step model error over 50 steps?",
+    explanation:
+      "Model errors compound multiplicatively with horizon: a 1% per-step error leaves only 0.99⁵⁰ ≈ 60% fidelity after 50 imagined steps, so long rollouts train the agent on hallucinated dynamics. Short rollouts (MBPO uses ~5 steps) keep the synthetic data close to reality while still multiplying sample efficiency.",
+    options: [
+      { id: "a", label: "Model errors compound with rollout length, so long imagined trajectories diverge from reality", isCorrect: true },
+      { id: "b", label: "The replay buffer can only store transitions of length 5", isCorrect: false },
+      { id: "c", label: "Long rollouts violate the Markov property", isCorrect: false },
+      { id: "d", label: "Short rollouts are needed so ε-greedy can still explore", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-quiz-ppo-clip",
+    type: "multiple-choice",
+    question:
+      "In PPO's clipped objective, what happens to a token/action whose importance ratio ρ has already moved past 1+ε with positive advantage?",
+    hint: "min(ρA, clip(ρ, 1−ε, 1+ε)·A) — which branch wins, and what's its gradient in ρ?",
+    explanation:
+      "Past the clip boundary the min selects the clipped branch, which is constant in θ — so the gradient on that sample becomes zero and the update stops pushing the ratio further. That per-sample gradient cutoff is the soft trust region: no single PPO step can move the policy more than about ε in importance ratio.",
+    options: [
+      { id: "a", label: "Its gradient becomes zero — the objective stops rewarding further movement", isCorrect: true },
+      { id: "b", label: "The gradient is scaled down by ε but keeps the same direction", isCorrect: false },
+      { id: "c", label: "The action is removed from the batch and resampled", isCorrect: false },
+      { id: "d", label: "The advantage is renormalized so ρ returns to 1", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -340,7 +340,7 @@ surface-border   — borders
 - [x] **Speech & Audio ML** — waveforms/STFT/mel spectrograms/MFCC, speech recognition (CTC, seq2seq, Whisper, WER) *(course + 2 lessons + quiz)*
 
 ### Reinforcement Learning
-- [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course + 4 lessons)*
+- [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, policy gradient & actor-critic, exploration & model-based RL, PPO→RLHF bridge *(course + 6 lessons + quiz)*
 
 ### Evaluation & Statistical ML
 - [x] **Model Evaluation** — metrics, validation, training techniques, LLM & AI-system eval, learning theory, calibration *(course + 7 lessons + quiz)*

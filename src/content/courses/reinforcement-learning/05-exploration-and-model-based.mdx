@@ -26,7 +26,7 @@ The challenge is that the agent doesn't know in advance which arms/actions are g
 
 ## ε-greedy — the baseline
 
-The simplest strategy: with probability $\epsilon$ take a **random** action; with probability $1-\epsilon$ take the **greedy** (currently best-estimated) action.
+The simplest strategy, already used throughout [Q-Learning](/courses/reinforcement-learning/02-q-learning): with probability $\epsilon$ take a **random** action; with probability $1-\epsilon$ take the **greedy** (currently best-estimated) action.
 
 $$
 a_t = \begin{cases} \text{random} & \text{with probability } \epsilon \\ \arg\max_a Q(s_t, a) & \text{with probability } 1-\epsilon \end{cases}
@@ -168,6 +168,19 @@ Model-based and exploration methods are complementary:
 
 ---
 
+<Exercise id="rl-exploration-ucb" />
+
+<Exercise id="rl-exploration-thompson" />
+
+<Exercise id="rl-model-based-dyna" />
+
+## Common mistakes
+
+1. **Exploring blindly forever.** A constant high $\epsilon$ wastes late-training steps on random actions; decay it — or use an uncertainty-aware method (UCB, Thompson) that stops exploring arms it has learned.
+2. **Ignoring the exploration bonus scale.** Count-based and curiosity bonuses ($\beta$, $\eta$) that dwarf the real reward produce an agent that tours novelty and never solves the task.
+3. **Trusting long model rollouts.** Model errors compound exponentially with horizon; keep synthetic rollouts short (Dyna/MBPO style) and mix them with real data.
+4. **Using curiosity on stochastic distractors.** Raw prediction error rewards the agent for watching noise (the "noisy TV problem"); use ICM-style learned features or RND to filter it.
+
 ## Key takeaways
 
 - **ε-greedy** is simple but explores blindly; **decaying ε** front-loads exploration when Q-values are least reliable.
@@ -182,7 +195,3 @@ Model-based and exploration methods are complementary:
 - [**Q-Learning**](/courses/reinforcement-learning/02-q-learning) — the model-free baseline that Dyna-Q accelerates with planning
 - [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes) — the model-based vs. model-free distinction in its native setting
 - [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the posterior-sampling logic behind Thompson Sampling
-
-<Exercise id="rl-exploration-ucb" />
-<Exercise id="rl-exploration-thompson" />
-<Exercise id="rl-model-based-dyna" />
