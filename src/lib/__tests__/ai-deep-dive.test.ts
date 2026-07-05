@@ -4,6 +4,7 @@ import {
   buildDeepDivePrompt,
   getClaudeUrl,
   getChatGptUrl,
+  getGeminiUrl,
 } from "@/lib/ai-deep-dive";
 
 describe("extractHeadings", () => {
@@ -75,6 +76,11 @@ describe("provider URLs", () => {
   it("builds a ChatGPT URL with an encoded prompt", () => {
     const url = getChatGptUrl("a & b");
     expect(url).toBe("https://chatgpt.com/?q=a%20%26%20b");
+  });
+
+  it("builds a Gemini URL with an encoded prompt", () => {
+    const url = getGeminiUrl("a & b");
+    expect(url).toBe("https://gemini.google.com/app?q=a%20%26%20b");
   });
 
   it("round-trips the prompt through decoding", () => {

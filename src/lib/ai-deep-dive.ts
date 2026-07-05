@@ -80,3 +80,8 @@ export function getClaudeUrl(prompt: string): string {
 export function getChatGptUrl(prompt: string): string {
   return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
 }
+
+/** Open Gemini with the prompt pre-filled. */
+export function getGeminiUrl(prompt: string): string {
+  return `https://gemini.google.com/app?q=${encodeURIComponent(prompt)}`;
+}
