@@ -332,7 +332,7 @@ surface-border   — borders
 - [x] **Graphical Models** — Bayesian Networks, MRFs, HMMs, belief propagation *(course + 3 lessons)*
 
 ### Advanced Deep Learning
-- [x] **Attention & Transformers** — self-attention, multi-head, positional encoding *(course + 3 lessons)*
+- [x] **Attention & Transformers** — self-attention, multi-head & positional, architecture, modern attention (GQA/RoPE/FlashAttention), scaling laws, mixture of experts *(course + 6 lessons + quiz)*
 - [x] **Generative Models** — VAE, GAN, Diffusion *(course + 5 lessons)*
 
 ### Reinforcement Learning

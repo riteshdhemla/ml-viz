@@ -111,6 +111,12 @@ A freshly pretrained model is a fluent **autocomplete** — it produces plausibl
 
 Post-training uses orders of magnitude less compute than pretraining — typically a few percent — but is responsible for the dramatic quality jump from "raw GPT-3 base model" to "ChatGPT". It is also where most of the visible behavioural differences between frontier models live; the underlying pretrained Transformers are remarkably similar.
 
+<Exercise id="scaling-chinchilla-recipe" />
+
+<Exercise id="scaling-context-window-cost" />
+
+<Exercise id="scaling-compute-budget-optimal" />
+
 ## Common mistakes
 
 1. **Treating $D/N$ as a hyperparameter to tune by intuition.** It is not — Chinchilla's $D \approx 20\,N$ is an empirical optimum under a *fixed compute* constraint. If you instead fix *inference cost*, you should deliberately **over-train** (more tokens per parameter) because cheap inference is worth the extra training tokens.
@@ -133,7 +139,3 @@ Post-training uses orders of magnitude less compute than pretraining — typical
 - [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention) — FlashAttention and sliding-window patterns that make large context windows tractable
 - [**Supervised Fine-Tuning & Instruction Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the first post-training step that turns a base model into an instruction follower
 - [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the alignment step that gives modern assistants their voice
-
-<Exercise id="scaling-chinchilla-recipe" />
-<Exercise id="scaling-context-window-cost" />
-<Exercise id="scaling-compute-budget-optimal" />

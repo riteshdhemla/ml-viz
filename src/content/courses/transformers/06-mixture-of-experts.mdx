@@ -46,6 +46,8 @@ $$
 
 A model with 64 experts has ~64× the FFN parameters of a dense model but, at $k=1$, roughly the *same* compute per token. More parameters store more knowledge; sparse activation keeps each token cheap. MoE **decouples capacity from cost** — the lever scaling laws couldn't otherwise reach affordably.
 
+**Concrete numbers — Mixtral 8×7B:** $N = 8$ experts per layer, $k = 2$ active. Total parameters ≈ **46.7 B**, but each token activates only ≈ **12.9 B** of them — so it stores knowledge like a ~47 B model while running (per token) like a ~13 B model.
+
 <Callout type="info" title="Specialization is emergent, not assigned">
   You don't tell experts what to specialize in — the router *learns* to send related tokens to the same experts. In practice experts often loosely specialize (by syntax, language, or topic), though the structure is fuzzy and far from human-interpretable. The router and experts are trained jointly, end to end.
 </Callout>
@@ -67,6 +69,12 @@ Left alone, the router collapses: it learns to send almost everything to a few f
 - ✅ Settings where memory and inter-device bandwidth are available.
 - ❌ Memory-constrained deployment (all experts must be resident) or small models where a dense FFN is simpler and the routing overhead isn't worth it.
 
+<Exercise id="moe-sparse-routing" />
+
+<Exercise id="moe-params-compute" />
+
+<Exercise id="moe-load-balancing" />
+
 ## Common mistakes
 
 1. **Equating params with compute.** An MoE's giant parameter count does *not* mean proportionally more FLOPs per token — only $k$ experts run.
@@ -86,7 +94,3 @@ Left alone, the router collapses: it learns to send almost everything to a few f
 - [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — why we want more parameters, the demand MoE serves cheaply
 - [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the FFN sublayer MoE replaces
 - [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — the memory/communication trade-offs MoE's sharding runs into
-
-<Exercise id="moe-sparse-routing" />
-<Exercise id="moe-params-compute" />
-<Exercise id="moe-load-balancing" />
