@@ -88,6 +88,12 @@ The **ridge point** $I^* = P_{\max}/BW$ is the intensity where the two ceilings 
 
 A fast kernel typically: (1) coalesces global accesses, (2) tiles into shared memory to raise arithmetic intensity and cut global traffic, (3) keeps enough warps resident to hide whatever latency remains. The roofline tells you *which* of these to chase first.
 
+<Exercise id="gpu-mem-coalescing" />
+
+<Exercise id="gpu-mem-tiling-traffic" />
+
+<Exercise id="gpu-mem-roofline" />
+
 ## Common mistakes
 
 1. **Strided/scattered global access** — the single biggest bandwidth killer; fix the layout so consecutive threads hit consecutive addresses.
@@ -107,7 +113,3 @@ A fast kernel typically: (1) coalesces global accesses, (2) tiles into shared me
 - [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture) — the memory hierarchy and latency hiding these techniques exploit
 - [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — applying coalescing, tiling, and the roofline to real ML kernels
 - [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — when memory and bandwidth limits drive compression choices
-
-<Exercise id="gpu-mem-coalescing" />
-<Exercise id="gpu-mem-tiling-traffic" />
-<Exercise id="gpu-mem-roofline" />

@@ -1450,6 +1450,41 @@ exercise placement; CLAUDE.md roadmap row.
 
 ---
 
+## gpu-programming <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 5 lessons + quiz. estimatedHours math ✓ (95 min × 2.5 / 60 = 3.96 → 4).
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 5 · 05: 5
+
+The cleanest course in the queue so far — the only one whose quiz already
+covered every lesson (6 fresh ids incl. distributed training) before review.
+Conceptual spine is airtight: throughput-vs-latency bet → SIMT/warps → index
+math → coalescing/tiling/occupancy/roofline → GEMM as the ideal workload →
+two-walls framing (compute vs memory) → DP/ZeRO/3D parallelism. Every formula
+hand-verified: index 3×256+5 = 773; ceil(1000/256) = 4 blocks with 24 idle
+threads; GEMM 2MNK; 16Ψ accounting → 7B × 16 B = 112 GB; ZeRO per-stage table
+(4Ψ+12Ψ/G, 2Ψ+14Ψ/G, 16Ψ/G); ring all-reduce 2Ψ(G−1)/G; bubble (P−1)/(P−1+M).
+Recurring-theme discipline is exemplary: "two walls, not one" and "occupancy is
+a means, not an end" pre-empt exactly the misconceptions the quiz distractors
+then test. Cross-course links are bidirectional (LoRA as the escape hatch,
+FlashAttention back to transformers/04, inference serving to ml-in-practice).
+
+**Findings:**
+
+- **P2 (fixed): exercise placement** — all 5 lessons stacked exercises after
+  Related concepts; moved before Common mistakes.
+- **P3 (fixed): CLAUDE.md roadmap row said 4 lessons** — actual 5 + quiz
+  (05-distributed-training-at-scale was appended without updating the row);
+  added distributed-training topics.
+- **no issues:** all 15 lesson + 6 quiz ids resolve; notebook scaffolds in all
+  5; CoalescingViz + DistributedTrainingViz wiring matches registry; no
+  duplication seams; hours math correct.
+
+**Applied in this iteration:** exercise placement in 5 lessons; CLAUDE.md
+roadmap row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

@@ -106,7 +106,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] graphical-models <!-- reviewed + fixed 2026-07-05 -->
 - [x] reinforcement-learning <!-- reviewed + fixed 2026-07-05 -->
 - [x] recommender-systems <!-- reviewed + fixed 2026-07-05 -->
-- [ ] gpu-programming
+- [x] gpu-programming <!-- reviewed + fixed 2026-07-05 -->
 
 ### Courses — applied / production
 - [ ] building-with-llms (13 lessons — consider splitting 01–06 / 07–13)

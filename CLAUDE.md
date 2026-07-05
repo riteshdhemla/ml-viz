@@ -355,7 +355,7 @@ surface-border   — borders
 - [x] **ML Systems & MLOps** — data engineering, deployment patterns, model compression, continual learning & test-in-production, monitoring, MLOps infra, CI/CD & continuous training (maturity levels), feature stores, model registry & governance *(integrated into `ml-in-practice`: 18 lessons + quiz)*
 - [x] **LLMOps** — LLM evaluation & LLM-as-a-judge, observability/tracing & prompt management, guardrails & security (OWASP LLM Top 10) *(integrated into `building-with-llms`: 10 lessons + quiz)*
 - [x] **Agentic System Design** — tool use/function calling & MCP, agent evaluation (outcome vs trajectory, pass@k), production deployment (orchestration, checkpointing, guardrails, cost/latency) *(integrated into `agent-design-patterns`: 11 lessons + quiz)*
-- [x] **GPU Programming for ML** — GPU architecture & SIMT, the CUDA programming model, memory coalescing/tiling/occupancy/roofline, GPUs for deep learning (GEMM, tensor cores, mixed precision, fusion) *(course + 4 lessons + quiz)*
+- [x] **GPU Programming for ML** — GPU architecture & SIMT, the CUDA programming model, memory coalescing/tiling/occupancy/roofline, GPUs for deep learning (GEMM, tensor cores, mixed precision, fusion), distributed training (DP/ZeRO/FSDP, tensor & pipeline parallelism) *(course + 5 lessons + quiz)*
 
 ---
 
