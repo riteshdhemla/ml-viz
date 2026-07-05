@@ -90,13 +90,13 @@ GQA (Ainslie et al. 2023) interpolates between MHA ($G = h$) and MQA ($G = 1$):
 
 LLaMA-3, Mistral, Gemma, Falcon, and most modern open-weight LLMs use GQA. $G = h/8$ is a common default balancing cache savings vs quality.
 
-**KV cache comparison (per layer, $n = 4096$ tokens, $d = 4096$, $h = 32$, bfloat16):**
+**KV cache comparison (per layer, $n = 4096$ tokens, $d = 8192$, $h = 64$, bfloat16 — LLaMA-2 70B attention dims):**
 
 | Variant | KV heads | Cache per layer |
 |---------|----------|----------------|
-| MHA | 32 | 128 MB |
-| GQA ($G=8$) | 8 | 32 MB |
-| MQA | 1 | 4 MB |
+| MHA | 64 | 128 MB |
+| GQA ($G=8$) | 8 | 16 MB |
+| MQA | 1 | 2 MB |
 
 ## FlashAttention
 
