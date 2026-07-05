@@ -1301,6 +1301,35 @@ placement in 7 lessons; CLAUDE.md roadmap row.
 
 ---
 
+## speech-audio <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 2 lessons + quiz. estimatedHours math ✓ (43 min × 2.5 / 60 = 1.79 → 2).
+
+**Grasp scores:** 01: 5 · 02: 5
+
+Compact, seam-free course in the recent house style. Strong causal chain:
+alignment problem → blank token necessity ("hello" vs "helo") → CTC sum-over-
+alignments → seq2seq alternative → Whisper as scaled seq2seq → RNN-T for
+streaming. The CTC collapse example verified (h h ∅ e ∅ l l ∅ l o → hello ✓).
+Correct cross-course deferral: HMM forward–backward pointed at graphical-models,
+transformer encoder–decoder at transformers/03.
+
+**Findings:**
+
+- **P2 (fixed): WER formula had no worked number** (only evaluation formula in
+  the course). Added a 6-word reference / S=1, I=1 trace → WER = 2/6 = 33.3%.
+- **P2 (fixed): course missing from CLAUDE.md roadmap** — added row.
+- **P2 (fixed): exercise placement** — both lessons stacked exercises after
+  Related concepts; moved before Common mistakes.
+- **no issues:** quiz has 5 fresh ids covering both lessons; all 11 exercise ids
+  resolve; notebook scaffolds present; prerequisites (cnns, rnns) honest — CNN
+  claim ("spectrogram is an image") and RNN-T naming both land on covered ground.
+
+**Applied in this iteration:** WER worked example; exercise placement in 2
+lessons; CLAUDE.md roadmap row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

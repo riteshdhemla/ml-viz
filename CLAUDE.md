@@ -337,6 +337,7 @@ surface-border   — borders
 - [x] **Graph Neural Networks** — graphs as data & message passing, GCN & GraphSAGE, graph attention/pooling/over-smoothing *(course + 3 lessons + quiz)*
 - [x] **Computer Vision** — object detection (anchors/YOLO/FPN/NMS), segmentation (U-Net/Mask R-CNN), backbones, vision-language models (CLIP/BLIP-2), self-supervised learning *(course + 5 lessons + quiz)*
 - [x] **NLP** — text preprocessing & BPE, word embeddings, seq2seq→BERT, LLM taxonomy, decoding & sampling, BERTopic, training embedding models *(course + 7 lessons + quiz)*
+- [x] **Speech & Audio ML** — waveforms/STFT/mel spectrograms/MFCC, speech recognition (CTC, seq2seq, Whisper, WER) *(course + 2 lessons + quiz)*
 
 ### Reinforcement Learning
 - [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course + 4 lessons)*

@@ -74,7 +74,19 @@ $$
 
 where $S$ = substitutions (wrong word), $D$ = deletions (missing word), $I$ = insertions (extra word), and $N$ = total words in the reference. A WER of 0 is perfect; values above 1 are possible (many insertions). Human-level conversational WER is roughly 5–8 %; Whisper's multilingual median is ≈ 10–15 %.
 
+**Worked example.** Reference: *"the cat sat on the mat"* ($N = 6$). Hypothesis: *"the cat sat on a mat hat"*. Aligning them: "the"→"a" is one substitution ($S=1$), the trailing "hat" is one insertion ($I=1$), nothing was deleted ($D=0$):
+
+$$
+\text{WER} = \frac{1 + 0 + 1}{6} = 0.333 \;(33.3\%).
+$$
+
 **Character Error Rate (CER)** is the same metric computed at the character level — preferred for languages without clear word boundaries (Chinese, Japanese, Thai) or for measuring fine-grained accuracy in morphologically complex languages.
+
+<Exercise id="audio-alignment" />
+
+<Exercise id="audio-ctc" />
+
+<Exercise id="audio-whisper" />
 
 ## Common mistakes
 
@@ -95,7 +107,3 @@ where $S$ = substitutions (wrong word), $D$ = deletions (missing word), $I$ = in
 - [**Audio Representations & Spectrograms**](/courses/speech-audio/01-audio-representations) — the log-mel features that feed every ASR model
 - [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — the classical alignment model and the DP that CTC echoes
 - [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the encoder–decoder backbone of modern ASR
-
-<Exercise id="audio-alignment" />
-<Exercise id="audio-ctc" />
-<Exercise id="audio-whisper" />
