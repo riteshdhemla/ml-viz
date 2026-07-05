@@ -1783,6 +1783,41 @@ knn-decision-trees/03.
 
 ---
 
+## wiki: neural-networks (8 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** activation-functions, batchnorm-algorithm, dropout,
+gradient-descent-optimizers, groupnorm-and-instancenorm, learning-rate-schedules,
+perceptron-learning, softmax-cross-entropy. (Plan said "7 pages"; there are 8.)
+
+**Grasp scores:** softmax-cross-entropy: 5 (deep-read — the ŷ−y gradient
+punchline and the log-sum-exp stability note make it self-contained);
+gradient-descent-optimizers: 5 (momentum→RMSProp→Adam progression reads
+cleanly); remaining 6 structure-audited.
+
+**Findings:**
+
+- **P2 (fixed): three relatedLessons entries overstated inbound linkage.**
+  A page's `relatedLessons` drives its "Referenced by" footer, so each entry
+  should correspond to a host lesson that actually links back. Three did not:
+  - `activation-functions` → neural-networks/06-weight-initialization (lesson
+    never linked the page)
+  - `gradient-descent-optimizers` → calculus-for-ml/03-multivariable-optimization
+  - `groupnorm-and-instancenorm` → cnns/05-modern-architectures
+  Fixed by adding a matching wiki link to the Related-concepts section of each
+  of the three host lessons (rather than trimming relatedLessons) — the link
+  is genuinely apt in all three cases, so the honest fix is to make the
+  back-link real.
+- **no issues:** all 8 have notebooks under `notebooks/wiki/`; all remaining
+  relatedLessons resolve and are bidirectionally linked; page lengths are
+  derivation-grade. Note (carry-forward): the wiki-integrity test only checks
+  `<WikiLink slug>` occurrences, not plain-markdown `/wiki/...` links, so
+  footer-honesty for markdown-linked pages is a manual check.
+
+**Applied in this iteration:** one wiki link added to each of
+neural-networks/06, calculus-for-ml/03, cnns/05.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
