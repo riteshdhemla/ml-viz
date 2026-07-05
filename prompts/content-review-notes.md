@@ -1688,6 +1688,39 @@ second-half queue item relabelled 10–21 + quiz.
 
 ---
 
+## ml-in-practice: lessons 10–21 + quiz <!-- reviewed + fixed 2026-07-05 (split item, second half) -->
+
+**Scope:** lessons 10–18, 20–21 + quiz (order 19). Structure-verified across
+all 11 lessons (Common mistakes + Key takeaways present in 10–18; 20–21 are
+case studies with Key-takeaways-only format); deep spot-checks on 15
+(differential privacy — ε definition and budget framing correct) and 17
+(feature stores — point-in-time correctness correctly identified as the
+leakage kill-switch).
+
+**Findings:**
+
+- **P2 (fixed): quiz coverage gap for the later lessons.** The 10 existing
+  `ml-practice-quiz-*` ids concentrate on lessons 01–13. Added
+  `ml-practice-quiz-point-in-time` (feature-store leakage) and
+  `ml-practice-quiz-dp-epsilon` (privacy budget semantics) — quiz now at 12
+  questions for 20 lessons.
+- **P2 (fixed): exercise placement** — 8 lessons stacked exercises at the end
+  (moved); 16–18 were already inline.
+- **P2 (fixed): CLAUDE.md "ML Systems & MLOps" row said 18 lessons** — course
+  now has 20 content lessons + quiz (fraud-detection and content-moderation
+  case studies appended); row updated.
+- **P3 (noted, not applied): case-study lessons 20–21 lack Common mistakes** —
+  case-study format lands on Key takeaways; acceptable.
+- **no issues:** every exercise id across 10–21 + quiz resolves; notebook
+  scaffolds complete for all lessons in this half; RolloutViz (09, checked in
+  first half) and no other viz registered for this range — consistent with
+  registry.
+
+**Applied in this iteration:** 2 new quiz exercises; exercise placement in 8
+lessons; CLAUDE.md row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

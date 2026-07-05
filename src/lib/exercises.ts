@@ -10327,6 +10327,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Hard labels only work when the student is larger than the teacher", isCorrect: false },
     ],
   },
+  {
+    id: "ml-practice-quiz-point-in-time",
+    type: "multiple-choice",
+    question:
+      "A feature store builds a training row for a purchase that happened in March using the customer's CURRENT lifetime-spend value. What's wrong?",
+    hint: "What did the model 'know' at prediction time that it couldn't have known in March?",
+    explanation:
+      "Joining current feature values to past labels leaks the future into training — the lifetime-spend value includes purchases made after the March event, some caused by the very outcome being predicted. Point-in-time correctness requires every feature in a training row to use only data available at or before the event's timestamp; this is the subtlest and most devastating form of leakage a feature store exists to prevent.",
+    options: [
+      { id: "a", label: "It leaks the future — features must be reconstructed as of the event's timestamp", isCorrect: true },
+      { id: "b", label: "Nothing — feature freshness always improves training", isCorrect: false },
+      { id: "c", label: "Lifetime aggregates are categorically forbidden as features", isCorrect: false },
+      { id: "d", label: "The row is fine as long as the label is also updated to its current value", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-dp-epsilon",
+    type: "multiple-choice",
+    question:
+      "In differential privacy, what does a smaller privacy budget ε guarantee?",
+    hint: "Pr[M(D) ∈ S] ≤ e^ε · Pr[M(D′) ∈ S] for datasets differing in one person.",
+    explanation:
+      "ε bounds how much any single person's data can change the algorithm's output distribution: smaller ε means the model behaves almost identically whether or not you were in the training set, so nothing specific to you can be learned. The cost is utility — ε → 0 gives maximal privacy and a useless model. Typical deployments land around ε ≈ 1–10.",
+    options: [
+      { id: "a", label: "Any single individual's inclusion changes the output distribution less — stronger privacy, lower utility", isCorrect: true },
+      { id: "b", label: "The model trains faster because less data is used", isCorrect: false },
+      { id: "c", label: "The training data is encrypted with a shorter key", isCorrect: false },
+      { id: "d", label: "More individuals can be re-identified, but each with lower confidence", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

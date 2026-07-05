@@ -99,6 +99,12 @@ The KV-cache itself can also be quantized to INT8 or FP8, doubling the effective
 
 A single decode step on a large model reads all the weights from HBM to produce one token — almost all of that bandwidth is "wasted" if the next token was easy to predict. **Speculative decoding** uses a small "draft" model to propose the next $k$ tokens cheaply, then the large model verifies all $k$ in a single forward pass and accepts the longest prefix that matches. When the draft model's predictions are close to the target's, the effective tokens-per-step rises from 1 to 2–4 with no quality loss, since the *target* model still validates everything. The win is biggest on easy prefixes (boilerplate, code skeletons) and smallest on hard ones (novel reasoning). All major serving stacks now support some flavour of this — Medusa heads, EAGLE, plain draft-target, lookahead decoding.
 
+<Exercise id="ml-practice-inference-kv-cache-bytes" />
+
+<Exercise id="ml-practice-inference-continuous-batching" />
+
+<Exercise id="ml-practice-inference-roofline-regime" />
+
 ## Common mistakes
 
 1. **Ignoring the prefill/decode split.** Optimising for tokens/second without separating TTFT from ITL leads to "fast" servers that feel laggy because TTFT is 4 seconds while ITL is great. Measure both, target them separately.
@@ -124,9 +130,3 @@ A single decode step on a large model reads all the weights from HBM to produce 
 - [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — the serving fleet (vLLM, TGI, Triton) sits on top of the platform substrate from the previous lesson. Capacity planning for the GPU pool reuses the queueing-theory math from there.
 - [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — TTFT, ITL, tokens-per-second, and KV-cache utilisation are the operational SLIs you alert on once a serving stack is running.
 - [**Foundation Models & Scaling**](/courses/transformers/05-foundation-models-and-scaling) — the same scaling math that drives training cost drives inference cost; bigger models hit the bandwidth wall harder.
-
-<Exercise id="ml-practice-inference-kv-cache-bytes" />
-
-<Exercise id="ml-practice-inference-continuous-batching" />
-
-<Exercise id="ml-practice-inference-roofline-regime" />
