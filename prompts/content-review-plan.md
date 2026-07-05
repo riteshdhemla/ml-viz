@@ -112,7 +112,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] building-with-llms: lessons 01–06 <!-- reviewed + fixed 2026-07-05; split from 13-lesson item -->
 - [x] building-with-llms: lessons 07–13 + quiz <!-- reviewed + fixed 2026-07-05 -->
 - [x] agent-design-patterns <!-- reviewed + fixed 2026-07-05 -->
-- [ ] fine-tuning-alignment
+- [x] fine-tuning-alignment <!-- reviewed + fixed 2026-07-05 -->
 - [ ] ml-in-practice (18 lessons — consider splitting 01–09 / 10–18)
 
 ### Wiki batches (grouped by index topic)

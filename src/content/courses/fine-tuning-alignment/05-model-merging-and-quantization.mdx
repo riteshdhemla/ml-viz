@@ -98,6 +98,12 @@ Bit-width is the dial.
   QLoRA is the headline application: freeze the base in 4-bit NF4, attach full-precision LoRA adapters, train only the adapters. Memory is dominated by the 4-bit base, so a 65B model fine-tunes on a single 48 GB GPU. The adapters stay full precision because they're tiny and bear all the gradient.
 </Callout>
 
+<Exercise id="quant-memory" />
+
+<Exercise id="quant-int4-vs-int8" />
+
+<Exercise id="merge-task-vector" />
+
 ## Common mistakes
 
 1. **Merging fine-tunes from different base models.** They live in different loss basins; the average is meaningless.
@@ -118,7 +124,3 @@ Bit-width is the dial.
 
 - [**PEFT: LoRA & QLoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — quantization powers the **Q** in QLoRA; this lesson explains the quantization scheme itself.
 - [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — produces the checkpoints that get merged; quantization is applied after training.
-
-<Exercise id="quant-memory" />
-<Exercise id="quant-int4-vs-int8" />
-<Exercise id="merge-task-vector" />

@@ -106,6 +106,12 @@ When does each win? **DPO** is the right default — same objective, far less in
   In RLHF, $\beta$ scales an explicit KL penalty added to the reward. In DPO, $\beta$ scales the *implicit* reward margin inside the sigmoid: higher $\beta$ → sharper sigmoid → more weight on each preference pair → faster divergence from $\pi_\text{ref}$. Common DPO values are $\beta \in [0.05, 0.5]$. Set $\beta$ too high and the policy over-fits to the preference pairs and forgets general capability; too low and training barely moves.
 </Callout>
 
+<Exercise id="rlhf-kl-penalty" />
+
+<Exercise id="dpo-vs-rlhf" />
+
+<Exercise id="dpo-loss-direction" />
+
 ## Common mistakes
 
 1. **Skipping SFT.** Both RLHF and DPO assume a competent reference model. Starting from a base model that hasn't seen instruction data first gives unstable training and weak final quality.
@@ -127,7 +133,3 @@ When does each win? **DPO** is the right default — same objective, far less in
 - [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the scalar $r_\phi$ that PPO optimises against, and the Bradley–Terry loss that DPO inherits.
 - [**Policy Gradient**](/courses/reinforcement-learning/04-policy-gradient) — the underlying RL method PPO clips and extends; RLHF is policy-gradient on token sequences with a reward model.
 - [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — produces $\pi_\text{ref}$, the reference policy both pipelines hold the new model close to.
-
-<Exercise id="rlhf-kl-penalty" />
-<Exercise id="dpo-vs-rlhf" />
-<Exercise id="dpo-loss-direction" />
