@@ -105,7 +105,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] speech-audio <!-- reviewed + fixed 2026-07-05 -->
 - [x] graphical-models <!-- reviewed + fixed 2026-07-05 -->
 - [x] reinforcement-learning <!-- reviewed + fixed 2026-07-05 -->
-- [ ] recommender-systems
+- [x] recommender-systems <!-- reviewed + fixed 2026-07-05 -->
 - [ ] gpu-programming
 
 ### Courses — applied / production

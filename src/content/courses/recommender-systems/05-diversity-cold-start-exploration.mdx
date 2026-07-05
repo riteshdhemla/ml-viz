@@ -48,7 +48,7 @@ The inner loop updates for user $u$ on their first $k$ interactions; the outer l
 
 Many platforms explicitly **ask** new users for preferences at signup: Spotify's "pick your favorite artists," Tinder's "swipe on these profiles." These explicit signals bootstrap the embedding even before any implicit interaction occurs. The key is to show items that **maximally partition the latent preference space** — items that are highly discriminative — not just the most popular ones.
 
-<Callout type="tip" title="Warm-up stratey at Netflix">
+<Callout type="tip" title="Warm-up strategy at Netflix">
   Netflix uses a combination: new users see a set of titles chosen to elicit a preference signal (explicit rating request), and in parallel are assigned to a "taste cluster" of existing users whose early ratings matched the new user's profile. The cluster's collaborative signal is used while the new user's personal data accumulates.
 </Callout>
 
@@ -90,7 +90,7 @@ Even with a well-trained model, there are items the model *thinks* aren't releva
 
 ### Multi-armed bandits recap
 
-The bandit problem: $K$ arms with unknown reward distributions. At each step, pull an arm to get a reward and update beliefs. The fundamental tension: **exploit** the current best arm, or **explore** an uncertain arm to reduce uncertainty.
+The bandit problem (treated in full in [Exploration Strategies & Model-Based RL](/courses/reinforcement-learning/05-exploration-and-model-based)): $K$ arms with unknown reward distributions. At each step, pull an arm to get a reward and update beliefs. The fundamental tension: **exploit** the current best arm, or **explore** an uncertain arm to reduce uncertainty.
 
 **Upper Confidence Bound (UCB):** Add an exploration bonus proportional to uncertainty:
 
@@ -112,6 +112,18 @@ $$
 
 where $\pi_0$ is the logging policy and $\pi$ is the new policy being evaluated. Items the new policy would have chosen but the logging policy rarely showed get upweighted. Netflix and Lyft use IPS-style offline evaluation to estimate the lift from exploration strategies before committing to an A/B test.
 
+<Exercise id="diversity-cold-start-mmr" />
+
+<Exercise id="diversity-cold-start-bandit" />
+
+<Exercise id="diversity-cold-start-strategy" />
+
+## Common mistakes
+
+1. **Optimizing NDCG alone.** Accuracy-only ranking converges on the dominant taste cluster — measure coverage and intra-list diversity alongside relevance.
+2. **Onboarding with the most popular items.** Popular items are the least discriminative; ask about items that partition the preference space.
+3. **Evaluating a new policy only on logged data without propensities.** Naive offline replay is biased toward the logging policy; use IPS (or an A/B test).
+
 ## Key takeaways
 
 - **Cold start** requires falling back to content-based similarity (features, not interactions); meta-learning and explicit onboarding signals are the best tools for new users.
@@ -123,7 +135,3 @@ where $\pi_0$ is the logging policy and $\pi$ is the new policy being evaluated.
 - [**Session-Based & Real-Time Recommendations**](/courses/recommender-systems/04-session-based-and-realtime) — the sequential model that cold-start content embeddings plug into
 - [**Q-Learning**](/courses/reinforcement-learning/02-q-learning) — exploration/exploitation is the same problem as in RL
 - [**Ad Ranking & CTR Prediction**](/courses/recommender-systems/06-ad-ranking-and-ctr-prediction) — ad systems add budget and auction constraints on top of relevance
-
-<Exercise id="diversity-cold-start-mmr" />
-<Exercise id="diversity-cold-start-bandit" />
-<Exercise id="diversity-cold-start-strategy" />

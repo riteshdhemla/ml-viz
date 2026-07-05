@@ -10147,6 +10147,51 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The advantage is renormalized so ρ returns to 1", isCorrect: false },
     ],
   },
+  {
+    id: "recsys-quiz-session",
+    type: "multiple-choice",
+    question:
+      "A six-month jazz listener opens the app and starts browsing workout playlists. Which model responds correctly, and why?",
+    hint: "What signal does classical CF use, and what does a session model use?",
+    explanation:
+      "Collaborative filtering scores items from the long-term interaction history, so it keeps recommending jazz. A session-based model (GRU4Rec/SASRec) encodes the current click sequence, so the workout browsing immediately dominates the prediction. Current intent and historical preference are different signals — session models exist for exactly this gap.",
+    options: [
+      { id: "a", label: "A session-based sequence model — it reads the current click stream, not the historical profile", isCorrect: true },
+      { id: "b", label: "Matrix factorization — the user's latent factor already encodes workout taste", isCorrect: false },
+      { id: "c", label: "A content-based model — jazz and workout music share audio features", isCorrect: false },
+      { id: "d", label: "Neither — recommendations cannot change within a single session", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-mmr",
+    type: "multiple-choice",
+    question:
+      "Maximal Marginal Relevance re-ranks with score λ·relevance − (1−λ)·max-similarity-to-selected. What problem does the second term solve?",
+    hint: "What does a list of ten near-identical top-scoring items look like to the user?",
+    explanation:
+      "A pure relevance ranker returns many near-duplicates of the single best item. MMR's similarity penalty makes each next pick trade off relevance against redundancy with what's already selected, producing a diverse list. λ tunes the balance: λ=1 is pure relevance, lower λ forces more variety.",
+    options: [
+      { id: "a", label: "Redundancy — it penalizes items too similar to ones already selected, diversifying the list", isCorrect: true },
+      { id: "b", label: "Cold start — it boosts items with no interaction history", isCorrect: false },
+      { id: "c", label: "Position bias — it corrects for higher click rates in top slots", isCorrect: false },
+      { id: "d", label: "Budget pacing — it spreads impressions across the day", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-ecpm",
+    type: "multiple-choice",
+    question:
+      "Ad A bids $2.00 with predicted CTR 1%. Ad B bids $0.50 with predicted CTR 6%. Ranked by eCPM, which wins and why?",
+    hint: "eCPM = CTR × bid × 1000.",
+    explanation:
+      "eCPM_A = 0.01 × $2.00 × 1000 = $20; eCPM_B = 0.06 × $0.50 × 1000 = $30 — Ad B wins despite bidding 4× less, because expected revenue per impression is what the platform actually earns. This is why better CTR prediction directly increases auction revenue and why relevance and revenue are aligned.",
+    options: [
+      { id: "a", label: "Ad B — its expected revenue per impression ($30 eCPM) beats Ad A's ($20)", isCorrect: true },
+      { id: "b", label: "Ad A — the higher bid always wins a second-price auction", isCorrect: false },
+      { id: "c", label: "Ad A — CTR only breaks ties between equal bids", isCorrect: false },
+      { id: "d", label: "They tie — eCPM normalizes bids and CTR away", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
