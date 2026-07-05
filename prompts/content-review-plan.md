@@ -109,7 +109,8 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] gpu-programming <!-- reviewed + fixed 2026-07-05 -->
 
 ### Courses — applied / production
-- [ ] building-with-llms (13 lessons — consider splitting 01–06 / 07–13)
+- [x] building-with-llms: lessons 01–06 <!-- reviewed + fixed 2026-07-05; split from 13-lesson item -->
+- [ ] building-with-llms: lessons 07–13 + quiz
 - [ ] agent-design-patterns
 - [ ] fine-tuning-alignment
 - [ ] ml-in-practice (18 lessons — consider splitting 01–09 / 10–18)

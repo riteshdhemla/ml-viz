@@ -79,6 +79,20 @@ Agents compound errors. If each step is 95% reliable, ten steps are only $0.95^{
   An agent that browses or reads documents can ingest **malicious instructions** hidden in that content (indirect prompt injection) and then misuse its tools. Treat all tool inputs/outputs as untrusted — we tackle this directly in the next lesson.
 </Callout>
 
+## From loop to framework
+
+The ReAct loop above is the *idea*; production agents need that loop made explicit — bounded, branching, persistable, and inspectable. **LangGraph** is the dominant framework for this: it models the agent as a **stateful graph** (nodes call the LLM or run tools, conditional edges decide what comes next, and cycles let it re-plan), which turns the hand-written `while` loop into something you can checkpoint, pause for human approval, and debug. The deep dive builds a minimal version from scratch:
+
+<WikiLink slug="langgraph" title="LangGraph: Agents as State Graphs" />
+
+Two open protocols standardize how agents connect to the world so you don't hand-roll every integration — **MCP** for reaching tools and data, **A2A** for delegating to other agents:
+
+<WikiLink slug="agent-protocols-mcp-a2a" title="Agent Protocols: MCP & A2A" />
+
+<Exercise id="llm-agent-react" />
+
+<Exercise id="llm-agent-vs-chain" />
+
 ## Common mistakes
 
 1. **Unbounded loops** — runaway cost and latency.
@@ -93,20 +107,7 @@ Agents compound errors. If each step is 95% reliable, ten steps are only $0.95^{
 - **ReAct** iterates Thought → Action → Observation until a final Answer, enabling multi-step reasoning and self-correction.
 - Reliability needs **bounded loops, validation, least privilege, and human-in-the-loop**; agents also widen the security attack surface.
 
-## From loop to framework
-
-The ReAct loop above is the *idea*; production agents need that loop made explicit — bounded, branching, persistable, and inspectable. **LangGraph** is the dominant framework for this: it models the agent as a **stateful graph** (nodes call the LLM or run tools, conditional edges decide what comes next, and cycles let it re-plan), which turns the hand-written `while` loop into something you can checkpoint, pause for human approval, and debug. The deep dive builds a minimal version from scratch:
-
-<WikiLink slug="langgraph" title="LangGraph: Agents as State Graphs" />
-
-Two open protocols standardize how agents connect to the world so you don't hand-roll every integration — **MCP** for reaching tools and data, **A2A** for delegating to other agents:
-
-<WikiLink slug="agent-protocols-mcp-a2a" title="Agent Protocols: MCP & A2A" />
-
 ## Related concepts
 
 - [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the reasoning and the schemas agents are built on
 - [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — guardrails, observability, and serving agents in production
-
-<Exercise id="llm-agent-react" />
-<Exercise id="llm-agent-vs-chain" />
