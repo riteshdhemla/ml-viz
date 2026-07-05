@@ -1123,6 +1123,54 @@ current topic list).
 
 ---
 
+## generative-models <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 6 lessons + quiz. estimatedHours math ✓ (131 min × 2.5 / 60 = 5.46 → 5.5).
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 4.5 · 05: 4.5 · 06: 5
+
+Strong course with a clean narrative arc (paradigms → AE "not generative yet" →
+VAE fixes the holes → GAN alternative → diffusion overtakes → modern systems).
+All worked numbers verified: 2D Gaussian density 1/4π ≈ 0.0796; reparam
+z = 0.5 + 0.3·(−0.1) = 0.47 with ∂z/∂σ = ε; ViT 196 patches × 768 dims; CFG
+arithmetic 6.05/−2.45/3.5; Stable Diffusion 48× compression (786,432/16,384).
+Lesson 06 is a standout — every one of its five topics has a worked example.
+
+**Findings:**
+
+- **P2 (fixed): quiz skipped lessons 01 and 06.** The 5 fresh `genmodel-quiz-*`
+  ids covered VAE/GAN/diffusion only. Added `genmodel-quiz-implicit` (explicit
+  vs implicit density: VAE bounds p(x), GAN can only sample — lesson 01's central
+  distinction) and `genmodel-quiz-latent-diffusion` (why SD denoises 64×64×4
+  latents). Quiz description updated.
+- **P2 (fixed): exercise placement** — all 6 lessons stacked exercises after
+  Related concepts; moved before Common mistakes.
+- **P3 (fixed): CFG guidance-scale convention mismatch** in lesson 06 — the
+  lesson uses ε̂ = (1+w)ε_c − w·ε_∅ but labels w = 7.5 as "Stable Diffusion
+  default"; SD's `guidance_scale` s satisfies s = 1+w (s = 7.5 ⇒ w = 6.5).
+  Added a convention note and softened the table row. Code example is
+  self-consistent so left unchanged.
+- **P3 (fixed): lesson 05 Common-mistake cited classifier-free guidance**
+  before it is taught — added forward link to lesson 06.
+- **P3 (fixed): lesson 05 forward-process formula had no worked number** —
+  added the ᾱ_t = 0.5 → 0.707/0.707 blend example (plus 0.99 / 0.01 endpoints)
+  showing the closed form jumps to any noise level directly.
+- **P3 (noted, not applied): four family-comparison tables** (lessons 01, 04,
+  05, 06) with overlapping rows. Each lands its own lesson's argument at
+  increasing depth, so left in place; lesson 06's is the canonical full version.
+- **no issues:** notebook scaffolds present in all 6; all 24 exercise ids
+  resolve (incl. `slider-vae-beta-strength`); viz wiring (LatentSpaceViz,
+  GANTrainingViz, DiffusionViz) matches registry; DDIM correctly extracted to
+  wiki with summary + WikiLink; code snippets use placeholder `dataloader`
+  convention consistently (no crash-in-context pretenders).
+
+**Applied in this iteration:** 2 new quiz exercises + quiz mdx; exercise
+placement in 6 lessons; CFG convention note; CFG forward link and ᾱ worked
+number in lesson 05; CLAUDE.md roadmap row ("5 lessons" → "6 lessons + quiz",
+topics updated).
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
