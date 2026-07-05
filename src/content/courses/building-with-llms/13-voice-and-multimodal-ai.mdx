@@ -121,6 +121,19 @@ A customer support agent with multimodal RAG can answer "Why is my order photo d
 | **Multilingual** | Whisper handles 99+ languages; TTS must be language-matched | VLMs have weaker non-English text OCR |
 | **Safety** | Jailbreaks via voice are harder to detect than text | Image-based prompt injection possible (text in image) |
 
+<Exercise id="voice-multimodal-pipeline" />
+
+<Exercise id="voice-multimodal-search" />
+
+<Exercise id="voice-multimodal-vlm" />
+
+## Common mistakes
+
+1. **Batch-mode ASR in a live conversation.** Waiting for the full utterance blows the latency budget; stream STT so the LLM starts before the user finishes.
+2. **Ignoring image-based prompt injection.** Text rendered inside an image is still instructions to a VLM; screen images like any untrusted input.
+3. **Treating image tokens as free.** An image costs ~512–2,000 tokens per call; resolution and image count dominate multimodal cost.
+4. **Separate embedding spaces per modality.** Cross-modal search only works if text and images share one space (CLIP-style); two disjoint indexes can't answer "same style but in blue."
+
 ## Key takeaways
 
 - **Voice AI** is a pipeline: VAD → STT (streaming Whisper < 300 ms) → LLM → TTS; end-to-end speech models eliminate the text intermediate but are harder to tool-augment.
@@ -133,7 +146,5 @@ A customer support agent with multimodal RAG can answer "Why is my order photo d
 - [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — visual search is retrieval over image embeddings
 - [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — voice AI agents use the same tool-calling patterns as text agents
 - [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the backbone of image generation in Instacart's PIXEL
-
-<Exercise id="voice-multimodal-pipeline" />
-<Exercise id="voice-multimodal-search" />
-<Exercise id="voice-multimodal-vlm" />
+- [**Vision-Language Models**](/courses/computer-vision/04-vision-language-models) — the CLIP/BLIP-2 foundations of the VLM architecture sketched here
+- [**Speech Recognition**](/courses/speech-audio/02-speech-recognition) — how Whisper's encoder–decoder ASR actually works

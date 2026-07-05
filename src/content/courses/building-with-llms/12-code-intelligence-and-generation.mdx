@@ -128,6 +128,19 @@ Open pull request with changes
 
 The debugging sub-loop — read error → revise → re-test — is the key differentiator from single-shot code generation. GitHub's benchmarks show that models with tool-use (file read, shell execution) solve 2-3× more software engineering tasks than completion-only models.
 
+<Exercise id="code-gen-fim" />
+
+<Exercise id="code-gen-review" />
+
+<Exercise id="code-gen-agent-loop" />
+
+## Common mistakes
+
+1. **Chunking code by character count.** Splitting mid-function destroys syntactic context; chunk by AST node (tree-sitter) so each unit is a whole function/class.
+2. **Shipping low-precision review bots.** A reviewer that's wrong 30% of the time trains developers to ignore it; per-rule precision > 90% or don't ship the rule.
+3. **Keeping generated tests that never ran.** A test is only evidence if it executes and passes; generate many, filter by execution.
+4. **Single-shot generation for multi-file tasks.** Without the execute→debug loop, error-compounding kills success rates; give the agent tools and iteration.
+
 ## Key takeaways
 
 - **Code search** uses biencoder embeddings (UniXcoder, CodeBERT) over AST-chunked code; repo-level retrieval dramatically improves completion quality.
@@ -141,7 +154,3 @@ The debugging sub-loop — read error → revise → re-test — is the key diff
 - [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the agentic coding loop uses the same tool-use primitives
 - [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — code search is retrieval over code embeddings
 - [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — repo-level context retrieval is RAG applied to code
-
-<Exercise id="code-gen-fim" />
-<Exercise id="code-gen-review" />
-<Exercise id="code-gen-agent-loop" />
