@@ -99,6 +99,12 @@ An "ML platform" — Vertex AI, SageMaker, Databricks, the in-house thing every 
 
 A team's first reflex should be to *integrate* rather than *build*. Most of these layers have credible managed offerings now; the value of building in-house is real only when your scale, security posture, or specialisation makes the off-the-shelf product a bad fit. The teams that go their own way too early typically discover, two years in, that they've built a worse copy of MLflow with a worse copy of Airflow on top of a worse copy of Argo.
 
+<Exercise id="ml-practice-mlops-queue-wait" />
+
+<Exercise id="ml-practice-mlops-orchestrator" />
+
+<Exercise id="ml-practice-mlops-storage-compute" />
+
 ## Common mistakes
 
 1. **Local-disk intermediates.** Writing step outputs to the worker's local disk works in dev and dies in prod. Every intermediate artefact belongs in object storage, addressable by run id; this is what makes pipelines restartable and parallelisable.
@@ -124,9 +130,3 @@ A team's first reflex should be to *integrate* rather than *build*. Most of thes
 - [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — the serving layer of the ML platform. Whatever pattern you choose (batch, online, edge), the infrastructure described here is what gets the model from the registry to the serving fleet.
 - [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — once the platform is running, monitoring is the feedback loop that tells you whether the pipelines, the data, and the models are healthy. The dashboard sits on top of the storage/compute substrate from this lesson.
 - [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the data plane (warehouse, feature store) is the foundation of the ML platform. The orchestrator usually starts its work at the ETL boundary defined there.
-
-<Exercise id="ml-practice-mlops-queue-wait" />
-
-<Exercise id="ml-practice-mlops-orchestrator" />
-
-<Exercise id="ml-practice-mlops-storage-compute" />

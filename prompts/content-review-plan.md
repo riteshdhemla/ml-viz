@@ -114,7 +114,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] agent-design-patterns <!-- reviewed + fixed 2026-07-05 -->
 - [x] fine-tuning-alignment <!-- reviewed + fixed 2026-07-05 -->
 - [x] ml-in-practice: lessons 01–09 <!-- reviewed + fixed 2026-07-05; split from 18-lesson item -->
-- [ ] ml-in-practice: lessons 10–21 + quiz
+- [x] ml-in-practice: lessons 10–21 + quiz <!-- reviewed + fixed 2026-07-05 -->
 
 ### Wiki batches (grouped by index topic)
 - [ ] wiki: probability (10 pages)
