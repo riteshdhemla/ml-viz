@@ -101,7 +101,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] generative-models <!-- reviewed + fixed 2026-07-05 -->
 - [x] graph-neural-networks <!-- reviewed + fixed 2026-07-05 -->
 - [x] computer-vision <!-- reviewed + fixed 2026-07-05 -->
-- [ ] nlp
+- [x] nlp <!-- reviewed + fixed 2026-07-05 -->
 - [ ] speech-audio
 - [ ] graphical-models
 - [ ] reinforcement-learning

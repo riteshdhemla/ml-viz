@@ -1251,6 +1251,56 @@ CLAUDE.md roadmap row.
 
 ---
 
+## nlp <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 7 lessons + quiz. estimatedHours math ✓ (131 min × 2.5 / 60 = 5.46 → 5.5).
+
+**Grasp scores:** 01: 5 · 02: 4.5 · 03: 4.5 · 04: 5 · 05: 5 · 06: 5 · 07: 5
+
+A very strong course, clearly two generations of content: 01–03 are the compact
+older core, 04–07 are recent additions written to the mature house style
+(production framing, honest caveats, explicit cross-course positioning). Lesson 05
+(decoding) and 06 (BERTopic) are among the best on the site — 05's determinism
+section (non-associative float math, batch-size sensitivity) and 06's worked
+c-TF-IDF trace with the honest "IDF down-weighting alone does NOT evict 'the'"
+analysis (60×0.97 ≈ 58 > 18×2.7 ≈ 49, verified) are exemplary. Lesson 04's
+"we won't re-derive self-attention here" is the correct-deferral pattern.
+Worked math verified: TF-IDF 0.06 × log(1.5) = 0.024; c-TF-IDF factors 2.7/0.97;
+MLM 80/10/10 split; length-normalisation formula.
+
+**Findings:**
+
+- **P2 (fixed): quiz covered only lessons 01–03.** The 5 fresh `nlp-quiz-*` ids
+  test BPE/GloVe/attention/NSP/transfer; lessons 04–07 (taxonomy, decoding,
+  BERTopic, embedding training) had zero quiz coverage. Added 4 fresh exercises:
+  `nlp-quiz-family` (encoder for embeddings + decoder for chat), 
+  `nlp-quiz-beam-openended` (mode collapse — typical vs most-likely),
+  `nlp-quiz-reduce-before-cluster` (density breaks in 768D),
+  `nlp-quiz-bi-vs-cross` (precomputable vectors vs per-pair forward pass).
+  Quiz description updated.
+- **P2 (fixed): course missing from CLAUDE.md roadmap** — added row.
+- **P2 (fixed): exercise placement** — all 7 lessons stacked exercises after
+  Related concepts; moved before Common mistakes.
+- **checked, no seam:** nlp/05 (decoding) vs building-with-llms — bwl has no
+  dedicated decoding lesson (only a brief temperature/top-p mention in
+  01-prompt-engineering) and nlp/05 explicitly cross-links as "the deeper
+  treatment". Correct ownership. NOTE for building-with-llms review: the
+  CLAUDE.md roadmap row for that course lists "decoding/sampling" as a topic —
+  verify/update when reviewing it.
+- **P3 (noted, not applied):** lesson 02's negative-sampling formula has no
+  worked number (notebook covers it); lesson 03's scaling table gives ALBERT
+  "12M" params (ALBERT-base is 12M — correct, just surprisingly small next to
+  its neighbors; left as is).
+- **no issues:** all 21 lesson exercise ids + 5 quiz ids resolve; notebook
+  scaffolds present in all 7; WikiLinks (bpe-tokenization, glove-training) at
+  correct extraction points; no forward references — 04 builds on 03, 05 on 04,
+  07 explicitly deepens building-with-llms/03.
+
+**Applied in this iteration:** 4 new quiz exercises + quiz description; exercise
+placement in 7 lessons; CLAUDE.md roadmap row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

@@ -138,6 +138,12 @@ The closest you get to bit-exact in practice is: **(a)** fix the random seed and
 "Temperature 0" guarantees that *sampling* reduces to argmax. It does **not** guarantee that the argmax itself is identical across machines, batches, or kernel versions. If two of your eval runs give different outputs on the same prompt at $T = 0$, you have not found a bug — you have rediscovered non-associative float math.
 </Callout>
 
+<Exercise id="decoding-greedy-vs-beam" />
+
+<Exercise id="decoding-top-p-mechanics" />
+
+<Exercise id="decoding-determinism-trap" />
+
 ## Common mistakes
 
 1. **Beam search on open-ended generation.** Mode collapse, repetitive output, low diversity. Use sampling. Beam search is for translation/summarisation/code, not chat.
@@ -162,7 +168,3 @@ The closest you get to bit-exact in practice is: **(a)** fix the random seed and
 - [**LLM Model Taxonomy**](/courses/nlp/04-llm-model-taxonomy) — which families even *have* a next-token distribution to decode from (decoder-only and encoder-decoder do; encoder-only does not)
 - [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering) — the user-facing introduction to temperature and top-p; this lesson is the deeper treatment
 - [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — the pretraining that produces the next-token distribution every decoder operates on
-
-<Exercise id="decoding-greedy-vs-beam" />
-<Exercise id="decoding-top-p-mechanics" />
-<Exercise id="decoding-determinism-trap" />

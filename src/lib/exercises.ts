@@ -10042,6 +10042,66 @@ const allExercises: Exercise[] = [
       { id: "d", label: "They prevent overfitting of the final linear probe, nothing more", isCorrect: false },
     ],
   },
+  {
+    id: "nlp-quiz-family",
+    type: "multiple-choice",
+    question:
+      "You need to embed 10M support tickets for semantic search, and separately need a chatbot that drafts replies. Which model families fit?",
+    hint: "Representations vs generation — which mask does each need?",
+    explanation:
+      "Encoder-only models (BERT family) produce the best embeddings — bidirectional context, small, cheap to host. Free-form generation needs a causal mask and a next-token head, i.e. a decoder-only model. The two families are complements: encoder for the retrieval half, decoder for the generation half.",
+    options: [
+      { id: "a", label: "Encoder-only for the embeddings, decoder-only for the chatbot", isCorrect: true },
+      { id: "b", label: "One decoder-only model for both — it's strictly more general", isCorrect: false },
+      { id: "c", label: "Encoder-only for both — BERT can also generate replies", isCorrect: false },
+      { id: "d", label: "Encoder-decoder for both, since it contains both stacks", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-beam-openended",
+    type: "multiple-choice",
+    question:
+      "Why does beam search — which finds higher-probability sequences than sampling — produce worse open-ended chat and stories?",
+    hint: "Is the most likely string of English also typical English?",
+    explanation:
+      "Human language is full of locally low-probability choices that make text interesting. Beam search optimizes for the single most likely sequence and mode-collapses into repetitive, unnaturally bland text (Holtzman et al. 2019). For open-ended tasks you want a typical sample, not the mode — hence temperature + top-p. Beam search stays the right tool for translation and other one-right-answer tasks.",
+    options: [
+      { id: "a", label: "The most likely sequence is repetitive and bland — you want typical text, not the mode", isCorrect: true },
+      { id: "b", label: "Beam search cannot handle vocabularies over 30k tokens", isCorrect: false },
+      { id: "c", label: "Beam search ignores the model's probabilities entirely", isCorrect: false },
+      { id: "d", label: "It's only slower — with enough beams the text quality matches sampling", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-reduce-before-cluster",
+    type: "multiple-choice",
+    question:
+      "In the BERTopic pipeline, why is UMAP dimensionality reduction run before HDBSCAN clustering rather than clustering the raw 768-dim embeddings?",
+    hint: "What happens to pairwise distances as dimension grows?",
+    explanation:
+      "In high dimensions distances concentrate — everything is roughly equidistant — so density-based clustering can't find dense regions and HDBSCAN returns one giant cluster plus noise. Reducing to ~5 dimensions restores meaningful density while preserving the semantic neighborhoods, which is exactly what the clustering stage needs.",
+    options: [
+      { id: "a", label: "Density estimates break in high dimensions — distances concentrate and clusters vanish", isCorrect: true },
+      { id: "b", label: "HDBSCAN's implementation only accepts inputs with at most 10 features", isCorrect: false },
+      { id: "c", label: "UMAP adds the topic labels that HDBSCAN needs as supervision", isCorrect: false },
+      { id: "d", label: "It's purely a speed optimization; clustering raw embeddings gives identical topics", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-bi-vs-cross",
+    type: "multiple-choice",
+    question:
+      "Why do retrieval systems use a bi-encoder for first-stage search and save the more accurate cross-encoder for reranking only?",
+    hint: "Which architecture lets you precompute document vectors offline?",
+    explanation:
+      "A bi-encoder embeds each document independently, so the corpus is embedded once offline and a query needs one forward pass plus an ANN lookup. A cross-encoder must run a forward pass on every (query, document) pair — accurate but O(n) per query. So the bi-encoder retrieves a top-k candidate set cheaply and the cross-encoder re-scores just those k.",
+    options: [
+      { id: "a", label: "Bi-encoders allow precomputed document vectors; cross-encoders need a forward pass per pair", isCorrect: true },
+      { id: "b", label: "Cross-encoders produce embeddings that are too large to store", isCorrect: false },
+      { id: "c", label: "Bi-encoders are strictly more accurate as well as faster", isCorrect: false },
+      { id: "d", label: "Cross-encoders only work on pairs of identical length", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
