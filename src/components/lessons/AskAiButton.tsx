@@ -42,6 +42,16 @@ export function AskAiButton({ prompt, className }: Props) {
     }
   }
 
+  // Gemini's web app can't be prefilled from the URL, so copy the prompt to the
+  // clipboard as the user opens Gemini — they just paste (⌘/Ctrl+V).
+  function copyForGemini() {
+    try {
+      void navigator.clipboard?.writeText(prompt);
+    } catch {
+      // Clipboard unavailable — the new tab still opens; nothing to do.
+    }
+  }
+
   return (
     <div ref={ref} className={`relative ${className ?? ""}`}>
       <button
@@ -87,11 +97,18 @@ export function AskAiButton({ prompt, className }: Props) {
             target="_blank"
             rel="noopener noreferrer"
             role="menuitem"
-            onClick={() => setOpen(false)}
+            title="The prompt is copied to your clipboard — paste it into Gemini"
+            onClick={() => {
+              copyForGemini();
+              setOpen(false);
+            }}
             className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-surface-elevated hover:text-white transition-colors"
           >
-            Ask Gemini
-            <ExternalLink size={13} className="text-slate-500" />
+            <span className="flex flex-col">
+              <span>Ask Gemini</span>
+              <span className="text-[11px] text-slate-500">prompt copied — paste it in</span>
+            </span>
+            <ExternalLink size={13} className="text-slate-500 shrink-0" />
           </a>
           <button
             type="button"

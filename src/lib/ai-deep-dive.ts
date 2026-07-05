@@ -81,7 +81,13 @@ export function getChatGptUrl(prompt: string): string {
   return `https://chatgpt.com/?q=${encodeURIComponent(prompt)}`;
 }
 
-/** Open Gemini with the prompt pre-filled. */
+/**
+ * Open Gemini. Unlike Claude/ChatGPT, the Gemini web app does **not** natively
+ * prefill from the URL — the `?prompt=` param is only honoured by a browser
+ * extension (e.g. "Gemini URL Prompt"). The UI therefore also copies the prompt
+ * to the clipboard so the user can paste it; the param is a bonus for the
+ * minority who have such an extension.
+ */
 export function getGeminiUrl(prompt: string): string {
-  return `https://gemini.google.com/app?q=${encodeURIComponent(prompt)}`;
+  return `https://gemini.google.com/app?prompt=${encodeURIComponent(prompt)}`;
 }
