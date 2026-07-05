@@ -1406,6 +1406,50 @@ lesson 05; CLAUDE.md roadmap row.
 
 ---
 
+## recommender-systems <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 6 lessons + quiz. estimatedHours was **wrong** (5; 111 min × 2.5 / 60
+= 4.63 → 4.5) — fixed.
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 4.5 · 05: 4.5 · 06: 4.5
+
+Strong applied course with real production texture (DoorDash pipeline walk-
+through, Netflix warm-up, LinkedIn PI-controller pacing, Criteo scale numbers).
+Lessons 01–03 form a tight arc (problem → MF → two-tower funnel) with correct
+cross-course anchoring (SVD → linear-algebra, in-batch negatives → nlp/07 and
+CLIP, ANN → vector-databases wiki). eCPM/auction/pacing coverage in 06 is
+unusually complete for course material.
+
+**Findings:**
+
+- **P2 (fixed): quiz skipped lessons 04–06.** Added `recsys-quiz-session`
+  (session signal beats historical profile), `recsys-quiz-mmr` (similarity
+  penalty = de-redundancy), `recsys-quiz-ecpm` (worked eCPM comparison $20 vs
+  $30). Quiz description updated.
+- **P2 (fixed): estimatedHours 5 → 4.5** per the roadmap formula.
+- **P2 (fixed): lessons 04–06 had no Common mistakes sections** (01–03 do) —
+  added 3 entries each (intent-vs-profile, training-serving skew, pure
+  exploitation; NDCG-only optimization, popular-item onboarding, propensity-free
+  offline eval; bid-only ranking, uncalibrated scores, position confounding).
+- **P2 (fixed): course missing from CLAUDE.md roadmap** — added row.
+- **P3 (fixed): NDCG had no worked number** — added top-3 example (DCG 1.5,
+  IDCG 1.631, NDCG 0.92).
+- **P3 (fixed): typo** "Warm-up stratey" → "strategy" (lesson 05).
+- **P3 (fixed): UCB/Thompson re-taught in lesson 05** overlapping rl/05 —
+  added pointer link to the fuller RL treatment (kept the recap; it serves the
+  bandit-for-recsys framing).
+- **P2 (fixed): exercise placement** — all 6 lessons; moved before end-matter.
+- **no issues:** all 18 lesson + 8 quiz exercise ids resolve; notebook scaffolds
+  in all 6; MatrixFactorizationViz wiring matches registry; WikiLinks
+  (vector-databases, session-based-recommendations, cold-start-problem,
+  ad-auction-and-bidding) resolve.
+
+**Applied in this iteration:** 3 new quiz exercises + quiz description; hours
+fix; 3 Common mistakes sections; NDCG worked example; typo; RL pointer;
+exercise placement; CLAUDE.md roadmap row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

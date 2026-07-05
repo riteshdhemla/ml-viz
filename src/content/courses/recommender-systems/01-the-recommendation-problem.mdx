@@ -70,9 +70,17 @@ $$
 
 where $\text{IDCG}$ is the DCG of the ideal (perfectly sorted) ranking, so NDCG $\in [0,1]$. **MRR** (mean reciprocal rank) and **MAP** are also common.
 
+**Worked example.** Top-3 list where items 1 and 3 are relevant ($\text{rel} = 1$) and item 2 is not: $\text{DCG@3} = \tfrac{1}{\log_2 2} + 0 + \tfrac{1}{\log_2 4} = 1 + 0.5 = 1.5$. The ideal ordering puts both relevant items first: $\text{IDCG@3} = 1 + \tfrac{1}{\log_2 3} = 1.631$. So $\text{NDCG@3} = 1.5 / 1.631 = 0.92$ — the misplaced second slot costs 8%.
+
 <Callout type="tip" title="Why position-aware metrics?">
   Two recommenders can have identical recall@10 yet very different user experience if one puts the relevant item at rank 1 and the other at rank 10. NDCG and MRR capture that the *order* within the list matters — the top slot is worth far more than the tenth.
 </Callout>
+
+<Exercise id="recsys-feedback" />
+
+<Exercise id="recsys-cold-start" />
+
+<Exercise id="recsys-ndcg" />
 
 ## Common mistakes
 
@@ -93,7 +101,3 @@ where $\text{IDCG}$ is the DCG of the ideal (perfectly sorted) ranking, so NDCG 
 - [**Matrix Factorization**](/courses/recommender-systems/02-matrix-factorization) — the model-based CF workhorse that learns latent user/item factors
 - [**KNN**](/courses/knn-decision-trees/01-knn) — the nearest-neighbor idea behind memory-based collaborative filtering
 - [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — precision/recall, which the top-k ranking metrics extend
-
-<Exercise id="recsys-feedback" />
-<Exercise id="recsys-cold-start" />
-<Exercise id="recsys-ndcg" />

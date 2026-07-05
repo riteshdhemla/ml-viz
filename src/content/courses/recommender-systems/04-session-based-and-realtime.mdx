@@ -98,6 +98,18 @@ In practice, platforms implement a lightweight version: serve the ranking model'
 
 No batch job runs between user actions — the system responds in near-real time.
 
+<Exercise id="session-recsys-model" />
+
+<Exercise id="session-recsys-bandit" />
+
+<Exercise id="session-recsys-pipeline" />
+
+## Common mistakes
+
+1. **Feeding long-term profiles when intent just changed.** If the session signal disagrees with the historical profile, the session should win — that is the whole point of session-based models.
+2. **Computing real-time features differently at train and serve time.** Even small windowing differences cause silent training-serving skew; share one feature library.
+3. **Serving pure exploitation.** Without an exploration slot the model never collects data outside its own recommendations, and offline evaluation becomes biased.
+
 ## Key takeaways
 
 - **Session = ordered click sequence** within a time window; sequential models outperform CF when current intent differs from historical preferences.
@@ -110,7 +122,3 @@ No batch job runs between user actions — the system responds in near-real time
 - [**Deep & Two-Tower Recommenders**](/courses/recommender-systems/03-deep-and-two-tower) — the retrieval model whose user embedding the session encoder can replace
 - [**Feature Stores**](/courses/ml-in-practice/17-feature-stores) — the infrastructure that serves session features at low latency
 - [**Reinforcement Learning**](/courses/reinforcement-learning/01-markov-decision-processes) — the theoretical home of exploration vs exploitation
-
-<Exercise id="session-recsys-model" />
-<Exercise id="session-recsys-bandit" />
-<Exercise id="session-recsys-pipeline" />

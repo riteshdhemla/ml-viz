@@ -124,6 +124,18 @@ Feedback loop: retrain CTR model daily/hourly
 
 Pinterest runs this pipeline at ~200 billion monthly ad impressions; Instacart's sponsored products system serves results in < 80 ms.
 
+<Exercise id="ad-ranking-ctr-objective" />
+
+<Exercise id="ad-ranking-auction" />
+
+<Exercise id="ad-ranking-deepfm" />
+
+## Common mistakes
+
+1. **Ranking by bid alone.** Ignoring predicted CTR fills premium slots with irrelevant ads and destroys long-term revenue; rank by eCPM.
+2. **Using uncalibrated scores in the auction.** eCPM math assumes true probabilities; apply Platt scaling (or isotonic regression) before multiplying by bid.
+3. **Training on position-confounded clicks.** Include position as a training feature and freeze it at serving time, or the model learns "slot 1 is clickable" instead of ad quality.
+
 ## Key takeaways
 
 - Ads are ranked by **eCPM = predicted CTR × bid**, aligning ML quality with platform revenue.
@@ -136,7 +148,3 @@ Pinterest runs this pipeline at ~200 billion monthly ad impressions; Instacart's
 - [**Deep & Two-Tower Recommenders**](/courses/recommender-systems/03-deep-and-two-tower) — the same retrieval funnel that candidate ads come through
 - [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — the output head of every CTR model
 - [**Calibration & Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — why raw model scores need calibration before use in auctions
-
-<Exercise id="ad-ranking-ctr-objective" />
-<Exercise id="ad-ranking-auction" />
-<Exercise id="ad-ranking-deepfm" />

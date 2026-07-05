@@ -338,6 +338,7 @@ surface-border   — borders
 - [x] **Computer Vision** — object detection (anchors/YOLO/FPN/NMS), segmentation (U-Net/Mask R-CNN), backbones, vision-language models (CLIP/BLIP-2), self-supervised learning *(course + 5 lessons + quiz)*
 - [x] **NLP** — text preprocessing & BPE, word embeddings, seq2seq→BERT, LLM taxonomy, decoding & sampling, BERTopic, training embedding models *(course + 7 lessons + quiz)*
 - [x] **Speech & Audio ML** — waveforms/STFT/mel spectrograms/MFCC, speech recognition (CTC, seq2seq, Whisper, WER) *(course + 2 lessons + quiz)*
+- [x] **Recommender Systems** — the recommendation problem & ranking metrics, matrix factorization, two-tower retrieval, session-based & real-time, diversity/cold-start/exploration, ad ranking & CTR *(course + 6 lessons + quiz)*
 
 ### Reinforcement Learning
 - [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, policy gradient & actor-critic, exploration & model-based RL, PPO→RLHF bridge *(course + 6 lessons + quiz)*
