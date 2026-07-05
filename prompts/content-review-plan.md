@@ -120,7 +120,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] wiki: probability (10 pages) <!-- reviewed + fixed 2026-07-05 -->
 - [x] wiki: supervised-learning (8 pages) <!-- reviewed + fixed 2026-07-05 -->
 - [x] wiki: neural-networks (8 pages) <!-- reviewed + fixed 2026-07-05 -->
-- [ ] wiki: time-series (5 pages)
+- [x] wiki: time-series (5 pages) <!-- reviewed + fixed 2026-07-05 -->
 - [ ] wiki: agents + building-with-llms (7 pages: agent-observability, agent-protocols-mcp-a2a, langgraph, sub-agent-orchestration, langfuse-and-opentelemetry, llm-as-judge, text-to-sql)
 - [ ] wiki: reinforcement-learning + graphical-models (6 pages)
 - [ ] wiki: nlp + transformers (7 pages)
