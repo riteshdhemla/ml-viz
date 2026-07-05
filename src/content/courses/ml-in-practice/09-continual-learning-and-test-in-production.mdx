@@ -115,6 +115,12 @@ Each gate has objective thresholds before you opened the candidate; you commit t
 
 Continual learning closes a loop the model is now part of: the *retrained* model's training data is shaped by the *previous* model's outputs. A recommender that ranked item A high last week sees more clicks on A this week — and trains on that data, ranking A even higher next week. Outcomes you never let the previous model show are never observed and so are absent from training data. This selection bias drives popularity collapse, filter bubbles, and slow degradation on the long tail. Standard mitigations: explore via bandits (force some impressions on long-tail items), use randomised baselines (retain a small fraction of uniformly-random traffic as a counterfactual), and *log everything pre-filter* so the next model can in principle learn the parts of the input distribution the current model hid.
 
+<Exercise id="rollout-canary-vs-ab" />
+
+<Exercise id="rollout-shadow" />
+
+<Exercise id="rollout-bandit-regret" />
+
 ## Common mistakes
 
 1. **Treating 'better offline metric' as 'ship it.'** Offline cross-entropy on shadow traffic is a proxy. Users' actual behaviour against the candidate's outputs is the only metric that ground-truths the ship decision.
@@ -140,9 +146,3 @@ Continual learning closes a loop the model is now part of: the *retrained* model
 - [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems lens that asks "what happens when something goes wrong." A rollout is a pre-arranged answer to "the candidate model goes wrong"; this lesson is the playbook.
 - [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — once a candidate has passed all four gates and is ramping to 100 %, the serving-pattern and compression choices from that lesson are what determine its $/query and tail latency.
 - [**LLM Evaluation**](/courses/model-evaluation/04-llm-evaluation) — for LLM-shaped products the A/B's primary metric is often pairwise human preference; Bradley–Terry and Elo formalise that comparison and are the dual of the user-behaviour metric this lesson uses.
-
-<Exercise id="rollout-canary-vs-ab" />
-
-<Exercise id="rollout-shadow" />
-
-<Exercise id="rollout-bandit-regret" />

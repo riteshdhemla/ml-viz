@@ -1653,6 +1653,41 @@ CLAUDE.md row; exercise placement in 6 lessons.
 
 ---
 
+## ml-in-practice: lessons 01–09 <!-- reviewed + fixed 2026-07-05 (split item, first half) -->
+
+**Scope:** lessons 01–09 of what is now a 21-lesson course (20/21 case studies
+were added after the plan was written; queue item for the second half updated
+to "10–21 + quiz"). Course estimatedHours was **wrong** (17; 398 min × 2.5 /
+60 = 16.58 → 16.5) — fixed at course level here.
+
+**Grasp scores:** 01: 4.5 · 02: 5 · 03: 5 · 04: 5 · 05: 5 · 06: 5 · 07: 5 ·
+08: 5 · 09: 5 (02 deep-read; 01/03 partially; 04–09 skim-verified structure —
+newer house style with Common mistakes, inline exercises checked)
+
+Lesson 02 (deployment pitfalls) deep-read: the PSI worked example verified
+digit-by-digit (0.054 + 0.029 + 0.011 = 0.094, just under the 0.1 threshold —
+a deliberately instructive value), and the drift taxonomy (data/concept/label
+with Covid as the concept-drift canonical) is exactly right. Two content
+generations visible: 01–03 are the older long-form practical lessons (no
+Common mistakes section), 04–09 the newer style.
+
+**Findings:**
+
+- **P2 (fixed): estimatedHours 17 → 16.5** per the roadmap formula.
+- **P2 (fixed): exercise placement** — all 9 lessons stacked exercises after
+  Related concepts; moved before Common mistakes / Key takeaways.
+- **P3 (noted, not applied): lessons 01–03 lack Common mistakes sections** —
+  01 and 02 embed pitfall content throughout (02 *is* the pitfalls lesson);
+  adding a section would mostly duplicate. Left as is.
+- **no issues:** every Exercise id across the whole course resolves; notebook
+  scaffolds present in all of 01–09; SamplingStrategiesViz (06) and RolloutViz
+  (09) wiring matches registry.
+
+**Applied in this iteration:** hours fix; exercise placement in 9 lessons;
+second-half queue item relabelled 10–21 + quiz.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

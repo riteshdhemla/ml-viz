@@ -129,6 +129,12 @@ The single biggest lever on production ML reliability is whether the *upstream* 
 
 The drift-detection mechanics in the [deployment pitfalls lesson](/courses/ml-in-practice/02-deployment-pitfalls) all rely on these contracts existing. You cannot meaningfully alert "feature $f$ drifted" if the upstream team is allowed to silently rename the field that produces $f$.
 
+<Exercise id="data-row-vs-column" />
+
+<Exercise id="data-oltp-vs-olap" />
+
+<Exercise id="data-batch-vs-stream" />
+
 ## Common mistakes
 
 1. **Training on a row format and being surprised at the cost.** Reading a CSV or JSON dump of a billion-row training set takes 50x longer than reading the same data in Parquet. The fix is one `df.to_parquet(...)` line; most teams discover it after burning a six-figure cloud bill.
@@ -150,7 +156,3 @@ The drift-detection mechanics in the [deployment pitfalls lesson](/courses/ml-in
 - [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and drift are downstream symptoms of the data-contract and batch-vs-stream design decisions in this lesson.
 - [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering) — the features your model trains on are computed in *this* infrastructure; whether they reproduce at inference time depends on which storage layer (batch warehouse vs streaming feature store) they came from.
 - [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — this lesson is the data-layer detail behind the "sketch the system before training" step. You cannot draw the napkin diagram without knowing what an OLTP-to-OLAP arrow is.
-
-<Exercise id="data-row-vs-column" />
-<Exercise id="data-oltp-vs-olap" />
-<Exercise id="data-batch-vs-stream" />
