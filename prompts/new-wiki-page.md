@@ -29,12 +29,26 @@ estimatedMinutes: N
 ---
 ```
 
+> ⚠️ **Reciprocity rule (most common review defect).** Every lesson you list in
+> `relatedLessons` renders in this page's **"Referenced by"** footer — an
+> assertion that the lesson references this page. So each listed lesson **must**
+> contain a link back here (a `<WikiLink slug="...">` or a `/wiki/[slug]`
+> markdown link, usually in its "Related concepts" section). If a lesson won't
+> link back, don't list it. `wiki-integrity.test.ts` checks only that the
+> lessons *exist*, **not** that they link back — this reciprocity is on you.
+
 **Content requirements:**
 - Full algorithm procedure as numbered steps — every step explicit
 - At least one complete worked trace with concrete numbers
 - LaTeX math (`$$...$$` display, `$...$` inline)
 - A `<Callout>` for the key insight or common pitfall
-- "Related concepts" section linking back to lessons with plain markdown links
+- **A "## Related concepts" section is required** (not just the auto footer) —
+  link every `relatedLessons` host plus 1–2 sibling wiki pages with plain
+  markdown links. Pages that ship without this section are the #2 review defect.
+- **Hand-verify every worked-example number**, and keep the prose trace
+  consistent with any embedded Python — recompute each step yourself. Numeric
+  slips (an off-by-2× cache figure, a merge trace that mutates the wrong token,
+  a `^100` power that's ~5% off) were the main correctness defects found in review.
 - Visualization components from `mdxComponents.tsx` are available if relevant
 
 **Companion notebook:** `notebooks/wiki/[kebab-slug].ipynb`
