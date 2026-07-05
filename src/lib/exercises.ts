@@ -10012,6 +10012,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "CLIP text encoders can only attend to 64×64 inputs", isCorrect: false },
     ],
   },
+  {
+    id: "cv-quiz-clip",
+    type: "multiple-choice",
+    question:
+      "CLIP classifies images into 1,000 labels it was never trained on. What makes this zero-shot classification possible?",
+    hint: "Where do the image embedding and the prompt embeddings live?",
+    explanation:
+      "CLIP's contrastive training puts images and captions into one shared, L2-normalized embedding space. Classification becomes retrieval: embed 'a photo of a {label}' for every candidate label and pick the one whose text embedding has the highest cosine similarity with the image embedding — no classifier head, no ImageNet labels.",
+    options: [
+      { id: "a", label: "Images and text prompts share one embedding space, so classification is a cosine-similarity lookup", isCorrect: true },
+      { id: "b", label: "CLIP secretly contains a 1,000-way classifier head trained on ImageNet", isCorrect: false },
+      { id: "c", label: "The ViT encoder reads the label text rendered inside the image", isCorrect: false },
+      { id: "d", label: "The temperature parameter τ memorizes the label set during pretraining", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-quiz-ssl-augment",
+    type: "multiple-choice",
+    question:
+      "In contrastive self-supervised learning (SimCLR-style), what role do the data augmentations play?",
+    hint: "The model is trained to give two augmented views of one image the same representation.",
+    explanation:
+      "The augmentations define which transformations the representation must be invariant to — they are the inductive bias. Two views of one image are pulled together, so whatever the augmentations change (crop, color, blur) gets discarded from the features. Choose them wrong (e.g. color jitter when color is the signal) and the representation throws away exactly what the downstream task needs.",
+    options: [
+      { id: "a", label: "They define the invariances — the model learns to ignore whatever the augmentations change", isCorrect: true },
+      { id: "b", label: "They only enlarge the dataset; any augmentation set works equally well", isCorrect: false },
+      { id: "c", label: "They provide the class labels for the contrastive loss", isCorrect: false },
+      { id: "d", label: "They prevent overfitting of the final linear probe, nothing more", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

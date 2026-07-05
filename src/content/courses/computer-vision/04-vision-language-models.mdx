@@ -6,6 +6,8 @@ type: concept
 estimatedMinutes: 22
 ---
 
+# Vision-Language Models
+
 Vision-language models (VLMs) close the gap between two previously separate worlds: an image encoder that sees pixels, and a language model that reads text. The trick is to make both sides speak the *same* vector language — a shared embedding space where the picture of a beach and the sentence "a photo of a beach at sunset" land in roughly the same place. Once that space exists you can do zero-shot classification, semantic image search, free-form content moderation, and (with one more stage) captioning and chat about images.
 
 **Real-world examples:** CLIP zero-shot classification on millions of unseen labels, semantic image search inside Google Photos and Apple Photos, BLIP-2 captioning for accessibility / alt-text, LLaVA-style chat assistants that answer questions about uploaded screenshots, multimodal retrieval inside ad systems and recommender systems, and content moderation by free-form text rule (e.g. "flag anything that looks like a knife in a school setting") without ever training a knife-in-school classifier.
@@ -131,6 +133,12 @@ The reason this pattern wins is operational. You ship *one* embedding model, you
 
 ---
 
+<Exercise id="clip-shared-space" />
+
+<Exercise id="clip-zero-shot" />
+
+<Exercise id="clip-contrastive-batch" />
+
 ## Common Mistakes
 
 **Forgetting to L2-normalise embeddings before computing similarity.** CLIP is trained on unit-norm vectors. If you skip the normalisation step at inference, you are using *dot product* instead of *cosine similarity* and your rankings will be dominated by embedding magnitude, not direction. Always normalise both sides.
@@ -151,14 +159,6 @@ The reason this pattern wins is operational. You ship *one* embedding model, you
 - **Prompt engineering matters at inference time** — averaging multiple `"a photo of a {label}"` templates per class is the cheapest way to lift accuracy.
 - CLIP **cannot read text inside images**, behaves as a bag-of-words on order-sensitive captions, and inherits the web's data biases. Pick the right tool for the job.
 - BLIP-2 and LLaVA bridge a **frozen ViT** to a **frozen LLM** with a small **Q-former / MLP projector**; only the bridge trains. This is the cheap, reusable recipe behind almost every production captioning + chat-about-images system.
-
----
-
-## Exercises
-
-<Exercise id="clip-shared-space" />
-<Exercise id="clip-zero-shot" />
-<Exercise id="clip-contrastive-batch" />
 
 ---
 

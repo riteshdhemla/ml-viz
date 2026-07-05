@@ -6,6 +6,8 @@ type: concept
 estimatedMinutes: 15
 ---
 
+# Backbones in Practice
+
 Every detection and segmentation model has two parts: a **backbone** that converts raw pixels into rich feature representations, and one or more **heads** that consume those features to produce boxes, masks, or labels. Getting the backbone right — both the architecture and the initialization — often matters more than the choice of head.
 
 ## The Backbone's Role
@@ -54,7 +56,7 @@ A standard $K \times K$ convolution over $C_{in}$ input channels producing $C_{o
 
 $$K \times K \times C_{in} \times C_{out} \text{ multiplications per output location}$$
 
-**Depthwise separable convolution** splits this into two steps:
+**Depthwise separable convolution** (introduced in depth in [Modern Architectures](/courses/cnns/05-modern-architectures)) splits this into two steps:
 
 1. **Depthwise conv** — one $K \times K$ filter per input channel (no cross-channel mixing): $K \times K \times C_{in}$ multiplications
 2. **Pointwise conv** — $1 \times 1 \times C_{in} \times C_{out}$ (cross-channel mixing, no spatial): $C_{in} \times C_{out}$ multiplications
@@ -100,6 +102,8 @@ EfficientNet-B0 was found by NAS to be the optimal baseline architecture for the
 ## Transfer Learning in Practice
 
 ### Two Regimes
+
+(The [Transfer Learning](/courses/cnns/04-transfer-learning) lesson derives when each regime is safe from the trainable-params-vs-examples budget; here is the operational summary.)
 
 **Feature extraction** — freeze all backbone weights; train only the task-specific head. Use when:
 - Downstream dataset is small (hundreds to low thousands of images)
@@ -156,6 +160,12 @@ Rules of thumb:
 
 ---
 
+<Exercise id="cv-resnet-residual" />
+
+<Exercise id="cv-depthwise-cost" />
+
+<Exercise id="cv-efficientnet-scaling" />
+
 ## Common Mistakes
 
 **Using ResNet-50 when MobileNet suffices.** On simple classification tasks or edge deployment, ResNet-50 uses 19× more FLOPs than MobileNetV3-L for roughly the same accuracy. Always profile before defaulting to ResNet.
@@ -176,14 +186,6 @@ Rules of thumb:
 - EfficientNet scales depth, width, and resolution jointly with a compound coefficient $\phi$, achieving better accuracy per FLOP than single-axis scaling.
 - Transfer learning from ImageNet is almost always worth it; use feature extraction for small datasets and full fine-tuning (with low LR and layer-wise decay) for larger ones.
 - Always normalize inputs to ImageNet mean and standard deviation; never fine-tune a pre-trained backbone with the same learning rate as the head.
-
----
-
-## Exercises
-
-<Exercise id="cv-resnet-residual" />
-<Exercise id="cv-depthwise-cost" />
-<Exercise id="cv-efficientnet-scaling" />
 
 ---
 
