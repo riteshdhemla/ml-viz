@@ -9982,6 +9982,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Most parameters are only used during training, then pruned", isCorrect: false },
     ],
   },
+  {
+    id: "genmodel-quiz-implicit",
+    type: "multiple-choice",
+    question:
+      "A trained GAN and a trained VAE are both asked: 'what is p(x) for this specific image x?' What can each one do?",
+    hint: "One family models the density explicitly (or a bound on it); the other only learned to sample.",
+    explanation:
+      "GANs are implicit density models: the generator maps noise to samples but never defines a computable density, so p(x) is unavailable. A VAE optimizes the ELBO, a lower bound on log p(x), so it can score how likely an input is (approximately) — which is why VAEs work for anomaly detection by density and GANs don't.",
+    options: [
+      { id: "a", label: "The VAE can give an approximate bound on p(x); the GAN can only sample", isCorrect: true },
+      { id: "b", label: "Both can compute p(x) exactly from their weights", isCorrect: false },
+      { id: "c", label: "The GAN computes p(x) via the discriminator's output", isCorrect: false },
+      { id: "d", label: "Neither — no generative model gives any density information", isCorrect: false },
+    ],
+  },
+  {
+    id: "genmodel-quiz-latent-diffusion",
+    type: "multiple-choice",
+    question:
+      "Stable Diffusion runs its denoising U-Net on 64×64×4 latents instead of 512×512×3 pixels. Why?",
+    hint: "Compare 786,432 values per step with 16,384.",
+    explanation:
+      "A frozen VAE compresses each image ~48× (786,432 → 16,384 values), so every one of the 20–1000 denoising steps operates on a far smaller tensor. The VAE's perceptual training keeps the visually important structure in the latent, and its decoder restores full resolution once, at the end.",
+    options: [
+      { id: "a", label: "Each denoising step is ~48× cheaper in the VAE's compressed latent space", isCorrect: true },
+      { id: "b", label: "Diffusion is mathematically invalid on tensors larger than 64×64", isCorrect: false },
+      { id: "c", label: "The latent space removes the need for a noise schedule", isCorrect: false },
+      { id: "d", label: "CLIP text encoders can only attend to 64×64 inputs", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

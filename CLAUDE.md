@@ -333,7 +333,7 @@ surface-border   — borders
 
 ### Advanced Deep Learning
 - [x] **Attention & Transformers** — self-attention, multi-head & positional, architecture, modern attention (GQA/RoPE/FlashAttention), scaling laws, mixture of experts *(course + 6 lessons + quiz)*
-- [x] **Generative Models** — VAE, GAN, Diffusion *(course + 5 lessons)*
+- [x] **Generative Models** — discriminative vs generative, autoencoders, VAE, GAN, diffusion, ViT & modern GenAI (CFG, StyleGAN, latent diffusion) *(course + 6 lessons + quiz)*
 
 ### Reinforcement Learning
 - [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, Policy Gradient, Actor-Critic *(course + 4 lessons)*

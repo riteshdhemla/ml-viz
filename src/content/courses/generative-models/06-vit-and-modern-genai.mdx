@@ -122,8 +122,10 @@ where $w$ is the **guidance scale**:
 |-----|--------|
 | 0 | No guidance — the plain conditional output $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c)$ (the $(1+w)$ form gives the *conditional* prediction at $w=0$, never the unconditional one) |
 | 1 | Moderate guidance — the prompt direction is amplified once |
-| 7.5 | Strong guidance — high prompt fidelity, less diversity (Stable Diffusion default) |
+| 7.5 | Strong guidance — high prompt fidelity, less diversity (≈ Stable Diffusion's default; see convention note below) |
 | 15+ | Very strong — may over-saturate colors and lose realism |
+
+> **Convention note:** libraries like `diffusers` expose `guidance_scale` $s$ in the form $\hat{\epsilon} = \epsilon_\emptyset + s\,(\epsilon_c - \epsilon_\emptyset)$, which equals the formula above with $s = 1 + w$. So "Stable Diffusion's default 7.5" is $s = 7.5$, i.e. $w = 6.5$ here — same idea, off-by-one parameterization.
 
 **Intuition:** The term $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c) - \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, \emptyset)$ is the direction in noise-space that leads toward images matching the condition $c$. Amplifying it by $w$ steers sampling more aggressively toward the prompt.
 
@@ -305,6 +307,12 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 
 ---
 
+<Exercise id="genai-vit-patches" />
+
+<Exercise id="genai-cfg" />
+
+<Exercise id="genai-cycle-loss" />
+
 ## Common mistakes
 
 1. **Feeding raw pixels to ViT without enough data** — ViT has no locality bias, so it needs large datasets. Use a pre-trained checkpoint for fine-tuning; don't train ViT-B from scratch on ImageNet-1k alone.
@@ -331,7 +339,3 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 - [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks) — the adversarial training framework StyleGAN and CycleGAN use
 - [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders) — the VAE component inside Stable Diffusion
 - [**Attention & Transformers**](/courses/transformers/01-self-attention) — the self-attention mechanism ViT inherits
-
-<Exercise id="genai-vit-patches" />
-<Exercise id="genai-cfg" />
-<Exercise id="genai-cycle-loss" />
