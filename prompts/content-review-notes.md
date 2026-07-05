@@ -2101,6 +2101,52 @@ removed. All 6 pages now bidirectionally linked.
 
 ---
 
+## wiki: misc (11 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** bptt-algorithm, vanishing-gradient-analysis, eigenvalue-computation,
+svd-low-rank, directional-derivative, newtons-method, random-walk, roc-auc,
+population-stability-index, graph-fraud-detection, uplift-modeling.
+(Plan said "9 pages" but named 11; all 11 exist and were reviewed.)
+
+**Grasp scores:** all 11 deep-read at 5 — the strongest single batch. The
+linear-algebra/calculus quartet (eigenvalue-computation, svd-low-rank,
+newtons-method, directional-derivative), the RNN pair (bptt-algorithm,
+vanishing-gradient-analysis), and roc-auc + population-stability-index are
+exemplary derivation/worked-example pages.
+
+**Math hand-verified (all correct):**
+- eigenvalue-computation: A=[[4,1],[2,3]] → λ²−7λ+10 → λ=5,2; eigenvectors
+  [1,1],[1,−2]; trace/det checks; V⁻¹=1/(−3)[[−2,−1],[−1,1]].
+- newtons-method: ∇f(0,0)=[−3,0], H=[[2,1],[1,2]], H⁻¹=⅓[[2,−1],[−1,2]],
+  step lands exactly on (2,−1).
+- svd-low-rank: Eckart–Young error √Σσ²; 512²,k=50 → 51250 vs 262144 (~5×).
+- directional-derivative: ∇f(1,2)=[8,3], D_û=36/5=7.2 < √73≈8.54.
+- bptt-algorithm: h=[0.462,0.354,0.655], per-step 0.457 & 0.700, grad 0.320.
+- vanishing-gradient-analysis: 0.5ⁿ/1.5ⁿ/0.2ⁿ tables and tanh'(1)=0.42.
+- roc-auc: curve→AUC=5/6 and rank-sum concordant=5/6 agree.
+- population-stability-index: worked PSI=0.0158 (stable) and 0.4377 (drift).
+
+**Findings:**
+
+- **P2 (fixed): random-walk Gambler's-ruin arithmetic.** (1.0408)¹⁰⁰ was given
+  as 57.0, but e^(100·ln1.0408)=e^4.0005≈54.6. The final R₁₀≈0.991 is
+  unchanged (the ratio is dominated by the large term), but the intermediate
+  was wrong and would trip up a student who recomputes it. Fixed
+  57.0→54.6 and the intermediate fraction −55.5/−56.0 → −53.1/−53.6.
+- **P2 (fixed): 5 relatedLessons entries had no backlink.** Added: directional
+  -derivative → calc/03; random-walk → gen/05-diffusion & rl/01-mdp; roc-auc →
+  model-evaluation/02; population-stability-index → ml-in-practice/09.
+- **P3 (fixed): graph-fraud-detection and uplift-modeling had no "## Related
+  concepts" section.** Added one to each (host lesson + two apt cross-links,
+  titles pulled live from each lesson's frontmatter).
+- **no issues:** the other 9 pages were already fully bidirectional with RC
+  sections; all 11 have notebooks.
+
+**Applied in this iteration:** 1 arithmetic fix; 2 new RC sections; 5 backlinks.
+All 11 pages now bidirectionally linked. **This clears the wiki review queue.**
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

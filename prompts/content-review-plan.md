@@ -126,7 +126,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] wiki: nlp + transformers (8 pages) <!-- reviewed + fixed 2026-07-05 -->
 - [x] wiki: unsupervised + probabilistic-models (6 pages) <!-- reviewed + fixed 2026-07-05 -->
 - [x] wiki: recommender-systems + computer-vision + generative-models (6 pages) <!-- reviewed + fixed 2026-07-05 -->
-- [ ] wiki: misc (9 pages: bptt-algorithm, vanishing-gradient-analysis, eigenvalue-computation, svd-low-rank, directional-derivative, newtons-method, random-walk, roc-auc, population-stability-index, graph-fraud-detection, uplift-modeling)
+- [x] wiki: misc (11 pages) <!-- reviewed + fixed 2026-07-05 -->
 
 ### After the queue
 - [ ] Triage all P1s into a fix queue at the bottom of the notes file
