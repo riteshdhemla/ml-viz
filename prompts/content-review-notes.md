@@ -1873,6 +1873,50 @@ added its Related concepts section.
 
 ---
 
+## wiki: agents + building-with-llms (7 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** agent-observability, agent-protocols-mcp-a2a, langgraph,
+sub-agent-orchestration, langfuse-and-opentelemetry, llm-as-judge, text-to-sql.
+
+**Grasp scores:** all 7 deep-read at 5 — this is the strongest-written cluster
+in the whole wiki. langfuse-and-opentelemetry (OTel signals → GenAI semconv →
+Langfuse trace/observation/score, with a worked RAG trace), agent-protocols
+(MCP vertical vs A2A horizontal, N×M→N+M, JSON-RPC message shapes), langgraph
+(State/Node/Edge, ReAct-as-graph, super-steps), sub-agent-orchestration
+(sequential/parallel/loop algebra with latency/cost formulas), and
+agent-observability (trajectory-as-trace, superlinear token growth
+S c₀ + S(S+1)/2·m̄) are all excellent and internally consistent. Elo formula
+in llm-as-judge and the token-growth derivation checked and correct.
+
+**Findings — the whole batch shared ONE systemic integrity gap:**
+
+- **P2 (fixed): 11 `relatedLessons` entries across all 7 pages had no
+  backlink**, so the auto-generated "Referenced by" footer (WikiLayout.tsx
+  renders `relatedLessons` literally under a "Referenced by" heading) asserted
+  inbound references that did not exist. Every missing entry was a genuine
+  topical fit, so the honest fix was to add the backlink (not trim). Added 11
+  wiki links to the Related-concepts sections of 8 host lessons:
+    - agent-observability → adp/10-evaluating-agents, bwl/09-observability
+    - agent-protocols-mcp-a2a → bwl/06-ai-engineering-architecture
+    - langgraph → bwl/06-ai-engineering-architecture
+    - sub-agent-orchestration → adp/11-deploying-agents, bwl/05-agents
+    - langfuse-and-opentelemetry → mlp/10-monitoring, adp/11-deploying-agents
+    - llm-as-judge → bwl/08-llm-evaluation
+    - text-to-sql → bwl/12-code-intelligence, bwl/05-agents
+  text-to-sql was effectively an **orphan** (zero inbound links) before this.
+- **P3 (fixed): llm-as-judge and text-to-sql had no "## Related concepts"
+  section** (every other wiki page has one). Added both, linking their host
+  lessons and one related wiki page each.
+- **Carry-forward for post-queue:** the wiki-integrity test enforces that
+  `relatedLessons` targets *exist*, but NOT that they link back — so this
+  "Referenced by" overstatement class is invisible to CI. Candidate hardening:
+  add a test asserting each `relatedLessons` lesson contains the page slug.
+
+**Applied in this iteration:** 2 new Related-concepts sections; 11 backlinks
+across 8 lessons; all 7 pages now bidirectionally linked.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
