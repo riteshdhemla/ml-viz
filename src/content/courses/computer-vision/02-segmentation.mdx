@@ -6,6 +6,8 @@ type: concept
 estimatedMinutes: 16
 ---
 
+# Segmentation
+
 Image classification tells you *what* is in an image. Object detection tells you *where* each object is (bounding box). **Segmentation** goes further: it tells you *which pixel belongs to which class or instance*.
 
 ## Three Flavors of Segmentation
@@ -148,6 +150,12 @@ SQ measures how well matched segments overlap; RQ measures how well the detector
 
 ---
 
+<Exercise id="cv-unet-skip" />
+
+<Exercise id="cv-dice-loss" />
+
+<Exercise id="cv-instance-vs-semantic" />
+
 ## Common Mistakes
 
 **Using stride-2 convolutions instead of maxpool + skip.** Strided convolutions subsample without the spatial bookkeeping needed for skip connections. You lose the anchor point for re-injecting encoder features.
@@ -168,14 +176,6 @@ SQ measures how well matched segments overlap; RQ measures how well the detector
 - Dice loss normalizes by mask size, making training robust to severe class imbalance between foreground objects and background.
 - Mask R-CNN adds a per-RoI mask head to Faster R-CNN; RoI Align's bilinear interpolation is critical for pixel-precise masks.
 - Segmentation quality is measured by mIoU (semantic), AP_mask (instance), and Panoptic Quality = SQ × RQ (panoptic).
-
----
-
-## Exercises
-
-<Exercise id="cv-unet-skip" />
-<Exercise id="cv-dice-loss" />
-<Exercise id="cv-instance-vs-semantic" />
 
 ---
 

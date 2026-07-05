@@ -1206,6 +1206,51 @@ CLAUDE.md roadmap row; exercise placement in 3 lessons.
 
 ---
 
+## computer-vision <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 5 lessons + quiz. estimatedHours math ✓ (93 min × 2.5 / 60 = 3.88 → 4).
+
+**Grasp scores:** 01: 4.5 · 02: 5 · 03: 4.5 · 04: 5 · 05: 5
+
+Solid applied course. Lesson 04 (VLMs/CLIP) is exceptional — production framing
+(retrieval + moderation as the killer apps), honest failure modes ("CLIP cannot
+read"), and correct cross-course anchoring of InfoNCE to nlp/07. Worked numbers
+verified: 3,600 anchors (20×20×9); YOLO 7×7×30; depthwise 1/256 + 1/9 ≈ 0.115
+(8–9×); loss-starts-at-log-B claim; PQ = SQ × RQ decomposition. NMS correctly
+extracted to wiki with summary + WikiLink.
+
+**Findings:**
+
+- **P2 (fixed): lessons 02, 03, 04 had no H1 title** — body started directly
+  after frontmatter (inconsistent with every other lesson on the site). Added
+  matching `# Title` headings.
+- **P2 (fixed): quiz skipped lessons 04–05.** The 5 fresh `cv-quiz-*` ids cover
+  detection/segmentation/backbones only. Added `cv-quiz-clip` (zero-shot =
+  cosine lookup in the shared embedding space) and `cv-quiz-ssl-augment`
+  (augmentations define the invariances). Quiz description updated.
+- **P2 (fixed): exercise placement inconsistent** — lesson 01 stacked exercises
+  after Related Concepts; lessons 02–04 used a separate "## Exercises" section
+  after Key Takeaways. Normalized all 5: exercises before Common Mistakes,
+  "## Exercises" headings removed.
+- **P2 (fixed): course missing from CLAUDE.md roadmap** — added row.
+- **P3 (fixed): cross-course duplication (mild)** — lesson 03 re-derives the
+  depthwise-separable cost (owned by cnns/05) and re-states the transfer-learning
+  regimes (owned by cnns/04). Both treatments are compact and applied, so kept,
+  with explicit provenance links added to the owning lessons.
+- **P3 (noted, not applied): heading-case style** — this course uses "Common
+  Mistakes"/"Key Takeaways" (Title Case) vs the site's sentence case; internally
+  consistent, so left alone.
+- **no issues:** all 22 exercise ids resolve; notebook scaffolds in all 5;
+  CLIPSpaceViz + ContrastiveViz wiring matches registry; lesson ordering has no
+  forward references (SSL correctly closes the course after CLIP introduces
+  contrastive ideas).
+
+**Applied in this iteration:** 3 H1 titles; exercise placement in 5 lessons;
+2 new quiz exercises + quiz description; 2 provenance links in lesson 03;
+CLAUDE.md roadmap row.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
