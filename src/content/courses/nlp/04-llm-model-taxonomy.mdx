@@ -119,6 +119,12 @@ A practical decision tree before you reach for a model:
 - **Need a clean input→output transformation where both sides are sequences (translate, summarise, structured rewriting, code translation)?** Encoder-decoder *or* a prompted decoder. Encoder-decoder is cleaner and often more data-efficient; prompted decoder is simpler to deploy. The right choice today is "decoder-only with a good prompt unless you have a measurable reason to add the encoder".
 - **Need both — semantic search *and* RAG generation?** Use an *encoder* for the embedding service and a *decoder* for the generator. The two families are complements, not substitutes.
 
+<Exercise id="llm-taxonomy-encoder-decoder" />
+
+<Exercise id="llm-taxonomy-best-fit" />
+
+<Exercise id="llm-taxonomy-what-large-means" />
+
 ## Common mistakes
 
 1. **Asking BERT to generate text.** It cannot — there is no causal mask, no next-token head, no autoregressive sampling. Use a decoder.
@@ -141,7 +147,3 @@ A practical decision tree before you reach for a model:
 - [**Self-Attention**](/courses/transformers/01-self-attention) — the underlying mechanism every family rearranges
 - [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — what "large" formally means in the decoder-only family
 - [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — encoder-only models in production
-
-<Exercise id="llm-taxonomy-encoder-decoder" />
-<Exercise id="llm-taxonomy-best-fit" />
-<Exercise id="llm-taxonomy-what-large-means" />
