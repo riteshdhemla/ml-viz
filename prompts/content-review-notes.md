@@ -1527,6 +1527,53 @@ lesson 05 section reorder.
 
 ---
 
+## building-with-llms: lessons 07–13 + quiz <!-- reviewed + fixed 2026-07-05 (split item, second half) -->
+
+**Scope:** lessons 07–10, 12, 13 + quiz (order 11). Hours already fixed in the
+first-half iteration.
+
+**Grasp scores:** 07: 5 · 08: 5 · 09: 5 · 10: 5 · 12: 4.5 · 13: 4.5
+
+The LLMOps trio (08–10) is exemplary — each lesson already had its exercises
+placed inline before Common mistakes (the only lessons on the site that did),
+and the eval → observability → guardrails sequence forms a coherent "operate
+what you built in 01–06" arc. Lesson 07 (reasoning models) correctly
+distinguishes prompted CoT from RL-trained reasoning and delegates GRPO to its
+wiki page. Lessons 12–13 are case-study heavy (GitHub/Uber/Meta; Intercom/
+Instacart/Pinterest) — high production value, slightly listy.
+
+**Findings:**
+
+- **P2 (fixed): quiz covered ~5 of 13 lessons.** Added 4 fresh exercises:
+  `llm-quiz-agent-reliability` (0.95¹⁰ ≈ 60% compounding), 
+  `llm-quiz-test-time-compute` (RL-trained vs prompted CoT),
+  `llm-quiz-judge-bias` (A/B order swap), `llm-quiz-fim` (mid-file completion).
+  Quiz description updated. Coverage now spans 01–08 + 12; observability and
+  guardrails are tested in-lesson by the llmops-* exercises.
+- **P2 (fixed): lessons 12–13 had no Common mistakes sections** — added 4
+  entries each (AST chunking, review-bot precision, execute-filtered tests,
+  debug loop; streaming ASR, image prompt injection, image token cost, shared
+  embedding space).
+- **P3 (fixed): lesson 13 didn't link the owning deep lessons** — added
+  Related-concepts links to computer-vision/04 (VLM architecture) and
+  speech-audio/02 (Whisper/ASR). Overlap with both is summary-level and now
+  correctly attributed.
+- **P2 (fixed): CLAUDE.md rows stale** — Building with LLMs said "6 lessons +
+  quiz" (actual 13 + quiz; topics updated) and LLMOps said "10 lessons + quiz"
+  (now "integrated into lessons 08–10").
+- **P2 (fixed): exercise placement** — lessons 07, 12, 13 stacked exercises at
+  the end; moved before Common mistakes (08–10 were already correct).
+- **no issues:** all lesson + quiz exercise ids resolve; notebook scaffolds in
+  all 6; TraceWaterfallViz wiring matches registry; WikiLinks (grpo-objective,
+  text-generation-metrics, langfuse-and-opentelemetry) resolve — the Phase-1
+  Langfuse/OTel page is linked exactly where it should be (lesson 09).
+
+**Applied in this iteration:** 4 new quiz exercises + quiz description; Common
+mistakes for 12–13; 2 cross-links in 13; exercise placement in 3 lessons;
+2 CLAUDE.md rows.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

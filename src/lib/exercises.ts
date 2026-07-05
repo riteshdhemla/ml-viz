@@ -10192,6 +10192,66 @@ const allExercises: Exercise[] = [
       { id: "d", label: "They tie — eCPM normalizes bids and CTR away", isCorrect: false },
     ],
   },
+  {
+    id: "llm-quiz-agent-reliability",
+    type: "multiple-choice",
+    question:
+      "An agent's individual steps each succeed 95% of the time. Roughly how reliable is a 10-step task, and what follows for agent design?",
+    hint: "0.95¹⁰ ≈ ?",
+    explanation:
+      "Errors compound multiplicatively: 0.95¹⁰ ≈ 60%. That is why agent design is dominated by reliability machinery — bounded loops, validated tool I/O, self-correction from observations, and human confirmation for irreversible actions — rather than by making any single step slightly better.",
+    options: [
+      { id: "a", label: "~60% — compounding errors make validation and bounded loops essential", isCorrect: true },
+      { id: "b", label: "~95% — reliability is set by the weakest single step", isCorrect: false },
+      { id: "c", label: "~99% — multiple steps let the agent average out mistakes", isCorrect: false },
+      { id: "d", label: "Exactly 50% — each step is an independent coin flip", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-quiz-test-time-compute",
+    type: "multiple-choice",
+    question:
+      "What distinguishes a reasoning model (o1, DeepSeek-R1) from a base LLM given chain-of-thought prompting?",
+    hint: "One completes a pattern; the other was trained with RL on verified answers.",
+    explanation:
+      "A prompted base model imitates step-by-step patterns from pretraining. A reasoning model is post-trained with RL that rewards chains ending in verifiably correct answers, so it learned to spend test-time compute effectively — including emergent self-correction. Same architecture; the difference is the training signal.",
+    options: [
+      { id: "a", label: "It was RL-trained on verified outcomes to use long reasoning traces, not just prompted to imitate them", isCorrect: true },
+      { id: "b", label: "It uses a different, recurrent architecture instead of a Transformer", isCorrect: false },
+      { id: "c", label: "It has a larger context window, which is what enables reasoning", isCorrect: false },
+      { id: "d", label: "It always answers faster because reasoning is precomputed at training time", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-quiz-judge-bias",
+    type: "multiple-choice",
+    question:
+      "You use GPT-class model as a judge to compare answers A and B. Which safeguard addresses a known, measured bias of LLM judges?",
+    hint: "What happens if the judge always sees the candidate answers in the same order?",
+    explanation:
+      "LLM judges have position bias (favoring the first-listed option), verbosity bias, and self-preference bias. Swapping the A/B order and averaging the two verdicts cancels position bias; length controls and validating against human labels address the others. An unvalidated judge is an opinion, not a metric.",
+    options: [
+      { id: "a", label: "Run each comparison twice with A/B order swapped and average the verdicts", isCorrect: true },
+      { id: "b", label: "Always put the newer model's answer first for fairness", isCorrect: false },
+      { id: "c", label: "Ask for a 1–10 score instead of a comparison — absolute scores have no bias", isCorrect: false },
+      { id: "d", label: "Use the same model as judge and candidate so the styles match", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-quiz-fim",
+    type: "multiple-choice",
+    question:
+      "Why do code models (Copilot, StarCoder2) train with fill-in-the-middle (FIM) rather than only left-to-right completion?",
+    hint: "Where is a developer's cursor, usually?",
+    explanation:
+      "Real completion happens mid-file: the cursor sits between existing code above and below. FIM training rearranges documents into prefix/suffix/middle segments so the model learns to generate the middle conditioned on both directions — matching the actual editing workflow, which pure left-to-right models can't condition on.",
+    options: [
+      { id: "a", label: "Developers edit mid-file — the model must condition on code after the cursor, not just before", isCorrect: true },
+      { id: "b", label: "FIM reduces the vocabulary size needed for code tokens", isCorrect: false },
+      { id: "c", label: "Left-to-right models cannot represent indentation", isCorrect: false },
+      { id: "d", label: "FIM makes generation deterministic, which code requires", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
