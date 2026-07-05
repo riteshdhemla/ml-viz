@@ -117,7 +117,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] ml-in-practice: lessons 10–21 + quiz <!-- reviewed + fixed 2026-07-05 -->
 
 ### Wiki batches (grouped by index topic)
-- [ ] wiki: probability (10 pages)
+- [x] wiki: probability (10 pages) <!-- reviewed + fixed 2026-07-05 -->
 - [ ] wiki: supervised-learning (8 pages)
 - [ ] wiki: neural-networks (7 pages)
 - [ ] wiki: time-series (5 pages)
