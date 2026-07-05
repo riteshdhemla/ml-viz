@@ -91,24 +91,54 @@ For large hierarchies ($n > 1000$), WLS with variance scaling is the practical c
 
 ## Worked example
 
-**Setup:** 1 national forecast, 2 regional forecasts, base model predictions and true values:
+**Setup:** a minimal hierarchy — 1 national series that must equal the sum of 2 regional series. Each series is forecast independently, giving base predictions:
 
-| Series | True ($y$) | Base forecast ($\hat{y}$) |
-|---|---|---|
-| National | 100 | 105 |
-| Region A | 60 | 58 |
-| Region B | 40 | 47 |
+| Series | Base forecast ($\hat{y}$) |
+|---|---|
+| National | 100 |
+| Region A | 58 |
+| Region B | 47 |
 
-The base forecasts are incoherent: 58 + 47 = 105 ≠ 105 (coincidentally coherent here). In practice they won't sum correctly. MinT reconciliation with OLS ($W = I$):
+These are **incoherent**: the regions sum to $58 + 47 = 105$, but the independently forecast national total is $100$. They disagree by 5, and no single set of numbers is actionable until they are reconciled.
+
+For this reduced hierarchy the summing matrix and base vector are
 
 $$
-P = S(S^\top S)^{-1} S^\top, \quad \tilde{\mathbf{y}} = P\hat{\mathbf{y}}
+S = \begin{pmatrix} 1 & 1 \\ 1 & 0 \\ 0 & 1 \end{pmatrix},
+\qquad
+\hat{\mathbf{y}} = \begin{pmatrix} 100 \\ 58 \\ 47 \end{pmatrix}.
 $$
 
-The projection $P$ maps any forecast vector onto the coherent subspace, producing reconciled forecasts that (a) sum correctly at every level and (b) are closest to the base forecasts in L2 norm.
+**MinT reconciliation with OLS** ($W = I$) projects $\hat{\mathbf{y}}$ onto the coherent subspace via $\tilde{\mathbf{y}} = P\hat{\mathbf{y}}$ with $P = S(S^\top S)^{-1} S^\top$. The pieces:
+
+$$
+S^\top S = \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix},
+\quad
+(S^\top S)^{-1} = \frac{1}{3}\begin{pmatrix} 2 & -1 \\ -1 & 2 \end{pmatrix},
+\quad
+P = \frac{1}{3}\begin{pmatrix} 2 & 1 & 1 \\ 1 & 2 & -1 \\ 1 & -1 & 2 \end{pmatrix}.
+$$
+
+Applying the projection:
+
+$$
+\tilde{\mathbf{y}} = P\,\hat{\mathbf{y}}
+= \frac{1}{3}\begin{pmatrix} 2 & 1 & 1 \\ 1 & 2 & -1 \\ 1 & -1 & 2 \end{pmatrix}
+\begin{pmatrix} 100 \\ 58 \\ 47 \end{pmatrix}
+= \frac{1}{3}\begin{pmatrix} 305 \\ 169 \\ 136 \end{pmatrix}
+\approx \begin{pmatrix} 101.7 \\ 56.3 \\ 45.3 \end{pmatrix}.
+$$
+
+The reconciled forecasts are now **coherent** — $56.3 + 45.3 = 101.7$ — and each is the L2-closest coherent value to the base forecast. The reconciliation spread the 5-unit gap across all three series: the national estimate rose from 100 to 101.7 while both regions were pulled down slightly. Under OLS every series is trusted equally; WLS or full MinT would instead pull hardest on the highest-variance (least-trusted) forecasts.
 
 ## Software
 
 - **Python:** `statsforecast` package provides `MinT`, `TopDown`, `BottomUp` via the `HierarchicalReconciliation` class.
 - **R:** `fable` package, `reconcile()` function with `MinT()` / `ETS()` methods.
 - **Reference:** Wickramasuriya et al. (2019) "Optimal Forecast Reconciliation Using Unbiased Mapping."
+
+## Related concepts
+
+- [**Demand Forecasting in Production**](/courses/time-series/04-demand-forecasting-in-production) — where hierarchical reconciliation is deployed on real SKU / region / channel hierarchies
+- [**ARIMA Order Selection**](/wiki/arima-order-selection) — the base-forecast models whose independent outputs get reconciled
+- [**Walk-Forward Validation**](/wiki/walk-forward-validation) — evaluating whether reconciliation actually improved forecast accuracy

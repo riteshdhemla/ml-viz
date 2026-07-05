@@ -1818,6 +1818,61 @@ neural-networks/06, calculus-for-ml/03, cnns/05.
 
 ---
 
+## wiki: time-series (5 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** acf-pacf-interpretation, arima-order-selection, augmented-dickey-fuller,
+hierarchical-forecasting, walk-forward-validation.
+
+**Grasp scores:** augmented-dickey-fuller: 5 (deep-read — the
+stationarity→polynomial-roots→unit-root→reparameterisation build-up is the
+best-structured page in the batch; ADF/KPSS complementarity table is excellent);
+acf-pacf-interpretation: 5 (hand-worked ACF verified below);
+walk-forward-validation: 5 (hand-worked MAE verified below);
+arima-order-selection: 4; hierarchical-forecasting: 3 before fix (see P2).
+
+**Math hand-verified:**
+- acf-pacf worked example: series [1,3,2,4,3,5], mean 3, γ₀=10, ρ₁=−0.10,
+  ρ₂=0.40, ρ₃=−0.40, bands ±1.96/√6=±0.80 — all correct; φ₂₂ Yule-Walker
+  formula correct.
+- walk-forward: all 6 expanding-window rounds recomputed (15,16,17,18,19,20
+  predictions; |e|=1,2,3,1,2,3), MAE=12/6=2.00 — matches, and the Python
+  block's `# → 2.00` is right.
+- ADF worked example (−1.83/0.36 raw, −5.71/0.00 differenced) is consistent
+  with the same example in arima-order-selection; MacKinnon critical values
+  (c: −3.43/−2.86/−2.57; ct: −3.96/−3.41/−3.12) correct.
+
+**Findings:**
+
+- **P2 (fixed): hierarchical-forecasting's "Worked example" was self-
+  contradictory and not actually worked.** It printed "58 + 47 = 105 ≠ 105
+  (coincidentally coherent here)" — literally `105 ≠ 105` (false) — because the
+  chosen base data was accidentally already coherent, so it could not
+  illustrate reconciliation at all, and the section computed no reconciled
+  numbers (it only described the projection abstractly). Replaced with a
+  genuinely incoherent case (national 100 vs regions 58+47=105) and a fully
+  worked MinT-OLS projection: S, SᵀS=[[2,1],[1,2]], (SᵀS)⁻¹=⅓[[2,−1],[−1,2]],
+  P=⅓[[2,1,1],[1,2,−1],[1,−1,2]], ỹ=⅓[305,169,136]≈[101.7,56.3,45.3], now
+  coherent (56.3+45.3=101.7). Verified both via P·ŷ and via b̃=(SᵀS)⁻¹Sᵀŷ.
+  The companion notebook uses the general 7-series formula on random data, so
+  no contradiction with the smaller worked case.
+- **P3 (fixed): hierarchical-forecasting had no "## Related concepts" section**
+  (the only page in the batch missing it — ended at "## Software"). Added one
+  linking demand-forecasting/04 (host), arima-order-selection, and
+  walk-forward-validation.
+- **P3 (noted, not edited): arima-order-selection states "Mean of Δyₜ ≈ 2.0"**
+  but the true drift is (110−50)/35 = 1.71. The 2.0 is an intentional round
+  figure that keeps the deviation row clean integers (+1,0,−5,+3,+1,−4) and all
+  other numbers on the page are explicitly illustrative ("≈"). Editing would
+  cascade into the forecast values and make the example uglier for a 0.3
+  difference, so left as-is; the Python block computes the real values anyway.
+- **no issues:** all 5 have notebooks; all relatedLessons resolve and are
+  bidirectionally linked from a host lesson.
+
+**Applied in this iteration:** rewrote hierarchical-forecasting worked example;
+added its Related concepts section.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
