@@ -2015,6 +2015,49 @@ model worked-example pages.
 
 ---
 
+## wiki: unsupervised + probabilistic-models (6 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** dbscan-algorithm, hierarchical-clustering, kmeans-algorithm
+(unsupervised-learning); em-algorithm, factor-analysis,
+independent-component-analysis (probabilistic-models).
+
+**Grasp scores:** all 6 deep-read at 5. kmeans-algorithm, em-algorithm,
+dbscan-algorithm, and hierarchical-clustering are exemplary worked-example pages.
+
+**Math hand-verified (all correct):**
+- kmeans: iteration 1 assign (J=8.75), centroid update to (1.25,1.5) &
+  (11.5/3,16/3)=(3.83,5.33), J_after=7.46; convergence in 2 iters. (Iteration-2
+  reassignment table has a couple of loose distances — e.g. ~19.15 vs exact
+  18.75 — but the assignment winners are unambiguous, so the "converged"
+  conclusion is unaffected; left as-is.)
+- em-algorithm: N(1|2,1.5)=0.213, N(1|4,1.5)=0.036, γ₁₁=0.855; μ₁'=2.08,
+  σ₁'²=1.655→σ₁'=1.286 — all exact.
+- dbscan: d(A,D)=√2≈1.41, d(D,I)=√18≈4.24; all blob points core (4≥3), I noise;
+  matches the sklearn `[0 0 0 0 1 1 1 1 -1]`.
+- hierarchical: distance matrix (1.41/9.90/11.31/8.49) and single=8.49,
+  complete=11.31, average=9.90 — all correct.
+
+**Findings:**
+
+- **P2 (fixed): factor-analysis and independent-component-analysis had no
+  backlinks** (4 relatedLessons entries; "Referenced by" overstated). Added
+  backlinks from probabilistic-models/02-em-algorithm and pca-dimensionality/01
+  to both pages.
+- **P3 (fixed): factor-analysis and ICA had no "## Related concepts" section.**
+  Added one to each (EM, PCA, and the FA↔ICA cross-link). While adding the FA
+  section, caught and fixed a double-backslash KaTeX slip ($\\Psi$→$\Psi$) from
+  the heredoc before it shipped.
+- **P3 (fixed): ICA "overcomplete ICA (n < m)"** reused n/m inconsistently with
+  the page's own notation (n was sources=sensors, m was #samples). Reworded to
+  "(more sources than observed mixtures)".
+- **no issues:** the 3 clustering pages and em-algorithm were already fully
+  bidirectional with RC sections; all 6 have notebooks.
+
+**Applied in this iteration:** 2 new RC sections; 4 backlinks across 2 lessons;
+1 KaTeX fix; 1 ICA clarity fix.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
