@@ -73,6 +73,12 @@ For memory-bound chains this is a near-$k\times$ speedup. This is exactly what `
   Generating one token at a time with batch size 1 re-reads the entire weight matrix to produce a single column of output — tiny arithmetic intensity, so it's bandwidth-limited and leaves the compute units idle. **Batching** many requests reuses each loaded weight across many tokens, pushing the operation toward compute-bound and dramatically raising throughput. This is the core reason inference servers batch.
 </Callout>
 
+<Exercise id="gpu-dl-matmul-flops" />
+
+<Exercise id="gpu-dl-mixed-precision" />
+
+<Exercise id="gpu-dl-fusion" />
+
 ## Common mistakes
 
 1. **Training in FP32 by default** — leaves tensor cores and half your bandwidth on the table; use BF16/FP16 mixed precision.
@@ -92,7 +98,3 @@ For memory-bound chains this is a near-$k\times$ speedup. This is exactly what `
 - [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance) — the roofline and tiling ideas this lesson applies to ML kernels
 - [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the matrix multiplies at the heart of every network
 - [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — batching, KV-cache, and serving the memory-bound decode
-
-<Exercise id="gpu-dl-matmul-flops" />
-<Exercise id="gpu-dl-mixed-precision" />
-<Exercise id="gpu-dl-fusion" />

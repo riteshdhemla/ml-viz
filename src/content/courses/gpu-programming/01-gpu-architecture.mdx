@@ -83,6 +83,12 @@ This is **Little's Law** applied to the GPU: keep enough independent work *in fl
 
 The dominant operation in deep learning — matrix multiplication — is a sea of independent multiply-adds with a regular access pattern. It saturates the arithmetic units, has abundant parallelism to hide latency, and reuses data well. That is the *ideal* GPU workload, which is why a GPU can outrun a CPU by one to two orders of magnitude on training. The flip side: ops that are branchy, sequential, or memory-bound (Lesson 4) leave the hardware starved.
 
+<Exercise id="gpu-arch-throughput-latency" />
+
+<Exercise id="gpu-arch-warp-divergence" />
+
+<Exercise id="gpu-arch-hierarchy" />
+
 ## Common mistakes
 
 1. **Thinking "more cores = always faster."** Throughput only materializes with enough *independent* work to fill the machine and hide latency; a tiny workload barely uses a GPU.
@@ -102,7 +108,3 @@ The dominant operation in deep learning — matrix multiplication — is a sea o
 - [**The CUDA Programming Model**](/courses/gpu-programming/02-cuda-programming-model) — how you actually write code for this hierarchy
 - [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the matrix multiplies that make ML the ideal GPU workload
 - [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — exploiting GPU throughput and memory bandwidth in production
-
-<Exercise id="gpu-arch-throughput-latency" />
-<Exercise id="gpu-arch-warp-divergence" />
-<Exercise id="gpu-arch-hierarchy" />
