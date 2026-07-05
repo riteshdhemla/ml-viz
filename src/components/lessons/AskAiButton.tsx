@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, ExternalLink, Copy, Check } from "lucide-react";
-import { getClaudeUrl, getChatGptUrl } from "@/lib/ai-deep-dive";
+import { getClaudeUrl, getChatGptUrl, getGeminiUrl } from "@/lib/ai-deep-dive";
 
 interface Props {
   /** Pre-built prompt (assembled server-side from the page's material). */
@@ -80,6 +80,17 @@ export function AskAiButton({ prompt, className }: Props) {
             className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-surface-elevated hover:text-white transition-colors"
           >
             Ask ChatGPT
+            <ExternalLink size={13} className="text-slate-500" />
+          </a>
+          <a
+            href={getGeminiUrl(prompt)}
+            target="_blank"
+            rel="noopener noreferrer"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-surface-elevated hover:text-white transition-colors"
+          >
+            Ask Gemini
             <ExternalLink size={13} className="text-slate-500" />
           </a>
           <button
