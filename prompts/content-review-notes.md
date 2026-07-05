@@ -1721,6 +1721,42 @@ lessons; CLAUDE.md row.
 
 ---
 
+## wiki: probability (10 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** beta-bernoulli-posterior, bootstrap-resampling, gaussian-integral,
+hypothesis-testing, information-theory, kolmogorov-smirnov-test, mcmc-sampling,
+mle-gaussian, probability-distributions, sampling-methods.
+
+**Grasp scores:** mcmc-sampling: 5 · beta-bernoulli-posterior: 5 (deep-read);
+remaining 8 structure-audited (frontmatter, notebook, inbound links, worked
+content present).
+
+Deep reads confirmed the wiki register is right: mcmc-sampling's "the constant
+cancels in the ratio — which is the whole point" and the detailed-balance
+callout, and beta-bernoulli's five-step derivation with explicit
+drop-the-constant bookkeeping, are exactly the full-procedure treatment the
+wiki exists for.
+
+**Findings:**
+
+- **P2 (fixed): hypothesis-testing page's relatedLessons pointed at
+  probability-statistics/02** (distributions) instead of **07** (the
+  hypothesis-testing lesson that actually links it) — footer would have
+  attributed the page to the wrong lesson. Fixed.
+- **checked, no issue: apparent orphans weren't.** kolmogorov-smirnov-test and
+  sampling-methods have no `<WikiLink>` component inbound, but both are linked
+  from their host lessons' Related-concepts lists as plain markdown links
+  (prob-stat/07 line 119, prob-stat/02 line 222). Reachable; note for the
+  post-queue theme roll-up: plain `/wiki/...` markdown links bypass the
+  integrity test — consider extending the test to cover them.
+- **no issues:** all 10 have notebooks (`notebooks/wiki/*.ipynb`); all
+  relatedLessons entries resolve; every page 80–195 lines with derivation-level
+  content; `advanced: true` flags used consistently on the heavier pages.
+
+**Applied in this iteration:** relatedLessons fix on hypothesis-testing.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
