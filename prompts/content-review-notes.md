@@ -1962,6 +1962,59 @@ across 4 lessons; all 7 pages now bidirectionally linked.
 
 ---
 
+## wiki: nlp + transformers (8 pages) <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** attention-mechanisms, positional-encodings, scaled-dot-product-attention
+(transformers); bpe-tokenization, dependency-parsing, glove-training,
+text-generation-metrics, vector-databases (nlp). (Plan said "7 pages"; 8 carry
+an nlp/transformers topic tag.)
+
+**Grasp scores:** all 8 deep-read at 5 — a very strong cluster.
+scaled-dot-product-attention, text-generation-metrics, and vector-databases are
+model worked-example pages.
+
+**Math hand-verified (all correct):**
+- scaled-dot-product-attention 3-token example: QKᵀ=[[4,0,2],[0,4,2],[4,4,4]],
+  row-1 softmax [0.768,0.045,0.187], output [2.638,1.915]; row-3 = value mean
+  [3.667,3.667]. Matches the embedded Python.
+- text-generation-metrics: p₁=1, p₂=3/4, BP=e^−0.2=0.819, BLEU₁,₂=0.709;
+  ROUGE-1=5/6, ROUGE-L F=0.909; METEOR F_mean=0.847, penalty 0.5·(2/5)³=0.032,
+  METEOR=0.820 — every number checks.
+- glove-training: f(100)=1, f(1)=0.01^0.75≈0.032, loss ratio ~11× — correct.
+- vector-databases: IVF candidates 1e6·10/1000=1e4 (100× speedup, 990 un-probed
+  cells); PQ 768·4=3072 B → ~100× — correct.
+- positional-encodings sinusoidal/RoPE/ALiBi formulas correct.
+
+**Findings:**
+
+- **P2 (fixed): bpe-tokenization "After merge 1" worked trace was wrong.** After
+  merging (w,e)→"we", it showed "low" as `l o we </w>` and "newest" as
+  `n ewe s t` — but "low" (l-o-w-</w>) has no w–e pair so it is unchanged, and
+  "newest" becomes `n e we s t`. The bogus forms propagated into the pair counts
+  ("o+we: 7", "we+</w>: 5"). Rewrote the line to the correct post-merge state
+  (`l o w </w> | l o we r </w> | n e we s t </w>`) with a note that "low" is
+  unchanged, and corrected the counts (l+o:7, o+w:5, e+we:6, we+s:6, we+r:2).
+  The embedded Python was already correct; only the prose trace was wrong.
+- **P2 (fixed): attention-mechanisms KV-cache table was dtype-inconsistent.**
+  Numbers (128/32/4 MB) were fp32-sized but the header said bfloat16 (2×), and
+  the h=32 params gave an MHA→GQA(G=8) ratio of 4×, contradicting the prose "8×
+  smaller" and "MQA … 64× smaller (LLaMA-2 70B h=64)". Retuned the table to the
+  actual LLaMA-2 70B attention dims (n=4096, d=8192, h=64, bf16) → 128/16/2 MB,
+  which is self-consistent and makes both prose ratios exact (128/16=8×,
+  128/2=64×).
+- **P2 (fixed): 6 relatedLessons entries had no backlink** ("Referenced by"
+  overstated). Added backlinks: attention-mechanisms → transformers/02 (WikiLink,
+  matching that file's style) & /04; positional-encodings → transformers/04;
+  dependency-parsing → nlp/01; text-generation-metrics → nlp/03;
+  vector-databases → bwl/04-rag.
+- **P3 (fixed): dependency-parsing had no "## Related concepts" section.** Added
+  one (nlp/01, nlp/03, transformers/01).
+
+**Applied in this iteration:** 2 worked-example/number fixes; 1 new RC section;
+6 backlinks across 5 lessons. All 8 pages now bidirectionally linked.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
