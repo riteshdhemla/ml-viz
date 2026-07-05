@@ -328,7 +328,7 @@ surface-border   — borders
 - [x] **Probabilistic Models & EM** — GMM, EM algorithm, Naive Bayes *(course + 3 lessons + quiz)*
 
 ### Sequence & Probabilistic
-- [x] **Recurrent Neural Networks** — hidden state, BPTT, vanishing gradient, LSTM *(course + 3 lessons)*
+- [x] **Recurrent Neural Networks** — hidden state, BPTT, vanishing gradient, LSTM/GRU, state-space models *(course + 4 lessons + quiz)*
 - [x] **Graphical Models** — Bayesian Networks, MRFs, HMMs, belief propagation *(course + 3 lessons)*
 
 ### Advanced Deep Learning

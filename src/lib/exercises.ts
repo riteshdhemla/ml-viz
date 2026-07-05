@@ -9907,6 +9907,21 @@ const allExercises: Exercise[] = [
       { id: "d", label: "They share one filter across all layers", isCorrect: false },
     ],
   },
+  {
+    id: "rnn-quiz-ssm",
+    type: "multiple-choice",
+    question:
+      "State-space models (S4, Mamba) train much faster than RNNs on long sequences. What property makes that possible?",
+    hint: "What does a LINEAR recurrence unroll into?",
+    explanation:
+      "A linear time-invariant recurrence unrolls into a convolution, so the whole sequence can be processed in parallel during training (FFT-fast) — while at inference the same model runs as a constant-memory recurrence. Vanilla RNNs are non-linear at every step, so they must be trained sequentially.",
+    options: [
+      { id: "a", label: "Their linear recurrence is equivalent to a convolution — training parallelizes across time", isCorrect: true },
+      { id: "b", label: "They skip backpropagation entirely", isCorrect: false },
+      { id: "c", label: "They quantize the hidden state", isCorrect: false },
+      { id: "d", label: "They process only a fixed-length suffix of the sequence", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

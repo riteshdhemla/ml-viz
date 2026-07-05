@@ -231,6 +231,12 @@ Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mat
   The additive cell update $\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \dots$ means the gradient flowing back through the cell state is multiplied by the forget gate (often ≈ 1), **not** by a weight matrix raised to a power. That is precisely what lets LSTMs and GRUs learn dependencies hundreds of steps long where a vanilla RNN tops out around 10–20.
 </Callout>
 
+<Exercise id="lstm-forget-gate" />
+
+<Exercise id="lstm-cell-state" />
+
+<Exercise id="gru-vs-lstm" />
+
 ## Common mistakes
 
 1. **Initializing the forget-gate bias to 0** — set $\mathbf{b}_f$ to **+1 or +2** so the cell defaults to *remembering* early in training. This is a well-known practical trick.
@@ -248,7 +254,3 @@ Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mat
 
 - [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — the problem gates were invented to solve
 - [**Self-Attention**](/courses/transformers/01-self-attention) — what largely superseded LSTMs for long sequences
-
-<Exercise id="lstm-forget-gate" />
-<Exercise id="lstm-cell-state" />
-<Exercise id="gru-vs-lstm" />
