@@ -84,6 +84,10 @@ So PPO only ever sees one combined reward signal. The end-of-sequence RM score i
 
 The classical RLHF objective above — $\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(\pi_\theta\|\pi_\text{ref})$ — has a known closed-form optimum, a Boltzmann reweighting of $\pi_\text{ref}$ by the reward. **DPO** (covered in the [fine-tuning lesson](/courses/fine-tuning-alignment/04-rlhf-and-dpo)) reparameterises the reward as a log-ratio of policies and plugs it into the Bradley–Terry preference loss — and the entire PPO loop disappears, leaving a single classification objective. The clip-vs-collapse choice is the central design decision of modern preference tuning, and you now have both endpoints in view.
 
+<Exercise id="ppo-clip-objective" />
+
+<Exercise id="rlhf-bridge-token-reward" />
+
 ## Common mistakes
 
 1. **Reading the clip as "clip the gradient".** It's the *objective* that's clipped, not the gradient. The gradient simply becomes zero on tokens where the clip is binding, which is what kills the step there.
@@ -103,6 +107,3 @@ The classical RLHF objective above — $\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(
 - [**Policy Gradient & Actor-Critic**](/courses/reinforcement-learning/04-policy-gradient) — the on-policy estimator PPO clips.
 - [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the LLM-specific PPO pipeline and its closed-form alternative.
 - [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the $r_\phi$ that PPO optimises against in RLHF.
-
-<Exercise id="ppo-clip-objective" />
-<Exercise id="rlhf-bridge-token-reward" />
