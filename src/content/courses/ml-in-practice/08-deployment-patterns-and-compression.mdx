@@ -131,6 +131,12 @@ A short decision tree, in prose:
 3. **Yes**, and the user device has spare compute, or connectivity is bad, or privacy is paramount? → edge. Compression is the entire game.
 4. Hybrid is allowed: cache batch predictions for the 90 % of users whose context rarely changes, fall through to online inference for the long tail.
 
+<Exercise id="deploy-batch-vs-online" />
+
+<Exercise id="deploy-distillation-tradeoff" />
+
+<Exercise id="deploy-edge-budget" />
+
 ## Common mistakes
 
 1. **Treating serving pattern and compression as the same decision.** They are not. You can run a small uncompressed model online or a large compressed model in batch. Pick the pattern first, then compress for the resulting bottleneck.
@@ -155,9 +161,3 @@ A short decision tree, in prose:
 - [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems lens that asks "what happens when something goes wrong." Picking a serving pattern is one of the first decisions an ML system design has to commit to.
 - [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and silent drift are the failure modes each serving pattern is differently exposed to. Batch hides drift behind a stale prediction; online surfaces it on the request path; edge is the hardest to detect drift on because telemetry has to round-trip through the device.
 - [**Evaluating AI Systems**](/courses/model-evaluation/05-evaluating-ai-systems) — the cost / latency / quality trade-off this lesson operates inside. Picking the pattern and compression stack is what *moves* a model along that Pareto frontier.
-
-<Exercise id="deploy-batch-vs-online" />
-
-<Exercise id="deploy-distillation-tradeoff" />
-
-<Exercise id="deploy-edge-budget" />

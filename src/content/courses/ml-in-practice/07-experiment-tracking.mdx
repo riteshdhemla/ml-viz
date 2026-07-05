@@ -105,6 +105,12 @@ Every prediction made in production should be traceable backwards: prediction �
 A run is research output. A registered, promoted model is a production contract. The instant you blur the line — pointing serving infra at the latest run's checkpoint, or letting any run author push a model to `production` — you have lost the audit trail that makes incident response possible. Treat the registry's promote operation like a `git tag` on a release: deliberate, auditable, immutable.
 </Callout>
 
+<Exercise id="tracking-run-vs-artifact" />
+
+<Exercise id="tracking-reproducibility" />
+
+<Exercise id="tracking-data-version" />
+
 ## Common mistakes
 
 1. **"Magic" hyperparameters in checkpoint filenames.** `model_v3_final_FINAL_lr3e4_actually_use_this.pt`. The LR is in the *filename* — there is no other record of it. The fix is to log every hyperparameter as a tracked parameter on the run, never inline it into a filename. Treat filenames as opaque keys.
@@ -129,9 +135,3 @@ A run is research output. A registered, promoted model is a production contract.
 - [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the layer that produces the snapshots experiment tracking points to. Content-addressed data versioning (Delta / Iceberg, DVC, LakeFS) sits on top of the storage decisions made there.
 - [**Training Data: Sampling, Labelling, Imbalance**](/courses/ml-in-practice/06-training-data) — every sampling and labelling decision is a transformation of the data version. The training set hash should be a function of *both* the source snapshot and the sampling/labelling code.
 - [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew, drift, and silent failures are exactly the pathologies a lineage trail lets you diagnose. Without it, all you can say is "the model got worse."
-
-<Exercise id="tracking-run-vs-artifact" />
-
-<Exercise id="tracking-reproducibility" />
-
-<Exercise id="tracking-data-version" />
