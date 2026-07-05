@@ -99,7 +99,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 - [x] rnns <!-- reviewed + fixed 2026-07-04 -->
 - [x] transformers <!-- reviewed + fixed 2026-07-05 -->
 - [x] generative-models <!-- reviewed + fixed 2026-07-05 -->
-- [ ] graph-neural-networks
+- [x] graph-neural-networks <!-- reviewed + fixed 2026-07-05 -->
 - [ ] computer-vision
 - [ ] nlp
 - [ ] speech-audio
