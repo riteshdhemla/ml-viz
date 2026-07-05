@@ -329,7 +329,7 @@ surface-border   — borders
 
 ### Sequence & Probabilistic
 - [x] **Recurrent Neural Networks** — hidden state, BPTT, vanishing gradient, LSTM/GRU, state-space models *(course + 4 lessons + quiz)*
-- [x] **Graphical Models** — Bayesian Networks, MRFs, HMMs, belief propagation *(course + 3 lessons)*
+- [x] **Graphical Models** — Bayesian Networks, MRFs, HMMs, belief propagation *(course + 3 lessons + quiz)*
 
 ### Advanced Deep Learning
 - [x] **Attention & Transformers** — self-attention, multi-head & positional, architecture, modern attention (GQA/RoPE/FlashAttention), scaling laws, mixture of experts *(course + 6 lessons + quiz)*
