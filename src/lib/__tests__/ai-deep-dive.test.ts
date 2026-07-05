@@ -80,7 +80,7 @@ describe("provider URLs", () => {
 
   it("builds a Gemini URL with an encoded prompt", () => {
     const url = getGeminiUrl("a & b");
-    expect(url).toBe("https://gemini.google.com/app?q=a%20%26%20b");
+    expect(url).toBe("https://gemini.google.com/app?prompt=a%20%26%20b");
   });
 
   it("round-trips the prompt through decoding", () => {
