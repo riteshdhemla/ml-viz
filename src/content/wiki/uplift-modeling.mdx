@@ -90,6 +90,56 @@ $$
 **Pros:** Better performance when treatment/control sizes are very imbalanced (X-Learner upweights the larger group's estimate).  
 **Cons:** Requires propensity score estimation; 3-stage pipeline is complex.
 
+## A worked example — T-learner by hand
+
+Suppose users split on one feature, `recent_visitor` ∈ {yes, no}, and treatment (a discount) was randomly assigned. From the experiment logs we count conversion rates in each of the four cells:
+
+| `recent_visitor` | Control conversion $\mu_0$ | Treated conversion $\mu_1$ | Uplift $\hat\tau = \mu_1 - \mu_0$ |
+|---|---|---|---|
+| **yes** | 0.60 | 0.55 | **−0.05** |
+| **no**  | 0.20 | 0.50 | **+0.30** |
+
+Read the two rows against the four segments:
+
+- **`recent_visitor = no`** → uplift **+0.30**. These users rarely convert on their own (0.20) but the discount lifts them to 0.50. **Persuadables** — spend the budget here.
+- **`recent_visitor = yes`** → uplift **−0.05**. They already convert at 0.60; the discount slightly *lowers* it (perhaps it signals "you were about to pay full price"). **Sleeping dogs / sure things** — do *not* treat them.
+
+A naïve "who will convert" model would target the `yes` group (0.60 > 0.20) — exactly backwards. Uplift targets the `no` group, because it ranks by the *effect of treating*, not the raw outcome. That single sign flip is the entire value of uplift modeling.
+
+## In code — a T-learner with scikit-learn
+
+The hand example above *is* a T-learner: one model per treatment arm, then subtract. With continuous features you fit two classifiers instead of counting cells:
+
+```bash
+pip install scikit-learn numpy
+```
+
+```python
+import numpy as np
+from sklearn.ensemble import GradientBoostingClassifier
+
+rng = np.random.default_rng(0)
+n = 4000
+X = rng.normal(size=(n, 3))                       # user features
+T = rng.integers(0, 2, size=n)                     # randomized treatment
+# true effect is large only when feature 0 is negative (the "persuadables")
+persuadable = (X[:, 0] < 0).astype(float)
+p = 0.2 + 0.3 * persuadable * T                    # treatment lifts them by 0.30
+Y = (rng.random(n) < p).astype(int)                # observed conversion
+
+# T-learner: one model per arm
+m0 = GradientBoostingClassifier().fit(X[T == 0], Y[T == 0])
+m1 = GradientBoostingClassifier().fit(X[T == 1], Y[T == 1])
+uplift = m1.predict_proba(X)[:, 1] - m0.predict_proba(X)[:, 1]
+
+# users the model ranks highest should be the persuadables (feature 0 < 0)
+top = uplift.argsort()[::-1][:500]
+print("persuadable rate in top-500 uplift:", persuadable[top].mean())  # ~ 1.0
+print("persuadable rate overall          :", persuadable.mean())       # ~ 0.5
+```
+
+The top-ranked users are almost all persuadables — the model recovered *where* the treatment works. For S-learner, X-learner, and Qini/AUUC scoring out of the box, the standard libraries are `causalml` (`from causalml.inference.meta import BaseTClassifier`) and `EconML`.
+
 ## Evaluation: Qini curve and AUUC
 
 Standard accuracy metrics are meaningless for uplift models — the true ITE is never observed. Use **ranking-based** metrics:

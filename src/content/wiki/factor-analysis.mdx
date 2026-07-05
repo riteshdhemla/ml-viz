@@ -62,6 +62,44 @@ $$
 
 EM alternates these two steps until convergence.
 
+## A worked example — one factor, two sensors
+
+Take the simplest non-trivial case: $n = 2$ observed dimensions, $k = 1$ hidden factor, $\mu = 0$. Let the loading vector be $\Lambda = \begin{bmatrix} 2 \\ 1 \end{bmatrix}$ (factor 1 drives sensor 1 twice as hard as sensor 2) and the per-sensor noise be $\Psi = \begin{bmatrix} 0.5 & 0 \\ 0 & 0.3 \end{bmatrix}$. The model *predicts* the observed covariance from the formula $\Lambda\Lambda^\top + \Psi$:
+
+$$
+\Lambda\Lambda^\top = \begin{bmatrix} 2 \\ 1 \end{bmatrix}\begin{bmatrix} 2 & 1 \end{bmatrix} = \begin{bmatrix} 4 & 2 \\ 2 & 1 \end{bmatrix}, \qquad
+\text{Cov}(x) = \begin{bmatrix} 4.5 & 2 \\ 2 & 1.3 \end{bmatrix}
+$$
+
+Read the structure: the **off-diagonal 2** is *entirely* explained by the shared factor ($\Lambda\Lambda^\top$) — the noise $\Psi$ is diagonal and cannot create correlation between sensors. The **diagonal** splits into signal + noise: sensor 1's variance $4.5 = \underbrace{4}_{\text{factor}} + \underbrace{0.5}_{\text{noise}}$. Fitting FA runs this backwards: given the observed $4.5, 2, 1.3$, recover the $\Lambda$ and $\Psi$ that reproduce them. (Note $\Lambda' = \begin{bmatrix} -2 \\ -1 \end{bmatrix}$ gives the identical covariance — the rotation/sign non-identifiability from the section below.)
+
+## In code — scikit-learn on synthetic factors
+
+`sklearn` fits FA by EM out of the box, so you can generate data from known factors and check recovery:
+
+```bash
+pip install scikit-learn numpy
+```
+
+```python
+import numpy as np
+from sklearn.decomposition import FactorAnalysis
+
+rng = np.random.default_rng(0)
+n, k, d = 2000, 1, 2
+Z = rng.normal(size=(n, k))                       # hidden factor ~ N(0, 1)
+Lambda = np.array([[2.0], [1.0]])                 # true loadings (d x k)
+noise = rng.normal(size=(n, d)) * np.sqrt([0.5, 0.3])
+X = Z @ Lambda.T + noise                          # observations
+
+fa = FactorAnalysis(n_components=1, random_state=0).fit(X)
+print("recovered loadings:", fa.components_.ravel())   # ~ [2, 1] up to sign
+print("recovered noise   :", fa.noise_variance_)       # ~ [0.5, 0.3]
+print("empirical cov     :\n", np.cov(X.T).round(2))   # ~ [[4.5, 2],[2, 1.3]]
+```
+
+The recovered loadings match $[2, 1]$ (possibly negated) and the noise matches $[0.5, 0.3]$ — and the empirical covariance reproduces the hand-computed $\Lambda\Lambda^\top + \Psi$. Swap `FactorAnalysis` for `PCA` and the "noise" is forced equal across dimensions — the key difference below.
+
 ## Factor Analysis vs. PCA
 
 | | PCA | Factor Analysis |

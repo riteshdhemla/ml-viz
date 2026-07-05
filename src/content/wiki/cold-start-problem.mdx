@@ -102,6 +102,47 @@ where $\text{ExplorationBonus}(i) \propto \frac{1}{\sqrt{n_i}}$ decreases as ite
 
 This is exactly the UCB1 bandit formula applied at the item level, ensuring new items are tested before being ranked purely on content features.
 
+## A worked example — the exploration bonus in numbers
+
+Strategy 5 ranks a new item by relevance *plus* a bonus that decays as it gathers impressions: $\text{score}(i) = (1-\alpha)\,\hat r(u,i) + \alpha\,\frac{1}{\sqrt{n_i}}$. Take $\alpha = 0.5$ and three items — one brand-new, one lightly shown, one established:
+
+| item | predicted relevance $\hat r$ | impressions $n_i$ | bonus $\tfrac{1}{\sqrt{n_i}}$ | score |
+|---|---|---|---|---|
+| **A (new)** | 0.30 | 1 | 1.00 | $0.5(0.30)+0.5(1.00)=\mathbf{0.65}$ |
+| **B** | 0.50 | 25 | 0.20 | $0.5(0.50)+0.5(0.20)=\mathbf{0.35}$ |
+| **C (established)** | 0.60 | 400 | 0.05 | $0.5(0.60)+0.5(0.05)=\mathbf{0.325}$ |
+
+On pure relevance the order is C > B > A, and item A would *never* be shown — so it would never earn the interactions needed to prove itself (the cold-start trap). The bonus flips A to the top precisely *because* $n_A$ is tiny; once A has been shown a few hundred times its bonus shrinks and it must compete on relevance alone. This is the UCB1 bandit rule applied per item: optimism in the face of uncertainty.
+
+## In code — content-based fallback retrieval
+
+The content fallback (Strategy 1) is just cosine similarity in a shared embedding space — no interaction history required. Using scikit-learn:
+
+```bash
+pip install scikit-learn numpy
+```
+
+```python
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+rng = np.random.default_rng(0)
+# item content vectors (e.g. BERT text + CLIP image features, projected)
+item_ids = ["listing_A", "listing_B", "listing_C_new"]
+item_vecs = rng.normal(size=(3, 8))
+
+# a warm user's taste vector = mean of items they engaged with before
+user_vec = item_vecs[:2].mean(0, keepdims=True)      # likes A- and B-like items
+
+# the brand-new listing_C has NO interactions, but it DOES have content:
+sims = cosine_similarity(user_vec, item_vecs)[0]
+ranked = sorted(zip(item_ids, sims), key=lambda kv: -kv[1])
+for name, s in ranked:
+    print(f"{name:14s} similarity={s:+.3f}")   # listing_C_new is retrievable on day 0
+```
+
+Because `listing_C_new` is scored by its *features*, it can be recommended the moment it is listed — the retrieval never touched a click log. For approximate nearest-neighbor search at catalog scale, the standard library is `faiss` (see [Vector Databases](/wiki/vector-databases)).
+
 ## Comparison table
 
 | Strategy | Requires | Latency | Quality on day 0 | Quality after N interactions |
