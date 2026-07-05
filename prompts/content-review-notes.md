@@ -2147,6 +2147,15 @@ All 11 pages now bidirectionally linked. **This clears the wiki review queue.**
 
 ---
 
+## wiki: gradient-checkpointing (straggler) <!-- reviewed + fixed 2026-07-05 -->
+
+Caught during a post-queue coverage sweep (77 wiki pages total): this ml-systems
+page was named by no batch. Reviewed — grasp 5, content-clean. Verified the
+peak-memory minimization (m=√L → 2√L), the 33% compute-tax math (3→4 units), and
+the worked table (L=64→4×, 256→8×, 1024→16×). It had an RC section and notebook;
+its only gap was a missing backlink from ml-in-practice/11 (the other host,
+gpu-programming/04, already linked it) — added. **All 77 wiki pages now reviewed.**
+
 ---
 
 ## Fix queue (populate after review queue completes)
