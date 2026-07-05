@@ -1021,6 +1021,51 @@ Lesson-02 retitles + pointers + stale-reference fix, exercise placements
 
 ---
 
+## rnns — 2026-07-04 (review + fix mode)
+
+Scope: index + 4 lessons + quiz, 13+ exercises, 4 notebooks (structural ✓).
+`estimatedHours: 3.5` ✓ (88 min × 2.5/60 ≈ 3.67).
+
+### rnns/01-recurrent-neural-networks — grasp 5/5 (outline+spot read)
+- Strong shape: hidden-state-is-memory framing, parameter counting, a
+  two-timestep hand trace + 1-D worked example, the four sequence shapes,
+  from-scratch then PyTorch code.
+- P3 (fixed): exercises moved before Common mistakes.
+
+### rnns/02-bptt-and-vanishing-gradient — grasp 5/5
+- Excellent: the per-step Jacobian with every symbol unpacked (diag, tanh′),
+  both wiki extractions at exactly the right altitude (full derivation +
+  numeric decay tables out of the lesson), the clipping-fixes-explosions-
+  not-vanishing callout, and the "real fix is architectural" section that
+  sets up LSTMs by *deriving the need* for a Jacobian ≈ 1 path.
+- P3 (fixed): exercises moved. No other issues.
+
+### rnns/03-lstm-and-gru — grasp 5/5 (outline+spot read)
+- Full LSTM timestep by hand, forget-gate worked example, GRU parameter
+  counting, why-gates-beat-plain-RNNs section.
+- P3 (fixed): exercises moved.
+
+### rnns/04-state-space-models — grasp 4.5/5 (outline+spot read)
+- Good newer lesson: linear recurrence ⟺ convolution duality, S4/Mamba,
+  SSM-vs-attention table; RNNUnrollViz reuse is apt.
+- P3 (fixed): exercises moved.
+
+### rnns/05-quiz — grasp 4.5/5 → fixed
+- All-fresh ids but no lesson-04 coverage → added `rnn-quiz-ssm`
+  (recurrence⟺convolution parallel-training duality).
+
+### Course meta
+- P3 (fixed): CLAUDE.md roadmap said "course + 3 lessons" (it's 4 + quiz —
+  the state-space lesson was appended without the roadmap update).
+
+### Applied in this iteration
+Exercise placements ×4, 1 fresh quiz exercise, roadmap row. No P2s.
+Also this iteration: retired the cron /loop from the plan's run
+instructions (session-scoped jobs die with the session) — the queue is
+now worked directly, one item per turn.
+
+---
+
 ## Fix queue (populate after review queue completes)
 
 *(empty — triage P1s first, then high-frequency P2 themes)*

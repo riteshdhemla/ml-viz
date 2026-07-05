@@ -11,14 +11,13 @@ into a fix queue at the bottom of that file.
 
 ---
 
-## How to run this on a loop
+## How to run this
 
-Run each iteration in a Claude Code session (use the strongest model available
-— the review quality is the product):
-
-```
-/loop 15m Follow prompts/content-review-plan.md: review the NEXT single unchecked queue item, append notes to prompts/content-review-notes.md, then stop.
-```
+Work the Review Queue **one item at a time** in a Claude Code session (use the
+strongest model available — the review quality is the product). Each session
+turn: claim the next `[ ]` item, run the protocol below, commit + push, and
+continue with the next item when asked. (A cron-based /loop was retired
+2026-07-04 — session-scoped jobs die with the session.)
 
 ### Per-iteration protocol
 
@@ -97,7 +96,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 ### Courses — deep learning
 - [x] neural-networks <!-- reviewed + fixed 2026-07-04 -->
 - [x] cnns <!-- reviewed + fixed 2026-07-04 -->
-- [ ] rnns
+- [x] rnns <!-- reviewed + fixed 2026-07-04 -->
 - [ ] transformers
 - [ ] generative-models
 - [ ] graph-neural-networks
