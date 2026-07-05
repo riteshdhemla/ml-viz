@@ -1574,6 +1574,47 @@ mistakes for 12–13; 2 cross-links in 13; exercise placement in 3 lessons;
 
 ---
 
+## agent-design-patterns <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 11 lessons + quiz. estimatedHours math ✓ (214 min × 2.5 / 60 = 8.92 → 9).
+
+**Grasp scores:** 01: 5 · 04: 5 · 05: 5 · 07: 5 · 10: 5 · 11: 5 (deep-read);
+02/03/06/08 structurally consistent with the same GoF pattern format (skim-
+verified: Context/Problem/Solution/Forces per pattern, single Key-takeaways
+landing).
+
+Two clean generations: lessons 01–08 are the GoF-style pattern catalogue
+(Forces/Consequences substitute for Common mistakes — internally consistent,
+left as is); lessons 09–11 are the newer engineering-substrate trio in full
+house style, already with inline exercises and Common mistakes. Verified math:
+Borda rank-sums A=4/B=6/C=8; Condorcet table p=0.7 → 0.84 (N=5), 0.92 (N=11)
+(re-checked); planning-pattern ↔ prompting-technique mapping (CoT/ToT/ReAct)
+is a highlight. MCP n×m → n+m framing consistent between lesson 09 and the
+agent-protocols wiki.
+
+**Findings:**
+
+- **P2 (fixed): quiz covered only 5 of 11 lessons** (goal, reflection, voting,
+  guardrails, planning). Added `agent-quiz-querying` (incremental = feedback
+  between calls), `agent-quiz-mcp` (n×m → n+m), `agent-quiz-pass-at-k`
+  (capable vs reliable), `agent-quiz-checkpointing` (HITL + crash recovery).
+- **P2 (fixed): exercise placement** — lessons 01–08 stacked exercises after
+  Related concepts; moved before Key takeaways. Lessons 09–11 were already
+  inline (skipped).
+- **P3 (noted, not applied): lessons 01–08 lack Common mistakes sections** —
+  deliberate: the GoF Forces/Consequences format carries the same content per
+  pattern. Adding a redundant section would dilute the catalogue structure.
+- **no issues:** CLAUDE.md row accurate (11 lessons + quiz); all lesson +
+  quiz ids resolve; CondorcetViz/AgentLoopViz/TraceWaterfallViz wiring matches
+  registry; cross-links to building-with-llms/05 and the sub-agent-
+  orchestration + agent-observability wiki pages (Phase-1 additions) intact;
+  hours math correct.
+
+**Applied in this iteration:** 4 new quiz exercises; exercise placement in 8
+lessons.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

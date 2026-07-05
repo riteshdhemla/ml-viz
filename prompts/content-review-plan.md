@@ -111,7 +111,7 @@ wiki batches cover the listed pages. Oversized items may be split in place
 ### Courses — applied / production
 - [x] building-with-llms: lessons 01–06 <!-- reviewed + fixed 2026-07-05; split from 13-lesson item -->
 - [x] building-with-llms: lessons 07–13 + quiz <!-- reviewed + fixed 2026-07-05 -->
-- [ ] agent-design-patterns
+- [x] agent-design-patterns <!-- reviewed + fixed 2026-07-05 -->
 - [ ] fine-tuning-alignment
 - [ ] ml-in-practice (18 lessons — consider splitting 01–09 / 10–18)
 
