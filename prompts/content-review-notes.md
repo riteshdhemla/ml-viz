@@ -1485,6 +1485,48 @@ roadmap row.
 
 ---
 
+## building-with-llms: lessons 01–06 <!-- reviewed + fixed 2026-07-05 (split item, first half) -->
+
+**Scope:** lessons 01–06 of 13. Course estimatedHours was **wrong** (10.5;
+228 min × 2.5 / 60 = 9.5) — fixed at course level in this iteration.
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 5 · 05: 5 · 06: 5
+
+The strongest six-lesson run on the site. Each lesson is compact (77–112
+lines), single-purpose, and hands off cleanly to the next (prompting → CoT →
+embeddings → RAG → agents → production architecture). Cross-course positioning
+is disciplined throughout: decoding is intro-level here with the deep treatment
+correctly delegated to nlp/05; embeddings delegate training to nlp/07 and ANN
+internals to the vector-databases wiki; agents delegate LangGraph and MCP/A2A
+to their wiki pages (the Phase-1 additions — links verified). The CoT-vs-
+structured-output tension callout ("if you constrain the first tokens to JSON,
+the model can't reason") and the 0.95¹⁰ ≈ 60% agent-reliability arithmetic
+(verified) are the kind of practitioner detail most courses miss.
+
+**Findings:**
+
+- **P2 (fixed): estimatedHours 10.5 → 9.5** (13-lesson sum is 228 min).
+- **P2 (fixed): exercise placement** — all 6 lessons stacked exercises after
+  Related concepts; moved before Common mistakes.
+- **P3 (fixed): lesson 05 had a body section stranded after Key takeaways**
+  ("From loop to framework" with the LangGraph/MCP WikiLinks sat between Key
+  takeaways and Related concepts) — moved it into the body before Common
+  mistakes.
+- **noted for second half:** the course quiz (order 11) has only 5 questions
+  for 13 lessons, roughly covering 01/03/04/06 — extend coverage (esp. 02
+  CoT/structured output, 05 agents, and 07–13 topics) in the 07–13 iteration.
+  Also verify CLAUDE.md roadmap row then (currently lists "decoding/sampling"
+  which lives in nlp, and says "10 lessons + quiz" under LLMOps).
+- **no issues:** all 13 exercise ids resolve; notebook scaffolds in all 6;
+  SamplingViz + RAGRetrievalViz wiring matches registry; no duplication seams
+  (deliberate intro-vs-deep split with nlp is correctly cross-linked in both
+  directions).
+
+**Applied in this iteration:** hours fix; exercise placement in 6 lessons;
+lesson 05 section reorder.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
