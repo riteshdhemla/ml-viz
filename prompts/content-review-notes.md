@@ -1615,6 +1615,44 @@ lessons.
 
 ---
 
+## fine-tuning-alignment <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 6 lessons + quiz. estimatedHours was **wrong** (5.5; 140 min × 2.5
+/ 60 = 5.83 → 6) — fixed.
+
+**Grasp scores:** 01: 5 · 02: 5 · 03: 5 · 04: 5 · 05: 5 · 06: 5
+
+Outstanding course — arguably the site's best sustained arc. The SFT → PEFT →
+RM → RLHF/DPO progression carries one continuous thread (each lesson's output
+is the next one's input: SFT checkpoint = RM init = π_ref), and lesson 04's
+closed-form derivation (Boltzmann optimum → reward-as-log-ratio → Z(x) cancels
+→ DPO loss) is a model of concrete-before-abstract. Verified numbers: LoRA
+2·4096·8 = 65k vs 16.8M (256×); B=0 init ⇒ BA=0 no-op; Bradley–Terry σ(0)=0.5,
+loss log 2 ≈ 0.693; distillation τ² gradient factor; SLERP formula. Reward-
+hacking taxonomy (length bias, sycophancy, formatting tells, refusal
+calibration) is unusually honest. Cross-links to rl/06 (PPO bridge) are
+bidirectional and consistent — the two lessons share the per-token KL-in-reward
+formulation verbatim in spirit without duplicating derivations.
+
+**Findings:**
+
+- **P2 (fixed): estimatedHours 5.5 → 6** per the roadmap formula.
+- **P2 (fixed): quiz skipped lesson 06** (distillation) — added
+  `ft-quiz-dark-knowledge` (soft labels carry similarity structure).
+- **P2 (fixed): CLAUDE.md row still said "[~] in progress: Lesson 01 shipped;
+  02–06 queued"** — all 6 lessons + quiz exist; updated to [x] with full
+  topic list.
+- **P2 (fixed): exercise placement** — all 6 lessons; moved before Common
+  mistakes.
+- **no issues:** all 18 lesson + 6 quiz ids resolve; notebook scaffolds in all
+  6; LoRAViz/RewardModelViz/QuantizationViz wiring matches registry
+  (GradientDescentViz + PolicyGradientViz correctly reused in 01/04).
+
+**Applied in this iteration:** hours fix; 1 new quiz exercise + description;
+CLAUDE.md row; exercise placement in 6 lessons.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)

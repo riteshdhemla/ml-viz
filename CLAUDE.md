@@ -351,7 +351,7 @@ surface-border   — borders
 
 ### Applied & Production AI
 - [x] **Building with LLMs** — prompting & in-context learning, CoT & structured output, embeddings & semantic search, RAG, agents & tool use, AI-engineering architecture, reasoning models, LLM evaluation, observability, guardrails, code intelligence, voice & multimodal *(course + 13 lessons + quiz)*
-- [~] **Fine-Tuning & Alignment** — SFT, instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO *(in progress: course + Lesson 01 shipped; Lessons 02–06 + RL bridge queued in `prompts/content-build-checklist.md`)*
+- [x] **Fine-Tuning & Alignment** — SFT & instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO, model merging & quantization, knowledge distillation *(course + 6 lessons + quiz)*
 - [x] **ML Systems & MLOps** — data engineering, deployment patterns, model compression, continual learning & test-in-production, monitoring, MLOps infra, CI/CD & continuous training (maturity levels), feature stores, model registry & governance *(integrated into `ml-in-practice`: 18 lessons + quiz)*
 - [x] **LLMOps** — LLM evaluation & LLM-as-a-judge, observability/tracing & prompt management, guardrails & security (OWASP LLM Top 10) *(integrated into `building-with-llms` lessons 08–10)*
 - [x] **Agentic System Design** — tool use/function calling & MCP, agent evaluation (outcome vs trajectory, pass@k), production deployment (orchestration, checkpointing, guardrails, cost/latency) *(integrated into `agent-design-patterns`: 11 lessons + quiz)*

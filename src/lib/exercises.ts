@@ -10312,6 +10312,21 @@ const allExercises: Exercise[] = [
       { id: "d", label: "State graphs prevent the model from hallucinating tool names", isCorrect: false },
     ],
   },
+  {
+    id: "ft-quiz-dark-knowledge",
+    type: "multiple-choice",
+    question:
+      "In knowledge distillation, why does training the student on the teacher's full softened distribution beat training on hard labels alone?",
+    hint: "What does 'cat 78%, kitten 9%, dog 1.2%' tell you that 'cat' doesn't?",
+    explanation:
+      "The teacher's distribution encodes the similarity structure between classes — which wrong answers are nearly right ('dark knowledge'). Hard labels make every wrong answer equally wrong. Temperature τ > 1 softens the distribution so those near-misses are visible, giving the student richer supervision per example than an identically-sized model trained from scratch ever sees.",
+    options: [
+      { id: "a", label: "Soft labels encode which wrong answers are close — similarity structure invisible in the argmax", isCorrect: true },
+      { id: "b", label: "Soft labels are cheaper to store than one-hot vectors", isCorrect: false },
+      { id: "c", label: "The KL loss converges faster because it has no gradient noise", isCorrect: false },
+      { id: "d", label: "Hard labels only work when the student is larger than the teacher", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

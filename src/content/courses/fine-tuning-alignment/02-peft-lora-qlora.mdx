@@ -92,6 +92,12 @@ The result: a 65B model becomes fine-tunable on a **single 48 GB GPU**, with qua
   The frozen base is dequantized on-the-fly during the forward pass back to BF16, multiplied with the activations, and the result is added to the BF16 LoRA path. Only the *storage* is 4-bit; *compute* is still BF16. That's why QLoRA loses very little quality vs full-precision LoRA — the math is the same, only the bookkeeping shrinks.
 </Callout>
 
+<Exercise id="lora-vs-full-ft" />
+
+<Exercise id="lora-rank" />
+
+<Exercise id="qlora-quantization" />
+
 ## Common mistakes
 
 1. **Setting `r` too high "to be safe."** A rank-64 adapter on a 5k-example dataset will overfit fast. Start at 8 or 16 and only raise if validation loss plateaus.
@@ -113,7 +119,3 @@ The result: a 65B model becomes fine-tunable on a **single 48 GB GPU**, with qua
 - [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the loss you're still optimising; LoRA only changes *which* parameters move.
 - [**Gradient descent**](/courses/neural-networks/02-gradient-descent) — the optimiser still drives the (now-tiny) trainable subset.
 - [**Regularization**](/courses/linear-regression/03-regularization) — low-rank constraints are themselves a form of inductive bias against overfitting.
-
-<Exercise id="lora-vs-full-ft" />
-<Exercise id="lora-rank" />
-<Exercise id="qlora-quantization" />
