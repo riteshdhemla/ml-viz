@@ -45,6 +45,28 @@ where $\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$ and $\tilde{\mathbf{D}}$ is
   Symmetric normalization $\tilde{\mathbf{D}}^{-1/2}\tilde{\mathbf{A}}\tilde{\mathbf{D}}^{-1/2}$ down-weights messages from **high-degree** neighbors (a hub shouldn't dominate everyone it touches), scaling each edge by $1/\sqrt{d_u d_v}$. It keeps the operator's eigenvalues bounded, which stabilizes training — better than the asymmetric row-average $\mathbf{D}^{-1}\mathbf{A}$ for most node-classification tasks.
 </Callout>
 
+### Worked example — one GCN aggregation by hand
+
+Take the 3-node path graph $1\!-\!2\!-\!3$ with scalar features $\mathbf{h} = [1,\ 0,\ -1]$ (and $\mathbf{W} = 1$, no nonlinearity, to isolate the aggregation):
+
+$$
+\mathbf{A} = \begin{pmatrix} 0&1&0\\ 1&0&1\\ 0&1&0 \end{pmatrix},
+\qquad
+\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I} = \begin{pmatrix} 1&1&0\\ 1&1&1\\ 0&1&1 \end{pmatrix},
+\qquad
+\tilde{d} = (2,\ 3,\ 2).
+$$
+
+Each nonzero entry of $\hat{\mathbf{A}}$ is $1/\sqrt{\tilde{d}_u \tilde{d}_v}$: the self-loops give $\hat{A}_{11} = \hat{A}_{33} = \tfrac{1}{2}$ and $\hat{A}_{22} = \tfrac{1}{3}$, and each edge to the middle node gives $\hat{A}_{12} = \hat{A}_{23} = \tfrac{1}{\sqrt{2\cdot 3}} = \tfrac{1}{\sqrt 6} \approx 0.408$. One aggregation step:
+
+$$
+(\hat{\mathbf{A}}\mathbf{h})_1 = 0.5(1) + 0.408(0) = 0.5,\quad
+(\hat{\mathbf{A}}\mathbf{h})_2 = 0.408(1) + 0.333(0) + 0.408(-1) = 0,\quad
+(\hat{\mathbf{A}}\mathbf{h})_3 = -0.5.
+$$
+
+Node 2 sits between opposite-signed neighbors and averages to exactly $0$; the end nodes are pulled halfway toward their neighborhood. Note the edge weight $0.408 < 0.5$ — messages through the higher-degree middle node are down-weighted, exactly the hub-damping the callout describes. The notebook reproduces this matrix and one further layer.
+
 ## Spectral vs. spatial — same destination
 
 GCNs were originally **derived** from spectral graph theory: a convolution defined via the graph Laplacian's eigenbasis, then approximated (first-order Chebyshev) down to the simple $\hat{\mathbf{A}}\mathbf{H}\mathbf{W}$ form above. The modern, practical view is **spatial**: it's just normalized neighborhood aggregation. You don't need the spectral derivation to use it — but it's why GCNs are called "convolutions."
@@ -77,6 +99,12 @@ Aggregators can be **mean**, **pool** (element-wise max of transformed neighbors
 
 Sum is the most discriminative (the Graph Isomorphism Network result), mean and max lose some structural information but are often more stable.
 
+<Exercise id="gnn-gcn-layer" />
+
+<Exercise id="gnn-normalization" />
+
+<Exercise id="gnn-inductive" />
+
 ## Common mistakes
 
 1. **Forgetting self-loops.** Without $\mathbf{A}+\mathbf{I}$, a node's update ignores its own features.
@@ -96,7 +124,3 @@ Sum is the most discriminative (the Graph Isomorphism Network result), mean and 
 - [**Graphs as Data & Message Passing**](/courses/graph-neural-networks/01-graphs-as-data) — the framework this lesson instantiates
 - [**Graph Attention, Pooling & Over-smoothing**](/courses/graph-neural-networks/03-graph-attention-and-pooling) — learning which neighbors matter, and graph-level readout
 - [**Convolution Operation**](/courses/cnns/01-convolution-operation) — the grid convolution a graph convolution generalizes
-
-<Exercise id="gnn-gcn-layer" />
-<Exercise id="gnn-normalization" />
-<Exercise id="gnn-inductive" />

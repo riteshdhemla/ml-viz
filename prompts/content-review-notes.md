@@ -1171,6 +1171,41 @@ topics updated).
 
 ---
 
+## graph-neural-networks <!-- reviewed + fixed 2026-07-05 -->
+
+**Scope:** 3 lessons + quiz. estimatedHours math ✓ (59 min × 2.5 / 60 = 2.46 → 2.5).
+
+**Grasp scores:** 01: 5 · 02: 4.5 · 03: 5
+
+Another compact, recent course in the seam-free pattern (like bayesian-methods /
+causal-inference): correct cross-course bridges in both directions (CNN/RNN as
+special-case graphs, GAT as edge-restricted self-attention linking to the
+transformers course), no duplication, honest constraints (permutation invariance,
+variable degree) motivating the design rather than asserted.
+
+**Findings:**
+
+- **P2 (fixed): no worked numeric trace anywhere in the course** (rubric #7 —
+  GCN normalization is procedure content). Added a hand-worked 3-node path-graph
+  example to lesson 02: Ã = A + I, degrees (2,3,2), symmetric-normalized entries
+  (0.5, 1/√6 ≈ 0.408, 1/3), and one aggregation of h = [1,0,−1] → [0.5, 0, −0.5],
+  with the 0.408 < 0.5 hub-damping observation tied back to the callout. Added a
+  matching reproduction cell to notebook 02 (after `normalized_adjacency`).
+- **P2 (fixed): course missing from CLAUDE.md roadmap entirely** — added a row
+  under Advanced Deep Learning ("course + 3 lessons + quiz").
+- **P2 (fixed): exercise placement** — all 3 lessons stacked exercises after
+  Related concepts; moved before Common mistakes.
+- **no issues:** quiz has 5 fresh ids covering all 3 lessons; all 14 exercise ids
+  resolve; notebook scaffolds present; MessagePassingViz wiring matches registry;
+  prerequisites honest (neural-networks; transformer references are links, not
+  assumed knowledge); over-smoothing forward-referenced from lesson 01 with
+  explicit "(Covered in Lesson 3)".
+
+**Applied in this iteration:** worked GCN example (lesson + notebook cell);
+CLAUDE.md roadmap row; exercise placement in 3 lessons.
+
+---
+
 ---
 
 ## Fix queue (populate after review queue completes)
