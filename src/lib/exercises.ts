@@ -10252,6 +10252,66 @@ const allExercises: Exercise[] = [
       { id: "d", label: "FIM makes generation deterministic, which code requires", isCorrect: false },
     ],
   },
+  {
+    id: "agent-quiz-querying",
+    type: "multiple-choice",
+    question:
+      "When should an agent use incremental model querying (many calls, observing results between steps) instead of one-shot?",
+    hint: "What can the agent see between calls that a single call never sees?",
+    explanation:
+      "Incremental querying lets each call condition on the results of executed actions, so the agent can recover from tool failures and adapt when reality diverges from the plan — at the price of more calls, latency, and cost. One-shot is right when a single well-crafted prompt reliably solves the task; escalate only when quality demands feedback.",
+    options: [
+      { id: "a", label: "When intermediate results must inform later steps — e.g. recovering from a failed tool call", isCorrect: true },
+      { id: "b", label: "Always — more model calls monotonically improve quality", isCorrect: false },
+      { id: "c", label: "Only when the context window is too small for the prompt", isCorrect: false },
+      { id: "d", label: "When the task needs deterministic output", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-quiz-mcp",
+    type: "multiple-choice",
+    question:
+      "What integration problem does the Model Context Protocol (MCP) solve for agents and tools?",
+    hint: "n agents × m tools — how many adapters do you write?",
+    explanation:
+      "Without a standard, every agent needs a custom adapter for every tool: n × m integrations. MCP standardizes the agent↔tool interface so each agent and each tool implements the protocol once — n + m integrations — and any MCP-speaking agent can use any MCP server, like USB-C for tools.",
+    options: [
+      { id: "a", label: "It turns n × m custom agent-tool adapters into n + m protocol implementations", isCorrect: true },
+      { id: "b", label: "It guarantees tool calls can never fail or return errors", isCorrect: false },
+      { id: "c", label: "It replaces function calling with direct model execution of code", isCorrect: false },
+      { id: "d", label: "It encrypts tool traffic so prompt injection becomes impossible", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-quiz-pass-at-k",
+    type: "multiple-choice",
+    question:
+      "An agent has high pass@5 (solves the task in at least one of 5 runs) but low consistency (rarely solves it in all 5). What does that combination tell you?",
+    hint: "Capable vs reliable — which does each metric measure?",
+    explanation:
+      "Pass@k measures whether the agent CAN solve the task; consistency (pass^k) measures whether it reliably DOES. High pass@k with low consistency means the agent is capable but flaky — a single-run benchmark would randomly report success or failure. For production you need the reliability number, not the lucky-run number.",
+    options: [
+      { id: "a", label: "The agent is capable but unreliable — single-run benchmarks would hide this flakiness", isCorrect: true },
+      { id: "b", label: "The benchmark is broken; the two metrics can't diverge", isCorrect: false },
+      { id: "c", label: "The agent is deterministic, so one run suffices", isCorrect: false },
+      { id: "d", label: "The task is impossible and successes are judge errors", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-quiz-checkpointing",
+    type: "multiple-choice",
+    question:
+      "Why do production agent frameworks model the agent as a persistable state graph with a checkpoint after every step?",
+    hint: "What must happen just before the agent issues a refund — and just after it crashes?",
+    explanation:
+      "Checkpointing unlocks the production behaviors a raw while-loop can't provide: pause before an irreversible action and wait for human approval, then resume; recover from a crash at the last good step instead of restarting the trajectory; and audit the exact state at every decision. Statefulness is the substrate for HITL gates and recovery.",
+    options: [
+      { id: "a", label: "Checkpoints enable human-in-the-loop pauses before irreversible actions and crash recovery mid-trajectory", isCorrect: true },
+      { id: "b", label: "Graphs run faster than loops on modern hardware", isCorrect: false },
+      { id: "c", label: "Checkpointing removes the need for guardrails and approval gates", isCorrect: false },
+      { id: "d", label: "State graphs prevent the model from hallucinating tool names", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
