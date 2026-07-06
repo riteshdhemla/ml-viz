@@ -86,6 +86,7 @@ import { VCDimensionViz } from "@/components/visualizations/VCDimension/VCDimens
 import { DistributedTrainingViz } from "@/components/visualizations/DistributedTraining/DistributedTrainingViz";
 import { TraceWaterfallViz } from "@/components/visualizations/TraceWaterfall/TraceWaterfallViz";
 import { CondorcetViz } from "@/components/visualizations/Condorcet/CondorcetViz";
+import { BigOGrowthViz } from "@/components/visualizations/BigOGrowth/BigOGrowthViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -178,4 +179,5 @@ export const mdxComponents: MDXComponents = {
   DistributedTrainingViz,
   TraceWaterfallViz,
   CondorcetViz,
+  BigOGrowthViz,
 };

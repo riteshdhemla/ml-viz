@@ -1,0 +1,175 @@
+---
+title: "Time & Space Complexity of ML Algorithms"
+description: "A Big-O reference for the algorithms taught across the site — training cost, prediction cost, and memory footprint for KNN, trees, SVMs, K-Means, PCA, neural nets, transformers, and more, with the notation, growth intuition, and derivations behind each entry."
+topics: ["foundations"]
+relatedLessons:
+  - "knn-decision-trees/01-knn"
+  - "clustering/01-k-means"
+  - "ml-in-practice/12-inference-optimization-and-serving"
+estimatedMinutes: 14
+---
+
+# Time & Space Complexity of ML Algorithms
+
+Two algorithms can solve the same problem and produce identical answers, yet one
+finishes in a second and the other never finishes at all. The difference is
+**complexity** — how the work an algorithm does *grows* with the size of its
+input. Big-O notation captures that growth rate, ignoring constant factors and
+hardware so you can reason about scalability before you write a line of code.
+
+This page is a reference. It defines the notation, builds intuition for each
+growth class, then tabulates the training-time, prediction-time, and memory
+complexity of every major algorithm taught across the site — with the reasoning
+behind each entry, not just the formula.
+
+## Big-O in one paragraph
+
+$f(n) = O(g(n))$ means: beyond some input size, $f$ grows *no faster than* a
+constant multiple of $g$. We keep only the dominant term and drop constants —
+$3n^2 + 100n + 5$ is $O(n^2)$, because for large $n$ the $n^2$ term swamps
+everything else. That is exactly the regime we care about: small inputs are fast
+no matter what; scaling is decided by the leading term.
+
+## The growth classes, visualized
+
+The classes below are ordered from cheapest to most expensive. On a **log-scaled
+y-axis** they fan out into parallel-ish lines whose slopes *are* the complexity —
+and $O(2^n)$ curves away from all of them, leaving the chart before $n$ even
+reaches 40.
+
+<BigOGrowthViz />
+
+| Class | Name | Doubling $n$ (1→2→4…) does what to the work? | Typical source |
+|-------|------|-----------------------------------------------|----------------|
+| $O(1)$ | constant | nothing | hash lookup, array index |
+| $O(\log n)$ | logarithmic | adds a fixed amount | binary search, balanced-tree descent |
+| $O(n)$ | linear | doubles | one scan over the data |
+| $O(n \log n)$ | linearithmic | slightly more than doubles | sorting, building a k-d tree |
+| $O(n^2)$ | quadratic | quadruples | all-pairs distances, naive attention |
+| $O(n^3)$ | cubic | ×8 | matrix inversion / multiply ($n\times n$) |
+| $O(2^n)$ | exponential | *squares* | exact subset search, brute-force inference |
+
+<Callout type="tip" title="The practical cliff">
+  Everything up to $O(n \log n)$ scales to millions of rows on a laptop. $O(n^2)$
+  is fine for thousands but painful for millions. $O(2^n)$ is intractable past
+  ~40 — that's why exact methods for combinatorial problems (exact Bayesian
+  network inference, subset selection) are replaced by approximations.
+</Callout>
+
+## Notation used in the tables
+
+| Symbol | Meaning |
+|--------|---------|
+| $n$ | number of training examples |
+| $d$ | number of features (input dimension) |
+| $k$ | neighbors / clusters / components (algorithm-specific) |
+| $t$ | iterations until convergence (or epochs) |
+| $m$ | number of test/query points |
+| $L$ | sequence length (for sequence models) |
+| $h$ | hidden / embedding dimension |
+
+Where an algorithm has both a *training* and a *prediction* phase we give both,
+plus the **memory** it must hold. "Lazy" learners (KNN) push all cost to
+prediction; "eager" learners (trees, neural nets) pay up front to train and are
+cheap to query.
+
+## Classical / supervised learning
+
+| Algorithm | Training time | Prediction time (per query) | Memory |
+|-----------|---------------|------------------------------|--------|
+| **KNN** | $O(1)$ (store data) | $O(n\,d)$ brute force; $O(d \log n)$ with a k-d tree in low $d$ | $O(n\,d)$ |
+| **Decision tree** | $O(n\,d \log n)$ | $O(\text{depth}) = O(\log n)$ balanced | $O(\text{nodes})$ |
+| **Random forest** ($T$ trees) | $O(T\, n\,d \log n)$ | $O(T \log n)$ | $O(T \cdot \text{nodes})$ |
+| **Gradient boosting** ($T$ trees) | $O(T\, n\,d \log n)$ | $O(T \log n)$ | $O(T \cdot \text{nodes})$ |
+| **Linear / logistic regression** (GD, $t$ iters) | $O(t\, n\, d)$ | $O(d)$ | $O(d)$ |
+| **Linear regression** (normal equation) | $O(n\,d^2 + d^3)$ | $O(d)$ | $O(d^2)$ |
+| **SVM** (kernel, SMO) | $O(n^2 d)$–$O(n^3)$ | $O(n_{sv}\, d)$ | $O(n^2)$ kernel matrix |
+| **Naive Bayes** | $O(n\,d)$ | $O(k\, d)$ | $O(k\, d)$ |
+
+**Why KNN prediction is $O(n\,d)$.** It computes the distance from the query to
+all $n$ stored points, and each distance touches all $d$ coordinates. Nothing is
+precomputed — that's what "lazy" means. Space-partitioning structures (k-d trees,
+ball trees) cut this toward $O(d \log n)$ but only while $d$ stays small; past
+~20 dimensions the curse of dimensionality erases the speedup and you're back to
+scanning everything.
+
+**Why the normal equation is $O(n\,d^2 + d^3)$.** Forming $X^\top X$ costs
+$O(n\,d^2)$ and inverting that $d \times d$ matrix costs $O(d^3)$. This is exact
+and iteration-free, so it wins when $d$ is small — but the $d^3$ term makes it
+lose to gradient descent once you have thousands of features.
+
+**Why kernel SVM struggles at scale.** The Gram matrix is $n \times n$, so just
+*storing* it is $O(n^2)$ and training is roughly $O(n^2 d)$ to $O(n^3)$. That
+quadratic-plus memory wall is exactly why linear SVMs (trained in $O(n\,d)$) and
+sampled kernel approximations exist.
+
+## Unsupervised learning & dimensionality reduction
+
+| Algorithm | Training time | Memory | Notes |
+|-----------|---------------|--------|-------|
+| **K-Means** ($k$ clusters, $t$ iters) | $O(t\, n\, k\, d)$ | $O(n + k\,d)$ | each iter assigns $n$ points to $k$ centroids |
+| **Hierarchical (agglomerative)** | $O(n^2 \log n)$, $O(n^2 d)$ distances | $O(n^2)$ | the full pairwise matrix is the bottleneck |
+| **DBSCAN** | $O(n \log n)$ indexed, $O(n^2)$ naive | $O(n)$ | neighborhood queries dominate |
+| **PCA** (via covariance) | $O(n\,d^2 + d^3)$ | $O(d^2)$ | covariance build + eigendecomposition |
+| **PCA** (truncated SVD, $k$ comps) | $O(n\,d\,k)$ | $O(n\,d)$ | when you only need the top $k$ |
+| **t-SNE** | $O(n^2)$ exact, $O(n \log n)$ Barnes-Hut | $O(n^2)$ / $O(n)$ | pairwise affinities |
+| **GMM (EM)** ($k$ comps, $t$ iters) | $O(t\, n\, k\, d^2)$ | $O(k\,d^2)$ | the $d^2$ is the covariance matrices |
+
+**Why K-Means is linear in $n$ but hierarchical clustering is quadratic.**
+K-Means only ever compares each point to $k$ centroids per iteration —
+$O(n\,k\,d)$ per pass. Agglomerative clustering instead needs the distance
+between *every pair* of points, which is inherently $O(n^2)$ to compute and
+store. That single difference is why K-Means scales to millions of points and
+hierarchical clustering does not.
+
+## Deep learning & sequence models
+
+For a network, "size" is the parameter count and the shapes of each layer. Costs
+are usually quoted **per training step** (one forward + backward pass over a
+batch), which is roughly twice the forward cost.
+
+| Model / layer | Forward time (per example) | Memory | Notes |
+|---------------|----------------------------|--------|-------|
+| **Dense layer** ($d_\text{in} \to d_\text{out}$) | $O(d_\text{in}\, d_\text{out})$ | $O(d_\text{in}\, d_\text{out})$ | it's one matrix multiply |
+| **MLP** (layers $\ell$, width $h$) | $O(\ell\, h^2)$ | $O(\ell\, h^2)$ | backprop ≈ 2× forward |
+| **Conv layer** | $O(H\,W\, C_\text{in}\, C_\text{out}\, k^2)$ | $O(H\,W\,C_\text{out})$ acts | $k$ = kernel size |
+| **RNN / LSTM** (length $L$) | $O(L\, h^2)$ | $O(L\, h)$ activations | sequential — can't parallelize over $L$ |
+| **Self-attention** (length $L$) | $O(L^2\, h)$ | $O(L^2)$ attention matrix | the quadratic-in-$L$ bottleneck |
+| **FlashAttention** | $O(L^2\, h)$ time, $O(L)$ memory | $O(L)$ | same FLOPs, tiled to avoid the $L^2$ matrix |
+
+**Why attention is $O(L^2)$ and why that matters.** Every token attends to every
+other token, producing an $L \times L$ score matrix — quadratic in sequence
+length for both compute *and* memory. Doubling context quadruples the cost. This
+single fact drives a whole research area: FlashAttention keeps the same $O(L^2)$
+FLOPs but tiles the computation so it never materializes the full matrix,
+dropping memory to $O(L)$; sparse and linear attention variants attack the time
+term itself.
+
+<Callout type="info" title="Complexity ≠ wall-clock">
+  Big-O counts operations, not seconds. A GPU running a highly parallel $O(L^2 h)$
+  attention can beat a sequential $O(L h^2)$ RNN in practice, because the RNN's
+  time steps must run one after another while attention's do not. Growth class
+  tells you how cost *scales*; the constant factor and parallelism decide which
+  algorithm wins at a *given* size.
+</Callout>
+
+## Reading a complexity claim critically
+
+- **Which phase?** "Fast" usually means fast *prediction* (KNN is the trap: cheap
+  to train, expensive to query). Always ask train vs. inference.
+- **Amortized vs. worst case.** A hash lookup is $O(1)$ amortized but $O(n)$ in a
+  pathological collision. Balanced trees guarantee $O(\log n)$; unbalanced ones
+  degrade to $O(n)$.
+- **Best/average/worst.** Quicksort is $O(n \log n)$ average but $O(n^2)$ worst
+  case; the average is what you feel in practice, the worst is what you must
+  survive.
+- **Memory is a first-class cost.** An $O(n^2)$ *time* algorithm that also needs
+  an $O(n^2)$ matrix (kernel SVM, exact t-SNE, dense attention) hits the memory
+  wall before the time wall.
+
+## Related concepts
+
+- [**K-Nearest Neighbors**](/courses/knn-decision-trees/01-knn) — the canonical lazy learner; $O(n\,d)$ per query
+- [**K-Means Clustering**](/courses/clustering/01-k-means) — linear-in-$n$ clustering, worked in the [K-Means algorithm page](/wiki/kmeans-algorithm)
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — where prediction-time complexity meets real latency budgets
+- [**Scaled Dot-Product Attention**](/wiki/scaled-dot-product-attention) — the $O(L^2)$ operation dissected step by step
