@@ -77,6 +77,24 @@ $$
 
 More micro-batches ($M$) shrink the bubble — at the cost of smaller per-microbatch activations and more scheduling overhead.
 
+## Activations, not just weights: gradient checkpointing
+
+Everything so far shards *weights* and *state*. But during the forward pass a network also stores every layer's **activations**, because backprop needs them — and for a deep model with long sequences, activations can dwarf the weights. **Gradient checkpointing** (a.k.a. activation checkpointing) is a single-GPU trick that attacks this: keep only a handful of activations, throw the rest away, and **recompute** them on the fly during the backward pass. You trade roughly one extra forward pass (~30% more compute) for a large drop in activation memory — and it composes with *every* parallelism strategy above.
+
+## The whole landscape on three axes
+
+It's easy to drown in method names — DDP, FSDP, ZeRO, DeepSpeed, Megatron, GPipe. The taming insight is that there are only **three axes of parallelism**, and every method is a point on one of them:
+
+- **Data parallelism** splits *the batch*. DDP, FSDP, and DeepSpeed all live here — they differ only in how much model state each GPU shards versus replicates.
+- **Tensor parallelism** splits *each layer* — every GPU computes part of the same layer, then combines.
+- **Pipeline parallelism** splits *the model into stages* — each GPU owns a run of layers and passes activations to the next.
+
+Gradient checkpointing is **not** a fourth axis — it's an orthogonal memory trick that stacks on top of whichever axis you pick. Switch between the axes below to see what each one splits across four GPUs and what it costs:
+
+<ParallelismStrategyViz />
+
+The pattern to internalize: **data parallelism** spends memory to buy speed (and, once you shard with FSDP/DeepSpeed, buys memory back with communication); **tensor and pipeline parallelism** spend complexity to fit a model that won't otherwise load; and **gradient checkpointing** spends compute to buy back activation memory on whatever setup you already have.
+
 ## Putting it together: 3D parallelism
 
 Production training runs (Megatron-LM, DeepSpeed) combine all three axes at once — data parallelism *across* groups of GPUs, tensor parallelism *within* a node, pipeline parallelism *across* nodes — because each axis answers a different question:

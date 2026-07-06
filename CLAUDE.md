@@ -447,6 +447,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ACFViz | `visualizations/ACF/` | time-series/02-arima-models | ✅ |
 | ARIMAForecastViz | `visualizations/ARIMAForecast/` | time-series/03-deep-learning-for-time-series | ✅ |
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
+| ParallelismStrategyViz | `visualizations/ParallelismStrategy/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 
 ---
 

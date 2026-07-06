@@ -84,6 +84,7 @@ import { KLDivergenceViz } from "@/components/visualizations/KLDivergence/KLDive
 import { LowRankViz } from "@/components/visualizations/LowRank/LowRankViz";
 import { VCDimensionViz } from "@/components/visualizations/VCDimension/VCDimensionViz";
 import { DistributedTrainingViz } from "@/components/visualizations/DistributedTraining/DistributedTrainingViz";
+import { ParallelismStrategyViz } from "@/components/visualizations/ParallelismStrategy/ParallelismStrategyViz";
 import { TraceWaterfallViz } from "@/components/visualizations/TraceWaterfall/TraceWaterfallViz";
 import { CondorcetViz } from "@/components/visualizations/Condorcet/CondorcetViz";
 
@@ -176,6 +177,7 @@ export const mdxComponents: MDXComponents = {
   LowRankViz,
   VCDimensionViz,
   DistributedTrainingViz,
+  ParallelismStrategyViz,
   TraceWaterfallViz,
   CondorcetViz,
 };
