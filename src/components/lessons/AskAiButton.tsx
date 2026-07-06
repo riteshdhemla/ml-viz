@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, ExternalLink, Copy, Check } from "lucide-react";
-import { getClaudeUrl, getChatGptUrl, getGeminiUrl } from "@/lib/ai-deep-dive";
+import { getClaudeUrl, getChatGptUrl } from "@/lib/ai-deep-dive";
 
 interface Props {
   /** Pre-built prompt (assembled server-side from the page's material). */
@@ -39,16 +39,6 @@ export function AskAiButton({ prompt, className }: Props) {
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // Clipboard may be unavailable (insecure context) — fail silently.
-    }
-  }
-
-  // Gemini's web app can't be prefilled from the URL, so copy the prompt to the
-  // clipboard as the user opens Gemini — they just paste (⌘/Ctrl+V).
-  function copyForGemini() {
-    try {
-      void navigator.clipboard?.writeText(prompt);
-    } catch {
-      // Clipboard unavailable — the new tab still opens; nothing to do.
     }
   }
 
@@ -91,24 +81,6 @@ export function AskAiButton({ prompt, className }: Props) {
           >
             Ask ChatGPT
             <ExternalLink size={13} className="text-slate-500" />
-          </a>
-          <a
-            href={getGeminiUrl(prompt)}
-            target="_blank"
-            rel="noopener noreferrer"
-            role="menuitem"
-            title="The prompt is copied to your clipboard — paste it into Gemini"
-            onClick={() => {
-              copyForGemini();
-              setOpen(false);
-            }}
-            className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-surface-elevated hover:text-white transition-colors"
-          >
-            <span className="flex flex-col">
-              <span>Ask Gemini</span>
-              <span className="text-[11px] text-slate-500">prompt copied — paste it in</span>
-            </span>
-            <ExternalLink size={13} className="text-slate-500 shrink-0" />
           </a>
           <button
             type="button"

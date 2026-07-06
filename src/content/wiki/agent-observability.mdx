@@ -20,7 +20,7 @@ Four properties break the assumptions of ordinary app tracing:
 1. **The structure is emergent.** A RAG pipeline always has the same span tree; an agent's tree differs per request — 3 steps or 40, tools you didn't predict, sub-agents spawned mid-task.
 2. **Failures are behavioural, not exceptional.** The worst trajectories *complete successfully*: the agent loops, burns budget, takes an unsafe-but-permitted action, or reaches the right answer by an unjustifiable path. No error is thrown; only the trace shows it.
 3. **Tasks are long-lived and interactive.** A trajectory can span minutes to days, pause for human approval, and resume on another worker — the trace must survive checkpointing and stitch across resumptions.
-4. **Delegation crosses trust boundaries.** With [MCP tools and A2A peers](/wiki/agent-protocols-mcp-a2a), part of the trajectory executes in systems you don't own; context propagation is what keeps the pieces in one trace.
+4. **Delegation crosses trust boundaries.** With [MCP tools](/wiki/model-context-protocol) and [A2A peers](/wiki/agent-to-agent-protocol), part of the trajectory executes in systems you don't own; context propagation is what keeps the pieces in one trace.
 
 ## The trajectory as a trace tree
 
@@ -84,4 +84,4 @@ Grouping matters more for agents than for single calls: **sessions** stitch mult
 - [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — checkpointing, guardrails, and budget ceilings that observability verifies
 - [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents) — outcome vs. trajectory evaluation that runs over these traces
 - [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry) — the instrumentation stack and GenAI semantic conventions used here
-- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a) — the delegation edges a trace must cross
+- [**Model Context Protocol (MCP)**](/wiki/model-context-protocol) & [**Agent2Agent (A2A)**](/wiki/agent-to-agent-protocol) — the delegation edges a trace must cross

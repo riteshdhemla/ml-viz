@@ -45,6 +45,57 @@ $$
 
 where $\eta$ is a normalizing constant ensuring $\sum_{s'} b'(s') = 1$.
 
+## A worked belief update — the tiger behind the door
+
+The classic POMDP toy problem: two doors, a tiger behind one, treasure behind the other. The hidden state is $s \in \{\text{tiger-left}, \text{tiger-right}\}$. You start with no idea, so $b = [0.5, 0.5]$. You take the *listen* action (which doesn't change the tiger's position, so $T$ is the identity) and hear a growl. Your ears are good but not perfect — the observation function is:
+
+$$
+O(\text{growl-left} \mid \text{tiger-left}) = 0.85, \qquad O(\text{growl-left} \mid \text{tiger-right}) = 0.15
+$$
+
+Plug into the belief update $b'(s') = \eta\, O(o \mid s')\, b(s')$ (the transition sum drops out because listening leaves the state unchanged):
+
+$$
+\tilde b(\text{tiger-left}) = 0.85 \times 0.5 = 0.425, \qquad \tilde b(\text{tiger-right}) = 0.15 \times 0.5 = 0.075
+$$
+
+Normalize with $\eta = 1/(0.425 + 0.075) = 2$:
+
+$$
+b' = [0.85,\ 0.15]
+$$
+
+One noisy growl moved you from 50/50 to 85/15 — but *not* to certainty. That residual 15% is exactly why a POMDP-optimal agent will often **listen again** before opening a door: it takes an action with no immediate reward purely to sharpen the belief. A plain MDP, which sees the true state, never has a reason to do that.
+
+## In code — the Bayes belief filter
+
+The update is a two-line function; here it is applied to the tiger problem for two growls in a row:
+
+```bash
+pip install numpy
+```
+
+```python
+import numpy as np
+
+# rows = observation given true state; O[o, s] = P(obs o | state s)
+O = np.array([[0.85, 0.15],    # P(growl-left | tiger-left/right)
+              [0.15, 0.85]])   # P(growl-right | tiger-left/right)
+T_listen = np.eye(2)           # listening doesn't move the tiger
+
+def belief_update(b, obs, T):
+    b = O[obs] * (T @ b)       # observation likelihood x predicted belief
+    return b / b.sum()         # normalize (the eta step)
+
+b = np.array([0.5, 0.5])
+for growl in [0, 0]:           # hear "growl-left" twice
+    b = belief_update(b, growl, T_listen)
+    print("belief[tiger-left, tiger-right] =", b.round(3))
+# -> [0.85, 0.15] then [0.97, 0.03]
+```
+
+Two consistent growls push the belief to ~97% — matching the hand calculation on the first step. This is the same forward filter as an [HMM](/courses/graphical-models/03-hidden-markov-models); production POMDP solvers (`pomdp_py`, SARSOP) call it inside their planning loop.
+
 ## The belief-MDP
 
 Here is the key theoretical insight: **a POMDP over states is equivalent to a fully observable MDP over belief states.** The belief $b$ is Markovian — the next belief depends only on the current belief, action, and observation. So we can write a Bellman equation in belief space:

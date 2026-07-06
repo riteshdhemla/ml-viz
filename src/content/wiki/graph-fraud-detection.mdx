@@ -55,6 +55,59 @@ $$
 
 At Uber, the entity graph has relations: `SHARES_DEVICE`, `SHARES_PHONE`, `SHARES_EMAIL`, `SHARES_IP`. Each relation type has learned weights; sharing a device is a much stronger fraud signal than sharing an IP subnet, so the model learns to upweight device-sharing edges.
 
+## A worked example — risk propagating 2 hops
+
+Take a tiny graph. Three accounts carry an initial risk score (from their own features); two entity nodes are shared identifiers:
+
+- **A** (risk **0.1**, looks clean) shares phone **P** with **B**, and device **D** with **C**.
+- **B** (risk **0.9**, known fraud). **C** (risk **0.2**).
+
+Run mean aggregation, one hop at a time:
+
+**Layer 1 — entities average their accounts:**
+
+$$
+h_P = \tfrac{1}{2}(0.1 + 0.9) = 0.50, \qquad h_D = \tfrac{1}{2}(0.1 + 0.2) = 0.15
+$$
+
+**Layer 2 — account A averages its entities:**
+
+$$
+h_A = \tfrac{1}{2}(h_P + h_D) = \tfrac{1}{2}(0.50 + 0.15) = \mathbf{0.325}
+$$
+
+Account A's own features scored **0.1** — a feature-only model waves it through. But after two hops of message passing its representation is **0.325**, more than triple, *entirely* because it shares a phone with the fraudster B. That is fraud propagation: the signal traveled A ← P ← B even though A and B are never directly connected.
+
+## In code — mean-aggregation message passing
+
+The two layers above are just neighbor means over the bipartite graph. With `networkx` + `numpy`:
+
+```bash
+pip install networkx numpy
+```
+
+```python
+import networkx as nx, numpy as np
+
+G = nx.Graph()
+risk = {"A": 0.1, "B": 0.9, "C": 0.2}          # account features
+G.add_edges_from([("A", "P"), ("B", "P"),      # A & B share phone P
+                  ("A", "D"), ("C", "D")])     # A & C share device D
+
+def mean_agg(node, values):
+    nbrs = list(G.neighbors(node))
+    return np.mean([values[n] for n in nbrs])
+
+# layer 1: entities aggregate accounts
+h_entities = {e: mean_agg(e, risk) for e in ["P", "D"]}
+# layer 2: accounts aggregate entities
+h_A = mean_agg("A", h_entities)
+print("entity risks:", {k: round(v, 3) for k, v in h_entities.items()})  # P=0.5, D=0.15
+print("A after 2 hops:", round(h_A, 3), "(own feature was", risk["A"], ")")  # 0.325
+```
+
+A's propagated score jumps to 0.325 — the 2-hop cluster signal from the comparison table below. Production systems learn the aggregation weights instead of plain means; the standard library is `torch_geometric` (`from torch_geometric.nn import SAGEConv`), with relation-aware variants for the per-edge-type weighting described above.
+
 ## Handling label imbalance on graphs
 
 Standard GNN training with cross-entropy over-fits to the majority class (not-fraud). Adaptations:

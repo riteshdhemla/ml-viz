@@ -119,6 +119,55 @@ $$
 
 where $e_t = \text{target\_rate} - \text{actual\_rate}$ is the spend error. LinkedIn's system achieves < 5% budget under-delivery using this approach.
 
+## A worked GSP auction
+
+Three advertisers compete for two slots. Each has a bid and a quality score; they are ranked by **rank score** = $b \times q$, and slot $k$ pays $p_k = b_{k+1} q_{k+1} / q_k$:
+
+| advertiser | bid $b$ | quality $q$ | rank score $b\cdot q$ | slot |
+|---|---|---|---|---|
+| A | \$4.00 | 8 | 32 | 1 |
+| B | \$5.00 | 5 | 25 | 2 |
+| C | \$6.00 | 2 | 12 | — |
+
+Note C bid the *most* (\$6) but its low quality (2) drops it below the fold — quality score is why a cheaper, more relevant ad can win. Payments:
+
+$$
+p_1 = \frac{b_2 q_2}{q_1} = \frac{25}{8} = 3.125 \approx \$3.13, \qquad p_2 = \frac{b_3 q_3}{q_2} = \frac{12}{5} = \$2.40
+$$
+
+Advertiser A wins slot 1 but pays only \$3.13 — the price that would just hold off B — not its own \$4 bid. That "pay the rank score below you, converted back to your quality" rule is the *generalized* second price.
+
+## In code — a truthful second-price auction
+
+The single-slot Vickrey rule is a few lines, and simulating it shows why truthful bidding is dominant:
+
+```bash
+pip install numpy
+```
+
+```python
+import numpy as np
+
+def second_price(bids):
+    order = np.argsort(bids)[::-1]
+    winner = order[0]
+    price = bids[order[1]]          # winner pays the SECOND-highest bid
+    return winner, price
+
+value = 10.0                        # my true value for the slot
+others = np.array([7.0, 5.0, 3.0])  # opponents' bids
+
+for my_bid in [8.0, value, 12.0]:   # underbid, truthful, overbid
+    bids = np.append(others, my_bid)
+    winner, price = second_price(bids)
+    won = winner == len(bids) - 1
+    profit = (value - price) if won else 0.0
+    print(f"bid {my_bid:5.1f} -> {'win' if won else 'lose':4s}  profit {profit:.1f}")
+# truthful (10) and overbid (12) both win at price 7 -> profit 3;
+# underbidding to 8 still wins here, but drop to 6 and you'd lose a profitable auction.
+```
+
+Because the price depends on *others'* bids, not your own, changing your bid only flips whether you win — never what you pay when you do. So bidding your true value is dominant. Production auction stacks add GSP ranking, reserves, and pacing on top of this core.
 
 ## Related concepts
 

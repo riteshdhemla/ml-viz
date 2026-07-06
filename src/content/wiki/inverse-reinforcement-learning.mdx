@@ -59,6 +59,48 @@ $$
 \nabla_w \mathcal{L} = \mu_{\text{expert}} - \mathbb{E}_{P(\tau)}[\mu(\tau)]
 $$
 
+## A worked example — the ambiguity, in numbers
+
+Take a 3-state chain $s_0 \to s_1 \to s_2$ where the expert always walks right to $s_2$. Two *different* reward vectors both make "go right" optimal (discount $\gamma = 0.9$):
+
+| reward | $R(s_0)$ | $R(s_1)$ | $R(s_2)$ | optimal policy |
+|---|---|---|---|---|
+| $R_A$ | 0 | 0 | 1 | go right |
+| $R_B = R_A + 5$ | 5 | 5 | 6 | go right |
+| $R_C$ (shaped) | $-\Phi$ terms | … | … | go right |
+
+$R_B$ just adds a constant $5$ to every state — the *differences* that drive the policy are unchanged, so the expert looks identical. $R_C$ adds a potential-shaping term $\gamma\Phi(s') - \Phi(s)$, which telescopes to zero along any trajectory and again leaves the policy fixed. From demonstrations alone you **cannot** tell $R_A$, $R_B$, and $R_C$ apart — that is the ill-posedness. MaxEnt IRL breaks the tie by additionally requiring the *trajectory distribution* to have maximum entropy subject to matching the expert's expected feature counts, which pins down a unique answer.
+
+## In code — one MaxEnt IRL gradient step
+
+The MaxEnt update is $\nabla_w \mathcal{L} = \mu_{\text{expert}} - \mathbb{E}_{P(\tau)}[\mu]$: push the reward weights so the learner's expected features move toward the expert's. Here is that gradient on feature counts with numpy:
+
+```bash
+pip install numpy
+```
+
+```python
+import numpy as np
+
+# expected feature counts: expert prefers "distance-to-goal" small, "energy" low
+mu_expert  = np.array([0.2, 0.1])      # measured from demonstrations
+w = np.array([0.0, 0.0])               # reward weights R(s) = w . phi(s)
+lr = 0.5
+
+def learner_feature_counts(w):
+    """Stand-in for 'run soft-optimal RL with reward w, measure features'."""
+    # higher weight on a feature -> policy visits states with less of it
+    return np.array([0.5, 0.5]) - 0.4 * w   # toy monotone response
+
+for step in range(20):
+    grad = mu_expert - learner_feature_counts(w)   # MaxEnt IRL gradient
+    w += lr * grad
+print("recovered weights:", w.round(3))
+print("learner features :", learner_feature_counts(w).round(3), "vs expert", mu_expert)
+```
+
+The weights converge until the learner's feature counts match the expert's — the defining condition of MaxEnt IRL. Real neural-reward IRL (AIRL, GCL) replaces the toy `learner_feature_counts` with a full RL inner loop; the standard implementation is the `imitation` library (`from imitation.algorithms.adversarial import airl`).
+
 ## Deep / adversarial IRL
 
 For high-dimensional problems, the reward is a neural network:

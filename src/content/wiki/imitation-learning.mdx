@@ -67,6 +67,42 @@ The discriminator's output $-\log D_\phi(s,a)$ serves as an **implicit reward si
 - Inherits GAN training instabilities
 - Computationally expensive: alternates RL + discriminator updates
 
+## A worked example — why the error is quadratic
+
+The $O(\epsilon T^2)$ claim is easy to feel with numbers. Say the cloned policy matches the expert on every state it was *trained* on, but on a novel state it errs with probability $\epsilon = 0.05$, and one error pushes it to a novel state where it keeps erring. Expected number of mistakes over a horizon $T = 100$:
+
+- **Per-step view:** the first error is expected around step $1/\epsilon = 20$. From there the policy is off-distribution and (worst case) never recovers, so the *remaining* $\sim 80$ steps are all wrong.
+- **Cost bound:** each of the $T$ steps can trigger a cascade that ruins up to $T$ future steps, giving total error $\propto \epsilon T^2 = 0.05 \times 100^2 = 500$ "mistake-steps" — versus the $\epsilon T = 5$ you'd naïvely hope for.
+
+DAgger removes the cascade by *labelling the states the learner actually reaches*, so the training distribution equals the test distribution and the bound drops back to $\epsilon T = 5$. The $100\times$ gap between 500 and 5 is the entire reason DAgger exists.
+
+## In code — behavioral cloning as supervised learning
+
+BC really is *just* a classifier from states to expert actions. With scikit-learn, on a toy expert that says "go right if x > 0":
+
+```bash
+pip install scikit-learn numpy
+```
+
+```python
+import numpy as np
+from sklearn.neural_network import MLPClassifier
+
+rng = np.random.default_rng(0)
+# expert demonstrations: state = position, action = 1 (right) if x>0 else 0 (left)
+S = rng.uniform(-1, 1, size=(500, 1))
+A = (S[:, 0] > 0).astype(int)                     # the expert's rule
+
+bc = MLPClassifier(hidden_layer_sizes=(16,), max_iter=500).fit(S, A)
+print("train accuracy:", bc.score(S, A))          # ~1.0 on expert states
+
+# distribution shift: evaluate on states the expert rarely visited (near 0)
+edge = np.linspace(-0.05, 0.05, 11).reshape(-1, 1)
+print("actions near the boundary:", bc.predict(edge))  # noisy exactly where drift starts
+```
+
+The policy is confident where the expert gave dense data and wobbles at the decision boundary — the seed of compounding drift. For real pipelines with DAgger and GAIL, the standard library is `imitation` (`from imitation.algorithms import bc, dagger`), built on Stable-Baselines3.
+
 ## 4. Inverse Reinforcement Learning
 
 IL and Inverse RL (IRL) are related but different:

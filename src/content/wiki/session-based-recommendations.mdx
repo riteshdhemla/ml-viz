@@ -103,6 +103,54 @@ $$
 - Tasks where you need to infer items from context in both directions (e.g., fill-in-the-list).
 - Datasets where future context is available at inference time (e.g., playlist continuation, not real-time next-click prediction).
 
+## A worked example — scoring the next item
+
+All three models end the same way: turn the session into one vector $\mathbf{h}_T$, then score every catalog item $i$ by the dot product $\mathbf{h}_T \cdot \mathbf{e}_i$ and softmax. Take a tiny catalog of 4 items with 2-D embeddings and a session that ended on a "running shoes" item, so $\mathbf{h}_T = [1.0,\ 0.2]$:
+
+| item | embedding $\mathbf{e}_i$ | score $\mathbf{h}_T\cdot\mathbf{e}_i$ |
+|---|---|---|
+| running socks | $[0.9,\ 0.1]$ | $1.0(0.9)+0.2(0.1)=\mathbf{0.92}$ |
+| trail shoes | $[0.8,\ 0.3]$ | $0.8+0.06=\mathbf{0.86}$ |
+| laptop | $[0.1,\ 0.9]$ | $0.1+0.18=\mathbf{0.28}$ |
+| cookbook | $[-0.5,\ 0.4]$ | $-0.5+0.08=\mathbf{-0.42}$ |
+
+Softmax over $[0.92, 0.86, 0.28, -0.42]$ gives $\approx [0.34, 0.32, 0.18, 0.09]$ (times a normalizer) — "running socks" and "trail shoes" dominate because their embeddings point the same way as the session vector, while "cookbook" is pushed down for pointing away. The *only* thing that differs between GRU4Rec, SASRec, and BERT4Rec is **how $\mathbf{h}_T$ is produced** (a GRU's last state vs. a causal-transformer position vs. a bidirectional `[MASK]` position); the scoring head is identical.
+
+## In code — a minimal SASRec forward pass
+
+Standard practice is to build these in PyTorch. Here is the SASRec core — item + positional embeddings, one causal self-attention block, then the scoring head from the worked example:
+
+```bash
+pip install torch
+```
+
+```python
+import torch, torch.nn as nn
+
+class TinySASRec(nn.Module):
+    def __init__(self, n_items, d=64, max_len=50):
+        super().__init__()
+        self.item = nn.Embedding(n_items + 1, d, padding_idx=0)   # 0 = padding
+        self.pos = nn.Embedding(max_len, d)
+        self.attn = nn.MultiheadAttention(d, num_heads=2, batch_first=True)
+
+    def forward(self, session):                     # session: (batch, T) item ids
+        T = session.size(1)
+        x = self.item(session) + self.pos(torch.arange(T))
+        causal = torch.triu(torch.ones(T, T), diagonal=1).bool()  # mask the future
+        h, _ = self.attn(x, x, x, attn_mask=causal)
+        last = h[:, -1]                              # h_T : session representation
+        scores = last @ self.item.weight.T           # dot with every item embedding
+        return scores                                # (batch, n_items+1)
+
+model = TinySASRec(n_items=1000)
+session = torch.tensor([[5, 42, 17, 8]])             # a 4-item session
+next_item = model(session).argmax(-1)
+print("predicted next item id:", next_item.item())
+```
+
+The `causal` mask is the $M_{ij}=-\infty$ future-masking from the SASRec section — it is what keeps position $t$ from peeking at items it hasn't seen yet. For production training loops, batching, and evaluation, the standard library is `RecBole` (`from recbole.model.sequential_recommender import SASRec`).
+
 ## Comparison table
 
 | | GRU4Rec | SASRec | BERT4Rec |

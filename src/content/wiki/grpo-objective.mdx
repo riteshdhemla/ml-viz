@@ -76,6 +76,38 @@ $$
 
 Every token in the two correct completions gets pushed up (positive advantage); every token in the two incorrect ones gets pushed down — even though the *raw* rewards were just 0/1, the group turned them into a signal with both a positive and a negative side, which is what makes the policy gradient informative.
 
+## In code — the GRPO update in a few lines
+
+The whole method is "normalize rewards within the group, then run a clipped policy-gradient step." In PyTorch:
+
+```bash
+pip install torch
+```
+
+```python
+import torch
+
+def group_advantages(rewards, eps=1e-6):
+    """rewards: (G,) tensor of per-completion rewards for ONE prompt."""
+    return (rewards - rewards.mean()) / (rewards.std() + eps)
+
+def grpo_loss(logp, logp_old, adv, ref_logp, clip=0.2, beta=0.04):
+    """logp, logp_old, ref_logp: (G, T) per-token log-probs. adv: (G,)."""
+    ratio = torch.exp(logp - logp_old)                 # per-token prob ratio
+    a = adv[:, None]                                    # broadcast advantage over tokens
+    unclipped = ratio * a
+    clipped = torch.clamp(ratio, 1 - clip, 1 + clip) * a
+    surrogate = torch.minimum(unclipped, clipped).mean()
+    kl = (torch.exp(ref_logp - logp) - (ref_logp - logp) - 1).mean()  # k3 KL estimator
+    return -surrogate + beta * kl                       # minimize
+
+# the worked trace above, in code:
+rewards = torch.tensor([1., 0., 1., 0.])
+print(group_advantages(rewards))                        # tensor([ 1., -1.,  1., -1.])
+```
+
+`group_advantages` reproduces the hand-computed $[1, -1, 1, -1]$ exactly. In practice you would use the `trl` library's `GRPOTrainer`, which wraps this objective together with group sampling and reference-model bookkeeping (`from trl import GRPOTrainer, GRPOConfig`).
+
 ## GRPO vs PPO vs DPO
 
 | | PPO | GRPO | DPO |
