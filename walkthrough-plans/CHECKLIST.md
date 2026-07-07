@@ -114,10 +114,10 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `rnns` (4)
 
-- [ ] `rnns/01-recurrent-neural-networks` — 13,478 chars
-- [ ] `rnns/02-bptt-and-vanishing-gradient` — 20,896 chars
-- [ ] `rnns/03-lstm-and-gru` — 18,359 chars
-- [ ] `rnns/04-state-space-models` — 3,910 chars
+- [x] `rnns/01-recurrent-neural-networks` — 13,478 chars
+- [x] `rnns/02-bptt-and-vanishing-gradient` — 20,896 chars
+- [x] `rnns/03-lstm-and-gru` — 18,359 chars
+- [x] `rnns/04-state-space-models` — 3,910 chars
 
 ### `graphical-models` (3)
 
