@@ -646,6 +646,69 @@ const allExercises: Exercise[] = [
       { id: "d", label: "gamma", isCorrect: false },
     ],
   },
+  {
+    id: "xgb-hessian-role",
+    type: "multiple-choice",
+    question:
+      "For each training point XGBoost computes a gradient and a Hessian of the loss. What does the Hessian add over plain gradient boosting?",
+    hint: "For log-loss the Hessian is p(1−p). When is that largest?",
+    explanation:
+      "The Hessian is the second derivative — the local curvature of the loss. It acts as a per-example confidence weight (for log-loss, p(1−p), largest when the model is unsure and near zero once it's certain). Summing Hessians per leaf turns each update into a Newton step: the closed-form leaf value −G/(H+λ) and the split gain both depend on it, so confident points pull less on the next tree.",
+    options: [
+      {
+        id: "a",
+        label:
+          "It measures loss curvature (confidence), turning each step into a Newton update and weighting leaf/gain formulas",
+        isCorrect: true,
+      },
+      {
+        id: "b",
+        label: "It counts how many points fall in each leaf",
+        isCorrect: false,
+      },
+      {
+        id: "c",
+        label: "It replaces the learning rate for scaling tree contributions",
+        isCorrect: false,
+      },
+      {
+        id: "d",
+        label: "It is only used to prune trees after they are built",
+        isCorrect: false,
+      },
+    ],
+  },
+  {
+    id: "xgb-split-gain",
+    type: "multiple-choice",
+    question:
+      "XGBoost evaluates a candidate split with Gain = ½[ G_L²/(H_L+λ) + G_R²/(H_R+λ) − (G_L+G_R)²/(H+λ) ] − γ. A proposed split yields a small negative gain. What happens?",
+    hint: "Gain is the similarity earned by separating the children, minus the γ toll for adding a leaf.",
+    explanation:
+      "Negative gain means the split doesn't separate points that want to move in different directions well enough to pay the γ toll for a new leaf — it mostly captures noise. XGBoost rejects it (built-in pruning). Raising γ demands larger gains before a split is kept; raising λ shrinks every similarity term and also lowers gains.",
+    options: [
+      {
+        id: "a",
+        label: "The split is rejected — it doesn't clear the γ threshold, so the leaf isn't split",
+        isCorrect: true,
+      },
+      {
+        id: "b",
+        label: "The split is always taken; gain only affects the leaf value, not whether to split",
+        isCorrect: false,
+      },
+      {
+        id: "c",
+        label: "Training stops immediately across the whole ensemble",
+        isCorrect: false,
+      },
+      {
+        id: "d",
+        label: "The negative sign is flipped and the split is kept anyway",
+        isCorrect: false,
+      },
+    ],
+  },
   // ── Clustering ───────────────────────────────────────────────
   {
     id: "kmeans-iteration",
