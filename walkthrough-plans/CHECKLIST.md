@@ -139,9 +139,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `generative-models` (6)
 
-- [ ] `generative-models/01-what-are-generative-models` — 10,677 chars
-- [ ] `generative-models/02-autoencoders` — 8,655 chars
-- [ ] `generative-models/03-variational-autoencoders` — 11,753 chars
+- [x] `generative-models/01-what-are-generative-models` — 10,677 chars
+- [x] `generative-models/02-autoencoders` — 8,655 chars
+- [x] `generative-models/03-variational-autoencoders` — 11,753 chars
 - [ ] `generative-models/04-generative-adversarial-networks` — 20,825 chars
 - [ ] `generative-models/05-diffusion-models` — 11,441 chars
 - [ ] `generative-models/06-vit-and-modern-genai` — 20,261 chars
