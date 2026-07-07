@@ -93,9 +93,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `clustering` (3)
 
-- [ ] `clustering/01-k-means` — 17,386 chars
-- [ ] `clustering/02-hierarchical-and-dbscan` — 9,060 chars
-- [ ] `clustering/03-evaluating-clusters` — 6,170 chars
+- [x] `clustering/01-k-means` — 17,386 chars
+- [x] `clustering/02-hierarchical-and-dbscan` — 9,060 chars
+- [x] `clustering/03-evaluating-clusters` — 6,170 chars
 
 ### `pca-dimensionality` (3)
 
