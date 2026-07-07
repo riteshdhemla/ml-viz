@@ -105,9 +105,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `probabilistic-models` (3)
 
-- [ ] `probabilistic-models/01-gaussian-mixture-models` — 9,531 chars
-- [ ] `probabilistic-models/02-em-algorithm` — 10,086 chars
-- [ ] `probabilistic-models/03-naive-bayes` — 12,396 chars
+- [x] `probabilistic-models/01-gaussian-mixture-models` — 9,531 chars
+- [x] `probabilistic-models/02-em-algorithm` — 10,086 chars
+- [x] `probabilistic-models/03-naive-bayes` — 12,396 chars
 
 ## Sequence & Probabilistic
 
