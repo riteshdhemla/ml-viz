@@ -47,8 +47,8 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 - [x] `neural-networks/01-what-is-a-neuron` — 25,304 chars
 - [x] `neural-networks/02-gradient-descent` — 32,085 chars
-- [ ] `neural-networks/03-layers-and-forward-pass` — 17,334 chars
-- [ ] `neural-networks/04-xor-and-mlp` — 10,728 chars
+- [x] `neural-networks/03-layers-and-forward-pass` — 17,334 chars
+- [x] `neural-networks/04-xor-and-mlp` — 10,728 chars
 - [ ] `neural-networks/05-batchnorm-and-dropout` — 19,453 chars
 - [ ] `neural-networks/06-weight-initialization` — 5,040 chars
 
