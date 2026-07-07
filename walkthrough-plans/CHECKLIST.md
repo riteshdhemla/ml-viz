@@ -99,9 +99,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `pca-dimensionality` (3)
 
-- [ ] `pca-dimensionality/01-pca` — 13,773 chars
-- [ ] `pca-dimensionality/02-t-sne-and-umap` — 7,862 chars
-- [ ] `pca-dimensionality/03-pca-in-practice` — 5,912 chars
+- [x] `pca-dimensionality/01-pca` — 13,773 chars
+- [x] `pca-dimensionality/02-t-sne-and-umap` — 7,862 chars
+- [x] `pca-dimensionality/03-pca-in-practice` — 5,912 chars
 
 ### `probabilistic-models` (3)
 
