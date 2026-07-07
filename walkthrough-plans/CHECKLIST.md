@@ -217,15 +217,15 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `causal-inference` (2)
 
-- [ ] `causal-inference/01-correlation-and-confounding` — 4,736 chars
-- [ ] `causal-inference/02-interventions-and-potential-outcomes` — 4,521 chars
+- [x] `causal-inference/01-correlation-and-confounding` — 4,736 chars
+- [x] `causal-inference/02-interventions-and-potential-outcomes` — 4,521 chars
 
 ### `time-series` (4)
 
-- [ ] `time-series/01-time-series-fundamentals` — 2,972 chars
-- [ ] `time-series/02-arima-models` — 3,528 chars
-- [ ] `time-series/03-deep-learning-for-time-series` — 3,751 chars
-- [ ] `time-series/04-demand-forecasting-in-production` — 6,488 chars
+- [x] `time-series/01-time-series-fundamentals` — 2,972 chars
+- [x] `time-series/02-arima-models` — 3,528 chars
+- [x] `time-series/03-deep-learning-for-time-series` — 3,751 chars
+- [x] `time-series/04-demand-forecasting-in-production` — 6,488 chars
 
 ## Applied & Production AI
 
