@@ -1,27 +1,30 @@
-# Plan — linear-algebra/03-eigenvalues-and-eigenvectors
+# Plan — linear-algebra/03-eigenvalues-and-eigenvectors  (foundations flex)
 
-## Current state
-Strong: `np.linalg.eig`, by-hand characteristic-poly derivation, eigenvector
-geometry figure, PCA-from-scratch figure, two exercises (eigvals, power iteration),
-DML toolkit. Cells 4 and 6 already have good lead-ins.
+## Sections
+0. **Header + Intuition** — eigenvectors are the directions a matrix only *stretches*
+   (never rotates); the eigenvalue is the stretch factor. They power PCA, PageRank,
+   stability analysis, and understanding what repeating a transform does.
+1. **From scratch** — derive the eigenvalues by hand from the characteristic
+   polynomial `λ² − tr·λ + det = 0`, and each eigenvector as a null-space direction
+   of `(A − λI)`; check the trace/determinant invariants.
+2. **The library way + validation** — `np.linalg.eig` (eigenvectors as **columns**);
+   assert its eigenvalues match the hand-derived ones and verify `A v = λ v`.
+3. **Visualize** — the eigenvector figure (eigenvectors stay collinear, a random
+   vector rotates) and PCA-from-scratch (covariance eigendecomposition), each with a
+   "what to notice."
+4. **Limitations & numerical gotchas** — real matrices can have **complex**
+   eigenvalues (rotation → ±i); **symmetric** matrices have real eigenvalues +
+   orthogonal eigenvectors, so use `eigh` (faster/stabler); **defective** matrices
+   (repeated eigenvalue, `[[1,1],[0,1]]`) aren't diagonalizable; `eig` output is
+   unsorted with sign-ambiguous eigenvectors.
+5. **Your turn** — keep eigvals-2x2 and power-iteration exercises + DML toolkit.
+6. **Key takeaways** — recap + link to SVD lesson.
 
-**Gaps:** cells 2 (`## Computing eigenvalues`) and 8 (`## PCA from scratch`) are
-bare headings; no "what to notice" after the eig output (3), by-hand derivation (5),
-eigenvector figure (7), or PCA figure (9).
-
-## Target edits (code untouched)
-1. Cell 2 → lead-in: the eigen-equation `A v = λ v`, that `np.linalg.eig` returns
-   eigenvectors as **columns**, and that the loop checks `Av == λv`.
-2. After 3: eigenvalues 5 and 2; each `Av` lands exactly on `λv` → confirmed.
-3. After 5: hand-derived roots match NumPy; `Σλ = tr`, `Πλ = det` — the two
-   invariants.
-4. After 7: the two eigenvector arrows and their transforms stay collinear (only
-   length changes by λ), while the random arrow visibly rotates.
-5. Cell 8 → lead-in: PCA = eigendecomposition of the covariance; `eigh` for
-   symmetric matrices, sort eigenvalues descending, PC1 = top eigenvector.
-6. After 9: PC1 aligns with the data's long axis and captures the large majority
-   of variance; projecting onto it keeps the spread, collapsing 2D→1D.
+## Gaps vs current
+Bare headings (2, 8); no intuition, no scratch-vs-library validation, no
+gotchas/complex-eigenvalue section, no takeaways. Reuse by-hand derivation,
+`np.linalg.eig`, both figures, and all exercises.
 
 ## Done when
-Every code cell has a walking lead-in; all figures + numeric outputs have a
-takeaway. JSON valid, concept cells run.
+All flexed sections present; hand eigenvalues match `np.linalg.eig` via assert;
+figures have takeaways; complex/symmetric/defective gotchas shown; cells run.
