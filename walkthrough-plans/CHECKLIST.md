@@ -130,9 +130,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `transformers` (6)
 
-- [ ] `transformers/01-self-attention` — 16,028 chars
-- [ ] `transformers/02-multi-head-and-positional` — 14,878 chars
-- [ ] `transformers/03-transformer-architecture` — 14,847 chars
+- [x] `transformers/01-self-attention` — 16,028 chars
+- [x] `transformers/02-multi-head-and-positional` — 14,878 chars
+- [x] `transformers/03-transformer-architecture` — 14,847 chars
 - [ ] `transformers/04-modern-attention` — 20,439 chars
 - [ ] `transformers/05-foundation-models-and-scaling` — 7,957 chars
 - [ ] `transformers/06-mixture-of-experts` — 11,405 chars
