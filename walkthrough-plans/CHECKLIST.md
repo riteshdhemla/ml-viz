@@ -211,9 +211,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `bayesian-methods` (3)
 
-- [ ] `bayesian-methods/01-bayesian-linear-regression` — 4,732 chars
-- [ ] `bayesian-methods/02-gaussian-processes` — 14,820 chars
-- [ ] `bayesian-methods/03-bayesian-optimization` — 5,381 chars
+- [x] `bayesian-methods/01-bayesian-linear-regression` — 4,732 chars
+- [x] `bayesian-methods/02-gaussian-processes` — 14,820 chars
+- [x] `bayesian-methods/03-bayesian-optimization` — 5,381 chars
 
 ### `causal-inference` (2)
 
