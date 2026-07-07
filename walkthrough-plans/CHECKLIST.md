@@ -162,13 +162,13 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `nlp` (7)
 
-- [ ] `nlp/01-text-preprocessing` — 15,083 chars
-- [ ] `nlp/02-word-embeddings` — 13,607 chars
-- [ ] `nlp/03-sequence-models-to-bert` — 11,898 chars
-- [ ] `nlp/04-llm-model-taxonomy` — 11,720 chars
-- [ ] `nlp/05-decoding-and-sampling` — 13,684 chars
-- [ ] `nlp/06-topic-modeling-bertopic` — 24,031 chars
-- [ ] `nlp/07-training-embedding-models` — 20,570 chars
+- [x] `nlp/01-text-preprocessing` — 15,083 chars
+- [x] `nlp/02-word-embeddings` — 13,607 chars
+- [x] `nlp/03-sequence-models-to-bert` — 11,898 chars
+- [x] `nlp/04-llm-model-taxonomy` — 11,720 chars
+- [x] `nlp/05-decoding-and-sampling` — 13,684 chars
+- [x] `nlp/06-topic-modeling-bertopic` — 24,031 chars
+- [x] `nlp/07-training-embedding-models` — 20,570 chars
 
 ### `speech-audio` (2)
 
