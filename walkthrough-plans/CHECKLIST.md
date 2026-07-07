@@ -61,9 +61,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `knn-decision-trees` (3)
 
-- [ ] `knn-decision-trees/01-knn` — 13,287 chars
-- [ ] `knn-decision-trees/02-decision-trees` — 17,326 chars
-- [ ] `knn-decision-trees/03-bias-variance` — 8,481 chars
+- [x] `knn-decision-trees/01-knn` — 13,287 chars
+- [x] `knn-decision-trees/02-decision-trees` — 17,326 chars
+- [x] `knn-decision-trees/03-bias-variance` — 8,481 chars
 
 ## Supervised — Intermediate
 
