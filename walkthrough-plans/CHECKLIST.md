@@ -189,12 +189,12 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `reinforcement-learning` (6)
 
-- [ ] `reinforcement-learning/01-markov-decision-processes` — 14,039 chars
-- [ ] `reinforcement-learning/02-q-learning` — 17,514 chars
-- [ ] `reinforcement-learning/03-deep-q-networks` — 12,179 chars
-- [ ] `reinforcement-learning/04-policy-gradient` — 11,002 chars
-- [ ] `reinforcement-learning/05-exploration-and-model-based` — 9,770 chars
-- [ ] `reinforcement-learning/06-from-policy-gradient-to-rlhf` — 12,093 chars
+- [x] `reinforcement-learning/01-markov-decision-processes` — 14,039 chars
+- [x] `reinforcement-learning/02-q-learning` — 17,514 chars
+- [x] `reinforcement-learning/03-deep-q-networks` — 12,179 chars
+- [x] `reinforcement-learning/04-policy-gradient` — 11,002 chars
+- [x] `reinforcement-learning/05-exploration-and-model-based` — 9,770 chars
+- [x] `reinforcement-learning/06-from-policy-gradient-to-rlhf` — 12,093 chars
 
 ## Evaluation & Statistical ML
 
