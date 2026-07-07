@@ -34,8 +34,8 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `optimization-ml` (5)
 
-- [ ] `optimization-ml/01-gradient-descent-variants` — 27,512 chars
-- [ ] `optimization-ml/02-convex-optimization` — 10,534 chars
+- [x] `optimization-ml/01-gradient-descent-variants` — 27,512 chars
+- [x] `optimization-ml/02-convex-optimization` — 10,534 chars
 - [ ] `optimization-ml/03-constrained-optimization` — 15,465 chars
 - [ ] `optimization-ml/04-loss-functions` — 4,524 chars
 - [ ] `optimization-ml/05-hyperparameter-optimization` — 10,749 chars
