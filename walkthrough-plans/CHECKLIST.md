@@ -177,12 +177,12 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `recommender-systems` (6)
 
-- [ ] `recommender-systems/01-the-recommendation-problem` — 4,855 chars
-- [ ] `recommender-systems/02-matrix-factorization` — 4,204 chars
-- [ ] `recommender-systems/03-deep-and-two-tower` — 4,900 chars
-- [ ] `recommender-systems/04-session-based-and-realtime` — 5,304 chars
-- [ ] `recommender-systems/05-diversity-cold-start-exploration` — 5,548 chars
-- [ ] `recommender-systems/06-ad-ranking-and-ctr-prediction` — 4,857 chars
+- [x] `recommender-systems/01-the-recommendation-problem` — 4,855 chars
+- [x] `recommender-systems/02-matrix-factorization` — 4,204 chars
+- [x] `recommender-systems/03-deep-and-two-tower` — 4,900 chars
+- [x] `recommender-systems/04-session-based-and-realtime` — 5,304 chars
+- [x] `recommender-systems/05-diversity-cold-start-exploration` — 5,548 chars
+- [x] `recommender-systems/06-ad-ranking-and-ctr-prediction` — 4,857 chars
 
 ## Reinforcement Learning
 
