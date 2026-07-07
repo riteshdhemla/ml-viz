@@ -17,10 +17,10 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `calculus-for-ml` (4)
 
-- [ ] `calculus-for-ml/01-derivatives-and-gradients` — 10,826 chars
-- [ ] `calculus-for-ml/02-chain-rule-and-backpropagation` — 10,412 chars
-- [ ] `calculus-for-ml/03-multivariable-optimization` — 11,587 chars
-- [ ] `calculus-for-ml/04-jacobians` — 14,438 chars
+- [x] `calculus-for-ml/01-derivatives-and-gradients` — 10,826 chars
+- [x] `calculus-for-ml/02-chain-rule-and-backpropagation` — 10,412 chars
+- [x] `calculus-for-ml/03-multivariable-optimization` — 11,587 chars
+- [x] `calculus-for-ml/04-jacobians` — 14,438 chars
 
 ### `probability-statistics` (7)
 
