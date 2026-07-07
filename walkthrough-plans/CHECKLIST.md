@@ -28,9 +28,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `probability-statistics/02-probability-distributions` — 14,602 chars
 - [x] `probability-statistics/03-maximum-likelihood-estimation` — 11,133 chars
 - [x] `probability-statistics/04-bayesian-inference` — 11,052 chars
-- [ ] `probability-statistics/05-entropy-and-kl-divergence` — 13,252 chars
-- [ ] `probability-statistics/06-statistical-inference` — 4,685 chars
-- [ ] `probability-statistics/07-hypothesis-testing` — 6,029 chars
+- [x] `probability-statistics/05-entropy-and-kl-divergence` — 13,252 chars
+- [x] `probability-statistics/06-statistical-inference` — 4,685 chars
+- [x] `probability-statistics/07-hypothesis-testing` — 6,029 chars
 
 ### `optimization-ml` (5)
 
