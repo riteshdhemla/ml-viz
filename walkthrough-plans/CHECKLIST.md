@@ -10,7 +10,7 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `linear-algebra` (4)
 
-- [ ] `linear-algebra/01-vectors-and-spaces` — 18,266 chars
+- [x] `linear-algebra/01-vectors-and-spaces` — 18,266 chars
 - [ ] `linear-algebra/02-matrices-and-transformations` — 27,110 chars
 - [ ] `linear-algebra/03-eigenvalues-and-eigenvectors` — 15,527 chars
 - [ ] `linear-algebra/04-svd-and-low-rank` — 13,597 chars
