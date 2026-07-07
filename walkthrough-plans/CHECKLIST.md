@@ -121,9 +121,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `graphical-models` (3)
 
-- [ ] `graphical-models/01-bayesian-networks` — 7,003 chars
-- [ ] `graphical-models/02-markov-random-fields` — 6,566 chars
-- [ ] `graphical-models/03-hidden-markov-models` — 11,318 chars
+- [x] `graphical-models/01-bayesian-networks` — 7,003 chars
+- [x] `graphical-models/02-markov-random-fields` — 6,566 chars
+- [x] `graphical-models/03-hidden-markov-models` — 11,318 chars
 
 ## Advanced Deep Learning
 
