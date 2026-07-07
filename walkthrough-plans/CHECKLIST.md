@@ -148,9 +148,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `graph-neural-networks` (3)
 
-- [ ] `graph-neural-networks/01-graphs-as-data` — 4,716 chars
-- [ ] `graph-neural-networks/02-graph-convolutions` — 4,765 chars
-- [ ] `graph-neural-networks/03-graph-attention-and-pooling` — 4,759 chars
+- [x] `graph-neural-networks/01-graphs-as-data` — 4,716 chars
+- [x] `graph-neural-networks/02-graph-convolutions` — 4,765 chars
+- [x] `graph-neural-networks/03-graph-attention-and-pooling` — 4,759 chars
 
 ### `computer-vision` (5)
 
