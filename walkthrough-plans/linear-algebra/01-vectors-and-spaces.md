@@ -1,29 +1,33 @@
-# Plan — linear-algebra/01-vectors-and-spaces
+# Plan — linear-algebra/01-vectors-and-spaces  (foundations flex)
 
-## Current state
-Strong notebook: 16 content cells + full "Your turn" + DML extra-practice bank.
-Code is clean and correct. **Gaps for walkthrough standard:**
-- Cell 2 (`## Vector operations`) and cell 4 (`## Visualizing…`) are bare headings —
-  no prose walking the reader into the code that follows.
-- No "what to notice" after the two Matplotlib figures (cells 5, 15) or after the
-  numeric outputs (dot/angle in cell 3, rank/solve in cell 13).
+## Type: Foundations / concept explainer → flexed template
 
-## Target edits (surgical — keep all code verbatim)
-1. **Cell 2 → real lead-in**: name the ops the next cell prints (`u+v`, `2*u`,
-   dot, norms, angle) and connect dot-product → angle via `cosθ = u·v/(‖u‖‖v‖)`.
-2. **After cell 3**: 1-line "what to notice" — angle ≈ 45°, dot is positive
-   because the vectors point roughly the same way.
-3. **Cell 4 → lead-in** for the addition/orthogonality figure: parallelogram law
-   on the left, dot-vs-`a=[1,0]` on the right (dot = the x-coordinate here).
-4. **After cell 5 figure**: what to observe — u+v is the diagonal; c at 45° has
-   dot 0.71, the axis-aligned b has dot 0.
-5. **After cell 13**: note the singular vs solvable contrast (dependent set has
-   rank 1; independent basis gives a unique coefficient solution).
-6. **After cell 15 figure**: normalization collapses all arrows onto the unit
-   circle — direction preserved, length set to 1.
+## Sections
+0. **Header + Intuition** — keep header; add: every feature row, embedding, and
+   gradient in ML *is* a vector; the dot product is the one primitive that length,
+   angle, similarity, and projection are all built from.
+1. **From scratch** — implement `add`, `scale`, `dot`, `norm` by hand (explicit
+   formulas / a Python loop for the dot product) and print them for `u,v`.
+2. **The library way + validation** — the same four via `np.dot` / `np.linalg.norm`,
+   with `assert`s that the hand versions match; then the dot→angle formula with the
+   `np.clip` guard.
+3. **Visualize** — keep both existing figures (addition + orthogonality; three
+   vectors + unit circle), each with a "what to notice"; plus the norms, cosine
+   (word embeddings), projection, and rank/span sections.
+4. **Limitations & numerical gotchas** (replaces pros/cons for a concept nb) —
+   zero-vector normalization divides by zero; `arccos` needs the clip; cosine
+   ignores magnitude by design; distances concentrate in high dimensions.
+   Small runnable demo for the first two.
+5. **Your turn** — keep Exercise 1 (cosine), Exercise 2 (projection), and the DML
+   vector-operations bank untouched.
+6. **Key takeaways** — new recap bullets + link to Matrices lesson.
 
-Keep header, style cell, exercises, and DML bank untouched.
+## Gaps vs current
+Current version (already narrated) lacks: intuition opener, an explicit
+scratch-vs-library framing with a validation check, a gotchas/limitations section,
+and a key-takeaways recap. Reuse existing figures, norms/cosine/projection/rank
+code, and all exercises verbatim.
 
-## Definition of done
-Every code cell has a walking lead-in; both figures and the key numeric cells
-have a follow-up takeaway. JSON valid.
+## Done when
+All 7 (flexed) sections present; scratch matches library via assert; figures have
+takeaways; gotchas + recap added; concept cells run; JSON valid.
