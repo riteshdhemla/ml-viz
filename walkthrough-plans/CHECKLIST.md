@@ -154,11 +154,11 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `computer-vision` (5)
 
-- [ ] `computer-vision/01-object-detection` — 10,448 chars
-- [ ] `computer-vision/02-segmentation` — 9,185 chars
-- [ ] `computer-vision/03-backbones-in-practice` — 8,602 chars
-- [ ] `computer-vision/04-vision-language-models` — 14,174 chars
-- [ ] `computer-vision/05-self-supervised-learning` — 4,940 chars
+- [x] `computer-vision/01-object-detection` — 10,448 chars
+- [x] `computer-vision/02-segmentation` — 9,185 chars
+- [x] `computer-vision/03-backbones-in-practice` — 8,602 chars
+- [x] `computer-vision/04-vision-language-models` — 14,174 chars
+- [x] `computer-vision/05-self-supervised-learning` — 4,940 chars
 
 ### `nlp` (7)
 
