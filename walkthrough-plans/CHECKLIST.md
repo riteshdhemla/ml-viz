@@ -24,8 +24,8 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `probability-statistics` (7)
 
-- [ ] `probability-statistics/01-thinking-in-probabilities` — 13,328 chars
-- [ ] `probability-statistics/02-probability-distributions` — 14,602 chars
+- [x] `probability-statistics/01-thinking-in-probabilities` — 13,328 chars
+- [x] `probability-statistics/02-probability-distributions` — 14,602 chars
 - [ ] `probability-statistics/03-maximum-likelihood-estimation` — 11,133 chars
 - [ ] `probability-statistics/04-bayesian-inference` — 11,052 chars
 - [ ] `probability-statistics/05-entropy-and-kl-divergence` — 13,252 chars
