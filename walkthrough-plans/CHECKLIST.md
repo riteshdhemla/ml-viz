@@ -71,10 +71,10 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 ### `cnns` (5)
 
 - [x] `cnns/01-convolution-operation` — 12,578 chars
-- [ ] `cnns/02-pooling-and-architectures` — 18,239 chars
-- [ ] `cnns/03-cnn-visualization-and-attacks` — 10,322 chars
-- [ ] `cnns/04-transfer-learning` — 10,773 chars
-- [ ] `cnns/05-modern-architectures` — 18,803 chars
+- [x] `cnns/02-pooling-and-architectures` — 18,239 chars
+- [x] `cnns/03-cnn-visualization-and-attacks` — 10,322 chars
+- [x] `cnns/04-transfer-learning` — 10,773 chars
+- [x] `cnns/05-modern-architectures` — 18,803 chars
 
 ### `svm` (3)
 
