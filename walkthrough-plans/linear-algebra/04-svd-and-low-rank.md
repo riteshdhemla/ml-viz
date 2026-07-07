@@ -1,27 +1,29 @@
-# Plan — linear-algebra/04-svd-and-low-rank
+# Plan — linear-algebra/04-svd-and-low-rank  (foundations, algorithm-ish)
 
-## Current state
-Four tight sections (SVD = rotate·stretch·rotate, PCA connection, Eckart–Young
-check, image compression) + two exercises + DML bank. Each `##` has a one-line
-lead-in, but they state the concept without walking the code, and there are no
-"what to notice" follow-ups after the four outputs/figures.
+## Sections
+0. **Header + Intuition** — SVD factors *any* matrix into rotate·stretch·rotate
+   (`U Σ Vᵀ`); the singular values rank each direction's importance, and keeping the
+   top-k gives the **best low-rank approximation** — the engine behind compression,
+   denoising, PCA, and recommenders.
+1. **From scratch** — build the SVD from the eigendecomposition of `AᵀA`:
+   `V` = eigenvectors, `σ = √eigenvalues`, `U = A V / σ`; check reconstruction.
+2. **The library way + validation** — `np.linalg.svd`; assert the from-scratch
+   singular values and reconstruction match, and that `U,V` are orthogonal.
+3. **Visualize / apply** — PCA connection (SVD vs covariance eig), Eckart–Young
+   truncation-error check (+ random rank-k can't beat it), image compression at
+   rank 1/3/10/128 + the singular-value spectrum. Each with a "what to notice."
+4. **Tradeoffs & gotchas** — `full_matrices` shapes (full vs economy), numerical
+   **rank via a σ tolerance**, cost `O(mn·min(m,n))`, and **sign ambiguity** of the
+   singular vectors.
+5. **Your turn** — keep rank-k-approx and compression-ratio exercises + the DML
+   SVD/sparse bank.
+6. **Key takeaways** — recap + links (PCA lesson, course quiz).
 
-## Target edits (code untouched)
-1. Expand cell 2: `np.linalg.svd(full_matrices=False)` returns `U, s, Vt`; the
-   cell checks `UᵀU=I`, `VVᵀ=I`, `s ≥ 0` sorted, and exact reassembly.
-2. After 3: all checks True → the factorization is exact and the pieces really are
-   rotation / stretch / rotation.
-3. Expand cell 4: right singular vectors of centered `X` = principal components,
-   and `σ²/n` = the variance along each — same PCA, two routes.
-4. After 5: the eigen-route and SVD-route variance numbers match to 4 dp.
-5. Expand cell 6: build `A_k` from the top-k triplets; `‖A−A_k‖_F = √Σσ²` and the
-   random rank-k attempts can't beat it.
-6. After 7: truncation error equals the discarded-tail RSS; best random attempt is
-   larger → Eckart–Young is optimal.
-7. Expand cell 8: truncate at k = 1,3,10,128 and plot the energy kept; also the
-   log-spectrum.
-8. After 9: structure returns rank by rank; the spectrum shows a few big values
-   then a noise floor — that gap is what makes compression possible.
+## Gaps vs current
+Thin one-line lead-ins on every section; no from-scratch SVD, no scratch-vs-library
+validation, no gotchas (shapes/rank-tol/sign), no intuition or takeaways beyond the
+footer. Reuse PCA/Eckart–Young/image code and all exercises.
 
 ## Done when
-Lead-ins walk the code, every output/figure has a takeaway, JSON valid, cells run.
+All sections present; from-scratch SVD matches `np.linalg.svd` via assert; figures
+have takeaways; shapes/rank/sign gotchas shown; cells run; JSON valid.

@@ -1,34 +1,33 @@
-# Plan — linear-algebra/02-matrices-and-transformations
+# Plan — linear-algebra/02-matrices-and-transformations  (foundations flex)
 
-## Current state
-Rich: transform gallery, composition, rank/det, determinant-as-area (+ shoelace
-check), before/after figure, two exercises, two big DML banks. Code is solid.
+## Type: Foundations → flexed template
 
-**Gaps for walkthrough standard:**
-- Cell 2 lead-in is one thin line; doesn't walk the `draw_transform` helper or the
-  four example matrices.
-- Cells 4 (`## Matrix multiplication as composition`) and 6 (`## Rank and
-  invertibility`) are **bare headings**.
-- No "what to notice" after the transform gallery (3), composition output (5),
-  rank/det table (7), det-vs-shoelace (9), or before/after figure (11).
+## Sections
+0. **Header + Intuition** — a matrix *is* a linear transformation; multiplying by it
+   warps space (scale/rotate/shear/flatten), composition chains transforms, the
+   determinant is the area-scaling factor, rank is how many dimensions survive.
+   Every layer of a neural net is a matrix multiply.
+1. **From scratch** — implement mat-vec and mat-mat multiply with explicit loops;
+   show the key insight that **the columns of A are where the basis vectors land**.
+2. **The library way + validation** — `@`, `np.linalg.det`, `np.linalg.inv`,
+   `np.linalg.matrix_rank`; assert the hand matmul and hand `ad−bc` match NumPy;
+   reuse the rank/det/invertibility table.
+3. **Visualize** — transform gallery (scale/rotate/project/shear), composition,
+   determinant-as-area (+ shoelace check), before/after figure — each with a
+   "what to notice."
+4. **Limitations & numerical gotchas** — matrix multiply is **not commutative**
+   (order matters); singular matrices (`det=0`) have no inverse and near-singular
+   ones are **ill-conditioned** (tiny `det`, huge `cond`, error amplified);
+   matmul is **O(n³)**; shape mismatches raise.
+5. **Your turn** — keep both exercises + the two DML banks (matrix ops, linear
+   systems) verbatim.
+6. **Key takeaways** — recap + link to Eigenvalues lesson.
 
-## Target edits (code untouched)
-1. Expand cell 2: what `draw_transform` draws (square + its image + the two basis
-   arrows), and read the four matrices as scale / rotate / project / shear.
-2. After 3: which columns of each matrix are the landed basis vectors; the
-   projection one is the tell for rank loss (square → segment).
-3. Cell 4 → lead-in: `C = R @ S` means "scale first, then rotate"; matrices apply
-   right-to-left, and order matters (`R@S ≠ S@R`).
-4. After 5: `step2 == direct` confirms composition; the two products differ →
-   non-commutative.
-5. Cell 6 → lead-in: rank = independent directions; `det = 0` ⇔ rank-deficient ⇔
-   singular ⇔ no inverse.
-6. After 7: full-rank det 10 invertible; singular det 0; identity det 1.
-7. After 9: `|det|` matches the shoelace image area on every row; `collapse`
-   det 0 → area 0 → flattened to a line.
-8. After 11: `det(A)=1.125` = product of the scale factors 1.5×0.75; rotation
-   contributes 1, so area scales by 1.125 while the square tilts.
+## Gaps vs current
+Current: thin/bare lead-ins on cells 2/4/6, no from-scratch-vs-library framing, no
+gotchas/complexity section, no intuition or takeaways. Reuse gallery, composition,
+det/shoelace, before/after figure, and all exercises.
 
 ## Done when
-Every code cell has a walking lead-in; all figures + numeric outputs have a
-takeaway. JSON valid, concept cells run.
+All flexed sections present; hand matmul/det match NumPy via assert; figures have
+takeaways; conditioning + complexity covered; recap added; cells run; JSON valid.
