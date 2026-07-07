@@ -54,10 +54,10 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `linear-regression` (4)
 
-- [ ] `linear-regression/01-linear-regression` — 18,258 chars
-- [ ] `linear-regression/02-logistic-regression` — 15,878 chars
-- [ ] `linear-regression/03-regularization` — 15,225 chars
-- [ ] `linear-regression/04-generalized-linear-models` — 14,797 chars
+- [x] `linear-regression/01-linear-regression` — 18,258 chars
+- [x] `linear-regression/02-logistic-regression` — 15,878 chars
+- [x] `linear-regression/03-regularization` — 15,225 chars
+- [x] `linear-regression/04-generalized-linear-models` — 14,797 chars
 
 ### `knn-decision-trees` (3)
 
