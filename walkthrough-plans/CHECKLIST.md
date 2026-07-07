@@ -172,8 +172,8 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `speech-audio` (2)
 
-- [ ] `speech-audio/01-audio-representations` — 4,039 chars
-- [ ] `speech-audio/02-speech-recognition` — 4,095 chars
+- [x] `speech-audio/01-audio-representations` — 4,039 chars
+- [x] `speech-audio/02-speech-recognition` — 4,095 chars
 
 ### `recommender-systems` (6)
 
