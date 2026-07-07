@@ -78,9 +78,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `svm` (3)
 
-- [ ] `svm/01-maximum-margin` — 7,609 chars
-- [ ] `svm/02-kernel-trick` — 14,614 chars
-- [ ] `svm/03-soft-margins` — 6,145 chars
+- [x] `svm/01-maximum-margin` — 7,609 chars
+- [x] `svm/02-kernel-trick` — 14,614 chars
+- [x] `svm/03-soft-margins` — 6,145 chars
 
 ### `ensemble-methods` (3)
 
