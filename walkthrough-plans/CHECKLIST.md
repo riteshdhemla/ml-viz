@@ -84,9 +84,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `ensemble-methods` (3)
 
-- [ ] `ensemble-methods/01-bagging-and-random-forests` — 8,468 chars
-- [ ] `ensemble-methods/02-boosting` — 15,319 chars
-- [ ] `ensemble-methods/03-xgboost` — 6,400 chars
+- [x] `ensemble-methods/01-bagging-and-random-forests` — 8,468 chars
+- [x] `ensemble-methods/02-boosting` — 15,319 chars
+- [x] `ensemble-methods/03-xgboost` — 6,400 chars
 
 ## Unsupervised
 
