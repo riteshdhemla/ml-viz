@@ -352,9 +352,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/llm-as-judge` — 4,924 chars
 - [x] `wiki/logistic-gradient-derivation` — 6,859 chars
 - [x] `wiki/mcmc-sampling` — 7,365 chars
-- [ ] `wiki/minkowski-distances` — 5,440 chars
-- [ ] `wiki/mle-gaussian` — 6,354 chars
-- [ ] `wiki/multi-agent-rl` — 5,556 chars
+- [x] `wiki/minkowski-distances` — 5,440 chars
+- [x] `wiki/mle-gaussian` — 6,354 chars
+- [x] `wiki/multi-agent-rl` — 5,556 chars
 - [ ] `wiki/neural-radiance-fields` — 7,165 chars
 - [ ] `wiki/newtons-method` — 7,413 chars
 - [ ] `wiki/nms-algorithm` — 7,579 chars
