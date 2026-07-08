@@ -326,9 +326,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/decision-tree-information-gain` — 2,762 chars
 - [x] `wiki/dependency-parsing` — 5,575 chars
 - [x] `wiki/directional-derivative` — 6,860 chars
-- [ ] `wiki/dropout` — 6,074 chars
-- [ ] `wiki/eigenvalue-computation` — 6,705 chars
-- [ ] `wiki/em-algorithm` — 2,876 chars
+- [x] `wiki/dropout` — 6,074 chars
+- [x] `wiki/eigenvalue-computation` — 6,705 chars
+- [x] `wiki/em-algorithm` — 2,876 chars
 - [ ] `wiki/factor-analysis` — 6,370 chars
 - [ ] `wiki/gaussian-integral` — 5,331 chars
 - [ ] `wiki/glove-training` — 5,202 chars
