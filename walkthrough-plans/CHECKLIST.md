@@ -373,9 +373,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/session-based-recommendations` — 3,343 chars
 - [x] `wiki/softmax-cross-entropy` — 5,282 chars
 - [x] `wiki/sub-agent-orchestration` — 7,774 chars
-- [ ] `wiki/svd-low-rank` — 6,063 chars
-- [ ] `wiki/text-generation-metrics` — 8,730 chars
-- [ ] `wiki/text-to-sql` — 5,200 chars
+- [x] `wiki/svd-low-rank` — 6,063 chars
+- [x] `wiki/text-generation-metrics` — 8,730 chars
+- [x] `wiki/text-to-sql` — 5,200 chars
 - [ ] `wiki/uplift-modeling` — 3,757 chars
 - [ ] `wiki/vanishing-gradient-analysis` — 6,409 chars
 - [ ] `wiki/variable-elimination` — 6,023 chars
