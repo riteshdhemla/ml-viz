@@ -304,9 +304,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `wiki` (78)
 
-- [ ] `wiki/acf-pacf-interpretation` — 3,179 chars
-- [ ] `wiki/activation-functions` — 4,670 chars
-- [ ] `wiki/ad-auction-and-bidding` — 5,277 chars
+- [x] `wiki/acf-pacf-interpretation` — 3,179 chars
+- [x] `wiki/activation-functions` — 4,670 chars
+- [x] `wiki/ad-auction-and-bidding` — 5,277 chars
 - [ ] `wiki/adaboost-algorithm` — 6,804 chars
 - [ ] `wiki/agent-observability` — 6,652 chars
 - [ ] `wiki/agent-protocols-mcp-a2a` — 8,080 chars
