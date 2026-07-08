@@ -338,9 +338,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/groupnorm-and-instancenorm` — 11,049 chars
 - [x] `wiki/grpo-objective` — 5,043 chars
 - [x] `wiki/hierarchical-clustering` — 7,232 chars
-- [ ] `wiki/hierarchical-forecasting` — 3,048 chars
-- [ ] `wiki/hypothesis-testing` — 6,776 chars
-- [ ] `wiki/imitation-learning` — 8,393 chars
+- [x] `wiki/hierarchical-forecasting` — 3,048 chars
+- [x] `wiki/hypothesis-testing` — 6,776 chars
+- [x] `wiki/imitation-learning` — 8,393 chars
 - [ ] `wiki/independent-component-analysis` — 8,010 chars
 - [ ] `wiki/information-theory` — 7,128 chars
 - [ ] `wiki/inverse-reinforcement-learning` — 6,330 chars
