@@ -332,9 +332,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/factor-analysis` — 6,370 chars
 - [x] `wiki/gaussian-integral` — 5,331 chars
 - [x] `wiki/glove-training` — 5,202 chars
-- [ ] `wiki/gradient-checkpointing` — 11,271 chars
-- [ ] `wiki/gradient-descent-optimizers` — 5,022 chars
-- [ ] `wiki/graph-fraud-detection` — 3,771 chars
+- [x] `wiki/gradient-checkpointing` — 11,271 chars
+- [x] `wiki/gradient-descent-optimizers` — 5,022 chars
+- [x] `wiki/graph-fraud-detection` — 3,771 chars
 - [ ] `wiki/groupnorm-and-instancenorm` — 11,049 chars
 - [ ] `wiki/grpo-objective` — 5,043 chars
 - [ ] `wiki/hierarchical-clustering` — 7,232 chars
