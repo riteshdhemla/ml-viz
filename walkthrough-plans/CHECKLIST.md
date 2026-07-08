@@ -361,9 +361,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/ols-normal-equation` — 3,305 chars
 - [x] `wiki/perceptron-learning` — 6,765 chars
 - [x] `wiki/pomdps` — 5,840 chars
-- [ ] `wiki/population-stability-index` — 12,736 chars
-- [ ] `wiki/positional-encodings` — 6,540 chars
-- [ ] `wiki/probability-distributions` — 5,995 chars
+- [x] `wiki/population-stability-index` — 12,736 chars
+- [x] `wiki/positional-encodings` — 6,540 chars
+- [x] `wiki/probability-distributions` — 5,995 chars
 - [ ] `wiki/prompt-injection-attacks-and-defenses` — 7,344 chars
 - [ ] `wiki/random-walk` — 15,965 chars
 - [ ] `wiki/ridge-lasso-paths` — 7,096 chars
