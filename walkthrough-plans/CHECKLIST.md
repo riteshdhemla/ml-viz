@@ -341,9 +341,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/hierarchical-forecasting` — 3,048 chars
 - [x] `wiki/hypothesis-testing` — 6,776 chars
 - [x] `wiki/imitation-learning` — 8,393 chars
-- [ ] `wiki/independent-component-analysis` — 8,010 chars
-- [ ] `wiki/information-theory` — 7,128 chars
-- [ ] `wiki/inverse-reinforcement-learning` — 6,330 chars
+- [x] `wiki/independent-component-analysis` — 8,010 chars
+- [x] `wiki/information-theory` — 7,128 chars
+- [x] `wiki/inverse-reinforcement-learning` — 6,330 chars
 - [ ] `wiki/kmeans-algorithm` — 3,143 chars
 - [ ] `wiki/kolmogorov-smirnov-test` — 6,417 chars
 - [ ] `wiki/langfuse-and-opentelemetry` — 8,072 chars
