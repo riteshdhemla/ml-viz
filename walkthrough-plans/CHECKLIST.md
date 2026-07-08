@@ -247,12 +247,12 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `fine-tuning-alignment` (6)
 
-- [ ] `fine-tuning-alignment/01-supervised-fine-tuning` — 6,083 chars
-- [ ] `fine-tuning-alignment/02-peft-lora-qlora` — 7,875 chars
-- [ ] `fine-tuning-alignment/03-reward-models` — 7,386 chars
-- [ ] `fine-tuning-alignment/04-rlhf-and-dpo` — 6,785 chars
-- [ ] `fine-tuning-alignment/05-model-merging-and-quantization` — 5,718 chars
-- [ ] `fine-tuning-alignment/06-knowledge-distillation` — 7,815 chars
+- [x] `fine-tuning-alignment/01-supervised-fine-tuning` — 6,083 chars
+- [x] `fine-tuning-alignment/02-peft-lora-qlora` — 7,875 chars
+- [x] `fine-tuning-alignment/03-reward-models` — 7,386 chars
+- [x] `fine-tuning-alignment/04-rlhf-and-dpo` — 6,785 chars
+- [x] `fine-tuning-alignment/05-model-merging-and-quantization` — 5,718 chars
+- [x] `fine-tuning-alignment/06-knowledge-distillation` — 7,815 chars
 
 ### `ml-in-practice` (20)
 
