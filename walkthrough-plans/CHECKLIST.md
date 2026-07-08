@@ -256,24 +256,24 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `ml-in-practice` (20)
 
-- [ ] `ml-in-practice/01-feature-engineering` — 18,769 chars
-- [ ] `ml-in-practice/02-deployment-pitfalls` — 9,085 chars
-- [ ] `ml-in-practice/03-algorithms-from-scratch` — 19,133 chars
-- [ ] `ml-in-practice/04-ml-systems-design` — 17,791 chars
-- [ ] `ml-in-practice/05-data-engineering-fundamentals` — 24,661 chars
-- [ ] `ml-in-practice/06-training-data` — 21,053 chars
-- [ ] `ml-in-practice/07-experiment-tracking` — 20,219 chars
-- [ ] `ml-in-practice/08-deployment-patterns-and-compression` — 24,683 chars
-- [ ] `ml-in-practice/09-continual-learning-and-test-in-production` — 17,372 chars
-- [ ] `ml-in-practice/10-monitoring-and-observability` — 19,401 chars
-- [ ] `ml-in-practice/11-mlops-infrastructure-and-orchestration` — 17,761 chars
-- [ ] `ml-in-practice/12-inference-optimization-and-serving` — 17,333 chars
-- [ ] `ml-in-practice/13-responsible-ai-and-the-human-side` — 20,410 chars
+- [x] `ml-in-practice/01-feature-engineering` — 18,769 chars
+- [x] `ml-in-practice/02-deployment-pitfalls` — 9,085 chars
+- [x] `ml-in-practice/03-algorithms-from-scratch` — 19,133 chars
+- [x] `ml-in-practice/04-ml-systems-design` — 17,791 chars
+- [x] `ml-in-practice/05-data-engineering-fundamentals` — 24,661 chars
+- [x] `ml-in-practice/06-training-data` — 21,053 chars
+- [x] `ml-in-practice/07-experiment-tracking` — 20,219 chars
+- [x] `ml-in-practice/08-deployment-patterns-and-compression` — 24,683 chars
+- [x] `ml-in-practice/09-continual-learning-and-test-in-production` — 17,372 chars
+- [x] `ml-in-practice/10-monitoring-and-observability` — 19,401 chars
+- [x] `ml-in-practice/11-mlops-infrastructure-and-orchestration` — 17,761 chars
+- [x] `ml-in-practice/12-inference-optimization-and-serving` — 17,333 chars
+- [x] `ml-in-practice/13-responsible-ai-and-the-human-side` — 20,410 chars
 - [x] `ml-in-practice/14-anomaly-detection` — 5,237 chars
 - [x] `ml-in-practice/15-privacy-and-federated-learning` — 4,927 chars
-- [ ] `ml-in-practice/16-cicd-and-continuous-training` — 4,715 chars
-- [ ] `ml-in-practice/17-feature-stores` — 4,622 chars
-- [ ] `ml-in-practice/18-model-registry-and-governance` — 4,496 chars
+- [x] `ml-in-practice/16-cicd-and-continuous-training` — 4,715 chars
+- [x] `ml-in-practice/17-feature-stores` — 4,622 chars
+- [x] `ml-in-practice/18-model-registry-and-governance` — 4,496 chars
 - [x] `ml-in-practice/20-fraud-detection-at-scale` — 6,923 chars
 - [x] `ml-in-practice/21-content-moderation` — 5,056 chars
 
