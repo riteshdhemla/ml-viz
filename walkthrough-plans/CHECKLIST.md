@@ -314,9 +314,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/attention-mechanisms` — 8,137 chars
 - [x] `wiki/augmented-dickey-fuller` — 5,076 chars
 - [ ] `wiki/batchnorm-algorithm` — 7,666 chars
-- [ ] `wiki/baum-welch` — 6,364 chars
-- [ ] `wiki/beta-bernoulli-posterior` — 6,962 chars
-- [ ] `wiki/bias-variance-decomposition` — 6,522 chars
+- [x] `wiki/baum-welch` — 6,364 chars
+- [x] `wiki/beta-bernoulli-posterior` — 6,962 chars
+- [x] `wiki/bias-variance-decomposition` — 6,522 chars
 - [ ] `wiki/bootstrap-resampling` — 6,133 chars
 - [ ] `wiki/bpe-tokenization` — 5,088 chars
 - [ ] `wiki/bptt-algorithm` — 5,836 chars
