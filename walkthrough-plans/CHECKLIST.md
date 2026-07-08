@@ -364,9 +364,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/population-stability-index` — 12,736 chars
 - [x] `wiki/positional-encodings` — 6,540 chars
 - [x] `wiki/probability-distributions` — 5,995 chars
-- [ ] `wiki/prompt-injection-attacks-and-defenses` — 7,344 chars
-- [ ] `wiki/random-walk` — 15,965 chars
-- [ ] `wiki/ridge-lasso-paths` — 7,096 chars
+- [x] `wiki/prompt-injection-attacks-and-defenses` — 7,344 chars
+- [x] `wiki/random-walk` — 15,965 chars
+- [x] `wiki/ridge-lasso-paths` — 7,096 chars
 - [ ] `wiki/roc-auc` — 7,181 chars
 - [ ] `wiki/sampling-methods` — 5,212 chars
 - [ ] `wiki/scaled-dot-product-attention` — 3,194 chars
