@@ -376,9 +376,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/svd-low-rank` — 6,063 chars
 - [x] `wiki/text-generation-metrics` — 8,730 chars
 - [x] `wiki/text-to-sql` — 5,200 chars
-- [ ] `wiki/uplift-modeling` — 3,757 chars
-- [ ] `wiki/vanishing-gradient-analysis` — 6,409 chars
-- [ ] `wiki/variable-elimination` — 6,023 chars
+- [x] `wiki/uplift-modeling` — 3,757 chars
+- [x] `wiki/vanishing-gradient-analysis` — 6,409 chars
+- [x] `wiki/variable-elimination` — 6,023 chars
 - [ ] `wiki/vc-dimension` — 10,621 chars
 - [ ] `wiki/vector-databases` — 6,663 chars
 - [ ] `wiki/walk-forward-validation` — 2,804 chars
