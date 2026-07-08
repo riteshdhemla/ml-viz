@@ -346,9 +346,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/inverse-reinforcement-learning` — 6,330 chars
 - [x] `wiki/kmeans-algorithm` — 3,143 chars
 - [x] `wiki/kolmogorov-smirnov-test` — 6,417 chars
-- [ ] `wiki/langfuse-and-opentelemetry` — 8,072 chars
-- [ ] `wiki/langgraph` — 8,173 chars
-- [ ] `wiki/learning-rate-schedules` — 4,300 chars
+- [x] `wiki/langfuse-and-opentelemetry` — 8,072 chars
+- [x] `wiki/langgraph` — 8,173 chars
+- [x] `wiki/learning-rate-schedules` — 4,300 chars
 - [ ] `wiki/llm-as-judge` — 4,924 chars
 - [ ] `wiki/logistic-gradient-derivation` — 6,859 chars
 - [ ] `wiki/mcmc-sampling` — 7,365 chars
