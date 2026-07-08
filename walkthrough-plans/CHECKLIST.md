@@ -358,9 +358,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/neural-radiance-fields` — 7,165 chars
 - [x] `wiki/newtons-method` — 7,413 chars
 - [x] `wiki/nms-algorithm` — 7,579 chars
-- [ ] `wiki/ols-normal-equation` — 3,305 chars
-- [ ] `wiki/perceptron-learning` — 6,765 chars
-- [ ] `wiki/pomdps` — 5,840 chars
+- [x] `wiki/ols-normal-equation` — 3,305 chars
+- [x] `wiki/perceptron-learning` — 6,765 chars
+- [x] `wiki/pomdps` — 5,840 chars
 - [ ] `wiki/population-stability-index` — 12,736 chars
 - [ ] `wiki/positional-encodings` — 6,540 chars
 - [ ] `wiki/probability-distributions` — 5,995 chars
