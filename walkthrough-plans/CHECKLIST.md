@@ -201,13 +201,13 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `model-evaluation` (7)
 
-- [ ] `model-evaluation/01-classification-metrics` — 22,362 chars
-- [ ] `model-evaluation/02-validation-strategies` — 13,378 chars
-- [ ] `model-evaluation/03-training-techniques` — 15,404 chars
-- [ ] `model-evaluation/04-llm-evaluation` — 20,317 chars
-- [ ] `model-evaluation/05-evaluating-ai-systems` — 16,526 chars
-- [ ] `model-evaluation/06-learning-theory` — 5,118 chars
-- [ ] `model-evaluation/07-calibration-and-uncertainty` — 5,394 chars
+- [x] `model-evaluation/01-classification-metrics` — 22,362 chars
+- [x] `model-evaluation/02-validation-strategies` — 13,378 chars
+- [x] `model-evaluation/03-training-techniques` — 15,404 chars
+- [x] `model-evaluation/04-llm-evaluation` — 20,317 chars
+- [x] `model-evaluation/05-evaluating-ai-systems` — 16,526 chars
+- [x] `model-evaluation/06-learning-theory` — 5,118 chars
+- [x] `model-evaluation/07-calibration-and-uncertainty` — 5,394 chars
 
 ### `bayesian-methods` (3)
 
