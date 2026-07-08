@@ -370,9 +370,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/roc-auc` — 7,181 chars
 - [x] `wiki/sampling-methods` — 5,212 chars
 - [x] `wiki/scaled-dot-product-attention` — 3,194 chars
-- [ ] `wiki/session-based-recommendations` — 3,343 chars
-- [ ] `wiki/softmax-cross-entropy` — 5,282 chars
-- [ ] `wiki/sub-agent-orchestration` — 7,774 chars
+- [x] `wiki/session-based-recommendations` — 3,343 chars
+- [x] `wiki/softmax-cross-entropy` — 5,282 chars
+- [x] `wiki/sub-agent-orchestration` — 7,774 chars
 - [ ] `wiki/svd-low-rank` — 6,063 chars
 - [ ] `wiki/text-generation-metrics` — 8,730 chars
 - [ ] `wiki/text-to-sql` — 5,200 chars
