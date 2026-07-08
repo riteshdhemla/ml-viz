@@ -293,11 +293,11 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `gpu-programming` (5)
 
-- [ ] `gpu-programming/01-gpu-architecture` — 6,564 chars
-- [ ] `gpu-programming/02-cuda-programming-model` — 5,095 chars
-- [ ] `gpu-programming/03-memory-and-performance` — 5,947 chars
-- [ ] `gpu-programming/04-gpus-for-deep-learning` — 13,511 chars
-- [ ] `gpu-programming/05-distributed-training-at-scale` — 7,855 chars
+- [x] `gpu-programming/01-gpu-architecture` — 6,564 chars
+- [x] `gpu-programming/02-cuda-programming-model` — 5,095 chars
+- [x] `gpu-programming/03-memory-and-performance` — 5,947 chars
+- [x] `gpu-programming/04-gpus-for-deep-learning` — 13,511 chars
+- [x] `gpu-programming/05-distributed-training-at-scale` — 7,855 chars
 
 ## Concept Wiki
 
