@@ -320,9 +320,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/bootstrap-resampling` — 6,133 chars
 - [x] `wiki/bpe-tokenization` — 5,088 chars
 - [x] `wiki/bptt-algorithm` — 5,836 chars
-- [ ] `wiki/cold-start-problem` — 4,342 chars
-- [ ] `wiki/dbscan-algorithm` — 6,977 chars
-- [ ] `wiki/ddim-sampling` — 6,678 chars
+- [x] `wiki/cold-start-problem` — 4,342 chars
+- [x] `wiki/dbscan-algorithm` — 6,977 chars
+- [x] `wiki/ddim-sampling` — 6,678 chars
 - [ ] `wiki/decision-tree-information-gain` — 2,762 chars
 - [ ] `wiki/dependency-parsing` — 5,575 chars
 - [ ] `wiki/directional-derivative` — 6,860 chars
