@@ -279,17 +279,17 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `agent-design-patterns` (11)
 
-- [ ] `agent-design-patterns/01-foundation-model-agents` — 13,462 chars
-- [ ] `agent-design-patterns/02-goal-creation-patterns` — 14,104 chars
-- [ ] `agent-design-patterns/03-context-and-knowledge-patterns` — 14,781 chars
-- [ ] `agent-design-patterns/04-planning-patterns` — 15,263 chars
-- [ ] `agent-design-patterns/05-model-querying-patterns` — 13,349 chars
-- [ ] `agent-design-patterns/06-reflection-patterns` — 17,257 chars
-- [ ] `agent-design-patterns/07-multi-agent-cooperation-patterns` — 12,496 chars
-- [ ] `agent-design-patterns/08-safety-registry-and-adaptation` — 17,285 chars
-- [ ] `agent-design-patterns/09-tool-use-and-mcp` — 4,639 chars
-- [ ] `agent-design-patterns/10-evaluating-agents` — 3,876 chars
-- [ ] `agent-design-patterns/11-deploying-agents` — 4,660 chars
+- [x] `agent-design-patterns/01-foundation-model-agents` — 13,462 chars
+- [x] `agent-design-patterns/02-goal-creation-patterns` — 14,104 chars
+- [x] `agent-design-patterns/03-context-and-knowledge-patterns` — 14,781 chars
+- [x] `agent-design-patterns/04-planning-patterns` — 15,263 chars
+- [x] `agent-design-patterns/05-model-querying-patterns` — 13,349 chars
+- [x] `agent-design-patterns/06-reflection-patterns` — 17,257 chars
+- [x] `agent-design-patterns/07-multi-agent-cooperation-patterns` — 12,496 chars
+- [x] `agent-design-patterns/08-safety-registry-and-adaptation` — 17,285 chars
+- [x] `agent-design-patterns/09-tool-use-and-mcp` — 4,639 chars
+- [x] `agent-design-patterns/10-evaluating-agents` — 3,876 chars
+- [x] `agent-design-patterns/11-deploying-agents` — 4,660 chars
 
 ### `gpu-programming` (5)
 
