@@ -323,9 +323,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/cold-start-problem` — 4,342 chars
 - [x] `wiki/dbscan-algorithm` — 6,977 chars
 - [x] `wiki/ddim-sampling` — 6,678 chars
-- [ ] `wiki/decision-tree-information-gain` — 2,762 chars
-- [ ] `wiki/dependency-parsing` — 5,575 chars
-- [ ] `wiki/directional-derivative` — 6,860 chars
+- [x] `wiki/decision-tree-information-gain` — 2,762 chars
+- [x] `wiki/dependency-parsing` — 5,575 chars
+- [x] `wiki/directional-derivative` — 6,860 chars
 - [ ] `wiki/dropout` — 6,074 chars
 - [ ] `wiki/eigenvalue-computation` — 6,705 chars
 - [ ] `wiki/em-algorithm` — 2,876 chars
