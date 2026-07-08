@@ -232,18 +232,18 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 
 ### `building-with-llms` (12)
 
-- [ ] `building-with-llms/01-prompt-engineering` — 3,000 chars
-- [ ] `building-with-llms/02-chain-of-thought` — 2,911 chars
-- [ ] `building-with-llms/03-embeddings-and-semantic-search` — 2,931 chars
-- [ ] `building-with-llms/04-retrieval-augmented-generation` — 3,354 chars
-- [ ] `building-with-llms/05-agents-and-tool-use` — 2,713 chars
-- [ ] `building-with-llms/06-ai-engineering-architecture` — 3,335 chars
-- [ ] `building-with-llms/07-reasoning-models` — 7,079 chars
-- [ ] `building-with-llms/08-llm-evaluation` — 9,782 chars
-- [ ] `building-with-llms/09-llm-observability-and-prompt-management` — 4,872 chars
-- [ ] `building-with-llms/10-guardrails-and-llmops-security` — 5,142 chars
-- [ ] `building-with-llms/12-code-intelligence-and-generation` — 6,063 chars
-- [ ] `building-with-llms/13-voice-and-multimodal-ai` — 6,115 chars
+- [x] `building-with-llms/01-prompt-engineering` — 3,000 chars
+- [x] `building-with-llms/02-chain-of-thought` — 2,911 chars
+- [x] `building-with-llms/03-embeddings-and-semantic-search` — 2,931 chars
+- [x] `building-with-llms/04-retrieval-augmented-generation` — 3,354 chars
+- [x] `building-with-llms/05-agents-and-tool-use` — 2,713 chars
+- [x] `building-with-llms/06-ai-engineering-architecture` — 3,335 chars
+- [x] `building-with-llms/07-reasoning-models` — 7,079 chars
+- [x] `building-with-llms/08-llm-evaluation` — 9,782 chars
+- [x] `building-with-llms/09-llm-observability-and-prompt-management` — 4,872 chars
+- [x] `building-with-llms/10-guardrails-and-llmops-security` — 5,142 chars
+- [x] `building-with-llms/12-code-intelligence-and-generation` — 6,063 chars
+- [x] `building-with-llms/13-voice-and-multimodal-ai` — 6,115 chars
 
 ### `fine-tuning-alignment` (6)
 
