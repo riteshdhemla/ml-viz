@@ -349,9 +349,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/langfuse-and-opentelemetry` — 8,072 chars
 - [x] `wiki/langgraph` — 8,173 chars
 - [x] `wiki/learning-rate-schedules` — 4,300 chars
-- [ ] `wiki/llm-as-judge` — 4,924 chars
-- [ ] `wiki/logistic-gradient-derivation` — 6,859 chars
-- [ ] `wiki/mcmc-sampling` — 7,365 chars
+- [x] `wiki/llm-as-judge` — 4,924 chars
+- [x] `wiki/logistic-gradient-derivation` — 6,859 chars
+- [x] `wiki/mcmc-sampling` — 7,365 chars
 - [ ] `wiki/minkowski-distances` — 5,440 chars
 - [ ] `wiki/mle-gaussian` — 6,354 chars
 - [ ] `wiki/multi-agent-rl` — 5,556 chars
