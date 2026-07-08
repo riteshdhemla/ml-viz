@@ -307,12 +307,12 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/acf-pacf-interpretation` — 3,179 chars
 - [x] `wiki/activation-functions` — 4,670 chars
 - [x] `wiki/ad-auction-and-bidding` — 5,277 chars
-- [ ] `wiki/adaboost-algorithm` — 6,804 chars
-- [ ] `wiki/agent-observability` — 6,652 chars
-- [ ] `wiki/agent-protocols-mcp-a2a` — 8,080 chars
-- [ ] `wiki/arima-order-selection` — 3,585 chars
-- [ ] `wiki/attention-mechanisms` — 8,137 chars
-- [ ] `wiki/augmented-dickey-fuller` — 5,076 chars
+- [x] `wiki/adaboost-algorithm` — 6,804 chars
+- [x] `wiki/agent-observability` — 6,652 chars
+- [x] `wiki/agent-protocols-mcp-a2a` — 8,080 chars
+- [x] `wiki/arima-order-selection` — 3,585 chars
+- [x] `wiki/attention-mechanisms` — 8,137 chars
+- [x] `wiki/augmented-dickey-fuller` — 5,076 chars
 - [ ] `wiki/batchnorm-algorithm` — 7,666 chars
 - [ ] `wiki/baum-welch` — 6,364 chars
 - [ ] `wiki/beta-bernoulli-posterior` — 6,962 chars
