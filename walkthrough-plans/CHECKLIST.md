@@ -367,9 +367,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/prompt-injection-attacks-and-defenses` — 7,344 chars
 - [x] `wiki/random-walk` — 15,965 chars
 - [x] `wiki/ridge-lasso-paths` — 7,096 chars
-- [ ] `wiki/roc-auc` — 7,181 chars
-- [ ] `wiki/sampling-methods` — 5,212 chars
-- [ ] `wiki/scaled-dot-product-attention` — 3,194 chars
+- [x] `wiki/roc-auc` — 7,181 chars
+- [x] `wiki/sampling-methods` — 5,212 chars
+- [x] `wiki/scaled-dot-product-attention` — 3,194 chars
 - [ ] `wiki/session-based-recommendations` — 3,343 chars
 - [ ] `wiki/softmax-cross-entropy` — 5,282 chars
 - [ ] `wiki/sub-agent-orchestration` — 7,774 chars
