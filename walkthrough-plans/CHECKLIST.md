@@ -329,9 +329,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/dropout` — 6,074 chars
 - [x] `wiki/eigenvalue-computation` — 6,705 chars
 - [x] `wiki/em-algorithm` — 2,876 chars
-- [ ] `wiki/factor-analysis` — 6,370 chars
-- [ ] `wiki/gaussian-integral` — 5,331 chars
-- [ ] `wiki/glove-training` — 5,202 chars
+- [x] `wiki/factor-analysis` — 6,370 chars
+- [x] `wiki/gaussian-integral` — 5,331 chars
+- [x] `wiki/glove-training` — 5,202 chars
 - [ ] `wiki/gradient-checkpointing` — 11,271 chars
 - [ ] `wiki/gradient-descent-optimizers` — 5,022 chars
 - [ ] `wiki/graph-fraud-detection` — 3,771 chars
