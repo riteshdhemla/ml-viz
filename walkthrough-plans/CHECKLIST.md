@@ -335,9 +335,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/gradient-checkpointing` — 11,271 chars
 - [x] `wiki/gradient-descent-optimizers` — 5,022 chars
 - [x] `wiki/graph-fraud-detection` — 3,771 chars
-- [ ] `wiki/groupnorm-and-instancenorm` — 11,049 chars
-- [ ] `wiki/grpo-objective` — 5,043 chars
-- [ ] `wiki/hierarchical-clustering` — 7,232 chars
+- [x] `wiki/groupnorm-and-instancenorm` — 11,049 chars
+- [x] `wiki/grpo-objective` — 5,043 chars
+- [x] `wiki/hierarchical-clustering` — 7,232 chars
 - [ ] `wiki/hierarchical-forecasting` — 3,048 chars
 - [ ] `wiki/hypothesis-testing` — 6,776 chars
 - [ ] `wiki/imitation-learning` — 8,393 chars
