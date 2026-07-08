@@ -313,7 +313,7 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/arima-order-selection` — 3,585 chars
 - [x] `wiki/attention-mechanisms` — 8,137 chars
 - [x] `wiki/augmented-dickey-fuller` — 5,076 chars
-- [ ] `wiki/batchnorm-algorithm` — 7,666 chars
+- [x] `wiki/batchnorm-algorithm` — 7,666 chars
 - [x] `wiki/baum-welch` — 6,364 chars
 - [x] `wiki/beta-bernoulli-posterior` — 6,962 chars
 - [x] `wiki/bias-variance-decomposition` — 6,522 chars
@@ -344,8 +344,8 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/independent-component-analysis` — 8,010 chars
 - [x] `wiki/information-theory` — 7,128 chars
 - [x] `wiki/inverse-reinforcement-learning` — 6,330 chars
-- [ ] `wiki/kmeans-algorithm` — 3,143 chars
-- [ ] `wiki/kolmogorov-smirnov-test` — 6,417 chars
+- [x] `wiki/kmeans-algorithm` — 3,143 chars
+- [x] `wiki/kolmogorov-smirnov-test` — 6,417 chars
 - [ ] `wiki/langfuse-and-opentelemetry` — 8,072 chars
 - [ ] `wiki/langgraph` — 8,173 chars
 - [ ] `wiki/learning-rate-schedules` — 4,300 chars
