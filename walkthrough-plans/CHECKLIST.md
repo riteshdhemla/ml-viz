@@ -355,9 +355,9 @@ Status is also the source of truth for progress. Edit the boxes as you go.
 - [x] `wiki/minkowski-distances` — 5,440 chars
 - [x] `wiki/mle-gaussian` — 6,354 chars
 - [x] `wiki/multi-agent-rl` — 5,556 chars
-- [ ] `wiki/neural-radiance-fields` — 7,165 chars
-- [ ] `wiki/newtons-method` — 7,413 chars
-- [ ] `wiki/nms-algorithm` — 7,579 chars
+- [x] `wiki/neural-radiance-fields` — 7,165 chars
+- [x] `wiki/newtons-method` — 7,413 chars
+- [x] `wiki/nms-algorithm` — 7,579 chars
 - [ ] `wiki/ols-normal-equation` — 3,305 chars
 - [ ] `wiki/perceptron-learning` — 6,765 chars
 - [ ] `wiki/pomdps` — 5,840 chars
