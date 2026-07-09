@@ -1,0 +1,89 @@
+---
+title: "DGIM: Counting Ones in a Sliding Window"
+description: "How to count the 1-bits in the last N elements of a stream using O(log²N) bits instead of N — exponential buckets, the at-most-two-per-size rule, the merge step, and the ≤50% error bound. With a full worked bucket trace."
+topics: ["streaming"]
+relatedLessons:
+  - "streaming-ml/02-streaming-algorithms"
+estimatedMinutes: 12
+---
+
+# DGIM: Counting Ones in a Sliding Window
+
+The **DGIM algorithm** (Datar, Gionis, Indyk, Motwani, 2002) answers a deceptively simple question on a binary stream: *how many 1s occurred in the last $N$ elements?* Storing the window verbatim costs $N$ bits. DGIM does it in $O(\log^2 N)$ bits with a guaranteed error of at most 50% — the canonical example of trading exactness for sublinear memory over a sliding window.
+
+## Why exact counting is impossible in sublinear space
+
+If you must answer *exactly* for every possible window content, you need to distinguish all $2^N$ bit patterns, which requires $N$ bits. Approximation is not a convenience here — it is the only way to beat $O(N)$. DGIM commits to a bounded *relative* error and spends its memory on a clever summary.
+
+## Buckets
+
+DGIM summarises the window with **buckets**. Each bucket covers a contiguous range of stream positions and records two things:
+
+- **Timestamp** of its most recent 1, stored modulo $N$ — so $O(\log N)$ bits. This lets DGIM tell when a bucket has slid out of the window.
+- **Size** = the number of 1s in the bucket, which is always a **power of two** $2^j$. Storing the exponent $j$ costs only $O(\log\log N)$ bits.
+
+Two invariants are maintained at all times:
+
+1. **Bucket sizes are non-decreasing** as you go back in time (newer buckets are the same size or smaller).
+2. There are **at most two buckets of each size** $2^j$.
+
+Because sizes are powers of two up to $N$ and there are $\le 2$ of each, there are $O(\log N)$ buckets, each needing $O(\log N)$ bits — hence $O(\log^2 N)$ total.
+
+## The update rule
+
+When a new bit arrives:
+
+1. **Drop** the oldest bucket if its timestamp is now more than $N$ positions old (it has left the window).
+2. If the new bit is **0**, do nothing else.
+3. If the new bit is **1**, create a new size-1 bucket for it (timestamp = current time). Then **cascade merges**: whenever a third bucket of size $2^j$ appears, merge the *two oldest* of that size into one bucket of size $2^{j+1}$ (timestamp = the newer of the two). A merge can trigger another merge one level up, and so on.
+
+## Answering a query
+
+To estimate the number of 1s in the window, **sum the sizes of all buckets fully inside the window, then add half the size of the oldest bucket** (the one that only partially overlaps the window boundary):
+
+$$
+\widehat{c} \;=\; \Big(\textstyle\sum_{\text{fully-inside buckets}} \text{size}\Big) \;+\; \tfrac{1}{2}\,\text{size}(\text{oldest partial bucket}).
+$$
+
+That single halved bucket is the *only* source of error. Since we know the true count of the oldest bucket is between half and its full size, the estimate is off by at most half of it, giving the **≤ 50% relative error** bound (and typically far less, because the oldest bucket is a small fraction of the total).
+
+## Worked trace
+
+Window $N = 8$. Stream (left = oldest), positions numbered as they arrive:
+
+```
+position:  1 2 3 4 5 6 7 8
+bit:       1 0 1 1 0 1 1 1
+```
+
+Process bit by bit, listing buckets as `(size @ most-recent-1-timestamp)`, newest first:
+
+| pos | bit | action | buckets (newest → oldest) |
+|-----|-----|--------|----------------------------|
+| 1 | 1 | new size-1 | `(1@1)` |
+| 2 | 0 | — | `(1@1)` |
+| 3 | 1 | new size-1 | `(1@3) (1@1)` |
+| 4 | 1 | new size-1 → three size-1 → merge two oldest | `(1@4) (2@3)` |
+| 5 | 0 | — | `(1@4) (2@3)` |
+| 6 | 1 | new size-1 | `(1@6) (1@4) (2@3)` |
+| 7 | 1 | new size-1 → three size-1 → merge | `(1@7) (2@6) (2@3)` |
+| 8 | 1 | new size-1 | `(1@8) (1@7) (2@6) (2@3)` |
+
+**Query at position 8**, window = positions $[1,8]$. Every bucket's most-recent-1 timestamp is inside the window, so the oldest bucket `(2@3)` is the partial one. Sum the rest fully and add half the oldest:
+
+$$
+\widehat c = \underbrace{1}_{@8} + \underbrace{1}_{@7} + \underbrace{2}_{@6} + \tfrac{1}{2}\cdot \underbrace{2}_{@3} = 5.
+$$
+
+The **true** count of 1s in positions 1–8 is $1+1+1+1+1+1 = 6$. The estimate 5 is within the 50% guarantee (here ~17% low). As the window slides past position 3, the `(2@3)` bucket is dropped and the estimate tightens.
+
+## Gotchas & extensions
+
+- **Error is one-sided in structure, not sign.** The halving of the oldest bucket can make the estimate high or low, but always within 50%. Keeping $r$ buckets per size (instead of 2) tightens the bound to $O(1/r)$ at higher memory cost.
+- **Sums, not just counts.** DGIM generalises to sliding-window sums of small integers, and the same *exponential histogram* idea underlies streaming variance and, notably, **ADWIN**'s change detector.
+- **Timestamps wrap.** Storing timestamps mod $N$ is essential to keep them $O(\log N)$ bits; comparisons must account for the wraparound.
+
+## See also
+
+- [Streaming Algorithms & Sketches](/courses/streaming-ml/02-streaming-algorithms) — the lesson this expands
+- [ADWIN](/wiki/adwin) — reuses the exponential-histogram bucket structure for drift detection
