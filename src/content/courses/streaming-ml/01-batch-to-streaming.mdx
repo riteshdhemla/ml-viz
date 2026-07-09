@@ -1,0 +1,79 @@
+---
+title: "From Batch to Streaming"
+description: "The data-stream model — unbounded input, one pass, bounded memory — and why event time, not processing time, is the axis that matters."
+order: 1
+type: concept
+estimatedMinutes: 16
+---
+
+# From Batch to Streaming
+
+Most machine learning you have seen so far is **batch** learning: you hold the entire training set in memory (or on disk), sweep over it as many times as you like, fit a model, and ship it. The data is *bounded* and *available*.
+
+**Streaming** breaks both assumptions. Data arrives as an unbounded sequence of elements
+
+$$
+a_1, a_2, a_3, \dots
+$$
+
+one at a time, often at a rate so high that if an element is not processed the moment it arrives, it is **gone forever**. You cannot store the whole stream, and you cannot make a second pass. This is the setting of clickstreams, sensor telemetry, network packets, financial ticks, and application logs — the firehoses that modern systems must learn from *as the data flies by*.
+
+## The data-stream model
+
+The classic streaming model — formalised in Stanford's CS246 and MIT's advanced-algorithms courses — makes the constraints precise:
+
+1. **Unbounded input.** The stream length $n$ is not known in advance and may be effectively infinite.
+2. **One pass.** Each element is seen exactly once, in arrival order. No rewinding.
+3. **Sublinear memory.** Working memory is much smaller than the stream — typically $O(\log n)$ or $O(\text{poly}\log n)$, never $O(n)$.
+4. **Fast per-element work.** The time spent per element must be small and roughly constant, so the system keeps up with the arrival rate.
+
+<Callout type="info" title="The central trade-off">
+Under these constraints, most exact answers are impossible — you cannot even store the set of distinct values you have seen. Streaming algorithms instead compute **approximate** answers with provable error bounds, trading a little accuracy for an enormous reduction in space. "Approximately right, using almost no memory" is the whole game.
+</Callout>
+
+This reframes two very different problems that this course treats together:
+
+- **Streaming *statistics*** — answering queries about the stream (how many distinct users? how many events in the last hour? a uniform sample of records?) using sketches. That is the next lesson.
+- **Streaming *learning*** — updating a model's parameters from each example on the fly, and coping when the underlying distribution itself changes over time. That is the rest of the course.
+
+## Windows: taming an infinite stream
+
+Because the stream never ends, most questions are asked over a **window** — a finite slice of recent history. Three window types recur everywhere:
+
+- **Landmark / cumulative** — everything since a fixed start ("all events today"). The window grows without bound.
+- **Sliding window** — the last $N$ elements, or the last $T$ seconds ("clicks in the past 10 minutes"). Old elements *expire* as new ones arrive.
+- **Tumbling window** — fixed, non-overlapping blocks ("one aggregate per minute"). A special case of sliding with hop = size.
+
+Sliding windows are the workhorse of streaming ML: they keep computations bounded *and* naturally emphasise recent behaviour, which matters when the world is changing.
+
+## Event time vs processing time
+
+The single most important subtlety in streaming systems is that there are **two clocks**:
+
+- **Event time** — when the thing actually happened (the timestamp on the record).
+- **Processing time** — when your system got around to observing it.
+
+These diverge constantly. A phone goes through a tunnel and buffers; its events arrive minutes late and **out of order**. If you window by processing time, you attribute those events to the wrong bucket and your features silently corrupt.
+
+<Callout type="warning" title="Late and out-of-order data is the norm, not the exception">
+Correct streaming systems window by **event time** and accept that a window can never be closed with total certainty — there may always be a straggler. Practical systems use a **watermark**: a moving estimate of "event time up to here has probably all arrived," after which a window is materialised. Allowed-lateness policies decide whether very late records update the result or are dropped.
+</Callout>
+
+**Worked example.** Suppose you count logins per minute. At processing-time 10:00:30 you have seen 40 logins stamped 10:00:xx, so you might emit "40 logins in the 10:00 minute." But three phones were offline; their 10:00 logins arrive at 10:02. With a watermark that allows 3 minutes of lateness, the 10:00 window stays open until event-time 10:03 is reached, and the final count is 43. Window by processing time and you would have permanently reported 40.
+
+## Why not just micro-batch?
+
+A common first instinct is to avoid streaming entirely: buffer a few minutes of data and run an ordinary batch job repeatedly. This **micro-batch** approach (how Spark Structured Streaming works under the hood) is genuinely useful and simpler to reason about. But it inherits batch latency (you wait for the batch to fill), and it does **not** solve the hard parts — bounded memory over an unbounded history, out-of-order event time, and models that must adapt to drift. Those are exactly what the streaming-specific tools in this course address.
+
+## Key takeaways
+
+- The **data-stream model**: unbounded input, one pass, sublinear memory, fast per-element work. Exact answers are usually impossible; approximate answers with error bounds are the goal.
+- **Windows** (landmark, sliding, tumbling) make an infinite stream finite; sliding windows dominate streaming ML.
+- Always distinguish **event time** from **processing time**. Window by event time and use **watermarks** to handle late, out-of-order data.
+- Micro-batching reduces some complexity but does not remove the core streaming challenges.
+
+## Related concepts
+
+- [**Streaming Algorithms & Sketches**](/courses/streaming-ml/02-streaming-algorithms) — the sublinear-memory sketches that answer stream queries
+- [**Online Learning & Regret**](/courses/streaming-ml/03-online-learning) — learning model parameters one example at a time
+- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals) — the batch counterpart to sequential data

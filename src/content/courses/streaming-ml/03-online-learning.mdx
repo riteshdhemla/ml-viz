@@ -1,0 +1,128 @@
+---
+title: "Online Learning & Regret"
+description: "Learning one example at a time — the online convex optimization setup, regret, online gradient descent and its O(√T) bound, FTRL, and online-to-batch conversion."
+order: 3
+type: concept
+estimatedMinutes: 22
+---
+
+# Online Learning & Regret
+
+Streaming statistics summarise a stream; **online learning** *fits a model* to it, one example at a time, without ever storing the whole dataset. This is the natural learning paradigm for streams — and, as we will see, the theory that justifies stochastic gradient descent itself. The framework is **online convex optimization (OCO)**, developed in Stanford's CS229T and the online-learning literature.
+
+## The online learning game
+
+Learning is framed as a repeated game between a learner and an (possibly adversarial) environment. On each round $t = 1, 2, \dots, T$:
+
+1. The learner picks a point $x_t$ from a convex set $\mathcal{K}$ (e.g. a weight vector).
+2. The environment reveals a convex loss function $f_t$.
+3. The learner suffers loss $f_t(x_t)$ and observes it (or its gradient).
+
+Crucially, $f_t$ can be chosen *after* seeing $x_t$, and the sequence need not come from any fixed distribution — it can drift, or even be adversarial. There is no i.i.d. assumption to lean on.
+
+## Regret: the right yardstick
+
+You cannot measure an online learner by "distance to the true parameters" — there may be no fixed truth. Instead we measure **regret**: how much worse the learner did than the single **best fixed decision in hindsight**.
+
+$$
+\text{Regret}_T = \sum_{t=1}^{T} f_t(x_t) \;-\; \min_{x \in \mathcal{K}} \sum_{t=1}^{T} f_t(x).
+$$
+
+The comparator $x^\star = \arg\min_x \sum_t f_t(x)$ is the best *single* action chosen with full knowledge of the whole sequence. A learner is good if its regret is **sublinear**, $\text{Regret}_T = o(T)$, because then the *average* regret $\text{Regret}_T / T \to 0$: over time the online learner does as well *per round* as the best fixed decision, despite seeing the data only once and in order.
+
+<Callout type="info" title="Why sublinear regret is the goal">
+Linear regret ($\Theta(T)$) means a constant penalty every round forever — no learning. Sublinear regret like $O(\sqrt{T})$ means the per-round penalty vanishes. It is a worst-case guarantee: it holds even against an adversary, with no distributional assumptions at all.
+</Callout>
+
+## Online gradient descent
+
+The simplest OCO algorithm is **online gradient descent (OGD)** (Zinkevich, 2003): take a gradient step on each round's loss, then project back into $\mathcal{K}$.
+
+$$
+x_{t+1} = \Pi_{\mathcal{K}}\!\left(x_t - \eta_t \, \nabla f_t(x_t)\right).
+$$
+
+With a decaying step size $\eta_t = \tfrac{D}{G\sqrt{t}}$ — where $D$ bounds the diameter of $\mathcal{K}$ and $G$ bounds the gradient norms — OGD achieves
+
+$$
+\text{Regret}_T \;\leq\; \tfrac{3}{2}\, G D \sqrt{T} \;=\; O(\sqrt{T}).
+$$
+
+That is the headline result: **a single gradient step per example gives $O(\sqrt{T})$ regret** against any sequence of convex losses.
+
+<OnlineRegretViz />
+
+If every loss is additionally **$\lambda$-strongly convex**, the guarantee sharpens to logarithmic regret with step size $\eta_t = \tfrac{1}{\lambda t}$:
+
+$$
+\text{Regret}_T \;\leq\; \frac{G^2}{2\lambda}\,(1 + \ln T) \;=\; O(\log T).
+$$
+
+Curvature makes online learning dramatically easier — the same reason strongly convex batch problems converge faster.
+
+## Follow-the-regularized-leader
+
+A second, unifying family is **follow-the-regularized-leader (FTRL)**. The naive "follow-the-leader" strategy replays the best point on all losses so far, $x_{t+1} = \arg\min_x \sum_{s\le t} f_s(x)$, but it is unstable — it can jump wildly round to round and incur linear regret. FTRL adds a strongly convex **regularizer** $R(x)$ to stabilise the choice:
+
+$$
+x_{t+1} = \arg\min_{x \in \mathcal{K}} \left[ \sum_{s=1}^{t} f_s(x) + R(x) \right].
+$$
+
+With $R(x) = \tfrac{1}{2\eta}\|x\|^2$ and linearised losses, FTRL *is* online gradient descent; other regularizers yield mirror descent, exponentiated gradient, and AdaGrad-style per-coordinate adaptivity. FTRL is the template behind the online learners that power large-scale ad click-through-rate systems, precisely because it is stable and cheap to update.
+
+## Online-to-batch: why SGD works
+
+Online learning is not just for streams — it *explains* batch stochastic optimization. **Online-to-batch conversion** says: run an online algorithm on i.i.d. samples $z_1,\dots,z_T$ with losses $f_t(x)=\ell(x; z_t)$, then output the average iterate $\bar{x} = \tfrac{1}{T}\sum_t x_t$. Then the *excess risk* of $\bar x$ is bounded by the *average regret*:
+
+$$
+\mathbb{E}\big[F(\bar{x})\big] - F(x^\star) \;\leq\; \frac{\mathbb{E}[\text{Regret}_T]}{T},
+$$
+
+where $F(x)=\mathbb{E}_z[\ell(x;z)]$ is the population risk. Plugging in OGD's $O(\sqrt T)$ regret gives the familiar $O(1/\sqrt{T})$ convergence rate of SGD.
+
+<Callout type="tip" title="The punchline">
+**Stochastic gradient descent is online gradient descent on a shuffled dataset, and its convergence rate is just OGD's regret bound divided by $T$.** The online view is the deeper one: it needs no i.i.d. assumption, so it keeps working when the data is a genuine, possibly-drifting stream — the subject of the next lesson.
+</Callout>
+
+## Python: an online linear classifier
+
+```python
+import numpy as np
+
+class OnlineLogReg:
+    """Online gradient descent for logistic loss with η_t = c/√t."""
+    def __init__(self, dim, c=0.5):
+        self.w = np.zeros(dim)
+        self.c = c
+        self.t = 0
+    def predict_proba(self, x):
+        return 1.0 / (1.0 + np.exp(-self.w @ x))
+    def learn_one(self, x, y):           # y in {0, 1}
+        self.t += 1
+        eta = self.c / np.sqrt(self.t)   # decaying step → O(√T) regret
+        grad = (self.predict_proba(x) - y) * x   # ∇ of logistic loss
+        self.w -= eta * grad
+
+model = OnlineLogReg(dim=len(next_features))
+for x, y in stream:                      # one pass, O(dim) memory
+    p = model.predict_proba(x)           # predict first...
+    model.learn_one(x, y)                # ...then learn from the label
+```
+
+<Exercise id="sml-regret" />
+
+<Exercise id="sml-online-batch" />
+
+## Key takeaways
+
+- **Online convex optimization** frames learning as a round-by-round game with no i.i.d. assumption; success is measured by **regret** against the best fixed decision in hindsight.
+- **Sublinear regret** ($o(T)$) means average regret vanishes — the learner matches the best fixed action per round.
+- **Online gradient descent** achieves $O(\sqrt{T})$ regret for convex losses ($\eta_t \propto 1/\sqrt{t}$) and $O(\log T)$ for strongly convex ones.
+- **FTRL** stabilises "follow the leader" with a regularizer and generalises OGD, mirror descent, and AdaGrad.
+- **Online-to-batch** converts regret bounds into generalization bounds — this is *why* SGD converges at $O(1/\sqrt{T})$.
+
+## Related concepts
+
+- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — the batch optimizers whose online cousins this lesson analyses
+- [**Concept Drift & Adaptation**](/courses/streaming-ml/04-concept-drift) — what happens when the stream's distribution itself changes
+- [**From Batch to Streaming**](/courses/streaming-ml/01-batch-to-streaming) — the one-pass setting online learning is built for

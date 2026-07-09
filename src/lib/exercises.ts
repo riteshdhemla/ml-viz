@@ -10357,6 +10357,172 @@ const allExercises: Exercise[] = [
       { id: "d", label: "More individuals can be re-identified, but each with lower confidence", isCorrect: false },
     ],
   },
+
+  // ── Streaming & Online ML ───────────────────────────────────────
+  {
+    id: "sml-reservoir",
+    type: "slider",
+    question:
+      "In reservoir sampling with k = 10 slots, the t-th element is accepted with probability k/t. At roughly what stream position t does that acceptance probability fall to 0.05?",
+    hint: "Solve k/t = 0.05 for t, with k = 10.",
+    explanation:
+      "P(accept) = k/t = 10/t = 0.05  ⟹  t = 10 / 0.05 = 200. Early elements are grabbed eagerly (probability near 1); by position 200 only 1 in 20 elements is taken. This decay is exactly what keeps the reservoir a uniform sample of everything seen so far.",
+    min: 10,
+    max: 400,
+    step: 1,
+    correctRange: [185, 215],
+    unit: "",
+  },
+  {
+    id: "sml-bloom-fp",
+    type: "multiple-choice",
+    question:
+      "A Bloom filter is sized at m/n = 10 bits per element and uses the optimal number of hash functions k = (m/n)·ln2 ≈ 7. Approximately what is its false-positive rate?",
+    hint: "With optimal k, p ≈ (0.6185)^(m/n). Compute 0.6185^10.",
+    explanation:
+      "At the optimal k, p ≈ (0.5)^k = (0.6185)^(m/n) = 0.6185^10 ≈ 0.0082, about 0.8%. This is the well-known rule of thumb: ~10 bits per element with ~7 hashes buys a sub-1% false-positive rate. There are never false negatives — a 'not present' answer is always correct.",
+    options: [
+      { id: "a", label: "≈ 0.8%", isCorrect: true },
+      { id: "b", label: "≈ 8%", isCorrect: false },
+      { id: "c", label: "≈ 0.08%", isCorrect: false },
+      { id: "d", label: "≈ 50%", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-regret",
+    type: "multiple-choice",
+    question:
+      "Online gradient descent achieves regret O(√T) on convex losses. What does this sublinear regret imply as T grows?",
+    hint: "Divide the regret by T — what happens to the average per-round regret?",
+    explanation:
+      "Sublinear regret o(T) means the average regret Regret_T / T → 0. So per round the online learner does as well as the single best fixed decision chosen in hindsight — even though it sees each example once, in order, with no i.i.d. assumption. O(√T) regret gives average regret O(1/√T).",
+    options: [
+      { id: "a", label: "Average per-round regret → 0: the learner matches the best fixed decision in hindsight", isCorrect: true },
+      { id: "b", label: "Total regret stops growing and stays constant after some T", isCorrect: false },
+      { id: "c", label: "The learner converges to the globally optimal decision on every single round", isCorrect: false },
+      { id: "d", label: "The cumulative loss becomes negative", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-online-batch",
+    type: "multiple-choice",
+    question:
+      "Via online-to-batch conversion, an online algorithm with O(√T) regret run on i.i.d. samples yields what convergence rate for the excess risk of the averaged iterate?",
+    hint: "Excess risk ≤ average regret = Regret_T / T. Substitute Regret_T = O(√T).",
+    explanation:
+      "Online-to-batch bounds excess risk by the average regret: E[F(x̄)] − F(x*) ≤ Regret_T / T = O(√T)/T = O(1/√T). This is exactly the familiar convergence rate of SGD — because SGD is online gradient descent on shuffled data, and its rate is OGD's regret bound divided by T.",
+    options: [
+      { id: "a", label: "O(1/√T)", isCorrect: true },
+      { id: "b", label: "O(1/T)", isCorrect: false },
+      { id: "c", label: "O(√T)", isCorrect: false },
+      { id: "d", label: "O(T)", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-drift-type",
+    type: "multiple-choice",
+    question:
+      "A recommender sees a wave of new users from a new country: the input distribution P(X) shifts noticeably, but the mapping from features to preferences P(Y|X) is unchanged. What kind of drift is this, and what does it imply?",
+    hint: "Which distribution actually changed — P(X) or P(Y|X)? Is the decision boundary still correct?",
+    explanation:
+      "This is virtual drift / covariate shift: only P(X) moved, while P(Y|X) — the concept the model encodes — is intact, so the decision boundary is still valid and immediate retraining may be unnecessary. Real (concept) drift is a change in P(Y|X), which invalidates the boundary and demands adaptation.",
+    options: [
+      { id: "a", label: "Covariate shift (virtual drift) — the decision boundary is still valid", isCorrect: true },
+      { id: "b", label: "Real concept drift — P(Y|X) changed, so the model must retrain immediately", isCorrect: false },
+      { id: "c", label: "Label drift — the base rate P(Y) changed", isCorrect: false },
+      { id: "d", label: "It is only sampling noise and can always be ignored", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-adwin",
+    type: "multiple-choice",
+    question:
+      "ADWIN cuts its window when |μ̂_W0 − μ̂_W1| > ε_cut, where ε_cut = √( (1/2m)·ln(4|W|/δ) ). You increase the confidence parameter δ. What is the effect?",
+    hint: "A larger δ makes ε_cut smaller. A smaller threshold is easier to exceed.",
+    explanation:
+      "Raising δ shrinks ε_cut, so the divergence test trips more easily: drift is detected sooner (shorter detection delay) but the detector also fires more often on stationary data (more false alarms). This detection-delay vs false-alarm trade-off is the fundamental knob of every drift detector.",
+    options: [
+      { id: "a", label: "Shorter detection delay, but more false alarms on stationary data", isCorrect: true },
+      { id: "b", label: "Longer detection delay and fewer false alarms", isCorrect: false },
+      { id: "c", label: "No effect — δ only changes memory usage", isCorrect: false },
+      { id: "d", label: "The window grows without bound", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-quiz-model",
+    type: "multiple-choice",
+    question:
+      "Which set of constraints defines the classic data-stream model?",
+    hint: "Think about how many passes you get and how much memory relative to the stream length n.",
+    explanation:
+      "The streaming model assumes unbounded input processed in a single pass, in arrival order, using memory sublinear in the stream length (typically O(polylog n)) and roughly constant work per element. These constraints make exact answers usually impossible, so streaming algorithms return approximate answers with provable error bounds.",
+    options: [
+      { id: "a", label: "One pass, arrival order, sublinear (≈ O(polylog n)) memory, fast per-element work", isCorrect: true },
+      { id: "b", label: "Unlimited passes over data that fully fits in memory", isCorrect: false },
+      { id: "c", label: "Random access to any element, with O(n) working memory", isCorrect: false },
+      { id: "d", label: "A single pass but with memory proportional to the stream length n", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-quiz-sketch",
+    type: "multiple-choice",
+    question:
+      "You need to estimate the number of DISTINCT users in a high-volume stream using only logarithmic memory. Which sketch is designed for this?",
+    hint: "Which algorithm tracks the maximum number of trailing zeros in hashed values?",
+    explanation:
+      "Flajolet-Martin (and its practical successor HyperLogLog) estimates distinct-element cardinality from the maximum trailing-zero length R as 2^R, in O(log n) space. Bloom filters test membership, reservoir sampling maintains a uniform sample, and DGIM counts 1s in a sliding window — different queries.",
+    options: [
+      { id: "a", label: "Flajolet-Martin / HyperLogLog", isCorrect: true },
+      { id: "b", label: "Bloom filter", isCorrect: false },
+      { id: "c", label: "Reservoir sampling", isCorrect: false },
+      { id: "d", label: "DGIM", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-quiz-regret",
+    type: "multiple-choice",
+    question:
+      "If every online loss is additionally λ-strongly convex, how does online gradient descent's regret bound improve over the general convex case?",
+    hint: "Curvature helps. The bound drops from a power of T to something much slower-growing.",
+    explanation:
+      "For λ-strongly convex losses with step size η_t = 1/(λt), OGD achieves O(log T) regret — a large improvement over the O(√T) bound for general convex losses. Curvature makes online learning much easier, mirroring how strongly convex batch problems converge faster.",
+    options: [
+      { id: "a", label: "From O(√T) to O(log T)", isCorrect: true },
+      { id: "b", label: "From O(√T) to O(T)", isCorrect: false },
+      { id: "c", label: "From O(log T) to O(1)", isCorrect: false },
+      { id: "d", label: "It does not improve — strong convexity is irrelevant online", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-quiz-drift",
+    type: "multiple-choice",
+    question:
+      "A Hoeffding tree splits a leaf once the best attribute's information gain beats the runner-up by more than ε = √( R²·ln(1/δ) / (2n) ). What does this bound let the tree do?",
+    hint: "n is the number of examples seen at the leaf. What does waiting for the gap to exceed ε guarantee?",
+    explanation:
+      "The Hoeffding bound tells the tree how many examples n are enough to be confident (probability 1−δ) that the observed best split is the true best split. So it can split on a small prefix of the stream — with high probability the same split a batch tree would choose — using O(1) memory per example instead of storing all the data.",
+    options: [
+      { id: "a", label: "Decide a split on a small prefix of the stream that matches the batch tree's choice with high probability", isCorrect: true },
+      { id: "b", label: "Guarantee the tree is exactly optimal with zero error", isCorrect: false },
+      { id: "c", label: "Store every example so it can re-evaluate all splits later", isCorrect: false },
+      { id: "d", label: "Eliminate the need to ever detect concept drift", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-quiz-production",
+    type: "multiple-choice",
+    question:
+      "In a fraud system, the chargeback label for a transaction arrives 60 days after the prediction. What is the correct way to train an online model on such delayed labels?",
+    hint: "Which feature values should the eventual label be attached to — today's, or the ones the model actually saw?",
+    explanation:
+      "Log the features exactly as the model saw them at prediction time, key that snapshot by a transaction id, and join the label to that snapshot when it finally arrives — training on the historically-correct (point-in-time) features. Attaching a delayed label to today's recomputed features leaks information and corrupts the model. Meanwhile, unsupervised P(X) drift signals give label-free early warning.",
+    options: [
+      { id: "a", label: "Snapshot features at prediction time and join the label to that snapshot when it arrives", isCorrect: true },
+      { id: "b", label: "Attach the label to the feature values recomputed on the day the label arrives", isCorrect: false },
+      { id: "c", label: "Discard any example whose label is delayed by more than a day", isCorrect: false },
+      { id: "d", label: "Never use delayed labels — only train on immediately-labelled events", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

@@ -1,0 +1,128 @@
+---
+title: "Streaming Algorithms & Sketches"
+description: "Sublinear-memory summaries of a stream — reservoir sampling, Bloom filters, Flajolet-Martin distinct counts, and DGIM for counting ones in a sliding window."
+order: 2
+type: concept
+estimatedMinutes: 22
+---
+
+# Streaming Algorithms & Sketches
+
+You cannot store the stream, so you store a **sketch** — a small, cleverly maintained summary that answers a specific query approximately. This lesson covers the four canonical sketches taught in Stanford's CS246 (*Mining Massive Datasets*) and MIT's streaming-algorithms courses: a uniform **sample**, a membership **filter**, a **distinct-count** estimator, and a **sliding-window counter**. Each trades exactness for a dramatic space saving with a provable error bound.
+
+## Reservoir sampling: a uniform sample in one pass
+
+**Problem.** Keep a uniform random sample of $k$ elements from a stream whose length $n$ you do not know.
+
+**Algorithm R** (Vitter):
+
+- Put the first $k$ elements directly into the reservoir.
+- For the $t$-th element ($t > k$), with probability $k/t$ replace a uniformly chosen reservoir slot with it; otherwise discard it.
+
+<ReservoirSamplingViz />
+
+**Why it works.** We prove by induction that after $t$ elements, every element seen so far is in the reservoir with probability exactly $k/t$.
+
+- *Base case:* the first $k$ elements each start with probability $k/k = 1$.
+- *Inductive step:* element $t{+}1$ enters with probability $\frac{k}{t+1}$ by construction. An element already in the reservoir (probability $\frac{k}{t}$) survives if either the new element is rejected, or it is accepted but evicts a different slot:
+
+$$
+\frac{k}{t}\left[\underbrace{\left(1-\frac{k}{t+1}\right)}_{\text{reject new}} + \underbrace{\frac{k}{t+1}\cdot\frac{k-1}{k}}_{\text{accept, evict another}}\right] = \frac{k}{t}\cdot\frac{t}{t+1} = \frac{k}{t+1}.
+$$
+
+Every element, old or new, ends at $\frac{k}{t+1}$ — a uniform sample, in $O(k)$ space and $O(1)$ work per element.
+
+## Bloom filters: approximate set membership
+
+**Problem.** Test whether an element has been seen, using far less space than storing the set. Tolerate false positives but **never** false negatives.
+
+A Bloom filter is an $m$-bit array and $k$ independent hash functions. To **insert** $x$, set the bits $h_1(x),\dots,h_k(x)$ to 1. To **query** $x$, report "present" only if all $k$ of those bits are 1. A "not present" answer is always correct; a "present" answer may be a false positive if other insertions happened to set all $k$ bits.
+
+After inserting $n$ elements, the probability a given bit is still 0 is $\left(1-\frac{1}{m}\right)^{kn}\approx e^{-kn/m}$, so the **false-positive rate** is
+
+$$
+p \approx \left(1 - e^{-kn/m}\right)^{k}.
+$$
+
+For fixed $m$ and $n$, this is minimised at
+
+$$
+k_{\text{opt}} = \frac{m}{n}\ln 2,
+\qquad
+p_{\min} \approx (0.5)^{k_{\text{opt}}} = (0.6185)^{m/n}.
+$$
+
+<Callout type="tip" title="Reading the formula">
+More bits per element ($m/n$) shrinks the error exponentially; the optimal number of hashes is $k=\tfrac{m}{n}\ln 2$. A rule of thumb: **~10 bits per element with ~7 hashes** gives a false-positive rate under 1%. That is a few bits to remember whether you have ever seen an item — versus storing the item itself.
+</Callout>
+
+Bloom filters are everywhere in streaming ML pipelines: de-duplicating events, skipping cache/database lookups for keys that are definitely absent, and gating expensive feature computation.
+
+## Flajolet-Martin: counting distinct elements
+
+**Problem.** How many *distinct* items has the stream contained? Storing every distinct value costs $O(n)$; Flajolet-Martin (FM) does it in $O(\log n)$ bits.
+
+**Idea.** Hash each element to a uniformly random bit string. Let $r(x)$ be the number of **trailing zeros** in $h(x)$. A random hash ends in $\geq r$ zeros with probability $2^{-r}$, so among $d$ *distinct* values you expect to see a maximal trailing-zero length around $\log_2 d$. Track
+
+$$
+R = \max_{x \in \text{stream}} r(x), \qquad \widehat{d} = 2^{R}.
+$$
+
+Duplicates do not change $R$ (the same $x$ hashes the same way), so the estimate depends only on the number of *distinct* elements. A single estimator is high-variance, so practical versions (LogLog, **HyperLogLog**) average many independent estimators and correct the bias, reaching a relative error of about $1.04/\sqrt{m}$ with $m$ registers — counting billions of distinct items in a few kilobytes.
+
+## DGIM: counting ones in a sliding window
+
+**Problem.** Over a stream of bits, how many 1s occurred in the last $N$ elements? Storing the window costs $N$ bits; **DGIM** (Datar-Gionis-Indyk-Motwani) does it in $O(\log^2 N)$ bits with at most 50% error.
+
+**Idea.** Summarise the window with **buckets**, each covering a range of positions and holding a count of 1s that is a power of two, $2^j$. The rules:
+
+- Each bucket stores its size ($2^j$, so just the exponent $j$ — $O(\log\log N)$ bits) and the timestamp of its most recent 1 (modulo $N$ — $O(\log N)$ bits).
+- Bucket sizes are **non-decreasing** into the past, and there are **at most two** buckets of each size. When a third bucket of size $2^j$ appears, merge the two oldest into one of size $2^{j+1}$.
+- Drop any bucket whose timestamp falls outside the window.
+
+To answer a query, sum all buckets fully inside the window plus **half** of the oldest partially-overlapping bucket. That single halved bucket is the only source of error, which is provably at most 50% and often far less.
+
+<Callout type="info" title="The unifying theme">
+Every sketch here follows the same recipe: pick a summary whose size is **logarithmic** in the stream, maintain it with $O(1)$-ish work per element, and accept a bounded approximation error in exchange. Sampling, membership, cardinality, and windowed counts are the building blocks that feed features into streaming models.
+</Callout>
+
+## Python sketch
+
+```python
+import hashlib
+
+def trailing_zeros(x: int) -> int:
+    return (x & -x).bit_length() - 1 if x else 32
+
+class FlajoletMartin:
+    """Single-estimator distinct-count sketch (HyperLogLog averages many)."""
+    def __init__(self):
+        self.R = 0
+    def add(self, item) -> None:
+        h = int(hashlib.md5(str(item).encode()).hexdigest(), 16)
+        self.R = max(self.R, trailing_zeros(h))
+    def estimate(self) -> float:
+        return 2 ** self.R
+
+fm = FlajoletMartin()
+for user_id in stream:          # duplicates are free — R only tracks distinctness
+    fm.add(user_id)
+print("approx distinct users:", fm.estimate())
+```
+
+<Exercise id="sml-reservoir" />
+
+<Exercise id="sml-bloom-fp" />
+
+## Key takeaways
+
+- **Reservoir sampling** keeps a uniform $k$-sample in one pass, accepting element $t$ with probability $k/t$ — provably uniform by induction.
+- **Bloom filters** answer membership with no false negatives and false-positive rate $\left(1-e^{-kn/m}\right)^k$, minimised at $k=\tfrac{m}{n}\ln 2$.
+- **Flajolet-Martin / HyperLogLog** estimate distinct counts from the maximum trailing-zero length, $\widehat d = 2^{R}$, in logarithmic space.
+- **DGIM** counts 1s in a sliding window in $O(\log^2 N)$ bits with ≤50% error using power-of-two buckets.
+
+## Related concepts
+
+- [**From Batch to Streaming**](/courses/streaming-ml/01-batch-to-streaming) — the one-pass, sublinear-memory model these sketches live in
+- [**Concept Drift & Adaptation**](/courses/streaming-ml/04-concept-drift) — sketches over sliding windows power drift detectors
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — the estimation view behind sketch bias/variance
