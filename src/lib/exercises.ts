@@ -10523,6 +10523,102 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Never use delayed labels — only train on immediately-labelled events", isCorrect: false },
     ],
   },
+
+  // ── RAFT (Retrieval-Augmented Fine-Tuning) ──────────────────────
+  {
+    id: "llm-raft-idea",
+    type: "multiple-choice",
+    question:
+      "What does RAFT add on top of a standard RAG pipeline?",
+    hint: "The name is Retrieval-Augmented *Fine-Tuning*.",
+    explanation:
+      "RAFT fine-tunes the model on the RAG task in your domain: training examples pair a question with a golden document plus distractor documents, and the model learns to cite the relevant passage and ignore the noise. Plain RAG only injects context at query time and never trains the model to use it.",
+    options: [
+      { id: "a", label: "It fine-tunes the model to read retrieved context well and ignore distractors", isCorrect: true },
+      { id: "b", label: "It replaces the vector database with a graph database", isCorrect: false },
+      { id: "c", label: "It increases the number of retrieved chunks k at query time", isCorrect: false },
+      { id: "d", label: "It removes the need to retrieve documents at inference", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-raft-p-param",
+    type: "multiple-choice",
+    question:
+      "In RAFT, why is a fraction of training examples given only distractor documents (no golden document)?",
+    hint: "What happens at inference when the retriever misses the right passage?",
+    explanation:
+      "If the golden document were always present, the model would learn a copy-from-context shortcut and collapse whenever retrieval fails. Training on distractor-only examples forces it to also memorize domain knowledge, making it robust when the retriever returns the wrong chunks. That's why the golden-inclusion probability P is kept below 100%.",
+    options: [
+      { id: "a", label: "To force the model to memorize domain knowledge and stay robust to retrieval misses", isCorrect: true },
+      { id: "b", label: "To make training faster by using fewer tokens", isCorrect: false },
+      { id: "c", label: "To teach the model to always copy the first chunk", isCorrect: false },
+      { id: "d", label: "Because golden documents are unavailable at training time", isCorrect: false },
+    ],
+  },
+
+  // ── Diffusion Transformers & Text-to-Video ──────────────────────
+  {
+    id: "genai-dit-why",
+    type: "multiple-choice",
+    question:
+      "What is the main advantage of a Diffusion Transformer (DiT) over a U-Net diffusion denoiser?",
+    hint: "Think about what made LLMs improve so predictably.",
+    explanation:
+      "Replacing the convolutional U-Net with a Transformer over latent patches removes a fixed inductive bias and lets quality improve smoothly with compute (more Gflops → lower FID). This predictable scaling is why frontier image and video models moved to Transformers.",
+    options: [
+      { id: "a", label: "It scales predictably with compute, following scaling-law-like behavior", isCorrect: true },
+      { id: "b", label: "It removes the need for a noise schedule", isCorrect: false },
+      { id: "c", label: "It generates images in a single forward pass without denoising", isCorrect: false },
+      { id: "d", label: "It works only in pixel space, avoiding a VAE", isCorrect: false },
+    ],
+  },
+  {
+    id: "genai-video-attention",
+    type: "multiple-choice",
+    question:
+      "Why do video diffusion transformers (e.g. STDiT) factorize attention into separate spatial and temporal steps?",
+    hint: "Consider the cost of full attention over every spacetime token.",
+    explanation:
+      "Full 3D self-attention is O(N²) in the number of spacetime tokens, and video has an enormous token count (frames × height × width). Factorizing into spatial attention (within a frame) plus temporal attention (across frames) slashes the cost — Open-Sora reports up to ~5× speedup as frames grow — while still modeling both space and time.",
+    options: [
+      { id: "a", label: "Full 3D attention is too expensive; factorizing cuts the O(N²) cost over many spacetime tokens", isCorrect: true },
+      { id: "b", label: "Temporal attention is more accurate than spatial attention", isCorrect: false },
+      { id: "c", label: "It removes the need for a text encoder", isCorrect: false },
+      { id: "d", label: "Frames must be generated strictly one at a time", isCorrect: false },
+    ],
+  },
+
+  // ── Agent-to-Agent Protocols (A2A) ──────────────────────────────
+  {
+    id: "agent-a2a-vs-mcp",
+    type: "multiple-choice",
+    question:
+      "How do the A2A and MCP protocols relate?",
+    hint: "One connects an agent to tools; the other to other agents.",
+    explanation:
+      "MCP is vertical integration — it connects an agent down to passive tools and data. A2A is horizontal — it connects an agent across to other autonomous agents as peers. They compose: an agent is commonly both an MCP client to its tools and an A2A peer to other agents.",
+    options: [
+      { id: "a", label: "Complementary: MCP connects agents to tools (vertical), A2A connects agents to agents (horizontal)", isCorrect: true },
+      { id: "b", label: "Competing standards that do the same thing", isCorrect: false },
+      { id: "c", label: "A2A replaced MCP for all tool access", isCorrect: false },
+      { id: "d", label: "MCP is for agents; A2A is only for humans", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-a2a-agent-card",
+    type: "multiple-choice",
+    question:
+      "What is the purpose of an A2A \"Agent Card\"?",
+    hint: "It's a small JSON document a peer publishes, often at /.well-known/agent.json.",
+    explanation:
+      "The Agent Card advertises a remote agent's identity, skills, endpoint, auth requirements, and modalities, so other agents can discover what it can do before delegating. It keeps the remote agent opaque — you interact with advertised capabilities, not its internal tools or state.",
+    options: [
+      { id: "a", label: "It advertises the agent's capabilities and endpoint so peers can discover and delegate to it", isCorrect: true },
+      { id: "b", label: "It stores the agent's private chain-of-thought for auditing", isCorrect: false },
+      { id: "c", label: "It is the billing invoice for a completed task", isCorrect: false },
+      { id: "d", label: "It lists the exact internal tools and prompts the agent uses", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

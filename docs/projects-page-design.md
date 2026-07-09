@@ -119,18 +119,19 @@ Remixes stages from projects 1–5. No fixed spine; presents a checklist of
 
 ## Content-gap summary (the "what's missing" audit)
 
-Against the pasted 6-week structure, the site already covers almost everything.
-Three real gaps, ranked:
+Against the pasted 6-week structure, the site already covered almost everything.
+The three real gaps have now been **authored** (lesson MDX + companion notebook +
+exercises + registry wiring):
 
-1. **RAFT** (retrieval-augmented fine-tuning) — Project 2. No lesson.
-2. **Text-to-video / DiT** (Diffusion Transformers, Sora-style) — Project 5. Only
-   a passing mention.
-3. **A2A** (agent-to-agent protocol) — Project 3. Thin; multi-agent is covered
-   but A2A specifically is not.
+1. ✅ **RAFT** (retrieval-augmented fine-tuning) — `building-with-llms/14-retrieval-augmented-fine-tuning`
+2. ✅ **Text-to-video / DiT** (Diffusion Transformers, Sora-style) — `generative-models/08-diffusion-transformers-and-video`
+3. ✅ **A2A** (agent-to-agent protocol) — `agent-design-patterns/13-agent-to-agent-protocols`
 
 Everything else (GRPO/RLVR, CoT/ToT, MoE, scaling, CLIP, MCP, LoRA, RAG, eval)
-already exists. Each gap gets a stage that links the closest existing lesson +
-the reference repo now, with a "lesson coming soon" flag for later authoring.
+already existed. The three project stages that were gap-flagged now link the new
+lessons directly (the `gap` flags were removed), and course `estimatedHours`
+were recomputed (building-with-llms 9.5→10.5, generative-models 5.5→6.5,
+agent-design-patterns 9→10).
 
 ---
 

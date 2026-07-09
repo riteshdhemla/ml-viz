@@ -1,0 +1,93 @@
+---
+title: "Agent-to-Agent Protocols (A2A)"
+description: "How independent agents discover and delegate to each other — Agent Cards, tasks, and artifacts — and why A2A is the horizontal complement to MCP's vertical tool access."
+order: 13
+type: concept
+estimatedMinutes: 20
+---
+
+# Agent-to-Agent Protocols (A2A)
+
+[Multi-agent cooperation](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) showed *why* you split work across specialized agents. But those patterns assume the agents live in one codebase and one framework. Real systems are messier: your planning agent might be built in LangGraph, a research agent lives behind another company's API, and a coding agent runs on a third stack. How do agents that share **no code and no memory** discover each other and delegate work? That's what **A2A (Agent-to-Agent)** — an open protocol introduced by Google in 2025 — standardizes.
+
+**Real-world examples:** a travel-planning agent that hands "book the flight" to an airline's agent; an enterprise orchestrator delegating to HR, finance, and IT agents from different vendors; a research agent subcontracting a specialized data-analysis agent.
+
+## MCP vs A2A: vertical vs horizontal
+
+These two protocols are complementary, not competing:
+
+- **[MCP](/courses/agent-design-patterns/09-tool-use-and-mcp)** connects an agent *down* to **tools and data** — files, APIs, databases. It's **vertical** integration: the tool is a passive resource the agent calls.
+- **A2A** connects an agent *across* to **other agents** as peers. It's **horizontal** integration: the other side is itself an autonomous, reasoning system.
+
+$$
+\underbrace{\text{Agent} \;\longleftrightarrow\; \text{Tools/Data}}_{\text{MCP (vertical)}}
+\qquad\qquad
+\underbrace{\text{Agent} \;\longleftrightarrow\; \text{Agent}}_{\text{A2A (horizontal)}}
+$$
+
+A single agent is usually **both**: an MCP *client* to its own tools and an A2A *peer* to other agents. The key A2A design principle is that a remote agent stays **opaque** — you interact with its advertised capabilities, not its internal tools, prompts, or state.
+
+## The building blocks
+
+**Agent Card** — a small JSON document an agent publishes (by convention at `/.well-known/agent.json`) advertising its identity, skills, endpoint URL, authentication requirements, and supported modalities. This is how agents **discover** what a peer can do before delegating.
+
+```json
+{
+  "name": "Flight Booking Agent",
+  "description": "Searches and books flights",
+  "url": "https://air.example.com/a2a",
+  "skills": [{ "id": "book_flight", "description": "Book a flight given route and dates" }],
+  "authentication": { "schemes": ["bearer"] }
+}
+```
+
+**Task** — the unit of work. A client sends a request that creates a task with a lifecycle: `submitted → working → (input-required) → completed | failed | canceled`. Tasks are **stateful and long-running** — an agent booking travel might take minutes and pause to ask a clarifying question (`input-required`).
+
+**Messages & Parts** — communication inside a task is a series of messages, each made of typed *parts*: `TextPart`, `FilePart`, or structured `DataPart`. This lets agents exchange prose, files, and JSON in one exchange.
+
+**Artifacts** — the concrete outputs a task produces (a document, an image, a structured result), returned as the task completes.
+
+<Callout type="info" title="Built on boring, proven web tech">
+  A2A deliberately rides existing standards: **HTTP + JSON-RPC** for calls, **Server-Sent Events (SSE)** for streaming progress on long tasks, and standard web **auth** schemes. Nothing exotic — which is the point: interoperability across vendors needs a low, well-understood floor.
+</Callout>
+
+## A delegation, end to end
+
+```text
+1. Discover   client fetches the remote Agent Card (/.well-known/agent.json)
+2. Delegate   client POSTs a task: "book LAX→JFK, Mar 3"          → task: submitted
+3. Work       remote agent runs its own loop (its own tools/MCP)  → task: working
+4. Clarify    "Aisle or window?"                                  → task: input-required
+5. Resume     client answers                                      → task: working
+6. Deliver    returns a booking-confirmation artifact             → task: completed
+```
+
+Note step 3: the remote agent may itself call tools over MCP and even delegate to *further* agents over A2A. The protocols **compose**.
+
+<Callout type="tip" title="Trust is the hard part">
+  Discovery and message formats are the easy 20%. The real engineering is **trust**: authenticating peers, authorizing what a delegated agent may do, bounding cost/looping, and handling a peer that fails or stalls. Treat every A2A peer as an untrusted, non-deterministic service — validate its artifacts before acting on them.
+</Callout>
+
+<Exercise id="agent-a2a-vs-mcp" />
+
+<Exercise id="agent-a2a-agent-card" />
+
+## Common mistakes
+
+1. **Confusing A2A with MCP** — wrapping another agent as a "tool" throws away its autonomy, streaming, and multi-turn task lifecycle.
+2. **Assuming synchronous, instant replies** — A2A tasks are long-running; ignoring the `working`/`input-required` states breaks real delegations.
+3. **Skipping capability discovery** — hard-coding a peer's skills instead of reading its Agent Card makes the system brittle when the peer changes.
+4. **Trusting artifacts blindly** — a remote agent is non-deterministic and possibly adversarial; validate before you act.
+
+## Key takeaways
+
+- **A2A** lets independent agents — different frameworks, vendors, memories — **discover and delegate** to each other as peers.
+- It's the **horizontal** complement to **MCP's vertical** tool access; an agent is typically both an MCP client and an A2A peer.
+- Core primitives: **Agent Card** (discovery), **Task** (stateful, long-running unit of work), **Messages/Parts**, and **Artifacts**, over HTTP + JSON-RPC + SSE.
+- The protocol is the easy part — **trust, authorization, and failure handling** are where the design effort goes.
+
+## Related concepts
+
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — coordination strategies once agents can talk
+- [**Tool Use & MCP**](/courses/agent-design-patterns/09-tool-use-and-mcp) — the vertical protocol A2A composes with
+- [**Deploying Agents**](/courses/agent-design-patterns/11-deploying-agents) — running these systems in production

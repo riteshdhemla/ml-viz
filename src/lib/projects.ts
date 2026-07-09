@@ -111,10 +111,9 @@ const allProjects: Project[] = [
         title: "RAFT — retrieval-augmented fine-tuning",
         blurb: "Train the model to ignore distractor passages and cite the right one — RAG's weak spot.",
         lessons: [
-          { course: "building-with-llms", lesson: "04-retrieval-augmented-generation" },
+          { course: "building-with-llms", lesson: "14-retrieval-augmented-fine-tuning" },
           { course: "fine-tuning-alignment", lesson: "02-peft-lora-qlora" },
         ],
-        gap: "Dedicated RAFT lesson coming soon — for now, combine the RAG + PEFT lessons.",
         repo: { name: "ShishirPatil/gorilla (RAFT)", url: "https://github.com/ShishirPatil/gorilla/tree/main/raft", blurb: "The Berkeley RAFT recipe: fine-tune for domain-specific RAG robustness." },
       },
       {
@@ -154,9 +153,11 @@ const allProjects: Project[] = [
       },
       {
         title: "Multi-agent & A2A",
-        blurb: "Split retrieval, reading, and writing across cooperating agents.",
-        lessons: [{ course: "agent-design-patterns", lesson: "07-multi-agent-cooperation-patterns" }],
-        gap: "A2A (agent-to-agent) protocol is covered only briefly — deeper lesson planned.",
+        blurb: "Split work across cooperating agents, and let independent agents delegate over A2A.",
+        lessons: [
+          { course: "agent-design-patterns", lesson: "07-multi-agent-cooperation-patterns" },
+          { course: "agent-design-patterns", lesson: "13-agent-to-agent-protocols" },
+        ],
       },
       {
         title: "Assemble the search agent",
@@ -249,8 +250,7 @@ const allProjects: Project[] = [
       {
         title: "Text → video (DiT)",
         blurb: "Extend diffusion transformers across time for Sora-style video generation.",
-        lessons: [{ course: "generative-models", lesson: "05-diffusion-models" }],
-        gap: "Dedicated DiT / text-to-video lesson coming soon — diffusion covers the basis.",
+        lessons: [{ course: "generative-models", lesson: "08-diffusion-transformers-and-video" }],
         repo: { name: "hpcaitech/Open-Sora", url: "https://github.com/hpcaitech/Open-Sora", blurb: "Open Sora-like video model with a spatial-temporal DiT (STDiT)." },
       },
     ],

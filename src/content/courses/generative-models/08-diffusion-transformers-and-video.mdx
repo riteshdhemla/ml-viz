@@ -1,0 +1,74 @@
+---
+title: "Diffusion Transformers & Text-to-Video"
+description: "Swap the U-Net for a Transformer (DiT), then extend diffusion across time — spacetime patches, factorized attention, and how Sora-style video generation scales."
+order: 8
+type: concept
+estimatedMinutes: 22
+---
+
+# Diffusion Transformers & Text-to-Video
+
+[Diffusion models](/courses/generative-models/05-diffusion-models) generate by learning to **denoise**: start from noise and iteratively remove it. Classically the denoiser is a **U-Net** — a convolutional encoder–decoder. But convolution bakes in a fixed inductive bias and doesn't ride the scaling curves that made LLMs explode. The **Diffusion Transformer (DiT)** replaces the U-Net with a Transformer, and it's the backbone behind Stable Diffusion 3, PixArt, and OpenAI's Sora.
+
+**Real-world examples:** high-resolution text-to-image (SD3, PixArt-α), text-to-video (Sora, Open-Sora), image-to-video, and controllable generation at scale.
+
+<DiffusionViz />
+
+Above is the denoising process DiT powers — the *schedule* is unchanged; what changes is the network that predicts the noise at each step.
+
+## From U-Net to Transformer
+
+DiT operates in a **latent space** (like Stable Diffusion): a VAE compresses the image to a small latent grid, and diffusion happens there — far cheaper than pixels. The DiT denoiser then:
+
+1. **Patchify** — cut the noisy latent grid into patches and flatten each into a token (exactly like a [Vision Transformer](/courses/generative-models/06-vit-and-modern-genai)).
+2. **Transformer blocks** — self-attention over all patches lets any region attend to any other (global context a conv only reaches after many layers).
+3. **Condition** on the diffusion timestep $t$ and the prompt. DiT injects these through **adaptive layer norm** (adaLN-Zero): the conditioning vector predicts per-block scale/shift parameters, and the blocks are initialized to start as the identity.
+4. **Predict the noise** $\epsilon_\theta$ for every patch; a linear head un-patchifies back to the latent.
+
+<Callout type="info" title="Why this matters: scaling laws">
+  Peebles & Xie showed DiT quality improves smoothly as you add compute — more **Gflops** (bigger Transformer, more patches) reliably lowers FID. That predictability is why frontier image/video models moved to Transformers: you can *buy* quality with scale, the same lever that drives LLMs.
+</Callout>
+
+## Adding the time axis: text-to-video
+
+A video is a stack of frames — a latent **tensor over space and time**. The natural move is to generalize the DiT's patches into **spacetime patches**: cut the latent video into little cubes spanning a few pixels *and* a few frames, flatten each into a token, and let the Transformer denoise the whole sequence at once. This is the core idea OpenAI describes for Sora.
+
+The catch is cost. Full self-attention over every spacetime token is $O(N^2)$ in the number of tokens, and video has *enormous* $N$ (frames × height × width). So practical systems **factorize** attention:
+
+$$
+\text{full 3D attention} \;\longrightarrow\; \underbrace{\text{spatial attention}}_{\text{within a frame}} \;+\; \underbrace{\text{temporal attention}}_{\text{across frames}}
+$$
+
+Open-Sora's **STDiT** (Spatial-Temporal DiT) and Latte do exactly this — alternating spatial and temporal blocks instead of one giant attention, which the Open-Sora team reports as up to ~5× faster as frame count grows. A **3D VAE** further compresses along time so there are fewer tokens to begin with.
+
+<Callout type="tip" title="Conditioning is still classifier-free guidance">
+  Text-to-video keeps the tools from image diffusion: the prompt is encoded (e.g. by a T5/CLIP text model) and injected via cross-attention or adaLN, and sampling uses [classifier-free guidance](/courses/generative-models/06-vit-and-modern-genai) to trade diversity for prompt adherence. Video just adds the temporal dimension on top.
+</Callout>
+
+## Tradeoffs & failure modes
+
+| Aspect | U-Net diffusion | **DiT / video DiT** |
+|---|---|---|
+| Inductive bias | strong (convolutional locality) | weak (learned from data) |
+| Scaling behavior | plateaus | smooth with compute |
+| Compute for video | — | very high ($O(N^2)$ attention) |
+| Data hunger | lower | higher |
+
+**Failure modes to know:** temporal flicker / identity drift across frames, physically implausible motion (objects morph or ignore gravity), and cost — long, high-resolution clips are dominated by the token count. Factorized attention, 3D VAEs, and windowed attention are the main levers against it.
+
+<Exercise id="genai-dit-why" />
+
+<Exercise id="genai-video-attention" />
+
+## Key takeaways
+
+- **DiT** replaces the diffusion U-Net with a **Transformer over latent patches**, conditioned on timestep and prompt via **adaLN-Zero** — and it **scales** predictably with compute.
+- **Text-to-video** generalizes patches into **spacetime patches** and denoises the whole clip at once.
+- Full 3D attention is too expensive, so systems **factorize** into spatial + temporal attention (STDiT) and compress time with a **3D VAE**.
+- The wins (scaling, quality) come with high compute and temporal-consistency challenges.
+
+## Related concepts
+
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the denoising process DiT parameterizes
+- [**ViT & Modern GenAI**](/courses/generative-models/06-vit-and-modern-genai) — patchifying and classifier-free guidance
+- [**Attention & Transformers**](/courses/transformers/01-self-attention) — the block DiT is built from
