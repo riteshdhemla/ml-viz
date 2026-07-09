@@ -126,6 +126,46 @@ To override: add `notebookUrl: "https://..."` to the lesson frontmatter.
    `# TODO(you)` blanks, an `assert` cell that passes silently when correct,
    and a `<details>` markdown cell with the solution
 
+### Walkthrough template (7 parts)
+
+Every notebook is a **detailed, self-contained code walkthrough**: a reader who runs
+the cells top-to-bottom should grasp the idea, see it built from scratch, see the
+real library way, know when to reach for it, and get to code it themselves. For an
+**algorithm / method** notebook, build to this shape:
+
+0. **Header + intuition** — keep the title, lesson back-link, and Copy-to-Drive note;
+   add 2–4 sentences: the problem it solves, the core idea in plain words, where it
+   shows up.
+1. **From scratch** — a NumPy implementation with math→code narration and shapes
+   annotated, built incrementally across a few cells (each with a markdown lead-in),
+   not one monolithic block.
+2. **The library way** — the real equivalent (scikit-learn / PyTorch / SciPy /
+   statsmodels …) **plus an explicit check that the from-scratch result matches** the
+   library (`np.allclose`, side-by-side numbers, or overlaid plots).
+3. **Visualize it** — the figure(s) that make it stick, each followed by a "what to
+   notice" markdown cell.
+4. **Tradeoffs & when to use it** — a scannable pros/cons table, time/space
+   complexity, key hyperparameters and what they trade off, and common failure modes.
+5. **Your turn** — the existing `✏️ Your turn` scaffolds (see above) and any extra
+   practice banks.
+6. **Key takeaways** — a short bullet recap + links to the next lesson / related wiki.
+
+**Flex by notebook type — adapt, don't force:**
+- **Foundations / concept explainers** (linear algebra, calculus): §1 is
+  by-hand/from-first-principles; §2 is the library one-liner cross-checked; §4 becomes
+  "limitations / when it breaks / numerical gotchas" (conditioning, float, degenerate
+  inputs).
+- **Applied / systems / LLM lessons** (RAG, agents, MLOps, prompting): §1 is a minimal
+  working implementation of the pattern; §2 is the framework/SDK version; §4 is design
+  tradeoffs, cost/latency, and failure modes.
+- **Wiki deep-dives**: procedure from scratch + worked trace + gotchas + exercise;
+  library section only if one genuinely applies.
+
+**Invariants:** every code cell has a markdown lead-in; plots have a follow-up
+takeaway; cells are runnable and deterministic (seeds set, imports precede use);
+notebook JSON round-trips cleanly (source-as-string, `indent=1`). Colab runs Python
+3.11 — avoid nested same-quote f-strings (3.12+ only).
+
 ---
 
 ## Key Conventions
