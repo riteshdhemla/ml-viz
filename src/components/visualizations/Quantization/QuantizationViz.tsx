@@ -117,7 +117,7 @@ export function QuantizationViz({ className }: { className?: string }) {
       noisePct: (Math.sqrt(num) / Math.max(Math.sqrt(den), 1e-9)) * 100,
       levels: Math.pow(2, bits),
     };
-  }, [original, Q]);
+  }, [original, Q, bits]);
 
   const bytesPerParam = bits / 8;
   const memory = formatBytes(bytesPerParam);

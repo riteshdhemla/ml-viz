@@ -16,7 +16,7 @@ const OUT = IN - K + 1; // 4
 const INPUT: number[][] = (() => {
   const rng = seededRandom(5);
   // a rough vertical edge: left dark, right bright, plus noise
-  return Array.from({ length: IN }, (_, r) =>
+  return Array.from({ length: IN }, () =>
     Array.from({ length: IN }, (_, c) => Math.round((c < IN / 2 ? 0.2 : 0.8) * 9 + (rng() - 0.5) * 2))
   );
 })();
