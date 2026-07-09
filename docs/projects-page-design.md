@@ -1,8 +1,12 @@
 # Projects Page — Design Proposal
 
-> Status: **proposal / awaiting sign-off**. Nothing is built yet. This doc is the
-> plan for a new `/projects` surface that connects the site's 31 topic-siloed
-> courses into six **end-to-end buildable projects**.
+> Status: **built**. The `/projects` surface and all six projects are implemented
+> per this design. This doc remains the reference for the model and stage mapping.
+>
+> Shipped: `src/types/project.ts`, `src/lib/projects.ts` (registry),
+> `src/app/projects/page.tsx` + `src/app/projects/[slug]/page.tsx`,
+> `src/components/projects/{ProjectCard,ProjectSpine}.tsx`, nav + sitemap entries,
+> and `src/lib/__tests__/projects-integrity.test.ts` (validates every lesson ref).
 
 ## The problem
 
