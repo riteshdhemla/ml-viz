@@ -86,6 +86,9 @@ import { VCDimensionViz } from "@/components/visualizations/VCDimension/VCDimens
 import { DistributedTrainingViz } from "@/components/visualizations/DistributedTraining/DistributedTrainingViz";
 import { TraceWaterfallViz } from "@/components/visualizations/TraceWaterfall/TraceWaterfallViz";
 import { CondorcetViz } from "@/components/visualizations/Condorcet/CondorcetViz";
+import { ReservoirSamplingViz } from "@/components/visualizations/ReservoirSampling/ReservoirSamplingViz";
+import { OnlineRegretViz } from "@/components/visualizations/OnlineRegret/OnlineRegretViz";
+import { ConceptDriftViz } from "@/components/visualizations/ConceptDrift/ConceptDriftViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -178,4 +181,7 @@ export const mdxComponents: MDXComponents = {
   DistributedTrainingViz,
   TraceWaterfallViz,
   CondorcetViz,
+  ReservoirSamplingViz,
+  OnlineRegretViz,
+  ConceptDriftViz,
 };

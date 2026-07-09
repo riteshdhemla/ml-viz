@@ -1,0 +1,77 @@
+---
+title: "Streaming ML in Production"
+description: "Wiring it together — log-based ingestion, stream processors, online/offline feature parity, feature freshness, streaming inference, delayed labels, and the monitor-adapt loop."
+order: 5
+type: concept
+estimatedMinutes: 18
+---
+
+# Streaming ML in Production
+
+The sketches, online learners, and drift detectors of this course only pay off inside a system that moves data reliably and serves models with low latency. This lesson is the architecture: how a streaming ML pipeline is actually wired, and the failure modes — feature skew, staleness, delayed labels — that decide whether it works.
+
+## The anatomy of a streaming pipeline
+
+A production streaming ML system is a pipeline of loosely-coupled stages:
+
+1. **Ingestion — the log.** Events land on a durable, append-only, partitioned log (Apache **Kafka**, Pulsar, Kinesis). The log decouples producers from consumers, buffers bursts, replays history for reprocessing, and gives every consumer its own cursor. It is the backbone everything else reads from.
+2. **Stream processing.** A processor (**Flink**, Spark Structured Streaming, Kafka Streams) consumes the log and computes windowed aggregations and features in event time, with the watermark and late-data handling from lesson 1. This is where reservoir samples, HyperLogLog cardinalities, and DGIM-style windowed counts are maintained.
+3. **Feature store.** Computed features are written to an **online store** (a low-latency key-value store like Redis/DynamoDB) for serving, and mirrored to an **offline store** (a warehouse/lake) for training. Keeping these two consistent is the crux of the whole system (below).
+4. **Model serving / online learning.** Either a periodically-retrained model served behind an API, or an online learner that updates in place as labelled events flow past.
+5. **Monitoring & feedback.** Predictions, outcomes, and drift signals flow back onto the log, closing the loop.
+
+## Online/offline parity — the skew trap
+
+The single most common way streaming ML breaks is **training/serving skew**: a feature is computed one way in the batch training pipeline and a subtly different way in the online serving path, so the model sees inputs at serving time that it never saw in training.
+
+<Callout type="warning" title="Point-in-time correctness">
+The deadliest skew is a **temporal leak**. When you build a training row for an event at time $t$, every feature must be computed using *only* information available strictly before $t$ — the value the online store *would have returned* at $t$. Join a feature table naively and you leak the future (e.g. a "30-day average" that includes days after the label), inflating offline metrics and collapsing in production. Feature stores exist largely to guarantee this **point-in-time correct** join.
+</Callout>
+
+The robust fix is a **single feature definition** executed by both paths — the same transformation code producing the offline training table and the online serving value — so there is only one way a feature can be computed.
+
+## Feature freshness
+
+Streaming's whole promise is **recency**, and freshness is itself a design axis. Features fall on a spectrum:
+
+- **Real-time** (milliseconds): "clicks in the last 10 seconds," computed in the stream processor and read from the online store at request time.
+- **Near-real-time** (seconds–minutes): windowed aggregates materialised continuously.
+- **Batch** (hours–daily): slow-moving features (a user's lifetime totals) computed offline.
+
+Fresher is not automatically better — real-time features cost more infrastructure and are harder to keep point-in-time correct. The engineering question is *which* features actually need to be fresh. A fraud model needs the velocity of transactions in the last minute; it does not need the account-age feature recomputed every second.
+
+## The delayed-label problem
+
+Online learning assumes you get the label right after predicting. In production you often **don't**. A fraud chargeback arrives 30–90 days after the transaction; an ad conversion may land hours after the click; a recommendation's "was this good?" signal is diffuse. This **feedback delay** means:
+
+- The model learns from an outcome long after the input, so at any moment it is being updated on old concepts.
+- Naively attributing a label to *current* features leaks information and corrupts training.
+
+The pattern is to **log features at prediction time** (snapshot exactly what the model saw), park that snapshot keyed by an id, and **join the label to it when the outcome finally arrives** — training on the historically-correct feature values, not today's. Until labels arrive, unsupervised drift signals (shifts in $P(X)$) are your early warning.
+
+## The monitor-and-adapt loop
+
+Because a streaming model faces drift, monitoring is not optional garnish — it is part of the model:
+
+- **Prediction monitoring** — track the distribution of model outputs and input features; a shift in $P(X)$ is the earliest, label-free drift signal.
+- **Performance monitoring** — once labels arrive, track rolling accuracy/AUC and feed the error stream to a detector (ADWIN/DDM from lesson 4).
+- **Adaptation policy** — decide what an alarm triggers: continuous online updates, a windowed retrain, a detect-and-reset, or a human-in-the-loop review.
+- **Shadow & canary** — validate a refreshed model on live traffic before promoting it, so an adaptation that overfits recent noise cannot take down serving.
+
+<Callout type="tip" title="Continuous training is the norm">
+Mature streaming ML systems retrain **automatically and continuously** — on a schedule, on a drift trigger, or every example — rather than in occasional manual pushes. The pipeline, not a person, closes the loop from new data to a refreshed model.
+</Callout>
+
+## Key takeaways
+
+- A streaming ML pipeline chains a durable **log** (Kafka), a **stream processor** (Flink) computing event-time features, a dual **online/offline feature store**, model serving or online learning, and a monitoring feedback loop.
+- **Training/serving skew** is the top failure mode; **point-in-time-correct** features and a single shared feature definition prevent it.
+- **Feature freshness** is a deliberate trade-off — make fresh only the features that need it.
+- **Delayed labels** require logging features at prediction time and joining the outcome later, never attributing old labels to current features.
+- Streaming models are **monitored and continuously retrained**; adaptation is built into the system, not bolted on.
+
+## Related concepts
+
+- [**Feature Stores**](/courses/ml-in-practice/17-feature-stores) — online/offline parity and point-in-time joins in depth
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — the batch counterpart of the monitor-adapt loop
+- [**Concept Drift & Adaptation**](/courses/streaming-ml/04-concept-drift) — the detectors that drive production adaptation

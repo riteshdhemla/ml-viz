@@ -1,0 +1,113 @@
+---
+title: "Concept Drift & Adaptation"
+description: "When the stream's distribution changes — types of drift, detectors like ADWIN and DDM, adaptive windowing, and incremental learners such as Hoeffding trees."
+order: 4
+type: concept
+estimatedMinutes: 20
+---
+
+# Concept Drift & Adaptation
+
+Batch ML assumes the training and serving distributions match. On a live stream they routinely do not: user behaviour shifts, fraud patterns evolve, sensors age, a pandemic rewrites demand overnight. When the data-generating process changes over time, we call it **concept drift** — and a model that ignores it silently rots. This lesson covers detecting drift and adapting to it, the concerns at the heart of libraries like `river`.
+
+## What is drifting?
+
+Write the joint distribution the stream is drawn from at time $t$ as $P_t(X, Y) = P_t(X)\,P_t(Y \mid X)$. Drift is any change in $P_t$ over time, and it comes in distinct flavours that call for different responses:
+
+- **Virtual drift / covariate shift** — $P(X)$ changes but $P(Y \mid X)$ does not. The input distribution moves (new users, new regions) yet the *decision boundary* is still correct. Often you can tolerate this.
+- **Real / concept drift** — $P(Y \mid X)$ changes. The relationship between features and label is different now; the old decision boundary is *wrong*. This is the dangerous one.
+- **Label / prior drift** — $P(Y)$ changes (e.g. the base rate of fraud rises).
+
+Drift also has a **temporal shape**:
+
+- **Sudden** — an abrupt switch (a policy change, a sensor swap).
+- **Gradual** — the new concept slowly displaces the old.
+- **Incremental** — a continuous slow morph.
+- **Recurring** — old concepts return (weekday vs weekend, seasonal).
+
+<Callout type="warning" title="Drift ≠ noise, and covariate shift ≠ concept drift">
+The hard part of detection is distinguishing a genuine change in the concept from ordinary sampling noise. And a spike in $P(X)$ alone (covariate shift) may need no action, while a change in $P(Y\mid X)$ demands retraining. Monitoring input statistics is not enough — you have to watch the model's **error** on labelled feedback.
+</Callout>
+
+## Detecting drift
+
+Detectors watch a signal — usually the model's streaming error rate — and raise an alarm when it changes more than chance allows.
+
+### DDM — Drift Detection Method
+
+DDM tracks the online error rate $p_t$ and its standard deviation $s_t = \sqrt{p_t(1-p_t)/t}$. For a stationary concept a well-fit classifier's error should not grow, so DDM records the minimum $p_{\min} + s_{\min}$ seen so far and flags:
+
+- a **warning** when $p_t + s_t \geq p_{\min} + 2\,s_{\min}$ (start buffering new data for a fresh model),
+- **drift** when $p_t + s_t \geq p_{\min} + 3\,s_{\min}$ (replace the model).
+
+The $2\sigma$/$3\sigma$ bands come straight from a normal approximation to the error rate.
+
+### ADWIN — Adaptive Windowing
+
+ADWIN keeps a window $W$ of recent values and asks: is there a split of $W$ into an older part $W_0$ and a newer part $W_1$ whose means differ by more than chance? It drops the old part exactly when
+
+$$
+|\hat\mu_{W_0} - \hat\mu_{W_1}| \;>\; \epsilon_{\text{cut}}, \qquad
+\epsilon_{\text{cut}} = \sqrt{\frac{1}{2m}\ln\frac{4\,|W|}{\delta}},
+$$
+
+where $m$ is the harmonic mean of the two sub-window sizes and $\delta$ is a confidence parameter. When the test fires, ADWIN shrinks the window to just the recent segment — so the window length itself becomes an estimate of "how far back the current concept extends." A clever bucket scheme (exponential histograms, as in DGIM) keeps its memory logarithmic in the window size.
+
+<ConceptDriftViz />
+
+The confidence $\delta$ is the classic tuning knob: raise it and $\epsilon_{\text{cut}}$ shrinks, so drift is caught **sooner** but false alarms on stationary data rise; lower it and the detector is conservative, adapting late but rarely crying wolf. This is the detection-delay vs false-alarm trade-off every drift detector must navigate.
+
+## Adapting to drift
+
+Detection is half the job; the model then has to change. Strategies, roughly in order of sophistication:
+
+1. **Retrain on a window.** Keep the last $N$ examples (or the post-ADWIN window) and refit. Simple, and the window automatically forgets stale data.
+2. **Incremental / online update.** Use an online learner (previous lesson) that continuously tracks the current concept; a decaying step size or explicit forgetting factor down-weights the past.
+3. **Detect-and-reset.** Pair any learner with a detector (ADWIN/DDM); on an alarm, reset or spin up a fresh model on recent data. This is what the animation above shows.
+4. **Ensembles.** Maintain a pool of models trained on different periods and weight them by recent accuracy (e.g. Dynamic Weighted Majority, Adaptive Random Forest). Recurring concepts are handled gracefully because an old expert regains weight when its concept returns.
+
+### Hoeffding trees: decision trees for streams
+
+A batch decision tree needs all the data to choose each split. The **Hoeffding tree** (Very Fast Decision Tree) instead decides *how many examples are enough*. The **Hoeffding bound** says that after $n$ independent observations of a quantity in range $R$, the true mean is within
+
+$$
+\epsilon = \sqrt{\frac{R^2 \ln(1/\delta)}{2n}}
+$$
+
+of the observed mean, with probability $1-\delta$. So the tree accumulates split-quality statistics (e.g. information gain $G$) at a leaf and splits as soon as the best attribute beats the runner-up by more than $\epsilon$: $G(\text{best}) - G(\text{2nd}) > \epsilon$. That guarantees, with high probability, the *same* split the batch tree would have chosen — using only a small prefix of the stream and $O(1)$ memory per example. The **Hoeffding Adaptive Tree (HAT)** adds an ADWIN detector at each node, growing an alternate subtree when drift is detected and swapping it in once it wins.
+
+## Python: adaptive learning with river
+
+```python
+from river import tree, drift, metrics
+
+model    = tree.HoeffdingAdaptiveTreeClassifier()  # HT + per-node ADWIN
+detector = drift.ADWIN(delta=0.002)
+metric   = metrics.Accuracy()
+
+for x, y in stream:                 # one pass over an evolving stream
+    y_pred = model.predict_one(x)
+    metric.update(y, y_pred)
+    model.learn_one(x, y)           # incremental update
+
+    detector.update(int(y_pred != y))   # feed the error signal
+    if detector.drift_detected:
+        print(f"drift detected — accuracy now {metric.get():.3f}")
+```
+
+<Exercise id="sml-drift-type" />
+
+<Exercise id="sml-adwin" />
+
+## Key takeaways
+
+- **Concept drift** is change in $P_t(X,Y)$. Distinguish **covariate shift** ($P(X)$) from dangerous **real drift** ($P(Y\mid X)$); note whether it is sudden, gradual, incremental, or recurring.
+- **DDM** flags drift when the error rate exceeds $2\sigma$/$3\sigma$ bands; **ADWIN** drops the stale window when two sub-window means differ by more than a Hoeffding cut $\epsilon_{\text{cut}}$.
+- The detector's confidence $\delta$ trades **detection delay against false alarms**.
+- Adapt by windowed retraining, online updates, detect-and-reset, or ensembles. **Hoeffding trees** grow decision trees on streams using the Hoeffding bound to decide when a split is justified.
+
+## Related concepts
+
+- [**Online Learning & Regret**](/courses/streaming-ml/03-online-learning) — the incremental learners that track a moving concept
+- [**Streaming ML in Production**](/courses/streaming-ml/05-streaming-ml-in-production) — monitoring and alerting on drift in a live system
+- [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — the batch trees Hoeffding trees stream-ify
