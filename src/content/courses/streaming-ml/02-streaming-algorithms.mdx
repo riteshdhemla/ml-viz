@@ -70,6 +70,8 @@ $$
 
 Duplicates do not change $R$ (the same $x$ hashes the same way), so the estimate depends only on the number of *distinct* elements. A single estimator is high-variance, so practical versions (LogLog, **HyperLogLog**) average many independent estimators and correct the bias, reaching a relative error of about $1.04/\sqrt{m}$ with $m$ registers — counting billions of distinct items in a few kilobytes.
 
+<WikiLink slug="hyperloglog" title="HyperLogLog: Registers, Harmonic Means & Range Corrections" />
+
 ## DGIM: counting ones in a sliding window
 
 **Problem.** Over a stream of bits, how many 1s occurred in the last $N$ elements? Storing the window costs $N$ bits; **DGIM** (Datar-Gionis-Indyk-Motwani) does it in $O(\log^2 N)$ bits with at most 50% error.
@@ -81,6 +83,8 @@ Duplicates do not change $R$ (the same $x$ hashes the same way), so the estimate
 - Drop any bucket whose timestamp falls outside the window.
 
 To answer a query, sum all buckets fully inside the window plus **half** of the oldest partially-overlapping bucket. That single halved bucket is the only source of error, which is provably at most 50% and often far less.
+
+<WikiLink slug="dgim-sliding-window" title="DGIM: A Worked Bucket Trace" />
 
 <Callout type="info" title="The unifying theme">
 Every sketch here follows the same recipe: pick a summary whose size is **logarithmic** in the stream, maintain it with $O(1)$-ish work per element, and accept a bounded approximation error in exchange. Sampling, membership, cardinality, and windowed counts are the building blocks that feed features into streaming models.

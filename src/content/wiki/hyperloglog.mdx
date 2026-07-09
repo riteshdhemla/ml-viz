@@ -1,0 +1,83 @@
+---
+title: "HyperLogLog"
+description: "Counting distinct elements in kilobytes — from the Flajolet-Martin trailing-zero trick to stochastic averaging over registers, the harmonic-mean estimator, its 1.04/√m error, and the small/large-range corrections. With a worked trace."
+topics: ["streaming"]
+relatedLessons:
+  - "streaming-ml/02-streaming-algorithms"
+estimatedMinutes: 13
+---
+
+# HyperLogLog
+
+**HyperLogLog (HLL)** estimates the number of *distinct* elements (the cardinality) of a stream using memory that grows only *doubly-logarithmically* in the count — a few kilobytes to count billions, within a couple of percent. It is the production successor to the Flajolet-Martin sketch and powers `COUNT(DISTINCT …)` in Redis, Presto, BigQuery, and Druid.
+
+## Recap: the Flajolet-Martin trailing-zero idea
+
+Hash each element to a uniform bit string and let $\rho(x)$ be the position of the **leftmost 1** (equivalently, one plus the number of leading zeros). Because bits are uniform, $\Pr[\rho(x) \geq k] = 2^{-k}$: seeing a hash with $k$ leading zeros is a $2^{-k}$ event, so if the largest $\rho$ observed is $R$, there were probably on the order of $2^{R}$ distinct values. Duplicates hash identically and never change $R$, so the estimate tracks *distinctness*, not volume.
+
+A single such estimator has enormous variance — one lucky hash with many leading zeros throws it off by a factor of 2. HLL's contribution is a principled way to average many estimators cheaply.
+
+## Stochastic averaging: split into registers
+
+Use the first $p$ bits of each hash to pick one of $m = 2^{p}$ **registers**; apply the $\rho$ trick to the *remaining* bits and keep the maximum in that register:
+
+$$
+j = \langle b_1 \dots b_p \rangle_2, \qquad
+M[j] \leftarrow \max\!\big(M[j],\; \rho(b_{p+1} b_{p+2}\dots)\big).
+$$
+
+This is like running $m$ independent Flajolet-Martin estimators — one per register — but each element updates exactly one of them, in $O(1)$ time. Each register holds a small integer (the max $\rho$ seen), so the whole sketch is $m$ registers of ~6 bits: a few KB for $m = 4096$.
+
+## The estimator: a harmonic mean
+
+Averaging the per-register estimates $2^{M[j]}$ with a *harmonic* mean (which suppresses the heavy upper tail that inflates a plain average) gives the HLL cardinality estimate:
+
+$$
+\widehat{n} \;=\; \alpha_m \, m^2 \left( \sum_{j=1}^{m} 2^{-M[j]} \right)^{-1},
+$$
+
+where $\alpha_m$ is a bias-correction constant:
+
+$$
+\alpha_{16}=0.673,\quad \alpha_{32}=0.697,\quad \alpha_{64}=0.709,\quad
+\alpha_{m}\approx \frac{0.7213}{1 + 1.079/m}\ \ (m \geq 128).
+$$
+
+The **relative standard error** is
+
+$$
+\frac{\sigma}{n} \approx \frac{1.04}{\sqrt{m}}.
+$$
+
+So $m = 1024$ registers give ~3.25% error, $m = 4096$ give ~1.6% — and doubling accuracy costs only 4× the (already tiny) memory.
+
+## Range corrections
+
+The raw estimator is biased at the extremes, so HLL patches both ends:
+
+- **Small range** ($\widehat n \leq \tfrac{5}{2}m$): if $V$ registers are still zero, switch to **linear counting**, $\widehat n = m \ln(m/V)$, which is accurate when the sketch is sparsely populated.
+- **Large range** (near the hash space, e.g. $\widehat n > \tfrac{1}{30}2^{32}$ for 32-bit hashes): correct for hash collisions with $\widehat n = -2^{32}\ln(1 - \widehat n/2^{32})$. Modern **HLL++** uses 64-bit hashes (making this correction essentially unnecessary) plus an empirical bias table and a sparse representation for small cardinalities.
+
+## Worked trace
+
+Take $m = 4$ registers ($p = 2$ bits), all initialised to 0, and stream four **distinct** hashes (leading register-select bits in brackets):
+
+| hash | register bits | remaining bits | register $j$ | $\rho$ (pos. of leftmost 1) | $M$ after |
+|------|---------------|----------------|-------------|------------------------------|-----------|
+| `[01]000101…` | `01` | `000101…` | 1 | 4 | `[0,4,0,0]` |
+| `[11]010…`    | `11` | `010…`    | 3 | 2 | `[0,4,0,2]` |
+| `[01]0001…`   | `01` | `0001…`   | 1 | 4 (no change) | `[0,4,0,2]` |
+| `[00]1…`      | `00` | `1…`      | 0 | 1 | `[1,4,0,2]` |
+
+One register is still 0, so $V = 1$ and the small-range rule applies: $\widehat n = m\ln(m/V) = 4\ln 4 \approx 5.5$. The raw harmonic-mean formula would instead give $\alpha_4 \cdot 16 / (2^{-1} + 2^{-4} + 2^{0} + 2^{-2}) = 0.673\cdot 16 / 1.8125 \approx 5.9$ — both near the true count of 4, and the corrections keep them honest as the register array fills. (See the notebook for the full estimator run to millions of distinct items.)
+
+## Gotchas
+
+- **Hash quality is everything.** Bits must be uniform and independent; a weak hash biases $\rho$ and wrecks the estimate.
+- **Mergeable.** Two HLL sketches combine by taking the element-wise max of registers — perfect for distributed/parallel counting and for unions. **Intersections** are *not* directly supported (use inclusion-exclusion, which amplifies error).
+- **Cardinality only.** HLL answers "how many distinct," never "is $x$ present" (that's a Bloom filter) or "how frequent is $x$" (Count-Min).
+
+## See also
+
+- [Streaming Algorithms & Sketches](/courses/streaming-ml/02-streaming-algorithms) — the lesson this deep-dive expands
+- Flajolet-Martin, Bloom filters, and DGIM in the same lesson

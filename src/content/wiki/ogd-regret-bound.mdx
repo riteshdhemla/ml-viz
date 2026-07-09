@@ -1,0 +1,105 @@
+---
+title: "The O(√T) Regret Bound for Online Gradient Descent"
+description: "A full proof that online gradient descent has sublinear regret — the projection inequality, the convexity step, the telescoping sum, tuning the step size to D·G·√T, and the decaying-step and strongly-convex refinements. With a worked numeric example."
+topics: ["streaming"]
+relatedLessons:
+  - "streaming-ml/03-online-learning"
+estimatedMinutes: 14
+---
+
+# The O(√T) Regret Bound for Online Gradient Descent
+
+Online gradient descent (OGD) is the workhorse of online convex optimization, and its guarantee — **regret $O(\sqrt{T})$ against any sequence of convex losses** (Zinkevich, 2003) — is what makes online learning viable on streams. This page proves it from scratch. The whole argument is three short steps: a projection inequality, the definition of convexity, and a telescoping sum.
+
+## Setup and assumptions
+
+- A convex feasible set $\mathcal{K} \subseteq \mathbb{R}^d$ with **diameter** $D = \max_{x,y\in\mathcal{K}} \|x - y\|$.
+- On round $t$ the learner plays $x_t \in \mathcal{K}$, then a convex loss $f_t$ is revealed, with a (sub)gradient $g_t \in \partial f_t(x_t)$ whose norm is bounded, $\|g_t\| \le G$.
+- OGD update with projection $\Pi_{\mathcal K}$ (Euclidean, hence **non-expansive**):
+
+$$
+x_{t+1} = \Pi_{\mathcal{K}}\big(x_t - \eta\, g_t\big).
+$$
+
+- The comparator is the **best fixed action in hindsight**, $x^\star = \arg\min_{x\in\mathcal K}\sum_{t=1}^T f_t(x)$, and
+
+$$
+\text{Regret}_T = \sum_{t=1}^{T} f_t(x_t) - \sum_{t=1}^{T} f_t(x^\star).
+$$
+
+## Step 1 — the projection inequality
+
+Because Euclidean projection onto a convex set does not increase distances to points already in the set, $\|\Pi_{\mathcal K}(y) - x^\star\| \le \|y - x^\star\|$ for $x^\star \in \mathcal K$. Apply it to $y = x_t - \eta g_t$ and expand the square:
+
+$$
+\|x_{t+1} - x^\star\|^2 \le \|x_t - \eta g_t - x^\star\|^2
+= \|x_t - x^\star\|^2 - 2\eta\,\langle g_t,\, x_t - x^\star\rangle + \eta^2\|g_t\|^2.
+$$
+
+Rearranging to isolate the inner product:
+
+$$
+\langle g_t,\, x_t - x^\star\rangle \;\le\; \frac{\|x_t - x^\star\|^2 - \|x_{t+1} - x^\star\|^2}{2\eta} \;+\; \frac{\eta}{2}\|g_t\|^2. \tag{1}
+$$
+
+## Step 2 — convexity turns loss gaps into inner products
+
+By the definition of a (sub)gradient of a convex function, $f_t(x^\star) \ge f_t(x_t) + \langle g_t,\, x^\star - x_t\rangle$, i.e.
+
+$$
+f_t(x_t) - f_t(x^\star) \;\le\; \langle g_t,\, x_t - x^\star\rangle. \tag{2}
+$$
+
+This is the only place convexity is used, and it is what lets a *first-order* method bound a *function-value* regret.
+
+## Step 3 — sum and telescope
+
+Combine (2) and (1) and sum over $t = 1,\dots,T$. The distance terms **telescope**:
+
+$$
+\text{Regret}_T \le \sum_{t=1}^T \frac{\|x_t - x^\star\|^2 - \|x_{t+1} - x^\star\|^2}{2\eta} + \frac{\eta}{2}\sum_{t=1}^T \|g_t\|^2
+= \frac{\|x_1 - x^\star\|^2 - \|x_{T+1}-x^\star\|^2}{2\eta} + \frac{\eta}{2}\sum_{t=1}^T\|g_t\|^2.
+$$
+
+Drop the non-positive $-\|x_{T+1}-x^\star\|^2$, bound $\|x_1 - x^\star\|^2 \le D^2$ and $\|g_t\|^2 \le G^2$:
+
+$$
+\boxed{\;\text{Regret}_T \;\le\; \frac{D^2}{2\eta} + \frac{\eta\, G^2 T}{2}.\;} \tag{3}
+$$
+
+## Tuning the step size
+
+The bound (3) is a sum of a term that *shrinks* with $\eta$ and one that *grows* with it. Minimising over $\eta$ (set the derivative $-D^2/2\eta^2 + G^2 T/2 = 0$) gives
+
+$$
+\eta^\star = \frac{D}{G\sqrt{T}}, \qquad
+\text{Regret}_T \;\le\; D\,G\,\sqrt{T} \;=\; O(\sqrt{T}).
+$$
+
+Since the average regret is $\text{Regret}_T/T \le DG/\sqrt{T} \to 0$, OGD asymptotically matches the best fixed decision — with no distributional assumption on the losses.
+
+## Refinements
+
+- **Not knowing $T$ (decaying step).** Using $\eta_t = \dfrac{D}{G\sqrt{t}}$ instead of a fixed $\eta$ removes the need to know the horizon and still yields $\text{Regret}_T \le \tfrac{3}{2} D G \sqrt{T}$ — the same rate, a slightly larger constant.
+- **Strong convexity.** If every $f_t$ is $\lambda$-strongly convex, the convexity step (2) gains an extra $\tfrac{\lambda}{2}\|x_t - x^\star\|^2$ term. Choosing $\eta_t = \tfrac{1}{\lambda t}$ makes the distance terms cancel more aggressively and yields
+
+$$
+\text{Regret}_T \le \frac{G^2}{2\lambda}\,(1 + \ln T) = O(\log T).
+$$
+
+- **Online-to-batch.** On i.i.d. data, averaging the iterates converts $O(\sqrt T)$ regret into an $O(1/\sqrt{T})$ bound on excess risk — this is precisely why SGD converges at $O(1/\sqrt T)$.
+
+## Worked numeric example
+
+Let $D = 2$ (feasible set of radius 1), $G = 1$ (unit-norm gradients), $T = 10{,}000$. The optimal step is $\eta^\star = D/(G\sqrt{T}) = 2/100 = 0.02$, and the regret bound is
+
+$$
+\text{Regret}_T \le D G \sqrt{T} = 2\cdot 1\cdot 100 = 200,
+$$
+
+so the **average** regret is at most $200/10{,}000 = 0.02$ per round. Compare a learner that plays a *fixed* point $\hat x \ne x^\star$: it pays a constant gap $\delta = \tfrac1T\sum_t[f_t(\hat x)-f_t(x^\star)] > 0$ every round, so its regret is $\delta T$ — **linear**, and its average regret never vanishes. The notebook verifies OGD's empirical regret stays under the $DG\sqrt T$ curve while the fixed learner's grows linearly.
+
+## See also
+
+- [Online Learning & Regret](/courses/streaming-ml/03-online-learning) — the lesson this proof supports
+- [Gradient Descent Variants](/courses/optimization-ml/01-gradient-descent-variants) — the batch optimizers behind OGD

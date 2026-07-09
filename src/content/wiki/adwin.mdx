@@ -1,0 +1,87 @@
+---
+title: "ADWIN: Adaptive Windowing for Drift Detection"
+description: "A change detector that also maintains an optimally-sized window — the split test with its Hoeffding cut, why the window length itself estimates the current concept, the exponential-histogram implementation for O(log W) memory, and the false-alarm/detection guarantees. With a worked cut calculation."
+topics: ["streaming"]
+relatedLessons:
+  - "streaming-ml/04-concept-drift"
+estimatedMinutes: 13
+---
+
+# ADWIN: Adaptive Windowing for Drift Detection
+
+**ADWIN** (ADaptive WINdowing; Bifet & Gavaldà, 2007) solves two problems at once on a stream of real values — typically a model's error signal. It **detects change** (concept drift), and it **maintains a window of exactly the right length**: as long as the data looks stationary the window grows; the moment the mean shifts, it shrinks to just the recent, homogeneous part. That recovered window length is itself an estimate of "how far back the current concept extends."
+
+## The core idea: test every split of the window
+
+ADWIN keeps a window $W$ of the most recent stream values. On each new element it asks:
+
+> Is there a way to cut $W$ into an older sub-window $W_0$ and a newer sub-window $W_1$ such that their sample means are *distinguishably* different?
+
+If yes, the older data belongs to a stale concept, so ADWIN **drops $W_0$** and reports drift. Formally, it declares a change at a split when
+
+$$
+\big|\hat\mu_{W_0} - \hat\mu_{W_1}\big| \;>\; \epsilon_{\text{cut}},
+\qquad
+\epsilon_{\text{cut}} = \sqrt{\frac{1}{2m}\,\ln\frac{4\,|W|}{\delta}},
+\qquad
+m = \frac{1}{\tfrac{1}{|W_0|} + \tfrac{1}{|W_1|}},
+$$
+
+where $m$ is the **harmonic mean** of the two sub-window sizes and $\delta \in (0,1)$ is the confidence parameter. The $|W|$ inside the log is a union bound over the (many) possible cut points; the harmonic mean makes the threshold large when *either* side is small (little evidence) and small only when *both* sides are big.
+
+<details>
+<summary>Hoeffding vs Bernstein cut</summary>
+
+The bound above is the Hoeffding form used in the lesson. The published ADWIN uses a slightly tighter **Bernstein**-style cut that folds in the observed variance $\hat\sigma^2_W$:
+
+$$
+\epsilon_{\text{cut}} = \sqrt{\frac{2}{m}\,\hat\sigma^2_W\,\ln\frac{2}{\delta'}} + \frac{2}{3m}\ln\frac{2}{\delta'},\qquad \delta' = \frac{\delta}{|W|}.
+$$
+
+For low-variance error streams this detects a bit sooner; the qualitative behaviour is identical.
+</details>
+
+## Why the window length is the payoff
+
+Most detectors only raise a boolean alarm. ADWIN additionally *rightsizes* its window: after a cut it retains only $W_1$, so downstream statistics (a running mean, a model refit on "the current window") automatically use only in-distribution data. There is no separate window-length hyperparameter to tune — the data sets it. This is why ADWIN is often wired directly into learners (e.g. as the change detector inside a **Hoeffding Adaptive Tree**, which grows an alternate subtree when a node's ADWIN fires).
+
+## Making it cheap: exponential histograms
+
+Re-scanning every possible split of a length-$|W|$ window on every element would cost $O(|W|)$ per step and $O(|W|)$ memory. ADWIN2 compresses $W$ into an **exponential histogram** of buckets — the same power-of-two bucket structure as [DGIM](/wiki/dgim-sliding-window) — storing per-bucket sums and counts with relative accuracy. This gives:
+
+- **Memory:** $O(\log W)$ instead of $O(W)$.
+- **Time:** only $O(\log W)$ candidate split points (the bucket boundaries) are tested per update, not all $|W|-1$.
+
+The approximation of using bucket boundaries as the only cut points costs a controllable constant factor and preserves the guarantees below.
+
+## Guarantees
+
+For a suitable choice of the confidence $\delta$, ADWIN comes with two-sided rigor:
+
+1. **Few false positives.** If the mean is truly constant across $W$, the probability that ADWIN wrongly shrinks the window is at most $\delta$.
+2. **Reliable detection.** If the mean changes by more than roughly $\epsilon_{\text{cut}}$, ADWIN detects it and shrinks the window, with high probability, within a delay that scales with how large the change is (bigger jumps are caught faster).
+
+The knob is $\delta$: **larger $\delta$ ⟹ smaller $\epsilon_{\text{cut}}$ ⟹ faster detection but more false alarms**; smaller $\delta$ is conservative. This is the universal detection-delay / false-alarm trade-off.
+
+## Worked cut calculation
+
+Suppose the current window has $|W| = 200$ error bits, and we test the balanced split $|W_0| = |W_1| = 100$. Recent history shifted, so the older half averages $\hat\mu_{W_0} = 0.08$ and the newer half $\hat\mu_{W_1} = 0.42$. With $\delta = 0.05$:
+
+$$
+m = \frac{1}{\tfrac{1}{100} + \tfrac{1}{100}} = 50,\qquad
+\epsilon_{\text{cut}} = \sqrt{\frac{1}{2\cdot 50}\,\ln\frac{4\cdot 200}{0.05}}
+= \sqrt{0.01 \cdot \ln(16000)} = \sqrt{0.01 \cdot 9.68} \approx 0.311.
+$$
+
+The observed gap $|\,0.08 - 0.42\,| = 0.34 > 0.311$, so the test **fires**: ADWIN drops $W_0$ and reports drift. Had the gap been the stationary-noise level (say $0.03$), no split would exceed $\epsilon_{\text{cut}}$ and the window would keep growing. Note the threshold falls as the window grows ($m$ rises), so a change too subtle to catch now becomes detectable once more post-change data accumulates.
+
+## Gotchas
+
+- **δ is a rate, not a magnitude.** It controls false-alarm probability, not the size of change you care about; pick it for your tolerance to spurious resets.
+- **It monitors a scalar.** ADWIN watches one real-valued signal (an error rate, a residual). For multivariate drift, run one detector per signal or feed it a scalar summary.
+- **Recurring concepts.** After a reset ADWIN forgets the old window, so genuinely recurring concepts are re-learned rather than recalled — pair it with an ensemble if recurrence matters.
+
+## See also
+
+- [Concept Drift & Adaptation](/courses/streaming-ml/04-concept-drift) — the lesson this expands
+- [DGIM](/wiki/dgim-sliding-window) — the exponential-histogram bucket structure ADWIN reuses
