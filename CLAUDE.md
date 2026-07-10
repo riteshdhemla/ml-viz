@@ -397,6 +397,35 @@ surface-border   — borders
 - [x] **Agentic System Design** — tool use/function calling & MCP, agent evaluation (outcome vs trajectory, pass@k), production deployment (orchestration, checkpointing, guardrails, cost/latency) *(integrated into `agent-design-patterns`: 11 lessons + quiz)*
 - [x] **GPU Programming for ML** — GPU architecture & SIMT, the CUDA programming model, memory coalescing/tiling/occupancy/roofline, GPUs for deep learning (GEMM, tensor cores, mixed precision, fusion), distributed training (DP/ZeRO/FSDP, tensor & pipeline parallelism) *(course + 5 lessons + quiz)*
 
+### Future / Planned (tracked, not yet built)
+
+- [ ] **Foundation Models for Tabular & Sensor Data** — the emerging paradigm of
+  pretrained foundation models replacing bespoke, one-model-per-task pipelines for
+  the modalities that lacked a natural "vocabulary." Unifying thesis: *foundation
+  models for data types the first FM wave skipped (tables, physiological streams).*
+  Candidate new **advanced** course (working slug `foundation-models-tabular-sensor`):
+  - **Framing** — why tables & wearables resisted foundation models (column
+    heterogeneity, no shared tokens, small-n, missingness).
+  - **In-context learning for tables — TabFM** ([Google Research, 2026](https://research.google/blog/introducing-tabfm-a-zero-shot-foundation-model-for-tabular-data/)):
+    hybrid attention alternating **column (feature) ↔ row (sample)** blocks; the
+    whole dataset (labeled rows + query rows) passed as **one prompt** → zero-shot
+    prediction in a single forward pass; pretrained on hundreds of millions of
+    synthetic datasets sampled from **structural causal models**; beats tuned GBDTs
+    zero-shot (TabPFN / TabICL lineage; exposed via BigQuery `AI.PREDICT`).
+    → proposed viz: `HybridAttentionViz` (column-then-row attention over a table).
+  - **Foundation models for wearables — SensorFM / LSM-2** ([Google Research, 2026](https://research.google/blog/sensorfm-towards-a-general-intelligence-and-interface-for-wearable-health-data/)):
+    day-long multimodal streams (accelerometry, PPG, EDA, temperature) tokenized
+    into patches; **masked-autoencoder** self-supervised reconstruction; **Adaptive
+    & Inherited Masking (AIM)** treats naturally-missing and artificially-masked
+    tokens as equivalent → learns from incomplete data without imputation; one
+    representation transfers to ~35 health tasks and grounds a Personal Health Agent.
+    → proposed viz: `SensorMAEViz` (masked sensor stream reconstruction under a
+    real-world missingness mask).
+  - **Wrap-up** — decision guide (foundation model vs. XGBoost vs. bespoke), quiz.
+  - Follows all standard conventions: paired `.ipynb` per lesson (7-part
+    walkthrough), exercises in `src/lib/exercises.ts`, viz registered in
+    `mdxComponents.tsx`.
+
 ---
 
 ## Visualization Components Built
