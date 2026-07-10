@@ -1,0 +1,87 @@
+---
+title: "Retrieval-Augmented Fine-Tuning (RAFT)"
+description: "Train an LLM to be good at RAG in your domain — combine retrieval with fine-tuning so the model cites the right passage and ignores distractors."
+order: 14
+type: concept
+estimatedMinutes: 18
+---
+
+# Retrieval-Augmented Fine-Tuning (RAFT)
+
+[RAG](/courses/building-with-llms/04-retrieval-augmented-generation) grounds a model in your documents at *query time*, but it never **trains** the model to use those documents well. A base model dropped into a RAG pipeline gets distracted by irrelevant chunks, sometimes ignores the context entirely and falls back on (possibly wrong) parametric memory, and rarely learns your domain's vocabulary. **Fine-tuning** bakes in domain skill but forgets facts and can't cite sources. **RAFT** combines the two: it fine-tunes the model *on the RAG task itself*, in your domain.
+
+**Real-world examples:** a support assistant over one product's docs, a clinical Q&A tool over a fixed medical corpus, an API assistant grounded in a specific SDK, legal search over a firm's case files.
+
+## The open-book exam analogy
+
+Think of three students facing a domain-specific exam:
+
+- **RAG (base model)** — open book, but never studied. Has the right pages, yet doesn't know how to read them under pressure and gets thrown by irrelevant pages.
+- **Domain fine-tuning** — studied hard, closed book. Knows the material but can't quote a source and hallucinates when memory is fuzzy.
+- **RAFT** — studied the domain *and* practiced taking the exam open-book, including with wrong pages mixed in.
+
+RAFT trains the "studied, open-book" student — the one that actually performs in production.
+
+## How RAFT builds its training data
+
+Every training example is a question paired with a set of retrieved documents. The trick is *what* you put in that set:
+
+- **Golden document** $D^*$ — the passage that actually answers the question.
+- **Distractor documents** $D_1 \dots D_k$ — plausible-but-irrelevant passages, exactly the noise a retriever returns in production.
+
+RAFT then splits the training set with a probability $P$:
+
+- In a fraction $P$ of examples: include the **golden + distractors**. The model learns to *find and use* the right passage while ignoring noise.
+- In the remaining $1-P$: include **only distractors** (no golden document). With no passage to copy from, the model is forced to answer from **memorized domain knowledge** — so it stays robust when retrieval *misses*.
+
+$$
+\text{example} = \begin{cases} (Q,\; D^* + \text{distractors},\; A^{\text{CoT}}) & \text{with prob. } P \\ (Q,\; \text{distractors only},\; A^{\text{CoT}}) & \text{with prob. } 1-P \end{cases}
+$$
+
+<Callout type="info" title="Chain-of-thought answers that cite">
+  RAFT's target answer $A^{\text{CoT}}$ isn't just the final string — it's a reasoning trace that **quotes the source verbatim** (the paper wraps citations in <code>##begin_quote##&nbsp;…&nbsp;##end_quote##</code> markers) and then derives the answer. Training on cited reasoning, not bare answers, is what teaches the model to lean on evidence instead of guessing.
+</Callout>
+
+## Why the distractor-only slice matters
+
+It's tempting to always give the model the golden document during training. But then it learns a shortcut: "the answer is always in the context, so just copy." At inference, when your retriever inevitably returns the wrong chunks, that model collapses. Training on distractor-only examples — leaving $P$ below 100% — inoculates the model against retrieval failures. The RAFT paper finds a **moderate $P$** (often ~40–80%, dataset-dependent) beats both extremes.
+
+<Callout type="tip" title="RAFT is usually LoRA-sized">
+  You don't need a full fine-tune. RAFT is typically applied with [PEFT/LoRA](/courses/fine-tuning-alignment/02-peft-lora-qlora) adapters on top of an open base model — cheap enough to re-run when your corpus meaningfully changes.
+</Callout>
+
+## Where it fits — and where it doesn't
+
+| | RAG | Fine-tuning | **RAFT** |
+|---|---|---|---|
+| Fresh/changing knowledge | ✅ re-index | ❌ retrain | ⚠️ retrain to refresh baked-in facts; retrieval still fresh |
+| Cites sources | ✅ | ❌ | ✅ |
+| Robust to bad retrieval | ❌ | ✅ (memory) | ✅ (trained on distractors) |
+| Domain style/vocab | ❌ | ✅ | ✅ |
+| Setup cost | low | high | high (data gen + training) |
+
+**Use RAFT** when you have a **fixed, high-value domain corpus** and RAG-on-a-base-model isn't accurate enough. **Skip it** when your documents change constantly (retraining churn) or you need broad open-domain coverage — plain RAG wins there.
+
+<Exercise id="llm-raft-idea" />
+
+<Exercise id="llm-raft-p-param" />
+
+## Common mistakes
+
+1. **Always including the golden doc** ($P = 1$) — teaches copy-paste, not robustness; the model breaks on retrieval misses.
+2. **Training on bare answers** instead of cited chain-of-thought — loses the "use the evidence" behavior.
+3. **Weak distractors** — if distractors are obviously off-topic, the model never learns to discriminate. Draw them from the *retriever's* top-k, not random.
+4. **Forgetting to refresh** — RAFT bakes some knowledge into weights, so a stale model drifts from an updated corpus.
+
+## Key takeaways
+
+- RAFT = **fine-tune the model on the RAG task** in your domain, so it reads retrieved context well instead of merely being handed it.
+- Each example mixes a **golden document with distractors**, and a fraction $1-P$ has **distractors only** to force memorization and robustness to retrieval misses.
+- Targets are **cited chain-of-thought** answers, not bare strings.
+- Best for a **fixed domain corpus** where base-model RAG underperforms; usually done with LoRA.
+
+## Related concepts
+
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the query-time pipeline RAFT trains the model to excel at
+- [**PEFT: LoRA & QLoRA**](/courses/fine-tuning-alignment/02-peft-lora-qlora) — how the fine-tuning half is done cheaply
+- [**LLM Evaluation**](/courses/building-with-llms/08-llm-evaluation) — measuring faithfulness and answer relevance before/after RAFT

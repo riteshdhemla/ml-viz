@@ -80,7 +80,6 @@ export function CalibrationViz({ className }: { className?: string }) {
             const x0 = px(0.5 + (i / BINS) * 0.5);
             const x1 = px(0.5 + ((i + 1) / BINS) * 0.5);
             const w = x1 - x0;
-            const gap = Math.abs(b.acc - b.conf);
             return (
               <g key={i}>
                 {/* gap to the diagonal, shaded */}

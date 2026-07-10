@@ -24,7 +24,6 @@ import {
  */
 
 const W = 520;
-const H = 240;
 const M = { top: 20, right: 20, bottom: 40, left: 44 };
 
 /** x domain for evaluations */

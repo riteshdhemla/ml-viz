@@ -108,7 +108,6 @@ export function SamplingDistributionViz({ className }: { className?: string }) {
 
           {/* histogram bars */}
           {counts.map((c, i) => {
-            const xv = (i + 0.5) / BINS;
             return (
               <rect
                 key={i}

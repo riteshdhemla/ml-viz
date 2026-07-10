@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllCourses, getLessonsForCourse, getAllWikiPages } from "@/lib/content";
+import { getAllProjects } from "@/lib/projects";
 import { absoluteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -8,9 +9,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     { url: absoluteUrl("/"), changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/courses"), changeFrequency: "weekly", priority: 0.9 },
+    { url: absoluteUrl("/projects"), changeFrequency: "weekly", priority: 0.9 },
     { url: absoluteUrl("/path"), changeFrequency: "weekly", priority: 0.8 },
     { url: absoluteUrl("/wiki"), changeFrequency: "weekly", priority: 0.6 },
   ];
+
+  const projectPages: MetadataRoute.Sitemap = getAllProjects().map((project) => ({
+    url: absoluteUrl(`/projects/${project.slug}`),
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
 
   const coursePages: MetadataRoute.Sitemap = courses.map((course) => ({
     url: absoluteUrl(`/courses/${course.slug}`),
@@ -32,5 +40,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
-  return [...staticPages, ...coursePages, ...lessonPages, ...wikiPages];
+  return [...staticPages, ...projectPages, ...coursePages, ...lessonPages, ...wikiPages];
 }

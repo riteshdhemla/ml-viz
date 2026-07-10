@@ -42,7 +42,7 @@ $$
 \mathcal{L} = \alpha \cdot \tau^2 \cdot \mathcal{L}_{\text{KD}}(T) \;+\; (1-\alpha) \cdot \mathcal{L}_{\text{CE}}
 $$
 
-The $\tau^2$ factor compensates for the gradient scaling introduced by temperature (gradients are divided by $\tau$ twice through the softmax). Common choices: $\alpha = 0.5\text{–}0.9$, $\tau = 2\text{–}10$.
+The $\tau^2$ factor compensates for the gradient scaling introduced by temperature (gradients are divided by $\tau$ twice through the softmax). Common choices: $\alpha = 0.5\text{ to }0.9$, $\tau = 2\text{ to }10$.
 
 <Callout type="info" title="Why not just use a lower temperature for the teacher?">
   You could. The standard choice $\tau = 1$ recovers hard labels in the limit. Using $\tau > 1$ spreads the teacher's distribution, making near-misses more visible to the student. Too high ($\tau \gg 10$) and the distribution becomes nearly uniform — no signal. The sweet spot depends on the model and task and is usually found by validation.

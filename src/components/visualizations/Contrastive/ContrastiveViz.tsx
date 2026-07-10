@@ -50,26 +50,8 @@ function clone(p: Pt): Pt {
   return { x: p.x, y: p.y };
 }
 
-function dot(a: Pt, b: Pt) {
-  return a.x * b.x + a.y * b.y;
-}
-
 function norm(p: Pt) {
   return Math.sqrt(p.x * p.x + p.y * p.y);
-}
-
-/** L2-normalise (returns a unit vector; identity at origin). */
-function unit(p: Pt): Pt {
-  const n = norm(p);
-  if (n < 1e-9) return { x: 0, y: 0 };
-  return { x: p.x / n, y: p.y / n };
-}
-
-/** Cosine similarity on L2-normalised vectors. */
-function cosSim(a: Pt, b: Pt) {
-  const ua = unit(a);
-  const ub = unit(b);
-  return dot(ua, ub);
 }
 
 function softmax(logits: number[]): number[] {

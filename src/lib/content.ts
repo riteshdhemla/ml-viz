@@ -49,6 +49,17 @@ export function getLessonsForCourse(courseSlug: string): LessonMeta[] {
   });
 }
 
+/** Frontmatter for a single lesson, or null if the file does not exist. */
+export function getLessonMeta(
+  courseSlug: string,
+  lessonSlug: string
+): LessonMeta | null {
+  const filePath = path.join(CONTENT_DIR, courseSlug, `${lessonSlug}.mdx`);
+  if (!fs.existsSync(filePath)) return null;
+  const { data } = matter(fs.readFileSync(filePath, "utf-8"));
+  return { ...data, slug: lessonSlug, courseSlug } as LessonMeta;
+}
+
 export async function getLessonContent(
   courseSlug: string,
   lessonSlug: string

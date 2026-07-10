@@ -31,7 +31,6 @@ function buildSeries(mode: Mode): Point[] {
 }
 
 const W = 580;
-const H = 340;
 const ML = 56;
 const MR = 12;
 const MT = 10;
@@ -43,8 +42,7 @@ function miniLine(
   pts: number[],
   yMin: number,
   yMax: number,
-  top: number,
-  color: string
+  top: number
 ): string {
   const xS = scale(0, pts.length - 1, ML, W - MR);
   const yS = scale(yMin, yMax, top + PANEL_H - 4, top + 4);
@@ -131,7 +129,7 @@ export default function DecompositionViz({ className }: { className?: string }) 
         {series.map((s, i) => {
           const [yMin, yMax] = ranges[i];
           const top = panelTops[i];
-          const d = miniLine(s, yMin, yMax, top, colors[i]);
+          const d = miniLine(s, yMin, yMax, top);
           return (
             <path key={`line-${i}`} d={d} stroke={colors[i]} strokeWidth={1.6}
               fill="none" strokeLinejoin="round" />

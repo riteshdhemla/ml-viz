@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { getAllCourses } from "@/lib/content";
+import { getResolvedProjects } from "@/lib/projects";
 import { buildSearchIndex } from "@/lib/search-index";
 import { CourseCard } from "@/components/lessons/CourseCard";
+import { ProjectCard } from "@/components/projects/ProjectCard";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { HeroSection } from "@/components/layout/HeroSection";
 import { ContinueLearning } from "@/components/layout/ContinueLearning";
 
 export default function HomePage() {
   const courses = getAllCourses();
+  const projects = getResolvedProjects();
   const searchItems = buildSearchIndex();
   const foundations = courses.filter((c) => (c.order ?? 0) < 0);
   const mainCourses = courses.filter((c) => (c.order ?? 0) >= 0);
@@ -19,6 +22,35 @@ export default function HomePage() {
         <HeroSection />
 
         <ContinueLearning items={searchItems} />
+
+        {/* Projects band — build it end-to-end */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16">
+          <div className="rounded-2xl border border-surface-border bg-surface-card/40 p-6 sm:p-8">
+            <div className="flex items-end justify-between gap-4 flex-wrap">
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <span className="text-brand-400">◈</span> Build it end-to-end
+                </h2>
+                <p className="mt-1 text-sm text-slate-400 max-w-2xl">
+                  Projects thread lessons from several courses into one shippable system —
+                  each stage links the concept, a from-scratch explainer, and the
+                  open-source repo that implements it.
+                </p>
+              </div>
+              <Link
+                href="/projects"
+                className="text-brand-400 hover:text-brand-300 text-sm font-medium transition-colors shrink-0"
+              >
+                View all projects →
+              </Link>
+            </div>
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {projects.map((project) => (
+                <ProjectCard key={project.slug} project={project} />
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* Foundations strip */}
         {foundations.length > 0 && (
