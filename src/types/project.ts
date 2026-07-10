@@ -30,6 +30,10 @@ export interface ProjectStage {
   gap?: string;
   /** Capstone stages link to another project instead of lessons. */
   projectLink?: string;
+  /** The concrete thing you build in this stage (makes the stage actionable). */
+  build?: string;
+  /** A verifiable checkpoint — how you know the build worked. */
+  checkpoint?: string;
 }
 
 export interface Project {
@@ -45,6 +49,12 @@ export interface Project {
   skills: string[];
   /** Tailwind gradient class for the cover strip. */
   accent: string;
+  /**
+   * Path under `notebooks/` (e.g. "projects/support-chatbot") of a hands-on
+   * build walkthrough — the milestone-by-milestone Colab notebook that turns
+   * the spine into something you actually build. Optional.
+   */
+  walkthroughNotebook?: string;
   stages: ProjectStage[];
 }
 
@@ -68,4 +78,6 @@ export interface ResolvedProject extends Omit<Project, "stages"> {
   /** Unique "course/lesson" keys across all stages — drives progress. */
   lessonKeys: string[];
   stageCount: number;
+  /** Colab URL for the build walkthrough, if `walkthroughNotebook` is set. */
+  walkthroughUrl?: string;
 }

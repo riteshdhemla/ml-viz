@@ -5,6 +5,7 @@ import { getAllProjects } from "@/lib/projects";
 
 const ROOT = process.cwd();
 const COURSES_DIR = path.join(ROOT, "src/content/courses");
+const NOTEBOOKS_DIR = path.join(ROOT, "notebooks");
 
 const projects = getAllProjects();
 const slugs = projects.map((p) => p.slug);
@@ -80,6 +81,27 @@ describe("projects registry", () => {
             bad.push(`${p.slug} / "${s.title}" -> ${res.name}: ${res.url}`);
           }
         }
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it("every walkthroughNotebook resolves to a valid .ipynb", () => {
+    for (const p of projects) {
+      if (!p.walkthroughNotebook) continue;
+      const nb = path.join(NOTEBOOKS_DIR, `${p.walkthroughNotebook}.ipynb`);
+      expect(fs.existsSync(nb), `missing walkthrough: ${p.walkthroughNotebook}.ipynb`).toBe(true);
+      const parsed = JSON.parse(fs.readFileSync(nb, "utf-8"));
+      expect(parsed.nbformat, `${nb} has no nbformat`).toBeGreaterThanOrEqual(4);
+      expect(Array.isArray(parsed.cells), `${nb} has no cells`).toBe(true);
+    }
+  });
+
+  it("a stage's checkpoint only appears alongside a build", () => {
+    const bad: string[] = [];
+    for (const p of projects) {
+      for (const s of p.stages) {
+        if (s.checkpoint && !s.build) bad.push(`${p.slug} / "${s.title}"`);
       }
     }
     expect(bad).toEqual([]);

@@ -5,6 +5,7 @@ import type {
   ResolvedLesson,
 } from "@/types/project";
 import { getLessonMeta } from "@/lib/content";
+import { getNotebookUrl } from "@/lib/utils";
 
 /**
  * Project registry — each project is an END-TO-END build that threads specific
@@ -83,44 +84,57 @@ const allProjects: Project[] = [
     prerequisites: ["building-with-llms"],
     skills: ["Prompt engineering", "Semantic search", "RAG", "LoRA / QLoRA", "RAFT", "RAG eval"],
     accent: "bg-gradient-to-r from-brand-500 to-accent-teal",
+    walkthroughNotebook: "projects/support-chatbot",
     stages: [
       {
         title: "Prompting",
         blurb: "Get a strong baseline from prompting alone before you add any machinery.",
         lessons: [{ course: "building-with-llms", lesson: "01-prompt-engineering" }],
+        build: "A walking skeleton: chatbot(q) that answers from a hardcoded system prompt.",
+        checkpoint: "It returns an answer end-to-end for a sample question.",
       },
       {
         title: "Embeddings & retrieval",
         blurb: "Embed your docs and pull back the passages that matter for a query.",
         lessons: [{ course: "building-with-llms", lesson: "03-embeddings-and-semantic-search" }],
         repo: { name: "run-llama/llama_index", url: "https://github.com/run-llama/llama_index", blurb: "Data framework for indexing + retrieval over your own documents." },
+        build: "Chunk the docs, embed them, and retrieve the top-k for a query.",
+        checkpoint: "retrieve('refund window') returns the golden chunk in its top-3.",
       },
       {
         title: "RAG pipeline",
         blurb: "Wire retrieval into generation so answers are grounded and citable.",
         lessons: [{ course: "building-with-llms", lesson: "04-retrieval-augmented-generation" }],
         repo: { name: "run-llama/llama_index", url: "https://github.com/run-llama/llama_index", blurb: "Retriever → prompt → response query engines out of the box." },
-      },
-      {
-        title: "Adapt with PEFT",
-        blurb: "Cheaply specialize the model to your domain with LoRA / QLoRA adapters.",
-        lessons: [{ course: "fine-tuning-alignment", lesson: "02-peft-lora-qlora" }],
-        repo: { name: "unslothai/unsloth", url: "https://github.com/unslothai/unsloth", blurb: "2x faster QLoRA finetuning; HF PEFT is the reference implementation." },
-      },
-      {
-        title: "RAFT — retrieval-augmented fine-tuning",
-        blurb: "Train the model to ignore distractor passages and cite the right one — RAG's weak spot.",
-        lessons: [
-          { course: "building-with-llms", lesson: "14-retrieval-augmented-fine-tuning" },
-          { course: "fine-tuning-alignment", lesson: "02-peft-lora-qlora" },
-        ],
-        repo: { name: "ShishirPatil/gorilla (RAFT)", url: "https://github.com/ShishirPatil/gorilla/tree/main/raft", blurb: "The Berkeley RAFT recipe: fine-tune for domain-specific RAG robustness." },
+        build: "Assemble retrieved context into a prompt and answer only from it, with a citation.",
+        checkpoint: "The answer contains the golden fact and cites the source chunk id.",
       },
       {
         title: "Evaluate",
         blurb: "Score faithfulness and answer relevance instead of eyeballing responses.",
         lessons: [{ course: "building-with-llms", lesson: "08-llm-evaluation" }],
         repo: { name: "explodinggradients/ragas", url: "https://github.com/explodinggradients/ragas", blurb: "Reference-free metrics purpose-built for RAG pipelines." },
+        build: "An eval set + a harness computing recall@k, faithfulness, and correctness.",
+        checkpoint: "recall@3 = 1.0 and faithfulness = 1.0 on the eval set.",
+      },
+      {
+        title: "RAFT — robustness to retrieval misses",
+        blurb: "Train the model to ignore distractor passages and answer even when retrieval fails — RAG's weak spot.",
+        lessons: [
+          { course: "building-with-llms", lesson: "14-retrieval-augmented-fine-tuning" },
+          { course: "fine-tuning-alignment", lesson: "02-peft-lora-qlora" },
+        ],
+        repo: { name: "ShishirPatil/gorilla (RAFT)", url: "https://github.com/ShishirPatil/gorilla/tree/main/raft", blurb: "The Berkeley RAFT recipe: fine-tune for domain-specific RAG robustness." },
+        build: "Simulate retrieval misses and add a RAFT-style memorized fallback.",
+        checkpoint: "Under 40% retrieval, the RAFT-augmented bot beats the base bot.",
+      },
+      {
+        title: "Ship it",
+        blurb: "Cheaply specialize the model to your domain and swap the toy parts for real ones.",
+        lessons: [{ course: "fine-tuning-alignment", lesson: "02-peft-lora-qlora" }],
+        repo: { name: "unslothai/unsloth", url: "https://github.com/unslothai/unsloth", blurb: "2x faster QLoRA finetuning; HF PEFT is the reference implementation." },
+        build: "Wire the milestones into one SupportBot.answer(q); swap toy embedder/LLM for real ones.",
+        checkpoint: "SupportBot answers 3 held-out questions grounded and cited, end-to-end.",
       },
     ],
   },
@@ -324,7 +338,12 @@ export function resolveProject(project: Project): ResolvedProject {
       stages.flatMap((s) => s.lessons.map((l) => `${l.course}/${l.lesson}`))
     ),
   ];
-  return { ...project, stages, lessonKeys, stageCount: stages.length };
+  let walkthroughUrl: string | undefined;
+  if (project.walkthroughNotebook) {
+    const [dir, name] = project.walkthroughNotebook.split("/");
+    walkthroughUrl = getNotebookUrl(dir, name);
+  }
+  return { ...project, stages, lessonKeys, stageCount: stages.length, walkthroughUrl };
 }
 
 export function getResolvedProjects(): ResolvedProject[] {

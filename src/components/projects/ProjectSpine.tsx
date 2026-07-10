@@ -11,6 +11,9 @@ import {
   Circle,
   ArrowRight,
   Wrench,
+  Hammer,
+  Target,
+  FlaskConical,
 } from "lucide-react";
 import { useProgress } from "@/lib/progress";
 import { cn } from "@/lib/utils";
@@ -51,6 +54,28 @@ function Stage({
       <div className={cn("min-w-0 flex-1", isLast ? "pb-2" : "pb-10")}>
         <h3 className="text-lg font-semibold text-white">{stage.title}</h3>
         <p className="mt-1 text-sm text-slate-400 leading-relaxed">{stage.blurb}</p>
+
+        {/* Actionable build + verifiable checkpoint */}
+        {(stage.build || stage.checkpoint) && (
+          <div className="mt-3 space-y-1.5 rounded-lg border border-brand-500/25 bg-brand-500/[0.04] p-3">
+            {stage.build && (
+              <p className="flex items-start gap-2 text-sm text-slate-200">
+                <Hammer size={14} className="mt-0.5 shrink-0 text-brand-400" />
+                <span>
+                  <span className="font-medium text-white">Build:</span> {stage.build}
+                </span>
+              </p>
+            )}
+            {stage.checkpoint && (
+              <p className="flex items-start gap-2 text-xs text-slate-400">
+                <Target size={13} className="mt-0.5 shrink-0 text-accent-teal" />
+                <span>
+                  <span className="font-medium text-slate-300">Done when:</span> {stage.checkpoint}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Capstone: link to another project */}
         {stage.projectLink && (
@@ -152,6 +177,25 @@ export function ProjectSpine({ project }: { project: ResolvedProject }) {
 
   return (
     <div>
+      {project.walkthroughUrl && (
+        <a
+          href={project.walkthroughUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-8 flex items-center gap-3 rounded-xl border border-accent-orange/30 bg-accent-orange/5 px-4 py-3 transition-colors hover:border-accent-orange/60"
+        >
+          <FlaskConical size={18} className="shrink-0 text-accent-orange" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-white">Build it yourself — open the walkthrough</p>
+            <p className="text-xs text-slate-400">
+              A milestone-by-milestone Colab notebook that builds this project end-to-end, with a
+              runnable checkpoint at every step.
+            </p>
+          </div>
+          <ExternalLink size={14} className="ml-auto shrink-0 text-slate-500" />
+        </a>
+      )}
+
       {total > 0 && (
         <div className="mb-8">
           <div className="flex items-center justify-between text-sm">

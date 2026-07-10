@@ -188,6 +188,27 @@ External links open in a new tab (`rel="noopener"`) and carry an "external" glyp
   text-to-video/DiT lessons now (larger). *(Recommendation: link now, author
   later as a separate change.)*
 
+## Build walkthroughs (actionability layer)
+
+The spine answers *what/where*; a **build walkthrough** answers *do this, then check
+it*. Each project can carry `walkthroughNotebook` (a Colab notebook that builds the
+system milestone-by-milestone), and each stage can carry `build` (the thing you make)
++ `checkpoint` (a runnable assert that proves it works). The spine renders these as
+"**Build:** … / **Done when:** …" and shows a "Build it yourself" CTA.
+
+**Pilot shipped: Support Chatbot** (`notebooks/projects/support-chatbot.ipynb`) — a
+GPU-free, deterministic, top-to-bottom-runnable build:
+
+- M0 walking skeleton → M1 retrieval → M2 grounded generation + citation →
+  M3 eval harness (recall@k / faithfulness / correctness) → M4 RAFT robustness under
+  retrieval miss → M5 integrate into `SupportBot`, + a "✏️ Your turn" reranker scaffold.
+- Every milestone ends in an `assert` checkpoint that passes; §7 shows exactly where to
+  swap the toy embedder/LLM/memory for real ones (sentence-transformers, an LLM, a RAFT
+  LoRA fine-tune).
+
+Format validated — the remaining five projects follow the same template (scaled-down
+runnable build for the GPU-heavy ones, pointing at the full repo for real scale).
+
 ## References
 
 - Karpathy, Neural Networks: Zero to Hero — https://karpathy.ai/zero-to-hero.html
