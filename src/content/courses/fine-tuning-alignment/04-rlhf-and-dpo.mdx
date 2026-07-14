@@ -3,7 +3,7 @@ title: "Preference Tuning: RLHF & DPO"
 description: "Two ways to turn a reward signal into an aligned policy: classical RLHF with PPO and a KL leash on the SFT model, or DPO — the same KL-regularised objective collapsed into one closed-form classification loss."
 order: 4
 type: concept
-estimatedMinutes: 24
+estimatedMinutes: 26
 ---
 
 # Preference Tuning: RLHF & DPO
@@ -40,6 +40,10 @@ The hyperparameter $\beta$ is the **KL budget**. Set it too low and the policy r
 </Callout>
 
 PPO itself is the same clipped policy-gradient method from RL: importance-sampling ratio $\rho_t = \pi_\theta(y_t)/\pi_{\theta_\text{old}}(y_t)$, clipped to $[1-\epsilon, 1+\epsilon]$, advantages from a value head. The only LLM-specific twist is "the reward arrives at end-of-sequence and the KL leash lives inside the reward."
+
+<Callout type="warning" title="Early RLHF gets worse before better (the J-curve)">
+  When the target behavior starts **out-of-distribution** for the SFT model (e.g. forcing a new chain-of-thought format), the KL term charges for the distance *immediately*, while the reward gains that justify it only arrive once the policy discovers genuinely better outputs. Plot the **reward-minus-KL ledger** over training and you see a J-shape: task performance dips, then climbs. Don't kill the run at the first regression, and don't delete the KL term to avoid it (that just hands you [reward hacking](/courses/fine-tuning-alignment/03-reward-models)). The right fix is to **warm-start with SFT** so RL begins near-distribution — that shrinks the initial KL cost and the dip along with it.
+</Callout>
 
 ## Why a closed-form alternative exists
 
@@ -107,6 +111,8 @@ When does each win? **DPO** is the right default — same objective, far less in
 </Callout>
 
 <Exercise id="rlhf-kl-penalty" />
+
+<Exercise id="rlhf-jcurve" />
 
 <Exercise id="dpo-vs-rlhf" />
 

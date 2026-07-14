@@ -3986,6 +3986,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "opt-saddle-dimension",
+    type: "multiple-choice",
+    question:
+      "Why does the intuition that gradient descent 'gets stuck in local minima' break down in high-dimensional neural network loss landscapes?",
+    hint: "For a point to be a local minimum, what must be true of the curvature in every direction?",
+    explanation:
+      "A point is a local minimum only if the loss curves upward in every direction — all N Hessian eigenvalues positive. If each direction is roughly equally likely to curve up or down, the probability that all N point up is about 2^(-N), which is astronomically small for N in the millions. So almost every critical point is a saddle (up in some directions, down in others), not a local minimum. Plateaus with tiny gradients are usually escapable saddles, not traps.",
+    options: [
+      { id: "a", label: "A local minimum needs all N directions to curve up (prob ~2^-N); saddles dominate instead", isCorrect: true },
+      { id: "b", label: "High-dimensional losses are actually convex", isCorrect: false },
+      { id: "c", label: "Gradient descent cannot be run in high dimensions", isCorrect: false },
+      { id: "d", label: "Local minima disappear entirely once N > 100", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-saddle-escape",
+    type: "multiple-choice",
+    question:
+      "Gradient descent slows to a crawl on a plateau near a saddle point. Why does momentum help it escape?",
+    hint: "What happens to the update along a shallow direction when small gradients keep pointing the same way?",
+    explanation:
+      "Near a saddle the gradient collapses toward zero, so plain gradient descent takes tiny steps and crawls. Momentum accumulates a running average of past gradients, so consistent (even small) gradient components along the negative-curvature escape direction build up velocity and carry the iterate through the plateau. SGD's gradient noise plays a similar role. The problem is not a lack of an escape route — it is that a curvature-blind, first-order step is slow to find and follow it.",
+    options: [
+      { id: "a", label: "Momentum accumulates velocity along the shallow escape direction where gradients are tiny", isCorrect: true },
+      { id: "b", label: "Momentum computes the Hessian to jump directly to the minimum", isCorrect: false },
+      { id: "c", label: "Momentum increases the learning rate whenever the gradient is zero", isCorrect: false },
+      { id: "d", label: "Momentum converts the saddle into a local minimum", isCorrect: false },
+    ],
+  },
+  {
     id: "opt-lagrange-multiplier",
     type: "multiple-choice",
     question:
@@ -5168,6 +5198,21 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "llm-self-consistency-diversity",
+    type: "multiple-choice",
+    question:
+      "A team uses self-consistency (sample k chains, majority-vote the answers) but samples at temperature ≈ 0 for 'quality'. Scaling k from 5 to 40 barely improves accuracy. Why?",
+    hint: "Majority voting only helps when the errors being averaged are independent.",
+    explanation:
+      "Self-consistency works because independent-ish reasoning errors cancel when you vote. At temperature ≈ 0 the samples are near-identical copies of one path, so their errors are perfectly correlated — they vote as a single bloc, and extra samples add no new information. Trajectory diversity is the first-class knob: raise temperature enough to get distinct reasoning chains, and stop scaling k once the marginal paths are duplicates.",
+    options: [
+      { id: "a", label: "Near-zero temperature makes the k samples near-copies, so their errors are correlated and don't cancel", isCorrect: true },
+      { id: "b", label: "k = 5 is already the maximum useful number of samples", isCorrect: false },
+      { id: "c", label: "Majority voting only works for arithmetic problems", isCorrect: false },
+      { id: "d", label: "Higher k always lowers accuracy regardless of temperature", isCorrect: false },
+    ],
+  },
+  {
     id: "llm-embedding-similarity",
     type: "multiple-choice",
     question:
@@ -5591,6 +5636,21 @@ const allExercises: Exercise[] = [
       { id: "b", label: "Gradient explosion in the value head", isCorrect: false },
       { id: "c", label: "Tokenizer mismatch between policy and reference", isCorrect: false },
       { id: "d", label: "Overfitting of the reward model on the preference dataset", isCorrect: false },
+    ],
+  },
+  {
+    id: "rlhf-jcurve",
+    type: "multiple-choice",
+    question:
+      "You start RLHF to teach a new chain-of-thought format the SFT model rarely produces. Task performance dips for a while before it climbs (a J-curve). Why does the dip happen, and what reduces it?",
+    hint: "Which term in the objective is charged immediately, and which pays off only later?",
+    explanation:
+      "The target behavior is out-of-distribution for the reference model, so the KL penalty charges for the distance immediately, while the reward gains that justify the move only arrive once the policy discovers genuinely better outputs — measured performance must dip before it climbs. Killing the run at the first regression, or removing the KL term (which invites reward hacking), are both wrong. Warm-starting with SFT moves the policy near the target distribution before RL begins, shrinking the initial KL cost and the dip.",
+    options: [
+      { id: "a", label: "KL cost is paid up front while reward gains lag; SFT warm-start starts RL near-distribution and shrinks the dip", isCorrect: true },
+      { id: "b", label: "The reward model is broken and must be retrained from scratch", isCorrect: false },
+      { id: "c", label: "The learning rate is too high; lowering it removes the dip entirely", isCorrect: false },
+      { id: "d", label: "Dropping the KL term is the correct fix for the early regression", isCorrect: false },
     ],
   },
   {

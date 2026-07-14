@@ -1,0 +1,63 @@
+---
+title: "Saddle Points in High Dimensions"
+description: "Why nearly every critical point of a deep network's loss is a saddle rather than a local minimum — the 2⁻ᴺ argument, the Hessian index of critical points, why 2-D intuition misleads, and how momentum and gradient noise escape."
+topics: ["optimization"]
+relatedLessons:
+  - "optimization-ml/02-convex-optimization"
+  - "optimization-ml/01-gradient-descent-variants"
+estimatedMinutes: 9
+---
+
+# Saddle Points in High Dimensions
+
+The mental image of optimization — a ball rolling to the bottom of a bowl, at risk of getting trapped in a smaller bowl (a *local minimum*) — comes from 2-D and 3-D plots. In the million-dimensional landscape of a neural network it is actively misleading. The dominant obstacle to gradient descent is not local minima; it is **saddle points**.
+
+## The 2⁻ᴺ argument
+
+A critical point (where the gradient vanishes) is classified by the **Hessian** — the matrix of second derivatives. Its eigenvalues are the curvatures along the principal directions:
+
+- **all eigenvalues positive** → curves up everywhere → local **minimum**
+- **all eigenvalues negative** → curves down everywhere → local **maximum**
+- **mixed signs** → up in some directions, down in others → **saddle**
+
+A point is a local minimum only if **every** one of the $N$ curvature directions points up. If, heuristically, each direction is about equally likely to curve up or down, then
+
+$$
+P(\text{local minimum}) \approx \left(\tfrac{1}{2}\right)^{N} = 2^{-N}.
+$$
+
+At $N = 20$ that is already under one in a million; at $N$ in the millions it is astronomically small. **So among all the points where the gradient is zero, almost all are saddles.**
+
+<SaddlePointViz />
+
+<Callout type="info" title="The index of a critical point">
+  More precisely (Dauphin et al., 2014), critical points of random high-dimensional functions are tightly organized by their *index* — the fraction of negative Hessian eigenvalues. Low-loss critical points have low index (few escape directions, close to true minima); high-loss critical points have high index (many escape directions). Critical points with a large gradient-free plateau but non-trivial index are saddles, and they vastly outnumber genuine minima.
+</Callout>
+
+## Why the plateau feels like a trap
+
+Near a saddle the gradient magnitude collapses toward zero — that is what "critical point" means. Plain gradient descent takes steps proportional to the gradient, so it **crawls**: many iterations of near-zero movement while the loss barely changes. It looks stuck. But there *is* an escape — the negative-curvature direction — and the only problem is that a first-order, curvature-blind method is slow to find and follow it.
+
+## How momentum and noise escape
+
+- **Momentum.** A running average of past gradients accumulates velocity along any direction where the (even tiny) gradient is consistent — including the shallow escape direction. The heavy-ball iterate coasts through the plateau instead of stalling.
+- **SGD noise.** Mini-batch gradient noise randomly perturbs the iterate off the exact saddle, giving the negative-curvature direction a foothold to amplify. This is one reason SGD often navigates landscapes better than full-batch GD.
+- **Second-order / curvature-aware methods** (e.g. saddle-free Newton) use the Hessian to step *away* from negative-curvature directions directly, but at a much higher per-step cost.
+
+## Consequences for practice
+
+1. **Don't diagnose a plateau as a local minimum and restart with new seeds.** It is far more likely a saddle; momentum, a brief learning-rate bump, or simply more patience usually escapes it.
+2. **Prefer momentum/Adam over vanilla GD** partly for this reason — they are practical saddle escapes, not just convergence accelerators.
+3. **Overparameterization helps.** Wider networks create more negative-curvature escape directions at bad critical points, making them easier to leave.
+
+## Common mistakes
+
+1. **Importing 2-D intuition.** "Stuck in a bowl" almost never happens in high dimensions; "crawling across a saddle" does.
+2. **Reading small gradient norm as convergence.** A tiny gradient at a saddle is not a minimum — check that the loss has actually stopped improving and (ideally) that you cannot perturb-and-descend further.
+3. **Blaming the seed or the data** for a plateau that is a generic feature of the landscape.
+
+## Related concepts
+
+- [**Convex Optimization**](/courses/optimization-ml/02-convex-optimization) — where the local-min = global-min guarantee holds, and where it doesn't
+- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — momentum, RMSprop, Adam as practical saddle escapes
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — the Hessian and its eigenvalues

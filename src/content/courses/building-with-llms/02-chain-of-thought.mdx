@@ -3,7 +3,7 @@ title: "Chain-of-Thought & Structured Output"
 description: "Two opposite needs: letting the model reason freely across intermediate steps, and forcing its final answer into a schema your code can parse."
 order: 2
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 18
 ---
 
 # Chain-of-Thought & Structured Output
@@ -34,6 +34,10 @@ Why it helps: each intermediate token conditions the next, so the model effectiv
 
 A reliability upgrade: sample **several** chains at non-zero temperature, then take a **majority vote** over their final answers. Independent reasoning paths that agree are more likely correct than any single chain. The cost is running the model $k$ times.
 
+<Callout type="warning" title="More samples aren't more votes">
+  Self-consistency works only because *independent-ish* reasoning errors cancel at the ballot box. Sample at near-zero temperature (or otherwise collapse the distribution onto one path) and you get $k$ near-**copies** — correlated errors that vote as a bloc, so scaling $k$ buys nothing. Treat **trajectory diversity** as the first-class knob: measure distinct reasoning chains / answer entropy alongside accuracy, and stop raising $k$ once the marginal paths are duplicates. An ensemble of clones is one voter wearing $k$ hats.
+</Callout>
+
 <Callout type="info" title="Reasoning models">
   Newer "reasoning" models internalise CoT — they generate a long hidden reasoning trace before answering, so you no longer prompt for it explicitly. The intuition is identical: spend more test-time computation on harder problems.
 </Callout>
@@ -63,6 +67,8 @@ class TicketLabel(BaseModel):
 </Callout>
 
 <Exercise id="llm-cot-when" />
+
+<Exercise id="llm-self-consistency-diversity" />
 
 <Exercise id="llm-structured-output" />
 

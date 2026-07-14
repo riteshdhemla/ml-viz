@@ -73,6 +73,7 @@ import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRet
 import { RankFusionViz } from "@/components/visualizations/RankFusion/RankFusionViz";
 import { TemporalLeakageViz } from "@/components/visualizations/TemporalLeakage/TemporalLeakageViz";
 import { FlowMatchingViz } from "@/components/visualizations/FlowMatching/FlowMatchingViz";
+import { SaddlePointViz } from "@/components/visualizations/SaddlePoint/SaddlePointViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -171,6 +172,7 @@ export const mdxComponents: MDXComponents = {
   RankFusionViz,
   TemporalLeakageViz,
   FlowMatchingViz,
+  SaddlePointViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,

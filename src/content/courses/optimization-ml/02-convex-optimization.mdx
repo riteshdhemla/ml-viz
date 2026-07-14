@@ -3,7 +3,7 @@ title: "Convex Optimization"
 description: "Why convexity is the gold standard — Jensen's inequality, global minima guarantees, and the losses that (aren't) convex."
 order: 2
 type: concept
-estimatedMinutes: 14
+estimatedMinutes: 18
 ---
 
 # Convex Optimization
@@ -169,6 +169,16 @@ Despite non-convexity:
   Deep networks are non-convex, but their landscapes are not random noise. Structured non-convexity — with benign saddle points and few poor local minima — is why training large networks works reliably in practice.
 </Callout>
 
+### Saddles, not minima: why plateaus aren't stuck
+
+The 2-D picture of optimization — a ball rolling into a bowl — badly misleads in high dimensions. A critical point is a **local minimum** only if the loss curves *up* in **every** direction, i.e. all $N$ eigenvalues of the Hessian are positive. If each direction is roughly equally likely to curve up or down, the probability that *all* $N$ point up is about $2^{-N}$ — vanishingly small when $N$ is millions. So almost every point where the gradient vanishes is a **saddle**: up in some directions, down in others.
+
+That reframes the "training got stuck" story. A flat region with a tiny gradient is usually not a minimum but a saddle with an escape direction that curvature-blind gradient descent is slow to find — it crawls as the gradient collapses. **Momentum** (and gradient noise from SGD) accumulate velocity along the shallow directions and carry the iterate through.
+
+<SaddlePointViz />
+
+<WikiLink slug="saddle-points" title="Saddle Points in High Dimensions — the 2⁻ᴺ argument, the Hessian index, and how momentum/noise escape" />
+
 ## Convexity-adjacent tools
 
 When strict convexity cannot be guaranteed, weaker properties still give useful convergence results:
@@ -189,6 +199,8 @@ Together, $\mu$-SC + $L$-smooth gives the **condition number** $\kappa = L/\mu$;
 <Exercise id="opt-convex-definition" />
 <Exercise id="opt-global-min" />
 <Exercise id="opt-sgd-convex" />
+<Exercise id="opt-saddle-dimension" />
+<Exercise id="opt-saddle-escape" />
 
 ## Common mistakes
 
@@ -204,9 +216,11 @@ Together, $\mu$-SC + $L$-smooth gives the **condition number** $\kappa = L/\mu$;
 - For convex functions, every local minimum is a global minimum — gradient descent is provably correct.
 - Logistic regression is convex (Hessian = $\sigma(1-\sigma) x x^\top \succeq 0$); neural net losses are not.
 - Strong convexity ($\mu$-SC) + $L$-smoothness together give linear (exponential) convergence.
+- In high dimensions almost every critical point is a **saddle**, not a local minimum ($P(\text{min}) \approx 2^{-N}$); momentum and SGD noise escape the plateaus that curvature-blind GD crawls through.
 
 ## Related concepts
 
 - [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — gradients and Hessians
 - [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — algorithms that exploit convexity
+- [**Saddle Points in High Dimensions**](/wiki/saddle-points) — the 2⁻ᴺ argument and how momentum/noise escape saddles
 - [**Constrained Optimization & KKT**](/courses/optimization-ml/03-constrained-optimization) — optimizing with constraints
