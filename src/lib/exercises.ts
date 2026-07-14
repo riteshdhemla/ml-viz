@@ -4772,6 +4772,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "ml-practice-temporal-leakage",
+    type: "multiple-choice",
+    question:
+      "You suspect a time-series model has temporal leakage. Why does evaluating it with a random train/test split fail to reveal the problem?",
+    hint: "Where do the future rows end up when you shuffle before splitting?",
+    explanation:
+      "A random split scatters future examples into the training fold, so a model that exploits a leaky feature (one whose window extends past the prediction time) is rewarded on a validation set that shares the same leak. Offline metrics look great; live performance collapses once the future is genuinely unavailable. The correct check is a time-based split — train on the past, test on the strictly-later future — which denies the model any future information the way production does.",
+    options: [
+      { id: "a", label: "Shuffling puts future rows in the training set, so the leak is present in both train and test", isCorrect: true },
+      { id: "b", label: "Random splits always use too little test data to detect anything", isCorrect: false },
+      { id: "c", label: "Accuracy is the wrong metric; leakage only shows up in AUC", isCorrect: false },
+      { id: "d", label: "Temporal leakage cannot be detected by any evaluation method", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-pit-join",
+    type: "multiple-choice",
+    question:
+      "What does a point-in-time-correct (\"as-of\") feature join do that a naive join does not?",
+    hint: "Think about which records are visible when the feature is computed for each row.",
+    explanation:
+      "A point-in-time join, for each training row, reads only records timestamped at or before that row's prediction time — and lags each feature by the real pipeline latency, since a value that arrives 3 hours after an event cannot inform a prediction made now. A naive join reads the latest available value, which for historical rows is often a value from their future. Point-in-time correctness makes the training-time feature match exactly what the model will see at serving time.",
+    options: [
+      { id: "a", label: "For each row, it uses only data available at that row's prediction time (lagged by pipeline latency)", isCorrect: true },
+      { id: "b", label: "It joins on the primary key instead of the timestamp", isCorrect: false },
+      { id: "c", label: "It always uses the most recent value of each feature for every row", isCorrect: false },
+      { id: "d", label: "It removes the need for a time-based train/test split", isCorrect: false },
+    ],
+  },
+  {
     id: "ml-practice-drift",
     type: "multiple-choice",
     question:

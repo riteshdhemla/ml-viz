@@ -71,6 +71,7 @@ import ARIMAForecastViz from "@/components/visualizations/ARIMAForecast/ARIMAFor
 import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
 import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
 import { RankFusionViz } from "@/components/visualizations/RankFusion/RankFusionViz";
+import { TemporalLeakageViz } from "@/components/visualizations/TemporalLeakage/TemporalLeakageViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -167,6 +168,7 @@ export const mdxComponents: MDXComponents = {
   SamplingViz,
   RAGRetrievalViz,
   RankFusionViz,
+  TemporalLeakageViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,

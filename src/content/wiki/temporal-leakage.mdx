@@ -1,0 +1,73 @@
+---
+title: "Temporal Leakage & Point-in-Time Joins"
+description: "Why features computed from logs can embed information unavailable at serving time, why random train/test splits hide it, and how point-in-time-correct (as-of) joins with feature lag fix it."
+topics: ["ml-systems"]
+relatedLessons:
+  - "ml-in-practice/01-feature-engineering"
+  - "ml-in-practice/02-deployment-pitfalls"
+estimatedMinutes: 9
+---
+
+# Temporal Leakage & Point-in-Time Joins
+
+Temporal leakage is the single most expensive bug in production ML because it is invisible in offline evaluation. A feature computed from your event logs can quietly embed information that will not exist at serving time — a post-event aggregate, a late-arriving join, a "latest value" that for a historical row is a value from that row's *future*. The model learns to exploit it, offline metrics glow, and live performance collapses the day the future is genuinely unavailable.
+
+**The rule:** draw every feature as the time window it is computed over. At serving time only data up to the prediction moment exists, so any window that extends past that line uses the future. The label may live in the future — it is the thing you predict — but a *feature* may not.
+
+<TemporalLeakageViz />
+
+## Why random splits hide it
+
+Standard `train_test_split(shuffle=True)` scatters future examples into the training fold. A model that has learned to read a leaky feature is then *rewarded* on a validation set that shares the same leak — the metric is measuring the leak, not generalization.
+
+<Callout type="warning" title="Random splitting rewards the leak">
+  Shuffle-then-split makes leakage undetectable: both folds contain the future, so the leaky feature helps on validation too. The only honest check for a temporal problem is a **time-based split** — train on records before a cutoff, test on records strictly after it — which withholds the future exactly the way production does.
+</Callout>
+
+## Point-in-time-correct feature construction
+
+A **point-in-time (as-of) join** answers, for each training row: *what was the value of this feature at that row's prediction time?* It reads only records timestamped **at or before** the prediction moment.
+
+Two things must be right:
+
+1. **The cutoff** — never read a record stamped after the prediction time. "Latest value" joins are the classic offender: for a row from last March, the "latest" value is from today.
+2. **The lag** — a feature must be lagged by the real **pipeline latency**. If an aggregate lands in the feature store 3 hours after the event, it cannot inform a prediction made *now*; training must reproduce that 3-hour blind spot or the model relies on freshness it won't have online.
+
+```python
+# WRONG — "latest value" reads each user's whole history, including the future
+feat = events.groupby("user_id")["spend"].sum()          # all time, leaks
+train = rows.join(feat, on="user_id")
+
+# RIGHT — as-of: for each row, sum only events at/before its prediction time,
+# and lag by the pipeline latency so training matches serving availability.
+train = rows.merge_asof(
+    events.sort_values("ts"),
+    left_on="prediction_ts",
+    right_on="ts",
+    by="user_id",
+    tolerance=pd.Timedelta("30d"),
+    direction="backward",           # only the past
+)
+# then shift the feature by the real ingestion delay before use
+```
+
+## A taxonomy of leakage (Kaufman et al.)
+
+| Kind | Mechanism | Catch it with |
+|---|---|---|
+| **Target leakage** | Feature is a consequence of the label (only known after the event) | "Would I have this value at prediction time?" audit |
+| **Train-test contamination** | Test statistics leak into preprocessing (scaler fit on all data) | Fit transformers inside the CV fold (sklearn `Pipeline`) |
+| **Temporal leakage** | Feature window crosses the prediction time | Time-based split + point-in-time joins |
+
+## Common mistakes
+
+1. **Random train/test split on a time-series problem** — hides the leak instead of catching it.
+2. **"Latest value" joins** — for historical rows the latest value is from their future.
+3. **Forgetting pipeline latency** — a point-in-time value that is technically past but arrives after the decision moment is still unavailable online.
+4. **No feature timestamp audit** — every feature should carry the timestamp of the newest record it used; compare it to the prediction time in review.
+
+## Related concepts
+
+- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering) — where features (and their leaks) are built
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew, of which temporal leakage is the sharpest case
+- [**Walk-Forward Validation**](/wiki/walk-forward-validation) — the time-respecting evaluation protocol that replaces random splits

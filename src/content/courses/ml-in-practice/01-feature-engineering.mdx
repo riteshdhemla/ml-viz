@@ -3,7 +3,7 @@ title: "Feature Engineering"
 description: "How to scale, encode, and combine raw features for model-ready data — plus the leakage traps that silently corrupt your evaluation."
 order: 1
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 20
 ---
 
 # Feature Engineering
@@ -207,6 +207,16 @@ X_test_s  = scaler.transform(X_test)            # transform with training stats
 
 **Temporal leakage** occurs in time-series problems when you use future information to predict the past. A feature like "rolling 7-day average spend" computed using the transaction history *after* the date being predicted contains future data. Always compute time-based features using only data up to the point in time of each row.
 
+Draw every feature as the *time window* it is computed over. At serving time, only data up to the prediction moment exists — so any window that extends past that line silently uses the future. The label may live in the future (it is the thing you predict); a *feature* may not.
+
+<TemporalLeakageViz />
+
+The insidious part: **random train/test splitting hides temporal leakage instead of catching it.** Shuffling rows scatters future examples into the training fold, so a model that has learned to exploit a leaky feature is *rewarded* on the validation set that shares the same leak. Offline metrics glow; live performance collapses the moment the future is genuinely unavailable.
+
+The fix is **point-in-time-correct** feature construction — an "as-of" join that, for each row, reads only records timestamped at or before that row's prediction time, and *lags* each feature by the real pipeline latency (a value that lands 3 hours after the event cannot be a feature for a prediction made now). Validate with a **time-based split** (train on the past, test on the strictly-later future), never a random one.
+
+<WikiLink slug="temporal-leakage" title="Temporal Leakage & Point-in-Time Joins — the taxonomy, why random splits hide it, and how to build as-of features" />
+
 ## The sklearn Pipeline — the correct pattern
 
 A `Pipeline` chains transformers and a final estimator, ensuring that `.fit()` on each transformer is called only on the training fold — not the validation fold. This is the single most effective safeguard against preprocessing leakage.
@@ -254,6 +264,10 @@ scores = cross_val_score(full_pipe, X, y, cv=5, scoring='roc_auc')
 
 <Exercise id="ml-practice-leakage" />
 
+<Exercise id="ml-practice-temporal-leakage" />
+
+<Exercise id="ml-practice-pit-join" />
+
 ## Key takeaways
 
 - Raw data requires preprocessing before it reaches a model; the right transformations depend on the model family — scale for linear models, SVMs, KNNs, and neural nets; trees are scale-invariant.
@@ -262,6 +276,7 @@ scores = cross_val_score(full_pipe, X, y, cv=5, scoring='roc_auc')
 - Polynomial features and cross features let linear models capture nonlinear interactions at the cost of a quadratically larger feature space.
 - Feature selection (variance threshold, correlation filter, RFE) reduces noise, training time, and overfitting — especially important in high dimensions.
 - Always fit transformers on training data only; use a sklearn `Pipeline` to enforce this automatically and prevent preprocessing leakage in cross-validation.
+- **Temporal leakage** — a feature window that crosses the prediction time — is hidden by random train/test splits; catch it with a time-based split and fix it with point-in-time-correct (as-of) joins that lag features by the real pipeline latency.
 
 ## Related concepts
 
