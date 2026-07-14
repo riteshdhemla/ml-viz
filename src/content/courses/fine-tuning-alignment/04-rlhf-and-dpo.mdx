@@ -45,6 +45,8 @@ PPO itself is the same clipped policy-gradient method from RL: importance-sampli
   When the target behavior starts **out-of-distribution** for the SFT model (e.g. forcing a new chain-of-thought format), the KL term charges for the distance *immediately*, while the reward gains that justify it only arrive once the policy discovers genuinely better outputs. Plot the **reward-minus-KL ledger** over training and you see a J-shape: task performance dips, then climbs. Don't kill the run at the first regression, and don't delete the KL term to avoid it (that just hands you [reward hacking](/courses/fine-tuning-alignment/03-reward-models)). The right fix is to **warm-start with SFT** so RL begins near-distribution — that shrinks the initial KL cost and the dip along with it.
 </Callout>
 
+<RLHFJCurveViz />
+
 ## Why a closed-form alternative exists
 
 There's a textbook result for the KL-regularised RL objective above: the **optimal policy is known in closed form** as a Boltzmann-weighted version of the reference,

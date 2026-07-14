@@ -487,6 +487,12 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ACFViz | `visualizations/ACF/` | time-series/02-arima-models | ✅ |
 | ARIMAForecastViz | `visualizations/ARIMAForecast/` | time-series/03-deep-learning-for-time-series | ✅ |
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
+| RankFusionViz | `visualizations/RankFusion/` | building-with-llms/04-retrieval-augmented-generation (+ wiki/rank-fusion) | ✅ |
+| TemporalLeakageViz | `visualizations/TemporalLeakage/` | ml-in-practice/01-feature-engineering (+ wiki/temporal-leakage) | ✅ |
+| FlowMatchingViz | `visualizations/FlowMatching/` | generative-models/05-diffusion-models (+ wiki/flow-matching) | ✅ |
+| SaddlePointViz | `visualizations/SaddlePoint/` | optimization-ml/02-convex-optimization (+ wiki/saddle-points) | ✅ |
+| SelfConsistencyViz | `visualizations/SelfConsistency/` | building-with-llms/02-chain-of-thought | ✅ |
+| RLHFJCurveViz | `visualizations/RLHFJCurve/` | fine-tuning-alignment/04-rlhf-and-dpo | ✅ |
 
 ---
 

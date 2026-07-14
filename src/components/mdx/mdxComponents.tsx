@@ -74,6 +74,8 @@ import { RankFusionViz } from "@/components/visualizations/RankFusion/RankFusion
 import { TemporalLeakageViz } from "@/components/visualizations/TemporalLeakage/TemporalLeakageViz";
 import { FlowMatchingViz } from "@/components/visualizations/FlowMatching/FlowMatchingViz";
 import { SaddlePointViz } from "@/components/visualizations/SaddlePoint/SaddlePointViz";
+import { SelfConsistencyViz } from "@/components/visualizations/SelfConsistency/SelfConsistencyViz";
+import { RLHFJCurveViz } from "@/components/visualizations/RLHFJCurve/RLHFJCurveViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -173,6 +175,8 @@ export const mdxComponents: MDXComponents = {
   TemporalLeakageViz,
   FlowMatchingViz,
   SaddlePointViz,
+  SelfConsistencyViz,
+  RLHFJCurveViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,
