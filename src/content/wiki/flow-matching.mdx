@@ -1,0 +1,72 @@
+---
+title: "Flow Matching & Rectified Flow"
+description: "Generative modeling as learning a velocity field that transports noise to data along an ODE — velocity vs score, the conditional (Dirac) trick that makes training tractable, why straight trajectories enable few-step sampling, and reflow."
+topics: ["generative-models"]
+relatedLessons:
+  - "generative-models/05-diffusion-models"
+  - "generative-models/06-vit-and-modern-genai"
+estimatedMinutes: 11
+---
+
+# Flow Matching & Rectified Flow
+
+Diffusion sampling is really *integrating an ODE* from noise to data (this is what DDIM makes explicit). **Flow matching** starts there: rather than predict *how to undo corruption* at each noise level, learn the **velocity field** $v_\theta(x, t)$ that transports a noise sample to a data sample along a trajectory. The network outputs a *motion*, and the time variable $t$ runs from $0$ (noise) to $1$ (data) as **trajectory progress**, not corruption level.
+
+$$
+\frac{dx}{dt} = v_\theta(x, t), \qquad x(0) \sim \mathcal{N}(0, I), \quad x(1) \sim p_{\text{data}}
+$$
+
+<FlowMatchingViz />
+
+## A velocity is not a score
+
+The operational difference from diffusion is what the network outputs:
+
+| | Diffusion (score/ε) | Flow matching (velocity) |
+|---|---|---|
+| Network output | noise estimate $\epsilon_\theta$ / score $\nabla \log p$ | velocity $v_\theta$ |
+| Time variable | corruption level | trajectory progress |
+| Sampling | reverse SDE / probability-flow ODE | integrate the ODE forward |
+
+Filing flow matching as "diffusion with different notation" leads you to mis-transfer intuitions (schedules, samplers). Treat the output as a velocity and the time axis as progress, and the geometry below follows.
+
+## The conditional (Dirac) trick
+
+Training against the *marginal* velocity field is intractable — it is an expectation over every data point that could have produced $x_t$. The key move of **conditional flow matching**: condition on a single endpoint. Given a noise sample $z$ and a data point $d$, define a straight-line path and its constant velocity:
+
+$$
+x_t = (1-t)\, z + t\, d, \qquad v^\star(x_t, t) = d - z
+$$
+
+This conditional target is a *deterministic point* (a plain regression target), and its expectation over pairs $(z, d)$ recovers the true marginal field:
+
+$$
+\mathbb{E}_{(z,d)}\big[\, d - z \mid x_t \,\big] = v_{\text{marginal}}(x_t, t)
+$$
+
+So you train on trivially simple straight-line targets — "train on the threads, get the rope" — and the averaging does the marginalization for you. The simplicity of each conditional target is **not** a limit on what the learned marginal field can express.
+
+## Straightness buys few-step inference
+
+An ODE solver's discretization error depends on the **curvature** of the trajectory, not the distance travelled. A straight (rectified) field has constant velocity, so a handful of Euler steps — sometimes even one — lands on the data manifold; a curved probability-flow path forces the coarse solver to cut across bends and needs dozens of steps.
+
+<Callout type="info" title="Why the step count is the latency knob">
+  Text-to-image latency is dominated by the *number* of sampling steps (each is a full network forward pass), not the width of the network. Straightening the field attacks the factor that matters: fewer steps → millisecond-class generation. This is why rectified flow and its descendants power modern fast samplers.
+</Callout>
+
+## Reflow and its limits
+
+**Reflow** straightens trajectories further by retraining the flow on its *own* generated noise→data pairs: the couplings become progressively straighter, so even fewer steps suffice. But each round trains on the previous model's outputs, so **generation errors compound like repeated photocopying** — straightness keeps rising while sample quality quietly sags. Cap the number of reflow rounds and hand the last mile to objectives that score *realism* (perceptual/adversarial distillation) rather than pixel-matching a degrading target.
+
+## Common mistakes
+
+1. **Porting diffusion schedules/samplers wholesale** — the time axis and the network's output mean different things.
+2. **Assuming the straight conditional target limits expressiveness** — the *marginal* field is as rich as any diffusion model's.
+3. **Reflowing too many rounds** — compounding self-training error eventually dominates the straightness gain.
+4. **Cutting network width to speed up sampling** — the step count is the dominant latency factor, not the per-step cost.
+
+## Related concepts
+
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the denoising view flow matching generalizes
+- [**Modern Generative AI**](/courses/generative-models/06-vit-and-modern-genai) — latent diffusion / SD-family systems built on rectified flow
+- [**DDIM Sampling**](/wiki/ddim-sampling) — the deterministic-ODE view of diffusion that motivates transport

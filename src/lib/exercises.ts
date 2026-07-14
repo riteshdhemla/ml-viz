@@ -1145,6 +1145,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It uses a different loss function", isCorrect: false },
     ],
   },
+  {
+    id: "diffusion-flow-matching",
+    type: "multiple-choice",
+    question:
+      "In flow matching (as opposed to standard diffusion training), what does the neural network output at each point?",
+    hint: "Diffusion predicts how to undo corruption; flow matching predicts a motion.",
+    explanation:
+      "Flow matching learns a velocity field that transports noise to data along a trajectory — the network outputs a velocity (a direction and speed of motion), and the time variable means trajectory progress from noise (0) to data (1). Standard diffusion instead predicts the noise added at a corruption level. Same endpoints, different quantity and semantics — which is why you can't just port diffusion schedules and samplers over unchanged.",
+    options: [
+      { id: "a", label: "A velocity that transports the sample toward the data distribution", isCorrect: true },
+      { id: "b", label: "The noise added at the current corruption level", isCorrect: false },
+      { id: "c", label: "A classification of which class the image belongs to", isCorrect: false },
+      { id: "d", label: "The exact log-likelihood of the sample", isCorrect: false },
+    ],
+  },
+  {
+    id: "diffusion-flow-straightness",
+    type: "multiple-choice",
+    question:
+      "Why do rectified (straightened) flow-matching trajectories enable generation in very few steps, while curved probability-flow paths need many?",
+    hint: "What determines the error when you integrate an ODE with a coarse Euler solver?",
+    explanation:
+      "An ODE solver's discretization error depends on the curvature of the trajectory, not the distance travelled. A straight path has constant velocity, so even one or two Euler steps land on the data manifold exactly; a curved path forces the coarse solver to cut across bends, so it needs many small steps to stay accurate. Straightening the field is what unlocks millisecond-class, few-step inference.",
+    options: [
+      { id: "a", label: "Integration error tracks curvature; a straight path integrates exactly in few steps", isCorrect: true },
+      { id: "b", label: "Straight paths are shorter, so less distance means fewer steps", isCorrect: false },
+      { id: "c", label: "Rectified flows use a larger network that runs faster", isCorrect: false },
+      { id: "d", label: "Curved paths cannot be integrated at all", isCorrect: false },
+    ],
+  },
 
   // ── Recurrent Neural Networks ───────────────────────────────────
   {
