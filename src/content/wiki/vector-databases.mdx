@@ -54,6 +54,12 @@ $$
 
 **Product Quantization (PQ).** A *compression* layer, usually combined with IVF (`IVF-PQ`). Split each vector into $m$ sub-vectors, k-means each subspace into 256 centroids, store each sub-vector as a 1-byte centroid id. A 768-dim float32 vector (3072 bytes) shrinks to ~$m$ bytes — ~100× smaller — so billion-scale indexes fit in RAM. Distances are approximated from small lookup tables; recall drops, so PQ is typically used to *shortlist* candidates that are then re-ranked with exact vectors.
 
+The whole engineering decision lives in the **recall-vs-memory elbow**: as you shrink the PQ code, recall stays nearly flat for most of the savings and then falls off a cliff. Pick the operating point just before the cliff, and claw back a point or two of recall with **exact re-scoring** of the shortlist.
+
+<Callout type="info" title="OPQ: don't split correlated dimensions">
+  PQ's hidden assumption is that each sub-vector is an independent little world. Real embedding dimensions are **correlated**, and splitting a correlated pair across two codebooks inflates quantization error — a loss baked in at the split, upstream of everything else you might tune (codebook size, cluster count, re-rank depth). **Optimized PQ (OPQ)** jointly learns an orthogonal rotation $R$ of the space that decorrelates/balances dimensions *before* splitting. Because $R$ is orthogonal it preserves distances; the query-time cost is one extra matrix multiply, and it often recovers the entire recall gap.
+</Callout>
+
 | Index | Recall | Latency | Memory | Build/insert |
 |---|:---:|:---:|:---:|:---:|
 | Flat | exact | high | low | trivial |

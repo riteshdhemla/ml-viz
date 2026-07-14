@@ -70,6 +70,7 @@ import ACFViz from "@/components/visualizations/ACF/ACFViz";
 import ARIMAForecastViz from "@/components/visualizations/ARIMAForecast/ARIMAForecastViz";
 import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
 import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
+import { RankFusionViz } from "@/components/visualizations/RankFusion/RankFusionViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -165,6 +166,7 @@ export const mdxComponents: MDXComponents = {
   ARIMAForecastViz,
   SamplingViz,
   RAGRetrievalViz,
+  RankFusionViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,

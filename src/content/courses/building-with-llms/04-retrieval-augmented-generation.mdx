@@ -1,9 +1,9 @@
 ---
 title: "Retrieval-Augmented Generation"
-description: "Grounding an LLM in your own documents — chunk, embed, retrieve, rerank, and generate — plus where RAG fails and how to evaluate it."
+description: "Grounding an LLM in your own documents — chunk, embed, retrieve, rerank, and generate — plus hybrid search, rank fusion, out-of-domain robustness, adaptive query handling, where RAG fails, and how to evaluate it."
 order: 4
 type: concept
-estimatedMinutes: 20
+estimatedMinutes: 30
 ---
 
 # Retrieval-Augmented Generation
@@ -39,7 +39,19 @@ Embed a whole 50-page manual as one vector and it becomes a blurry average of ev
   Chunks too **small** → context is fragmented, a single idea gets split. Too **large** → each chunk dilutes its embedding and wastes context budget. Overlapping chunks (a sliding window) hedge against splitting a key sentence across a boundary.
 </Callout>
 
-## Reranking
+## Hybrid search: why you can't average scores
+
+Dense (embedding) retrieval is great at *meaning* but can miss an exact product code, a rare acronym, or a name it never saw. Classic **keyword** search (BM25) nails those literal matches but is blind to paraphrase. Production retrievers run **both** and merge the results — *hybrid search*.
+
+The naive merge is to average the two scores. It quietly fails. BM25 scores documents on a 0–40-ish scale; cosine similarity lives in 0.6–0.9. Averaging a 38 with a 0.72 is averaging **40 rupees and 0.8 dollars** — the larger magnitude wins, so the fused list collapses onto the BM25 ranking and the embedding model contributes almost nothing.
+
+The fix is **Reciprocal Rank Fusion (RRF)**: score each document by $\sum_i \frac{1}{k + r_i}$, where $r_i$ is its *rank* in list $i$ and $k \approx 60$. Only positions matter, so no retriever can steamroll another.
+
+<RankFusionViz />
+
+<WikiLink slug="rank-fusion" title="Rank Fusion (RRF) — the full derivation, worked trace, and why it beats per-query normalization" />
+
+## The retrieve-then-rerank cascade
 
 First-stage retrieval (a fast bi-encoder + ANN index) favours recall over precision. A **reranker** — typically a cross-encoder that reads the query and a candidate *together* — re-scores the top, say, 50 candidates and keeps the best 5. It's slower per pair, so you only run it on the shortlist, not the whole corpus.
 
@@ -47,11 +59,38 @@ First-stage retrieval (a fast bi-encoder + ANN index) favours recall over precis
 Retrieve (fast, top-50)  →  Rerank (accurate, keep top-5)  →  Generate
 ```
 
+This **cascade** is also how you get late-interaction quality cheaply. A single-vector bi-encoder stores one vector per document (a summary); token-level "late interaction" models (e.g. ColBERT) store one vector *per token* — a transcript that is far more faithful but ~30×+ heavier to index. Rather than pay that storage bill across the whole corpus, retrieve cheaply and then apply the expensive scorer to just the top-100. You recover almost all of the precision *where it matters* — the top of the list — at a tiny fraction of the footprint.
+
+<Callout type="tip" title="Cascade economics">
+  A reranker only sees what stage-1 retrieved, so the cascade's ceiling is stage-1 **recall**. If the answer never makes the top-100, no reranker can rescue it — invest in recall (hybrid search, better chunks) *before* buying a fancier reranker.
+</Callout>
+
+## Leaderboard winners, production losers
+
+Dense retrievers are ranked on benchmarks whose eval set resembles their *training* distribution. Your users don't. A dense model that tops an in-domain leaderboard can degrade sharply out-of-domain (medical, legal, code), while **BM25 barely moves** — because BM25 is a mechanical lexical calculation with no training distribution to leave, whereas a learned notion of similarity can be confidently wrong on vocabulary it never saw.
+
+Since production queries are *always* somewhat out-of-domain, hybrid retrieval is a **robustness** decision, not just a quality one: the mechanical BM25 signal backstops the learned dense signal exactly where the dense model is weakest. This is a second reason to run hybrid + RRF beyond raw quality.
+
+## One rewriter doesn't fit all queries
+
+Query rewriting is surgery: it helps sick queries and injures healthy ones. A universal "rewrite everything" stage tuned on average metrics wins on sloppy conversational queries and *loses* on precise multi-hop ones ("compare the battery degradation of the 2021 vs 2023 model under fast charging") — a wash on the dashboard, a disaster for power users. The senior move is to **classify first, then route**:
+
+| Query shape | Strategy |
+|---|---|
+| Clean / keyword-like | **Pass through** unchanged |
+| Conversational / underspecified | **Rewrite** to a standalone query |
+| Multi-hop / comparative | **Decompose** into sub-queries, retrieve each separately |
+
+A cheap upstream classifier picks the strategy; averaging over query shapes is exactly what hides this failure.
+
 ## Where RAG fails
 
 - **Retrieval miss** — the answer isn't in the top-$k$, so the model can't use it.
+- **Fusion absorption** — averaging incomparable retriever scores collapses hybrid search onto one retriever (use RRF).
+- **Out-of-domain dense collapse** — a leaderboard-winning embedding model underperforms on your domain; BM25 backstops it.
 - **Irrelevant context** — off-topic chunks distract the generator (the high-$k$ case above).
 - **Context ignored** — the model falls back on its parametric memory instead of the evidence.
+- **Over-aggressive rewriting** — a universal rewriter mangles multi-hop queries into mush.
 - **Stale index** — documents changed but the vectors weren't re-embedded.
 - **Lost in the middle** — relevant text buried in a very long context gets underweighted.
 
@@ -70,6 +109,10 @@ Evaluate the two halves separately, because a bad answer could come from either:
 
 <Exercise id="llm-rag-chunking" />
 
+<Exercise id="llm-rag-fusion" />
+
+<Exercise id="llm-rag-ood" />
+
 ## Common mistakes
 
 1. **No retrieval evaluation** — blaming the LLM for what was actually a retrieval miss.
@@ -82,10 +125,14 @@ Evaluate the two halves separately, because a bad answer could come from either:
 - RAG grounds an LLM in external/private/fresh documents by **retrieving** relevant chunks and putting them **in the prompt**.
 - Pipeline: **chunk → embed → retrieve → (rerank) → generate**.
 - **Chunk size** and **$k$** trade precision against coverage; reranking boosts precision on a shortlist.
+- **Hybrid search** (dense + BM25) is both a quality and a *robustness* win; fuse with **RRF**, never by averaging raw scores.
+- The **retrieve-then-rerank cascade** buys late-interaction precision without the storage bill; its ceiling is stage-1 recall.
+- **Route queries by shape** (pass through / rewrite / decompose) instead of rewriting everything.
 - Evaluate **retrieval** and **generation (faithfulness)** separately.
 
 ## Related concepts
 
 - [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the retrieval engine RAG depends on
 - [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — retrieval as one tool an agent can call
+- [**Rank Fusion (RRF)**](/wiki/rank-fusion) — how to merge keyword and dense result lists without averaging scores
 - [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the ANN index (IVF/HNSW/PQ) that makes retrieval fast at scale

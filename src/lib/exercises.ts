@@ -5153,6 +5153,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "llm-rag-fusion",
+    type: "multiple-choice",
+    question:
+      "Your hybrid search averages BM25 scores (range 0–40) with cosine scores (range 0.6–0.9). The fused ranking looks almost identical to the pure BM25 ranking. What happened, and what fixes it?",
+    hint: "Compare the magnitude of a one-step change in each score.",
+    explanation:
+      "Averaging raw scores on different scales is dominated by the larger-magnitude, larger-variance signal (BM25), so the embedding retriever contributes almost nothing — 'absorption'. Reciprocal Rank Fusion (RRF) sums 1/(k+rank) across systems, using only positions, so neither retriever can steamroll the other. It is not fixed by swapping models or raising k on retrieval — the merge step itself is the bug.",
+    options: [
+      { id: "a", label: "BM25's magnitude dominates the average; fuse by rank (RRF) instead of by raw score", isCorrect: true },
+      { id: "b", label: "The embedding model is broken; retrain it on in-domain data", isCorrect: false },
+      { id: "c", label: "Cosine similarity is always worse than BM25; drop the dense retriever", isCorrect: false },
+      { id: "d", label: "Increase k in the top-k retrieval so more dense results appear", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-rag-ood",
+    type: "multiple-choice",
+    question:
+      "A dense retriever that topped an in-domain benchmark degrades sharply on your production queries, while BM25 barely moves. Why is BM25 more robust out-of-domain?",
+    hint: "One method learns a notion of similarity; the other computes one.",
+    explanation:
+      "BM25 is a fixed lexical calculation (term frequency × inverse document frequency) — it has no training distribution to leave, so it generalizes 'for free'. A dense retriever's notion of similarity is learned and can be confidently wrong on vocabulary and domains it never saw. Since production queries are always somewhat out-of-domain, hybrid retrieval (dense + sparse, fused with RRF) lets the mechanical signal backstop the learned one where it is weakest.",
+    options: [
+      { id: "a", label: "BM25 is a fixed lexical calculation with no training distribution to leave", isCorrect: true },
+      { id: "b", label: "BM25 uses larger embeddings that capture more meaning", isCorrect: false },
+      { id: "c", label: "Dense retrievers cannot handle rare words at all", isCorrect: false },
+      { id: "d", label: "BM25 is retrained on every query, so it adapts instantly", isCorrect: false },
+    ],
+  },
+  {
     id: "llm-agent-react",
     type: "multiple-choice",
     question:

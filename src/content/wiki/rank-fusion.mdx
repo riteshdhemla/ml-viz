@@ -1,0 +1,76 @@
+---
+title: "Rank Fusion (RRF) for Hybrid Search"
+description: "Why you can't average BM25 and cosine scores, how Reciprocal Rank Fusion combines ranked lists using positions instead of magnitudes, a worked RRF trace, and why it beats per-query score normalization."
+topics: ["nlp"]
+relatedLessons:
+  - "building-with-llms/04-retrieval-augmented-generation"
+  - "building-with-llms/03-embeddings-and-semantic-search"
+estimatedMinutes: 10
+---
+
+# Rank Fusion (RRF) for Hybrid Search
+
+Hybrid search runs two retrievers — a **keyword** engine (BM25) and a **dense** embedding model — and merges their results. The obvious merge is to average the two scores. It quietly fails: BM25 scores documents on a 0–40-ish scale, cosine similarity on a 0.6–0.9 scale. Averaging a 38 with a 0.72 is averaging **40 rupees and 0.8 dollars** — the number with the bigger magnitude wins every time, so the fused list collapses onto the BM25 ranking and the embedding model contributes almost nothing.
+
+**Scores are opinions in different currencies. Ranks are currency-free: 1st place is 1st place everywhere.** Reciprocal Rank Fusion (RRF) fuses *positions*, not scores.
+
+<RankFusionViz />
+
+## Why averaging is absorption
+
+A weighted score sum $s = w_1 s_1 + w_2 s_2$ is dominated by whichever retriever has the larger magnitude **and variance**. If $s_1 \in [0, 40]$ and $s_2 \in [0.6, 0.9]$, then moving a document from worst to best in the dense list changes $s$ by at most $0.3$, while one step in the BM25 list can change it by several *units*. The dense signal is noise next to the keyword signal — the fused order is the BM25 order with a rounding error.
+
+**Per-query normalization (min–max, z-score) helps but is brittle.** It rescales each list to $[0,1]$ per query, but a single outlier document reshapes the whole scale: one document scoring 200 when the rest score ~30 compresses every real distinction into the bottom 15% of the range. Normalization also has to be recomputed per query and is sensitive to how many candidates each retriever returns.
+
+## Reciprocal Rank Fusion
+
+Give each document a fused score that depends only on its **rank** $r_i$ in each list $i$:
+
+$$
+\text{RRF}(d) = \sum_{i} \frac{1}{k + r_i(d)}
+$$
+
+with $r_i$ 1-indexed and $k$ a constant (the original paper uses $k = 60$). Properties that fall out of the formula:
+
+- **Scale-free.** Only positions enter, so no retriever can steamroll another regardless of its score magnitude.
+- **Top-heavy.** $\frac{1}{k+1} - \frac{1}{k+2}$ is much larger than $\frac{1}{k+50} - \frac{1}{k+51}$, so moving from rank 1→2 matters far more than 50→51. Deep ranks are discounted — exactly what you want, since retrievers are only trustworthy near the top.
+- **$k$ tempers the top.** Larger $k$ flattens the curve (ranks matter more uniformly); smaller $k$ sharpens the reward for being #1. $k=60$ is a mild default, not a tuned magic number.
+
+<Callout type="info" title="A document at rank 2 and 50, vs one at rank 12 and 12">
+  With $k=60$: the first scores $\frac{1}{62} + \frac{1}{110} = 0.0252$; the second scores $\frac{2}{72} = 0.0278$. RRF prefers the *consistently-good* document over the one that one system loved and the other buried — usually the right call, because a single system's rank-2 is often a fluke that the other system's rank-50 corrects.
+</Callout>
+
+## Worked trace
+
+Two ranked lists of the same five documents (rank in parentheses):
+
+| Doc | BM25 rank | Dense rank | RRF score ($k=60$) |
+|---|:---:|:---:|---|
+| A | 1 | 4 | $\frac{1}{61}+\frac{1}{64} = 0.0320$ |
+| B | 2 | 5 | $\frac{1}{62}+\frac{1}{65} = 0.0315$ |
+| C | 3 | 1 | $\frac{1}{63}+\frac{1}{61} = 0.0323$ |
+| D | 4 | 2 | $\frac{1}{64}+\frac{1}{62} = 0.0318$ |
+| E | 5 | 3 | $\frac{1}{65}+\frac{1}{63} = 0.0313$ |
+
+Fused order: **C, A, D, B, E**. Document C — buried at BM25 rank 3 but loved by the dense model — takes the top spot, and D climbs from 4th to 3rd. Naive averaging of the raw scores would have left A on top and never surfaced C or D. That reshuffling *is* the value of hybrid search.
+
+## When to reach for it
+
+- **Any hybrid retrieval** (sparse + dense) — RRF is the default merge and needs no per-corpus tuning.
+- **More than two systems** — the sum extends to any number of ranked lists (BM25 + dense + a reranker's order, etc.).
+- **Ensembling the same retriever** under different query rewrites — fuse the result lists instead of picking one.
+
+It is *not* a reranker: RRF never re-reads the documents, so it can't fix a document that both retrievers ranked poorly. Fusion improves the blend of what you already found; a cross-encoder reranker improves the *scoring* of a shortlist (see the [RAG lesson](/courses/building-with-llms/04-retrieval-augmented-generation)).
+
+## Common mistakes
+
+1. **Averaging raw scores** across retrievers on different scales — the fused list silently becomes the highest-magnitude retriever's list.
+2. **Per-query min–max normalization** as the fix — brittle to outliers and candidate-count differences; RRF sidesteps both.
+3. **Tuning $k$ obsessively** — the ranking is fairly insensitive to $k$ over a wide range; $k \approx 60$ is a fine default.
+4. **Fusing scores from truncated lists** without a rank for missing documents — decide a policy (treat as rank $\infty$, i.e. contribute 0) rather than dropping the document.
+
+## Related concepts
+
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — hybrid retrieval feeds the generator; fusion decides what it sees
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — where the dense (cosine) list comes from
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the index that produces the dense ranked list at scale
