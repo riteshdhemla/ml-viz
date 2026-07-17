@@ -1,0 +1,99 @@
+---
+title: "PagedAttention & KV-Cache Management"
+description: "How vLLM manages the KV-cache like an operating system manages RAM — block tables, on-demand allocation, prefix sharing with copy-on-write, and preemption — recovering the 60–80% of GPU memory naive allocators waste."
+topics: ["ml-in-practice"]
+relatedLessons:
+  - "ml-in-practice/22-optimizing-llm-inference"
+  - "ml-in-practice/12-inference-optimization-and-serving"
+estimatedMinutes: 12
+---
+
+# PagedAttention & KV-Cache Management
+
+The KV-cache — not the model weights — usually decides how many requests a GPU can serve concurrently. A naive allocator reserves one **contiguous** slab of `max_seq_len` cache per request the moment it arrives; since real responses are far shorter than the maximum and lengths are unknowable in advance, 60–80% of that memory sits reserved-but-unused. **PagedAttention** (the algorithm at the core of vLLM) applies the oldest trick in operating systems: break the cache into small fixed-size **blocks**, map logical positions to physical blocks through a per-sequence **block table**, and allocate blocks only when tokens actually exist.
+
+## Why contiguous allocation fails
+
+Three kinds of waste, mirroring classic memory management:
+
+- **Internal fragmentation** — a request allocated 4096 slots that generates 350 tokens wastes 3746 slots for its entire lifetime.
+- **External fragmentation** — variable-size contiguous slabs leave unusable gaps between allocations; free memory exists but no hole is big enough.
+- **No sharing** — two requests with an identical 5k-token system prompt each store a full private copy of the same K/V tensors.
+
+The cache is also *append-only and per-token* — a perfect match for paging, because a sequence only ever grows one token at a time at its tail.
+
+## The paged design
+
+Physical HBM is carved into $N$ blocks of $B$ tokens each ($B = 16$ in vLLM). Each sequence holds a block table:
+
+$$
+\text{physical address of token } t \;=\; \text{block\_table}\!\left[\lfloor t / B \rfloor\right] \cdot B + (t \bmod B)
+$$
+
+**Allocation procedure:**
+
+1. On admission, allocate $\lceil s_{\text{prompt}} / B \rceil$ blocks from the free list and prefill into them.
+2. Each decode step appends one token to the last block; only when it fills is **one** new block popped from the free list.
+3. On completion, all of the sequence's blocks return to the free list (subject to refcounts, below).
+
+Blocks need not be contiguous — the attention kernel gathers K/V through the block table (one extra indirection, a few percent kernel overhead). Waste collapses to *at most $B - 1$ slots per sequence* (the unfilled tail of the last block): for $B = 16$ against a 4096-token reservation, worst-case waste drops from ~90% to under 0.4%.
+
+## Prefix sharing and copy-on-write
+
+Because blocks are content-addressable units, identical prefixes can share physical blocks:
+
+- Each **full** block is hashed by (prefix so far → block contents). A new request whose prompt matches an existing hash chain simply points its block table at the existing physical blocks and increments their **reference counts** — those tokens are never prefilled again. This is **prefix caching** ([the big TTFT lever for RAG workloads](/courses/ml-in-practice/22-optimizing-llm-inference)).
+- Shared blocks are read-only. If a sequence must write into a block with refcount > 1 (e.g. parallel sampling branches diverging), the allocator performs **copy-on-write**: copy that one block, decrement the original's refcount, write to the private copy.
+- Freeing decrements refcounts; a block returns to the free list only at refcount 0. Evicted-but-hashed blocks can linger as a cache and be revived on a later hash hit (LRU eviction).
+
+## Worked trace
+
+Block size $B = 4$ (small for readability). Request A arrives with a 10-token prompt, then generates; request B arrives sharing A's first 8 prompt tokens:
+
+```
+physical blocks:   P0      P1      P2       P3      P4
+                 [t0–t3] [t4–t7] [t8,t9,·,·]
+A block table:     P0      P1      P2               ← 3 blocks, 2 slots slack
+                                                       (t8,t9 = A-specific tokens)
+
+B arrives, prompt = A's first 8 tokens + 3 new tokens:
+  hash(t0–t3) hit → share P0 (refcount 2)
+  hash(t4–t7) hit → share P1 (refcount 2)
+  3 new tokens    → allocate P3: [u0,u1,u2,·]
+B block table:     P0      P1      P3
+
+B's prefill work: 3 tokens instead of 11 (73% saved).
+A generates t10, t11 → P2 fills; next token pops P4. B never sees it.
+A finishes → P2,P4 freed; P0,P1 drop to refcount 1 (B still holds them).
+```
+
+## Preemption: when blocks run out
+
+Under load the free list can empty while sequences still need to grow. The scheduler must **preempt** a victim (vLLM picks most-recently-arrived first, so oldest requests finish):
+
+- **Swap** — copy the victim's blocks to CPU RAM, restore later. Cost = PCIe transfer both ways; sane for long sequences.
+- **Recompute** — drop the blocks and re-prefill the victim from its tokens when rescheduled. Counter-intuitively often *cheaper* for short-to-medium sequences, because prefill is compute-bound and fast while PCIe is slow.
+
+Preemption is why a paged server degrades gracefully under overload (tail latency rises) instead of OOM-crashing.
+
+## What it buys, measured
+
+| Metric | Contiguous allocator | Paged (B = 16) |
+|---|---|---|
+| Reserved-but-unused cache | 60–80% | < 4% |
+| Concurrent sequences on fixed HBM | 1× | typically 2–4× |
+| Shared system prompt (k requests) | k full copies | 1 copy + refcounts |
+| Throughput (chat traffic) | 1× | 2–4× (more batch slots to fill) |
+
+## Gotchas
+
+- **Block size trades waste against overhead**: smaller $B$ → less tail slack but bigger block tables and more gather overhead; 16 is the sweet spot vLLM converged on.
+- **Sharing requires *identical* token prefixes** — one differing token (a timestamp in the system prompt, a user ID early in the template) breaks the entire hash chain after it. Put volatile content at the *end* of the prompt.
+- **Watch `gpu_cache_usage` and preemption counters** — a high preemption rate silently converts throughput into recompute work; the fix is more replicas, KV quantization, or shorter contexts.
+
+## Related concepts
+
+- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference) — where paged cache management and prefix caching sit in the metric→lever map
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — the KV-cache size formula and why the cache is the concurrency ceiling
+- [**Continuous Batching**](/wiki/continuous-batching) — the scheduler that decides which sequences occupy the blocks each step
+- [**Memory & Performance in CUDA**](/courses/gpu-programming/03-memory-and-performance) — the HBM bandwidth hierarchy underneath all of this

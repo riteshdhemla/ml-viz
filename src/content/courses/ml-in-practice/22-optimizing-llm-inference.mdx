@@ -122,6 +122,8 @@ You mostly *choose* these when picking a base model rather than retrofit them �
 - **Speculative decoding** — a draft model proposes $k$ tokens; the target verifies them in one forward pass. 2–3× effective decode speedup on templated support text, zero quality change (the target model validates every token).
 - **Cap and trim outputs** — the cheapest tokens are the ones never generated. Tightening the system prompt's answer-format instructions cut our scenario's mean output from 300 to 220 tokens; `max_tokens` plus a "be concise" instruction is a real optimization, not a hack.
 
+<WikiLink slug="speculative-decoding" title="Speculative Decoding" />
+
 <Callout type="warning" title="Every model-level lever ends with the eval suite">
 Quantization, distillation, routing, and output-capping all move quality — sometimes in ways that only show up on specific slices (multilingual tickets, long-context questions). Re-run the frozen eval suite after each change and compare against the floor *per slice*, not just in aggregate. The eval harness is what makes aggressive optimization safe.
 </Callout>
@@ -142,11 +144,15 @@ From lesson 12, the two pillars: **continuous batching** (rotate finished reques
 
 - **Chunked prefill** — split an 8k-token prefill into chunks interleaved with decode steps, so one giant prompt no longer stalls every other request's ITL. This is the fix for "ITL spikes whenever a long-context request arrives."
 
+<WikiLink slug="continuous-batching" title="Continuous Batching" />
+
 ### Prefix and prompt caching: the RAG jackpot
 
 Every request in our scenario begins with the same ~5k tokens (system prompt + few-shot examples + retrieval template). **Prefix caching** stores that prefix's KV-cache once and reuses it across requests — those 5k tokens are never prefilled again. With ~63% of every prompt shared, prefill work drops ~60% instantly, and TTFT with it. Multi-turn conversations compound the win: each turn reuses the whole previous context's cache instead of re-prefilling it.
 
-This is such a large effect that API providers surface it as pricing: Anthropic discounts cached input tokens 90%, OpenAI 50%. When a vendor gives away 90%, they're telling you what the cache saves *them* — and what prefix caching will save you self-hosted (one flag in vLLM: `enable_prefix_caching=True`).
+This is such a large effect that API providers surface it as pricing: Anthropic discounts cached input tokens 90%, OpenAI 50%. When a vendor gives away 90%, they're telling you what the cache saves *them* — and what prefix caching will save you self-hosted (one flag in vLLM: `enable_prefix_caching=True`). Under the hood, both prefix caching and the no-padding cache allocation it rides on are the same mechanism — block-level KV management:
+
+<WikiLink slug="paged-attention" title="PagedAttention & KV-Cache Management" />
 
 ### Parallelism and disaggregation
 

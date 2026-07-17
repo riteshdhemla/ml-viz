@@ -1,0 +1,89 @@
+---
+title: "Speculative Decoding"
+description: "The draft-and-verify algorithm that speeds up LLM decoding 2–3× with zero quality loss — the acceptance rule, why the output distribution is provably unchanged, expected-speedup math, and the Medusa/EAGLE variants."
+topics: ["ml-in-practice"]
+relatedLessons:
+  - "ml-in-practice/22-optimizing-llm-inference"
+  - "ml-in-practice/12-inference-optimization-and-serving"
+estimatedMinutes: 12
+---
+
+# Speculative Decoding
+
+Each decode step of a large model reads every weight from HBM to produce **one** token — and most tokens ("the", "of", closing brackets, boilerplate) don't need 70B parameters to predict. **Speculative decoding** lets a small *draft* model propose several tokens cheaply, then has the large *target* model verify all of them in a single forward pass. Accepted tokens cost one target step for many tokens; rejected ones fall back to normal decoding. The remarkable part: with the right acceptance rule, the output distribution is **mathematically identical** to sampling from the target model alone.
+
+## The algorithm
+
+One cycle of speculative decoding with draft model $q$, target model $p$, and lookahead $k$:
+
+1. **Draft**: run the small model autoregressively for $k$ steps, sampling proposals $x_1, \ldots, x_k$ with probabilities $q(x_i \mid \text{prefix}, x_{<i})$.
+2. **Verify**: run the target model **once** on the prefix plus all $k$ proposals. Because a transformer scores every position in parallel, this single pass yields $p(x_i \mid \text{prefix}, x_{<i})$ for all $i$ — plus the distribution for position $k+1$.
+3. **Accept/reject** left to right. For each proposal $x_i$:
+   - accept with probability $\min\!\left(1, \dfrac{p(x_i)}{q(x_i)}\right)$;
+   - on the first rejection, discard $x_i$ and everything after it, and sample the replacement token from the **residual distribution** $\;p'(x) = \dfrac{\max(0,\, p(x) - q(x))}{\sum_{x'} \max(0,\, p(x') - q(x'))}$.
+4. **Bonus token**: if all $k$ proposals are accepted, sample token $k+1$ directly from the target's already-computed distribution — free.
+
+Each cycle therefore emits between $1$ (immediate rejection, resample) and $k+1$ (all accepted + bonus) tokens for **one target forward pass**.
+
+## Why the output distribution is exactly $p$
+
+The accept/resample rule is a form of rejection sampling. For any token $x$, the probability it is emitted at a given position is
+
+$$
+\underbrace{q(x)\min\!\left(1, \frac{p(x)}{q(x)}\right)}_{\text{proposed and accepted}} \;+\; \underbrace{\left(\textstyle\sum_{x'} q(x')\left[1 - \min\!\left(1, \frac{p(x')}{q(x')}\right)\right]\right) \cdot p'(x)}_{\text{some proposal rejected, then } x \text{ resampled}}
+$$
+
+The first term equals $\min(q(x), p(x))$. The rejection mass sums to $\sum_{x'} \max(0, q(x') - p(x')) = \sum_{x'} \max(0, p(x') - q(x'))$ (both equal half the total variation distance), which cancels the residual's normalizer, so the second term equals $\max(0, p(x) - q(x))$. Their sum is exactly $p(x)$.
+
+No approximation, no distribution shift — a *worse draft model only makes speculative decoding slower, never wrong*. This is why it's classed as a quality-neutral lever in the [inference-optimization decision tree](/courses/ml-in-practice/22-optimizing-llm-inference).
+
+## Worked trace
+
+Vocabulary $\{\text{the}, \text{cat}, \text{sat}, \text{mat}\}$, lookahead $k = 3$. The draft proposes **the → cat → sat**, and the target's verification pass returns:
+
+| Position | Proposal $x_i$ | $q(x_i)$ | $p(x_i)$ | $\min(1, p/q)$ | Draw $u \sim U(0,1)$ | Outcome |
+|---|---|---|---|---|---|---|
+| 1 | the | 0.80 | 0.72 | 0.90 | 0.41 | ✅ accept |
+| 2 | cat | 0.60 | 0.66 | 1.00 | — | ✅ accept |
+| 3 | sat | 0.70 | 0.14 | 0.20 | 0.55 | ❌ reject |
+
+Position 3 rejects, so we resample from the residual there. Suppose at position 3: $p = (0.10, 0.06, 0.14, 0.70)$ and $q = (0.05, 0.15, 0.70, 0.10)$ over (the, cat, sat, mat). Then $\max(0, p - q) = (0.05, 0, 0, 0.60)$, which normalizes to $p' = (0.077, 0, 0, 0.923)$ — the resample almost surely emits **mat**, the token the draft badly under-proposed. The cycle emits **the, cat, mat**: 3 tokens for one target pass instead of three.
+
+## Expected speedup
+
+Let $\alpha$ be the average per-token acceptance probability (empirically $\alpha \approx$ 0.7–0.9 for a well-matched draft). The expected number of tokens emitted per cycle is the expectation of a truncated geometric plus the bonus token:
+
+$$
+\mathbb{E}[\text{tokens/cycle}] = \frac{1 - \alpha^{k+1}}{1 - \alpha}
+$$
+
+If the draft costs a fraction $c \ll 1$ of a target step, the wall-clock speedup per emitted token is
+
+$$
+\text{speedup} = \frac{1 - \alpha^{k+1}}{(1 - \alpha)\,(1 + ck)}
+$$
+
+At $\alpha = 0.8$, $k = 4$, $c = 0.05$: $\mathbb{E}[\text{tokens}] \approx 3.36$ per cycle and speedup $\approx 2.8\times$. Diminishing returns in $k$ are steep — $\alpha^{k}$ decays fast, so $k$ beyond ~4–8 mostly burns draft compute. Note the acceptance rate also depends on sampling temperature: at low temperature $p$ concentrates, agreement rises, and speculation wins more.
+
+## Variants
+
+| Variant | Draft source | Trade-off |
+|---|---|---|
+| **Draft–target** (classic) | Separate small model (same tokenizer) | Best acceptance; must host a second model |
+| **Medusa** | Extra decoding heads on the target itself | No second model; heads need finetuning; tree-verifies multiple branches |
+| **EAGLE** | Lightweight head predicting from the target's hidden state | Higher acceptance than Medusa at similar cost; current default in vLLM/TRT-LLM |
+| **Prompt lookup / n-gram** | Copy matching spans from the prompt | Free; only wins on extractive/repetitive tasks (RAG quotes, code edits) |
+| **Self-speculative** | Target with layers skipped | No extra weights; modest acceptance |
+
+## When it wins and loses
+
+- ✅ **Templated, predictable text** — support answers, code boilerplate, JSON — acceptance rates soar.
+- ✅ **Low-batch, latency-sensitive serving** — spare compute exists between bandwidth-bound decode steps; verification rides it free.
+- ❌ **Large batches** — the GPU is already compute-saturated, and verifying $k$ positions per sequence competes with other requests; the speedup shrinks toward zero.
+- ❌ **High-entropy generation** (creative writing at high temperature) — acceptance drops and cycles waste draft work.
+
+## Related concepts
+
+- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference) — where speculative decoding sits among the model-level levers
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — why decode is bandwidth-bound, which is what speculation exploits
+- [**Decoding & Sampling Strategies**](/courses/nlp/05-decoding-and-sampling) — the sampling procedures the acceptance rule must preserve
