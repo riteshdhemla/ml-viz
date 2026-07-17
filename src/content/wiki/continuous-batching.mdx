@@ -1,0 +1,88 @@
+---
+title: "Continuous Batching"
+description: "Iteration-level scheduling for LLM serving — the scheduler loop that rebuilds the batch every decode step, admission and token budgets, chunked prefill, preemption, and why it beats static batching 2–10× on chat traffic."
+topics: ["ml-in-practice"]
+relatedLessons:
+  - "ml-in-practice/22-optimizing-llm-inference"
+  - "ml-in-practice/12-inference-optimization-and-serving"
+estimatedMinutes: 11
+---
+
+# Continuous Batching
+
+Batching is what makes LLM decode affordable: one step reads the model weights from HBM once and serves every sequence in the batch. The question is *when batch membership can change*. **Static batching** fixes the batch until every member finishes — so a 50-token response waits idle while a 900-token neighbour grinds on. **Continuous batching** (also called *iteration-level scheduling* or *in-flight batching*, introduced by Orca) makes the batch a revolving door: composition is re-decided **every decode step**, so a finished sequence's slot is refilled by a queued request immediately.
+
+## The scheduler loop
+
+The serving engine runs one loop, one model step per iteration:
+
+```
+every iteration:
+  1. RETIRE    remove sequences that emitted EOS or hit max_tokens;
+               free their KV blocks
+  2. ADMIT     while the queue is non-empty
+               and running < max_num_seqs
+               and KV blocks available for the candidate's prompt:
+                 admit request → schedule its PREFILL
+  3. PREEMPT   if a running sequence needs a KV block and none are free:
+                 evict a victim (swap out or drop-and-recompute)
+  4. STEP      run ONE model forward pass over everything scheduled:
+                 prefill chunks for newly admitted requests
+                 + one decode token for every running sequence
+  5. STREAM    emit each new token to its client
+```
+
+Two invariants do the work: **no sequence waits for any other sequence** (only for resources), and **the expensive weight-read is shared** by whoever happens to be active this iteration.
+
+## Admission: the token budget
+
+Step 4 has a per-iteration **token budget** (e.g. `max_num_batched_tokens = 8192`): a decode sequence costs 1 token, a prefill costs its whole prompt length. This is where the TTFT/ITL tension lives:
+
+- **Prefill-priority** admits new prompts eagerly — great TTFT, but an 8k-token prefill monopolises the step and every running sequence's inter-token latency spikes (the "stall" users feel in chat).
+- **Decode-priority** protects ITL but lets the queue (and TTFT) grow.
+- **Chunked prefill** dissolves the dilemma: split each prefill into chunks (say 512 tokens) and spend the budget on *decode tokens first, prefill chunks with the remainder*. A long prompt now takes several iterations to prefill, but nobody's ITL spikes. This is the production default in modern vLLM.
+
+## Worked trace
+
+Four slots, six requests; `d` = one decode step, digits = remaining output tokens:
+
+```
+            iter:  1    2    3    4    5    6    7    8
+request A (3 tok)  d2   d1   d0✓  ┌ F admitted
+request B (8 tok)  d7   d6   d5   d4   d3   d2   d1   d0✓
+request C (2 tok)  d1   d0✓  ┌ E admitted
+request D (5 tok)  d4   d3   d2   d1   d0✓
+request E (4 tok)       —    d3   d2   d1   d0✓
+request F (3 tok)            —    d2   d1   d0✓
+```
+
+C finishes at iteration 2 and E (next in the FIFO queue) occupies its slot at iteration 3; A finishes at 3 and F replaces it at 4. Every iteration runs 4 active sequences. Under static batching, E and F would have waited until iteration 8 — the batch's slowest member (B) gates everyone. Same hardware, same requests: continuous batching finishes the work in 8 iterations with ~100% slot occupancy; the static schedule needs 8 + 4 = 12 iterations with slots idling from iteration 3 onward.
+
+The win scales with **output-length variance**: for chat traffic (lengths 50–1000+), measured slot utilization goes from ~50–60% (static) to ~95%+ (continuous) — directly multiplying throughput. This is the single biggest reason vLLM/TGI-class servers outperform naive `model.generate()` loops by 4–10× on real traffic.
+
+## Interaction with the KV-cache
+
+Admission is gated by **KV-block availability**, not just slot count — a 32k-context request may be unadmittable while ten short ones fit. This couples the scheduler to [PagedAttention](/wiki/paged-attention):
+
+- Paged allocation means admission only needs *enough blocks for the prompt now*, not a `max_seq_len` reservation — dramatically more admissions.
+- When growth exhausts free blocks mid-flight, the scheduler preempts (swap or recompute) — latency degrades gracefully instead of the server OOMing.
+- Prefix-cache hits shrink a candidate's prefill cost at admission time, letting the budget admit more requests per iteration.
+
+## What to measure
+
+- **TTFT** = queue wait + prefill time. Under continuous batching, queueing is the elastic part — rising TTFT p95 at stable prefill time means you're admission-limited (add replicas or KV headroom).
+- **ITL p95, not mean** — stalls from un-chunked prefills or preemption storms live entirely in the tail.
+- **Goodput** — requests/s meeting both SLOs. Raising `max_num_seqs` raises throughput and ITL together; goodput is the number that tells you when to stop.
+- **Preemption rate** — nonzero is fine; climbing means the KV pool, not compute, is your ceiling.
+
+## Gotchas
+
+- **Heterogeneous requests share fate**: one user's 100k-token prompt degrades every co-batched user's ITL unless chunked prefill is on. Route extreme-context traffic to a separate pool (the logic that ends in [prefill/decode disaggregation](/courses/ml-in-practice/22-optimizing-llm-inference)).
+- **Benchmarking with fixed-length synthetic traffic hides the entire benefit** — with zero length variance, static and continuous batching look identical. Always benchmark with realistic length distributions.
+- **`max_num_seqs` is not free throughput**: past the point where the KV-read dominates the weight-read, more concurrency mostly buys latency. Sweep it against the goodput curve, not the throughput curve.
+
+## Related concepts
+
+- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference) — the case study that sequences this lever among the others
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — static vs dynamic vs continuous batching fundamentals
+- [**PagedAttention & KV-Cache Management**](/wiki/paged-attention) — the memory manager the scheduler negotiates with every iteration
