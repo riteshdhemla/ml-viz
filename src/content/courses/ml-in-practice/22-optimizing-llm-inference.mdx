@@ -1,0 +1,250 @@
+---
+title: "Optimizing LLM Inference"
+description: "A production case study — constraints in depth (TTFT, ITL, goodput, memory, cost), model-level vs compute-level optimizations, the metric→lever map, and a scoping decision tree for choosing what to optimize first."
+order: 22
+type: concept
+estimatedMinutes: 24
+---
+
+# Optimizing LLM Inference
+
+Your team ships a RAG-powered customer-support assistant on a 70B open-weights model. Each request carries a ~5k-token system prompt + retrieved context and an ~3k-token conversation, and generates ~300 tokens of answer. At launch, 4×H100s running vLLM at FP16 were fine. Then traffic grew 10×: time-to-first-token p95 blew past 3 seconds, the on-call channel filled with "the bot feels frozen" complaints, and finance flagged a GPU bill growing faster than revenue. Nothing is *broken* — the system is just unoptimized. This case study is the playbook for that moment: understand the constraints precisely, then work through **model-level** and **compute-level** levers in the order the constraints dictate.
+
+**Real-world examples:** Character.AI (reduced serving cost 33× since launch via int8 quantization, multi-query attention, and cross-layer KV-sharing while serving 20k+ QPS), DeepSeek (multi-head latent attention and prefill/decode disaggregation to serve frontier models cheaply), Anthropic & OpenAI (prompt caching APIs with up to 90% discounts on cached input tokens — pricing that reveals where the real cost lives), Perplexity (latency-critical RAG serving), Databricks (throughput-optimized batch inference on Mosaic infrastructure).
+
+This lesson builds on [Inference Optimization & Serving](/courses/ml-in-practice/12-inference-optimization-and-serving) — the KV-cache, continuous batching, and roofline fundamentals from there are assumed, and referenced where they become levers.
+
+## 1 — Constraints in depth
+
+"Make it faster and cheaper" is not a spec. The first job is to turn vague pain into a constraint table, because *which* constraint binds determines *which* lever works.
+
+### Latency is two numbers, not one
+
+- **Time-to-first-token (TTFT)** — request arrival → first streamed token. Dominated by the **prefill** phase (processing the prompt) plus any queueing delay. Users perceive TTFT as "is it responding at all?"
+- **Inter-token latency (ITL)**, also called time-per-output-token (TPOT) — the gap between streamed tokens, dominated by the **decode** phase. Users perceive ITL as reading speed; anything faster than ~20 tokens/s (ITL ≤ 50 ms) reads faster than most people do.
+
+Total request latency composes from both:
+
+$$
+\text{total latency} = \text{TTFT} + \text{ITL} \times (\text{output tokens} - 1)
+$$
+
+Two consequences. First, **optimize them separately** — a server with great ITL and 4-second TTFT still feels frozen. Second, **streaming changes what matters**: once tokens stream, users tolerate long totals as long as TTFT is short and ITL beats reading speed. That's why chat SLOs pin TTFT tightly (e.g., p95 < 500 ms) and ITL loosely (p95 < 50 ms), rather than pinning total latency.
+
+Always state latency SLOs as **percentiles** (p95/p99), never means. Batching couples requests together: one 8k-token prefill entering the batch stalls every other request's decode step, so tail latency degrades long before the average does.
+
+### Throughput, and the tension with latency
+
+Throughput — total tokens/second across all users on fixed hardware — pays the bill. The core tension: **batching raises throughput and ITL together.** Each decode step reads the full model weights once regardless of batch size, so a batch of 64 amortizes that read 64 ways — but each request now shares compute and memory bandwidth, so every request's ITL rises. The throughput-vs-ITL curve is the fundamental frontier you operate on (the companion notebook derives and plots it).
+
+Because raw throughput can be inflated by violating latency SLOs, mature teams optimize **goodput**: throughput counting only requests that met their SLO. A scheduler tuned for maximum tokens/s that times out 10% of requests has great throughput and terrible goodput.
+
+### Cost and utilization
+
+$$
+\text{cost per 1M tokens} = \frac{\text{GPU \$/hour}}{\text{goodput in tokens/hour}} \times 10^6
+$$
+
+Two different inefficiencies hide in this number, and they have different fixes:
+
+- **Low occupancy** — GPUs idle between requests (over-provisioned replicas, spiky traffic). Fix with consolidation, autoscaling, and routing — no model change needed.
+- **Low efficiency while busy** — the GPU is "100% utilized" in `nvidia-smi` but moving few useful tokens. The honest metrics are **MFU** (model FLOPs utilization — achieved FLOPs ÷ peak, meaningful for prefill) and **MBU** (model bandwidth utilization — achieved bytes/s ÷ peak HBM bandwidth, meaningful for decode). Decode at batch size 1 often runs below 5% MFU while near 100% MBU — the hardware isn't lazy, the workload is bandwidth-bound.
+
+Prefill and decode tokens also cost differently — prefill processes tokens in parallel (cheap per token), decode one at a time (expensive per token). API pricing reflects this: input tokens are typically 3–5× cheaper than output tokens, and *cached* input tokens up to 10× cheaper again.
+
+### Memory: the concurrency ceiling
+
+HBM must hold model weights + the KV-cache of every in-flight request. From lesson 12: a 70B model at FP16 needs ~140 GB for weights, and each 8k-context sequence adds ~2.7 GB of KV-cache. On 4×H100 (320 GB), that caps concurrency at roughly 65 sequences *before* any optimization — and hitting the cap means requests queue, which shows up as TTFT, not as an out-of-memory error. Memory pressure masquerades as a latency problem.
+
+### The quality floor
+
+Every optimization below either preserves quality exactly (batching, caching, kernels) or risks degrading it (quantization, distillation, smaller models, aggressive output capping). Before touching the second group, freeze an **offline eval suite** (the golden set from your [LLM evaluation](/courses/building-with-llms/08-llm-evaluation) practice) and define the floor — e.g., "answer-quality score within 1% of FP16 baseline." An optimization that saves 40% cost and silently drops resolution rate 5% is a net loss.
+
+### Workload shape
+
+The final constraint is what your traffic actually looks like:
+
+| Workload | Input : output | Bound by | First lever to check |
+|---|---|---|---|
+| RAG / support assistant (this case) | ~8k : 300 (≈27:1) | Prefill / TTFT | Prefix & prompt caching |
+| Code generation, creative writing | 1 : 2 or longer outputs | Decode / ITL | Quantization, speculative decoding |
+| Nightly batch summarization | any | Throughput only | Max batch size, cheaper GPUs |
+| Agent loops (many sequential calls) | grows each turn | TTFT × N calls | Prompt caching across turns |
+
+Our scenario is **prefill-heavy and interactive** — 96% of processed tokens are input tokens, and most of those are identical across requests (the shared system prompt + retrieval template). Keep that in mind; it decides the ending.
+
+The constraint table for the case study:
+
+| Constraint | Target | Baseline (at 10× traffic) |
+|---|---|---|
+| TTFT p95 | < 500 ms | 3.2 s ❌ |
+| ITL p95 | < 50 ms | 45 ms ✅ |
+| Quality floor | ≥ 99% of FP16 eval score | 100% ✅ |
+| Cost | < $0.90 per 1k conversations | $2.10 ❌ |
+
+<Exercise id="llm-inference-constraints" />
+
+## 2 — Model-level optimization
+
+Model-level levers change **the model itself** — its weights, architecture, or decoding procedure. They're the levers with the biggest ceilings and the only ones that can move the quality floor, so each one ends with the same step: re-run the eval suite.
+
+### Quantization: fewer bytes per weight
+
+Decode reads every weight from HBM per token, so halving bytes-per-weight ≈ halves ITL (lesson 12's bandwidth-floor argument). The practical ladder:
+
+- **FP8** (Hopper/Blackwell native) — near-lossless, ~1.7–2× decode speedup over FP16, minimal calibration. The modern default for serving.
+- **INT8 weights** — ~2× speedup, typically < 0.5% quality loss.
+- **INT4 via GPTQ/AWQ** — ~3.5–4× speedup, 1–2% quality loss with good calibration; check the floor carefully on reasoning-heavy tasks.
+- **KV-cache quantization to FP8/INT8** — halves cache size, doubling the concurrency ceiling; nearly free quality-wise and it compounds with weight quantization.
+
+(Mechanics in [Model Merging & Quantization](/courses/fine-tuning-alignment/05-model-merging-and-quantization).)
+
+### A smaller model: distillation and cascades
+
+The cheapest token is one a smaller model generates. Two forms:
+
+- **Distillation** — train a 8–13B student on the 70B model's outputs for *your* task distribution. On a narrow domain like product support, a well-distilled student often matches the teacher within noise, at ~8× lower serving cost.
+- **Cascades / model routing** — a cheap classifier (or the small model's own confidence) routes easy requests ("reset my password") to the small model and hard ones to the 70B. Even a 60/40 split cuts cost nearly in half without betting everything on the student.
+
+### Architecture levers: shrink the KV-cache
+
+The KV-cache formula scales with the number of KV heads $H$ — so architectures that share K/V across query heads shrink it directly:
+
+- **MQA** (one KV head) and **GQA** (grouped, e.g. 8 KV heads for 64 query heads) cut cache 8–64× vs vanilla multi-head attention. Llama-3-class models ship with GQA already.
+- **MLA** (multi-head latent attention, DeepSeek) compresses K/V into a low-rank latent, cutting cache a further ~4× beyond GQA.
+- **Sliding-window attention** (Mistral) bounds cache growth to the window length regardless of context.
+- **Cross-layer KV-sharing** (Character.AI) shares cache between adjacent layers for another 2–3×.
+
+You mostly *choose* these when picking a base model rather than retrofit them — which makes "KV-cache footprint" a first-class model-selection criterion for serving-heavy products, right next to eval scores.
+
+### Decoding levers
+
+- **Speculative decoding** — a draft model proposes $k$ tokens; the target verifies them in one forward pass. 2–3× effective decode speedup on templated support text, zero quality change (the target model validates every token).
+- **Cap and trim outputs** — the cheapest tokens are the ones never generated. Tightening the system prompt's answer-format instructions cut our scenario's mean output from 300 to 220 tokens; `max_tokens` plus a "be concise" instruction is a real optimization, not a hack.
+
+<Callout type="warning" title="Every model-level lever ends with the eval suite">
+Quantization, distillation, routing, and output-capping all move quality — sometimes in ways that only show up on specific slices (multilingual tickets, long-context questions). Re-run the frozen eval suite after each change and compare against the floor *per slice*, not just in aggregate. The eval harness is what makes aggressive optimization safe.
+</Callout>
+
+<Exercise id="llm-inference-model-levers" />
+
+## 3 — Compute-level optimization
+
+Compute-level levers change **how the fixed model runs** — kernels, scheduling, memory management, parallelism, hardware. They're quality-neutral, which is why serving stacks bundle them as defaults.
+
+### Kernels: the free tier
+
+**FlashAttention** (tiled attention that never materializes the $s \times s$ score matrix), fused kernels, and **CUDA graphs** (pre-recorded launch sequences that eliminate per-step CPU overhead — a real ITL win at small batch sizes) all come free in vLLM/TensorRT-LLM. The lever here is simply *running a current stack version*; teams on a year-old fork routinely leave 30% on the table.
+
+### Scheduling and cache management
+
+From lesson 12, the two pillars: **continuous batching** (rotate finished requests out slot-by-slot every decode step) and **PagedAttention** (allocate KV-cache in blocks, no padding waste). One addition matters for our prefill-heavy scenario:
+
+- **Chunked prefill** — split an 8k-token prefill into chunks interleaved with decode steps, so one giant prompt no longer stalls every other request's ITL. This is the fix for "ITL spikes whenever a long-context request arrives."
+
+### Prefix and prompt caching: the RAG jackpot
+
+Every request in our scenario begins with the same ~5k tokens (system prompt + few-shot examples + retrieval template). **Prefix caching** stores that prefix's KV-cache once and reuses it across requests — those 5k tokens are never prefilled again. With ~63% of every prompt shared, prefill work drops ~60% instantly, and TTFT with it. Multi-turn conversations compound the win: each turn reuses the whole previous context's cache instead of re-prefilling it.
+
+This is such a large effect that API providers surface it as pricing: Anthropic discounts cached input tokens 90%, OpenAI 50%. When a vendor gives away 90%, they're telling you what the cache saves *them* — and what prefix caching will save you self-hosted (one flag in vLLM: `enable_prefix_caching=True`).
+
+### Parallelism and disaggregation
+
+- **Tensor parallelism (TP)** splits every layer across GPUs — the only parallelism that reduces *per-request* latency, at the price of inter-GPU communication. Use the minimum TP degree that fits the model (TP=4 for a 70B at FP16; TP=2 once FP8-quantized).
+- **Replication** — more independent copies behind a load balancer — is how you buy *throughput*. Don't raise TP to serve more traffic; add replicas.
+- **Prefill/decode disaggregation** (DeepSeek, DistServe) runs prefill and decode on *separate* GPU pools, since one is compute-bound and the other bandwidth-bound. Each pool scales and batches to its own bottleneck, and prefill spikes can't disturb decode ITL. This is the frontier-lab pattern; most teams get 80% of the benefit from chunked prefill inside one pool.
+
+### Hardware by roofline
+
+Decode-bound serving wants **bandwidth** (H200's HBM3e over H100 is mostly a decode upgrade; Groq is the extreme point); prefill-heavy and batch workloads can use **compute-per-dollar** chips (L40S, older A100s). Our scenario is prefill-heavy *after* caching kills most prefill — so post-optimization it becomes decode-bound, and the right fleet shifts accordingly. Re-derive the roofline position after each big lever; the bottleneck moves. (Deeper treatment: [GPUs for Deep Learning](/courses/gpu-programming/04-gpus-for-deep-learning) and [Memory & Performance](/courses/gpu-programming/03-memory-and-performance).)
+
+## 4 — Metrics and the levers that move them
+
+The map that turns sections 1–3 into an action list. For each metric: what physically bounds it, and the levers in descending order of typical leverage.
+
+| Metric | Physically bounded by | Levers, highest leverage first |
+|---|---|---|
+| **TTFT** | Prefill compute + queueing | Prefix/prompt caching → shorter prompts (trim retrieval to what's needed) → chunked prefill (protects p95) → more TP / disaggregated prefill pool → faster-compute GPUs |
+| **ITL / TPOT** | HBM bytes read per token | Weight quantization (FP8/INT4) → KV-efficient architecture (GQA/MLA — a model-selection choice) → speculative decoding → lower batch ceiling (trades throughput) → bandwidth-heavy GPUs |
+| **Throughput** | Batch occupancy × bandwidth | Continuous batching + PagedAttention → KV-cache quantization (fits more sequences) → weight quantization (frees HBM) → replicas + autoscaling |
+| **Cost / 1M tokens** | Goodput per GPU-dollar | Raise occupancy (consolidate, autoscale, batch off-peak) → smaller/distilled model + routing → quantization → cheaper GPUs per roofline → shorter outputs |
+| **Quality** | The floor, not a target | Guard with the frozen eval suite; quality-risky levers (quantization, distillation, routing, output caps) require per-slice re-evaluation |
+
+Read the table column-wise before acting: several levers appear in multiple rows (quantization moves ITL, throughput, *and* cost), which is why the highest-leverage moves are worth sequencing first.
+
+## Scoping the work: a decision tree
+
+Which lever first? Walk the tree from the top; each branch orders its levers by leverage-per-effort. Quality-neutral levers come before quality-risky ones within each branch.
+
+```
+START: freeze the eval suite; measure TTFT p95, ITL p95, goodput,
+       cost/1M tokens, GPU occupancy, and the input:output token ratio
+  │
+  ├─ Q0. Are you on a current serving stack (vLLM / TRT-LLM) with
+  │      continuous batching + paged KV enabled?
+  │      no → do that first; re-measure (often 2–10× by itself)
+  │
+  ├─ Q1. Would a smaller / distilled model clear the quality floor?
+  │      yes → use it (or cascade: route easy traffic to it); re-measure
+  │      no / partially → continue with the big model ↓
+  │
+  └─ Q2. Which constraint is violated?
+       │
+       ├─ TTFT too high
+       │    ├─ shared prompt prefix (RAG / system prompt / multi-turn)?
+       │    │    yes → enable prefix caching  ← biggest RAG win
+       │    ├─ prompts longer than needed? → trim retrieval, compress context
+       │    ├─ p95 only (spikes)? → chunked prefill
+       │    └─ still high → raise TP / disaggregate a prefill pool
+       │
+       ├─ ITL too high
+       │    ├─ FP16 weights? → quantize to FP8/INT8 (then INT4 if floor holds)
+       │    ├─ outputs templated/predictable? → speculative decoding
+       │    ├─ batch too large? → cap batch or add replicas
+       │    └─ still high → bandwidth-heavy hardware (H200-class)
+       │
+       ├─ SLOs met, cost too high
+       │    ├─ occupancy < ~40%? → consolidate replicas, autoscale,
+       │    │                       shift batch work off-peak (no model change)
+       │    ├─ occupancy healthy → distill / route / quantize (re-run evals)
+       │    └─ then → re-derive roofline, move to cheaper fleet
+       │
+       └─ Throughput ceiling at peak (queueing, TTFT degrades under load)
+            ├─ KV-cache limiting concurrency? → quantize KV-cache,
+            │                                    prefer GQA/MLA models
+            └─ compute genuinely saturated → replicas + autoscaling
+```
+
+### The tree applied to the case study
+
+**Q0** — already on vLLM with continuous batching: pass. **Q1** — a distilled 8B cleared the floor on 58% of ticket types; the team deployed a cascade routing that slice to the student. **Q2** — TTFT branch: the 5k-token shared prefix made prefix caching the first lever. Then the cost branch: occupancy was 31%, so replicas were consolidated and autoscaling added *before* any further model surgery. Finally FP8 quantization (evals held at 99.4%) freed enough HBM to drop from TP=4 to TP=2.
+
+| Step (in tree order) | TTFT p95 | ITL p95 | Cost / 1k conversations |
+|---|---|---|---|
+| Baseline (vLLM, FP16, TP=4) | 3.2 s | 45 ms | $2.10 |
+| + Cascade: 8B student for easy 58% | 2.9 s | 45 ms | $1.30 |
+| + Prefix caching (5k shared tokens) | 620 ms | 45 ms | $1.05 |
+| + Chunked prefill (kills p95 spikes) | 410 ms ✅ | 41 ms | $1.02 |
+| + Consolidation + autoscaling (occupancy 31→68%) | 420 ms ✅ | 41 ms | $0.71 ✅ |
+| + FP8 weights + KV (TP=4→2, evals 99.4%) | 380 ms ✅ | 24 ms ✅ | $0.44 ✅ |
+
+A 4.8× cost reduction and 8× TTFT improvement — with exactly one lever (FP8) that touched the quality floor, taken last, with the eval suite watching. That ordering is the whole discipline: *constraints first, quality-neutral levers first, evals always.*
+
+<Exercise id="llm-inference-decision-tree" />
+
+## Key takeaways
+
+- **Latency is two SLOs**: TTFT (prefill + queueing) and ITL (decode bandwidth). Measure both at p95 and optimize them with different levers.
+- **Workload shape picks the lever**: prefill-heavy RAG traffic with shared prefixes makes **prefix/prompt caching** the highest-leverage move; decode-heavy generation makes **quantization + speculative decoding** first.
+- **Model-level levers** (quantization, distillation, cascades, KV-efficient architectures, output capping) have the biggest ceilings but can move quality — every one ends with re-running a frozen eval suite.
+- **Compute-level levers** (current serving stack, continuous batching, paged KV, chunked prefill, prefix caching, TP vs replication, roofline-matched hardware) are quality-neutral — exhaust them first when they address the binding constraint.
+- **Optimize goodput and occupancy, not vanity throughput**: cost fixes often need zero model changes — consolidation and autoscaling moved this case study 30% by themselves.
+- The **decision tree** is the discipline: measure constraints → try the smaller model → branch on the violated SLO → quality-neutral before quality-risky → re-measure, because the bottleneck moves after every lever.
+
+## Related concepts
+
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — the fundamentals this case study sequences: KV-cache math, continuous batching, PagedAttention, roofline, serving stacks
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — quantization, pruning, and distillation mechanics
+- [**Model Merging & Quantization**](/courses/fine-tuning-alignment/05-model-merging-and-quantization) — GPTQ/AWQ calibration and how low you can go before the floor cracks
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — tensor cores, mixed precision, and why decode can't use the FLOPs
+- [**LLM Evaluation**](/courses/building-with-llms/08-llm-evaluation) — building the frozen eval suite that makes aggressive optimization safe

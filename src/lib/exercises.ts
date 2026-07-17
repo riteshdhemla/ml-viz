@@ -9344,6 +9344,53 @@ const allExercises: Exercise[] = [
     ],
   },
 
+  // ── Optimizing LLM Inference ──────────────────────────────────────────────
+  {
+    id: "llm-inference-constraints",
+    type: "multiple-choice",
+    question:
+      "A RAG support assistant sends ~8,000 input tokens (5,000 of them a shared system prompt + retrieval template) and generates ~300 output tokens per request. TTFT p95 is 3.2 s against a 500 ms SLO. Which lever should you reach for first?",
+    hint: "Which phase dominates this workload, and which part of the prompt is identical across requests?",
+    explanation:
+      "This workload is prefill-heavy: ~96% of processed tokens are input tokens, and TTFT is dominated by prefill. Since ~5,000 of the 8,000 input tokens are byte-identical across requests, prefix caching stores that prefix's KV-cache once and skips re-prefilling it on every request — cutting prefill work (and TTFT) by more than half with zero quality risk. Quantization mainly speeds up decode (ITL), which already meets its SLO; speculative decoding also targets decode; adding replicas raises throughput but doesn't make any single prefill faster.",
+    options: [
+      { id: "a", label: "Enable prefix/prompt caching so the 5k shared tokens are never re-prefilled", isCorrect: true },
+      { id: "b", label: "Quantize the weights to INT4 to speed up token generation", isCorrect: false },
+      { id: "c", label: "Add speculative decoding with a small draft model", isCorrect: false },
+      { id: "d", label: "Add more replicas behind the load balancer", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-inference-model-levers",
+    type: "multiple-choice",
+    question:
+      "Quantizing a 70B model's weights from FP16 to INT8 roughly halves inter-token latency during decode. Why does halving the bytes per weight translate so directly into decode speed?",
+    hint: "Recall which resource — compute or memory bandwidth — bounds the decode phase.",
+    explanation:
+      "Decode is memory-bandwidth-bound: each decode step must read essentially all model weights from HBM to produce one token, so per-token latency is approximately (bytes of weights) / (HBM bandwidth). Halving bytes per weight halves the bytes read per step, and latency follows almost linearly. The GPU's FLOPs are not the bottleneck during decode — that's why adding compute doesn't help but shrinking weights does, and why prefill (compute-bound) sees a much smaller benefit.",
+    options: [
+      { id: "a", label: "INT8 arithmetic units are twice as fast as FP16 units", isCorrect: false },
+      { id: "b", label: "Decode is bandwidth-bound: each token reads all weights from HBM, so half the bytes ≈ half the latency", isCorrect: true },
+      { id: "c", label: "Quantization halves the number of layers the token must pass through", isCorrect: false },
+      { id: "d", label: "INT8 doubles the KV-cache hit rate", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-inference-decision-tree",
+    type: "multiple-choice",
+    question:
+      "Your serving fleet meets its TTFT and ITL SLOs, but cost per million tokens is 2× budget and GPU occupancy averages 25% (GPUs idle between requests). Per the scoping decision tree, what should you do first?",
+    hint: "Is this a 'GPU inefficient while busy' problem or a 'GPUs idle' problem — and which levers carry quality risk?",
+    explanation:
+      "At 25% occupancy the GPUs are idle most of the time — the cost problem is over-provisioning, not model inefficiency. Consolidating replicas, autoscaling with traffic, and shifting batch work off-peak raise occupancy and cut cost with zero quality risk and no eval run needed. Quantization and distillation are quality-risky levers that address a different problem (cost while the GPU is busy); reaching for them first adds risk without fixing the idle capacity you're paying for. The decision tree orders quality-neutral levers before quality-risky ones within every branch.",
+    options: [
+      { id: "a", label: "Consolidate replicas and add autoscaling to raise occupancy — no model change needed", isCorrect: true },
+      { id: "b", label: "Quantize to INT4 immediately for the biggest cost reduction", isCorrect: false },
+      { id: "c", label: "Distill to a smaller model and route all traffic to it", isCorrect: false },
+      { id: "d", label: "Upgrade to faster GPUs to finish requests sooner", isCorrect: false },
+    ],
+  },
+
   // ── Code Intelligence & Generation ────────────────────────────────────────
   {
     id: "code-gen-fim",
