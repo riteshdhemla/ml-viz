@@ -1,6 +1,8 @@
 /** Canonical site origin, no trailing slash. Safe to import anywhere. */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://ml-viz-ruby.vercel.app"
+  // `||` not `??`: CI may pass the variable as an empty string, which must
+  // also fall back (new URL("") throws at build time).
+  process.env.NEXT_PUBLIC_SITE_URL || "https://ml-viz-ruby.vercel.app"
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "ML Viz";
