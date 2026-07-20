@@ -2,6 +2,9 @@ import type { MetadataRoute } from "next";
 import { getAllCourses, getLessonsForCourse, getAllWikiPages } from "@/lib/content";
 import { absoluteUrl } from "@/lib/site";
 
+// Required for the static-export (GitHub Pages) build; a no-op on Vercel.
+export const dynamic = "force-static";
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const courses = getAllCourses();
 

@@ -1,5 +1,8 @@
 import { ImageResponse } from "next/og";
 
+// Required for the static-export (GitHub Pages) build; a no-op on Vercel.
+export const dynamic = "force-static";
+
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
