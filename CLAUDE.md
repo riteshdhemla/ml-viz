@@ -79,6 +79,23 @@ The site is deployed to Vercel. Key facts:
 - `src/lib/content.ts` uses `fs` (server-side only) — this works fine on Vercel serverless runtime.
 - `vercel.json` is in the repo root; Vercel reads it automatically.
 
+### GitHub Pages mirror
+
+A read-only mirror is deployed to `https://riteshdhemla.github.io/ml-viz` by
+`.github/workflows/deploy-pages.yml` on every push to `main` (repo Settings →
+Pages → Source must be set to **GitHub Actions**). Vercel stays canonical:
+
+- The mirror is built with `GITHUB_PAGES=true BASE_PATH=/ml-viz npm run build` —
+  `next.config.ts` then switches to `output: "export"` + `basePath` +
+  `trailingSlash` and emits static HTML to `out/`.
+- `NEXT_PUBLIC_SITE_URL` stays the Vercel URL on the mirror build, so canonical
+  URLs, JSON-LD, and sitemap entries all point at Vercel; `robots.ts` emits
+  `Disallow: /` on the mirror so the two deployments never compete in search.
+- Static export means: no API routes, no middleware, every dynamic route needs
+  `generateStaticParams`, and metadata routes (`sitemap.ts`, `robots.ts`,
+  `icon.tsx`, `opengraph-image.tsx`) need `export const dynamic = "force-static"`.
+  Keep new features within these constraints or the Pages build will fail.
+
 ### CD pipeline
 
 Production deploys are **tag-driven**, not branch-driven:

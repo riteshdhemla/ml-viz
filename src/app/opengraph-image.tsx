@@ -1,6 +1,9 @@
 import { ImageResponse } from "next/og";
 import { SITE_DESCRIPTION } from "@/lib/site";
 
+// Required for the static-export (GitHub Pages) build; a no-op on Vercel.
+export const dynamic = "force-static";
+
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = "ML Viz — Learn Machine Learning Interactively";
