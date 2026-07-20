@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     trailingSlash: true,
   }),
   env: {
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL ?? "https://ml-viz-ruby.vercel.app",
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "https://ml-viz-ruby.vercel.app",
     NEXT_PUBLIC_GITHUB_PAGES: isGitHubPages ? "true" : "",
   },
 };

@@ -47,7 +47,8 @@ jobs:
           GITHUB_PAGES: "true"
           BASE_PATH: /ml-viz
           # Canonical URLs keep pointing at the Vercel production site.
-          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
+          # Falls back if the repo variable is unset (empty would break new URL()).
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'https://ml-viz-ruby.vercel.app' }}
 
       - name: Disable Jekyll processing
         run: touch out/.nojekyll
