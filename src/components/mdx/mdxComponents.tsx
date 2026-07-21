@@ -85,6 +85,7 @@ import { LowRankViz } from "@/components/visualizations/LowRank/LowRankViz";
 import { VCDimensionViz } from "@/components/visualizations/VCDimension/VCDimensionViz";
 import { DistributedTrainingViz } from "@/components/visualizations/DistributedTraining/DistributedTrainingViz";
 import { TraceWaterfallViz } from "@/components/visualizations/TraceWaterfall/TraceWaterfallViz";
+import { LatencyCriticalPathViz } from "@/components/visualizations/LatencyCriticalPath/LatencyCriticalPathViz";
 import { CondorcetViz } from "@/components/visualizations/Condorcet/CondorcetViz";
 import { ReservoirSamplingViz } from "@/components/visualizations/ReservoirSampling/ReservoirSamplingViz";
 import { OnlineRegretViz } from "@/components/visualizations/OnlineRegret/OnlineRegretViz";
@@ -180,6 +181,7 @@ export const mdxComponents: MDXComponents = {
   VCDimensionViz,
   DistributedTrainingViz,
   TraceWaterfallViz,
+  LatencyCriticalPathViz,
   CondorcetViz,
   ReservoirSamplingViz,
   OnlineRegretViz,
