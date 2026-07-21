@@ -1,0 +1,187 @@
+---
+title: "Agentic Analysis: A Metrics Taxonomy"
+description: "The four levels at which you measure an agentic system — single-agent correctness, per-agent profiling, multi-agent trajectory correctness, and whole-system health — plus the latency metrics that decide usability and the leading indicators that actually predict an effective agent."
+topics: ["agents"]
+relatedLessons:
+  - "agent-design-patterns/10-evaluating-agents"
+  - "agent-design-patterns/11-deploying-agents"
+estimatedMinutes: 15
+---
+
+# Agentic Analysis: A Metrics Taxonomy
+
+The [evaluating-agents lesson](/courses/agent-design-patterns/10-evaluating-agents) draws the
+central line — score the **outcome** *and* the **trajectory**. This page is the reference that
+organises every metric worth tracking into **four levels of aggregation**, from a single agent
+on a single task up to a whole deployment. Getting the level right matters: a number that is
+diagnostic at one level (loop score on one trajectory) is meaningless at another (average loop
+score across a fleet hides the looping tail).
+
+| Level | Unit of analysis | The question it answers |
+|---|---|---|
+| **1 · Single-agent correctness** | one agent · one task/turn | Did it do the right thing, this once? |
+| **2 · Per-agent metrics** | one agent · many tasks / over time | Is this agent a reliable, efficient unit? |
+| **3 · Multi-agent trajectory correctness** | a team · one task | Did the *coordination path* work? |
+| **4 · Overall system analysis** | the deployment · everything | Is the product healthy and economical? |
+
+Two concerns cut across all four: **latency** (does anyone want to wait for it?) and the small
+set of **leading indicators** that move *before* success rate does.
+
+## Level 1 — Single-agent correctness
+
+The micro view: one agent, one task or turn. Both axes of the lesson apply here in miniature.
+
+**Outcome:**
+- **Task success / goal satisfaction** — a programmatic end-state checker (tests pass, the order
+  shows refunded, the file contains the value). This is what users actually care about.
+- **Final-answer accuracy** — exact-match / F1 / rubric score against a reference, where one exists.
+
+**Trajectory (the path):**
+- **Tool-selection accuracy** — did it reach for the right tool for the step?
+- **Tool-argument validity** — right tool, well-formed and correct arguments.
+- **Grounding / faithfulness** — are claims and actions justified by *real* observations, with no
+  hallucinated tool results?
+- **Step justification** — does each action follow from the preceding thought? (An
+  [LLM-as-judge](/wiki/llm-as-judge) call over the step, since there's no programmatic checker.)
+- **Constraint / policy compliance** — no forbidden action taken, even when it would have "worked".
+- **Format / schema validity** — structured outputs parse.
+- **Self-correction / recovery rate** — did it recover after a tool error instead of derailing?
+
+**Reliability under stochasticity.** A single run is noise. Report **pass@k** (solved in ≥1 of k
+attempts) *and* **pass^k / consistency** (solved in *all* k). High pass@1 with low consistency
+means unreliable, not capable — the distinction a single-run number conceals.
+
+## Level 2 — Per-agent metrics
+
+Zoom out to profile **one agent as a reusable unit**, aggregated across a task suite and across
+time. These are the numbers you put on an agent's "spec sheet".
+
+| Metric | Formula / signal | What it tells you |
+|---|---|---|
+| **Success rate** | $\frac{1}{N}\sum_i \mathbb{1}[\text{task }i\text{ solved}]$ + CI | Headline capability |
+| **Steps per task** | mean / p50 / **p95** of (LLM + tool calls) | Efficiency; tail = thrashing |
+| **Efficiency ratio** | $\dfrac{\text{min steps (oracle)}}{\text{steps taken}}$ | Wasted work per solve |
+| **Loop / redundancy** | repeated (tool, args) pairs per trajectory | Reasoning loops |
+| **Tool error rate** | failed calls / total, **per tool** | A broken or misused tool |
+| **Cost per success** | $ / solved task | Unit economics of the agent |
+| **Calibration** | abstains / escalates when uncertain | Knows what it doesn't know |
+| **HITL rate** | gated actions / task | Guardrails too tight or too loose |
+| **Version drift** | Δ metrics vs. prior prompt/model/toolset | Regression from a rollout |
+
+Report distributions, not just means — agent failure lives in the tail, so **p95 steps-per-task**
+and **per-tool** error rates carry the signal that averages bury.
+
+## Level 3 — Multi-agent trajectory correctness
+
+When a **team** of agents collaborates on one task, new failure modes appear *between* the agents.
+The outcome can be right while the coordination path is quietly broken (or vice-versa).
+
+- **Collective task success** — does the joint outcome satisfy the goal?
+- **Routing / handoff accuracy** — was the right sub-agent picked for each subtask? A wrong
+  delegate poisons the whole downstream trajectory.
+- **Context-propagation fidelity** — does information survive the handoff intact? *Lost or garbled
+  context at a delegation boundary is the number-one multi-agent failure mode.*
+- **Coordination overhead** — extra steps / tokens spent communicating vs. a competent single agent.
+- **Redundant-work rate** — two agents independently doing the same subtask.
+- **Inter-agent message quality** — grounded, non-contradictory messages.
+- **Deadlock / livelock / infinite-delegation** — does the team make monotonic progress?
+- **Consensus quality** — for debate/vote patterns, agreement and
+  [Condorcet efficiency](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns).
+- **Credit / blame attribution** — which agent's step caused the failure? (Credit assignment along
+  the trajectory — the hard part of debugging a team.)
+- **Trace completeness** — a single `trace_id` stitched across trust boundaries
+  ([MCP / A2A](/wiki/agent-protocols-mcp-a2a)), or the trajectory is unreconstructable.
+
+<Callout type="info" title="Trajectory correctness ≠ sum of single-agent correctness">
+  Each agent can be individually correct and the team still fail — A solves its subtask perfectly
+  but hands B the wrong artifact, or two agents both "succeed" at the same subtask while the real
+  one goes undone. Level 3 metrics measure the *edges* of the graph, not the nodes.
+</Callout>
+
+## Level 4 — Overall system analysis
+
+The macro view: the whole deployment across all users, tasks, and time. This is product and
+operational health, and it's where cost and latency *distributions* decide whether the agent ships.
+
+- **Fleet success / completion rate**, sliced by task type and user segment.
+- **Containment (autonomy) rate** — share of tasks resolved with *no* human handoff. The headline
+  business metric for a support or ops agent.
+- **Escalation / intervention rate** — the complement, and a leading indicator of trouble.
+- **Latency & cost distributions** — p50 / **p95 / p99**. The tail is the story.
+- **Cost per resolved task** — unit economics / cost-to-serve; the number that kills or ships an agent.
+- **Throughput / concurrency**, queue depth.
+- **Reliability / SLOs** — availability, tool-dependency uptime, error budget.
+- **Safety incident rate** — guardrail triggers and unsafe-but-permitted actions per 1k tasks.
+- **Coverage** — what fraction of the real task distribution the agent even attempts.
+- **Drift** — input-distribution drift and performance drift over time.
+- **A/B trajectory metrics** — the Level-2/3 metrics compared across model/prompt/tool rollouts.
+
+## Latency: the usability axis
+
+Steps are **sequential**, so end-to-end latency is a function of trajectory length, not raw
+compute. Decompose it rather than reporting one wall-clock number:
+
+- **Time-to-first-token / time-to-first-action** — perceived responsiveness; what the user feels first.
+- **Per-step latency**, split into **LLM-call** vs **tool-call** time (different levers fix each).
+- **Tool latency per tool** — external-dependency tail, often the real culprit.
+- **End-to-end task latency** — wall-clock p50 / p95 / p99.
+- **Critical-path (sequential) depth vs. total steps** — the gap is your parallelisable slack.
+- **Streaming cadence** — inter-token latency; keeps the user engaged *during* a long task.
+- **HITL wait time** — separate *active compute* from *wall-clock*; approval pauses aren't the agent's fault.
+- **Latency-SLO adherence** — the share of tasks under budget.
+
+Usability anchors: **< 1 s** feels conversational, **< 10 s** holds attention. Agents routinely
+blow past both, so the two highest-leverage fixes are **streaming intermediate progress** and
+**parallelising independent tool calls** — which shrink the *critical path* without cutting work:
+
+<LatencyCriticalPathViz />
+
+Cost, meanwhile, grows **super-linearly** in steps, because each step re-sends the growing transcript:
+
+$$\text{tokens}_{\text{task}} \approx \sum_{s=1}^{S}\big(c_0 + s\,\bar{m}\big) = S c_0 + \frac{S(S+1)}{2}\,\bar{m}$$
+
+where $c_0$ is the fixed context and $\bar{m}$ the tokens added per step — a **2× longer
+trajectory costs ≈ 4× the tokens**. Parallelism buys latency, never dollars, which is exactly why
+step count, loop score, and critical-path depth deserve *alerts*, not just dashboards.
+
+## The metrics that enable effective agents
+
+Success rate is a **lagging** indicator — by the time it drops, the agent has already failed a lot
+of users. A short panel of **leading** indicators moves first and predicts effectiveness. Track
+these as an early-warning "can this agent act well?" board:
+
+| Leading indicator | Level | Why it predicts effectiveness |
+|---|---|---|
+| **Tool-selection accuracy** | 1 | Can't succeed if it reaches for the wrong tool |
+| **Tool-argument validity** | 1 | Right tool + wrong args = a wasted, misleading step |
+| **Grounding / faithfulness** | 1 | Acting on a hallucinated observation compounds downstream |
+| **Efficiency ratio** | 2 | Economical action; directly drives cost *and* latency |
+| **Calibration / knowing-when-to-stop** | 2 | Avoids digging holes; enables clean escalation |
+| **Recovery rate** | 1–2 | Self-healing keeps one tool error from tanking the task |
+| **Routing accuracy** | 3 | Wrong delegate poisons the whole team trajectory |
+| **Context-propagation fidelity** | 3 | Lost context is the top multi-agent failure mode |
+
+## Common mistakes
+
+1. **Scoring only the final answer** — Level-1 outcome without trajectory misses unsafe or wasteful
+   paths that happen to succeed.
+2. **Reporting means, not tails** — agent failure lives in p95/p99; averages bless a looping fleet.
+3. **Measuring the team as summed individuals** — Level-3 correctness is about the *edges* (handoffs,
+   context), not the nodes.
+4. **Watching lagging metrics only** — success rate drops after the damage; the leading-indicator
+   panel is the early warning.
+5. **Reporting one wall-clock latency** — without the LLM/tool split and critical-path depth you
+   can't tell what to parallelise.
+
+## Related concepts
+
+- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents) — the outcome-vs-trajectory
+  foundation, pass@k, and LLM-as-judge validation this taxonomy builds on
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — the budget
+  ceilings and guardrails these system-level metrics verify
+- [**Observability for Agents**](/wiki/agent-observability) — the trace store and shape-metric alerting
+  that produce these numbers in production
+- [**LLM-as-a-Judge**](/wiki/llm-as-judge) — how the trajectory metrics without a programmatic checker
+  actually get scored
+- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a) — the delegation edges that Level-3
+  trace-completeness metrics must cross
