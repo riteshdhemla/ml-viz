@@ -300,7 +300,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
 - [x] **A3 · `ProjectLoopViz`** — per §2.3 and `prompts/new-visualization.md`;
   string prop `variant`; register in `mdxComponents.tsx`; add to the viz
   registry table in `CLAUDE.md`.
-- [ ] **A4 · Hub wiki page: `ml-project-loop`** — `src/content/wiki/ml-project-loop.mdx`
+- [x] **A4 · Hub wiki page: `ml-project-loop`** — `src/content/wiki/ml-project-loop.mdx`
   (topics `["ml-fundamentals"]`, relatedLessons: `ml-in-practice/04-ml-systems-design`
   + `model-evaluation` lesson 01) embedding `<ProjectLoopViz variant="ml" />`.
   Contents: the slot test (§1) with 5–6 worked placements; the six stages
