@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { LessonMeta } from "@/types/course";
 import { MdxContent } from "@/components/mdx/MdxContent";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
+import { SpineNav } from "@/components/lessons/SpineNav";
 import { AskAiButton } from "@/components/lessons/AskAiButton";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
@@ -17,6 +18,8 @@ interface Props {
   prev: LessonMeta | null;
   next: LessonMeta | null;
   allLessons: LessonMeta[];
+  /** The course's spine id, for the loop-position strip. */
+  spine?: string;
 }
 
 const LESSON_TYPE_BADGE: Partial<Record<LessonMeta["type"], { label: string; className: string }>> = {
@@ -25,7 +28,7 @@ const LESSON_TYPE_BADGE: Partial<Record<LessonMeta["type"], { label: string; cla
   playground: { label: "Playground", className: "bg-orange-500/10 text-accent-orange border-orange-500/20" },
 };
 
-export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
+export function LessonLayout({ meta, source, prev, next, allLessons, spine }: Props) {
   const isQuiz = meta.type === "quiz";
   const notebookUrl = isQuiz ? null : getNotebookUrl(meta.courseSlug, meta.slug, meta.notebookUrl);
   const badge = LESSON_TYPE_BADGE[meta.type];
@@ -68,6 +71,7 @@ export function LessonLayout({ meta, source, prev, next, allLessons }: Props) {
 
       {/* Content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-12">
+        {!isQuiz && <SpineNav spine={spine} stageIds={meta.spineStages} />}
         <article className="prose-lesson">
           <MdxContent source={source} />
         </article>
