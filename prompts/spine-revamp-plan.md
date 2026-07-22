@@ -320,7 +320,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
   "parallels & differences vs the ML loop" section (§1 parallels table);
   notebook = minimal tool-using agent loop in plain Python (no framework),
   then the six stages annotated on it.
-- [ ] **A6 · Wiki page: `inductive-bias`** — the orthogonal architecture
+- [x] **A6 · Wiki page: `inductive-bias`** — the orthogonal architecture
   thread (§2.8): symmetry/equivariance table (CNN/RNN/transformer/GNN), why
   matching bias to data structure buys sample efficiency, what breaks when
   the bias is wrong, attention as the "remove the bias, inject position"
