@@ -1,0 +1,159 @@
+---
+title: "The ML Project Loop"
+description: "The spine every ML lesson hangs off — data → hypothesis space → objective → optimization → evaluation → deployment feedback. Learn to read any technique as a change to one or two slots, watch the bottleneck move from era to era, and follow one demand-forecasting problem all the way around the loop."
+topics: ["ml-fundamentals"]
+relatedLessons:
+  - "ml-in-practice/04-ml-systems-design"
+  - "model-evaluation/01-classification-metrics"
+estimatedMinutes: 16
+---
+
+# The ML Project Loop
+
+Most ML curricula are organised as a catalogue — supervised, unsupervised, then a
+parade of algorithms — which leaves you with fifty disconnected techniques and no
+way to place a fifty-first. This page is the antidote: a single decomposition that
+**every** technique on the site attaches to.
+
+$$
+\text{data} \rightarrow \text{hypothesis space} \rightarrow \text{objective}
+\rightarrow \text{optimization} \rightarrow \text{evaluation}
+\rightarrow \text{deployment feedback} \rightarrow (\text{back to data})
+$$
+
+<ProjectLoopViz variant="ml" />
+
+Pick this decomposition and never abandon it. A new paper, a new trick, a new loss
+— each is a modification to **one or two** of those six slots, and almost never all
+six at once. Once you internalise that, learning stops being memorisation and
+becomes placement.
+
+## The slot test
+
+For anything you encounter, ask two questions:
+
+> **Which slot does this modify, and what was breaking before?**
+
+The slot names the *kind* of change; "what was breaking" names the *reason it
+exists*. The delta is the understanding — the technique on its own is trivia.
+
+| Technique | Slot it changes | What was breaking before |
+|---|---|---|
+| Focal loss | **objective** | class imbalance let easy negatives dominate the loss, drowning rare positives |
+| Adam | **optimization** | plain SGD crawled through ill-conditioned, ravine-shaped loss surfaces |
+| Transformer | **hypothesis space** | RNNs couldn't reach long-range dependencies and couldn't be parallelised |
+| Dropout | **hypothesis space** (capacity) | over-parameterised nets memorised the training set |
+| Walk-forward validation | **evaluation** | random k-fold leaked the future into training on time-ordered data |
+| Feature store | **data** / **feedback** | features were computed one way in training and another in serving (train/serve skew) |
+
+<Callout type="tip" title="The transfer test">
+You've genuinely learned the loop when you can place a technique you were **never
+taught**. Try it now: which slot does *label smoothing* change, and what was
+breaking? (Objective — hard one-hot targets made the model over-confident and
+mis-calibrated.) The [notebook](https://ml-viz-ruby.vercel.app/wiki/ml-project-loop)
+turns this into a drill.
+</Callout>
+
+## One problem, all the way around: daily demand forecasting
+
+A single problem revisited at every layer builds more intuition than any amount of
+cross-referencing. The running example across the curriculum is a **daily demand
+forecast** — it has a tabular baseline, a natural sequence-model version, a
+distribution-shift story, an uncertainty story, and a live-serving feedback loop.
+
+**The canonical dataset (`daily-demand`, seed = 7).** A synthetic series of
+$T = 730$ days so every notebook can regenerate it identically:
+
+$$
+y_t = \underbrace{200 + 0.15\,t}_{\text{trend}}
+\;\cdot\; \underbrace{w_{(t \bmod 7)}}_{\text{weekly}}
+\;\cdot\; \underbrace{p_t}_{\text{promo}}
+\;+\; \underbrace{60 \cdot \mathbb{1}[t \ge 400]}_{\text{regime shift}}
+\;+\; \varepsilon_t,
+\qquad \varepsilon_t \sim \mathcal{N}(0, 12^2)
+$$
+
+with weekday multipliers $w = [1.0, 0.95, 0.98, 1.0, 1.15, 1.30, 1.20]$ (Mon–Sun),
+a promotion multiplier $p_t \in \{1.6, 1.9\}$ on a random $\approx 4\%$ of days
+(else $1$), and a permanent level jump of $+60$ from day 400 (a new store opens).
+That regime shift is deliberate — it's what makes the **feedback** stage matter.
+
+Here is the whole loop on this one problem:
+
+### 1 · Data
+Build the series, then features that respect **time**: calendar features
+(day-of-week, day-of-year) and **lags** ($y_{t-1}, y_{t-7}$). Split
+chronologically — train on days 0–599, validate 600–664, test 665–729 — because a
+random shuffle would let tomorrow's value help predict today (leakage). This slot
+is where most real projects live and die.
+→ deeper: [ML Systems Design](/courses/ml-in-practice/04-ml-systems-design),
+[Feature Engineering](/courses/ml-in-practice), [Time Series](/courses/time-series).
+
+### 2 · Hypothesis space
+Choose the family of functions the model may express. Start small: a **linear model**
+on the lag + calendar features — the tabular baseline. That choice *is* an inductive
+bias (additive, no interactions). Later you can widen it to gradient boosting or an
+RNN; each is a hypothesis-space change, nothing else.
+→ deeper: [Linear Regression](/courses/linear-regression),
+[Neural Networks](/courses/neural-networks), [Ensemble Methods](/courses/ensemble-methods).
+
+### 3 · Objective
+Define what "good" means. Squared error (MSE) if large misses hurt most; absolute
+error (MAE) if you want robustness to promo spikes; the **pinball loss** if you need
+quantiles for a safety-stock decision. Add an $\ell_2$ penalty to keep the lag
+weights from exploding. Same data, same model — a different objective encodes a
+different business cost.
+→ deeper: [Loss functions](/courses/optimization-ml),
+[Regularization](/courses/linear-regression).
+
+### 4 · Optimization
+Search the hypothesis space for parameters that minimise the objective. A linear
+model with squared error has a closed-form solution (normal equations); anything
+larger is gradient descent and its variants. The objective's *shape* — convex here,
+ravine-like for deep nets — decides how hard this slot is.
+→ deeper: [Optimization for ML](/courses/optimization-ml),
+[Gradient Descent](/courses/neural-networks).
+
+### 5 · Evaluation
+Estimate generalisation **honestly**. On time-ordered data that means
+**walk-forward** backtesting, not random k-fold. Report MAE / MAPE, check whether the
+predicted quantiles are actually calibrated (does the 90% band contain 90% of
+outcomes?), and do error analysis — you'll find the error spikes right at day 400.
+→ deeper: [Model Evaluation](/courses/model-evaluation),
+[Walk-forward validation](/wiki/walk-forward-validation),
+[Bias–variance](/wiki/bias-variance-decomposition).
+
+### 6 · Deployment feedback
+Ship it, then watch it. The regime shift at day 400 quietly wrecks a model trained
+only on days 0–399: residuals drift upward, MAPE degrades, and a drift monitor
+should fire and trigger a retrain on fresh data. That retrain **closes the loop** —
+the feedback stage feeds straight back into *data*.
+→ deeper: [Monitoring & drift](/courses/ml-in-practice),
+[Continual learning](/courses/ml-in-practice/09-continual-learning-and-test-in-production),
+[Streaming ML](/courses/streaming-ml).
+
+## Order by the moving bottleneck
+
+The loop also explains why the curriculum is *ordered* the way it is. Read the eras
+as a story where **each era's fix creates the next era's constraint**:
+
+- **Classical ML** is where all six slots are visible at once and the math is
+  tractable — the best place to learn the loop itself.
+- **Deep learning** made the *hypothesis space* expressive enough that
+  **optimization** became the hard part (vanishing gradients, initialization,
+  normalization).
+- **Scale** pushed the bottleneck into **memory bandwidth and communication** —
+  the whole subject of [GPU programming](/courses/gpu-programming).
+- **Production** moved it into **data and feedback loops**: drift, labelling,
+  train/serve skew, retraining cadence — the subject of
+  [ML in Practice](/courses/ml-in-practice) and [Streaming ML](/courses/streaming-ml).
+
+You can predict what comes next by asking which slot is currently the bottleneck.
+That predictive power is the real test that the structure has clicked.
+
+## Related concepts
+
+- [ML Systems Design & Problem Framing](/courses/ml-in-practice/04-ml-systems-design) — the loop as a design discipline, from problem framing outward.
+- [Classification Metrics](/courses/model-evaluation/01-classification-metrics) — the evaluation slot in depth, and why the metric *is* the objective in disguise.
+- [Walk-forward validation](/wiki/walk-forward-validation) — the evaluation slot done right for time-ordered data.
+- [Bias–variance decomposition](/wiki/bias-variance-decomposition) — the theory tying the hypothesis-space and evaluation slots together.
