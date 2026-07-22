@@ -505,6 +505,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ARIMAForecastViz | `visualizations/ARIMAForecast/` | time-series/03-deep-learning-for-time-series | ✅ |
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 | LatencyCriticalPathViz | `visualizations/LatencyCriticalPath/` | wiki/agent-metrics-taxonomy | ✅ |
+| ProjectLoopViz | `visualizations/ProjectLoop/` | wiki/ml-project-loop + wiki/agentic-project-loop (`variant="ml"\|"agentic"`) | ✅ |
 
 ---
 
