@@ -328,7 +328,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
   courses' first lessons; companion notebook (demonstrate equivariance
   numerically: shift an image → CNN features shift; permute nodes → GNN
   output invariant). B17/B18/B19/B21 then `<WikiLink>` to it.
-- [ ] **A7 · `spine-integrity.test.ts`** — per §2.10, with the coverage
+- [x] **A7 · `spine-integrity.test.ts`** — per §2.10, with the coverage
   assertion behind an allowlist initialized to *all* spine-tagged courses
   (each Phase B item removes its course from the allowlist — the test is the
   progress tracker).
