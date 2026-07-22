@@ -1,0 +1,100 @@
+---
+title: "Inductive Bias & Equivariance"
+description: "The second thread that runs through every architecture: CNNs, RNNs, transformers, and GNNs are one idea — match the model's symmetry to the data's symmetry — in four instantiations. Learn equivariance, why the right bias buys sample efficiency, what breaks when it's wrong, and why attention is the 'remove the bias, inject position' move."
+topics: ["neural-networks"]
+relatedLessons:
+  - "cnns/01-convolution-operation"
+  - "rnns/01-recurrent-neural-networks"
+  - "transformers/01-self-attention"
+  - "graph-neural-networks/01-graphs-as-data"
+estimatedMinutes: 13
+---
+
+# Inductive Bias & Equivariance
+
+The [hypothesis-space stage](/wiki/ml-project-loop) of the ML loop asks: *which family
+of functions can the model express?* Architecture is how you answer that — and the
+architectures look like four unrelated topics only until you see the single idea
+underneath. **Match the model's built-in symmetry to the symmetry in the data.** Do
+that and four topics collapse into one, with four instantiations.
+
+## Inductive bias, precisely
+
+An **inductive bias** is any assumption a model makes that isn't in the data — it's
+what lets a finite training set pick out a function over infinite unseen inputs.
+Without a bias, learning is impossible (the [no free lunch](/wiki/vc-dimension) idea):
+every function that fits the training data equally is equally preferred.
+
+The most powerful biases in deep learning are **symmetries** — transformations of the
+input that *shouldn't* change the answer (or should change it in a predictable way).
+
+## Equivariance vs invariance
+
+For a transformation $g$ (a shift, a permutation, a rotation) and a layer $f$:
+
+- **Invariance:** $f(g \cdot x) = f(x)$ — the output ignores the transformation.
+  (An image *classifier* should be shift-**invariant**: a shifted cat is still a cat.)
+- **Equivariance:** $f(g \cdot x) = g \cdot f(x)$ — the output transforms *the same way*
+  the input did. (A convolution is shift-**equivariant**: shift the image and every
+  feature shifts by the same amount.)
+
+$$
+f(g \cdot x) = g \cdot f(x) \quad \text{(equivariance)}
+\qquad\qquad
+f(g \cdot x) = f(x) \quad \text{(invariance)}
+$$
+
+Deep nets are built from **equivariant** layers (convolutions, attention, message
+passing) and reach **invariance** only at the end, via pooling or a readout. Keeping
+equivariance through the depth is what preserves spatial/structural information.
+
+## One idea, four architectures
+
+| Architecture | Symmetry it assumes | Equivariant to | What it shares (the "tied weights") |
+|---|---|---|---|
+| **CNN** | translation | shifting the input | the same kernel slides over every position |
+| **RNN** | time-translation | shifting in time | the same recurrent weights at every step |
+| **Transformer** | permutation | reordering the tokens | the same attention applied to every pair |
+| **GNN** | permutation over a graph | relabelling the nodes | the same message function on every edge |
+
+The shared column is the point: an inductive bias is almost always **weight sharing
+across a symmetry group**. That sharing is what buys **sample efficiency** — the model
+learns a pattern once and reuses it everywhere the symmetry says it should, instead of
+re-learning "edge detector" independently in all $224 \times 224$ positions.
+
+<Callout type="info" title="Why this makes attention feel inevitable">
+A transformer assumes **only** permutation symmetry — the weakest of the four. That is
+exactly why it needs **positional encodings**: pure permutation-equivariance throws away
+order, so you *inject* position back as a signal. Read attention as "remove the strong
+locality bias of convolution, keep only permutation symmetry, and add position as data."
+It generalises the others because it assumes the least — and pays for that generality
+with data.
+</Callout>
+
+## The bias/data trade-off
+
+A stronger, correct bias needs less data; a weaker bias needs more but bends to more
+problems. That is the same axis as [bias–variance](/wiki/bias-variance-decomposition),
+one level up — architectural bias instead of estimator bias.
+
+- **Right bias, small data → wins.** A CNN beats an MLP on images in the small-data
+  regime *because* translation equivariance is true of images and the MLP must learn it
+  from scratch.
+- **Wrong bias → it breaks.** Impose a bias the data doesn't have and you cap accuracy
+  no matter how much data you add. A CNN on tabular data assumes a spatial locality that
+  isn't there; a plain RNN assumes recency matters most and starves long-range
+  dependencies (the vanishing-gradient story).
+- **No bias, huge data → also wins, eventually.** With enough data and compute a
+  low-bias transformer overtakes a high-bias CNN even on images (ViT) — it *learns* the
+  locality the CNN was born with. The bias was a data-efficiency shortcut, not a ceiling.
+
+This is the moving-bottleneck story of the [ML loop](/wiki/ml-project-loop) seen from the
+hypothesis-space slot: as data and compute grew, the field could afford weaker biases.
+
+## Related concepts
+
+- [Convolution Operation](/courses/cnns/01-convolution-operation) — translation equivariance made concrete: one kernel, every position.
+- [Recurrent Neural Networks](/courses/rnns/01-recurrent-neural-networks) — weight sharing across time, and where its recency bias breaks.
+- [Self-Attention](/courses/transformers/01-self-attention) — permutation equivariance plus injected position; the least-biased of the four.
+- [Graphs as Data & Message Passing](/courses/graph-neural-networks/01-graphs-as-data) — permutation equivariance over arbitrary graph structure.
+- [Bias–variance decomposition](/wiki/bias-variance-decomposition) — the same trade-off one level down, at the estimator.
