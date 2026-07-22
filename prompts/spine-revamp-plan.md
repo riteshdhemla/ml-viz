@@ -312,7 +312,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
   Companion `notebooks/wiki/ml-project-loop.ipynb` per the 7-part walkthrough
   template (§1 from-scratch = the six stages as ~60 lines of NumPy/sklearn on
   the forecasting data; "Your turn" = slot-placement of unseen techniques).
-- [ ] **A5 · Hub wiki page: `agentic-project-loop`** — same shape;
+- [x] **A5 · Hub wiki page: `agentic-project-loop`** — same shape;
   `topics: ["agents"]`; relatedLessons: `agent-design-patterns/01-foundation-model-agents`,
   `building-with-llms/05-agents-and-tool-use`; `<ProjectLoopViz variant="agentic" />`;
   docs-Q&A agent walkthrough; the slot test with agentic examples (reranking
