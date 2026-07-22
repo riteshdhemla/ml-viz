@@ -1,0 +1,131 @@
+---
+title: "The Agentic Project Loop"
+description: "The spine every agent lesson hangs off — task definition → context & tools → orchestration → evaluation → guardrails → operations feedback. Learn to read any agent technique as a change to one slot, follow one docs-Q&A agent all the way around, and see exactly where the agentic loop parallels and departs from the ML loop."
+topics: ["agents"]
+relatedLessons:
+  - "agent-design-patterns/01-foundation-model-agents"
+  - "building-with-llms/05-agents-and-tool-use"
+estimatedMinutes: 15
+---
+
+# The Agentic Project Loop
+
+Building with a foundation model is still a project with a loop — but the slots are
+different from a training project. You are not searching a weight space with gradient
+descent; you are shaping what a fixed model *sees* and *can do*, then running it in a
+loop and containing its failures. The agentic spine:
+
+$$
+\text{task} \rightarrow \text{context \& tools} \rightarrow \text{orchestration}
+\rightarrow \text{evaluation} \rightarrow \text{guardrails}
+\rightarrow \text{operations feedback} \rightarrow (\text{back to task})
+$$
+
+<ProjectLoopViz variant="agentic" />
+
+As with the [ML project loop](/wiki/ml-project-loop), the discipline is the same:
+**every technique modifies one or two slots** — and you learn faster by naming which.
+
+## The slot test, agentic edition
+
+> **Which slot does this change, and what was breaking before?**
+
+| Technique | Slot it changes | What was breaking before |
+|---|---|---|
+| Retrieval / RAG | **context** | the model answered from stale parametric memory and hallucinated specifics |
+| Reranking retrieved chunks | **context** | top-k by raw similarity buried the one relevant passage below near-duplicates |
+| ReAct (reason + act) | **orchestration** | a single forward pass couldn't gather the facts it needed mid-answer |
+| Self-reflection / critique | **orchestration** | first drafts shipped errors no one checked before returning |
+| LLM-as-judge eval set | **evaluation** | "looks good to me" didn't catch regressions when a prompt changed |
+| Output guardrail / schema validator | **guardrails** | free-form output occasionally leaked PII or broke the caller's parser |
+| Prompt versioning + tracing | **operations** | a prompt edit silently changed behaviour with no way to diff or roll back |
+
+<Callout type="tip" title="The transfer test">
+Place one you may not have been taught: where does a **tool-call allow-list** (the
+agent may only call `search` and `read`, never `delete`) sit? It's a **guardrails**
+change — the model's tool-selection was fine, but the *blast radius* of a wrong call
+was unbounded. The [notebook](https://ml-viz-ruby.vercel.app/wiki/agentic-project-loop)
+drills this.
+</Callout>
+
+## One agent, all the way around: answer questions over a docs folder
+
+The running example is a **documentation Q&A agent**: given a question and a small
+folder of docs, it must find the answer and cite the source. Minimal, but it exercises
+every slot.
+
+### 1 · Task definition
+State the goal and the success criteria *before* any prompt. Goal: answer a user's
+question from the docs and cite the doc it came from. Success: the answer is grounded
+(the cited doc actually contains it) and the agent declines when the docs don't cover
+it. Deciding *when it should refuse* is part of the task, not an afterthought.
+→ deeper: [Foundation Model Agents](/courses/agent-design-patterns/01-foundation-model-agents),
+[Goal Creation Patterns](/courses/agent-design-patterns/02-goal-creation-patterns).
+
+### 2 · Context & tools
+Design what the model sees and can do. Two tools — `search(query)` returns candidate
+doc ids, `read(doc_id)` returns the text — plus a prompt that tells the model how to
+emit a tool call. This is the agentic analogue of the ML **data** stage: it decides
+what raw material reaches the decision.
+→ deeper: [Agents & Tool Use](/courses/building-with-llms/05-agents-and-tool-use),
+[RAG](/courses/building-with-llms/04-retrieval-augmented-generation),
+[MCP & A2A protocols](/wiki/agent-protocols-mcp-a2a).
+
+### 3 · Orchestration loop
+Run the model in a **plan → act → observe** cycle: the model proposes a tool call, the
+runtime executes it, the result is fed back, and the loop repeats until the model emits
+a final answer. This is where reflection, multi-step planning, and multi-agent
+topologies live — the agentic analogue of ML **optimization** (a search, but at runtime
+instead of training time). Bound the loop, or it spins.
+→ deeper: [Tool Use & MCP](/courses/agent-design-patterns/09-tool-use-and-mcp),
+[Reflection Patterns](/courses/agent-design-patterns/06-reflection-patterns),
+[Sub-agent orchestration](/wiki/sub-agent-orchestration).
+
+### 4 · Evaluation
+Judge the **outcome** (did it answer correctly and cite the right doc?) *and* the
+**trajectory** (did it call the right tools in a sensible order, without looping?).
+Offline eval sets, LLM-as-judge on traces, and `pass@k` all live here.
+→ deeper: [Evaluating Agents](/courses/agent-design-patterns/10-evaluating-agents),
+[LLM Evaluation](/courses/building-with-llms/08-llm-evaluation),
+[Agent metrics taxonomy](/wiki/agent-metrics-taxonomy),
+[LLM-as-judge](/wiki/llm-as-judge).
+
+### 5 · Guardrails
+Contain failure the eval can't prevent at runtime: validate the output schema, refuse
+when retrieval returns nothing, restrict the tool allow-list, and defend against
+prompt injection hiding in a retrieved doc. Tool output is **untrusted input**.
+→ deeper: [Safety, Registry & Adaptation](/courses/agent-design-patterns/08-safety-registry-and-adaptation),
+[Guardrails & LLMOps Security](/courses/building-with-llms/10-guardrails-and-llmops-security),
+[Prompt-injection attacks & defenses](/wiki/prompt-injection-attacks-and-defenses).
+
+### 6 · Operations feedback
+Ship it, then trace every run: token cost, latency, tool-error rates, and failed
+trajectories. Version the prompts so a change is diffable and reversible, sample live
+traces into the eval set, and let production failures redefine the **task**. The loop
+closes.
+→ deeper: [Deploying Agents](/courses/agent-design-patterns/11-deploying-agents),
+[Observability & Prompt Management](/courses/building-with-llms/09-llm-observability-and-prompt-management),
+[Agent observability](/wiki/agent-observability).
+
+## Parallels & differences vs the ML loop
+
+The two loops rhyme, which is why learning one accelerates the other — but the
+departures are where agentic engineering earns its own name.
+
+| ML loop | Agentic loop | Relationship |
+|---|---|---|
+| data | context & tools | both decide what raw material reaches the decision |
+| hypothesis space | *(the model is fixed)* | **the biggest departure** — you don't choose the function family; you prompt a frozen one |
+| objective + optimization | orchestration | ML searches a weight space at *train* time; an agent searches an action space at *runtime* |
+| evaluation | evaluation | same idea, but agents add **trajectory** correctness on top of outcome |
+| deployment feedback | operations feedback | both close the loop from production back to the start |
+
+The one-line summary: **an ML project moves the weights; an agentic project moves the
+context, the tools, and the loop around weights it cannot move.**
+
+## Related concepts
+
+- [Foundation Model Agents & the Pattern Catalogue](/courses/agent-design-patterns/01-foundation-model-agents) — the anatomy of an agent and the pattern groups that map onto these slots.
+- [Agents & Tool Use](/courses/building-with-llms/05-agents-and-tool-use) — the ReAct orchestration loop in practice.
+- [The ML Project Loop](/wiki/ml-project-loop) — the sibling spine for training projects, and the source of the parallels above.
+- [Agent metrics taxonomy](/wiki/agent-metrics-taxonomy) — the evaluation slot in full: outcome, trajectory, and system-level metrics.
