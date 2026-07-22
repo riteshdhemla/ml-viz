@@ -297,7 +297,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
   decision §2.2. Renders nothing when the lesson has no `spineStages` (site
   stays unchanged until Phase B tags content). Handles 1–3 highlighted stages;
   links to hub page. Follow existing top-bar styling in `LessonLayout.tsx`.
-- [ ] **A3 · `ProjectLoopViz`** — per §2.3 and `prompts/new-visualization.md`;
+- [x] **A3 · `ProjectLoopViz`** — per §2.3 and `prompts/new-visualization.md`;
   string prop `variant`; register in `mdxComponents.tsx`; add to the viz
   registry table in `CLAUDE.md`.
 - [ ] **A4 · Hub wiki page: `ml-project-loop`** — `src/content/wiki/ml-project-loop.mdx`
