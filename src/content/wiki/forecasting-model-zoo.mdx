@@ -1,0 +1,181 @@
+---
+title: "Forecasting Model Zoo: N-BEATS, N-HiTS, TFT, TSMixer, Prophet & Chronos"
+description: "A field guide to the modern time-series forecasting landscape — classical baselines (ARIMA, Prophet), deep residual-basis models (N-BEATS, N-HiTS), attention (TFT), all-MLP mixers (TSMixer/TSMixerx), and pretrained foundation models (Chronos) — with a from-scratch trace of N-BEATS doubly-residual stacking."
+topics: ["time-series"]
+relatedLessons:
+  - "time-series/02-arima-models"
+  - "time-series/03-deep-learning-for-time-series"
+  - "time-series/04-demand-forecasting-in-production"
+estimatedMinutes: 16
+---
+
+# Forecasting Model Zoo
+
+The lessons cover the two ends of the forecasting spectrum — classical **ARIMA** and generic **deep** models (LSTM / TCN / Transformer). Between and beyond them sits a fast-moving zoo of purpose-built forecasting architectures that now dominate benchmarks and production systems. This page is a field guide: what each model *is*, the one mechanism that makes it distinctive, and when to reach for it.
+
+## A taxonomy
+
+Every model here maps a length-$L$ **lookback** window (plus optional covariates) to a length-$H$ **forecast** horizon. What differs is the inductive bias:
+
+| Family | Members | Core mechanism | Covariates | Probabilistic |
+|---|---|---|---|---|
+| **Classical / statistical** | ARIMA, SARIMA, Prophet, ETS | Explicit lag/trend/seasonal structure | Prophet: yes | Native intervals |
+| **Residual basis-expansion** | N-BEATS, N-HiTS | Stacked blocks predict backcast + forecast | N-BEATSx / N-HiTS: yes | Via quantile loss |
+| **Attention** | TFT, Informer, PatchTST, Autoformer | Self-attention over time / patches | TFT: rich (static + known future) | Quantile heads |
+| **All-MLP mixers** | TSMixer, TSMixerx, TiDE, DLinear | Alternating time-mixing & feature-mixing MLPs | TSMixerx: yes | Point / quantile |
+| **Foundation (pretrained)** | Chronos, TimesFM, Moirai, Lag-Llama | Zero-shot transfer from a large pretrained model | Model-dependent | Sampled trajectories |
+
+The rest of the page walks each family, then a comparison table and a from-scratch trace.
+
+## Classical baselines: ARIMA & Prophet
+
+**ARIMA / SARIMA** — the linear autoregressive workhorse. `ARIMA(p, d, q)` differences the series $d$ times to reach stationarity, then models it as a linear combination of $p$ past values (AR) and $q$ past errors (MA); SARIMA adds a seasonal $(P, D, Q)_m$ block. Exact, interpretable, unbeatable on short univariate series — see [ARIMA Models](/courses/time-series/02-arima-models) and [ARIMA Order Selection](/wiki/arima-order-selection).
+
+**Prophet** (Facebook, 2017) — a *decomposable additive* model designed for business analysts, not statisticians:
+
+$$
+y(t) = g(t) + s(t) + h(t) + \epsilon_t
+$$
+
+- $g(t)$ — **trend**: piecewise-linear (or logistic-saturating) with automatically detected changepoints.
+- $s(t)$ — **seasonality**: Fourier series, one term per period (yearly, weekly, daily).
+- $h(t)$ — **holidays / events**: user-supplied indicator regressors.
+
+Prophet is fit by MAP estimation in Stan, is robust to missing data and outliers, and exposes knobs (`changepoint_prior_scale`, `seasonality_mode`) that map to intuitions a non-expert can reason about. It shines when you have **strong human-calendar seasonality** and want a forecast plus a plausible-looking uncertainty band with near-zero tuning. It struggles when dynamics are non-additive, when many correlated series must be modelled jointly, or when you need the last few points of accuracy on a competition benchmark.
+
+<Callout type="info" title="Prophet is a curve-fit, not a dynamical model">
+  Prophet fits smooth components to the *whole* history — it has no explicit notion of "the last observation." That makes it stable and leakage-resistant, but it also means it reacts slowly to regime changes and can be beaten badly by autoregressive models on series where recent values carry most of the signal.
+</Callout>
+
+## Residual basis-expansion: N-BEATS & N-HiTS
+
+**N-BEATS** (Oreshkin et al., 2020) is a pure deep-learning model — no recurrence, no attention, no convolution — that won attention by beating statistical ensembles on the M4 competition with a stack of fully-connected blocks.
+
+Each **block** takes the residual lookback signal, pushes it through a small MLP, and emits two things: a **backcast** (its reconstruction of the input) and a **forecast** (its contribution to the output). Blocks are chained by **doubly-residual stacking**: each block subtracts its backcast from the input before passing the remainder to the next block, and all forecasts are summed.
+
+$$
+\mathbf{x}_\ell = \mathbf{x}_{\ell-1} - \hat{\mathbf{b}}_\ell, \qquad
+\hat{\mathbf{y}} = \sum_\ell \hat{\mathbf{f}}_\ell
+$$
+
+The remainder $\mathbf{x}_\ell$ is what earlier blocks *couldn't* explain, so later blocks specialise on the residual — a boosting-like decomposition learned end-to-end. In the **interpretable** variant, blocks are constrained to trend (low-degree polynomial) and seasonality (Fourier) basis functions, recovering a learned analogue of Prophet's decomposition.
+
+**N-HiTS** (Challu et al., 2023) fixes N-BEATS's weakness on **long horizons**. It adds two ideas:
+
+1. **Multi-rate input pooling** — each stack first max-pools its input at a different rate, so different stacks see the series at different resolutions (fine → coarse).
+2. **Hierarchical interpolation** — each stack predicts forecasts at a matching low resolution and upsamples them to the full horizon.
+
+The effect: low-frequency stacks capture slow trend cheaply while high-frequency stacks handle short-term wiggles, cutting both compute and long-horizon error versus N-BEATS. N-HiTS is often the strongest *univariate* neural baseline and the first thing to try when the horizon is long (hundreds of steps).
+
+## Attention: the Temporal Fusion Transformer
+
+**TFT** (Lim et al., 2021) is the go-to when you have **rich covariates** and need **interpretability**. It fuses several ideas into one architecture:
+
+- **Variable Selection Networks** — a learned gate per input variable at each step, so the model reports *which* features it used (and the weights are inspectable).
+- **Static covariate encoders** — entity-level metadata (store id, product category) conditions the whole network.
+- Three covariate roles are handled explicitly: **static**, **past-observed**, and **known-future** (e.g. a scheduled promotion or holiday you know in advance).
+- An **LSTM encoder-decoder** for local processing feeds an **interpretable multi-head attention** layer for long-range dependencies.
+- A **quantile-regression** output head produces prediction intervals directly (P10 / P50 / P90).
+
+TFT is heavier to train than N-HiTS and needs more data, but its variable-selection weights and attention maps make it the default when a stakeholder will ask "*why* did the model predict that?"
+
+## All-MLP mixers: TSMixer & TSMixerx
+
+The "attention isn't always necessary" thread (kicked off by **DLinear** showing a single linear layer rivals Transformers on long-horizon benchmarks) produced **TSMixer** (Chen et al., 2023). It is built entirely from MLPs applied along two axes of the (time × feature) input matrix:
+
+- **Time-mixing MLP** — shared across features, mixes information *across time steps* (like an autoregressive filter).
+- **Feature-mixing MLP** — shared across time, mixes information *across variables* (cross-series interactions).
+
+Alternating these two, with residual connections and normalization, gives a model that is cheap, parallel, and strong on **multivariate** long-horizon forecasting — often matching Transformers at a fraction of the cost. **TSMixerx** (the "x" = eXogenous) extends it with dedicated pathways for static and future-known covariates, making it a lightweight competitor to TFT when you need covariates but not TFT's interpretability machinery.
+
+## Foundation models: Amazon Chronos
+
+**Chronos** (Ansari et al., 2024) applies the LLM playbook to forecasting. The trick is **tokenising** continuous values: scale the series, bin it into a fixed vocabulary of discrete tokens, and train an off-the-shelf **T5 language model** to predict the next token. Forecasting becomes next-token generation; sampling many trajectories yields a full predictive distribution for free.
+
+Because it is **pretrained** on a huge corpus of real and synthetic series, Chronos forecasts **zero-shot** — point it at a brand-new series with *no fitting* and it produces a competitive probabilistic forecast, the way an LLM answers a prompt it never saw in training. That reframes the workflow: instead of *train a model per series*, you *call a pretrained model*, optionally fine-tuning on your domain.
+
+| Foundation model | Backbone | Distinctive idea |
+|---|---|---|
+| **Chronos** | T5 (encoder-decoder) | Quantise values → LM over tokens |
+| **TimesFM** (Google) | Decoder-only | Patched inputs, long pretraining corpus |
+| **Moirai** (Salesforce) | Masked encoder | Any-variate, multiple frequencies |
+| **Lag-Llama** | Decoder-only | Lag features + distribution head |
+
+<Callout type="tip" title="Where foundation models fit">
+  Zero-shot foundation models are a spectacular **cold-start** tool — a strong forecast for a series with little history or no time to train. On a stable series with abundant history and a fixed horizon, a well-tuned N-HiTS or TSMixer will usually still win on accuracy *and* inference cost. Treat Chronos as a baseline you must beat, not an automatic winner.
+</Callout>
+
+## Choosing a model
+
+| If you have… | Reach for |
+|---|---|
+| Short univariate series (< 500 pts), want exact intervals | **ARIMA / SARIMA** |
+| Strong calendar seasonality, non-expert users, near-zero tuning | **Prophet** |
+| One long univariate horizon, want a strong neural baseline | **N-HiTS** (or N-BEATS) |
+| Rich static + known-future covariates, need interpretability | **TFT** |
+| Many correlated series, long horizon, tight compute budget | **TSMixer / TSMixerx** |
+| A new series with little history, or no time to train | **Chronos** (zero-shot foundation model) |
+| Hundreds of related series (retail SKUs, sensors) | Global **N-HiTS / TSMixer**, then reconcile → [Hierarchical Forecasting](/wiki/hierarchical-forecasting) |
+
+## Worked trace: N-BEATS doubly-residual stacking
+
+The mechanism that makes N-BEATS click is the residual chain. Consider a toy 2-block stack on a lookback $\mathbf{x}_0$, where each block's backcast/forecast is given (in a real network they come from MLPs):
+
+**Setup.** Lookback $\mathbf{x}_0 = [10, 12, 14, 16]$ (a clean linear ramp). Block 1 learns a linear *trend* basis; block 2 mops up whatever is left.
+
+**Block 1** reconstructs the trend it captured:
+$$
+\hat{\mathbf{b}}_1 = [9, 11.5, 14, 16.5], \qquad \hat{\mathbf{f}}_1 = [18, 20] \;(\text{2-step forecast})
+$$
+The residual passed forward is
+$$
+\mathbf{x}_1 = \mathbf{x}_0 - \hat{\mathbf{b}}_1 = [1, 0.5, 0, -0.5].
+$$
+
+**Block 2** sees only that small residual (a downward tilt block 1 slightly over/under-shot) and corrects it:
+$$
+\hat{\mathbf{b}}_2 = [1, 0.5, 0, -0.5], \qquad \hat{\mathbf{f}}_2 = [-0.5, -1].
+$$
+Now the residual is $\mathbf{x}_2 = \mathbf{x}_1 - \hat{\mathbf{b}}_2 = [0,0,0,0]$ — the input is fully explained.
+
+**Aggregate forecast** = sum of block forecasts:
+$$
+\hat{\mathbf{y}} = \hat{\mathbf{f}}_1 + \hat{\mathbf{f}}_2 = [18, 20] + [-0.5, -1] = [17.5, 19].
+$$
+
+Two things to notice. (1) Because block 2 only ever sees the *remainder*, it never has to re-learn the trend — the decomposition is additive and each block specialises, exactly like gradient boosting on residuals. (2) The backcast is the price of admission: forcing each block to reconstruct its own slice of the input is what makes the residual $\mathbf{x}_\ell$ meaningful, and it is the same signal the interpretable variant constrains to trend/seasonality bases. The notebook builds this stack in NumPy and checks that summed forecasts + backcasts telescope exactly as above.
+
+## Gotchas
+
+| Gotcha | Consequence |
+|---|---|
+| Feeding future-unknown covariates to TFT/TSMixerx as "known-future" | Data leakage — the model learns to cheat, then collapses in production |
+| Not scaling per-series before a global model (N-HiTS, TSMixer) | High-magnitude series dominate the loss; small series are ignored |
+| Trusting Prophet's intervals as calibrated | They are wide, uncalibrated MAP bands — validate empirically |
+| Judging a zero-shot foundation model by a single series | Variance is high; benchmark across many series before adopting |
+| Comparing models with random train/test splits | Temporal leakage inflates every score → [Walk-Forward Validation](/wiki/walk-forward-validation) |
+
+## Software
+
+Nixtla's **`neuralforecast`** implements N-BEATS, N-HiTS, TFT, TSMixer, TSMixerx (and more) behind one scikit-style API; **`statsforecast`** covers AutoARIMA/ETS; **`prophet`** is its own package; **`chronos-forecasting`** (Amazon) ships the pretrained checkpoints.
+
+```python
+from neuralforecast import NeuralForecast
+from neuralforecast.models import NHITS, TFT, TSMixerx
+
+nf = NeuralForecast(
+    models=[NHITS(h=24, input_size=48, max_steps=500),
+            TFT(h=24, input_size=48, max_steps=500)],
+    freq="H",
+)
+nf.fit(df)                 # df: columns unique_id, ds, y (+ covariates)
+forecast = nf.predict()    # one row per series per horizon step
+```
+
+## Related concepts
+
+- [**Deep Learning for Time Series**](/courses/time-series/03-deep-learning-for-time-series) — the LSTM / TCN / Transformer foundations these models build on
+- [**ARIMA Models**](/courses/time-series/02-arima-models) — the classical baseline every model here must beat
+- [**Demand Forecasting in Production**](/courses/time-series/04-demand-forecasting-in-production) — where global neural models and foundation models get deployed at scale
+- [**Hierarchical Forecasting**](/wiki/hierarchical-forecasting) — reconciling the many-series forecasts these global models produce
+- [**Walk-Forward Validation**](/wiki/walk-forward-validation) — the only honest way to compare these models
