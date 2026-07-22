@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getLessonContent, getAllCourses, getLessonsForCourse } from "@/lib/content";
+import { getLessonContent, getAllCourses, getLessonsForCourse, getCourse } from "@/lib/content";
 import { LessonLayout } from "@/components/lessons/LessonLayout";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/site";
@@ -47,6 +47,7 @@ export default async function LessonPage({ params }: Props) {
   if (!result) notFound();
 
   const allLessons = getLessonsForCourse(courseSlug);
+  const course = getCourse(courseSlug);
   const currentIndex = allLessons.findIndex((l) => l.slug === lessonSlug);
   const prev = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const next = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
@@ -76,6 +77,7 @@ export default async function LessonPage({ params }: Props) {
         prev={prev}
         next={next}
         allLessons={allLessons}
+        spine={course?.spine}
       />
     </>
   );

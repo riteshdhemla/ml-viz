@@ -293,7 +293,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
   `spine?: SpineId` to `CourseMeta` and `spineStages?: string[]` to
   `LessonMeta` in `src/types/course.ts`. Unit test `src/lib/__tests__/spine.test.ts`
   (registry invariants: 6 stages each, unique ids, hub slugs well-formed).
-- [ ] **A2 · `SpineNav` component wired into `LessonLayout`** — per design
+- [x] **A2 · `SpineNav` component wired into `LessonLayout`** — per design
   decision §2.2. Renders nothing when the lesson has no `spineStages` (site
   stays unchanged until Phase B tags content). Handles 1–3 highlighted stages;
   links to hub page. Follow existing top-bar styling in `LessonLayout.tsx`.
