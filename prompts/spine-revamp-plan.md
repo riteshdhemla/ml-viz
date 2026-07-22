@@ -286,7 +286,7 @@ orchestration · `prompt-injection-attacks-and-defenses` → guardrails ·
 
 ### Phase A — Spine infrastructure
 
-- [ ] **A1 · `src/lib/spine.ts` + types** — the typed registry: `SpineId`,
+- [x] **A1 · `src/lib/spine.ts` + types** — the typed registry: `SpineId`,
   `MlStageId`/`AgenticStageId`, `SPINES` record with the §1 tables verbatim
   (id, label, one-liner, hub slug, per-stage accent color from existing
   tokens), helpers `getSpine`, `getStage`, `isValidStage(spine, stage)`. Add
