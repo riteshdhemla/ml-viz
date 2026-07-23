@@ -85,6 +85,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "linear-regression",
         "knn-decision-trees",
         "svm",
+        "ensemble-methods",
       ].includes(slug),
   ),
 );

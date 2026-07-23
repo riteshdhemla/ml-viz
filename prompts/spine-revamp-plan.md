@@ -373,7 +373,7 @@ Classical ML:
   the loop)*
 - [x] B6 · knn-decision-trees
 - [x] B7 · svm
-- [ ] B8 · ensemble-methods
+- [x] B8 · ensemble-methods
 - [ ] B9 · clustering
 - [ ] B10 · pca-dimensionality
 - [ ] B11 · probabilistic-models

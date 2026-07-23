@@ -3160,6 +3160,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A random subsample of labels", isCorrect: false },
     ],
   },
+  {
+    id: "ensemble-quiz-slot-boost",
+    type: "multiple-choice",
+    question:
+      "Gradient boosting adds each tree by taking a gradient step in function space. Which slot of the ML project loop is that fundamentally an instance of?",
+    hint: "It's a search that drives the ensemble downhill on the loss, one step per round.",
+    explanation:
+      "Boosting is an optimization procedure — functional gradient descent — that happens to emit a model. Each round is a step toward minimizing the objective; the ensemble is the by-product.",
+    options: [
+      { id: "a", label: "Optimization — functional gradient descent", isCorrect: true },
+      { id: "b", label: "Objective — it defines the loss", isCorrect: false },
+      { id: "c", label: "Data — it resamples the training set", isCorrect: false },
+      { id: "d", label: "Evaluation — it scores the model", isCorrect: false },
+    ],
+  },
+  {
+    id: "ensemble-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: dropout randomly zeroes activations during training so a big network can't memorize. Which slot does it modify?",
+    hint: "It restricts the effective capacity of the model family.",
+    explanation:
+      "Dropout is a hypothesis-space (capacity control) change: it constrains what the network can effectively represent, curbing overfitting. The loss and optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Hypothesis space — it controls effective capacity", isCorrect: true },
+      { id: "b", label: "Optimization — it changes the update rule", isCorrect: false },
+      { id: "c", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "d", label: "Data — it changes the training set", isCorrect: false },
+    ],
+  },
 
   // ── Clustering course quiz ───────────────────────────────────────────
   {
