@@ -10810,6 +10810,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "nlp-quiz-slot-tokenization",
+    type: "multiple-choice",
+    question:
+      "Tokenization and embeddings turn text into numbers before any language model sees it. Which slot of the ML project loop do these choices live in?",
+    hint: "They define the representation the model consumes — upstream of the architecture.",
+    explanation:
+      "Text preprocessing is a data-slot decision: it fixes the representation everything downstream is built on. A poor tokenizer or embedding caps every model, regardless of architecture or loss.",
+    options: [
+      { id: "a", label: "Data — the input representation for text", isCorrect: true },
+      { id: "b", label: "Hypothesis space — the model architecture", isCorrect: false },
+      { id: "c", label: "Objective — the training loss", isCorrect: false },
+      { id: "d", label: "Optimization — the training algorithm", isCorrect: false },
+    ],
+  },
+  {
+    id: "nlp-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: an input guardrail that blocks prompt-injection attempts before they reach an LLM. In the agentic project loop, which slot does it belong to?",
+    hint: "It contains a failure mode at runtime by filtering what enters the system.",
+    explanation:
+      "An input guardrail is a guardrails-slot mechanism in the agentic loop: it bounds harmful inputs before they reach the model. (The slot test spans both loops — guardrails is the agentic analogue of runtime safety.)",
+    options: [
+      { id: "a", label: "Guardrails — it contains a failure mode at runtime", isCorrect: true },
+      { id: "b", label: "Context & tools — it retrieves documents", isCorrect: false },
+      { id: "c", label: "Evaluation — it scores outputs offline", isCorrect: false },
+      { id: "d", label: "Orchestration — it runs the agent loop", isCorrect: false },
+    ],
+  },
+  {
     id: "graphical-quiz-partition",
     type: "multiple-choice",
     question:

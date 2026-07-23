@@ -407,7 +407,7 @@ Deep learning:
 - [x] B21 · graph-neural-networks *(inductive bias: permutation equivariance
   over graphs; WikiLink in lesson 01)*
 - [x] B22 · computer-vision
-- [ ] B23 · nlp
+- [x] B23 · nlp
 - [ ] B24 · speech-audio
 - [ ] B25 · graphical-models
 - [ ] B26 · reinforcement-learning *(call out "exploration is the data stage
