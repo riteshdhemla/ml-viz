@@ -10630,6 +10630,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "genmodel-quiz-slot-objective",
+    type: "multiple-choice",
+    question:
+      "VAEs (ELBO), GANs (adversarial minimax), and diffusion (denoising score matching) can share nearly the same neural architecture. What is the main slot that distinguishes them?",
+    hint: "They differ mostly in what 'make realistic data' is defined to mean.",
+    explanation:
+      "The families differ chiefly in their objective: how each one turns 'generate realistic samples' into a trainable loss. The hypothesis space (a deep net) is broadly shared; the objective slot does the distinguishing work.",
+    options: [
+      { id: "a", label: "Objective — each defines a different generative loss", isCorrect: true },
+      { id: "b", label: "Data — each uses a different dataset", isCorrect: false },
+      { id: "c", label: "Optimization — each uses a different optimizer", isCorrect: false },
+      { id: "d", label: "Evaluation — each uses a different metric", isCorrect: false },
+    ],
+  },
+  {
+    id: "genmodel-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: gradient accumulation, summing gradients over several mini-batches before each update to simulate a larger batch. Which slot does it modify?",
+    hint: "It changes how the parameter update is computed, not the model or the loss.",
+    explanation:
+      "Gradient accumulation is an optimization change: it lets you train with a large effective batch under limited memory. The hypothesis space and objective are unchanged.",
+    options: [
+      { id: "a", label: "Optimization — a memory-friendly way to take larger update steps", isCorrect: true },
+      { id: "b", label: "Data — it changes the dataset", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Objective — it changes the loss", isCorrect: false },
+    ],
+  },
+  {
     id: "cv-quiz-clip",
     type: "multiple-choice",
     question:

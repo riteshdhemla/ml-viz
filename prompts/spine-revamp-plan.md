@@ -403,7 +403,7 @@ Deep learning:
 - [x] B19 · transformers *(inductive bias: permutation equivariance +
   injected position signal — "attention as the inevitable move" framing from
   the wiki page; WikiLink in lesson 01)*
-- [ ] B20 · generative-models
+- [x] B20 · generative-models
 - [ ] B21 · graph-neural-networks *(inductive bias: permutation equivariance
   over graphs; WikiLink in lesson 01)*
 - [ ] B22 · computer-vision
