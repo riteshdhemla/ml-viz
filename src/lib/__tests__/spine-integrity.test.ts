@@ -73,7 +73,15 @@ const SPINE_COURSES: Record<string, SpineId> = {
  * requirement. Each Phase B item removes its course; when the set is empty,
  * Phase C flips coverage to unconditional. This test is the progress tracker.
  */
-const COVERAGE_ALLOWLIST = new Set<string>(Object.keys(SPINE_COURSES));
+const COVERAGE_ALLOWLIST = new Set<string>(
+  Object.keys(SPINE_COURSES).filter(
+    (slug) =>
+      // Phase B removes each course here once fully tagged:
+      ![
+        "linear-algebra",
+      ].includes(slug),
+  ),
+);
 
 describe("spine frontmatter is well-formed (always enforced)", () => {
   it("every course `spine` value, when present, is a known spine", () => {

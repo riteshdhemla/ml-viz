@@ -9574,6 +9574,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "linalg-quiz-slot-svd",
+    type: "multiple-choice",
+    question:
+      "In the ML project loop (data → hypothesis space → objective → optimization → evaluation → feedback), replacing a full weight matrix with a low-rank (SVD / LoRA-style) factorization primarily changes which slot?",
+    hint: "Does it change what data you collect, what the model can express, or how you search for parameters?",
+    explanation:
+      "Restricting a matrix to rank k shrinks the set of functions the model can represent — that is a hypothesis-space (capacity) change. It leaves the data, the loss, and the optimizer untouched.",
+    options: [
+      { id: "a", label: "Hypothesis space — it constrains what the model can express", isCorrect: true },
+      { id: "b", label: "Objective — it changes the loss function", isCorrect: false },
+      { id: "c", label: "Optimization — it changes the search algorithm", isCorrect: false },
+      { id: "d", label: "Data — it changes the training set", isCorrect: false },
+    ],
+  },
+  {
+    id: "linalg-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: the Adam optimizer replaces plain gradient descent's fixed step with per-parameter adaptive steps. Which slot of the ML project loop does it modify?",
+    hint: "Adam changes how parameters are updated, not what the model can represent or what 'good' means.",
+    explanation:
+      "Adam is an optimization change — a better way to search the hypothesis space for parameters that minimize the objective. The hypothesis space and the loss are unchanged. Being able to place a technique you were never taught is the whole point of the slot test.",
+    options: [
+      { id: "a", label: "Optimization — a better parameter search", isCorrect: true },
+      { id: "b", label: "Hypothesis space — a new model family", isCorrect: false },
+      { id: "c", label: "Objective — a new loss function", isCorrect: false },
+      { id: "d", label: "Evaluation — a new validation metric", isCorrect: false },
+    ],
+  },
+  {
     id: "calc-quiz-partial",
     type: "multiple-choice",
     question: "f(x, y) = x²y³. What is ∂f/∂y?",
