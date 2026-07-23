@@ -3,6 +3,7 @@ title: "Foundation Model Agents & the Pattern Catalogue"
 description: "The anatomy of an FM-based agent, the five challenge dimensions that make agent design hard, and the six pattern groups that address them."
 order: 1
 type: concept
+spineStages: [task]
 estimatedMinutes: 18
 ---
 
@@ -11,6 +12,25 @@ estimatedMinutes: 18
 Software agents have existed for decades, but **foundation model-based agents** are qualitatively different: they perceive an environment, reason with a pretrained language model, and execute actions — often in an open-ended loop that was impossible to script in advance. Understanding how to design these systems reliably is the subject of this course.
 
 **Real-world examples:** GitHub Copilot Workspace (plans and executes multi-file code edits), coding agents like Devin and SWE-agent, AutoGPT-style autonomous loops, customer support pipelines that resolve tickets end-to-end.
+
+## Where the patterns sit: the agentic project loop
+
+This catalogue's 18 patterns aren't a flat list — they hang off a recurring project shape, the **agentic project loop**. Each pattern group advances one slot of it:
+
+<ProjectLoopViz variant="agentic" />
+
+| Loop slot | Pattern groups that live here |
+|---|---|
+| **Task definition** | Goal Creation Patterns (capture and structure user intent) |
+| **Context & tools** | Context & Knowledge Patterns, Tool Use / MCP (what the model sees and can do) |
+| **Orchestration** | Planning, Model Querying, Reflection, Multi-Agent Cooperation (the runtime loop) |
+| **Evaluation** | outcome-vs-trajectory metrics (the evaluating-agents lesson) |
+| **Guardrails** | Safety, Registry & Adaptation Patterns (contain failure at runtime) |
+| **Operations** | deploying-agents (trace, version, watch cost/latency in production) |
+
+It's the sibling of the [ML project loop](/wiki/ml-project-loop) — same discipline of "which slot does this change?", but for building *around* a frozen model rather than training one.
+
+<WikiLink slug="agentic-project-loop" title="The Agentic Project Loop" />
 
 ## What is an FM-based agent?
 
