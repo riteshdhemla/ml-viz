@@ -7909,6 +7909,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "bayes-quiz-slot-uncertainty",
+    type: "multiple-choice",
+    question:
+      "A Gaussian process reports a calibrated predictive variance (error bar) at every input. Which slot of the ML project loop does that most directly strengthen?",
+    hint: "It changes what you can say about how much to trust a prediction.",
+    explanation:
+      "Calibrated uncertainty is an evaluation-slot upgrade: it turns a point prediction into a trustworthy interval, so you can judge not just accuracy but confidence. (It also flows into decisions, but the error bar itself is an evaluation output.)",
+    options: [
+      { id: "a", label: "Evaluation — trustworthy, calibrated uncertainty", isCorrect: true },
+      { id: "b", label: "Optimization — a faster solver", isCorrect: false },
+      { id: "c", label: "Data — a different training set", isCorrect: false },
+      { id: "d", label: "Hypothesis space — a larger model", isCorrect: false },
+    ],
+  },
+  {
+    id: "bayes-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: gradient clipping caps the gradient norm to stop training from blowing up. Which slot does it modify?",
+    hint: "It changes how the parameter update is applied, not the model or the loss.",
+    explanation:
+      "Gradient clipping is an optimization change — it stabilizes the parameter search by bounding step size. The hypothesis space and objective are untouched.",
+    options: [
+      { id: "a", label: "Optimization — it stabilizes the parameter search", isCorrect: true },
+      { id: "b", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
+  {
     id: "opt-loss-mse-mae",
     type: "multiple-choice",
     question:

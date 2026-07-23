@@ -377,7 +377,7 @@ Classical ML:
 - [x] B9 · clustering
 - [x] B10 · pca-dimensionality
 - [x] B11 · probabilistic-models
-- [ ] B12 · bayesian-methods *(forecasting-thread visit in lesson 02: GPs
+- [x] B12 · bayesian-methods *(forecasting-thread visit in lesson 02: GPs
   give the demand forecast honest uncertainty bands — same problem, better
   for a new reason)*
 - [ ] B13 · causal-inference
