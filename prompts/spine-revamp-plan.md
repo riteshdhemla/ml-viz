@@ -406,7 +406,7 @@ Deep learning:
 - [x] B20 · generative-models
 - [x] B21 · graph-neural-networks *(inductive bias: permutation equivariance
   over graphs; WikiLink in lesson 01)*
-- [ ] B22 · computer-vision
+- [x] B22 · computer-vision
 - [ ] B23 · nlp
 - [ ] B24 · speech-audio
 - [ ] B25 · graphical-models
