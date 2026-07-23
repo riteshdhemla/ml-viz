@@ -11230,6 +11230,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "agent-quiz-slot-allowlist",
+    type: "multiple-choice",
+    question:
+      "An agent may call only `search` and `read`, never `delete` — a tool allow-list. In the agentic project loop, which slot does this belong to, and why is it separate from evaluation?",
+    hint: "The model's tool choice may be wrong; this bounds the damage at runtime.",
+    explanation:
+      "A tool allow-list is a guardrails-slot mechanism: it bounds the blast radius of a wrong tool call at runtime. Evaluation measures behavior offline; guardrails contain it live — you need both, and they are different slots.",
+    options: [
+      { id: "a", label: "Guardrails — it bounds the blast radius at runtime", isCorrect: true },
+      { id: "b", label: "Evaluation — it scores tool selection offline", isCorrect: false },
+      { id: "c", label: "Orchestration — it plans the tool calls", isCorrect: false },
+      { id: "d", label: "Task definition — it sets the goal", isCorrect: false },
+    ],
+  },
+  {
+    id: "agent-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a pattern in this loop: versioning prompts so a change is diffable and reversible, and tracing every run's cost and latency. Which slot of the agentic project loop is that?",
+    hint: "It happens after deployment and feeds production signal back to improve the system.",
+    explanation:
+      "Prompt versioning and tracing are operations-slot activities: they make a live agent observable and its changes reversible, closing the loop from production back to the task. They don't change the context, orchestration, or guardrails directly.",
+    options: [
+      { id: "a", label: "Operations feedback — observability and change management in production", isCorrect: true },
+      { id: "b", label: "Context & tools — what the model sees", isCorrect: false },
+      { id: "c", label: "Guardrails — runtime safety filters", isCorrect: false },
+      { id: "d", label: "Evaluation — offline scoring", isCorrect: false },
+    ],
+  },
+  {
     id: "ft-quiz-dark-knowledge",
     type: "multiple-choice",
     question:

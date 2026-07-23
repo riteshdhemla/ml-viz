@@ -432,7 +432,7 @@ Agentic:
 - [x] B32 · building-with-llms *(per-lesson stages from §3; lesson 06
   ai-engineering-architecture gets a short section presenting the agentic
   loop with `<ProjectLoopViz variant="agentic" />`)*
-- [ ] B33 · agent-design-patterns *(lesson 01 already introduces the five
+- [x] B33 · agent-design-patterns *(lesson 01 already introduces the five
   agent components — add the agentic loop alongside, mapping the pattern
   groups to loop stages; embed `<ProjectLoopViz variant="agentic" />` and hub
   WikiLink)*

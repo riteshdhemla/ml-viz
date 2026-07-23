@@ -110,6 +110,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "streaming-ml",
         "fine-tuning-alignment",
         "building-with-llms",
+        "agent-design-patterns",
       ].includes(slug),
   ),
 );
