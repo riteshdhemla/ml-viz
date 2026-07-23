@@ -105,6 +105,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "graphical-models",
         "reinforcement-learning",
         "recommender-systems",
+        "gpu-programming",
       ].includes(slug),
   ),
 );
