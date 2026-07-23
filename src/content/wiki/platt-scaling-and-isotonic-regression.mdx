@@ -1,0 +1,96 @@
+---
+title: "Platt Scaling and Isotonic Regression"
+description: "The two workhorse post-hoc calibration maps: Platt scaling fits a logistic sigmoid on classifier scores (with regularized targets), while isotonic regression fits a monotonic step function via the Pool-Adjacent-Violators algorithm. Derivations, a worked PAV trace, and when each wins."
+topics: ["model-evaluation"]
+relatedLessons:
+  - "model-evaluation/07-calibration-and-uncertainty"
+  - "model-evaluation/01-classification-metrics"
+estimatedMinutes: 13
+---
+
+# Platt Scaling and Isotonic Regression
+
+Both are **post-hoc calibration maps**: given a trained classifier that outputs a score $s(x)$ (a logit, an SVM margin, a random-forest vote fraction), they learn a function $g$ on a *held-out* set so that $g(s(x))$ behaves like a real probability. Neither touches the model's weights, and — because both are **monotonic** — neither changes the ranking of examples, so ROC-AUC and top-1 accuracy are untouched. They differ in the *shape* of map they can express and in how much calibration data they need.
+
+## The setup
+
+Train the model on the training fold. Then, on a **separate calibration fold**, collect pairs $(s_i, y_i)$ — the model's score and the true label. Fitting $g$ on the calibration fold (never the training fold) is the whole game: fit it on data the model already memorized and you learn the model's overconfidence rather than correct it.
+
+Both methods require $g$ to be **non-decreasing** — a higher score should never map to a lower probability. That monotonicity is what preserves ranking; the methods differ in the family $g$ is drawn from.
+
+## Platt scaling — a logistic fit on the scores
+
+Platt's method (originally for SVM outputs) assumes the distortion is **sigmoidal** and fits a two-parameter logistic map:
+
+$$
+g(s) = P(y = 1 \mid s) = \frac{1}{1 + \exp(A\,s + B)}
+$$
+
+$A$ and $B$ are chosen by minimizing log loss on the calibration set. Because $A$ controls the slope and $B$ the horizontal shift, this is exactly a **1-D logistic regression with $s$ as the single feature**. With a well-ranked score $A < 0$ (probability rises with score); $|A|$ sets how sharply, $B$ recenters the 50% point.
+
+**The regularized-target trick.** Fitting to raw $0/1$ labels overfits badly on small calibration sets and drives probabilities to the extremes — the very problem we're fixing. Platt instead fits to **smoothed targets** derived from a Bayesian (Beta) prior on the class counts $N_+$ and $N_-$:
+
+$$
+t_i = \begin{cases} \dfrac{N_+ + 1}{N_+ + 2} & y_i = 1 \\[2mm] \dfrac{1}{N_- + 2} & y_i = 0 \end{cases}
+$$
+
+A positive is asked to hit $\tfrac{N_+ + 1}{N_+ + 2}$ (a hair under 1), a negative $\tfrac{1}{N_- + 2}$ (a hair over 0). This built-in label smoothing is why Platt scaling stays stable with only a few hundred calibration points.
+
+**When it fits well:** the true reliability curve is close to sigmoidal — a good match for max-margin models (SVMs) and for boosted models, whose scores are pushed toward the extremes in a characteristically sigmoidal way. **When it fails:** the miscalibration has a non-sigmoidal shape (e.g. an S the wrong way, or a kink); two parameters simply can't bend to it, leaving residual error.
+
+## Isotonic regression — the non-parametric monotone fit
+
+Isotonic regression drops the sigmoid assumption. It finds the **best non-decreasing step function** — any monotone shape — by minimizing squared error subject to a monotonicity constraint:
+
+$$
+\min_{g \text{ non-decreasing}} \sum_i \big(g(s_i) - y_i\big)^2
+$$
+
+The exact solution is computed by the **Pool-Adjacent-Violators Algorithm (PAV)**, $O(n)$ after sorting:
+
+1. Sort the calibration pairs by score $s$. Start with each label $y_i$ as its own block, value $= y_i$.
+2. Scan left to right. Whenever a block's value **exceeds** the next block's (a monotonicity violation), **pool** the two blocks into one whose value is their (size-weighted) mean.
+3. Pooling can create a new violation with the block on the left, so back up and re-pool until the whole sequence is non-decreasing.
+4. The fitted probability for a score is its final block's mean; interpolate between block boundaries for unseen scores.
+
+**Worked PAV trace.** Calibration labels sorted by ascending score: $[\,0,\ 1,\ 0,\ 0,\ 1,\ 1\,]$.
+
+| Step | Blocks (value × size) | Action |
+|------|----------------------|--------|
+| Init | `0 · 1 · 0 · 0 · 1 · 1` | — |
+| 1 | `0`, `1`, … | $0 \le 1$ ok, advance |
+| 2 | `0`, **`0.5`(×2)**, `0`, `1`, `1` | $1 > 0$ → pool `{1,0}` → mean $0.5$ |
+| 3 | `0`, **`0.33`(×3)**, `1`, `1` | $0.5 > 0$ → pool `{1,0,0}` → mean $0.\overline{3}$ |
+| Done | `0`, `0.33`, `0.33`, `0.33`, `1`, `1` | fully non-decreasing |
+
+The five distinct labels collapse to a monotone staircase $[0,\ 0.33,\ 0.33,\ 0.33,\ 1,\ 1]$ — the unique least-squares monotone fit.
+
+**When it wins:** enough calibration data (rule of thumb $\gtrsim 1000$ points) and a miscalibration shape a sigmoid can't capture. **When it fails:** small calibration sets — with too few points it **overfits**, producing a jagged staircase and, because it is piecewise-constant, sharp jumps and flat plateaus. It also can't extrapolate beyond the score range it saw.
+
+## Platt vs. isotonic vs. temperature scaling
+
+| | Temperature scaling | Platt scaling | Isotonic regression |
+|---|---|---|---|
+| Map family | $\text{softmax}(z / T)$ | logistic $1/(1+e^{As+B})$ | any monotone step function |
+| Free parameters | 1 ($T$) | 2 ($A, B$) | non-parametric ($O(n)$ blocks) |
+| Assumption | uniform logit stretch | sigmoidal distortion | monotonicity only |
+| Data needed | very little | little (hundreds) | more ($\gtrsim 1000$) |
+| Multi-class | native (one $T$) | one-vs-rest per class | one-vs-rest per class |
+| Failure mode | can't fix non-uniform miscalibration | can't fix non-sigmoidal shape | overfits on small data; jagged/flat |
+| Changes ranking? | No | No | No |
+
+**Rule of thumb:** temperature scaling for deep nets (one knob, tiny validation set); Platt for SVMs / boosted models and small calibration sets; isotonic when you have plenty of calibration data and the reliability curve is oddly shaped. All three are **monotonic**, so none costs you accuracy or AUC.
+
+## Common pitfalls
+
+1. **Calibrating on the training set.** The model already fits it; you'll learn its overconfidence instead of correcting it. Always use a held-out calibration fold (or cross-validated out-of-fold predictions, as `sklearn`'s `CalibratedClassifierCV` does).
+2. **Isotonic on too little data.** Below ~1000 calibration points it overfits into a jagged staircase; prefer Platt there.
+3. **Assuming calibration transfers under shift.** A map fit on one distribution silently decays when the deployment distribution moves — recalibrate on target-domain data.
+4. **Forgetting these only rescale, never re-rank.** If the underlying scores rank examples badly (low AUC), no monotone map can fix that — calibration and discrimination are separate problems.
+5. **Calibrating an already-good model into worse shape.** On a well-calibrated model, a data-hungry isotonic fit can *add* error; check ECE before and after and keep the map only if it helps.
+
+## Related concepts
+
+- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — reliability diagrams, ECE, temperature scaling, and aleatoric vs. epistemic uncertainty
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — the accuracy/precision metrics calibration complements
+- [**ROC Curve and AUC**](/wiki/roc-auc) — why a monotone calibration map leaves AUC unchanged
