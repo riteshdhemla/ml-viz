@@ -444,7 +444,7 @@ Agentic:
   `spine.ts` helpers) as a compact strip near the course header, linking to
   the hub. Also show each lesson's stage dot(s) in `LessonList` if it stays
   visually quiet; drop that sub-item if it clutters.
-- [ ] **C2 · Wiki spine tagging (light)** — add `spineStages` support to
+- [x] **C2 · Wiki spine tagging (light)** — add `spineStages` support to
   `WikiPageMeta` and tag only the obviously-staged wiki pages (the agent
   cluster per §3; evaluation/metrics pages; deployment/inference pages).
   Render the same `SpineNav` strip on `/wiki/[slug]` when present. No prose

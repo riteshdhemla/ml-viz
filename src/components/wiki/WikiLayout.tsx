@@ -9,6 +9,7 @@ import { getNotebookUrl } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/site";
 import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
 import { ConceptNeighborhood } from "@/components/knowledge-graph/ConceptNeighborhood";
+import { SpineNav } from "@/components/lessons/SpineNav";
 import type { Neighborhood } from "@/lib/knowledge-graph";
 
 export interface ReferencedLesson {
@@ -67,6 +68,7 @@ export function WikiLayout({ meta, source, referencedBy, neighborhood }: Props) 
 
       {/* Content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-12">
+        <SpineNav spine={meta.spine} stageIds={meta.spineStages} />
         <article className="prose-lesson">
           <MdxContent source={source} />
         </article>
