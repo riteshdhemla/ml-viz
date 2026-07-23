@@ -3,12 +3,17 @@ title: "Gaussian Processes"
 description: "Bayesian regression over functions themselves — kernels as covariance, the GP posterior mean and variance, and why a GP gives calibrated uncertainty everywhere without choosing a parametric form."
 order: 2
 type: concept
+spineStages: [hypothesis-space, evaluation]
 estimatedMinutes: 18
 ---
 
 # Gaussian Processes
 
 Bayesian linear regression puts a distribution over *weights*. A **Gaussian process (GP)** goes one level up and puts a distribution directly over *functions* — without ever committing to a parametric form like "a line" or "a degree-3 polynomial." The result is a non-parametric model that fits flexible curves and, crucially, reports honest uncertainty everywhere. GPs are the gold standard when data is scarce and calibrated error bars matter.
+
+<Callout type="info" title="The forecasting thread">
+Return to the site's running `daily-demand` problem from the [project-loop hub](/wiki/ml-project-loop). The [linear-regression baseline](/courses/linear-regression/01-linear-regression) gave a point forecast; a GP gives the *same* forecast **with honest uncertainty** — a band that stays tight where history is dense and fans out over holidays, promotions, and the days just after the regime shift. Same problem, better for a new reason: now a safety-stock decision can use the band, not just the mean.
+</Callout>
 
 **Real-world examples:** Bayesian optimization of expensive experiments and hyperparameters (next lesson), geostatistics ("kriging"), robotics and control with safety guarantees, and small-data scientific modeling.
 
