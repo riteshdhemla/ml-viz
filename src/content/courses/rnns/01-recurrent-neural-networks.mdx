@@ -3,12 +3,19 @@ title: "Recurrent Neural Networks"
 description: "Networks with memory — how a hidden state lets a model process sequences one step at a time."
 order: 1
 type: concept
+spineStages: [hypothesis-space]
 estimatedMinutes: 22
 ---
 
 # Recurrent Neural Networks
 
-A feed-forward network maps a fixed-size input to a fixed-size output. But language, audio, stock prices, and DNA are **sequences** — their length varies and their order matters. A Recurrent Neural Network (RNN) processes a sequence one element at a time, carrying a **hidden state** that summarizes everything it has seen so far.
+A feed-forward network maps a fixed-size input to a fixed-size output. But language, audio, stock prices, and DNA are **sequences** — their length varies and their order matters. A Recurrent Neural Network (RNN) processes a sequence one element at a time, carrying a **hidden state** that summarizes everything it has seen so far. Reusing the *same* weights at every step is a **hypothesis-space** choice — weight sharing across time, the third of the four architectures in the [inductive-bias](/wiki/inductive-bias) story.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
+
+<Callout type="info" title="The forecasting thread">
+Here the site's running `daily-demand` problem (from the [project-loop hub](/wiki/ml-project-loop)) gets its **sequence-model** treatment. The [linear baseline](/courses/linear-regression/01-linear-regression) hand-built lag features; an [ARIMA model](/courses/time-series/02-arima-models) assumed linearity. An RNN instead *learns* what to carry forward in its hidden state — the same demand problem, now with a hypothesis space that discovers its own temporal features rather than being handed them.
+</Callout>
 
 **Real-world examples:** Language modeling, machine translation, speech recognition, time-series forecasting, sentiment analysis, music generation.
 
