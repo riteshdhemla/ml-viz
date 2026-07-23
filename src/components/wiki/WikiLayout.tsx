@@ -8,6 +8,8 @@ import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
 import { getNotebookUrl } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/site";
 import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
+import { ConceptNeighborhood } from "@/components/knowledge-graph/ConceptNeighborhood";
+import type { Neighborhood } from "@/lib/knowledge-graph";
 
 export interface ReferencedLesson {
   href: string;
@@ -20,9 +22,11 @@ interface Props {
   source: string;
   /** Resolved from meta.relatedLessons server-side so this layout stays fs-free. */
   referencedBy: ReferencedLesson[];
+  /** Concept-graph neighbourhood, computed server-side (keeps this layout fs-free). */
+  neighborhood?: Neighborhood | null;
 }
 
-export function WikiLayout({ meta, source, referencedBy }: Props) {
+export function WikiLayout({ meta, source, referencedBy, neighborhood }: Props) {
   const notebookUrl = getNotebookUrl("wiki", meta.slug, meta.notebookUrl);
   const deepDivePrompt = buildDeepDivePrompt({
     title: meta.title,
@@ -89,6 +93,8 @@ export function WikiLayout({ meta, source, referencedBy }: Props) {
             </ul>
           </div>
         )}
+
+        {neighborhood && <ConceptNeighborhood data={neighborhood} />}
       </main>
     </div>
   );

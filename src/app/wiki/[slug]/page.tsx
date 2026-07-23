@@ -6,6 +6,7 @@ import {
   getLessonsForCourse,
 } from "@/lib/content";
 import { WikiLayout, type ReferencedLesson } from "@/components/wiki/WikiLayout";
+import { getNeighborhood } from "@/lib/knowledge-graph";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/site";
 import type { Metadata } from "next";
@@ -64,6 +65,7 @@ export default async function WikiPage({ params }: Props) {
   if (!result) notFound();
 
   const referencedBy = resolveReferencedBy(result.meta.relatedLessons ?? []);
+  const neighborhood = getNeighborhood(`wiki:${slug}`);
 
   return (
     <>
@@ -79,7 +81,7 @@ export default async function WikiPage({ params }: Props) {
           publisher: { "@type": "Organization", name: SITE_NAME, url: SITE_URL },
         }}
       />
-      <WikiLayout meta={result.meta} source={result.source} referencedBy={referencedBy} />
+      <WikiLayout meta={result.meta} source={result.source} referencedBy={referencedBy} neighborhood={neighborhood} />
     </>
   );
 }
