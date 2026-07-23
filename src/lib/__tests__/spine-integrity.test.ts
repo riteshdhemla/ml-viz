@@ -93,6 +93,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "causal-inference",
         "time-series",
         "model-evaluation",
+        "neural-networks",
       ].includes(slug),
   ),
 );

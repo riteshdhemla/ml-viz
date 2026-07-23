@@ -391,7 +391,7 @@ Classical ML:
   demand forecasts)*
 
 Deep learning:
-- [ ] B16 · neural-networks *(settled-vs-folklore exemplar: 05-batchnorm must
+- [x] B16 · neural-networks *(settled-vs-folklore exemplar: 05-batchnorm must
   present the original internal-covariate-shift story as the historical
   motivation and the smoother-loss-surface account as the current
   understanding — the classic case per §5)*
