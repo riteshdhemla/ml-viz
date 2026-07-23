@@ -11140,6 +11140,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "llm-quiz-slot-rag",
+    type: "multiple-choice",
+    question:
+      "Adding retrieval-augmented generation (RAG) — fetching documents and inserting them into the prompt — changes which slot of the agentic project loop?",
+    hint: "It changes what information the model has access to at inference time.",
+    explanation:
+      "RAG is a context-slot change: it augments what the model sees at query time so it can answer from grounded, up-to-date sources instead of stale parametric memory. It doesn't change the orchestration loop, guardrails, or the task itself.",
+    options: [
+      { id: "a", label: "Context & tools — it augments what the model sees", isCorrect: true },
+      { id: "b", label: "Orchestration — the runtime plan/act loop", isCorrect: false },
+      { id: "c", label: "Guardrails — runtime safety", isCorrect: false },
+      { id: "d", label: "Evaluation — offline scoring", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: an agent that critiques and revises its own draft before answering. Which slot of the agentic project loop does self-reflection modify?",
+    hint: "It adds a step to the runtime loop the agent runs.",
+    explanation:
+      "Self-reflection is an orchestration change: it adds a critique-and-revise step to the agent's runtime loop. It doesn't change the retrieved context, the guardrails, or the task definition.",
+    options: [
+      { id: "a", label: "Orchestration — an extra step in the runtime loop", isCorrect: true },
+      { id: "b", label: "Context & tools — what the model sees", isCorrect: false },
+      { id: "c", label: "Guardrails — output filtering", isCorrect: false },
+      { id: "d", label: "Operations — production tracing", isCorrect: false },
+    ],
+  },
+  {
     id: "agent-quiz-querying",
     type: "multiple-choice",
     question:

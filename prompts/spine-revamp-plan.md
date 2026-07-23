@@ -429,7 +429,7 @@ Production ML:
   mapping lessons→stages per §3)*
 
 Agentic:
-- [ ] B32 · building-with-llms *(per-lesson stages from §3; lesson 06
+- [x] B32 · building-with-llms *(per-lesson stages from §3; lesson 06
   ai-engineering-architecture gets a short section presenting the agentic
   loop with `<ProjectLoopViz variant="agentic" />`)*
 - [ ] B33 · agent-design-patterns *(lesson 01 already introduces the five
