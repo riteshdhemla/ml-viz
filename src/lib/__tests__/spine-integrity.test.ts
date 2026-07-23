@@ -100,6 +100,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "generative-models",
         "graph-neural-networks",
         "computer-vision",
+        "nlp",
       ].includes(slug),
   ),
 );
