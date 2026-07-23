@@ -408,7 +408,7 @@ Deep learning:
   over graphs; WikiLink in lesson 01)*
 - [x] B22 · computer-vision
 - [x] B23 · nlp
-- [ ] B24 · speech-audio
+- [x] B24 · speech-audio
 - [ ] B25 · graphical-models
 - [ ] B26 · reinforcement-learning *(call out "exploration is the data stage
   happening at train time" — the loop's most instructive edge case)*

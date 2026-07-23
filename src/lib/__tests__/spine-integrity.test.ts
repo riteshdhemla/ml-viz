@@ -101,6 +101,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "graph-neural-networks",
         "computer-vision",
         "nlp",
+        "speech-audio",
       ].includes(slug),
   ),
 );
