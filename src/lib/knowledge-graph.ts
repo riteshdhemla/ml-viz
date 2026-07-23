@@ -242,6 +242,71 @@ export interface CourseGraph {
 
 const courseOf = (lessonNodeId: string) => lessonNodeId.slice("lesson:".length).split("/")[0];
 
+// ── Local neighbourhood (per-page "concept map fragment") ────────────
+
+export type NeighborRelation = "builds-on" | "related" | "deeper" | "referenced-by";
+
+export interface NeighborRef {
+  title: string;
+  href: string;
+  kind: NodeKind;
+  relation: NeighborRelation;
+}
+
+export interface Neighborhood {
+  center: { title: string; kind: NodeKind };
+  neighbors: NeighborRef[];
+}
+
+/**
+ * The immediate typed neighbourhood of a lesson or wiki node — the "concept
+ * map fragment" shown at the point of study. Prereqs in, related across, deep
+ * dives out (and, for wiki pages, the lessons that reference them).
+ */
+export function getNeighborhood(id: string, perGroup = 6): Neighborhood | null {
+  const center = getGraphNode(id);
+  if (!center) return null;
+  const { nodes } = buildKnowledgeGraph();
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+
+  const out: NeighborRef[] = [];
+  const seen = new Set<string>();
+  const push = (node: GraphNode | undefined, relation: NeighborRelation, cap: number, count: { n: number }) => {
+    if (!node || seen.has(node.id) || node.id === id || count.n >= cap) return;
+    seen.add(node.id);
+    count.n += 1;
+    out.push({ title: node.title, href: node.href, kind: node.kind, relation });
+  };
+
+  // "Builds on": for a lesson, its course's prerequisite courses.
+  if (center.kind === "lesson") {
+    const course = getGraphNode(courseId(courseOf(id)));
+    if (course) {
+      const c = { n: 0 };
+      for (const nb of neighbors(course.id)) {
+        if (nb.kind === "prerequisite" && nb.direction === "out") push(nb.node, "builds-on", 3, c);
+      }
+    }
+  }
+
+  const nbs = neighbors(id);
+  const rel = { n: 0 };
+  for (const nb of nbs) if (nb.kind === "related") push(nb.node, "related", perGroup, rel);
+
+  if (center.kind === "lesson") {
+    const deep = { n: 0 };
+    for (const nb of nbs) if (nb.kind === "deep-dive" && nb.direction === "out") push(nb.node, "deeper", perGroup, deep);
+  } else {
+    // wiki: lessons that reference this page
+    const ref = { n: 0 };
+    for (const nb of nbs) if (nb.kind === "deep-dive" && nb.direction === "in") push(nb.node, "referenced-by", perGroup, ref);
+  }
+
+  void byId; // (kept for clarity; lookups go through getGraphNode/neighbors)
+  if (out.length === 0) return null;
+  return { center: { title: center.title, kind: center.kind }, neighbors: out };
+}
+
 /** Project the full graph down to a legible course-level map with drill-down. */
 export function buildCourseGraph(): CourseGraph {
   const { nodes, edges } = buildKnowledgeGraph();

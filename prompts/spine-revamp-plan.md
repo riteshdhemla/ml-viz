@@ -496,7 +496,7 @@ wiki body, `topics`, and `spineStages`.
   knowledge graph, colored by `cluster`/`spine`, filterable by spine stage and
   topic, each node linking to its page. Pure-SVG per viz conventions or a
   self-contained layout; server-rendered node/edge data.
-- [ ] **D3 · Local "concept neighborhood"** — on each lesson/wiki page, a small
+- [x] **D3 · Local "concept neighborhood"** — on each lesson/wiki page, a small
   "related concepts" graph fragment (prereqs in, related across, deep-dives
   out) rendered from the same data layer — elaboration at the point of study.
 - [ ] **D4 · Prerequisite-DAG audit** — surface cycles / forward references in

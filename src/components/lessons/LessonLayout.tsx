@@ -4,6 +4,8 @@ import type { LessonMeta } from "@/types/course";
 import { MdxContent } from "@/components/mdx/MdxContent";
 import { NotebookLink } from "@/components/lessons/NotebookLink";
 import { SpineNav } from "@/components/lessons/SpineNav";
+import { ConceptNeighborhood } from "@/components/knowledge-graph/ConceptNeighborhood";
+import { getNeighborhood } from "@/lib/knowledge-graph";
 import { AskAiButton } from "@/components/lessons/AskAiButton";
 import { LessonCompleteButton } from "@/components/lessons/LessonCompleteButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
@@ -33,6 +35,7 @@ export function LessonLayout({ meta, source, prev, next, allLessons, spine }: Pr
   const notebookUrl = isQuiz ? null : getNotebookUrl(meta.courseSlug, meta.slug, meta.notebookUrl);
   const badge = LESSON_TYPE_BADGE[meta.type];
   const position = allLessons.findIndex((l) => l.slug === meta.slug) + 1;
+  const neighborhood = isQuiz ? null : getNeighborhood(`lesson:${meta.courseSlug}/${meta.slug}`);
   const deepDivePrompt = buildDeepDivePrompt({
     title: meta.title,
     description: meta.description,
@@ -81,6 +84,8 @@ export function LessonLayout({ meta, source, prev, next, allLessons, spine }: Pr
             exerciseIds={[...source.matchAll(/<Exercise\s+id="([^"]+)"/g)].map((m) => m[1])}
           />
         )}
+
+        {neighborhood && <ConceptNeighborhood data={neighborhood} />}
 
         <LessonCompleteButton meta={meta} next={next} />
 
