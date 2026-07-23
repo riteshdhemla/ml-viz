@@ -453,7 +453,7 @@ Agentic:
   be empty after B33; delete the allowlist mechanism) + reconcile hub pages'
   "go deeper" links against the final tagging (every stage section links ≥3
   lessons that actually carry that stage).
-- [ ] **C4 · DAG audit triage** — read the "DAG audit log" accumulated by
+- [x] **C4 · DAG audit triage** — read the "DAG audit log" accumulated by
   Phase B (clause j): for each forward reference decide fix-in-place (add a
   defining clause or a link at first use), add-prerequisite (course
   `prerequisites` field), or accept-with-note. Apply the cheap fixes in this
@@ -545,4 +545,14 @@ wiki body, `topics`, and `spineStages`.
 
 Format: `- <course>/<lesson>: "<term>" used before taught; taught in <where> — <suggested action>`
 
-(empty — Phase B populates this)
+Phase B log: **empty** — the 33 course passes surfaced no forward-reference
+violations worth recording (openers referenced only prior-course prerequisites
+or same-course earlier lessons).
+
+**C4 triage (done):** the machine audit (`prerequisiteAudit()`, D4) confirms the
+course-level prerequisite graph is a **valid DAG — zero cycles** — and produces a
+consistent topological learning order in which every prerequisite precedes its
+dependents (enforced by `knowledge-graph.test.ts`). No fix-in-place or
+add-prerequisite actions were needed. Lesson-level forward references remain a
+softer, content-review concern (covered by `content-review-plan.md`), not a
+structural DAG defect. Nothing to triage further.
