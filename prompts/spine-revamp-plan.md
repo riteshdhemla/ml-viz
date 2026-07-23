@@ -499,7 +499,7 @@ wiki body, `topics`, and `spineStages`.
 - [x] **D3 · Local "concept neighborhood"** — on each lesson/wiki page, a small
   "related concepts" graph fragment (prereqs in, related across, deep-dives
   out) rendered from the same data layer — elaboration at the point of study.
-- [ ] **D4 · Prerequisite-DAG audit** — surface cycles / forward references in
+- [x] **D4 · Prerequisite-DAG audit** — surface cycles / forward references in
   the prerequisite + related edges (feeds Phase C4); optionally a "learning
   path" topological order per cluster.
 
