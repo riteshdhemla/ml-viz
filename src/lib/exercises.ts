@@ -3262,6 +3262,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Producing overlapping clusters", isCorrect: false },
     ],
   },
+  {
+    id: "clustering-quiz-slot-objective",
+    type: "multiple-choice",
+    question:
+      "K-Means minimizes within-cluster sum of squares by alternating assign and update steps. In the ML project loop, that quantity being minimized is which slot?",
+    hint: "It's the definition of a good clustering — the thing the algorithm drives down.",
+    explanation:
+      "The within-cluster sum of squares is the objective; the alternating assign/update steps are the optimization that minimizes it. Even unsupervised methods have both slots.",
+    options: [
+      { id: "a", label: "Objective — the quantity being minimized", isCorrect: true },
+      { id: "b", label: "Optimization — the alternating steps", isCorrect: false },
+      { id: "c", label: "Evaluation — the silhouette score", isCorrect: false },
+      { id: "d", label: "Data — the points being clustered", isCorrect: false },
+    ],
+  },
+  {
+    id: "clustering-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a confusion matrix with precision and recall. Which slot of the ML project loop does it belong to?",
+    hint: "It's a way to measure how good predictions are.",
+    explanation:
+      "A confusion matrix is an evaluation tool — it quantifies prediction quality. It doesn't change the model, the loss, or the data.",
+    options: [
+      { id: "a", label: "Evaluation — it measures prediction quality", isCorrect: true },
+      { id: "b", label: "Objective — it defines the loss", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it defines the model", isCorrect: false },
+      { id: "d", label: "Feedback — it retrains the model", isCorrect: false },
+    ],
+  },
 
   // ── PCA & Dimensionality Reduction course quiz ───────────────────────
   {
