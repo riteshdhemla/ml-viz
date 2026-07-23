@@ -8777,6 +8777,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A CNN that outputs the waveform directly", isCorrect: false },
     ],
   },
+  {
+    id: "audio-quiz-slot-spectrogram",
+    type: "multiple-choice",
+    question:
+      "Converting a raw waveform into a log-mel spectrogram before training an ASR model is a decision in which slot of the ML project loop?",
+    hint: "It's about the representation the model consumes, upstream of the architecture.",
+    explanation:
+      "Choosing the audio representation (waveform vs mel spectrogram vs MFCC) is a data-slot decision: it fixes what the model can even learn from. The architecture and loss are separate slots.",
+    options: [
+      { id: "a", label: "Data — the input representation of sound", isCorrect: true },
+      { id: "b", label: "Hypothesis space — the model architecture", isCorrect: false },
+      { id: "c", label: "Objective — the training loss", isCorrect: false },
+      { id: "d", label: "Optimization — the training algorithm", isCorrect: false },
+    ],
+  },
+  {
+    id: "audio-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: 8-bit quantization of a trained model's weights to make inference cheaper. Which slot of the ML project loop does it serve?",
+    hint: "It's applied after training to make the deployed model cheaper to run.",
+    explanation:
+      "Post-training quantization is a deployment-feedback/serving concern: it compresses the trained model for cheaper production inference, ideally with negligible accuracy loss. It doesn't change the data, model family, or loss used in training.",
+    options: [
+      { id: "a", label: "Deployment feedback — cheaper production serving", isCorrect: true },
+      { id: "b", label: "Hypothesis space — a new architecture", isCorrect: false },
+      { id: "c", label: "Objective — a new loss", isCorrect: false },
+      { id: "d", label: "Data — a new dataset", isCorrect: false },
+    ],
+  },
   // ── Agent Design Patterns ──────────────────────────────────────
   {
     id: "agent-fm-agent-components",

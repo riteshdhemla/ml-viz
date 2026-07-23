@@ -3,12 +3,15 @@ title: "Audio Representations & Spectrograms"
 description: "How sound becomes a tensor a model can learn from — sampling a waveform, the short-time Fourier transform, mel spectrograms, and MFCCs."
 order: 1
 type: concept
+spineStages: [data]
 estimatedMinutes: 15
 ---
 
 # Audio Representations & Spectrograms
 
-Audio is a wave — a one-dimensional signal of air pressure over time. Feeding a raw waveform to a model is possible but hard: it's enormously long (tens of thousands of samples per second) and the information you care about lives in its *frequencies*, not its raw amplitudes. The key move in audio ML is to transform sound into a **spectrogram** — a 2-D time-frequency image — which turns audio into something CNNs and transformers handle naturally. This lesson covers that pipeline.
+Audio is a wave — a one-dimensional signal of air pressure over time. Feeding a raw waveform to a model is possible but hard: it's enormously long (tens of thousands of samples per second) and the information you care about lives in its *frequencies*, not its raw amplitudes. The key move in audio ML is to transform sound into a **spectrogram** — a 2-D time-frequency image — which turns audio into something CNNs and transformers handle naturally. This lesson covers that pipeline. It's the **data** stage of the [ML project loop](/wiki/ml-project-loop) for sound: the representation you feed the model (waveform vs mel spectrogram vs MFCC) decides what's even learnable, before any architecture choice.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 **Real-world examples:** every speech recognizer, music classifier, voice assistant, sound-event detector, and audio generation model starts by computing spectrogram-style features (or learns an equivalent front-end).
 
