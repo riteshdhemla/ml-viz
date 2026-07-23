@@ -3466,6 +3466,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "The training data is unbiased", isCorrect: false },
     ],
   },
+  {
+    id: "probmodel-quiz-slot-em",
+    type: "multiple-choice",
+    question:
+      "The EM algorithm fits a GMM by alternating E and M steps. In the ML project loop, EM is playing the role of which slot?",
+    hint: "It's the procedure that searches for the parameters that best fit the data.",
+    explanation:
+      "EM is the optimization slot for latent-variable models: it iteratively improves the parameters to maximize the likelihood. The mixture model itself is the hypothesis space.",
+    options: [
+      { id: "a", label: "Optimization — it searches for the best-fit parameters", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it defines the model family", isCorrect: false },
+      { id: "c", label: "Data — it preprocesses the inputs", isCorrect: false },
+      { id: "d", label: "Evaluation — it scores the clustering", isCorrect: false },
+    ],
+  },
+  {
+    id: "probmodel-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: an attention mechanism replacing a fixed context vector in a sequence model. Which slot does it modify?",
+    hint: "It changes what the model can represent about relationships in the input.",
+    explanation:
+      "Attention is a hypothesis-space change — a new architectural component that expands the family of functions the model can express. The loss and optimizer need not change.",
+    options: [
+      { id: "a", label: "Hypothesis space — a more expressive architecture", isCorrect: true },
+      { id: "b", label: "Optimization — a different training loop", isCorrect: false },
+      { id: "c", label: "Objective — a different loss", isCorrect: false },
+      { id: "d", label: "Data — a different dataset", isCorrect: false },
+    ],
+  },
 
   // ── RNNs course quiz ─────────────────────────────────────────────────
   {
