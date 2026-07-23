@@ -11020,6 +11020,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "recsys-quiz-slot-metrics",
+    type: "multiple-choice",
+    question:
+      "Ranking metrics like recall@k and NDCG@k decide whether a recommender is good. Which slot of the ML project loop do they define?",
+    hint: "They measure how good the ranked output is — they don't train the model.",
+    explanation:
+      "Ranking metrics are the evaluation slot for recommenders: they quantify how well the ranked list serves the user. They also inform the objective (you often train a surrogate of them), but the metric itself is evaluation.",
+    options: [
+      { id: "a", label: "Evaluation — measuring the quality of the ranking", isCorrect: true },
+      { id: "b", label: "Optimization — the training algorithm", isCorrect: false },
+      { id: "c", label: "Hypothesis space — the model", isCorrect: false },
+      { id: "d", label: "Data — the interaction logs", isCorrect: false },
+    ],
+  },
+  {
+    id: "recsys-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: MixUp, which trains on convex combinations of pairs of examples and their labels. Which slot of the ML project loop does it modify?",
+    hint: "It creates new synthetic training examples.",
+    explanation:
+      "MixUp is a data-slot augmentation: it manufactures interpolated training examples to smooth the model's behavior between classes. The model family, objective, and optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Data — it synthesizes interpolated training examples", isCorrect: true },
+      { id: "b", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
+  {
     id: "llm-quiz-agent-reliability",
     type: "multiple-choice",
     question:
