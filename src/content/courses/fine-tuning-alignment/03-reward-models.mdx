@@ -3,12 +3,13 @@ title: "Reward Models"
 description: "Turn pairwise human preferences into a scalar reward signal. The Bradley–Terry objective, a reward head on a frozen LM trunk, and the reward-hacking trap that breaks alignment pipelines."
 order: 3
 type: concept
+spineStages: [objective]
 estimatedMinutes: 20
 ---
 
 # Reward Models
 
-Cross-entropy and SFT both need a **single correct answer** per input. Alignment is messier than that: "helpful", "honest", and "concise" are tastes, not labels. A **reward model** (RM) bridges the gap — it learns a scalar `r(prompt, response)` that mimics how a human would rank competing answers. Once you have a reward, you can optimise against it with RL (next lesson), or use it directly as a re-ranker over candidate generations.
+Cross-entropy and SFT both need a **single correct answer** per input. Alignment is messier than that: "helpful", "honest", and "concise" are tastes, not labels. A **reward model** (RM) bridges the gap — it learns a scalar `r(prompt, response)` that mimics how a human would rank competing answers. Once you have a reward, you can optimise against it with RL (next lesson), or use it directly as a re-ranker over candidate generations. The reward model *is* the **objective** slot for alignment: it's how you define "good" when there's no single correct label to regress on.
 
 **Real-world examples:** InstructGPT/ChatGPT trained an RM from ~30 k labeller-ranked comparisons before any RL kicked in; Anthropic's RLHF and Constitutional AI loops train RMs on chosen-vs-rejected pairs; LLaMA-2-Chat learned two RMs (helpfulness + safety) and combined them at PPO time; open-source projects (TRL, OpenRLHF, Argilla) all centre on a `reward_model.fit(pairs)` step.
 

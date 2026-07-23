@@ -3,12 +3,29 @@ title: "Supervised Fine-Tuning & Instruction Tuning"
 description: "When prompting isn't enough: update the model's weights on labeled examples. Loss, instruction datasets, chat templates, and the catastrophic-forgetting trap."
 order: 1
 type: concept
+spineStages: [data]
 estimatedMinutes: 22
 ---
 
 # Supervised Fine-Tuning & Instruction Tuning
 
 Prompting and retrieval keep the weights frozen. **Supervised fine-tuning (SFT)** actually updates them. You hand the model a dataset of input/output pairs and continue training it with the same next-token cross-entropy loss it was pretrained with — but now on *your* distribution.
+
+<Callout type="tip" title="This course is one trip around the ML loop">
+Fine-tuning and alignment are the cleanest whole-course showcase of the [ML project loop](/wiki/ml-project-loop) — each lesson is a different slot, applied to a frozen foundation model:
+
+| Lesson | Slot it changes |
+|---|---|
+| **SFT** (this lesson) | **data** — curate input/output pairs on your distribution |
+| **PEFT / LoRA** | **hypothesis space** — a small low-rank adapter is the trainable model |
+| **Reward models** | **objective** — turn human preference into a scalar to optimize |
+| **RLHF / DPO** | **optimization** — search the policy for high-reward responses |
+| **Merging / quantization / distillation** | **deployment feedback** — make the trained model cheap and serveable |
+
+Read the course with that map in hand and each technique stops being a separate trick — it's a change to one slot of a loop you already know.
+</Callout>
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 **Real-world examples:** a customer-support assistant that always replies in your brand voice; a coding model specialised for your internal framework; a medical-summarisation model trained on de-identified discharge notes; an instruction-tuned chat model built from a base LLM and a curated instruction dataset.
 
