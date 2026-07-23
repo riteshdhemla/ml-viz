@@ -416,7 +416,7 @@ Deep learning:
 - [x] B28 · gpu-programming
 
 Production ML:
-- [ ] B29 · ml-in-practice *(the `data`+`feedback` anchor; its 04-ml-systems-design
+- [x] B29 · ml-in-practice *(the `data`+`feedback` anchor; its 04-ml-systems-design
   lesson becomes the loop's "why" lesson — add a short section presenting the
   full six-stage loop with `<ProjectLoopViz variant="ml" />`, the
   moving-bottleneck paragraph (§2.6), and the hub link; forecasting-thread

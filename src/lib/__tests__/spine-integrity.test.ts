@@ -106,6 +106,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "reinforcement-learning",
         "recommender-systems",
         "gpu-programming",
+        "ml-in-practice",
       ].includes(slug),
   ),
 );
