@@ -79,6 +79,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
       // Phase B removes each course here once fully tagged:
       ![
         "linear-algebra",
+        "calculus-for-ml",
       ].includes(slug),
   ),
 );

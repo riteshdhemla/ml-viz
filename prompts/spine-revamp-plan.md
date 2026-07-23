@@ -363,7 +363,7 @@ lesson-text pass, not a notebook rewrite.
 
 Foundations (stage-anchor framing: "the math *of* stage X"):
 - [x] B1 · linear-algebra
-- [ ] B2 · calculus-for-ml
+- [x] B2 · calculus-for-ml
 - [ ] B3 · probability-statistics
 - [ ] B4 · optimization-ml
 
