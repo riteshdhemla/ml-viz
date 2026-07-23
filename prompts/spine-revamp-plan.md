@@ -439,7 +439,7 @@ Agentic:
 
 ### Phase C — Surfacing & docs
 
-- [ ] **C1 · Course-page spine strip** — on `/courses/[courseSlug]`, render
+- [x] **C1 · Course-page spine strip** — on `/courses/[courseSlug]`, render
   the course's stage coverage (union of its lessons' `spineStages`, via
   `spine.ts` helpers) as a compact strip near the course header, linking to
   the hub. Also show each lesson's stage dot(s) in `LessonList` if it stays
