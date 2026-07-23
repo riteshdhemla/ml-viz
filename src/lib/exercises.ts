@@ -11215,6 +11215,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "ft-quiz-slot-reward",
+    type: "multiple-choice",
+    question:
+      "A reward model turns pairwise human preferences into a scalar r(prompt, response) that later training maximizes. In the ML project loop, the reward model is which slot?",
+    hint: "It defines what 'good' means when there is no single correct label.",
+    explanation:
+      "A reward model is the objective slot for alignment: it encodes the notion of a good response so a policy can be optimized against it. RLHF/DPO (optimization) then searches for a policy that scores well under it.",
+    options: [
+      { id: "a", label: "Objective — it defines the goal to optimize", isCorrect: true },
+      { id: "b", label: "Optimization — it searches for the policy", isCorrect: false },
+      { id: "c", label: "Data — it collects the pairs", isCorrect: false },
+      { id: "d", label: "Hypothesis space — it defines the model", isCorrect: false },
+    ],
+  },
+  {
+    id: "ft-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: an epsilon-greedy policy that occasionally takes a random action so an agent keeps discovering new states. Which slot of the ML project loop does exploration correspond to?",
+    hint: "It determines what experience — what data — the learner ever sees.",
+    explanation:
+      "Exploration is the data slot happening online: it shapes the training distribution the learner collects. Explore poorly and the data never covers the states that matter, no matter how good the objective or optimizer.",
+    options: [
+      { id: "a", label: "Data — online collection of the training distribution", isCorrect: true },
+      { id: "b", label: "Optimization — the update rule", isCorrect: false },
+      { id: "c", label: "Objective — the reward", isCorrect: false },
+      { id: "d", label: "Evaluation — the return estimate", isCorrect: false },
+    ],
+  },
+  {
     id: "ml-practice-quiz-point-in-time",
     type: "multiple-choice",
     question:

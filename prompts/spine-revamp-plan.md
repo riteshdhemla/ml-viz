@@ -424,7 +424,7 @@ Production ML:
 - [x] B30 · streaming-ml *(forecasting-thread visits in 04-concept-drift —
   the canonical series' regime shift is literally the lesson topic — and
   05-production: the loop closing in real time)*
-- [ ] B31 · fine-tuning-alignment *(frame the whole course as one trip around
+- [x] B31 · fine-tuning-alignment *(frame the whole course as one trip around
   the ML loop applied to LLMs — add a short roadmap section to lesson 01
   mapping lessons→stages per §3)*
 

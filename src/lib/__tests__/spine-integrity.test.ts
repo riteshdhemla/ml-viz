@@ -108,6 +108,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "gpu-programming",
         "ml-in-practice",
         "streaming-ml",
+        "fine-tuning-alignment",
       ].includes(slug),
   ),
 );
