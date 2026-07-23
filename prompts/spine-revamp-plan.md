@@ -362,7 +362,7 @@ Touch notebooks only if their intro contradicts the new framing — this is a
 lesson-text pass, not a notebook rewrite.
 
 Foundations (stage-anchor framing: "the math *of* stage X"):
-- [ ] B1 · linear-algebra
+- [x] B1 · linear-algebra
 - [ ] B2 · calculus-for-ml
 - [ ] B3 · probability-statistics
 - [ ] B4 · optimization-ml
