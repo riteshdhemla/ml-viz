@@ -107,6 +107,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "recommender-systems",
         "gpu-programming",
         "ml-in-practice",
+        "streaming-ml",
       ].includes(slug),
   ),
 );

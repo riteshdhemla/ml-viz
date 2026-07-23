@@ -3,12 +3,15 @@ title: "From Batch to Streaming"
 description: "The data-stream model — unbounded input, one pass, bounded memory — and why event time, not processing time, is the axis that matters."
 order: 1
 type: concept
+spineStages: [data]
 estimatedMinutes: 16
 ---
 
 # From Batch to Streaming
 
-Most machine learning you have seen so far is **batch** learning: you hold the entire training set in memory (or on disk), sweep over it as many times as you like, fit a model, and ship it. The data is *bounded* and *available*.
+Most machine learning you have seen so far is **batch** learning: you hold the entire training set in memory (or on disk), sweep over it as many times as you like, fit a model, and ship it. The data is *bounded* and *available*. Streaming breaks that assumption, and in doing so it lives at the **data** and **deployment-feedback** ends of the [ML project loop](/wiki/ml-project-loop): the data never stops arriving, and the model must keep adapting to it in production. It's the loop with the *close-back-to-data* arrow made continuous.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 **Streaming** breaks both assumptions. Data arrives as an unbounded sequence of elements
 
