@@ -3,12 +3,15 @@ title: "GPU Architecture & the Execution Model"
 description: "Why a GPU trains a network 10–100× faster than a CPU — throughput vs latency, the SIMT execution model, threads/warps/blocks/grids, the memory hierarchy, and how massive parallelism hides memory latency."
 order: 1
 type: concept
+spineStages: [optimization]
 estimatedMinutes: 15
 ---
 
 # GPU Architecture & the Execution Model
 
-A CPU is a *latency* machine: a handful of powerful cores, big caches, and deep out-of-order pipelines that race a single thread to the finish line. A GPU is a *throughput* machine: thousands of simple cores that get enormous total work done by running tens of thousands of threads at once. Training a neural network is overwhelmingly parallel — the same multiply-add applied to millions of numbers — so it maps onto the throughput machine almost perfectly. This lesson is the mental model the rest of the course builds on.
+A CPU is a *latency* machine: a handful of powerful cores, big caches, and deep out-of-order pipelines that race a single thread to the finish line. A GPU is a *throughput* machine: thousands of simple cores that get enormous total work done by running tens of thousands of threads at once. Training a neural network is overwhelmingly parallel — the same multiply-add applied to millions of numbers — so it maps onto the throughput machine almost perfectly. This lesson is the mental model the rest of the course builds on. In [project-loop](/wiki/ml-project-loop) terms, this whole course is the **optimization** slot at the systems level — not *which* update rule, but how to make that update physically fast. It's also where the field's bottleneck moved: once models got big enough, the limit stopped being the math and became **memory bandwidth and communication between chips**.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 **Real-world examples:** every large model is trained on GPUs (or TPUs); PyTorch/TensorFlow dispatch your matrix ops to CUDA kernels; inference servers like vLLM squeeze throughput out of GPU memory bandwidth; even your phone's NPU borrows the same SIMT idea.
 

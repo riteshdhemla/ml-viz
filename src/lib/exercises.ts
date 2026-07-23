@@ -7143,6 +7143,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Switch to pipeline parallelism to split the model by layer", isCorrect: false },
     ],
   },
+  {
+    id: "gpu-quiz-slot-systems",
+    type: "multiple-choice",
+    question:
+      "Memory coalescing, kernel fusion, and tensor-parallel sharding all make training run faster without changing the model or the loss. Which slot of the ML project loop do they serve?",
+    hint: "They make the parameter search physically feasible — the systems level of one slot.",
+    explanation:
+      "These are optimization-slot techniques at the systems level: they make the same gradient-descent search faster and larger-scale. The hypothesis space and objective are identical whether the kernel is fast or slow.",
+    options: [
+      { id: "a", label: "Optimization — making the parameter search feasible and fast", isCorrect: true },
+      { id: "b", label: "Hypothesis space — a different model", isCorrect: false },
+      { id: "c", label: "Data — a different dataset", isCorrect: false },
+      { id: "d", label: "Objective — a different loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "gpu-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: computing an ROC curve and its AUC to compare two classifiers. Which slot of the ML project loop does it belong to?",
+    hint: "It's a way to measure and compare model quality.",
+    explanation:
+      "An ROC/AUC analysis is an evaluation-slot activity: it quantifies and compares classifier performance across thresholds. It doesn't change the model, data, or loss.",
+    options: [
+      { id: "a", label: "Evaluation — measuring and comparing model quality", isCorrect: true },
+      { id: "b", label: "Optimization — a training change", isCorrect: false },
+      { id: "c", label: "Hypothesis space — a new model", isCorrect: false },
+      { id: "d", label: "Data — a new dataset", isCorrect: false },
+    ],
+  },
 
   // ── Statistical Inference & Hypothesis Testing ──────────────────
   {

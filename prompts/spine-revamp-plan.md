@@ -413,7 +413,7 @@ Deep learning:
 - [x] B26 · reinforcement-learning *(call out "exploration is the data stage
   happening at train time" — the loop's most instructive edge case)*
 - [x] B27 · recommender-systems
-- [ ] B28 · gpu-programming
+- [x] B28 · gpu-programming
 
 Production ML:
 - [ ] B29 · ml-in-practice *(the `data`+`feedback` anchor; its 04-ml-systems-design
