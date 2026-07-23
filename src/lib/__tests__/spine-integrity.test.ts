@@ -98,6 +98,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "rnns",
         "transformers",
         "generative-models",
+        "graph-neural-networks",
       ].includes(slug),
   ),
 );
