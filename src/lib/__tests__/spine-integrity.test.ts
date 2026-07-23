@@ -88,6 +88,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "ensemble-methods",
         "clustering",
         "pca-dimensionality",
+        "probabilistic-models",
       ].includes(slug),
   ),
 );
