@@ -10480,6 +10480,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "rnn-quiz-slot-weightshare",
+    type: "multiple-choice",
+    question:
+      "An RNN applies the same weights at every time step (weight sharing across time). Which slot of the ML project loop is that, and what does it buy?",
+    hint: "It's a structural assumption about the model family — an inductive bias for sequences.",
+    explanation:
+      "Sharing weights across time is a hypothesis-space choice: a time-translation inductive bias that lets one set of parameters handle sequences of any length, with far better sample efficiency than an unrolled feed-forward net.",
+    options: [
+      { id: "a", label: "Hypothesis space — a time-translation inductive bias", isCorrect: true },
+      { id: "b", label: "Optimization — a faster training loop", isCorrect: false },
+      { id: "c", label: "Data — a different dataset", isCorrect: false },
+      { id: "d", label: "Objective — a different loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "rnn-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: temperature scaling, applied after training to make a classifier's probabilities calibrated. Which slot does it modify?",
+    hint: "It's a post-hoc fix measured and applied at evaluation time.",
+    explanation:
+      "Temperature scaling is an evaluation-slot technique: it diagnoses and corrects miscalibrated confidence without touching the model's weights, data, or loss.",
+    options: [
+      { id: "a", label: "Evaluation — post-hoc calibration", isCorrect: true },
+      { id: "b", label: "Optimization — it retrains the model", isCorrect: false },
+      { id: "c", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "d", label: "Hypothesis space — it changes the model", isCorrect: false },
+    ],
+  },
+  {
     id: "transformer-quiz-block",
     type: "multiple-choice",
     question:

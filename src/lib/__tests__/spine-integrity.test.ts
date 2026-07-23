@@ -95,6 +95,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "model-evaluation",
         "neural-networks",
         "cnns",
+        "rnns",
       ].includes(slug),
   ),
 );

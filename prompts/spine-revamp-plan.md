@@ -397,7 +397,7 @@ Deep learning:
   understanding — the classic case per §5)*
 - [x] B17 · cnns *(inductive-bias thread: frame `hypothesis-space` tagging as
   translation equivariance; `<WikiLink slug="inductive-bias">` in lesson 01)*
-- [ ] B18 · rnns *(inductive bias: weight sharing across time; WikiLink in
+- [x] B18 · rnns *(inductive bias: weight sharing across time; WikiLink in
   lesson 01; forecasting-thread visit in lesson 01 or 04: the sequence-model
   version of the demand problem)*
 - [ ] B19 · transformers *(inductive bias: permutation equivariance +
