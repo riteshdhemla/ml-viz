@@ -10945,6 +10945,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "rl-quiz-slot-exploration",
+    type: "multiple-choice",
+    question:
+      "In RL, an agent must explore to gather useful experience, and there is no fixed dataset. Which slot of the ML project loop does exploration most directly correspond to?",
+    hint: "It determines what training examples the learner ever sees — but happening online.",
+    explanation:
+      "Exploration is the data slot happening live: the agent generates its own training distribution by acting. Explore poorly and the data never covers the states that matter, so no objective or optimizer can save you.",
+    options: [
+      { id: "a", label: "Data — online collection of the training distribution", isCorrect: true },
+      { id: "b", label: "Objective — the reward function", isCorrect: false },
+      { id: "c", label: "Optimization — the policy update", isCorrect: false },
+      { id: "d", label: "Evaluation — the return estimate", isCorrect: false },
+    ],
+  },
+  {
+    id: "rl-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: k-fold cross-validation to estimate how a model will generalize. Which slot of the ML project loop does it belong to?",
+    hint: "It's a way to measure generalization, not to train the model.",
+    explanation:
+      "Cross-validation is an evaluation-slot technique: it produces an honest estimate of out-of-sample performance. It doesn't change the model, data, or loss.",
+    options: [
+      { id: "a", label: "Evaluation — an honest generalization estimate", isCorrect: true },
+      { id: "b", label: "Optimization — a training change", isCorrect: false },
+      { id: "c", label: "Data — a new dataset", isCorrect: false },
+      { id: "d", label: "Hypothesis space — a new model", isCorrect: false },
+    ],
+  },
+  {
     id: "recsys-quiz-session",
     type: "multiple-choice",
     question:

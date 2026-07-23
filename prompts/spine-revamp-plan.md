@@ -410,7 +410,7 @@ Deep learning:
 - [x] B23 · nlp
 - [x] B24 · speech-audio
 - [x] B25 · graphical-models
-- [ ] B26 · reinforcement-learning *(call out "exploration is the data stage
+- [x] B26 · reinforcement-learning *(call out "exploration is the data stage
   happening at train time" — the loop's most instructive edge case)*
 - [ ] B27 · recommender-systems
 - [ ] B28 · gpu-programming
