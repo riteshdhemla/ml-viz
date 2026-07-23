@@ -208,6 +208,77 @@ export function getGraphNode(id: string): GraphNode | undefined {
   return buildKnowledgeGraph().nodes.find((n) => n.id === id);
 }
 
+// ── Prerequisite-DAG audit ───────────────────────────────────────────
+// The course prerequisite graph should be a DAG (no course can transitively
+// require itself). This audit surfaces cycles and produces a valid learning
+// order — a lightweight prerequisite-DAG check that feeds curriculum review.
+
+export interface PrerequisiteAudit {
+  /** Any prerequisite cycles found (each a list of course slugs). Empty = valid DAG. */
+  cycles: string[][];
+  /** A topological learning order (prerequisites before dependents). Empty if cyclic. */
+  order: string[];
+}
+
+export function prerequisiteAudit(): PrerequisiteAudit {
+  const { nodes, edges } = buildKnowledgeGraph();
+  const courses = nodes.filter((n) => n.kind === "course").map((n) => n.id.slice("course:".length));
+  const courseSet = new Set(courses);
+
+  // requires[a] = set of courses a depends on (its prerequisites).
+  const requires = new Map<string, Set<string>>();
+  courses.forEach((c) => requires.set(c, new Set()));
+  for (const e of edges) {
+    if (e.kind !== "prerequisite") continue;
+    const a = e.source.slice("course:".length);
+    const b = e.target.slice("course:".length);
+    if (courseSet.has(a) && courseSet.has(b)) requires.get(a)!.add(b);
+  }
+
+  // Cycle detection (DFS three-colour), collecting each back-edge cycle.
+  const WHITE = 0, GREY = 1, BLACK = 2;
+  const colour = new Map<string, number>(courses.map((c) => [c, WHITE]));
+  const stack: string[] = [];
+  const cycles: string[][] = [];
+  const seenCycle = new Set<string>();
+  const dfs = (u: string) => {
+    colour.set(u, GREY);
+    stack.push(u);
+    for (const v of requires.get(u) ?? []) {
+      if (colour.get(v) === GREY) {
+        const cyc = stack.slice(stack.indexOf(v));
+        const key = [...cyc].sort().join(",");
+        if (!seenCycle.has(key)) { seenCycle.add(key); cycles.push(cyc); }
+      } else if (colour.get(v) === WHITE) {
+        dfs(v);
+      }
+    }
+    stack.pop();
+    colour.set(u, BLACK);
+  };
+  for (const c of courses) if (colour.get(c) === WHITE) dfs(c);
+
+  // Topological order (Kahn) — only meaningful when acyclic.
+  let order: string[] = [];
+  if (cycles.length === 0) {
+    const indeg = new Map(courses.map((c) => [c, requires.get(c)!.size]));
+    const enables = new Map<string, string[]>(courses.map((c) => [c, []]));
+    for (const c of courses) for (const p of requires.get(c)!) enables.get(p)!.push(c);
+    const queue = courses.filter((c) => indeg.get(c) === 0).sort();
+    while (queue.length) {
+      const u = queue.shift()!;
+      order.push(u);
+      for (const w of enables.get(u)!) {
+        indeg.set(w, indeg.get(w)! - 1);
+        if (indeg.get(w) === 0) { queue.push(w); queue.sort(); }
+      }
+    }
+    if (order.length !== courses.length) order = []; // defensive: unreachable if acyclic
+  }
+
+  return { cycles, order };
+}
+
 // ── Course-level view ────────────────────────────────────────────────
 // The full graph (299 nodes) is a hairball to draw at once. The course-level
 // projection keeps it legible: 33 course nodes, prerequisite + aggregated

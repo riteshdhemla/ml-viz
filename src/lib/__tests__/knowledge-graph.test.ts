@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildKnowledgeGraph,
   buildCourseGraph,
+  prerequisiteAudit,
   neighbors,
   getGraphNode,
 } from "@/lib/knowledge-graph";
@@ -97,5 +98,26 @@ describe("course-level graph projection", () => {
   it("surfaces wiki deep-dives per course where they exist", () => {
     const withDeepDives = cg.nodes.filter((n) => cg.details[n.slug].deepDives.length > 0);
     expect(withDeepDives.length).toBeGreaterThan(0);
+  });
+});
+
+describe("prerequisite-DAG audit", () => {
+  const audit = prerequisiteAudit();
+
+  it("the course prerequisite graph is acyclic", () => {
+    expect(audit.cycles, `prerequisite cycles: ${JSON.stringify(audit.cycles)}`).toEqual([]);
+  });
+
+  it("produces a topological learning order covering every course", () => {
+    const courseCount = graph.nodes.filter((n) => n.kind === "course").length;
+    expect(audit.order.length).toBe(courseCount);
+    // Every prerequisite must appear before the course that requires it.
+    const rank = new Map(audit.order.map((slug, i) => [slug, i]));
+    for (const e of graph.edges) {
+      if (e.kind !== "prerequisite") continue;
+      const dependent = e.source.slice("course:".length);
+      const prereq = e.target.slice("course:".length);
+      expect(rank.get(prereq)!, `${prereq} should precede ${dependent}`).toBeLessThan(rank.get(dependent)!);
+    }
   });
 });
