@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { buildKnowledgeGraph, neighbors, getGraphNode } from "@/lib/knowledge-graph";
+import {
+  buildKnowledgeGraph,
+  buildCourseGraph,
+  neighbors,
+  getGraphNode,
+} from "@/lib/knowledge-graph";
 
 const graph = buildKnowledgeGraph();
 const ids = new Set(graph.nodes.map((n) => n.id));
@@ -62,5 +67,35 @@ describe("knowledge graph", () => {
       expect(ids.has(nb.node.id)).toBe(true);
       expect(["in", "out"]).toContain(nb.direction);
     }
+  });
+});
+
+describe("course-level graph projection", () => {
+  const cg = buildCourseGraph();
+  const slugs = new Set(cg.nodes.map((n) => n.slug));
+
+  it("has one node per course with a lesson count and detail entry", () => {
+    expect(cg.nodes.length).toBe(graph.nodes.filter((n) => n.kind === "course").length);
+    for (const n of cg.nodes) {
+      expect(n.lessonCount, n.slug).toBeGreaterThan(0);
+      expect(cg.details[n.slug], n.slug).toBeDefined();
+      expect(cg.details[n.slug].lessons.length, n.slug).toBe(n.lessonCount);
+    }
+  });
+
+  it("keeps every course edge between real courses, with both kinds present", () => {
+    for (const e of cg.edges) {
+      expect(slugs.has(e.source), e.source).toBe(true);
+      expect(slugs.has(e.target), e.target).toBe(true);
+      expect(e.weight).toBeGreaterThan(0);
+    }
+    const kinds = new Set(cg.edges.map((e) => e.kind));
+    expect(kinds.has("prerequisite")).toBe(true);
+    expect(kinds.has("related")).toBe(true);
+  });
+
+  it("surfaces wiki deep-dives per course where they exist", () => {
+    const withDeepDives = cg.nodes.filter((n) => cg.details[n.slug].deepDives.length > 0);
+    expect(withDeepDives.length).toBeGreaterThan(0);
   });
 });

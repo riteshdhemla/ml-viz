@@ -492,7 +492,7 @@ wiki body, `topics`, and `spineStages`.
   `related` lesson↔lesson, `deep-dive` lesson↔wiki, wiki↔wiki) from frontmatter
   + parsed body links. Server-only (`fs`). Unit test asserting every edge
   endpoint resolves and the graph is non-trivial.
-- [ ] **D2 · Concept-map page** — `/map`: interactive force/graph view of the
+- [x] **D2 · Concept-map page** — `/map`: interactive force/graph view of the
   knowledge graph, colored by `cluster`/`spine`, filterable by spine stage and
   topic, each node linking to its page. Pure-SVG per viz conventions or a
   self-contained layout; server-rendered node/edge data.
