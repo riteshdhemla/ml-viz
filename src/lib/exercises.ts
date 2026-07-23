@@ -3627,6 +3627,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "graphical-quiz-slot-structure",
+    type: "multiple-choice",
+    question:
+      "Encoding conditional-independence assumptions as a graph structure (a Bayes net DAG or MRF) is a choice in which slot of the ML project loop?",
+    hint: "The edges define which variables can interact — the family of distributions the model can represent.",
+    explanation:
+      "The graph structure is a hypothesis-space choice: it fixes which factorizations (and thus which joint distributions) the model can express. Inference and parameter fitting are separate slots.",
+    options: [
+      { id: "a", label: "Hypothesis space — the graph encodes the model's assumptions", isCorrect: true },
+      { id: "b", label: "Data — it changes the observations", isCorrect: false },
+      { id: "c", label: "Optimization — it changes inference", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
+  {
+    id: "graphical-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: adding an L1 penalty to a loss to encourage sparse weights. Which slot of the ML project loop does it modify?",
+    hint: "It changes the quantity being minimized.",
+    explanation:
+      "An L1 penalty is an objective change: it augments the loss to prefer sparse solutions. The model family and optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Objective — it adds a sparsity penalty to the loss", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it changes the model family", isCorrect: false },
+      { id: "c", label: "Optimization — it changes the solver", isCorrect: false },
+      { id: "d", label: "Data — it changes the training set", isCorrect: false },
+    ],
+  },
+  {
     id: "graphical-quiz-forward",
     type: "multiple-choice",
     question: "And the forward algorithm computes…",
