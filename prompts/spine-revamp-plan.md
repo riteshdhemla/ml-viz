@@ -421,7 +421,7 @@ Production ML:
   full six-stage loop with `<ProjectLoopViz variant="ml" />`, the
   moving-bottleneck paragraph (§2.6), and the hub link; forecasting-thread
   visit in 10-monitoring: drift on the demand series)*
-- [ ] B30 · streaming-ml *(forecasting-thread visits in 04-concept-drift —
+- [x] B30 · streaming-ml *(forecasting-thread visits in 04-concept-drift —
   the canonical series' regime shift is literally the lesson topic — and
   05-production: the loop closing in real time)*
 - [ ] B31 · fine-tuning-alignment *(frame the whole course as one trip around

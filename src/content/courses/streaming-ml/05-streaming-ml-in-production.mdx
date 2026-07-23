@@ -3,12 +3,17 @@ title: "Streaming ML in Production"
 description: "Wiring it together — log-based ingestion, stream processors, online/offline feature parity, feature freshness, streaming inference, delayed labels, and the monitor-adapt loop."
 order: 5
 type: concept
+spineStages: [feedback]
 estimatedMinutes: 18
 ---
 
 # Streaming ML in Production
 
 The sketches, online learners, and drift detectors of this course only pay off inside a system that moves data reliably and serves models with low latency. This lesson is the architecture: how a streaming ML pipeline is actually wired, and the failure modes — feature skew, staleness, delayed labels — that decide whether it works.
+
+<Callout type="info" title="The forecasting thread">
+This is the site's `daily-demand` problem with its **deployment-feedback loop closing in real time**. The [time-series production lesson](/courses/time-series/04-demand-forecasting-in-production) described the retrain cadence at the level of days; here the loop tightens to *minutes*: features stream in, the online model updates, drift detectors watch the residuals, and a stale forecast is corrected before the next order cycle. Same six-stage loop as everywhere else on the site — just spinning fast.
+</Callout>
 
 ## The anatomy of a streaming pipeline
 

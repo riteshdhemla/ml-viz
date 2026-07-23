@@ -11440,6 +11440,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Never use delayed labels — only train on immediately-labelled events", isCorrect: false },
     ],
   },
+  {
+    id: "sml-quiz-slot-drift",
+    type: "multiple-choice",
+    question:
+      "On a live stream, a drift detector watches for a change in the data-generating process and triggers the model to adapt. Which slot(s) of the ML project loop does this exercise?",
+    hint: "It's the loop's close-back-to-data arrow, running continuously.",
+    explanation:
+      "Detecting drift and adapting is the deployment-feedback slot operating in real time: production signal flows back and updates the model. Streaming ML is the loop with that feedback arrow made continuous.",
+    options: [
+      { id: "a", label: "Deployment feedback — continuous monitor-and-adapt", isCorrect: true },
+      { id: "b", label: "Hypothesis space — a bigger model", isCorrect: false },
+      { id: "c", label: "Objective — a new loss", isCorrect: false },
+      { id: "d", label: "Evaluation — an offline test", isCorrect: false },
+    ],
+  },
+  {
+    id: "sml-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a residual (skip) connection that adds a layer's input to its output so gradients flow through deep networks. Which slot does it modify?",
+    hint: "It's an architectural building block that changes the model, easing optimization as a side effect.",
+    explanation:
+      "A residual connection is primarily a hypothesis-space change — an architectural component — that also makes very deep networks trainable. It doesn't change the data, loss, or the optimizer itself.",
+    options: [
+      { id: "a", label: "Hypothesis space — an architectural building block", isCorrect: true },
+      { id: "b", label: "Data — a different training set", isCorrect: false },
+      { id: "c", label: "Objective — a different loss", isCorrect: false },
+      { id: "d", label: "Deployment feedback — a monitoring change", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(

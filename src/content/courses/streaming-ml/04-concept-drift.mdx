@@ -3,12 +3,17 @@ title: "Concept Drift & Adaptation"
 description: "When the stream's distribution changes — types of drift, detectors like ADWIN and DDM, adaptive windowing, and incremental learners such as Hoeffding trees."
 order: 4
 type: concept
+spineStages: [feedback]
 estimatedMinutes: 20
 ---
 
 # Concept Drift & Adaptation
 
 Batch ML assumes the training and serving distributions match. On a live stream they routinely do not: user behaviour shifts, fraud patterns evolve, sensors age, a pandemic rewrites demand overnight. When the data-generating process changes over time, we call it **concept drift** — and a model that ignores it silently rots. This lesson covers detecting drift and adapting to it, the concerns at the heart of libraries like `river`.
+
+<Callout type="info" title="The forecasting thread">
+This is the exact failure the site's running `daily-demand` model keeps hitting. The canonical series (from the [project-loop hub](/wiki/ml-project-loop)) has a **regime shift at day 400** — a permanent level jump. To a batch model it's invisible until the error blows up; a streaming system running a drift detector on the residuals catches it within days and adapts online. Concept drift *is* the demand problem's day-400 shift, generalized to "the world keeps changing."
+</Callout>
 
 ## What is drifting?
 
