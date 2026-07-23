@@ -385,7 +385,7 @@ Classical ML:
   lessons 02 (ARIMA on the canonical series) and 04 (its serving/feedback
   story); make the canonical dataset THE course example where it already
   nearly is)*
-- [ ] B15 · model-evaluation *(the `evaluation` anchor — its lesson 01 should
+- [x] B15 · model-evaluation *(the `evaluation` anchor — its lesson 01 should
   explicitly place evaluation inside the loop and link the hub;
   forecasting-thread visit in 07-calibration: quantile/coverage on the
   demand forecasts)*

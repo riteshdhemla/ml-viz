@@ -3,12 +3,17 @@ title: "Calibration & Uncertainty"
 description: "When a model says 90%, is it right 90% of the time? Reliability diagrams and ECE, temperature scaling, and the difference between aleatoric and epistemic uncertainty."
 order: 7
 type: concept
+spineStages: [evaluation]
 estimatedMinutes: 16
 ---
 
 # Calibration & Uncertainty
 
 A model that outputs probabilities is making a promise: "I'm 90% confident." **Calibration** asks whether that promise holds — among all the times it says 90%, is it actually right 90% of the time? A model can be highly *accurate* yet badly *calibrated*, and in high-stakes settings (medicine, autonomous systems, anything with a human in the loop) miscalibrated confidence is dangerous. This lesson covers how to measure calibration, how to fix it, and the two fundamentally different kinds of uncertainty a model faces.
+
+<Callout type="info" title="The forecasting thread">
+Calibration is where the site's running `daily-demand` forecast (from the [project-loop hub](/wiki/ml-project-loop)) finally gets judged *honestly*. A point forecast has no confidence to check, but the [GP version](/courses/bayesian-methods/02-gaussian-processes) produces a predictive interval — and a well-calibrated 90% band should contain the actual demand 90% of the time. Quantile loss and empirical coverage are exactly the calibration tools of this lesson, applied to a forecast instead of a classifier.
+</Callout>
 
 **Real-world examples:** a diagnostic model whose "85% malignant" must mean what it says; selective prediction (abstain when unsure); out-of-distribution detection; deciding when to escalate an LLM answer to a human.
 
