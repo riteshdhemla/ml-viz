@@ -9691,6 +9691,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "calc-quiz-slot-backprop",
+    type: "multiple-choice",
+    question:
+      "In the ML project loop, backpropagation (the chain rule on a computational graph) primarily serves which slot?",
+    hint: "Backprop produces the gradients that a parameter-search algorithm consumes.",
+    explanation:
+      "Backprop computes the gradient of the objective w.r.t. the parameters — the ingredient gradient descent needs to search the hypothesis space. It's optimization machinery; it doesn't change the model family or the loss.",
+    options: [
+      { id: "a", label: "Optimization — it feeds the parameter search", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it defines the model", isCorrect: false },
+      { id: "c", label: "Objective — it defines the loss", isCorrect: false },
+      { id: "d", label: "Data — it preprocesses inputs", isCorrect: false },
+    ],
+  },
+  {
+    id: "calc-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: batch normalization inserts a normalization step between layers so training converges faster and more stably. Which slot does it primarily modify?",
+    hint: "It reconditions the loss surface so gradient descent moves better — it doesn't add a new function family or change the loss.",
+    explanation:
+      "Batch norm smooths the optimization landscape, making the parameter search easier — an optimization change. (Its original 'internal covariate shift' story is now contested; the smoother-loss-surface account is the current understanding.)",
+    options: [
+      { id: "a", label: "Optimization — it eases the parameter search", isCorrect: true },
+      { id: "b", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "c", label: "Evaluation — it changes the metric", isCorrect: false },
+      { id: "d", label: "Data — it changes the dataset", isCorrect: false },
+    ],
+  },
+  {
     id: "prob-quiz-expectation",
     type: "multiple-choice",
     question: "X is 0 with probability 0.5 and 10 with probability 0.5. What is E[X]?",
