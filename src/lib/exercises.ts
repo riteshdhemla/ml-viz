@@ -10300,6 +10300,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "ts-quiz-slot-arima-to-lstm",
+    type: "multiple-choice",
+    question:
+      "Replacing an ARIMA forecaster with an LSTM (to capture non-linear, multivariate structure) changes which slot of the ML project loop?",
+    hint: "You're swapping the family of functions the forecaster can express.",
+    explanation:
+      "ARIMA -> LSTM is a hypothesis-space change: a richer, non-linear, multivariate function family for the same forecasting task. The data, objective, and evaluation protocol can stay the same.",
+    options: [
+      { id: "a", label: "Hypothesis space — a richer forecasting model family", isCorrect: true },
+      { id: "b", label: "Data — a different series", isCorrect: false },
+      { id: "c", label: "Objective — a different loss", isCorrect: false },
+      { id: "d", label: "Evaluation — a different backtest", isCorrect: false },
+    ],
+  },
+  {
+    id: "ts-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a feature store that computes the same features identically in training and serving. Which slot does it address?",
+    hint: "It fixes a mismatch between the data seen at training vs serving time.",
+    explanation:
+      "A feature store lives in the data/feedback part of the loop: it eliminates train/serve skew by making the served data match the trained-on data. The model family and objective are unchanged.",
+    options: [
+      { id: "a", label: "Data — it removes train/serve skew", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "c", label: "Optimization — it changes training", isCorrect: false },
+      { id: "d", label: "Objective — it changes the loss", isCorrect: false },
+    ],
+  },
+  {
     id: "nn-quiz-dropout-scale",
     type: "multiple-choice",
     question:

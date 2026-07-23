@@ -3,12 +3,17 @@ title: "Demand Forecasting in Production"
 description: "From ARIMA to production-grade forecasting — hierarchical time series, special events, ETA prediction with uncertainty, and the ensemble strategies used by DoorDash, Uber, and Instacart."
 order: 4
 type: concept
+spineStages: [feedback, data]
 estimatedMinutes: 20
 ---
 
 # Demand Forecasting in Production
 
 An ARIMA model trained on a single aggregated demand signal is a starting point — not a production system. DoorDash forecasts delivery demand per restaurant per hour at 30-minute resolution. Uber models ride demand per geohex cell per 5-minute interval. Instacart predicts grocery item demand across thousands of SKUs and hundreds of zip codes. Each faces the same fundamental challenges: **hierarchical structure**, **sparse history at fine granularity**, **special events**, and **real-time latency requirements**.
+
+<Callout type="info" title="The forecasting thread">
+This is where the site's running `daily-demand` problem reaches the **deployment-feedback** slot of the [ML project loop](/wiki/ml-project-loop). The toy series had one regime shift; a real system has a new one every week (a store opens, a promo lands, a holiday hits). The model that was accurate at launch rots, so production forecasting is a *loop*: forecast → monitor error → detect drift → retrain on fresh data → redeploy. The same closing move you'll see in [Streaming ML](/courses/streaming-ml).
+</Callout>
 
 **Real-world examples:** DoorDash (order volume forecasting for driver supply planning), Lyft (market-level and driver-level demand), Uber (surge pricing and driver rebalancing), Instacart (inventory and delivery slot planning), Foodpanda (kitchen capacity allocation), Swiggy (driver availability matching), ODA (grocery inventory forecasting), Oda (last-mile logistics).
 
