@@ -8554,6 +8554,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "causal-quiz-slot-confounding",
+    type: "multiple-choice",
+    question:
+      "A model predicts perfectly yet gives the wrong answer about whether a treatment *causes* an outcome, because of an unmeasured confounder. In the ML project loop, which slot is the root cause?",
+    hint: "The failure is in how the raw material was generated and collected, not the model or optimizer.",
+    explanation:
+      "Confounding is a data-slot problem: the data-generating process hides a common cause, so no model family or optimizer can recover the causal effect. Fixing it means changing the data (randomize, or measure and adjust for the confounder).",
+    options: [
+      { id: "a", label: "Data — the data-generating process hides a common cause", isCorrect: true },
+      { id: "b", label: "Optimization — the solver converged wrong", isCorrect: false },
+      { id: "c", label: "Hypothesis space — the model is too small", isCorrect: false },
+      { id: "d", label: "Objective — the loss is misspecified", isCorrect: false },
+    ],
+  },
+  {
+    id: "causal-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: shadow deployment (running a new model silently on live traffic before switching over). Which slot of the ML project loop does it belong to?",
+    hint: "It's a production safety mechanism in the deploy-and-monitor loop.",
+    explanation:
+      "Shadow deployment is a deployment-feedback mechanism: it validates a model against live traffic and gathers signal before rollout. It doesn't change the model, loss, or training data.",
+    options: [
+      { id: "a", label: "Deployment feedback — a production safety mechanism", isCorrect: true },
+      { id: "b", label: "Evaluation — an offline test metric", isCorrect: false },
+      { id: "c", label: "Optimization — a training change", isCorrect: false },
+      { id: "d", label: "Hypothesis space — a model change", isCorrect: false },
+    ],
+  },
+  {
     id: "audio-sampling",
     type: "slider",
     question:

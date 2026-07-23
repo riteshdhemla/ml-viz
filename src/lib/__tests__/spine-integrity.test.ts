@@ -90,6 +90,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "pca-dimensionality",
         "probabilistic-models",
         "bayesian-methods",
+        "causal-inference",
       ].includes(slug),
   ),
 );

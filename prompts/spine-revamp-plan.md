@@ -380,7 +380,7 @@ Classical ML:
 - [x] B12 · bayesian-methods *(forecasting-thread visit in lesson 02: GPs
   give the demand forecast honest uncertainty bands — same problem, better
   for a new reason)*
-- [ ] B13 · causal-inference
+- [x] B13 · causal-inference
 - [ ] B14 · time-series *(the forecasting thread's home course — visits in
   lessons 02 (ARIMA on the canonical series) and 04 (its serving/feedback
   story); make the canonical dataset THE course example where it already
