@@ -10570,6 +10570,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "transformer-quiz-slot-attention",
+    type: "multiple-choice",
+    question:
+      "Self-attention assumes only permutation symmetry and re-injects order via positional encodings. In the ML project loop, that design is a change to which slot?",
+    hint: "It defines what relationships the model can represent — its architecture.",
+    explanation:
+      "Self-attention is a hypothesis-space choice: the least-biased of the standard architectures (only permutation equivariance, with position added back as a signal). That minimal bias is why transformers generalize so well given enough data.",
+    options: [
+      { id: "a", label: "Hypothesis space — a low-bias, permutation-equivariant architecture", isCorrect: true },
+      { id: "b", label: "Optimization — a faster training scheme", isCorrect: false },
+      { id: "c", label: "Objective — a new loss", isCorrect: false },
+      { id: "d", label: "Data — a new corpus", isCorrect: false },
+    ],
+  },
+  {
+    id: "transformer-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a drift monitor that watches production error and triggers a retrain when it rises. Which slot of the ML project loop does it belong to?",
+    hint: "It operates after deployment, feeding signal back to the start of the loop.",
+    explanation:
+      "A drift monitor is a deployment-feedback mechanism: it detects when the deployed model has gone stale and closes the loop back into data/retraining. It doesn't change the architecture, loss, or optimizer.",
+    options: [
+      { id: "a", label: "Deployment feedback — it detects drift and triggers retraining", isCorrect: true },
+      { id: "b", label: "Evaluation — an offline test metric", isCorrect: false },
+      { id: "c", label: "Optimization — a training change", isCorrect: false },
+      { id: "d", label: "Hypothesis space — an architecture change", isCorrect: false },
+    ],
+  },
+  {
     id: "genmodel-quiz-implicit",
     type: "multiple-choice",
     question:
