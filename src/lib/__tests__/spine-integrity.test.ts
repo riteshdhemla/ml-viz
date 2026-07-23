@@ -104,6 +104,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "speech-audio",
         "graphical-models",
         "reinforcement-learning",
+        "recommender-systems",
       ].includes(slug),
   ),
 );
