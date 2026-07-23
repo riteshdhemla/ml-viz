@@ -374,7 +374,7 @@ Classical ML:
 - [x] B6 · knn-decision-trees
 - [x] B7 · svm
 - [x] B8 · ensemble-methods
-- [ ] B9 · clustering
+- [x] B9 · clustering
 - [ ] B10 · pca-dimensionality
 - [ ] B11 · probabilistic-models
 - [ ] B12 · bayesian-methods *(forecasting-thread visit in lesson 02: GPs

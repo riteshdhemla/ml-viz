@@ -86,6 +86,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "knn-decision-trees",
         "svm",
         "ensemble-methods",
+        "clustering",
       ].includes(slug),
   ),
 );
