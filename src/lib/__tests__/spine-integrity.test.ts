@@ -97,6 +97,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "cnns",
         "rnns",
         "transformers",
+        "generative-models",
       ].includes(slug),
   ),
 );
