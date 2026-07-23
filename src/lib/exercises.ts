@@ -10720,6 +10720,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "cv-quiz-slot-ssl",
+    type: "multiple-choice",
+    question:
+      "Self-supervised learning invents labels from unlabeled data (predict a masked patch, match two augmented views). Which slot of the ML project loop does this most fundamentally address?",
+    hint: "It manufactures supervision — it changes what training signal is available.",
+    explanation:
+      "SSL is a data-slot breakthrough: it creates supervision from raw, unlabeled data, sidestepping the labeling bottleneck. The architecture and loss matter too, but the game-changer is the near-free training signal.",
+    options: [
+      { id: "a", label: "Data — it manufactures training signal from unlabeled data", isCorrect: true },
+      { id: "b", label: "Hypothesis space — a new architecture", isCorrect: false },
+      { id: "c", label: "Optimization — a faster solver", isCorrect: false },
+      { id: "d", label: "Evaluation — a new metric", isCorrect: false },
+    ],
+  },
+  {
+    id: "cv-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: label smoothing, which replaces hard 0/1 targets with soft ones (e.g. 0.9/0.1). Which slot does it modify?",
+    hint: "It changes the training targets — the loss the model minimizes.",
+    explanation:
+      "Label smoothing is an objective change: it softens the targets in the loss to curb over-confidence and improve calibration. The data, architecture, and optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Objective — it softens the loss targets", isCorrect: true },
+      { id: "b", label: "Data — it relabels examples", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Optimization — it changes the optimizer", isCorrect: false },
+    ],
+  },
+  {
     id: "nlp-quiz-family",
     type: "multiple-choice",
     question:
