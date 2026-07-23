@@ -400,7 +400,7 @@ Deep learning:
 - [x] B18 · rnns *(inductive bias: weight sharing across time; WikiLink in
   lesson 01; forecasting-thread visit in lesson 01 or 04: the sequence-model
   version of the demand problem)*
-- [ ] B19 · transformers *(inductive bias: permutation equivariance +
+- [x] B19 · transformers *(inductive bias: permutation equivariance +
   injected position signal — "attention as the inevitable move" framing from
   the wiki page; WikiLink in lesson 01)*
 - [ ] B20 · generative-models
