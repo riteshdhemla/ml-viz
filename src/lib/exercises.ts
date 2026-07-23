@@ -3058,6 +3058,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "A non-linear boundary", isCorrect: false },
     ],
   },
+  {
+    id: "svm-quiz-slot-kernel",
+    type: "multiple-choice",
+    question:
+      "Swapping a linear SVM for an RBF-kernel SVM (to fit curved boundaries) changes which slot of the ML project loop?",
+    hint: "The kernel changes the family of boundaries the model can represent.",
+    explanation:
+      "A kernel enlarges the hypothesis space — the set of decision boundaries the model can express. The margin objective and the QP optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Hypothesis space — a richer family of boundaries", isCorrect: true },
+      { id: "b", label: "Objective — a different margin criterion", isCorrect: false },
+      { id: "c", label: "Optimization — a different solver", isCorrect: false },
+      { id: "d", label: "Data — a different training set", isCorrect: false },
+    ],
+  },
+  {
+    id: "svm-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: SMOTE synthesizes new minority-class examples to fix class imbalance. Which slot does it modify?",
+    hint: "It edits the training distribution the model learns from.",
+    explanation:
+      "SMOTE is a data-stage change: it rebalances the training set by manufacturing minority examples. The model family, objective, and optimizer stay the same.",
+    options: [
+      { id: "a", label: "Data — it rebalances the training distribution", isCorrect: true },
+      { id: "b", label: "Objective — it reweights the loss", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
 
   // ── Ensemble Methods course quiz ─────────────────────────────────────
   {
