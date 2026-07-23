@@ -365,7 +365,7 @@ Foundations (stage-anchor framing: "the math *of* stage X"):
 - [x] B1 · linear-algebra
 - [x] B2 · calculus-for-ml
 - [x] B3 · probability-statistics
-- [ ] B4 · optimization-ml
+- [x] B4 · optimization-ml
 
 Classical ML:
 - [ ] B5 · linear-regression *(forecasting-thread visit in lesson 01: the

@@ -9882,6 +9882,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "opt-quiz-slot-loss",
+    type: "multiple-choice",
+    question:
+      "Switching a regression model's loss from MSE to Huber loss (to be robust to outliers) changes which slot of the ML project loop?",
+    hint: "You are redefining what 'good' means, not the model or the search.",
+    explanation:
+      "The loss is the objective. MSE and Huber express different costs for large errors; swapping them redefines the objective while leaving the hypothesis space and optimizer untouched.",
+    options: [
+      { id: "a", label: "Objective — a different definition of a good fit", isCorrect: true },
+      { id: "b", label: "Optimization — a different search algorithm", isCorrect: false },
+      { id: "c", label: "Hypothesis space — a different model family", isCorrect: false },
+      { id: "d", label: "Data — a different training set", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: data augmentation (random crops/flips of training images). Which slot does it modify?",
+    hint: "It expands the training distribution the model sees.",
+    explanation:
+      "Data augmentation is a data-stage change: it enlarges and diversifies the training set. The objective, model family, and optimizer are all unchanged.",
+    options: [
+      { id: "a", label: "Data — it expands the training distribution", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "c", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "d", label: "Optimization — it changes the optimizer", isCorrect: false },
+    ],
+  },
+  {
     id: "eval-quiz-bpb",
     type: "multiple-choice",
     question:

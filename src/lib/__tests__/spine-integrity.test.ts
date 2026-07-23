@@ -81,6 +81,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "linear-algebra",
         "calculus-for-ml",
         "probability-statistics",
+        "optimization-ml",
       ].includes(slug),
   ),
 );
