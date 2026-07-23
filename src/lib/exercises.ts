@@ -11244,6 +11244,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "More individuals can be re-identified, but each with lower confidence", isCorrect: false },
     ],
   },
+  {
+    id: "ml-practice-quiz-slot-drift",
+    type: "multiple-choice",
+    question:
+      "A deployed model's accuracy decays over months as the world shifts, and a monitor triggers a retrain on fresh data. Which slot of the ML project loop is this cycle?",
+    hint: "It happens after deployment and closes the loop back to the start.",
+    explanation:
+      "Ship -> monitor -> detect drift -> retrain is the deployment-feedback slot: the stage that closes the loop from production back into data. It's what makes production ML a loop rather than a one-shot pipeline.",
+    options: [
+      { id: "a", label: "Deployment feedback — monitor, detect drift, retrain", isCorrect: true },
+      { id: "b", label: "Optimization — a faster training run", isCorrect: false },
+      { id: "c", label: "Hypothesis space — a bigger model", isCorrect: false },
+      { id: "d", label: "Objective — a new loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "ml-practice-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: the kernel trick, which maps data into a higher-dimensional space so a linear model can fit curved boundaries. Which slot does it modify?",
+    hint: "It enlarges the set of functions the model can represent.",
+    explanation:
+      "The kernel trick is a hypothesis-space change: it expands the family of decision boundaries the model can express. The data, objective, and optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Hypothesis space — a richer family of boundaries", isCorrect: true },
+      { id: "b", label: "Data — a different training set", isCorrect: false },
+      { id: "c", label: "Optimization — a different solver", isCorrect: false },
+      { id: "d", label: "Deployment feedback — a monitoring change", isCorrect: false },
+    ],
+  },
 
   // ── Streaming & Online ML ───────────────────────────────────────
   {

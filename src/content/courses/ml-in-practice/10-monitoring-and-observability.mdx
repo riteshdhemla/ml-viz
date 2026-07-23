@@ -3,12 +3,17 @@ title: "Monitoring & Observability"
 description: "Why ML monitoring needs four layers — system, input, output, outcome — and how percentile latencies, PSI drift, calibration drift, and SLO error-budget burn rates compose into alerts that wake the right person at the right time."
 order: 10
 type: concept
+spineStages: [feedback]
 estimatedMinutes: 20
 ---
 
 # Monitoring & Observability
 
 A model that returns HTTP 200s, holds p99 latency under 300 ms, and never throws an exception can still be *silently broken*. The predictions look like predictions. The schema is unchanged. The dashboard is green. Meanwhile the model has been calibrated on data from six months ago, the upstream feature pipeline started returning zeros for a critical column two weeks back, and the click-through rate has been quietly bleeding 0.3 % a day. ML monitoring is the discipline of catching that *silent* failure mode in addition to the loud ones — and it requires a different toolkit from the one a backend service uses for the same job.
+
+<Callout type="info" title="The forecasting thread">
+Picture the site's running `daily-demand` model (from the [project-loop hub](/wiki/ml-project-loop)) six months after launch. The regime shift the [time-series course](/courses/time-series/04-demand-forecasting-in-production) warned about has happened — a new store opened, demand stepped up — and the model's error is quietly climbing. Monitoring is what *catches* that: a rolling-MAPE alert on the forecast, a null-rate check on the promo feature, a drift test on the input distribution. This is the **deployment-feedback** slot doing its job, closing the loop back to a retrain before the business notices.
+</Callout>
 
 Real-world examples: most teams build the system-metrics layer on **Grafana + Prometheus** (or **Datadog** / **New Relic**) and bolt an ML-specific layer on top using **Arize**, **Fiddler**, or **WhyLabs** for input/output drift; **CloudWatch alarms** wired to **PagerDuty** handle the page-the-on-call leg; LLM-shaped products instrument prompt/response telemetry with **Langfuse** or **Helicone** to feed offline-eval dashboards. The pattern is always the same — system metrics in one stack, ML-specific metrics in another, alerting glue on top.
 

@@ -3,6 +3,7 @@ title: "ML Systems Design & Problem Framing"
 description: "Before you train a model, frame the problem: reliability, scalability, maintainability, the business objective behind your loss, and the gap between research and production."
 order: 4
 type: concept
+spineStages: [data, feedback]
 estimatedMinutes: 20
 ---
 
@@ -11,6 +12,14 @@ estimatedMinutes: 20
 A model that hits 88% accuracy on a held-out test set is 0% useful if the upstream feature store is stale, the inference path runs at 8 seconds p99, the per-query cost outruns the unit economics, or the metric it optimises is the wrong one. This lesson is the prequel to every other lesson in this course: how to *frame* the ML problem — pick the metric, sketch the system, name the failure modes — before you touch a notebook.
 
 Real-world examples: recommender systems at Netflix and Spotify (the metric is retention, the trainable proxy is click and dwell time); fraud detection at Stripe (a hard latency SLO, with delayed ground truth); YouTube ranking (composite objectives spanning watch time, satisfaction, and ads); ad CTR prediction (low margin per query so cost per inference matters); LLM-powered customer support assistants (build-vs-buy, eval-set design, refusal rate); medical-image triage (calibrated probabilities and a human in the loop are non-negotiable).
+
+## The whole loop, at a glance
+
+Every course on this site teaches a slice of one recurring shape — the **ML project loop**. Systems design is where you see all six slots at once, because a production system has to get *all* of them right, not just the model:
+
+<ProjectLoopViz variant="ml" />
+
+The loop also explains the *arc* of the whole curriculum — the bottleneck moves from era to era, and each era's fix becomes the next era's constraint. Classical ML is where all six slots are visible and the math is tractable. Deep learning made the **hypothesis space** expressive enough that **optimization** became the hard part. Scale pushed the bottleneck into **memory bandwidth and communication** (the subject of [GPU programming](/courses/gpu-programming)). And production — this course — is where it lands in **data and feedback loops**: drift, labelling, train/serve skew, and retraining cadence. That is why "systems design" is a discipline of its own, and why the [project-loop hub](/wiki/ml-project-loop) is worth reading alongside this lesson.
 
 ## Why "systems design" is different from notebook ML
 
