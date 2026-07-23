@@ -368,7 +368,7 @@ Foundations (stage-anchor framing: "the math *of* stage X"):
 - [x] B4 · optimization-ml
 
 Classical ML:
-- [ ] B5 · linear-regression *(forecasting-thread visit in lesson 01: the
+- [x] B5 · linear-regression *(forecasting-thread visit in lesson 01: the
   tabular baseline — lags/calendar features + OLS is the first trip around
   the loop)*
 - [ ] B6 · knn-decision-trees
