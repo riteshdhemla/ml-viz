@@ -395,7 +395,7 @@ Deep learning:
   present the original internal-covariate-shift story as the historical
   motivation and the smoother-loss-surface account as the current
   understanding — the classic case per §5)*
-- [ ] B17 · cnns *(inductive-bias thread: frame `hypothesis-space` tagging as
+- [x] B17 · cnns *(inductive-bias thread: frame `hypothesis-space` tagging as
   translation equivariance; `<WikiLink slug="inductive-bias">` in lesson 01)*
 - [ ] B18 · rnns *(inductive bias: weight sharing across time; WikiLink in
   lesson 01; forecasting-thread visit in lesson 01 or 04: the sequence-model
