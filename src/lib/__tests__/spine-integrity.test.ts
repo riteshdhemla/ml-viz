@@ -67,53 +67,10 @@ const SPINE_COURSES: Record<string, SpineId> = {
   "agent-design-patterns": "agentic",
 };
 
-/**
- * Coverage allowlist — courses NOT yet fully tagged by a Phase B pass. A course
- * in this set is exempt from the "every non-quiz lesson has spineStages"
- * requirement. Each Phase B item removes its course; when the set is empty,
- * Phase C flips coverage to unconditional. This test is the progress tracker.
- */
-const COVERAGE_ALLOWLIST = new Set<string>(
-  Object.keys(SPINE_COURSES).filter(
-    (slug) =>
-      // Phase B removes each course here once fully tagged:
-      ![
-        "linear-algebra",
-        "calculus-for-ml",
-        "probability-statistics",
-        "optimization-ml",
-        "linear-regression",
-        "knn-decision-trees",
-        "svm",
-        "ensemble-methods",
-        "clustering",
-        "pca-dimensionality",
-        "probabilistic-models",
-        "bayesian-methods",
-        "causal-inference",
-        "time-series",
-        "model-evaluation",
-        "neural-networks",
-        "cnns",
-        "rnns",
-        "transformers",
-        "generative-models",
-        "graph-neural-networks",
-        "computer-vision",
-        "nlp",
-        "speech-audio",
-        "graphical-models",
-        "reinforcement-learning",
-        "recommender-systems",
-        "gpu-programming",
-        "ml-in-practice",
-        "streaming-ml",
-        "fine-tuning-alignment",
-        "building-with-llms",
-        "agent-design-patterns",
-      ].includes(slug),
-  ),
-);
+// Phase B is complete: every spine course is fully tagged, so coverage is
+// enforced unconditionally (the progress-tracking allowlist was retired in
+// Phase C3). A new spine course therefore fails this suite until it declares
+// its spine and tags every non-quiz lesson.
 
 describe("spine frontmatter is well-formed (always enforced)", () => {
   it("every course `spine` value, when present, is a known spine", () => {
@@ -172,17 +129,32 @@ describe("spine hub pages exist", () => {
   });
 });
 
-describe("spine coverage (enforced as Phase B removes courses from the allowlist)", () => {
-  const enforced = Object.keys(SPINE_COURSES).filter((s) => !COVERAGE_ALLOWLIST.has(s));
+describe("spine coverage (enforced for every spine course)", () => {
+  const enforced = Object.keys(SPINE_COURSES);
 
-  it("every enforced course declares the expected spine", () => {
+  it("every spine course exists as a real course directory", () => {
+    for (const slug of enforced) {
+      expect(fs.existsSync(path.join(COURSES_DIR, slug, "index.mdx")), slug).toBe(true);
+    }
+  });
+
+  it("every spine course declares the expected spine", () => {
     for (const slug of enforced) {
       const { data } = read(path.join(COURSES_DIR, slug, "index.mdx"));
       expect(data.spine, `${slug} should declare spine`).toBe(SPINE_COURSES[slug]);
     }
   });
 
-  it("every non-quiz lesson of an enforced course carries spineStages", () => {
+  it("every course that declares a spine is in the SPINE_COURSES contract", () => {
+    for (const slug of courseSlugs) {
+      const { data } = read(path.join(COURSES_DIR, slug, "index.mdx"));
+      if (data.spine !== undefined) {
+        expect(SPINE_COURSES[slug], `${slug} declares a spine but isn't in the contract`).toBeDefined();
+      }
+    }
+  });
+
+  it("every non-quiz lesson of a spine course carries spineStages", () => {
     const missing: string[] = [];
     for (const slug of enforced) {
       for (const file of lessonFiles(slug)) {
@@ -193,12 +165,6 @@ describe("spine coverage (enforced as Phase B removes courses from the allowlist
         }
       }
     }
-    expect(missing, "untagged non-quiz lessons in enforced courses").toEqual([]);
-  });
-
-  it("the allowlist only names real spine courses", () => {
-    for (const slug of COVERAGE_ALLOWLIST) {
-      expect(SPINE_COURSES[slug], `allowlist has unknown course "${slug}"`).toBeDefined();
-    }
+    expect(missing, "untagged non-quiz lessons").toEqual([]);
   });
 });

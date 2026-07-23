@@ -449,7 +449,7 @@ Agentic:
   cluster per §3; evaluation/metrics pages; deployment/inference pages).
   Render the same `SpineNav` strip on `/wiki/[slug]` when present. No prose
   edits to wiki pages in this item.
-- [ ] **C3 · Flip A7 coverage assertion to unconditional** (allowlist should
+- [x] **C3 · Flip A7 coverage assertion to unconditional** (allowlist should
   be empty after B33; delete the allowlist mechanism) + reconcile hub pages'
   "go deeper" links against the final tagging (every stage section links ≥3
   lessons that actually carry that stage).
