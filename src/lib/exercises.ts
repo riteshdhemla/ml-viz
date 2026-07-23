@@ -7067,6 +7067,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "p = 0.001 means there's a 0.1% chance the lift is real", isCorrect: false },
     ],
   },
+  {
+    id: "prob-quiz-slot-mle",
+    type: "multiple-choice",
+    question:
+      "In the ML project loop, deriving a loss function as the negative log-likelihood of the data (MLE) belongs to which slot?",
+    hint: "MLE tells you what 'good' means — the quantity to minimize.",
+    explanation:
+      "MLE defines the objective: it turns 'fit the data well' into a specific number to minimize. Which optimizer you then use, and which model family, are separate slots.",
+    options: [
+      { id: "a", label: "Objective — it defines what to minimize", isCorrect: true },
+      { id: "b", label: "Optimization — it defines the search", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it defines the model", isCorrect: false },
+      { id: "d", label: "Evaluation — it defines the test metric", isCorrect: false },
+    ],
+  },
+  {
+    id: "prob-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: walk-forward (time-based) cross-validation instead of random k-fold. Which slot of the ML project loop does it change?",
+    hint: "It changes how you estimate generalization, not the model or the loss.",
+    explanation:
+      "Walk-forward validation is an evaluation change — an honest generalization estimate for time-ordered data, where random k-fold would leak the future into training.",
+    options: [
+      { id: "a", label: "Evaluation — an honest generalization estimate", isCorrect: true },
+      { id: "b", label: "Data — it changes the dataset", isCorrect: false },
+      { id: "c", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "d", label: "Optimization — it changes the optimizer", isCorrect: false },
+    ],
+  },
 
   // ── Graph Neural Networks ───────────────────────────────────────
   {
