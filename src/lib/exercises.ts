@@ -3364,6 +3364,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Preserves feature interpretability", isCorrect: false },
     ],
   },
+  {
+    id: "pca-quiz-slot-data",
+    type: "multiple-choice",
+    question:
+      "Running PCA to reduce 500 features to 20 before training a classifier changes which slot of the ML project loop?",
+    hint: "It reshapes the inputs the model sees, before any model or loss is chosen.",
+    explanation:
+      "Dimensionality reduction is a data-stage transform: it changes the representation of the raw material. The downstream model family, objective, and optimizer are untouched.",
+    options: [
+      { id: "a", label: "Data — it transforms the input representation", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it changes the model family", isCorrect: false },
+      { id: "c", label: "Optimization — it changes the solver", isCorrect: false },
+      { id: "d", label: "Objective — it changes the loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "pca-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a learning-rate warmup-then-decay schedule. Which slot of the ML project loop does it modify?",
+    hint: "It governs how the parameter search proceeds over training.",
+    explanation:
+      "A learning-rate schedule is an optimization change — it shapes how gradient descent moves through the loss surface. The model family, data, and loss are unchanged.",
+    options: [
+      { id: "a", label: "Optimization — it shapes the parameter search", isCorrect: true },
+      { id: "b", label: "Data — it changes the inputs", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
 
   // ── Probabilistic Models & EM course quiz ────────────────────────────
   {

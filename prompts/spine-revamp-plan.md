@@ -375,7 +375,7 @@ Classical ML:
 - [x] B7 · svm
 - [x] B8 · ensemble-methods
 - [x] B9 · clustering
-- [ ] B10 · pca-dimensionality
+- [x] B10 · pca-dimensionality
 - [ ] B11 · probabilistic-models
 - [ ] B12 · bayesian-methods *(forecasting-thread visit in lesson 02: GPs
   give the demand forecast honest uncertainty bands — same problem, better

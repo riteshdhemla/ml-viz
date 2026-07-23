@@ -87,6 +87,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "svm",
         "ensemble-methods",
         "clustering",
+        "pca-dimensionality",
       ].includes(slug),
   ),
 );
