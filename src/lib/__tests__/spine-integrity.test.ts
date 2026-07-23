@@ -84,6 +84,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "optimization-ml",
         "linear-regression",
         "knn-decision-trees",
+        "svm",
       ].includes(slug),
   ),
 );

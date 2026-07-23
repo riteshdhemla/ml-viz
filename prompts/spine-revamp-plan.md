@@ -372,7 +372,7 @@ Classical ML:
   tabular baseline — lags/calendar features + OLS is the first trip around
   the loop)*
 - [x] B6 · knn-decision-trees
-- [ ] B7 · svm
+- [x] B7 · svm
 - [ ] B8 · ensemble-methods
 - [ ] B9 · clustering
 - [ ] B10 · pca-dimensionality
