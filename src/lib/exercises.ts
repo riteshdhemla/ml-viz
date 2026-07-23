@@ -10435,6 +10435,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "cnn-quiz-slot-equivariance",
+    type: "multiple-choice",
+    question:
+      "A CNN shares one small filter across every position instead of learning independent weights per pixel (translation equivariance). Which slot of the ML project loop is that choice?",
+    hint: "It's a built-in assumption about the function family — an inductive bias.",
+    explanation:
+      "Weight sharing across positions is a hypothesis-space choice: an inductive bias that shrinks the function family to translation-equivariant maps, buying huge sample efficiency on images. The data, loss, and optimizer are unchanged.",
+    options: [
+      { id: "a", label: "Hypothesis space — a translation-equivariance inductive bias", isCorrect: true },
+      { id: "b", label: "Data — it changes the pixels", isCorrect: false },
+      { id: "c", label: "Optimization — it changes training", isCorrect: false },
+      { id: "d", label: "Objective — it changes the loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "cnn-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: class-weighting the loss so a rare tumor class contributes more per example. Which slot does it modify?",
+    hint: "It reweights the loss to care more about certain errors.",
+    explanation:
+      "Class weighting is an objective change: it rewrites the loss so rare-class mistakes cost more. The model family, data, and optimizer stay the same.",
+    options: [
+      { id: "a", label: "Objective — it reweights the loss", isCorrect: true },
+      { id: "b", label: "Data — it resamples examples", isCorrect: false },
+      { id: "c", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
+  {
     id: "rnn-quiz-ssm",
     type: "multiple-choice",
     question:
