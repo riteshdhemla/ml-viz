@@ -83,6 +83,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "probability-statistics",
         "optimization-ml",
         "linear-regression",
+        "knn-decision-trees",
       ].includes(slug),
   ),
 );
