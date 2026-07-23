@@ -13,4 +13,8 @@ export interface WikiPageMeta {
   advanced?: boolean;
   /** Marks an applied, real-world walkthrough. Grouped into a separate "Case Studies" section on /wiki. */
   kind?: "case-study";
+  /** Which project loop this page belongs to, when it maps cleanly to one. See `src/lib/spine.ts`. */
+  spine?: import("./course").SpineId;
+  /** Loop stages this page chiefly serves (stage ids of `spine`). Validated in spine-integrity. */
+  spineStages?: string[];
 }

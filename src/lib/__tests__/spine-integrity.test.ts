@@ -120,6 +120,34 @@ describe("spine frontmatter is well-formed (always enforced)", () => {
     }
     expect(problems).toEqual([]);
   });
+
+  it("every wiki `spine`/`spineStages`, when present, is well-formed", () => {
+    const problems: string[] = [];
+    const wikiFiles = fs.readdirSync(WIKI_DIR).filter((f) => f.endsWith(".mdx"));
+    for (const file of wikiFiles) {
+      const { data } = read(path.join(WIKI_DIR, file));
+      if (data.spine === undefined && data.spineStages === undefined) continue;
+      if (data.spine !== undefined && !SPINE_IDS.includes(data.spine)) {
+        problems.push(`wiki/${file}: unknown spine "${data.spine}"`);
+      }
+      if (data.spineStages !== undefined) {
+        if (!Array.isArray(data.spineStages)) {
+          problems.push(`wiki/${file}: spineStages is not an array`);
+          continue;
+        }
+        if (data.spine === undefined) {
+          problems.push(`wiki/${file}: has spineStages but no spine`);
+          continue;
+        }
+        for (const stage of data.spineStages) {
+          if (!isValidStage(data.spine, stage)) {
+            problems.push(`wiki/${file}: "${stage}" is not a stage of the "${data.spine}" spine`);
+          }
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
 });
 
 describe("spine hub pages exist", () => {
