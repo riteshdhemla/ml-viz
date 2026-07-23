@@ -461,7 +461,7 @@ Agentic:
   that genuinely needs a new lesson). This is the lightweight version of
   building the prerequisite DAG: the B passes *collect* the violations, this
   item resolves them.
-- [ ] **C5 · Docs & templates** — document the spine convention in `CLAUDE.md`
+- [x] **C5 · Docs & templates** — document the spine convention in `CLAUDE.md`
   (new "Spine" section: the two loops, the slot test, frontmatter fields,
   SpineNav/hub architecture, "new lessons must carry `spineStages` and pass
   the slot test in their opener"); require the field in

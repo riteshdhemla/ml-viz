@@ -238,6 +238,7 @@ Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
    order: NN          # integer, matches filename prefix
    type: concept | exercise | quiz | playground
    estimatedMinutes: N
+   spineStages: [<stage>, ...]   # REQUIRED for non-quiz lessons — see "The spine"
    ---
    ```
 3. Create `notebooks/[course-slug]/NN-kebab-title.ipynb` (same slug as MDX)
@@ -246,6 +247,9 @@ Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
    `src/lib/exercises.ts` (see "Adding an exercise"). Do **not** inline a JS
    object; MDX runs with `blockJS: true`.
 6. Use `$$...$$` for display math, `$...$` for inline math
+7. **Tag `spineStages`** (1–3 stage ids of the course's spine) and open with the
+   **slot test** — see "The spine & the concept graph" below. `spine-integrity.test.ts`
+   fails if a non-quiz lesson in a spine course is untagged.
 
 ### Adding a course
 
@@ -260,12 +264,16 @@ Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
    prerequisites: []   # array of course slugs
    order: N
    coverColor: "bg-gradient-to-r from-brand-500 to-accent-teal"
+   spine: ml | agentic   # which project loop this course lives on
    # estimatedHours = round to nearest 0.5 of (sum of lesson estimatedMinutes × 2.5) / 60
    # — the 2.5× accounts for notebook and exercise time
    ---
    ```
-2. Add lesson MDX files to the same folder
+2. Add lesson MDX files to the same folder (each tagged with `spineStages`)
 3. Add corresponding notebooks to `notebooks/[slug]/`
+4. Add the course to the `SPINE_COURSES` contract in
+   `src/lib/__tests__/spine-integrity.test.ts` (spine + coverage are enforced),
+   and set its `prerequisites` so the concept-graph DAG stays acyclic
 
 ### Adding a wiki page (Concept Wiki)
 
@@ -297,6 +305,49 @@ sentence summary and link out with a styled card.
    exist, every wiki page needs its notebook
 6. When extracting a section from a lesson, reduce the lesson's
    `estimatedMinutes` and recompute the course `estimatedHours`
+
+### The spine & the concept graph
+
+Two orthogonal structures thread the whole curriculum. Both are **generated from
+metadata** — keep the metadata correct and they stay correct.
+
+**1. The spine (functional lens).** Every course hangs off one of two recurring
+**project loops**, and every technique is framed by the *slot test*: **"which
+slot does this modify, and what was breaking before?"**
+
+- **ML loop** (`spine: ml`): `data → hypothesis-space → objective → optimization
+  → evaluation → feedback`.
+- **Agentic loop** (`spine: agentic`): `task → context → orchestration →
+  evaluation → guardrails → operations`.
+- Canonical definitions + helpers live in **`src/lib/spine.ts`** (never restate
+  the stage wording elsewhere — import it).
+- **Frontmatter:** course `index.mdx` sets `spine:`; each non-quiz lesson sets
+  `spineStages: [<1–3 stage ids>]`. Wiki pages *may* set `spine` + `spineStages`
+  when they map to one loop. Quizzes carry none.
+- **Prose convention:** open each lesson by naming its stage(s) *and* what the
+  technique replaced / what was breaking — a light touch, never boilerplate.
+  Add 1–2 **slot-placement exercises** to the course quiz (one a *transfer test*
+  on a technique the course didn't teach).
+- **UI (automatic from frontmatter):** `SpineNav` strip on lessons/wiki
+  (`components/lessons/SpineNav.tsx`), `CourseSpineStrip` on course pages,
+  `ProjectLoopViz` (`variant="ml"|"agentic"`) on the hub pages
+  `/wiki/ml-project-loop` and `/wiki/agentic-project-loop`.
+- **Enforcement:** `src/lib/__tests__/spine-integrity.test.ts` — every spine
+  course must declare `spine` and tag every non-quiz lesson; stages must be
+  valid for the spine; new courses go in its `SPINE_COURSES` contract.
+
+**2. The concept graph (relational map).** The orthogonal axis: "what does this
+build on / relate to / go deeper into?" Built in **`src/lib/knowledge-graph.ts`**
+from *existing* content — `prerequisites`, `relatedLessons`, the `## Related
+concepts` / `<WikiLink>` links in bodies, `topics`, and `spineStages`. No
+re-authoring; just keep those links accurate.
+
+- `/map` — interactive course-level concept map (`components/knowledge-graph/ConceptMap.tsx`).
+- `ConceptNeighborhood` — per-page "concept map fragment" rendered below every
+  lesson and wiki page (builds-on / related / go-deeper).
+- `prerequisiteAudit()` — cycle check + topological learning order; the course
+  prerequisite graph must stay an acyclic DAG (enforced in
+  `knowledge-graph.test.ts`), so set new-course `prerequisites` carefully.
 
 ### Styling rules
 

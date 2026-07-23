@@ -57,6 +57,8 @@ Score each lesson/page 1–5 (5 = a motivated learner gets it first pass,
 | 8 | **Flow & pacing** | Do sections build in order with no forward references? Does length match `estimatedMinutes`? |
 | 9 | **Consistency** | Notation/terminology consistent with sibling lessons and linked wiki pages? |
 | 10 | **Landing** | Do "Common mistakes" / "Key takeaways" match what the body actually taught, and would they make sense to someone who skimmed? |
+| 11 | **Spine / slot framing** | Does the opener apply the *slot test* — name the loop stage(s) *and* what was breaking / what this replaced? Are `spineStages` present and honest (≤3, the stages the lesson advances, not everything it mentions)? |
+| 12 | **Settled vs folklore** | Where a standard explanation is contested (e.g. batch norm's internal-covariate-shift story), does the lesson say so honestly rather than assert folklore as fact? |
 
 ### Severity tags for notes
 
