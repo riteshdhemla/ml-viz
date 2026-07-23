@@ -3,12 +3,21 @@ title: "AI-Engineering Architecture"
 description: "What wraps the model in production — guardrails, prompt-injection defense, model routing, caching, observability, and the user-feedback loop."
 order: 6
 type: concept
+spineStages: [guardrails, operations]
 estimatedMinutes: 16
 ---
 
 # AI-Engineering Architecture
 
 A production LLM feature is much more than a call to a model. Around that call sits a system that keeps it safe, fast, cheap, and improving over time. This lesson assembles those pieces — the layers you add **between the user and the model** — and the feedback loop that turns usage into better behaviour.
+
+## The whole loop, at a glance
+
+Everything this course teaches is a slice of one recurring shape — the **agentic project loop**. An architecture lesson is where you see all six slots at once, because a production LLM feature has to get all of them right:
+
+<ProjectLoopViz variant="agentic" />
+
+The earlier lessons filled in the left of the loop — **context & tools** (prompting, RAG, embeddings) and **orchestration** (agents, reasoning). This lesson and the next few are the right of it: **guardrails** (safety, injection defense) and **operations** (tracing, prompt versioning, the usage→improvement feedback loop). It rhymes with the [ML project loop](/wiki/ml-project-loop) — the biggest difference is that you don't get to change the model's weights, so your leverage is in the context, the loop around it, and the guardrails.
 
 **Real-world examples:** any user-facing assistant — support bots, copilots, search/answer engines — operated at scale.
 

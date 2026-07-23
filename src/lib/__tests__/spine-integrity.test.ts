@@ -109,6 +109,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "ml-in-practice",
         "streaming-ml",
         "fine-tuning-alignment",
+        "building-with-llms",
       ].includes(slug),
   ),
 );
