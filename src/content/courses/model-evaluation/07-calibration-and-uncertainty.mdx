@@ -33,6 +33,19 @@ A model's *stated* job is to minimize a loss on a finite training set — recove
 
 Regularization cuts across several of these: weight decay and especially **label smoothing** deliberately trade likelihood fit for generalization, moving the optimum away from the raw-calibrated point — sometimes *improving* calibration (label smoothing softens overconfidence), sometimes not. The upshot: because the causes live in the *training* process, the standard fixes are **post-hoc** — they leave the model alone and re-map its scores onto the diagonal using held-out data.
 
+| Source | Mechanism | Fixable with more data? |
+|--------|-----------|:-----------------------:|
+| Margin loss (SVM hinge) | output is a score, not a probability | No — needs post-hoc scaling |
+| Over-optimizing a proper loss | logits driven to extremes → overconfidence | No — inherent to the training dynamics |
+| Regularization / label smoothing | trades likelihood fit for generalization | No — a deliberate bias |
+| Model-class mismatch | true $P(Y\mid X)$ not representable | No — approximation error |
+| Finite-sample estimation error | noisy parameter estimates | **Yes** (epistemic) |
+| Class imbalance / reweighting | learns the training prior, not the deploy base rate | Yes — with base-rate correction |
+| Label noise | hard labels on ambiguous inputs | Partly |
+| Distribution shift (train ≠ deploy) | calibration set ≠ deployment distribution | No — must recalibrate on target |
+| Aleatoric noise | true probability is intrinsically non-$0/1$ | **No — irreducible** |
+| Epistemic ignorance | confident extrapolation off the data | **Yes** |
+
 ## Measuring calibration
 
 **Reliability diagram.** Bin predictions by their confidence, and for each bin plot the *actual accuracy* against the *average confidence*. Perfect calibration lies on the diagonal (confidence = accuracy); bars below it mean overconfidence. The viz shows this, plus the effect of the fix below:
