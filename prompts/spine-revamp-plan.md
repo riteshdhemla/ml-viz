@@ -381,7 +381,7 @@ Classical ML:
   give the demand forecast honest uncertainty bands — same problem, better
   for a new reason)*
 - [x] B13 · causal-inference
-- [ ] B14 · time-series *(the forecasting thread's home course — visits in
+- [x] B14 · time-series *(the forecasting thread's home course — visits in
   lessons 02 (ARIMA on the canonical series) and 04 (its serving/feedback
   story); make the canonical dataset THE course example where it already
   nearly is)*

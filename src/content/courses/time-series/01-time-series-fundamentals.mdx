@@ -3,12 +3,15 @@ title: "Time Series Fundamentals"
 description: "Stationarity, autocorrelation, and decomposition — the bedrock concepts before any forecasting model."
 order: 1
 type: concept
+spineStages: [data]
 estimatedMinutes: 18
 ---
 
 # Time Series Fundamentals
 
-A **time series** is any sequence of observations ordered by time. Stock prices sampled every minute, hourly temperature readings at a weather station, millisecond ECG signals from a heart monitor — all share the same structure: the *order* of observations carries information that cannot be shuffled away.
+A **time series** is any sequence of observations ordered by time. Stock prices sampled every minute, hourly temperature readings at a weather station, millisecond ECG signals from a heart monitor — all share the same structure: the *order* of observations carries information that cannot be shuffled away. That single fact reshapes the **data** stage of the [ML project loop](/wiki/ml-project-loop): you can't shuffle-and-split, features are built from the past, and evaluation must respect time. This course is also the home of the site's running **demand-forecasting** thread.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 Formally, we write a time series as $\{y_t\}_{t=1}^T$, where $t$ is a discrete time index and $T$ is the total number of observations. The key difference from an ordinary dataset is that successive values are **not independent**: knowing $y_{100}$ tells you something about $y_{101}$ that you would not know from an arbitrary earlier observation.
 

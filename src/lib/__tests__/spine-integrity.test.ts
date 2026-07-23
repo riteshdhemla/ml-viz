@@ -91,6 +91,7 @@ const COVERAGE_ALLOWLIST = new Set<string>(
         "probabilistic-models",
         "bayesian-methods",
         "causal-inference",
+        "time-series",
       ].includes(slug),
   ),
 );
