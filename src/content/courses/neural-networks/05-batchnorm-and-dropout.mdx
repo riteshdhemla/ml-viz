@@ -3,6 +3,7 @@ title: "BatchNorm & Dropout"
 description: "The two training stabilizers every deep network uses — why internal covariate shift kills training, and how dropout acts as an ensemble of networks."
 order: 5
 type: concept
+spineStages: [optimization, hypothesis-space]
 estimatedMinutes: 12
 ---
 
@@ -13,6 +14,10 @@ Two techniques transformed deep learning from an art into an engineering discipl
 ## The problem: internal covariate shift
 
 Each layer of a deep network receives inputs whose distribution shifts every time the weights of the previous layer change. This **internal covariate shift** slows training because later layers must constantly adapt to a moving target.
+
+<Callout type="warning" title="Settled vs folklore">
+Internal covariate shift is the *original* (2015) motivation for batch norm, and it's the story you'll hear most often — but it is **contested**. A well-known 2018 study ("How Does Batch Normalization Help Optimization?") showed you can inject covariate shift *after* batch norm and still train fine, and argued the real mechanism is a **smoother loss landscape** — a genuine **optimization** effect. Treat covariate shift as useful intuition, not settled fact; the smoothing account is where the field currently sits.
+</Callout>
 
 Concretely, imagine training a five-layer network. After one gradient step, the first layer's weights change slightly, which changes the distribution of activations entering the second layer, which changes what the second layer needs to do, which changes the gradients the third layer sees — a cascade that makes each layer's job harder than it needs to be.
 

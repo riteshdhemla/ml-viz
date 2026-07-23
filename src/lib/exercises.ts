@@ -10375,6 +10375,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "nn-quiz-slot-batchnorm",
+    type: "multiple-choice",
+    question:
+      "Batch normalization and He initialization both help deep nets train. Which slot of the ML project loop do they modify — and does batch norm change what the network can represent?",
+    hint: "They make the parameter search easier; they don't add new functions to the model family.",
+    explanation:
+      "Both are optimization-slot techniques: they smooth/condition the loss landscape so gradient descent converges. Batch norm does not enlarge the hypothesis space — the network can represent the same functions with or without it.",
+    options: [
+      { id: "a", label: "Optimization — they ease the parameter search, not the model's capacity", isCorrect: true },
+      { id: "b", label: "Hypothesis space — batch norm adds new representable functions", isCorrect: false },
+      { id: "c", label: "Objective — they change the loss", isCorrect: false },
+      { id: "d", label: "Data — they change the training set", isCorrect: false },
+    ],
+  },
+  {
+    id: "nn-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: retrieval-augmented generation (RAG), which fetches documents and adds them to a model's prompt. In the agentic project loop, which slot does RAG change?",
+    hint: "It changes what information the model has access to at inference — its context.",
+    explanation:
+      "RAG is a context-slot change in the agentic loop: it augments what the model sees at query time. (The slot test works across both loops — this is the agentic analogue of the ML 'data' slot.)",
+    options: [
+      { id: "a", label: "Context & tools — it augments what the model sees", isCorrect: true },
+      { id: "b", label: "Orchestration — it changes the runtime loop", isCorrect: false },
+      { id: "c", label: "Guardrails — it filters outputs", isCorrect: false },
+      { id: "d", label: "Evaluation — it scores the agent", isCorrect: false },
+    ],
+  },
+  {
     id: "cnn-quiz-fgsm",
     type: "multiple-choice",
     question:
