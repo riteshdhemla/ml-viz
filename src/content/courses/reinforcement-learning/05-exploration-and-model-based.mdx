@@ -3,12 +3,19 @@ title: "Exploration Strategies & Model-Based RL"
 description: "How agents balance trying new actions vs. exploiting what they know — and how world models enable sample-efficient learning."
 order: 5
 type: concept
+spineStages: [data]
 estimatedMinutes: 18
 ---
 
 # Exploration Strategies & Model-Based RL
 
-An RL agent can only learn from experience. But to collect *useful* experience it must sometimes try actions it has never taken before. This is the **exploration–exploitation dilemma** — arguably the central challenge unique to RL. At the same time, interacting with the real world is expensive: every training step might cost time, money, or physical wear. **Model-based RL** addresses this by learning a world model and generating synthetic experience for free.
+An RL agent can only learn from experience. But to collect *useful* experience it must sometimes try actions it has never taken before. This is the **exploration–exploitation dilemma** — arguably the central challenge unique to RL.
+
+<Callout type="info" title="Exploration is the data stage — happening live">
+Here is RL's most instructive twist on the [ML project loop](/wiki/ml-project-loop). In supervised learning the **data** slot is settled before training; in RL the agent *creates its own dataset by acting*, so **exploration is the data-collection stage running online**. Explore too little and your data never covers the states that matter (the model can't learn what it never sees); explore too much and you waste expensive interaction. Model-based RL is a data-stage move too — it manufactures synthetic experience from a learned world model. Read this whole dilemma as "how do I get good training data?" asked in real time.
+</Callout>
+
+At the same time, interacting with the real world is expensive: every training step might cost time, money, or physical wear. **Model-based RL** addresses this by learning a world model and generating synthetic experience for free.
 
 ## The exploration–exploitation dilemma
 
