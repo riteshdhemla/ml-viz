@@ -404,7 +404,7 @@ Deep learning:
   injected position signal — "attention as the inevitable move" framing from
   the wiki page; WikiLink in lesson 01)*
 - [x] B20 · generative-models
-- [ ] B21 · graph-neural-networks *(inductive bias: permutation equivariance
+- [x] B21 · graph-neural-networks *(inductive bias: permutation equivariance
   over graphs; WikiLink in lesson 01)*
 - [ ] B22 · computer-vision
 - [ ] B23 · nlp

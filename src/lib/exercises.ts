@@ -7489,6 +7489,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "gnn-quiz-slot-permutation",
+    type: "multiple-choice",
+    question:
+      "A GNN aggregates neighbors with a symmetric function (sum/mean/max) so relabeling nodes doesn't change the output. Which slot of the ML project loop is that design, and what does it encode?",
+    hint: "It's a structural assumption about the model — an inductive bias for graphs.",
+    explanation:
+      "Permutation-equivariant/invariant aggregation is a hypothesis-space choice: it bakes the graph's node-relabeling symmetry into the architecture, which is why GNNs generalize across differently-numbered graphs.",
+    options: [
+      { id: "a", label: "Hypothesis space — a permutation-symmetry inductive bias", isCorrect: true },
+      { id: "b", label: "Data — a different graph", isCorrect: false },
+      { id: "c", label: "Optimization — a faster training loop", isCorrect: false },
+      { id: "d", label: "Objective — a different loss", isCorrect: false },
+    ],
+  },
+  {
+    id: "gnn-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: an A/B test comparing a new recommendation model against the current one on live traffic. Which slot of the ML project loop does it belong to?",
+    hint: "It measures real impact after deployment and feeds the decision to ship.",
+    explanation:
+      "An online A/B test is a deployment-feedback activity: it measures a model's real effect in production and closes the loop on whether to roll it out. It doesn't change the model, data, or loss.",
+    options: [
+      { id: "a", label: "Deployment feedback — measuring real impact in production", isCorrect: true },
+      { id: "b", label: "Hypothesis space — a new model", isCorrect: false },
+      { id: "c", label: "Optimization — a training change", isCorrect: false },
+      { id: "d", label: "Objective — a new loss", isCorrect: false },
+    ],
+  },
+  {
     id: "recsys-feedback",
     type: "multiple-choice",
     question:
