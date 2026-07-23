@@ -207,3 +207,112 @@ export function neighbors(
 export function getGraphNode(id: string): GraphNode | undefined {
   return buildKnowledgeGraph().nodes.find((n) => n.id === id);
 }
+
+// ── Course-level view ────────────────────────────────────────────────
+// The full graph (299 nodes) is a hairball to draw at once. The course-level
+// projection keeps it legible: 33 course nodes, prerequisite + aggregated
+// cross-course "related" edges, and a per-course detail payload for drill-down.
+
+export interface CourseGraphNode {
+  slug: string;
+  title: string;
+  cluster: string;
+  spine?: SpineId;
+  href: string;
+  lessonCount: number;
+}
+
+export interface CourseGraphEdge {
+  source: string; // course slug
+  target: string; // course slug
+  kind: "prerequisite" | "related";
+  weight: number;
+}
+
+export interface CourseDetail {
+  lessons: Array<{ title: string; href: string; spineStages: string[] }>;
+  deepDives: Array<{ title: string; href: string }>;
+}
+
+export interface CourseGraph {
+  nodes: CourseGraphNode[];
+  edges: CourseGraphEdge[];
+  details: Record<string, CourseDetail>;
+}
+
+const courseOf = (lessonNodeId: string) => lessonNodeId.slice("lesson:".length).split("/")[0];
+
+/** Project the full graph down to a legible course-level map with drill-down. */
+export function buildCourseGraph(): CourseGraph {
+  const { nodes, edges } = buildKnowledgeGraph();
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+
+  const courseNodes: CourseGraphNode[] = [];
+  const details: Record<string, CourseDetail> = {};
+  for (const n of nodes) {
+    if (n.kind !== "course") continue;
+    const slug = n.id.slice("course:".length);
+    courseNodes.push({
+      slug,
+      title: n.title,
+      cluster: n.cluster ?? "Other",
+      spine: n.spine,
+      href: n.href,
+      lessonCount: 0,
+    });
+    details[slug] = { lessons: [], deepDives: [] };
+  }
+  const nodeBySlug = new Map(courseNodes.map((n) => [n.slug, n]));
+
+  // Per-course lessons (from containment) + wiki deep-dives (from lesson edges).
+  const seenDeepDive = new Set<string>();
+  for (const e of edges) {
+    if (e.kind === "contains") {
+      const slug = e.source.slice("course:".length);
+      const lesson = byId.get(e.target);
+      const node = nodeBySlug.get(slug);
+      if (lesson && node) {
+        node.lessonCount += 1;
+        details[slug].lessons.push({
+          title: lesson.title,
+          href: lesson.href,
+          spineStages: lesson.spineStages ?? [],
+        });
+      }
+    } else if (e.kind === "deep-dive" && e.source.startsWith("lesson:")) {
+      const slug = courseOf(e.source);
+      const wiki = byId.get(e.target);
+      const key = `${slug}|${e.target}`;
+      if (wiki && details[slug] && !seenDeepDive.has(key)) {
+        seenDeepDive.add(key);
+        details[slug].deepDives.push({ title: wiki.title, href: wiki.href });
+      }
+    }
+  }
+
+  // Course-level edges: prerequisites (direct) + aggregated cross-course "related".
+  const edgeMap = new Map<string, CourseGraphEdge>();
+  const bump = (source: string, target: string, kind: "prerequisite" | "related") => {
+    if (source === target || !nodeBySlug.has(source) || !nodeBySlug.has(target)) return;
+    // Undirected key for related (conceptual link); directed for prerequisite.
+    const key =
+      kind === "prerequisite"
+        ? `p|${source}|${target}`
+        : `r|${[source, target].sort().join("|")}`;
+    const existing = edgeMap.get(key);
+    if (existing) existing.weight += 1;
+    else edgeMap.set(key, { source, target, kind, weight: 1 });
+  };
+
+  for (const e of edges) {
+    if (e.kind === "prerequisite") {
+      bump(e.source.slice("course:".length), e.target.slice("course:".length), "prerequisite");
+    } else if (e.kind === "related" && e.source.startsWith("lesson:") && e.target.startsWith("lesson:")) {
+      const a = courseOf(e.source);
+      const b = courseOf(e.target);
+      if (a !== b) bump(a, b, "related");
+    }
+  }
+
+  return { nodes: courseNodes, edges: [...edgeMap.values()], details };
+}

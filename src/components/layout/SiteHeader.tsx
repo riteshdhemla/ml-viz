@@ -9,6 +9,7 @@ import { useSearchStore } from "@/lib/search-store";
 const NAV_LINKS = [
   { href: "/courses", label: "Courses" },
   { href: "/wiki", label: "Wiki" },
+  { href: "/map", label: "Map" },
   { href: "/progress", label: "Progress" },
 ];
 
