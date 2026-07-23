@@ -10227,6 +10227,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "eval-quiz-slot-anchor",
+    type: "multiple-choice",
+    question:
+      "This whole course — metrics, validation, calibration, learning theory — is the deep treatment of which single slot of the ML project loop?",
+    hint: "It's the slot that decides whether the other five actually worked.",
+    explanation:
+      "Model evaluation is the evaluation slot: honestly estimating generalization and trustworthiness. It's where you find out whether your data, hypothesis space, objective, and optimization added up to something that works on unseen data.",
+    options: [
+      { id: "a", label: "Evaluation", isCorrect: true },
+      { id: "b", label: "Optimization", isCorrect: false },
+      { id: "c", label: "Hypothesis space", isCorrect: false },
+      { id: "d", label: "Objective", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a mixture-of-experts layer that routes each token to a few specialized sub-networks. Which slot does it modify?",
+    hint: "It changes the architecture — the family of functions the model can express.",
+    explanation:
+      "MoE is a hypothesis-space change: it restructures the model to decouple parameter count from compute. The objective, optimizer, and evaluation protocol can stay the same.",
+    options: [
+      { id: "a", label: "Hypothesis space — an architectural change", isCorrect: true },
+      { id: "b", label: "Evaluation — a new metric", isCorrect: false },
+      { id: "c", label: "Optimization — a new solver", isCorrect: false },
+      { id: "d", label: "Data — a new dataset", isCorrect: false },
+    ],
+  },
+  {
     id: "ts-quiz-stationarity",
     type: "multiple-choice",
     question:
