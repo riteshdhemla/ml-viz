@@ -21,6 +21,12 @@ Add a new lesson to the **[COURSE SLUG]** course in the ml-viz website.
 - Add at least one `<Callout>` block (type: tip, info, warning, or success)
 - Add at least one `<Exercise>` block (type: multiple-choice or slider)
 - If there is a relevant visualization component, embed it with `<[Name]Viz />`
+- **Spine (required for non-quiz lessons):** add `spineStages: [<1–3 stage ids>]`
+  to the frontmatter (valid stages come from the course's `spine` — see the
+  "The spine & the concept graph" section of `CLAUDE.md`), and open by applying
+  the **slot test**: name the stage(s) this lesson advances *and* what was
+  breaking before / what it replaced — a light one-clause touch, not boilerplate.
+  `spine-integrity.test.ts` fails if the lesson is untagged.
 
 **Exercise format reference:**
 
