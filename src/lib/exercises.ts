@@ -2791,6 +2791,36 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Fails to converge", isCorrect: false },
     ],
   },
+  {
+    id: "knntree-quiz-slot-k",
+    type: "multiple-choice",
+    question:
+      "Increasing k in KNN (or capping a decision tree's depth) tunes model complexity. Which slot of the ML project loop does this dial live in?",
+    hint: "You are changing how expressive the model family is, not the loss or the data.",
+    explanation:
+      "The complexity dial is a hypothesis-space (capacity) control: a bigger k or a shallower tree is a smaller, smoother function family. The bias–variance tradeoff is how you read its effect at evaluation time.",
+    options: [
+      { id: "a", label: "Hypothesis space — it controls model capacity", isCorrect: true },
+      { id: "b", label: "Optimization — it changes the training algorithm", isCorrect: false },
+      { id: "c", label: "Objective — it changes the loss", isCorrect: false },
+      { id: "d", label: "Feedback — it changes the deployed monitoring", isCorrect: false },
+    ],
+  },
+  {
+    id: "knntree-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: focal loss down-weights easy examples so a detector focuses on hard, rare ones. Which slot does it modify?",
+    hint: "It reshapes the loss to care about different errors.",
+    explanation:
+      "Focal loss is an objective change: it rewrites the loss so rare positives dominate less-informative easy negatives. The model family and optimizer are untouched.",
+    options: [
+      { id: "a", label: "Objective — it reshapes the loss", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it changes the model", isCorrect: false },
+      { id: "c", label: "Data — it changes the training set", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the metric", isCorrect: false },
+    ],
+  },
 
   // ── CNN Visualization & Adversarial Attacks ──────────────────────────
   {
