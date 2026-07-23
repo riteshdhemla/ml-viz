@@ -471,6 +471,40 @@ Agentic:
 
 ---
 
+## Phase D — Semantic knowledge graph (complements the spine)
+
+**Why:** the spine is a *functional lens* ("which slot does this change?"). A
+semantic **graph** is the orthogonal *relational map* ("what is this a kind of,
+what does it depend on, what's nearby?") — a distinct retention mechanism
+(concept-mapping literature). Knowledge here is a graph, not a strict tree: a
+transformer is-a neural net *and* relates to attention, sequence models, and
+inductive bias, so single-parent trees drop the cross-links where understanding
+lives. Built as a **complement**: nothing in Phase A–C is undone, and the spine
+metadata (`spineStages`, `spine`, `cluster`) becomes one of the graph's axes.
+
+**Key leverage:** the graph is largely *generated from existing metadata* — no
+re-authoring. Edges come from `CourseMeta.prerequisites`, `WikiPageMeta.relatedLessons`,
+the hand-authored `## Related concepts` / `<WikiLink>` links in every lesson and
+wiki body, `topics`, and `spineStages`.
+
+- [x] **D1 · Graph data layer** — `src/lib/knowledge-graph.ts`: assemble typed
+  nodes (course / lesson / wiki) and typed edges (`contains`, `prerequisite`,
+  `related` lesson↔lesson, `deep-dive` lesson↔wiki, wiki↔wiki) from frontmatter
+  + parsed body links. Server-only (`fs`). Unit test asserting every edge
+  endpoint resolves and the graph is non-trivial.
+- [ ] **D2 · Concept-map page** — `/map`: interactive force/graph view of the
+  knowledge graph, colored by `cluster`/`spine`, filterable by spine stage and
+  topic, each node linking to its page. Pure-SVG per viz conventions or a
+  self-contained layout; server-rendered node/edge data.
+- [ ] **D3 · Local "concept neighborhood"** — on each lesson/wiki page, a small
+  "related concepts" graph fragment (prereqs in, related across, deep-dives
+  out) rendered from the same data layer — elaboration at the point of study.
+- [ ] **D4 · Prerequisite-DAG audit** — surface cycles / forward references in
+  the prerequisite + related edges (feeds Phase C4); optionally a "learning
+  path" topological order per cluster.
+
+---
+
 ## 5. Editorial guardrails (for the model refining content)
 
 - **The spine is a lens, not a chore.** If a lesson's opener already flows,
