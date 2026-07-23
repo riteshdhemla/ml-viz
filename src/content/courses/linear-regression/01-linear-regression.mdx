@@ -3,12 +3,19 @@ title: "Linear Regression"
 description: "Fitting a line to data — the model, Ordinary Least Squares, residuals and R², and why overfitting calls for regularization."
 order: 1
 type: concept
+spineStages: [hypothesis-space, objective]
 estimatedMinutes: 16
 ---
 
 # Linear Regression
 
-The simplest supervised learning task: given input features $x_1, \ldots, x_d$, predict a continuous output $y$.
+The simplest supervised learning task: given input features $x_1, \ldots, x_d$, predict a continuous output $y$. It is also the cleanest first trip around the [ML project loop](/wiki/ml-project-loop) — the linear model is the whole **hypothesis space**, and least squares is the **objective**.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
+
+<Callout type="info" title="The forecasting thread">
+The site's running example — the `daily-demand` forecasting problem from the [project-loop hub](/wiki/ml-project-loop) — starts right here. Its **tabular baseline** is exactly this model: build features from the recent past ($y_{t-1}$, $y_{t-7}$) and the calendar (day-of-week), then fit them with ordinary least squares. Every later course revisits the *same* problem with a richer hypothesis space; this is trip number one.
+</Callout>
 
 **Real-world examples:** Predicting house prices from square footage, bedrooms, and location. Estimating a patient's blood pressure from age and weight. Forecasting sales from advertising spend.
 

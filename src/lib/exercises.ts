@@ -9867,6 +9867,36 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "linreg-quiz-slot-reg",
+    type: "multiple-choice",
+    question:
+      "Adding an L2 (ridge) penalty to least squares changes which slot of the ML project loop?",
+    hint: "You are modifying the quantity being minimized.",
+    explanation:
+      "Regularization adds a penalty to the loss — an objective change. The linear hypothesis space and the optimizer are unchanged; you've only redefined what counts as a good fit.",
+    options: [
+      { id: "a", label: "Objective — it adds a penalty to the loss", isCorrect: true },
+      { id: "b", label: "Hypothesis space — it changes the model family", isCorrect: false },
+      { id: "c", label: "Optimization — it changes the solver", isCorrect: false },
+      { id: "d", label: "Evaluation — it changes the test metric", isCorrect: false },
+    ],
+  },
+  {
+    id: "linreg-quiz-slot-transfer",
+    type: "multiple-choice",
+    question:
+      "Transfer test — a technique this course did NOT teach: a random forest replaces a single linear model with an ensemble of decision trees. Which slot does that change?",
+    hint: "It swaps the family of functions the model can express.",
+    explanation:
+      "Moving from a linear model to a tree ensemble is a hypothesis-space change — a different, more expressive function family. The data and the notion of a good fit can stay the same.",
+    options: [
+      { id: "a", label: "Hypothesis space — a more expressive model family", isCorrect: true },
+      { id: "b", label: "Objective — a different loss", isCorrect: false },
+      { id: "c", label: "Optimization — a different solver", isCorrect: false },
+      { id: "d", label: "Data — a different training set", isCorrect: false },
+    ],
+  },
+  {
     id: "opt-quiz-hpo",
     type: "multiple-choice",
     question:
