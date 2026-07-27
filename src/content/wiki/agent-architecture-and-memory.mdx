@@ -1,0 +1,211 @@
+---
+title: "Agent Architecture & Memory"
+description: "The high-level view of an agentic system — the four-element control loop (input, reasoning core, tools, memory), how environmental sensing gives agents perception, the three layers of agent memory (short-term, long-term, external), and how memory is read before reasoning and written after acting on every turn."
+topics: ["agents"]
+relatedLessons:
+  - "agent-design-patterns/01-foundation-model-agents"
+  - "building-with-llms/05-agents-and-tool-use"
+spine: agentic
+spineStages: [context, orchestration]
+estimatedMinutes: 14
+---
+
+# Agent Architecture & Memory
+
+A functioning agent is more than a reasoning engine and a bag of tools. To behave
+intelligently *across time and context*, it must also **perceive** what is happening
+around it and **remember** what has already happened. This page zooms out from the
+individual components to the complete system — the runtime control loop that connects
+them, and the memory that threads every step to the next.
+
+This is the **runtime** companion to the [agentic project loop](/wiki/agentic-project-loop).
+That page is the *build-time* spine — the slots you design when you build an agent. This
+one is what the agent actually *does* on every turn once it's running.
+
+## The architecture blueprint
+
+Think of an agent as a control flow connecting four primary elements:
+
+- **Input interface** — the agent receives information from the environment or a user:
+  text prompts, tool outputs, API signals, or multimodal inputs like audio and images.
+- **Reasoning core (the model)** — the language model interprets the input, plans the
+  next steps, and decides which tools or actions to use. It is powered by the *model* and
+  guided by the *instructions* (usually a system prompt).
+- **Tools & actions** — based on its reasoning, the agent calls APIs, fetches documents,
+  sends responses, or triggers real-world effects.
+- **Memory & context** — to maintain continuity, the agent stores and retrieves past
+  information: conversational history, retrieved documents, long-term user preferences.
+
+The reasoning core is the model + instructions from the
+[core-components lesson](/courses/agent-design-patterns/01-foundation-model-agents); the
+input interface and memory supply the context it needs to operate. Advanced systems layer
+on extra specialised components — safety guardrails, monitoring interfaces — but these
+four are the foundational control loop.
+
+The system runs as a **loop**: the agent receives input, reasons, acts, observes the
+outcome, and continues. Each part reinforces the others — reasoning depends on perception
+and memory, actions influence future inputs, and memory connects every past step to the
+present. Designed thoughtfully, this loop produces agents that don't just respond but
+*adapt to context and behave consistently over time*.
+
+<AgentControlLoopViz />
+
+## Environmental sensing: giving agents perception
+
+For an agent to respond intelligently, it must first perceive what is happening around
+it. Traditional AI took structured inputs — form fields, fixed commands. Today's agents
+must interpret natural language, images, audio, and other data streams. This is
+**environmental sensing**, and it unlocks three capabilities:
+
+- **Context awareness** — understanding the situation: a user's previous commands, a
+  document's contents, a device's current state.
+- **Multimodal interaction** — processing a spoken question, an uploaded image, or a live
+  data stream, not just typed text.
+- **Dynamic reactivity** — monitoring for changes and responding proactively instead of
+  waiting for static commands.
+
+Perception sits at the **start of the loop**. The agent collects information from its
+environment and prepares it for reasoning — often via a preprocessing step:
+
+| Raw input | Sensing step | Signal for reasoning |
+|---|---|---|
+| Spoken audio | speech-to-text | transcript |
+| An image or scan | OCR | extracted text |
+| An API response | JSON parsing | structured fields |
+| A natural-language prompt | intent extraction | goal + parameters |
+
+Different models or tools may handle each task, but the goal is always the same:
+transform raw inputs into meaningful signals the agent can act on. In the
+[project-loop spine](/wiki/agentic-project-loop) this is the **context** slot — it decides
+what raw material reaches the decision.
+
+## Memory: how agents remember and retrieve
+
+Without memory, every interaction is disconnected — the agent can't recall what the user
+asked earlier, what actions it already took, or what it retrieved. Memory lets an agent:
+
+- Stay coherent across multi-turn conversations.
+- Avoid repeating questions or actions.
+- Decide based on what it has previously learned or observed.
+- Maintain a sense of progress toward a goal.
+
+> If a user tells a travel assistant "book the same hotel as last time," the agent needs
+> memory to recall *which* hotel. Without it, the agent asks again or gives a generic
+> answer. This ability to refer back, build context, and learn from experience is what
+> turns a reactive tool into a goal-driven assistant.
+
+### The three layers of agent memory
+
+Like humans, agents use several kinds of memory that differ in **scope, purpose, and
+persistence**:
+
+| Layer | Scope | Holds | Typical implementation |
+|---|---|---|---|
+| **Short-term** | one session | recent turns, follow-ups, clarifications | in-session context window / buffer |
+| **Long-term** | across sessions | preferences, past decisions, completed tasks | explicit store, backed by a database |
+| **External / knowledge** | outside the agent | facts, documents, reference knowledge | vector database, knowledge base, APIs |
+
+**Short-term memory** holds recent context within a single interaction — what was just
+said or done. It's fleeting, and usually lives right in the context window.
+
+**Long-term memory** persists across sessions: a user's settings, notes about past
+outcomes, historical interactions. It needs explicit storage and retrieval, typically a
+database.
+
+**External / knowledge memory** is the agent's ability to look things up rather than
+"remember" everything directly — search a knowledge base, retrieve matching documents,
+pull facts from external systems. This is where
+[retrieval-augmented generation](/courses/building-with-llms/04-retrieval-augmented-generation)
+and vector databases come in.
+
+<Callout type="info" title="Why vector databases">
+  Both long-term and external memory need robust, persistent storage and efficient
+  retrieval. **Vector databases** are especially effective: they represent information as
+  numerical **embeddings** and retrieve by *semantic similarity*, so the agent finds
+  contextually relevant information even without exact keyword matches. Crucially, the
+  agent never loads the whole knowledge base into active memory — a semantic search pulls
+  only the most relevant snippets for the current task.
+</Callout>
+
+## How memory operates across the loop
+
+Memory is **not a single step**. It supports the agent at multiple points in its
+reasoning cycle:
+
+- **Before reasoning — retrieve.** The agent pulls in relevant memories or external facts:
+  previous messages, stored preferences, related documents. Retrieval happens *before* the
+  agent decides what to do.
+- **During decision-making — condition.** The retrieved memory becomes part of the context
+  window, keeping the agent grounded, non-repetitive, and tailored to what it already
+  knows.
+- **After acting — write.** The agent stores new information: the user's latest input, the
+  outcome of an API call. This becomes future memory, retrievable in later steps.
+
+This is exactly the read/write rhythm the visualization above highlights — **read on
+Recall, write on Store**.
+
+## Putting it together: the complete agent loop
+
+Perception, reasoning, memory, and action combine into one repeating cycle:
+
+1. **Perceive** — observe the environment (a user message, a file, a sensor). Convert raw
+   input into a form the agent can understand.
+2. **Recall** — pull in relevant memories and background knowledge: past interactions,
+   documents from a vector database.
+3. **Reason & plan** — with input and context in hand, interpret intent, break the task
+   into steps, and choose tools.
+4. **Act** — execute one or more actions: call an API, send a message, update a file, take
+   a physical step.
+5. **Store & learn** — persist new information (updated context, feedback, results). It
+   becomes part of memory for future tasks.
+
+The loop repeats as new input arrives. Sensing, recalling, deciding, acting, and
+remembering are what make the system feel coherent, adaptive, and capable of handling
+tasks over time.
+
+## Case study: a context-aware customer support agent
+
+Suppose you're designing an AI support agent for a subscription SaaS platform. It must
+answer billing and account queries, stay aware of prior tickets, adapt to a user's tone,
+retrieve knowledge-base docs, and escalate to a human when dissatisfaction mounts. You've
+wired up a capable LLM (model), support APIs (tools), and a detailed system prompt
+(instructions) — yet in production you see four failures:
+
+| Observed failure | Failing element | Which memory layer |
+|---|---|---|
+| Repeats questions the customer already answered this chat | Memory & context | **short-term** |
+| Never mentions the ticket the user filed yesterday | Memory & context | **long-term** |
+| Gives generic answers even though a relevant FAQ exists | Memory & context | **external / knowledge** |
+| Stays cheerful while the user grows angrier; never escalates | Memory & context | **long-term** (tone history) |
+
+Every symptom traces to the **same** element — *memory and context* — but a different
+layer. A robust memory system is foundational for any context-aware agent.
+
+<Callout type="tip" title="Which loop step bridges sessions?">
+  A user says, *"I'm still having the same issue I reported yesterday."* The step that
+  bridges the gap between sessions is **Recall**, and the memory it needs is **long-term**
+  — specifically the past interaction history and support-ticket status, plus the user's
+  prior context so it doesn't re-ask what's already answered. Effective recall is what
+  transforms the agent from a reactive tool into a goal-driven assistant.
+</Callout>
+
+## Key takeaways
+
+- An agent is a **loop** over four elements: input interface, reasoning core (model +
+  instructions), tools & actions, and memory & context.
+- **Environmental sensing** gives the agent perception — it converts raw multimodal input
+  into signals at the *start* of the loop.
+- Agent memory has **three layers**: short-term (in-session), long-term (across sessions,
+  in a database), and external/knowledge (a vector DB or knowledge base, retrieved on
+  demand).
+- Memory is **read before reasoning and written after acting** — Recall then Store — so
+  experience carries into the next turn.
+- The full cycle is **Perceive → Recall → Reason → Act → Store**, repeating as new input
+  arrives.
+
+## Related concepts
+
+- [Foundation Model Agents & the Pattern Catalogue](/courses/agent-design-patterns/01-foundation-model-agents) — the core components (model, tools, instructions) this loop is built from.
+- [Agents & Tool Use](/courses/building-with-llms/05-agents-and-tool-use) — the ReAct orchestration loop and memory in practice.
+- [The Agentic Project Loop](/wiki/agentic-project-loop) — the build-time spine this runtime loop lives inside.
+- [Retrieval-Augmented Generation](/courses/building-with-llms/04-retrieval-augmented-generation) — external/knowledge memory in depth.

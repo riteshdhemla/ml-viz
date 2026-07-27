@@ -557,6 +557,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 | LatencyCriticalPathViz | `visualizations/LatencyCriticalPath/` | wiki/agent-metrics-taxonomy | ✅ |
 | ProjectLoopViz | `visualizations/ProjectLoop/` | wiki/ml-project-loop + wiki/agentic-project-loop (`variant="ml"\|"agentic"`) | ✅ |
+| AgentControlLoopViz | `visualizations/AgentControlLoop/` | wiki/agent-architecture-and-memory | ✅ |
 
 ---
 

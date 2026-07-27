@@ -91,6 +91,7 @@ import { ReservoirSamplingViz } from "@/components/visualizations/ReservoirSampl
 import { OnlineRegretViz } from "@/components/visualizations/OnlineRegret/OnlineRegretViz";
 import { ConceptDriftViz } from "@/components/visualizations/ConceptDrift/ConceptDriftViz";
 import { ProjectLoopViz } from "@/components/visualizations/ProjectLoop/ProjectLoopViz";
+import { AgentControlLoopViz } from "@/components/visualizations/AgentControlLoop/AgentControlLoopViz";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -188,4 +189,5 @@ export const mdxComponents: MDXComponents = {
   OnlineRegretViz,
   ConceptDriftViz,
   ProjectLoopViz,
+  AgentControlLoopViz,
 };

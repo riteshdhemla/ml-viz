@@ -66,6 +66,10 @@ The context window is finite, so long-running agents need **memory**:
 - **Short-term**: the running transcript of the current task (often summarised as it grows).
 - **Long-term**: facts persisted across sessions, usually in a **vector store** and retrieved on demand — i.e. RAG used as the agent's memory.
 
+Memory isn't a single step: it's **read before reasoning and written after acting** on every turn. The deep dive builds the whole runtime control loop — perceive → recall → reason → act → store — around all three memory layers from scratch:
+
+<WikiLink slug="agent-architecture-and-memory" title="Agent Architecture & Memory" />
+
 ## Reliability: the hard part
 
 Agents compound errors. If each step is 95% reliable, ten steps are only $0.95^{10} \approx 60\%$ reliable. Make them robust with:
