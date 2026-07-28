@@ -32,6 +32,12 @@ RAG has an offline **indexing** phase and an online **query** phase.
 
 Notice in the visualisation: when $k$ is small and the query sits inside the right cluster, every retrieved chunk is on-topic. Push $k$ too high and off-topic chunks sneak in — noise the generator must then ignore.
 
+<Callout type="info" title="Retrieval isn't only embeddings">
+  Step 2 is drawn here as dense (embedding) retrieval, but the oldest, cheapest retriever is **lexical**: score chunks by keyword overlap with **BM25**. It has no training and no vectors, yet it beats dense retrieval on exact tokens — names, error codes, rare jargon — which is why strong RAG systems run **hybrid** retrieval (BM25 + embeddings) and fuse the two lists.
+</Callout>
+
+<WikiLink slug="bm25-ranking" title="BM25: Lexical Ranking" />
+
 ## Why chunking matters
 
 Embed a whole 50-page manual as one vector and it becomes a blurry average of every topic — retrieval can't isolate the relevant paragraph. Chunking gives **precise** retrieval and lets you fit only the relevant passages into a finite context window.
@@ -90,3 +96,4 @@ Evaluate the two halves separately, because a bad answer could come from either:
 - [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the retrieval engine RAG depends on
 - [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — retrieval as one tool an agent can call
 - [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the ANN index (IVF/HNSW/PQ) that makes retrieval fast at scale
+- [**BM25: Lexical Ranking**](/wiki/bm25-ranking) — the keyword-overlap retriever that forms the sparse half of hybrid RAG

@@ -1,0 +1,111 @@
+---
+title: "BM25: Lexical Ranking"
+description: "The probabilistic bag-of-words ranking function behind classic search — TF-IDF's successor with term-frequency saturation and document-length normalization, a full worked score, and where it beats (and loses to) dense embeddings."
+topics: ["nlp"]
+relatedLessons:
+  - "building-with-llms/04-retrieval-augmented-generation"
+  - "building-with-llms/03-embeddings-and-semantic-search"
+estimatedMinutes: 12
+---
+
+# BM25: Lexical Ranking
+
+**BM25** (Best Matching 25, from the Okapi project) is the ranking function that has powered keyword search for decades — it is the default in Lucene, Elasticsearch, and OpenSearch, and the "sparse" half of most hybrid RAG retrievers. It scores a document against a query using only **term overlap**: no embeddings, no training, no neural network. Given a query, it ranks every document by a sum of per-term weights that reward matching rare words, reward repeated matches with **diminishing returns**, and correct for **document length**.
+
+It is worth understanding precisely because it is an absurdly strong baseline. A well-tuned BM25 index often matches or beats a dense retriever on exact-match queries (names, error codes, IDs, rare jargon) at a tiny fraction of the cost — which is exactly why production systems fuse the two.
+
+## From TF-IDF to BM25
+
+Classic **TF-IDF** scores a query term $t$ in document $d$ as $\text{tf}(t, d) \cdot \text{idf}(t)$ — raw term frequency times inverse document frequency. Two problems:
+
+1. **Term frequency grows linearly and unboundedly.** A document that says "cat" 100 times looks 100× more relevant than one that says it once. In reality, relevance *saturates* — the 10th mention adds little over the 2nd.
+2. **Long documents win by accident.** A long document repeats every term more often, so it out-scores a short, focused one for no good reason.
+
+BM25 fixes both with two ideas: a **saturation curve** on term frequency, and an explicit **length-normalization** knob.
+
+## The formula
+
+For a query $Q = \{q_1, \dots, q_n\}$ and document $d$:
+
+$$
+\text{BM25}(Q, d) = \sum_{i=1}^{n} \text{IDF}(q_i) \cdot \frac{f(q_i, d)\,(k_1 + 1)}{f(q_i, d) + k_1\left(1 - b + b\,\dfrac{|d|}{\text{avgdl}}\right)}
+$$
+
+where
+
+- $f(q_i, d)$ — the raw count of term $q_i$ in document $d$,
+- $|d|$ — the document length in words, and $\text{avgdl}$ — the average document length across the corpus,
+- $k_1$ — the **saturation** parameter (typically $1.2$–$2.0$),
+- $b$ — the **length-normalization** parameter (typically $0.75$),
+- $\text{IDF}(q_i)$ — the inverse document frequency of the term (below).
+
+The IDF uses the probabilistic (Robertson–Spärck-Jones) form, with $N$ documents and $n(q_i)$ containing the term:
+
+$$
+\text{IDF}(q_i) = \ln\!\left(\frac{N - n(q_i) + 0.5}{n(q_i) + 0.5} + 1\right)
+$$
+
+The $+1$ inside the log keeps IDF non-negative even for very common terms (a term in more than half the corpus would otherwise go negative).
+
+## Reading the two knobs
+
+**$k_1$ — term-frequency saturation.** Look at the fraction: as $f(q_i, d) \to \infty$, the term score approaches its ceiling $\text{IDF}(q_i)\cdot(k_1 + 1)$. Small $k_1$ saturates fast (presence ≈ enough); large $k_1$ keeps rewarding repeats. At $k_1 = 0$ the term frequency drops out entirely and BM25 degenerates to a pure binary IDF score.
+
+<Callout type="info" title="Why saturation matters">
+  The saturation curve is BM25's defining feature. The first occurrence of a rare query term should move the ranking a lot; the twentieth should barely move it. A linear TF (plain TF-IDF) lets keyword-stuffed documents dominate — BM25's diminishing returns make it robust to that.
+</Callout>
+
+**$b$ — length normalization.** The denominator scales $k_1$ by $\left(1 - b + b\,\frac{|d|}{\text{avgdl}}\right)$. At $b = 0$ length is ignored entirely; at $b = 1$ scores are fully normalized by relative length, so a document twice as long needs twice as many matches to score the same. $b = 0.75$ is the standard compromise — penalize length, but not brutally.
+
+## A worked score
+
+Corpus of $N = 10$ documents, $\text{avgdl} = 12$ words. Query: **"neural retrieval"**. Take a document $d$ with $|d| = 9$ words containing "neural" 3× and "retrieval" 1×. Say "neural" appears in $n = 4$ docs and "retrieval" in $n = 2$. Use $k_1 = 1.5$, $b = 0.75$.
+
+First the IDFs:
+
+$$
+\text{IDF}(\text{neural}) = \ln\!\left(\tfrac{10 - 4 + 0.5}{4 + 0.5} + 1\right) = \ln(2.44) \approx 0.89
+$$
+$$
+\text{IDF}(\text{retrieval}) = \ln\!\left(\tfrac{10 - 2 + 0.5}{2 + 0.5} + 1\right) = \ln(4.40) \approx 1.48
+$$
+
+The length factor is $\left(1 - 0.75 + 0.75 \cdot \tfrac{9}{12}\right) = 0.8125$, so $k_1 \cdot 0.8125 = 1.219$.
+
+**"neural"** ($f = 3$): $\;0.89 \cdot \dfrac{3 \,(2.5)}{3 + 1.219} = 0.89 \cdot \dfrac{7.5}{4.219} \approx 1.58$
+
+**"retrieval"** ($f = 1$): $\;1.48 \cdot \dfrac{1 \,(2.5)}{1 + 1.219} = 1.48 \cdot \dfrac{2.5}{2.219} \approx 1.67$
+
+$$
+\text{BM25}(Q, d) \approx 1.58 + 1.67 = 3.25
+$$
+
+Notice the single-occurrence rare term ("retrieval") contributes *more* than three occurrences of the commoner one ("neural") — saturation plus IDF working together. That is the behavior a linear TF-IDF would get wrong.
+
+## BM25 vs dense embeddings
+
+| | BM25 (lexical / sparse) | Embeddings (semantic / dense) |
+|---|---|---|
+| Matches | exact tokens (& stems) | meaning / paraphrase |
+| "car" vs "automobile" | **miss** (no shared token) | **hit** |
+| Rare IDs, codes, names | **excellent** | often poor |
+| Training needed | none | embedding model |
+| Index | inverted index | ANN vector index |
+| Cost | very cheap | embedding + ANN |
+| Out-of-domain terms | robust | can drift |
+
+Neither dominates. Embeddings win on synonymy and paraphrase; BM25 wins on precise tokens and unseen jargon, with zero training and near-zero cost. This is why **hybrid search** fuses both scores — commonly with **Reciprocal Rank Fusion (RRF)**, which combines the two ranked lists by $\sum_r \frac{1}{k + \text{rank}_r(d)}$ (a small constant $k \approx 60$) and needs no score calibration between the incomparable BM25 and cosine scales.
+
+## Common mistakes
+
+1. **Comparing BM25 scores across queries.** BM25 is a *within-query* ranking score, not a calibrated probability — a score of 12 for one query is not "more relevant" than 8 for another. Only the order within one query is meaningful.
+2. **Skipping tokenization/normalization.** BM25 matches surface tokens, so lowercasing, stemming/lemmatization, and stop-word handling directly change recall. Mismatched analyzers between indexing and querying silently tank results.
+3. **Leaving $k_1$/$b$ at defaults for atypical corpora.** Very short docs (tweets, titles) or very long ones (manuals) often want different $b$; tune on labeled queries.
+4. **Expecting semantic matches.** BM25 will never connect "heart attack" to "myocardial infarction" — that gap is exactly what the dense half of a hybrid retriever is for.
+5. **Feeding negative IDF into the sum.** Use the $+1$-inside-log form (above) so ultra-common terms don't subtract from a document's score.
+
+## Related concepts
+
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — BM25 is the classic first-stage retriever, and the sparse half of hybrid RAG
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the dense counterpart BM25 is fused with in hybrid search
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the dense-retrieval index BM25's inverted index complements
