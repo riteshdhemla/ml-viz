@@ -1,0 +1,130 @@
+---
+title: "HNSW: Hierarchical Navigable Small World Graphs"
+description: "How the default ANN index works from the inside — skip-list layers over a proximity graph, the greedy-descent + ef beam search, the insertion algorithm with M/efConstruction, a worked search trace, complexity, and the delete/memory gotchas."
+topics: ["nlp"]
+relatedLessons:
+  - "building-with-llms/03-embeddings-and-semantic-search"
+  - "building-with-llms/04-retrieval-augmented-generation"
+estimatedMinutes: 12
+---
+
+# HNSW: Hierarchical Navigable Small World Graphs
+
+The [vector-databases wiki](/wiki/vector-databases) names **HNSW** as the default ANN index in most modern vector databases (FAISS, Qdrant, Weaviate, pgvector, Milvus, Redis). This page opens the box: what the "hierarchical" and "navigable small world" parts actually are, the exact search and insert procedures, a worked trace, and the operational gotchas that make HNSW excellent for read-heavy corpora and awkward for churny ones.
+
+The one-sentence idea: **build a multi-layer proximity graph — a skip-list for geometry — then answer a query by greedily hopping along edges toward it, coarse layers first, then fine.**
+
+## Two ingredients
+
+**Navigable Small World (NSW).** Connect each vector to its near neighbours so the whole set becomes one graph. "Small world" means: even though every node only links to a handful of others, any two nodes are reachable in a *short* number of hops (like social networks — six degrees of separation). Searching is then just greedy graph traversal: from the current node, jump to whichever neighbour is closest to the query, repeat until no neighbour is closer. The flaw of a single-layer NSW is that greedy search can get *stuck in a local minimum* far from the true neighbour, and early hops move only a tiny distance.
+
+**Hierarchy (the skip-list trick).** A [skip list](https://en.wikipedia.org/wiki/Skip_list) speeds up a linked list by adding sparse "express lanes" on top. HNSW does the same in metric space: a **sparse top layer** with long-range links lets search *teleport* across the space in a few big hops, then each lower layer is denser and refines the position, until layer 0 (which contains **every** point) does the fine-grained search.
+
+<Callout type="info" title="Layer assignment is random and exponential">
+  Each inserted point gets a maximum layer $\ell$ drawn from a geometric distribution:
+  $\ell = \lfloor -\ln(U)\cdot m_L \rfloor$ with $U \sim \text{Uniform}(0,1)$ and
+  $m_L = 1/\ln M$. So a point lands on layer $\ell$ with probability $\propto e^{-\ell/m_L}$
+  — most points live only on layer 0, a few reach higher, exactly one (in expectation) tops out.
+  Layer 0 holds all $N$ points; each layer up holds roughly a factor $1/M$ fewer.
+</Callout>
+
+## The three knobs
+
+| Parameter | What it controls | Trade-off |
+|---|---|---|
+| **M** | max edges per node on layers ≥ 1 (layer 0 uses $M_0 = 2M$) | ↑ recall & degree, ↑ memory & build time |
+| **efConstruction** | beam width while *inserting* (how hard we search for a new node's neighbours) | ↑ graph quality & recall, ↑ build time |
+| **efSearch** (`ef`) | beam width while *querying* | ↑ recall, ↑ query latency — the runtime recall/latency knob |
+
+Typical defaults: `M = 16`, `efConstruction = 200`, `efSearch = 50–200`. Only `efSearch` is a query-time knob; `M` and `efConstruction` are baked into the index at build.
+
+## Search: greedy descent, then a beam
+
+Search has two phases. **Phase 1** (layers above 0) is a *plain greedy walk* with beam width 1 — from the entry point, repeatedly move to the closest neighbour to the query until none is closer, then drop the result down one layer to use as the entry point for the next. **Phase 2** (layer 0) runs a *beam search* of width `ef` and returns the best $k$.
+
+The layer-0 beam is `SEARCH-LAYER`, which maintains two heaps — a candidate frontier and a dynamic result set of size `ef`:
+
+```text
+SEARCH-LAYER(q, entry_points, ef, layer):
+  visited   ← set(entry_points)
+  candidates ← min-heap of entry_points keyed by dist(·, q)   # frontier
+  results    ← max-heap of entry_points keyed by dist(·, q)   # best-so-far, capped at ef
+  while candidates not empty:
+    c ← extract-nearest(candidates)
+    f ← farthest(results)
+    if dist(c, q) > dist(f, q):  break        # frontier can't improve results
+    for e in neighbours(c, layer):
+      if e not in visited:
+        visited.add(e)
+        f ← farthest(results)
+        if dist(e, q) < dist(f, q) or |results| < ef:
+          candidates.push(e);  results.push(e)
+          if |results| > ef:  results.pop-farthest()
+  return results
+```
+
+Phases 1..L are the same routine with `ef = 1`. The early-exit `if dist(c,q) > dist(f,q): break` is what keeps it sub-linear: once the nearest unexplored candidate is farther than the current worst result, no unexplored node can improve the answer.
+
+```text
+SEARCH(q, k, efSearch):
+  ep ← enter_point                                  # the single top-layer node
+  for layer in L, L-1, ..., 1:                       # greedy descent, ef = 1
+    ep ← SEARCH-LAYER(q, {ep}, ef=1, layer)          # best node at this layer
+  W  ← SEARCH-LAYER(q, {ep}, ef=efSearch, layer=0)   # wide beam on the base layer
+  return k nearest of W
+```
+
+## Insertion reuses search
+
+To insert a new point $x$: (1) draw its top layer $\ell$; (2) greedy-descend from the entry point down to layer $\ell+1$ exactly like a query; (3) from layer $\ell$ down to 0, run `SEARCH-LAYER` with `ef = efConstruction` to collect candidates, select up to `M` neighbours (with a *heuristic* that prefers spread-out neighbours over clustered ones — this keeps the graph navigable), and add **bidirectional** edges. When adding an edge overflows a node's degree past `M` (or $M_0$ on layer 0), prune it back with the same heuristic. If $\ell$ exceeds the current top, $x$ becomes the new entry point.
+
+<Callout type="warning" title="The neighbour-selection heuristic matters">
+  Naively linking a new node to its $M$ *nearest* neighbours creates redundant edges into one
+  dense clump and leaves "bridges" between clusters unbuilt — search then gets trapped. HNSW's
+  heuristic keeps an edge to a candidate only if that candidate is closer to $x$ than to any
+  already-selected neighbour, favouring **diverse directions**. This is what makes the small world
+  actually *navigable*.
+</Callout>
+
+## A worked search trace
+
+Take 1-D points (so "distance" is just $|a-b|$) at positions
+`0, 8, 16, 24, 32, 40, 48, 56` with a tiny two-layer graph:
+
+- **Layer 1** (express lane): `{0, 24, 48}`, chained `0—24—48`.
+- **Layer 0** (all points): each linked to its immediate neighbours, e.g. `24—32—40`.
+
+Query $q = 34$, `efSearch = 1`, entry point `24` (top layer).
+
+1. **Layer 1, greedy (ef=1).** At `24` ($d=10$). Neighbour `48` has $d=14$ (worse), `0` has $d=34$ (worse). No neighbour beats `24` → stop. Descend with `ep = 24`.
+2. **Layer 0, beam.** Start at `24` ($d=10$). Neighbours: `16` ($d=18$), `32` ($d=2$). Move to `32`. From `32`: neighbours `24` ($d=10$, visited-worse), `40` ($d=6$). `40` is worse than `32` ($d=2$) but we keep exploring the frontier; from `40`: `48` ($d=14$) worse. Nearest unexplored candidate now exceeds best result `32` → **stop**.
+3. **Return** `32`, the true nearest neighbour of `34`.
+
+The express lane let step 1 skip most of the line in one look; layer 0 only touched 4 of 8 nodes. At corpus scale that ratio is what turns $O(N)$ into roughly $O(\log N)$.
+
+## Complexity & when to use it
+
+| Aspect | Cost |
+|---|---|
+| Query | $\approx O(\log N)$ hops, each visiting up to $M$ neighbours × `ef` frontier |
+| Build | $\approx O(N \log N)$ distance computations |
+| Memory | vectors **plus** the graph: $\approx N \cdot (M_0 + \bar{\ell}\,M)$ edge ids — often the dominant cost |
+
+**Reach for HNSW when** the corpus is large, read-heavy, and fits in RAM, and you want very high recall at very low latency without tuning cluster counts. **Look elsewhere when** (a) memory is tight at billion scale — combine with **product quantization** (see the vector-databases wiki) or use IVF-PQ on disk; (b) the corpus churns constantly — HNSW has no true delete (see below); (c) you need exact results — use a flat index.
+
+## Gotchas
+
+1. **Deletes are hard.** Removing a node would strand its neighbours' edges, so most implementations only *tombstone* (mark deleted, skip at return time) and reclaim space on a periodic full rebuild. A high delete/update rate degrades recall and bloats memory until you rebuild.
+2. **Memory is the real bill.** The graph is stored *on top of* the raw vectors. With `M = 64` on high-dim vectors the edge lists can rival the vectors themselves.
+3. **`efSearch < k` is a bug.** The beam must be at least as wide as the number of results you want; a common mistake is asking for top-100 with `ef = 50`.
+4. **`M` too low starves recall; too high wastes memory and slows build** with diminishing recall returns — sweep it against a flat-index ground truth.
+5. **Metric mismatch, same as any index.** Build and query with the same distance, and $L_2$-normalize first if you want cosine to behave like the faster inner product (see the vector-databases wiki).
+6. **Non-determinism.** Random layer assignment means two builds of the same data give slightly different graphs and recall; fix the seed to reproduce benchmarks.
+
+## Related concepts
+
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — where HNSW sits among IVF, PQ, and flat, and the recall/latency framing
+- [**BM25 Ranking**](/wiki/bm25-ranking) — the sparse/keyword retriever HNSW's dense search is fused with in hybrid search
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — where the vectors HNSW indexes come from
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the retriever HNSW powers at scale
+- [**K-Means**](/courses/clustering/01-k-means) — the coarse quantizer behind the IVF alternative
