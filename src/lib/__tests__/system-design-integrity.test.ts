@@ -1,0 +1,75 @@
+import { describe, it, expect } from "vitest";
+import fs from "fs";
+import path from "path";
+import matter from "gray-matter";
+import { SPINE_IDS, isValidStage } from "@/lib/spine";
+
+const ROOT = process.cwd();
+const SYSTEM_DESIGN_DIR = path.join(ROOT, "src/content/system-design");
+const COURSES_DIR = path.join(ROOT, "src/content/courses");
+
+function read(file: string) {
+  return matter(fs.readFileSync(file, "utf-8"));
+}
+
+const caseFiles = fs.existsSync(SYSTEM_DESIGN_DIR)
+  ? fs.readdirSync(SYSTEM_DESIGN_DIR).filter((f) => f.endsWith(".mdx")).sort()
+  : [];
+
+const cases = caseFiles.map((file) => {
+  const { data, content } = read(path.join(SYSTEM_DESIGN_DIR, file));
+  return { file, slug: file.replace(/\.mdx$/, ""), data, content };
+});
+
+describe("system-design cases", () => {
+  it.each(cases.map((c) => [c.file, c] as const))(
+    "%s has valid frontmatter",
+    (_name, c) => {
+      expect(typeof c.data.title).toBe("string");
+      expect(typeof c.data.description).toBe("string");
+      expect(typeof c.data.domain, "domain must be a string").toBe("string");
+      expect(typeof c.data.estimatedMinutes).toBe("number");
+      expect(Array.isArray(c.data.relatedLessons), "relatedLessons must be an array").toBe(true);
+      // `spine` is required — it selects the track (ML vs Agentic).
+      expect(SPINE_IDS.includes(c.data.spine), `${c.file} spine=${c.data.spine}`).toBe(true);
+    }
+  );
+
+  it("every spineStages entry is valid for the case's spine", () => {
+    const problems: string[] = [];
+    for (const c of cases) {
+      const stages = c.data.spineStages;
+      if (stages === undefined) continue;
+      if (!Array.isArray(stages)) {
+        problems.push(`${c.file}: spineStages is not an array`);
+        continue;
+      }
+      if (stages.length < 1 || stages.length > 3) {
+        problems.push(`${c.file}: spineStages must have 1–3 entries, has ${stages.length}`);
+      }
+      if (new Set(stages).size !== stages.length) {
+        problems.push(`${c.file}: spineStages has duplicates`);
+      }
+      for (const stage of stages) {
+        if (!isValidStage(c.data.spine, stage)) {
+          problems.push(`${c.file}: "${stage}" is not a stage of the "${c.data.spine}" spine`);
+        }
+      }
+    }
+    expect(problems).toEqual([]);
+  });
+
+  it("every relatedLessons entry resolves to an existing lesson", () => {
+    const broken: string[] = [];
+    for (const c of cases) {
+      for (const ref of c.data.relatedLessons ?? []) {
+        const [courseSlug, lessonSlug] = String(ref).split("/");
+        const target = path.join(COURSES_DIR, courseSlug ?? "", `${lessonSlug}.mdx`);
+        if (!courseSlug || !lessonSlug || !fs.existsSync(target)) {
+          broken.push(`${c.file} -> ${ref}`);
+        }
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});

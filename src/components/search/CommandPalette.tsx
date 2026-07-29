@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, BookOpen, BookMarked, FileText, X } from "lucide-react";
+import { Search, BookOpen, BookMarked, Blocks, FileText, X } from "lucide-react";
 import { useSearchStore } from "@/lib/search-store";
 import { cn } from "@/lib/utils";
 import type { SearchItem } from "@/types/search";
@@ -163,6 +163,8 @@ export function CommandPalette({ items }: { items: SearchItem[] }) {
                     <BookOpen className="w-4 h-4 text-brand-400 shrink-0" />
                   ) : item.kind === "wiki" ? (
                     <BookMarked className="w-4 h-4 text-brand-300 shrink-0" />
+                  ) : item.kind === "system-design" ? (
+                    <Blocks className="w-4 h-4 text-brand-300 shrink-0" />
                   ) : (
                     <FileText className="w-4 h-4 text-slate-500 shrink-0" />
                   )}

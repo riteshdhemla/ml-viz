@@ -1,0 +1,207 @@
+---
+title: "Design a Home-Feed Ranking System"
+description: "A Pinterest/Netflix-style personalized home feed — a retrieval → ranking funnel that serves billions of items under a sub-200ms budget, walked through the ML project loop from data to deployment feedback."
+spine: ml
+spineStages: [data, hypothesis-space, evaluation]
+company: "Pinterest / Netflix"
+domain: "Recommendations"
+scale: "300M+ users · billions of items · <200ms feed budget · 10k+ QPS"
+difficulty: intermediate
+relatedLessons:
+  - "recommender-systems/01-the-recommendation-problem"
+  - "recommender-systems/03-deep-and-two-tower"
+  - "recommender-systems/06-ad-ranking-and-ctr-prediction"
+estimatedMinutes: 20
+---
+
+# Design a Home-Feed Ranking System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Pinterest / Netflix"
+  scale="300M+ users · billions of items · <200ms budget"
+  difficulty="intermediate"
+/>
+
+"Design the home feed" is the canonical ML system-design interview. The trap is
+to reach for a model on the first sentence. Strong answers move through the
+**ML project loop** in order — data → hypothesis space → objective →
+optimization → evaluation → feedback — and treat every design choice as *which
+slot am I filling, and what breaks if I skip it?* The `SpineNav` strip above
+marks the stages this problem leans on hardest.
+
+## 1. Clarify the problem
+
+Before designing anything, pin down scope with the interviewer:
+
+- **What is the feed?** A ranked, infinite-scroll list of items (pins, videos,
+  posts) personalized per user, refreshed on each session.
+- **What are we optimizing?** Long-term engagement (return visits, time well
+  spent) — *not* raw click-through, which is easy to game with clickbait.
+- **Who are the users / items?** 300M+ users, billions of candidate items,
+  heavy-tailed popularity, constant cold-start on both sides.
+- **What's out of scope?** Ads ranking (a separate auction — see the ad-ranking
+  lesson), notifications, and search.
+
+<Callout type="tip" title="Interview signal">
+Naming the objective as *long-term engagement* and immediately flagging the
+proxy-metric risk (CTR → clickbait) is the single highest-signal thing you can
+say in the first two minutes.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence for the design |
+|---|---|---|
+| Latency | < 200 ms p99 end-to-end | Rules out scoring billions of items directly — forces a funnel |
+| Throughput | ~10k feed requests/sec at peak | Ranker must be cheap per item; heavy work goes offline |
+| Freshness | New items rankable within minutes | Streaming feature pipeline, not nightly batch |
+| Candidate pool | Billions of items | Approximate nearest-neighbor retrieval, not brute force |
+| Availability | 99.9% | Graceful fallback to a non-personalized feed |
+
+**Back-of-envelope:** 10k QPS × 200ms budget means each request scores maybe a
+few hundred candidates through a heavy model, not millions. That single
+constraint dictates the whole architecture: a **funnel**.
+
+## 3. ML problem framing
+
+The feed is not one model — it's a **multi-stage retrieval → ranking** pipeline,
+each stage a different ML slot:
+
+1. **Retrieval** *(hypothesis space)* — from billions of items, cheaply fetch
+   ~1000 candidates likely to be relevant. Framed as **approximate nearest
+   neighbor** search in an embedding space.
+2. **Ranking** *(hypothesis space + objective)* — score those ~1000 candidates
+   with an expensive model predicting `P(engage)`, framed as **learning to
+   rank** / pointwise CTR-style prediction with an engagement objective.
+3. **Re-ranking** — apply business logic: diversity, freshness, dedup, policy.
+
+*What was breaking before?* A single ranker over all items blows the latency
+budget; pure popularity ignores personalization. The funnel exists to make
+personalized scoring **tractable** under the budget.
+
+## 4. Data & features *(spine: data)*
+
+- **Labels:** implicit feedback — impressions, clicks, saves, long dwell,
+  hides. Weight positives by engagement depth; treat impressions-without-action
+  as negatives (with care around position bias).
+- **Features:** user (long/short-term interest embeddings), item (content
+  embedding, age, popularity), and **context** (time, device, session so far).
+- **Feature store:** the *same* pipeline computes features for training and
+  serving to avoid **training-serving skew** — the classic production bug where
+  offline metrics look great and online performance tanks.
+- **Freshness:** velocity/recency features stream in near-real-time so a
+  minutes-old viral item can surface.
+
+<Callout type="warning" title="Position & popularity bias">
+Logged feedback is biased by what the *old* model showed. Correct for it —
+inverse-propensity weighting, or reserving a small randomized-exposure slice —
+or the model just relearns its own past behavior.
+</Callout>
+
+## 5. Model *(spine: hypothesis space + objective + optimization)*
+
+**Retrieval — the two-tower model.** A user tower and an item tower each map to
+the same $d$-dimensional space; relevance is a dot product:
+
+$$
+s(u, i) = \mathbf{e}_u^\top \mathbf{e}_i
+$$
+
+Item embeddings are precomputed offline and indexed in an ANN index; at request
+time we embed the user once and query the index. Start from a **matrix
+factorization** baseline to build intuition, then replace the towers with deep
+encoders.
+
+<MatrixFactorizationViz />
+
+**Ranking — a deep CTR model.** The ~1000 retrieved candidates go through a
+richer model (DLRM/DeepFM-style: embeddings + cross features + MLP) trained on
+the engagement objective. Baseline: logistic regression on hand-crafted
+features → prove the pipeline end-to-end before adding depth.
+
+For the retrieval index, the ANN structure itself is worth knowing cold:
+
+<WikiLink slug="hnsw" title="HNSW — the graph index behind fast retrieval" />
+
+## 6. Serving & scaling
+
+Latency budget breakdown (of the 200ms):
+
+| Stage | Budget | How |
+|---|---|---|
+| Feature fetch | ~30 ms | Feature store, cached user features |
+| Retrieval (ANN) | ~40 ms | HNSW over precomputed item embeddings; multiple sources merged |
+| Ranking | ~80 ms | Batch-score ~1000 candidates on GPU/optimized CPU |
+| Re-rank + assemble | ~20 ms | Diversity, dedup, policy filters |
+
+Cache aggressively (user embeddings, item metadata); precompute item embeddings
+in a nightly + streaming hybrid; degrade gracefully to a popularity feed if the
+ranker times out.
+
+<WikiLink slug="vector-databases" title="Vector databases — serving the ANN index" />
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline:** ranking metrics — NDCG@k, Recall@k for retrieval, AUC/logloss for
+  the ranker. Offline gains are necessary but *not sufficient*.
+- **Online:** the real judge is an **A/B test** on engagement, with
+  **guardrail metrics** (dwell quality, hide rate, creator diversity, latency)
+  so you don't ship a CTR win that quietly harms the ecosystem.
+- **Counterfactual:** off-policy estimators (IPS) to screen candidates before
+  spending A/B traffic.
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Drift:** monitor feature distributions and prediction distributions; user
+  interests and item inventory shift constantly.
+- **Retraining:** ranker retrained daily (or continuously); embeddings
+  refreshed as new items arrive. The loop closes back into **data**.
+- **Cold start:** new items get content-based embeddings + an exploration boost;
+  new users get a popularity/onboarding feed until signal accrues.
+
+<WikiLink slug="cold-start-problem" title="Cold start — bootstrapping new users & items" />
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why the funnel wins here |
+|---|---|---|
+| Two-stage funnel | One big ranker over all items | Latency budget makes full scoring impossible |
+| Two-tower retrieval | Cross-attention retrieval | Towers allow precomputed item embeddings + ANN; cross-attention can't scale to billions |
+| Implicit feedback | Explicit ratings | Implicit is abundant; explicit is sparse and biased |
+| Daily retrain | Fully online learning | Simpler, more stable; online learning adds infra + failure modes |
+
+## 10. Interviewer follow-ups
+
+<Details summary="How do you stop the feed from becoming a filter bubble?">
+Add an explicit **diversity** objective in re-ranking (e.g. determinantal point
+processes or a simple category/creator quota), and reserve exploration slots.
+Track creator- and topic-diversity as guardrail metrics in every A/B test so a
+pure-engagement win that collapses diversity is caught before launch.
+</Details>
+
+<Details summary="A viral item is 10 minutes old — how does it get ranked?">
+Streaming features (velocity, recency) feed the ranker within minutes, and the
+item gets a content-based embedding at ingest so retrieval can surface it before
+it has any engagement history. An exploration boost gives it initial impressions
+to gather signal.
+</Details>
+
+<Details summary="Offline NDCG went up but the A/B test is flat. What happened?">
+Usual suspects: training-serving skew (features differ online), position/
+popularity bias the offline metric rewards but users don't, objective mismatch
+(you optimized CTR, users care about dwell), or the offline eval leaked future
+information. Check feature parity first.
+</Details>
+
+## Key takeaways
+
+- The **latency budget is the architecture**: it forces a retrieval → ranking
+  funnel, not a single model.
+- **Two-tower retrieval** makes personalized scoring tractable by precomputing
+  item embeddings and querying an ANN index.
+- **Optimize long-term engagement**, guard the proxy metrics, and let the **A/B
+  test** — not offline NDCG — be the final judge.
+- The whole thing is a **loop**: production feedback becomes tomorrow's training
+  data, so drift monitoring and retraining are part of the design, not an
+  afterthought.

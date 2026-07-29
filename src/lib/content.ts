@@ -3,9 +3,11 @@ import path from "path";
 import matter from "gray-matter";
 import type { CourseMeta, LessonMeta, CourseWithLessons } from "@/types/course";
 import type { WikiPageMeta } from "@/types/wiki";
+import type { SystemDesignCase } from "@/types/system-design";
 
 const CONTENT_DIR = path.join(process.cwd(), "src/content/courses");
 const WIKI_DIR = path.join(process.cwd(), "src/content/wiki");
+const SYSTEM_DESIGN_DIR = path.join(process.cwd(), "src/content/system-design");
 
 export function getAllCourses(): CourseMeta[] {
   const courseDirs = fs.readdirSync(CONTENT_DIR);
@@ -92,6 +94,35 @@ export async function getWikiContent(
   const { data, content } = matter(raw);
   return {
     meta: { ...data, slug } as WikiPageMeta,
+    source: content,
+  };
+}
+
+export function getAllSystemDesignCases(): SystemDesignCase[] {
+  if (!fs.existsSync(SYSTEM_DESIGN_DIR)) return [];
+  const files = fs
+    .readdirSync(SYSTEM_DESIGN_DIR)
+    .filter((f) => f.endsWith(".mdx"))
+    .sort();
+
+  return files
+    .map((file) => {
+      const raw = fs.readFileSync(path.join(SYSTEM_DESIGN_DIR, file), "utf-8");
+      const { data } = matter(raw);
+      return { ...data, slug: file.replace(".mdx", "") } as SystemDesignCase;
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+export async function getSystemDesignCase(
+  slug: string
+): Promise<{ meta: SystemDesignCase; source: string } | null> {
+  const filePath = path.join(SYSTEM_DESIGN_DIR, `${slug}.mdx`);
+  if (!fs.existsSync(filePath)) return null;
+  const raw = fs.readFileSync(filePath, "utf-8");
+  const { data, content } = matter(raw);
+  return {
+    meta: { ...data, slug } as SystemDesignCase,
     source: content,
   };
 }

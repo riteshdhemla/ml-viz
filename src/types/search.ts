@@ -6,7 +6,7 @@ export interface SearchItem {
   description: string;
   /** Course title the item belongs to (same as title for course items; "Concept Wiki" for wiki pages). */
   courseTitle: string;
-  kind: "course" | "lesson" | "wiki";
+  kind: "course" | "lesson" | "wiki" | "system-design";
   /** Lesson type for badge display; undefined for courses. */
   lessonType?: "concept" | "exercise" | "quiz" | "playground";
   estimatedMinutes?: number;
