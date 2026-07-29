@@ -7,6 +7,7 @@ import { SPINE_IDS, isValidStage } from "@/lib/spine";
 const ROOT = process.cwd();
 const SYSTEM_DESIGN_DIR = path.join(ROOT, "src/content/system-design");
 const COURSES_DIR = path.join(ROOT, "src/content/courses");
+const WIKI_DIR = path.join(ROOT, "src/content/wiki");
 
 function read(file: string) {
   return matter(fs.readFileSync(file, "utf-8"));
@@ -20,6 +21,12 @@ const cases = caseFiles.map((file) => {
   const { data, content } = read(path.join(SYSTEM_DESIGN_DIR, file));
   return { file, slug: file.replace(/\.mdx$/, ""), data, content };
 });
+
+const wikiSlugs = new Set(
+  fs.existsSync(WIKI_DIR)
+    ? fs.readdirSync(WIKI_DIR).filter((f) => f.endsWith(".mdx")).map((f) => f.replace(/\.mdx$/, ""))
+    : []
+);
 
 describe("system-design cases", () => {
   it.each(cases.map((c) => [c.file, c] as const))(
@@ -68,6 +75,21 @@ describe("system-design cases", () => {
         if (!courseSlug || !lessonSlug || !fs.existsSync(target)) {
           broken.push(`${c.file} -> ${ref}`);
         }
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+
+  it("every <WikiLink slug> and /wiki/<slug> link resolves to a wiki page", () => {
+    const WIKILINK_RE = /<WikiLink\s+slug="([^"]+)"/g;
+    const MD_WIKI_LINK_RE = /\]\(\/wiki\/([a-z0-9-]+)\)/g;
+    const broken: string[] = [];
+    for (const c of cases) {
+      for (const m of c.content.matchAll(WIKILINK_RE)) {
+        if (!wikiSlugs.has(m[1])) broken.push(`${c.file} -> <WikiLink ${m[1]}>`);
+      }
+      for (const m of c.content.matchAll(MD_WIKI_LINK_RE)) {
+        if (!wikiSlugs.has(m[1])) broken.push(`${c.file} -> /wiki/${m[1]}`);
       }
     }
     expect(broken).toEqual([]);

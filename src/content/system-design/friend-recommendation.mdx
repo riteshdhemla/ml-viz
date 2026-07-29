@@ -1,0 +1,161 @@
+---
+title: "Design a Friend / Connection Recommendation System"
+description: "A 'People You May Know' system — link prediction over a billion-node social graph using graph features and GNNs, candidate generation, and ranking, walked through the ML project loop."
+spine: ml
+spineStages: [data, hypothesis-space, evaluation]
+company: "LinkedIn / Meta"
+domain: "Graph ML & Recommendations"
+scale: "billion-node graph · link prediction · <200ms · sparse & evolving"
+difficulty: advanced
+relatedLessons:
+  - "graph-neural-networks/01-graphs-as-data"
+  - "graph-neural-networks/02-graph-convolutions"
+  - "recommender-systems/03-deep-and-two-tower"
+estimatedMinutes: 18
+---
+
+# Design a Friend / Connection Recommendation System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="LinkedIn / Meta"
+  scale="billion-node graph · link prediction · <200ms"
+  difficulty="advanced"
+/>
+
+"People You May Know" is the canonical **graph ML** interview: the data is a
+social graph, and the task is **link prediction** — which edge (friendship) is
+most likely to form and be accepted. The structure of the graph *is* the signal,
+so candidate generation and graph features dominate. Walk it through the **ML
+project loop**.
+
+## 1. Clarify the problem
+
+- **Goal:** recommend people a user is likely to connect with *and* who will
+  accept — a two-sided outcome, not just similarity.
+- **Signal:** mutual connections, shared schools/employers/groups, co-location,
+  interaction history — mostly **graph-structural**.
+- **Guardrails:** avoid creepy recommendations (revealing sensitive relationships),
+  and avoid degenerate feedback (only recommending the already-popular).
+- **Scope:** candidate generation + ranking over the graph. Adjacent: the graph
+  storage/serving infra.
+
+<Callout type="tip" title="Interview signal">
+Frame it as **link prediction on a graph**, and note the objective is
+`P(connect AND accept)` — recommending someone who ignores the invite is a
+failure. This two-sided framing is the differentiator.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Graph size | Billions of nodes/edges | Can't score all pairs — candidate generation first |
+| Latency | < 200 ms | Precomputed embeddings + bounded candidate set |
+| Freshness | New users/edges matter fast | Incremental graph + embedding updates |
+| Sparsity | Most users have few edges | Cold-start handling, side features |
+
+## 3. ML problem framing
+
+**Link prediction**, structured as a funnel like every large recommender:
+
+1. **Candidate generation** *(hypothesis space)* — cheaply propose plausible
+   connections. The workhorse heuristic: **"friends of friends"** (2nd-degree),
+   plus shared-attribute candidates.
+2. **Ranking** — score candidates on `P(connect & accept)` with graph + profile
+   features.
+
+*What was breaking before?* Scoring all node pairs is quadratic and impossible;
+pure profile similarity ignores the graph structure that actually predicts
+connection.
+
+## 4. Data & features *(spine: data)*
+
+- **Labels:** sent invites, **accepted** invites (positive), ignored/declined
+  (hard negatives), impressions without action (weak negatives).
+- **Graph features:** number of mutual connections (the single strongest
+  feature), common neighbors / Adamic-Adar, shared communities, path distance.
+- **Node embeddings:** learned so structurally/behaviorally similar users are
+  close (node2vec-style or GNN embeddings), used for candidate retrieval.
+
+<WikiLink slug="vector-databases" title="Serving node embeddings for candidate retrieval" />
+
+## 5. Model *(spine: hypothesis space + objective)*
+
+- **Baseline:** logistic/GBDT on graph features (mutual-connection count alone is
+  remarkably strong) — the benchmark to beat.
+- **Graph neural network:** a GraphSAGE/GCN encoder learns node embeddings by
+  **aggregating neighborhood features**; the edge score is a function of the two
+  node embeddings. GNNs capture higher-order structure heuristics miss.
+- **Objective:** ranking / binary acceptance with hard negatives from ignored
+  invites.
+
+<MessagePassingViz />
+
+Message passing is the heart of the GNN: each node's representation is built from
+its neighbors', so two users embedded near each other share graph context — the
+essence of "you may know them."
+
+## 6. Serving & scaling
+
+Offline: compute node embeddings + candidate lists (2nd-degree neighborhoods) in
+a batch graph job. Online: fetch the user's candidates, rank with the model +
+fresh features, apply guardrail filters (blocked, sensitive), return the top-k
+under 200ms. Update embeddings incrementally as the graph evolves.
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline:** ranking metrics (AUC, Recall@k, MAP) on held-out future edges —
+  a **temporal split** (predict edges that form *next*), never random, to avoid
+  leaking the future.
+- **Online:** invite send rate, **acceptance rate** (the key two-sided metric),
+  and long-term network growth / engagement, with guardrails on complaints.
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Evolving graph:** the graph changes constantly; embeddings and candidates
+  must refresh, or recommendations go stale.
+- **Feedback loops & fairness:** guard against only surfacing popular nodes
+  (rich-get-richer) and against revealing sensitive connections; monitor
+  diversity and complaint signals.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Candidate gen + rank | Score all pairs | All-pairs is quadratic — impossible at billions |
+| GNN embeddings | Profile-only similarity | Graph structure is the dominant signal |
+| Temporal eval split | Random split | Random splits leak future edges → inflated metrics |
+| `P(connect & accept)` | `P(similar)` | An ignored invite is a bad recommendation |
+
+## 10. Interviewer follow-ups
+
+<Details summary="A brand-new user has no connections. What do you recommend?">
+Fall back on side features — imported contacts, shared email domain/employer/
+school, co-location, and content interactions — to seed the first candidates,
+plus popular-in-network suggestions. The graph signal grows once they make a few
+connections; until then it's a cold-start problem.
+</Details>
+
+<Details summary="The system keeps recommending already-popular people. Why, and fix?">
+A feedback loop: popular nodes get more impressions, more connections, more
+recommendations. Add diversity/novelty terms, cap exposure of high-degree nodes,
+and calibrate on acceptance (not raw connection count) so it optimizes good
+matches, not popularity.
+</Details>
+
+<Details summary="Why is a random train/test split wrong here?">
+It leaks the future: a random split can put an edge's endpoints' *other* future
+edges in the training set, so the model 'predicts' connections it effectively
+already saw. Use a temporal split — train on the graph up to time T, predict
+edges forming after T.
+</Details>
+
+## Key takeaways
+
+- Friend recommendation is **link prediction on a graph** — a candidate-
+  generation → ranking funnel, since scoring all pairs is impossible.
+- **Graph-structural features** (mutual connections) and **GNN embeddings** carry
+  the model; profile similarity alone is weak.
+- Optimize the **two-sided** `P(connect & accept)`, evaluate on a **temporal
+  split**, and guard against popularity feedback loops and sensitive reveals.

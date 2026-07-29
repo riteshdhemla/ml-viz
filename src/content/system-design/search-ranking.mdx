@@ -1,0 +1,161 @@
+---
+title: "Design a Search & Ranking System"
+description: "An e-commerce / marketplace search engine — query understanding, candidate retrieval, and learning-to-rank serving relevant results from a huge catalog under a tight latency budget, walked through the ML project loop."
+spine: ml
+spineStages: [data, hypothesis-space, evaluation]
+company: "Airbnb / Amazon"
+domain: "Search & Retrieval"
+scale: "100M+ listings · 10k+ QPS · <300ms · typo-tolerant, multilingual"
+difficulty: intermediate
+relatedLessons:
+  - "recommender-systems/01-the-recommendation-problem"
+  - "recommender-systems/03-deep-and-two-tower"
+  - "nlp/07-training-embedding-models"
+estimatedMinutes: 20
+---
+
+# Design a Search & Ranking System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Airbnb / Amazon"
+  scale="100M+ listings · 10k+ QPS · <300ms budget"
+  difficulty="intermediate"
+/>
+
+"Design search" looks like an information-retrieval question, but a modern search
+system is an **ML ranking** system with an IR front-end. Walk it through the **ML
+project loop** — the winning move is separating **retrieval** (cheap, high
+recall) from **ranking** (expensive, high precision), exactly like a feed.
+
+## 1. Clarify the problem
+
+- **What are we searching?** A catalog of listings/products (structured fields +
+  text + images), queried by a short, often ambiguous or misspelled query.
+- **What is a good result?** Relevance *and* the downstream goal — bookings /
+  purchases, not just clicks. Search is judged on conversion, not lexical match.
+- **Personalized?** Yes — the same query means different things to different
+  users (location, history, price sensitivity).
+- **Scope:** ranking + retrieval. Out of scope: the crawl/index infra, ads.
+
+<Callout type="tip" title="Interview signal">
+State early that relevance labels are **implicit and biased** (you only observe
+clicks/bookings on what you showed, in the order you showed it) — position bias
+is the defining data problem of search ranking.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 300 ms p99 | Two-stage funnel; ANN + a bounded ranker |
+| Catalog | 100M+ items | Inverted index + embedding index, not scans |
+| Throughput | 10k+ QPS | Cheap retrieval, GPU/optimized ranker on ~1k candidates |
+| Robustness | Typos, synonyms, multilingual | Query understanding + semantic retrieval |
+| Freshness | New/updated items searchable in minutes | Incremental indexing |
+
+## 3. ML problem framing
+
+Search is a **pipeline of ML slots**:
+
+1. **Query understanding** — spell-correct, tokenize, detect intent/entities,
+   expand synonyms. Framed as tagging + classification.
+2. **Retrieval** *(hypothesis space)* — fetch ~1000 candidates via **hybrid**
+   lexical (BM25 over an inverted index) **+ semantic** (embedding ANN) recall.
+3. **Ranking** *(hypothesis space + objective)* — a **learning-to-rank** model
+   scores candidates on `P(book | query, item, user)`.
+
+*What was breaking before?* Pure lexical match (BM25) misses semantics ("beach
+house" vs "oceanfront villa") and can't personalize; a single ranker over the
+whole catalog blows the latency budget. The funnel fixes both.
+
+## 4. Data & features *(spine: data)*
+
+- **Labels:** clicks, bookings/purchases, dwell — graded relevance. De-bias with
+  **inverse-propensity weighting** or a click model to correct for position.
+- **Features:** query (embedding, length, intent), item (text/image embeddings,
+  price, quality, popularity), query–item (BM25 score, semantic similarity,
+  historical CTR), and user context.
+- **Hard negatives:** sample non-clicked items *shown in the same session* — the
+  model must learn to separate close calls, not just random junk.
+
+<WikiLink slug="bm25-ranking" title="BM25 — the lexical retrieval baseline" />
+
+## 5. Model *(spine: hypothesis space + objective + optimization)*
+
+**Retrieval — two-tower + inverted index.** A query tower and an item tower
+share an embedding space; item embeddings are precomputed and indexed in an ANN
+structure, merged with BM25 candidates.
+
+**Ranking — learning to rank.** Start with a **pointwise** GBDT (LambdaMART is
+still a production workhorse) on the query–item features; graduate to a
+**pairwise/listwise** neural ranker optimizing NDCG. Baseline first: BM25-only,
+to measure the lift retrieval and the ranker each add.
+
+<WikiLink slug="hnsw" title="HNSW — the graph index behind semantic retrieval" />
+
+## 6. Serving & scaling
+
+| Stage | Budget | How |
+|---|---|---|
+| Query understanding | ~20 ms | Cached, small models |
+| Retrieval (BM25 ∪ ANN) | ~60 ms | Inverted index + HNSW, merged & deduped |
+| Ranking | ~120 ms | GBDT/neural ranker on ~1000 candidates |
+| Blend + business rules | ~30 ms | Diversity, availability, policy |
+
+Cache popular-query results; precompute item embeddings; degrade to BM25-only if
+the ranker times out.
+
+<WikiLink slug="vector-databases" title="Vector databases — serving the ANN index" />
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline:** NDCG@k, MRR, MAP on graded relevance; Recall@k for retrieval.
+  Use **interleaving** to compare rankers sensitively before a full A/B.
+- **Online:** A/B on the business metric (bookings/purchases per search), with
+  guardrails: zero-result rate, latency, query-abandonment.
+- **Human relevance judgments** for a gold set the implicit metrics can't cover.
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Drift:** query mix and inventory shift seasonally; monitor zero-result and
+  reformulation rates as early warnings.
+- **Retraining:** rankers retrain frequently on fresh click logs; the loop closes
+  back into **data**, with debiasing to avoid reinforcing prior exposure.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Hybrid lexical + semantic | Pure semantic (embeddings only) | Lexical still wins on exact IDs/SKUs and rare terms; hybrid is robust |
+| Two-stage funnel | One ranker over all items | Latency makes full scoring impossible |
+| GBDT ranker | Deep listwise ranker first | GBDT is a strong, cheap, interpretable baseline; add depth if it pays |
+| IPS debiasing | Ignore position bias | Ignoring it makes the model relearn its own exposure |
+
+## 10. Interviewer follow-ups
+
+<Details summary="A user searches an exact product SKU and gets fuzzy semantic matches. Fix?">
+Hybrid retrieval with a lexical exact-match channel that can short-circuit: if a
+high-confidence exact ID/SKU match exists, boost or pin it. Pure embedding
+retrieval blurs exact identifiers — that's why lexical stays in the funnel.
+</Details>
+
+<Details summary="How do you handle a brand-new listing with no click history?">
+Content-based features (text/image embeddings, structured attributes) let it be
+retrieved and ranked on day one; an exploration boost gives it initial exposure
+to gather signal. This is the search flavor of the cold-start problem.
+</Details>
+
+<Details summary="Offline NDCG improves but bookings drop in the A/B. Why?">
+The offline metric rewards clicks that don't convert (clickbait titles/images),
+position bias inflates it, or there's train-serve feature skew. Optimize toward
+the booking label, not clicks, and interleave before trusting offline NDCG.
+</Details>
+
+## Key takeaways
+
+- Modern search is **retrieval + learning-to-rank**, not string matching.
+- **Hybrid** lexical + semantic retrieval beats either alone; lexical keeps exact
+  matches, semantic adds meaning.
+- Optimize the **downstream conversion**, correct **position bias** in the labels,
+  and let interleaving/A-B — not offline NDCG — decide.

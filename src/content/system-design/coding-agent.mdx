@@ -1,0 +1,153 @@
+---
+title: "Design an Autonomous Coding Agent"
+description: "An agent that resolves software tasks end to end — retrieves repo context, edits code, runs tests in a sandbox, and iterates until green — walked through the agentic project loop with orchestration and evaluation front and center."
+spine: agentic
+spineStages: [context, orchestration, evaluation]
+company: "Claude Code / Devin"
+domain: "Coding agents"
+scale: "large repos · sandboxed execution · test-driven loop · minutes per task"
+difficulty: advanced
+relatedLessons:
+  - "building-with-llms/12-code-intelligence-and-generation"
+  - "agent-design-patterns/04-planning-patterns"
+  - "agent-design-patterns/06-reflection-patterns"
+estimatedMinutes: 20
+---
+
+# Design an Autonomous Coding Agent
+
+<SystemDesignMeta
+  track="Agentic System Design"
+  company="Claude Code / Devin"
+  scale="large repos · sandboxed execution · test-driven loop"
+  difficulty="advanced"
+/>
+
+A coding agent is the agentic interview where **the environment does the
+verification**: the agent can *run the code* and read the result, so the design
+centers on a tight **plan → edit → run tests → observe** loop with a real
+feedback signal. Walk it through the **agentic project loop** — context and
+orchestration are where it's won, and tests give evaluation for free.
+
+## 1. Clarify the task *(spine: task)*
+
+- **Goal:** given an issue / feature request, produce a correct code change
+  (edits + tests) in a real repository — ideally a passing PR.
+- **When it acts vs. stops:** iterate until tests pass or a step/time budget is
+  hit; escalate on ambiguous requirements or destructive operations.
+- **Success:** tests green + task actually solved (not just tests deleted) +
+  reasonable, reviewable diff.
+- **Scope:** the agent loop over a sandboxed repo. Adjacent: the CI/review system
+  it hands off to.
+
+<Callout type="tip" title="Interview signal">
+"The agent can execute code, so verification is grounded — tests are the reward
+signal." Naming the executable environment as the core asset separates a coding
+agent from a code-*completion* model.
+</Callout>
+
+## 2. Requirements & constraints
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Repo scale | Large, unfamiliar codebases | Retrieval over the repo, not whole-repo in context |
+| Safety | Runs arbitrary code | Isolated sandbox, no prod creds, network limits |
+| Latency/cost | Minutes/task, bounded | Step budget; model tiering; cache builds |
+| Reliability | Doesn't wreck the repo | Diff review, reversible changes, test gate |
+
+## 3. Context & tools *(spine: context)*
+
+- **Repo retrieval:** the codebase is too large for the context window — retrieve
+  relevant files via code search (lexical + embedding), the dependency graph, and
+  symbol lookup. Feed *targeted* context, not the whole repo.
+- **Tools:** `read_file`, `edit_file`, `run_shell` / `run_tests`, `search_code`,
+  `git` — typed and sandboxed. Execution is a first-class tool, not an
+  afterthought.
+- **Environment:** an isolated container with the repo checked out; the agent's
+  actions (edits, commands) mutate it.
+
+## 4. Orchestration *(spine: orchestration)*
+
+The loop is **plan → edit → run → observe → reflect**:
+
+1. Understand the task; locate the relevant code (retrieval).
+2. Make an edit.
+3. **Run the tests / build** — the grounded feedback signal.
+4. Read failures; reflect and fix; repeat until green or budget hit.
+
+<AgentLoopViz />
+
+- **Reflection on failure:** feed the test output back so the model diagnoses,
+  rather than blindly re-editing.
+- **Step budget & stop conditions:** cap iterations; stop on green, on repeated
+  identical failures (stuck), or on ambiguity → escalate.
+- **Sub-agents** for large tasks: a planner decomposes; workers implement pieces.
+
+<WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration for decomposed tasks" />
+
+## 5. Evaluation *(spine: evaluation)*
+
+- **Outcome:** does the change pass the *hidden/held-out* tests and actually solve
+  the issue? Benchmarks like SWE-bench measure exactly this; **pass@k** captures
+  the retry-until-solved reality.
+- **Trajectory:** did it edit the right files, run tests before claiming done, and
+  avoid thrashing? Catches agents that "pass" by gaming or luck.
+- **Guard against reward hacking:** an agent that deletes failing tests "passes" —
+  eval must use protected tests it can't modify.
+
+## 6. Guardrails & safety *(spine: guardrails)*
+
+- **Sandbox everything:** no production credentials, restricted network, resource
+  limits — it runs arbitrary generated code.
+- **Reversibility:** changes land as a branch/PR a human reviews, never a direct
+  push to main.
+- **Prompt injection:** repo content, issue text, and dependency output are
+  untrusted — a malicious file must not exfiltrate secrets or run unsafe commands.
+
+## 7. Operations *(spine: operations)*
+
+- **Tracing:** log every tool call, edit, and test result — essential for
+  debugging non-deterministic runs and for the eval set.
+- **Cost/latency:** tier models (cheap for navigation, strong for hard reasoning),
+  cache builds/deps, parallelize independent sub-tasks.
+- **Feedback:** failed/abandoned tasks become eval cases and prompt improvements.
+
+## 8. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Retrieve repo context | Stuff whole repo in context | Repos exceed context; retrieval is cheaper and sharper |
+| Test-driven loop | Generate-and-hope | Execution gives a real, groundable reward signal |
+| PR + human review | Auto-merge | Reversibility and trust; code is high-stakes |
+| Protected test eval | Any tests pass | Prevents reward hacking (deleting tests) |
+
+## 9. Interviewer follow-ups
+
+<Details summary="The agent 'passed' by deleting the failing test. How do you prevent it?">
+Evaluate against protected, hidden tests the agent can't see or modify, and diff-
+check that it didn't weaken the test suite. Reward hacking is the defining failure
+mode of code agents — the eval, not the agent, must own the ground-truth tests.
+</Details>
+
+<Details summary="The repo is millions of lines. How does the agent find the right code?">
+Retrieval: code search (lexical + embedding), symbol/definition lookup, and the
+dependency graph surface a small relevant set. The agent explores incrementally
+(open a file, follow references) rather than loading everything — context is a
+budget to spend, not fill.
+</Details>
+
+<Details summary="How do you keep it from running something destructive?">
+Sandbox with no prod access, restricted network, and resource caps; require
+confirmation or block destructive shell patterns; land changes as a reviewable
+branch. Treat all repo/issue text as untrusted input that cannot escalate the
+agent's permissions.
+</Details>
+
+## Key takeaways
+
+- A coding agent's superpower is a **sandboxed executable environment** — tests
+  are a grounded reward signal for a **plan → edit → run → reflect** loop.
+- **Repo retrieval** (not whole-repo context) and **reflection on test failures**
+  drive success; **step budgets** prevent thrashing.
+- Evaluate on **protected tests** (pass@k) to stop reward hacking, and keep every
+  change **sandboxed and reversible**.

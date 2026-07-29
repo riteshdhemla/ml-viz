@@ -1,0 +1,152 @@
+---
+title: "Design a Text-to-SQL Data-Analyst Agent"
+description: "An agent that turns natural-language questions into correct SQL over a real warehouse — schema-aware retrieval, query generation, execution validation, and a self-correction loop — walked through the agentic project loop."
+spine: agentic
+spineStages: [context, orchestration, evaluation]
+company: "Snowflake / dbt Labs"
+domain: "Data & analytics agents"
+scale: "large schemas · execution-validated · self-correcting · read-only"
+difficulty: intermediate
+relatedLessons:
+  - "building-with-llms/12-code-intelligence-and-generation"
+  - "building-with-llms/06-ai-engineering-architecture"
+  - "agent-design-patterns/06-reflection-patterns"
+estimatedMinutes: 18
+---
+
+# Design a Text-to-SQL Data-Analyst Agent
+
+<SystemDesignMeta
+  track="Agentic System Design"
+  company="Snowflake / dbt Labs"
+  scale="large schemas · execution-validated · self-correcting · read-only"
+  difficulty="intermediate"
+/>
+
+"Ask your data a question in English" is a deceptively hard agentic problem: the
+model must map ambiguous language onto a **specific, large schema** and produce
+SQL that not only parses but returns the *right* answer. The design win is
+**grounding in the schema** and **validating by execution** with a self-correction
+loop. Walk it through the **agentic project loop**.
+
+## 1. Clarify the task *(spine: task)*
+
+- **Goal:** convert a natural-language question into correct SQL over a warehouse,
+  run it, and return the answer (often with a chart/explanation).
+- **Correctness bar:** subtly-wrong SQL that *runs* is the danger — a wrong number
+  presented confidently is worse than an error.
+- **Read-only by default:** analytics queries; writes/DDL are out of scope or
+  heavily gated.
+- **Scope:** NL → SQL → execute → answer. Adjacent: BI/visualization layer.
+
+<Callout type="tip" title="Interview signal">
+"A query that runs isn't a query that's *correct*." Emphasizing execution
+validation *and* semantic correctness (right tables, joins, filters) — not just
+syntactic validity — is the key insight.
+</Callout>
+
+## 2. Requirements & constraints
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Schema size | Hundreds/thousands of tables | Schema retrieval, not whole-schema in prompt |
+| Correctness | Right answer, not just valid SQL | Execution + self-correction + verification |
+| Safety | No destructive queries, cost control | Read-only role, row/scan limits, sandboxing |
+| Latency | Interactive (seconds) | Bounded correction loop; cache schema |
+
+## 3. Context & tools *(spine: context)*
+
+- **Schema retrieval:** the schema is too big for the prompt — retrieve the
+  relevant tables/columns via embeddings over table/column descriptions, plus
+  documented **joins**, keys, and example queries. Good metadata (descriptions,
+  synonyms, value samples) is the single biggest quality lever.
+- **Tools:** `search_schema`, `run_sql` (read-only, sandboxed), `get_sample_rows`,
+  `explain_query`. Execution is the verification tool.
+- **Few-shot / semantic layer:** curated example NL↔SQL pairs and a metrics/
+  semantic layer keep business definitions consistent ("revenue" means one thing).
+
+<WikiLink slug="text-to-sql" title="Text-to-SQL — schema grounding & self-correction" />
+
+## 4. Orchestration *(spine: orchestration)*
+
+**Generate → execute → observe → self-correct:**
+
+1. Retrieve relevant schema for the question.
+2. Generate candidate SQL.
+3. **Execute** (or dry-run/`EXPLAIN`) — if it errors, feed the DB error back and
+   fix.
+4. Check the result is sensible (types, non-empty, ballpark); if the question was
+   ambiguous, ask a clarifying question.
+
+<AgentLoopViz />
+
+The execution result is the grounded feedback that turns a plausible query into a
+correct one — the same reflection loop as a coding agent, with the database as the
+environment.
+
+## 5. Evaluation *(spine: evaluation)*
+
+- **Execution accuracy:** does the generated query return the *same result set* as
+  a gold query? (The standard text-to-SQL metric — Spider/BIRD benchmarks.)
+- **Exact/semantic match** as a secondary check.
+- **Robustness:** ambiguity handling, correct joins, and value grounding (e.g.
+  "California" vs "CA"). **pass@k** reflects the self-correction retries.
+- Guard against **plausible-but-wrong**: track cases that run but return wrong
+  numbers — the most dangerous failure.
+
+## 6. Guardrails & safety *(spine: guardrails)*
+
+- **Read-only role + limits:** a restricted DB user, row/scan/cost caps, statement
+  timeouts — the agent can't drop tables or run away with warehouse spend.
+- **Injection:** the question and any retrieved metadata are untrusted; never let
+  them escalate to DDL or cross-tenant access.
+- **PII/governance:** respect column-level access controls; mask sensitive fields.
+
+## 7. Operations *(spine: operations)*
+
+- **Tracing:** log question → retrieved schema → SQL → result → corrections.
+- **Cost control:** monitor and cap query cost; cache schema embeddings and hot
+  results.
+- **Feedback:** thumbs-down / corrected queries become few-shot examples and eval
+  cases, steadily improving accuracy on *your* schema.
+
+## 8. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Schema retrieval | Whole schema in prompt | Large schemas blow the context and dilute attention |
+| Execution self-correction | Single-shot generation | DB errors + results are a groundable signal |
+| Semantic/metrics layer | Raw table access | Consistent business definitions; fewer subtle errors |
+| Read-only + limits | Full DB access | Analytics is read-only; caps prevent cost/destruction |
+
+## 9. Interviewer follow-ups
+
+<Details summary="The SQL runs and returns a number, but it's wrong. How do you catch it?">
+Execution validity ≠ correctness. Mitigate with a semantic/metrics layer (so
+'revenue' is defined once), value grounding (map 'California'→'CA' from sampled
+values), result sanity checks, and — for high-stakes answers — showing the query
++ assumptions for human confirmation. Track 'runs-but-wrong' as its own metric.
+</Details>
+
+<Details summary="The question is ambiguous ('top customers'). What does the agent do?">
+Detect ambiguity (top by revenue? count? recency? over what period?) and ask a
+clarifying question rather than guessing. A wrong-but-confident answer erodes
+trust faster than a quick clarification — the agent should know when it doesn't
+know what's being asked.
+</Details>
+
+<Details summary="How do you stop it from running a query that scans the whole warehouse?">
+Enforce it at the database boundary: a read-only role with scan/row limits,
+statement timeouts, and cost guards, plus a dry-run/`EXPLAIN` before executing
+expensive queries. Never rely on the prompt to 'write efficient SQL' as the safety
+mechanism.
+</Details>
+
+## Key takeaways
+
+- Text-to-SQL is **schema grounding + execution-validated self-correction** — a
+  query that runs is not a query that's correct.
+- **Schema retrieval** and a **semantic/metrics layer** are the biggest quality
+  levers; the **execution result** is the reflection signal.
+- Evaluate on **execution accuracy** (does it match the gold result), and enforce
+  **read-only limits** at the DB boundary, not in the prompt.

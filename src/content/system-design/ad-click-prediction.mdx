@@ -1,0 +1,161 @@
+---
+title: "Design an Ad Click-Through-Rate Prediction System"
+description: "The ML behind an ad marketplace — predicting calibrated click and conversion probabilities, feeding an auction that ranks ads by expected value under a few-millisecond budget, walked through the ML project loop."
+spine: ml
+spineStages: [hypothesis-space, objective, evaluation]
+company: "Meta / Google Ads"
+domain: "Ads & Ranking"
+scale: "billions of predictions/day · <10ms per request · calibrated probabilities"
+difficulty: advanced
+relatedLessons:
+  - "recommender-systems/06-ad-ranking-and-ctr-prediction"
+  - "model-evaluation/07-calibration-and-uncertainty"
+  - "recommender-systems/03-deep-and-two-tower"
+estimatedMinutes: 20
+---
+
+# Design an Ad Click-Through-Rate Prediction System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Meta / Google Ads"
+  scale="billions of predictions/day · <10ms · calibrated probabilities"
+  difficulty="advanced"
+/>
+
+Ad CTR prediction is the highest-stakes ML slot on the internet — the model's
+output is multiplied by a bid to decide what runs and what an advertiser pays.
+Two things make it distinct from feed ranking: the prediction must be a
+**calibrated probability** (not just a good ranking), and it feeds an
+**auction** with real economics. Walk it through the **ML project loop** with
+the objective and evaluation stages front and center.
+
+## 1. Clarify the problem
+
+- **Goal:** for each candidate ad, predict `P(click)` (and `P(conversion)`) so
+  the auction can rank by **expected value** `bid × pCTR`.
+- **Why calibration matters:** pricing (second-price / VCG) and budget pacing use
+  the *absolute* probability, not just the order — a miscalibrated model
+  overspends or underspends advertiser budgets.
+- **Scope:** the prediction model + how it plugs into the auction. Out of scope:
+  the bidding/budget optimizer internals (mention them).
+
+<Callout type="tip" title="Interview signal">
+Say "ranking is not enough — the auction needs a *calibrated* probability" in the
+first minute. It separates candidates who've built ad systems from those porting
+a feed-ranking answer.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 10 ms for hundreds of candidate ads | Tiny, heavily-optimized model; feature caching |
+| Volume | Billions of predictions/day | Cost per prediction dominates infra spend |
+| Calibration | pCTR ≈ observed CTR across slices | Explicit recalibration + monitoring |
+| Freshness | Adapt to new ads/trends within hours | Online / frequent incremental training |
+
+**Back-of-envelope:** scoring hundreds of ads in under 10ms means a model that's cheap
+per item — wide-and-deep / factorization-based, not a giant transformer per ad.
+
+## 3. ML problem framing
+
+Binary probability estimation under **extreme class imbalance** (CTRs are often
+0.1–5%) and **huge sparse feature spaces** (billions of IDs). Framed as
+**calibrated binary classification** with a logloss objective. The ranking that
+matters is `expected value = bid × pCTR × quality`, computed in the auction.
+
+*What was breaking before?* Rule-based / popularity ad selection ignores
+context and can't price efficiently; a ranker without calibration breaks the
+auction's economics.
+
+## 4. Data & features *(spine: data)*
+
+- **Labels:** impressions → click (and click → conversion, delayed). **Delayed
+  feedback** is a real problem: a "no click yet" label may flip later.
+- **Features:** user, ad (creative embedding, advertiser, category), context
+  (placement, device, time), and dense **cross features** (user × ad category).
+  ID features are embedded; the embedding tables dominate model size.
+- **Imbalance:** negative downsampling with **calibration correction** to recover
+  true probabilities after resampling.
+
+## 5. Model *(spine: hypothesis space + objective + optimization)*
+
+- **Baseline:** logistic regression with hashed cross features — still a shockingly
+  strong, cheap baseline and the historical workhorse.
+- **Production:** a **DLRM / Wide-and-Deep / DeepFM** — sparse embeddings for IDs,
+  explicit feature crosses, an MLP for higher-order interactions. Objective:
+  logloss (proper scoring rule → calibrated by construction, if not distorted).
+- **Recalibration:** Platt scaling / isotonic regression on a held-out slice to
+  correct residual miscalibration (and the downsampling bias).
+
+<WikiLink slug="platt-scaling-and-isotonic-regression" title="Calibration — Platt scaling & isotonic regression" />
+
+<CalibrationViz />
+
+A reliability diagram like this is *the* artifact you monitor: points on the
+diagonal mean predicted probabilities match observed click rates.
+
+## 6. Serving & the auction
+
+Prediction feeds the **auction**: ads are ranked by `bid × pCTR` (× quality), and
+the winner pays a price derived from the runner-up (second-price / GSP / VCG).
+Budget pacing throttles delivery so advertisers spend evenly.
+
+<WikiLink slug="ad-auction-and-bidding" title="Ad auctions — second-price, GSP, VCG" />
+
+Serving: feature-fetch from a low-latency store, batch-score all candidate ads,
+apply pacing/floor rules, run the auction — all under 10ms.
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline:** **AUC / logloss** for ranking + **calibration** metrics (ECE,
+  reliability curves). AUC can improve while calibration degrades — track both.
+- **Online:** A/B on revenue *and* advertiser ROI, with guardrails on user
+  experience (ad load, relevance) and calibration by segment.
+- **Counterfactual:** replay/off-policy estimation before spending live traffic.
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Calibration drift** by slice (advertiser, placement) is the alarm that
+  matters most — it silently distorts pricing.
+- **Delayed conversions:** attribution windows require care; retrain with
+  corrected labels as conversions arrive. The loop closes into **data**.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Calibrated prob + auction | Rank-only score | Pricing/pacing need absolute probabilities |
+| DLRM (embeddings + crosses) | Deep transformer per ad | Latency/cost — the model runs billions of times/day |
+| Negative downsampling + recalibration | Train on all negatives | Cheaper; recalibration recovers true probabilities |
+| Logloss objective | Pure AUC optimization | Logloss is a proper score → calibrated; AUC ignores calibration |
+
+## 10. Interviewer follow-ups
+
+<Details summary="AUC went up but revenue dropped. What happened?">
+Almost always **calibration**: a higher-AUC model that's miscalibrated misprices
+the auction — over/under-bidding relative to true value. Check ECE and per-slice
+reliability; recalibrate with isotonic regression before shipping.
+</Details>
+
+<Details summary="How do you handle delayed conversions in the label?">
+Model the delay: use a delayed-feedback model that treats "no conversion yet" as
+censored rather than negative, or wait for a fixed attribution window and
+backfill. Naively labeling recent impressions as negatives biases pCVR downward.
+</Details>
+
+<Details summary="A brand-new ad has no history — how is it priced?">
+Content/advertiser-level features and category priors give an initial pCTR; an
+exploration budget grants early impressions to gather signal (explore/exploit).
+Cold start in ads is expensive, so exploration is bounded and tracked.
+</Details>
+
+## Key takeaways
+
+- Ad CTR prediction must produce a **calibrated probability**, because it feeds an
+  **auction** that prices on the absolute number.
+- **Latency and cost** force small, embedding-heavy models (DLRM-style), not giant
+  networks — it runs billions of times a day.
+- Track **AUC *and* calibration** separately; a ranking win with a calibration
+  regression loses money.

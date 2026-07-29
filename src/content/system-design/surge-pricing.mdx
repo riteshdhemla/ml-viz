@@ -1,0 +1,160 @@
+---
+title: "Design a Dynamic / Surge Pricing System"
+description: "A marketplace pricing engine that sets real-time prices to balance supply and demand — demand forecasting, elasticity estimation, and an optimization objective under fairness and stability constraints, walked through the ML project loop."
+spine: ml
+spineStages: [objective, optimization, feedback]
+company: "Uber / Lyft"
+domain: "Marketplace & Pricing"
+scale: "per-region/minute pricing · balance supply & demand · fairness constraints"
+difficulty: advanced
+relatedLessons:
+  - "reinforcement-learning/01-markov-decision-processes"
+  - "time-series/04-demand-forecasting-in-production"
+  - "causal-inference/01-correlation-and-confounding"
+estimatedMinutes: 20
+---
+
+# Design a Dynamic / Surge Pricing System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Uber / Lyft"
+  scale="per-region/minute pricing · supply–demand balance · fairness"
+  difficulty="advanced"
+/>
+
+Surge pricing is the interview where the **objective and optimization** stages of
+the loop dominate — the ML predictions (demand, supply, elasticity) feed a
+**decision** that acts back on the market it's predicting. That feedback (a high
+price suppresses demand and attracts supply) makes it a control problem, not a
+plain prediction problem.
+
+## 1. Clarify the problem
+
+- **Goal:** set a price multiplier per region/time that **balances supply and
+  demand** — enough drivers for the riders who want trips — while maximizing a
+  long-term objective (completed trips, marketplace health, revenue).
+- **Why not a fixed price?** At peak, demand far exceeds supply; without pricing,
+  wait times explode and reliability collapses. Price is the lever that clears the
+  market and pulls in supply.
+- **Constraints:** fairness (no exploitative spikes), stability (no wild
+  oscillation), transparency/regulation.
+- **Scope:** the pricing engine. Matching/dispatch consumes prices (adjacent).
+
+<Callout type="warning" title="The feedback trap">
+Price *changes the data*. A model trained on "high price → low demand" can't
+conclude "raise prices to reduce demand" naively — that's correlation. You need
+**causal** elasticity estimation, or you'll chase your own tail.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Cadence | Update per region every ~minute | Fast forecasting + optimization loop |
+| Objective | Long-term marketplace health | RL / optimization, not myopic revenue |
+| Stability | No oscillation, bounded changes | Smoothing, rate limits, hysteresis |
+| Fairness | No exploitative or discriminatory pricing | Caps, constraints, audits |
+
+## 3. ML problem framing
+
+Three ML sub-problems feed one **optimization**:
+
+1. **Demand forecasting** — expected ride requests per region/time.
+2. **Supply forecasting** — available drivers, and how supply responds to price.
+3. **Elasticity estimation** *(causal)* — how demand and supply respond to price.
+
+Then **optimize** the price multiplier to balance the market against the
+long-term objective — framed as constrained optimization or a **reinforcement
+learning** / bandit control problem, because today's price affects tomorrow's
+supply.
+
+*What was breaking before?* Static or purely reactive pricing overshoots,
+oscillates, and can't anticipate predictable peaks (events, weather, rush hour).
+
+## 4. Data & features *(spine: data)*
+
+- **Labels/signals:** historical requests, completions, cancellations, driver
+  positions, prices offered and outcomes.
+- **Elasticity data:** the hard part — you need **experimental variation** (price
+  experiments / geo holdouts) to estimate causal response, since observational
+  price–demand correlation is confounded by the conditions that caused the price.
+- **Features:** region, time, events, weather, current supply/demand imbalance,
+  recent conversion at each price.
+
+<WikiLink slug="uplift-modeling" title="Uplift modeling — estimating causal response to a treatment" />
+
+## 5. Model & optimization *(spine: objective + optimization)*
+
+- **Forecasting:** time-series / GBDT models for demand and supply per region.
+- **Elasticity:** causal models estimated from pricing experiments (the treatment
+  is the price change).
+- **Optimizer:** given forecasts + elasticity, choose the multiplier maximizing
+  expected long-term objective subject to fairness/stability constraints —
+  constrained optimization, or an RL policy where the state is market imbalance
+  and the action is the price.
+- **Smoothing:** rate-limit changes and add hysteresis so prices don't flap.
+
+## 6. Serving & scaling
+
+Per region every minute: pull live supply/demand, forecast the short horizon,
+apply the optimizer + constraints + smoothing, publish the multiplier. Bound the
+action space and cap maximum surge for fairness and PR safety.
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline is weak here** — you can't replay a market that reacts to your prices.
+  Rely on **geo/time-based experiments** (switchback tests) as the primary
+  evaluation.
+- **Metrics:** completion rate, wait times, reliability, driver earnings, revenue,
+  and **fairness** metrics — balanced, since optimizing one alone degrades the
+  marketplace.
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Closed-loop control:** monitor for oscillation, over/under-supply, and
+  regions stuck at cap. The price acts on the market, so instability is a live
+  risk.
+- **Regime shifts:** events and weather change elasticity; keep experiments
+  running to refresh causal estimates. The loop closes hard into **data**.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Causal elasticity (experiments) | Observational price–demand fit | Observational is confounded → wrong sign, chases its own tail |
+| RL / long-term objective | Myopic revenue maximization | Short-term greed drives away supply and riders |
+| Smoothed, capped prices | Unconstrained optimizer | Oscillation and exploitative spikes destroy trust |
+| Switchback experiments | Standard A/B | Market interference breaks unit-independent A/B assumptions |
+
+## 10. Interviewer follow-ups
+
+<Details summary="Why can't you just fit demand vs. price from historical data?">
+Confounding. Prices were high *because* demand was high (rush hour, events), so
+the naive fit sees "high price ↔ high demand" and gets elasticity backwards. You
+need experimental price variation (geo/switchback tests) to estimate the causal
+effect of price on demand.
+</Details>
+
+<Details summary="Prices are oscillating every minute. How do you stabilize?">
+Add hysteresis and rate limits (bounded change per interval), smooth the demand/
+supply signals, and design the objective over a horizon so the controller isn't
+chasing instantaneous noise. Oscillation is a control-systems failure, not a
+forecasting one.
+</Details>
+
+<Details summary="How do you A/B test pricing when one region's price affects neighbors?">
+Standard A/B assumes independent units, which breaks under market interference.
+Use **switchback** experiments (toggle the treatment on/off over time in a region)
+or region-level randomization with buffer zones, and analyze with interference in
+mind.
+</Details>
+
+## Key takeaways
+
+- Surge pricing is a **control problem**: predictions feed an **optimizer** whose
+  action changes the market it predicts.
+- Elasticity must be **causal** — estimated from price experiments, not
+  observational correlation, or the system chases its own tail.
+- Evaluate with **switchback experiments**, optimize a **long-term** marketplace
+  objective, and **smooth/cap** for stability and fairness.

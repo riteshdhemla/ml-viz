@@ -1,0 +1,162 @@
+---
+title: "Design a Multi-Agent Orchestration Pipeline"
+description: "A system that decomposes complex work across specialized agents — an orchestrator planning and delegating to worker agents that run in parallel and whose outputs are aggregated and verified — walked through the agentic project loop."
+spine: agentic
+spineStages: [orchestration, evaluation, operations]
+company: "AutoGen / CrewAI-style"
+domain: "Multi-agent systems"
+scale: "planner + specialist workers · parallel execution · aggregation & verification"
+difficulty: advanced
+relatedLessons:
+  - "agent-design-patterns/07-multi-agent-cooperation-patterns"
+  - "agent-design-patterns/04-planning-patterns"
+  - "agent-design-patterns/10-evaluating-agents"
+estimatedMinutes: 20
+---
+
+# Design a Multi-Agent Orchestration Pipeline
+
+<SystemDesignMeta
+  track="Agentic System Design"
+  company="AutoGen / CrewAI-style"
+  scale="planner + specialist workers · parallel · aggregation"
+  difficulty="advanced"
+/>
+
+Some tasks are too big or too varied for one agent — generate a market report,
+migrate a codebase, run a content pipeline. A **multi-agent system** decomposes
+the work across specialized agents coordinated by an orchestrator. This is the
+interview about **orchestration topology**: how to decompose, delegate, run in
+parallel, and aggregate — *without* the complexity spiraling. Walk it through the
+**agentic project loop**.
+
+## 1. Clarify the task *(spine: task)*
+
+- **Goal:** complete a complex, multi-part task by coordinating specialized agents
+  (e.g. researcher + writer + editor + fact-checker).
+- **When multi-agent is justified:** distinct skills/contexts, parallelizable
+  subtasks, or separation-of-duties (a checker reviewing a doer). **Default to a
+  single agent** until one demonstrably can't cope.
+- **Success:** the aggregate output is correct and coherent — coordination
+  overhead paid for itself.
+- **Scope:** the orchestration layer. Each worker reuses single-agent patterns.
+
+<Callout type="warning" title="Multi-agent is a cost, not a default">
+More agents = more latency, cost, and failure surface. The interview trap is
+reaching for multi-agent when a single agent with tools would do. Justify the
+topology by parallelism or genuinely distinct roles.
+</Callout>
+
+## 2. Requirements & constraints
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Decomposition | Clean subtask boundaries | Planner/orchestrator design |
+| Parallelism | Independent subtasks concurrent | Fan-out/fan-in orchestration |
+| Coherence | Aggregated output is consistent | Aggregation + conflict resolution |
+| Cost/latency | Bounded despite many agents | Budgets per agent; avoid chatter loops |
+
+## 3. Orchestration topology *(spine: orchestration)*
+
+The core design decision is the **topology**:
+
+- **Orchestrator–worker (recommended default):** a planner decomposes the task,
+  delegates subtasks to specialist workers, and **aggregates** results. Clear
+  control flow, easy to trace.
+- **Sequential pipeline:** stages hand off (research → draft → edit) — simple when
+  work is linear.
+- **Debate / review:** a generator and a critic iterate — good for quality-critical
+  output.
+
+<WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration patterns" />
+<WikiLink slug="langgraph" title="LangGraph — modeling agent workflows as graphs" />
+
+The orchestrator: plans → fans out subtasks (parallel where independent) → each
+worker runs its own agent loop with a scoped context and tools → orchestrator
+**aggregates, resolves conflicts, and verifies** the combined result → replans if
+gaps remain.
+
+## 4. Context isolation *(spine: context)*
+
+- **Scoped context per worker:** each agent gets only what it needs — isolation
+  keeps contexts small (latency/cost) and prevents cross-contamination.
+- **Shared artifacts:** a common workspace/blackboard for results, rather than
+  agents flooding each other with messages.
+- **Interface contracts:** structured inputs/outputs between agents so aggregation
+  is reliable, not free-text guessing.
+
+## 5. Evaluation *(spine: evaluation)*
+
+- **End-to-end outcome:** is the final aggregate correct and coherent? (This is
+  what matters — not any single agent's local success.)
+- **Per-agent + trajectory:** which worker failed, was decomposition sensible,
+  did agents loop or chatter unproductively?
+- **Attribution:** trace errors to the responsible agent — essential for
+  debugging a distributed system.
+
+<WikiLink slug="agent-metrics-taxonomy" title="Agent metrics — outcome vs. trajectory across agents" />
+
+A generator–critic setup can improve quality, but beware groupthink and endless
+agreement — independent verification beats agents rubber-stamping each other.
+
+## 6. Guardrails & safety *(spine: guardrails)*
+
+- **Error propagation:** one worker's mistake can poison the aggregate — validate
+  worker outputs before they're consumed downstream.
+- **Loop/cost control:** cap inter-agent turns and total budget; multi-agent chatter
+  is a classic runaway-cost failure.
+- **Consistent policy:** all agents inherit the same safety guardrails; a worker
+  can't be tricked into escalating privileges for the group.
+
+## 7. Operations *(spine: operations)*
+
+- **Distributed tracing:** a unified trace across all agents (who did what, when,
+  cost) — the only way to debug and to see the critical path.
+- **Cost/latency:** parallelism cuts latency but multiplies cost; monitor per-agent
+  spend and prune unnecessary agents.
+- **Checkpointing:** long multi-agent runs should checkpoint so a single failure
+  doesn't restart everything.
+
+<WikiLink slug="agent-observability" title="Agent observability & tracing" />
+
+## 8. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Single agent + tools (first) | Multi-agent by default | Fewer moving parts; only add agents when justified |
+| Orchestrator–worker | Free-for-all message passing | Clear control flow, traceable, parallelizable |
+| Scoped per-agent context | Shared everything | Isolation controls cost and cross-contamination |
+| Structured interfaces | Free-text handoffs | Reliable aggregation; fewer coordination errors |
+
+## 9. Interviewer follow-ups
+
+<Details summary="When is multi-agent actually worth it over one agent with tools?">
+When subtasks are genuinely parallel (fan-out speeds things up), require distinct
+skills/contexts that would bloat a single prompt, or benefit from separation-of-
+duties (an independent critic). If none apply, a single agent is simpler, cheaper,
+and easier to debug — start there.
+</Details>
+
+<Details summary="One worker hallucinates and the final report inherits the error. Prevent it?">
+Validate worker outputs at the aggregation boundary (schema checks, an independent
+verifier/critic, cross-checking overlapping claims) rather than trusting them
+blindly. Error propagation is the signature multi-agent failure; the orchestrator
+must be a gate, not just a concatenator.
+</Details>
+
+<Details summary="Costs blew up — the agents kept messaging each other. Why?">
+Unbounded inter-agent communication. Cap turns and total budget, prefer a shared
+artifact/blackboard over chatty message passing, and use an orchestrator that
+drives control flow instead of agents free-forming. Multi-agent chatter is a
+common runaway-cost mode.
+</Details>
+
+## Key takeaways
+
+- Multi-agent is an **orchestration-topology** decision — **orchestrator–worker**
+  (plan → fan-out → aggregate → verify) is the sane default; single-agent is the
+  even saner starting point.
+- **Scoped context, structured interfaces, and output validation** at aggregation
+  prevent cost blowups and error propagation.
+- **Distributed tracing** and **per-agent + end-to-end evaluation** are how you
+  debug and trust a system of agents.
