@@ -28,6 +28,54 @@ The one-sentence idea: **build a multi-layer proximity graph — a skip-list for
   Layer 0 holds all $N$ points; each layer up holds roughly a factor $1/M$ fewer.
 </Callout>
 
+## Skip lists from first principles
+
+The "hierarchy" in HNSW is lifted directly from the **skip list**, so it pays to build the skip list up from nothing first — the HNSW mapping then falls out for free.
+
+**Start with a sorted linked list.** Nodes `3 → 8 → 15 → 22 → 34 → 41 → 55` chained by `next` pointers. To find `34` you must walk from the head one link at a time: `3, 8, 15, 22, 34` — five comparisons. Search is $O(N)$ because a linked list gives you no way to *skip ahead*. (A sorted array would allow binary search, but then inserts are $O(N)$ because you must shift elements — the linked list keeps inserts $O(1)$ once you know where.)
+
+**Add one express lane.** Now build a second list *on top* that contains only every other node: `3 → 15 → 34 → 55`. Each express node keeps a `down` pointer to its twin in the base list. To find `41`:
+
+1. **Level 1 (express):** from `3`, is `next` (`15`) still `≤ 41`? Yes, move. From `15`, is `next` (`34`) `≤ 41`? Yes, move. From `34`, is `next` (`55`) `≤ 41`? **No** — overshoot. Drop `down`.
+2. **Level 0 (base):** from `34`, walk `41`. Found.
+
+You examined `3, 15, 34, 41` instead of all seven. The express lane let you *skip* the region between checkpoints, then you descended only for the final fine-grained step.
+
+**Stack more lanes → logarithmic search.** With $L$ levels, each holding half the nodes of the one below, the top lane has $\approx N/2^{L}$ nodes. At every level you take at most a couple of steps before overshooting and dropping down, and there are $\approx \log_2 N$ levels — so search is $O(\log N)$. That is the whole trick: **sparse-on-top layers turn a linear walk into a logarithmic one, without giving up cheap inserts.**
+
+<Callout type="info" title="Why the levels are random, not every-other">
+  Maintaining a *perfect* every-other spacing under insert/delete would cost $O(N)$ rebalancing —
+  the exact problem the linked list was chosen to avoid. So real skip lists assign each new node a
+  level by **coin flips**: keep flipping, and while it comes up heads, promote the node one level up.
+  A node reaches level $\ell$ with probability $(1/2)^{\ell}$ — the same exponential thinning as
+  every-other spacing, but achieved *locally* with zero rebalancing. HNSW's
+  $\ell = \lfloor -\ln(U)\,m_L\rfloor$ (the callout above) is exactly this geometric distribution,
+  with base $M$ instead of $2$ so each layer thins by $1/M$.
+</Callout>
+
+### The exact HNSW ↔ skip-list mapping
+
+HNSW is a skip list where the **one-dimensional sorted order is replaced by a proximity graph in $d$ dimensions**. Everything else is the same structure:
+
+| Skip list (1-D, ordered) | HNSW (metric space, $d$-D) |
+|---|---|
+| Node's position = its **key**, on a total order | Node's position = its **vector**; only *relative* distances exist |
+| "Move to `next` while `next ≤ target`" | "Move to the neighbour **closest to the query**" (greedy) |
+| Each level is a **sorted sub-list** (express lane) | Each level is a **navigable small-world sub-graph** |
+| A level holds every $\approx 2$nd node below it | A level holds every $\approx M$th node below it |
+| Random level via coin flips, $P(\ell)=(1/2)^\ell$ | Random level via $-\ln(U)\,m_L$, $P(\ell)\propto e^{-\ell/m_L}$ |
+| Search: descend levels, walk right, drop at overshoot | Search: descend levels greedy (`ef=1`), then a width-`ef` beam on layer 0 |
+| Bottom level = full sorted list | Layer 0 = graph over **all** $N$ points |
+
+The single crucial difference is *why* a level needs more than one link per node. In a sorted list "closer to the target" has exactly one direction — forward — so one `next` pointer suffices. In $d$ dimensions the query can be in *any* direction, so each node needs a small **set** of edges (`M` of them) fanning out in different directions, and the greedy walk picks whichever edge points most toward the query. That is the "navigable small world" part doing the job the total order does for free in 1-D — and it is why HNSW spends `M` and the neighbour-selection heuristic to keep those edges pointing in genuinely different directions.
+
+<Callout type="warning" title="The analogy has a limit: no total order means no guarantees">
+  A skip list's ordering guarantees greedy descent *always* lands on the exact key. HNSW has no
+  total order, so greedy graph search can still stall in a local minimum — which is precisely why
+  layer 0 widens from a 1-step walk into a width-`efSearch` beam, and why HNSW is *approximate*
+  where a skip list is exact.
+</Callout>
+
 ## The three knobs
 
 | Parameter | What it controls | Trade-off |
