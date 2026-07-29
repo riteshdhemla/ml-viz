@@ -1,0 +1,158 @@
+---
+title: "Design a Demand Forecasting System"
+description: "A large-scale forecasting system predicting demand across thousands of items, stores, and horizons — hierarchical reconciliation, probabilistic outputs, and special-event handling in production, walked through the ML project loop."
+spine: ml
+spineStages: [data, hypothesis-space, feedback]
+company: "Amazon / Instacart"
+domain: "Forecasting & Estimation"
+scale: "millions of series · multi-horizon · hierarchical · probabilistic"
+difficulty: intermediate
+relatedLessons:
+  - "time-series/04-demand-forecasting-in-production"
+  - "time-series/02-arima-models"
+  - "time-series/03-deep-learning-for-time-series"
+estimatedMinutes: 18
+---
+
+# Design a Demand Forecasting System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Amazon / Instacart"
+  scale="millions of series · multi-horizon · hierarchical · probabilistic"
+  difficulty="intermediate"
+/>
+
+Demand forecasting powers inventory, staffing, and supply-chain decisions. It's
+the canonical **time-series at scale** interview: not one series but *millions*
+(item × store × time), at multiple horizons, where the forecasts must be
+**coherent** across a hierarchy and **probabilistic** because the downstream
+decision is about risk. Walk it through the **ML project loop**.
+
+## 1. Clarify the problem
+
+- **Goal:** forecast demand per item/location over multiple horizons (next day →
+  next quarter) to drive ordering, staffing, and logistics.
+- **Why probabilistic:** you don't stock the mean — you stock to a service level
+  (e.g. P90) to trade off stockouts vs. holding cost. The *distribution* is the
+  product.
+- **Hierarchy:** SKU → category → store → region → total must **reconcile** —
+  the store forecasts should sum to the regional one.
+- **Scope:** the forecasting system. The inventory optimizer consumes forecasts
+  (adjacent).
+
+<Callout type="tip" title="Interview signal">
+"We forecast a distribution, not a number, and reconcile across the hierarchy."
+Naming probabilistic + hierarchical forecasting immediately signals you've done
+this in production, not just fit an ARIMA to one series.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Series count | Millions (item × location) | Global models, not one model per series |
+| Horizons | Multi-horizon (1d … 1q) | Direct multi-horizon or recursive strategy |
+| Coherence | Forecasts reconcile across hierarchy | Reconciliation step (MinT / top-down) |
+| Output | Quantiles / full distribution | Quantile loss or probabilistic models |
+| Events | Holidays, promos, weather | Event features / covariates |
+
+## 3. ML problem framing
+
+**Probabilistic, multi-horizon, hierarchical time-series forecasting.** The modern
+answer is a **global model** trained across *all* series (sharing statistical
+strength, handling cold-start items) rather than a local model per series, plus a
+**reconciliation** step to make the hierarchy coherent.
+
+*What was breaking before?* One ARIMA per series doesn't scale to millions, can't
+borrow strength for sparse/new items, and produces incoherent totals; simple
+moving averages ignore promotions, seasonality, and events.
+
+## 4. Data & features *(spine: data)*
+
+- **Target:** historical demand (careful: *sales* ≠ *demand* when you stock out —
+  censored demand is a real bias).
+- **Covariates:** price, promotions, holidays, weather, day-of-week/seasonality,
+  product metadata, and cross-series signals.
+- **Cold-start items:** new SKUs with no history lean on the global model +
+  attribute-based similarity.
+
+<WikiLink slug="hierarchical-forecasting" title="Hierarchical forecasting & reconciliation (MinT)" />
+
+## 5. Model *(spine: hypothesis space + objective)*
+
+- **Baseline:** classical (ARIMA/ETS) per series and simple seasonal-naive — the
+  benchmark every fancy model must beat (often it doesn't, by much).
+- **Production:** a **global** model — gradient-boosted trees on lag/calendar
+  features, or deep architectures (DeepAR, N-BEATS, Temporal Fusion Transformer)
+  trained across all series with **quantile loss** for probabilistic output.
+- **Reconciliation:** MinT / top-down / bottom-up to make hierarchical forecasts
+  coherent after the base models run.
+
+<ARIMAForecastViz />
+
+Classical models like ARIMA remain the baseline and a component; the win from
+deep global models is sharing strength across millions of series and covariates.
+
+## 6. Serving & scaling
+
+Mostly **batch**: retrain and generate forecasts on a schedule (nightly/weekly),
+write quantiles to a store the inventory optimizer reads. Real-time isn't the
+constraint — *scale* (millions of series) and *coherence* are. Backfill and
+recompute when big covariates (a promo calendar) change.
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Point + probabilistic:** WMAPE / MASE for point accuracy; **pinball
+  (quantile) loss** and coverage for the distribution.
+- **Backtesting:** rolling-origin / **walk-forward** validation — never a random
+  split; time leakage is the classic bug.
+- **Business:** service level achieved vs. inventory cost — the forecast is a
+  means, not the end.
+
+<WikiLink slug="walk-forward-validation" title="Walk-forward validation for time series" />
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Drift & regime change:** demand shifts with trends, competitors, and shocks;
+  monitor error by segment and retrain on schedule.
+- **Censored-demand correction:** feed stockout-aware demand back so the model
+  doesn't learn suppressed sales as true demand.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Global model across series | One model per series | Scales to millions; shares strength; handles new items |
+| Probabilistic (quantiles) | Point forecast | Inventory decisions need service-level quantiles |
+| Reconciliation | Independent level forecasts | Otherwise totals don't add up — decisions conflict |
+| Walk-forward backtest | Random train/test split | Random splits leak the future and overstate accuracy |
+
+## 10. Interviewer follow-ups
+
+<Details summary="Store forecasts don't sum to the regional forecast. Problem?">
+Yes — incoherence breaks downstream planning (regional buyers and store managers
+act on conflicting numbers). Apply reconciliation (MinT optimally combines the
+levels) so forecasts are coherent across the SKU→store→region→total hierarchy.
+</Details>
+
+<Details summary="A big promotion is coming — how does the model know?">
+It's a covariate: past promotions with their lifts are in the training data, and
+the upcoming promo calendar is a future-known input the model conditions on.
+Without promo features the model treats the spike as noise and under-forecasts.
+</Details>
+
+<Details summary="You stocked out last week — won't the model learn low demand?">
+Only if you feed it raw sales. Stockouts *censor* true demand (you sold what you
+had, not what customers wanted). Use stockout-aware demand estimates or mask
+censored periods, or the model learns a downward-biased demand and under-orders.
+</Details>
+
+## Key takeaways
+
+- Demand forecasting is **hierarchical, multi-horizon, probabilistic time-series
+  at scale** — a **global** model beats per-series models on millions of series.
+- Forecast a **distribution** and **reconcile** the hierarchy; the downstream
+  decision is about service level and risk, not a point number.
+- **Walk-forward backtesting** and **censored-demand** handling are the
+  correctness essentials.

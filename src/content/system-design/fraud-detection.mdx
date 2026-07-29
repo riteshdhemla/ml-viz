@@ -1,0 +1,165 @@
+---
+title: "Design a Real-Time Fraud Detection System"
+description: "A payments fraud system that scores transactions in milliseconds under extreme class imbalance and an adaptive adversary — real-time features, graph signals, and cost-sensitive thresholds, walked through the ML project loop."
+spine: ml
+spineStages: [data, evaluation, feedback]
+company: "Stripe / Nubank"
+domain: "Fraud & Risk"
+scale: "billions of tx/day · <100ms decision · fraud <0.5% of volume · adversarial"
+difficulty: advanced
+relatedLessons:
+  - "ml-in-practice/20-fraud-detection-at-scale"
+  - "ml-in-practice/14-anomaly-detection"
+  - "model-evaluation/01-classification-metrics"
+estimatedMinutes: 20
+---
+
+# Design a Real-Time Fraud Detection System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Stripe / Nubank"
+  scale="billions of tx/day · <100ms · fraud <0.5% · adversarial"
+  difficulty="advanced"
+/>
+
+Fraud detection is the ML interview where **the data and the evaluation are the
+hard parts**, not the model. Two forces define it: **extreme class imbalance**
+(fraud is a fraction of a percent) and an **adaptive adversary** who changes
+behavior the moment you catch them — so the loop's **data → evaluation →
+feedback** stages carry the weight.
+
+## 1. Clarify the problem
+
+- **Goal:** score each transaction for fraud risk in real time and **act** —
+  approve, decline, or challenge (step-up auth) — balancing fraud loss against
+  false-positive friction on good customers.
+- **Asymmetric costs:** a missed fraud loses the transaction value; a false
+  positive blocks a real customer and erodes trust. These are *not* symmetric —
+  the threshold is a business decision.
+- **Scope:** real-time transaction scoring + feedback loop. Related: chargebacks,
+  KYC, account-takeover (mention as adjacent).
+
+<Callout type="warning" title="Never optimize accuracy">
+At under 0.5% fraud, predicting "never fraud" is 99.5% accurate and useless. The
+interview red flag is anyone who reaches for accuracy — use precision/recall at
+an operating point, AUPRC, and dollar-weighted cost.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 100 ms inline with checkout | Precomputed/streaming features; cheap model |
+| Volume | Billions of tx/day | Streaming feature store, not per-request compute |
+| Imbalance | Fraud < 0.5% | Class weighting, cost-sensitive thresholds, AUPRC |
+| Adversarial | Fraud shifts weekly | Fast retraining + drift monitoring + human review |
+| Explainability | Reason codes for declines | Feature attributions, often regulatory |
+
+## 3. ML problem framing
+
+**Cost-sensitive binary classification** on a highly imbalanced, non-stationary
+stream. The decision isn't `argmax` — it's a **threshold** (or multiple bands:
+approve / challenge / decline) chosen to minimize expected dollar cost. Anomaly
+detection helps for novel patterns, but supervised learning on labeled
+chargebacks is the core.
+
+*What was breaking before?* Static rules ("decline if amount > X from new
+device") are brittle and gamed instantly; a plain classifier ignores the
+asymmetric costs and the imbalance.
+
+## 4. Data & features *(spine: data)*
+
+- **Labels:** chargebacks / confirmed fraud — **delayed** (weeks) and **noisy**
+  (not all fraud is reported; not all disputes are fraud). Label latency is a
+  first-class problem.
+- **Velocity features** are the most predictive — counts/sums over short windows:
+  `tx_count_5min`, `distinct_countries_24h`, `device_age`, `merchant_decline_rate`.
+  These require a **streaming feature store** answering count/sum/distinct in under 10ms
+  with sub-second freshness, computed by the *same* pipeline for train and serve.
+- **Graph signals:** fraudsters reuse devices, cards, addresses — a shared-entity
+  graph exposes rings that look clean per-transaction.
+
+<WikiLink slug="graph-fraud-detection" title="Graph-based fraud detection with GNNs" />
+
+<MessagePassingViz />
+
+Message passing propagates risk across the entity graph: an account linked to
+known-fraud nodes inherits elevated risk its own features wouldn't reveal.
+
+## 5. Model *(spine: hypothesis space + objective)*
+
+- **Baseline:** gradient-boosted trees (XGBoost) on velocity + account features —
+  the production default for tabular fraud: strong, fast, interpretable.
+- **Add:** entity embeddings and GNN risk scores as features; a real-time
+  ensemble blends the tabular model with graph and rules.
+- **Objective:** class-weighted / focal loss, weights set by **business cost** of
+  each error type, not just inverse frequency.
+
+## 6. Serving & scaling
+
+Inline with checkout under 100ms: fetch streaming features + precomputed graph
+score, run the ensemble, map the score to an action band, emit reason codes.
+A rules layer sits alongside the model for known-bad patterns and instant
+response to emerging attacks (rules ship faster than a retrain).
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline:** **AUPRC** (not AUROC — it's misleading when positives are rare),
+  precision/recall @ operating threshold, and **dollar-weighted** cost curves.
+- **Threshold selection:** pick the operating point on the cost curve, not a
+  default 0.5 — often multiple thresholds for approve/challenge/decline.
+- **Online:** monitor approval rate, fraud loss, and false-positive complaints;
+  A/B new models on a slice with a shadow period first.
+
+<WikiLink slug="roc-auc" title="ROC-AUC vs PR-AUC — why PR-AUC for rare positives" />
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Adversarial drift:** the adversary adapts, so distributions shift by design.
+  Monitor feature and score drift; keep a **human review queue** whose decisions
+  become fresh labels.
+- **Fast retrain:** the loop must close quickly — daily/continuous retraining plus
+  rapid rule deployment for new attack vectors.
+- **Feedback bias:** you only get labels on transactions you *approved* (declined
+  ones never charge back) — correct for this selection bias when retraining.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| GBDT + graph + rules ensemble | Single deep model | Interpretability, speed, and rules react faster than retrains |
+| Cost-sensitive threshold bands | Single 0.5 cutoff | Asymmetric costs + step-up auth reduce friction |
+| Streaming feature store | Batch features | Fraud is real-time; stale features miss velocity attacks |
+| Supervised + anomaly hybrid | Pure supervised | Anomaly catches novel patterns before labels exist |
+
+## 10. Interviewer follow-ups
+
+<Details summary="Labels arrive weeks late as chargebacks. How do you train?">
+Treat labels as censored: a recent "no chargeback" isn't confirmed-good yet. Use
+a maturation window before treating transactions as negatives, weight by label
+confidence, and lean on the human-review queue for faster, cleaner labels on
+ambiguous cases.
+</Details>
+
+<Details summary="Fraudsters found a new pattern overnight. Model or rules?">
+Rules — they deploy in minutes and give instant coverage while you gather labels.
+The model catches up on the next retrain. A mature system runs both: ML for the
+broad, learned surface; rules for known-bad and rapid response.
+</Details>
+
+<Details summary="You only see chargebacks on approved transactions. Isn't that biased?">
+Yes — selection bias. Declined transactions never generate a label, so the model
+only learns from what it let through. Mitigate with a small randomized-approval
+slice (bounded, for the riskiest band), and reject-inference techniques when
+retraining.
+</Details>
+
+## Key takeaways
+
+- Fraud is **cost-sensitive classification** under **extreme imbalance** and an
+  **adaptive adversary** — accuracy and AUROC are traps; use AUPRC and dollar cost.
+- **Real-time velocity features** and **graph signals** carry the model; a
+  streaming feature store prevents train-serve skew.
+- The system is a **fast loop**: human review generates labels, models retrain
+  quickly, and rules cover the gap between attack and retrain.

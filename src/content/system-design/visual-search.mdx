@@ -1,0 +1,157 @@
+---
+title: "Design a Visual Search System"
+description: "A 'search by image' system — embed a query photo and retrieve visually similar products from a huge catalog via approximate nearest neighbors, with representation learning and re-ranking, walked through the ML project loop."
+spine: ml
+spineStages: [data, hypothesis-space, evaluation]
+company: "Pinterest Lens / Amazon"
+domain: "Computer Vision & Retrieval"
+scale: "billions of images · <300ms · embedding ANN · fine-grained similarity"
+difficulty: intermediate
+relatedLessons:
+  - "computer-vision/04-vision-language-models"
+  - "computer-vision/05-self-supervised-learning"
+  - "pca-dimensionality/02-t-sne-and-umap"
+estimatedMinutes: 18
+---
+
+# Design a Visual Search System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Pinterest Lens / Amazon"
+  scale="billions of images · <300ms · embedding ANN"
+  difficulty="intermediate"
+/>
+
+Visual search ("point your camera at a couch, find ones to buy") is a
+**representation-learning + nearest-neighbor retrieval** problem. There's no text
+query — the *image is the query* — so the whole system hinges on learning an
+embedding where visually/semantically similar items are close, then searching it
+fast. Walk it through the **ML project loop**.
+
+## 1. Clarify the problem
+
+- **Goal:** given a query image (often a messy real-world photo), return visually
+  similar catalog items, ideally shoppable.
+- **Similarity of what?** Usually *fine-grained* product similarity (same style of
+  shoe), not just category — the label definition drives everything.
+- **Detect-then-search:** a photo may contain several objects; often detect the
+  object of interest first, then search on the crop.
+- **Scope:** embedding + retrieval + re-rank. Adjacent: the detection model,
+  which we reuse.
+
+<Callout type="tip" title="Interview signal">
+The core question is "what does *similar* mean, and how do I get labels for it?"
+— exact-match (same product) and visually-similar are different objectives with
+different mining strategies. Pin this before choosing a loss.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 300 ms | Precomputed embeddings + ANN, not pairwise compare |
+| Catalog | Billions of images | HNSW / IVF-PQ index, quantized embeddings |
+| Robustness | Real-world photos (lighting, angle, clutter) | Heavy augmentation; detect-then-crop |
+| Freshness | New products searchable in minutes | Incremental embedding + index updates |
+
+## 3. ML problem framing
+
+**Metric / representation learning**: train an encoder so that similar images map
+to nearby vectors, then do **approximate nearest neighbor** retrieval + a
+re-ranking pass. Retrieval quality is bounded by embedding quality — the model
+*is* the embedding.
+
+*What was breaking before?* Classification tags are too coarse (they can't
+express "this specific mid-century chair"); pairwise image comparison at query
+time is computationally impossible at billions of items.
+
+## 4. Data & features *(spine: data)*
+
+- **Labels / pairs:** positive pairs from the same product (different photos,
+  angles), user co-engagement (clicked-together items), and human similarity
+  judgments. Negatives from **hard-negative mining** (visually close but wrong).
+- **Self-supervision:** augmentations (crop, color, rotate) generate positive
+  pairs cheaply — powerful when labels are scarce.
+- **Multimodal:** vision-language encoders let text and image share a space
+  (search by photo, refine by words).
+
+<WikiLink slug="vector-databases" title="Vector databases — storing & serving embeddings" />
+
+## 5. Model *(spine: hypothesis space + objective)*
+
+- **Encoder:** a CNN/ViT backbone fine-tuned with a **contrastive / triplet**
+  loss (metric learning), or a self-supervised (SimCLR/DINO-style) then fine-tuned
+  encoder.
+- **Objective:** pull positives together, push hard negatives apart — the choice
+  of *which* negatives dominates final quality.
+- **Re-ranker:** a heavier model (or cross-attention over query+candidate) refines
+  the ANN top-k on price, availability, and finer similarity.
+
+<CLIPSpaceViz />
+
+A shared image–text embedding space (CLIP-style) is what lets a photo query and a
+catalog image land near each other — and enables "find this, but in blue."
+
+## 6. Serving & scaling
+
+Offline: embed the whole catalog, quantize (PQ), build an ANN index. Online:
+detect the object → crop → embed the query once → ANN search → re-rank →
+availability/business filters, all under 300ms. Update the index incrementally as
+inventory changes.
+
+<WikiLink slug="hnsw" title="HNSW — the graph index for billion-scale ANN" />
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Offline:** Recall@k / precision@k against similarity ground truth; mAP for
+  retrieval. Embedding quality probes (does the space cluster products sensibly?).
+- **Online:** click-through and purchase rate on visual-search results, plus
+  zero/low-result rate.
+- **Human eval:** side-by-side similarity judgments the implicit metrics miss.
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Distribution shift:** new product styles, seasonal inventory, and camera
+  trends shift the query and catalog distributions; re-embed and retrain.
+- **Feedback loop:** engagement on returned items becomes new positive pairs,
+  improving the embedding over time.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Metric-learned embedding + ANN | Classification + tag match | Tags are too coarse for fine-grained visual similarity |
+| Detect-then-crop-then-search | Search the whole photo | Cluttered photos need the object isolated first |
+| Quantized ANN (PQ) | Exact NN | Exact search is infeasible at billions of vectors |
+| Contrastive fine-tune | Frozen pretrained encoder | Domain fine-tuning sharply improves in-catalog similarity |
+
+## 10. Interviewer follow-ups
+
+<Details summary="The query photo has a couch, a rug, and a lamp. What do you return?">
+Detect objects first, let the user pick (or default to the most salient), then
+search on that crop. Embedding the whole cluttered scene averages the objects
+together and retrieves nothing well — detect-then-search is the fix.
+</Details>
+
+<Details summary="How do you support 'find this dress but in red'?">
+A shared vision-language embedding space: embed the image, then compose with a
+text delta ("red") in the same space, or condition the query on an attribute.
+This is exactly what CLIP-style joint training buys you.
+</Details>
+
+<Details summary="Recall@k is high offline but users don't click. Why?">
+The offline similarity label may not match user intent (visually similar ≠ what
+they want to buy), the crop/detection is wrong, or availability/price filters gut
+the results post-retrieval. Add a re-ranker on business signals and validate the
+similarity label against real engagement.
+</Details>
+
+## Key takeaways
+
+- Visual search is **representation learning + ANN retrieval** — the embedding
+  quality caps everything.
+- Define **similarity** and mine **hard negatives** carefully; contrastive/self-
+  supervised training and **detect-then-crop** handle messy real-world photos.
+- Serve with **quantized ANN indexes**; a shared **image–text space** unlocks
+  multimodal "this but in blue" queries.
