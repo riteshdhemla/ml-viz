@@ -7,6 +7,7 @@ import { Callout } from "./Callout";
 import { Details } from "./Details";
 import { CodeBlock } from "./CodeBlock";
 import { WikiLink } from "./WikiLink";
+import { SystemDesignMeta } from "./SystemDesignMeta";
 import { Exercise } from "@/components/exercises/Exercise";
 import { GradientDescentViz } from "@/components/visualizations/GradientDescent/GradientDescentViz";
 import { ActivationFunctionViz } from "@/components/visualizations/ActivationFunction/ActivationFunctionViz";
@@ -103,6 +104,7 @@ export const mdxComponents: MDXComponents = {
   Details,
   Exercise,
   WikiLink,
+  SystemDesignMeta,
 
   // Visualizations (pure-SVG client components — see visualizations/viz-kit.tsx)
   GradientDescentViz,

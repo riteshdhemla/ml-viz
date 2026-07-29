@@ -1,4 +1,9 @@
-import { getAllCourses, getLessonsForCourse, getAllWikiPages } from "./content";
+import {
+  getAllCourses,
+  getLessonsForCourse,
+  getAllWikiPages,
+  getAllSystemDesignCases,
+} from "./content";
 import type { SearchItem } from "@/types/search";
 
 /**
@@ -40,5 +45,17 @@ export function buildSearchIndex(): SearchItem[] {
     })
   );
 
-  return [...courseAndLessonItems, ...wikiItems];
+  const systemDesignItems = getAllSystemDesignCases().map(
+    (c): SearchItem => ({
+      href: `/system-design/${c.slug}`,
+      title: c.title,
+      description: c.description,
+      courseTitle:
+        c.spine === "agentic" ? "Agentic System Design" : "ML System Design",
+      kind: "system-design",
+      estimatedMinutes: c.estimatedMinutes,
+    })
+  );
+
+  return [...courseAndLessonItems, ...wikiItems, ...systemDesignItems];
 }
