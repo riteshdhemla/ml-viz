@@ -11,7 +11,7 @@ relatedLessons:
   - "graph-neural-networks/01-graphs-as-data"
   - "graph-neural-networks/02-graph-convolutions"
   - "recommender-systems/03-deep-and-two-tower"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design a Friend / Connection Recommendation System
@@ -23,27 +23,88 @@ estimatedMinutes: 18
   difficulty="advanced"
 />
 
-"People You May Know" is the canonical **graph ML** interview: the data is a
-social graph, and the task is **link prediction** — which edge (friendship) is
-most likely to form and be accepted. The structure of the graph *is* the signal,
-so candidate generation and graph features dominate. Walk it through the **ML
-project loop**.
+Open LinkedIn or Facebook and you'll find a module suggesting people to
+connect with — "People You May Know." Behind it sits one of the cleanest
+graph ML problems in industry. The data is a social graph with a billion
+nodes (users) and many billions of edges (connections), and the task is to
+predict which edge will form *next*: given this user, who are they likely
+to send an invite to — and, just as important, who is likely to say yes?
+
+Two things make this different from the item recommenders elsewhere in
+this course. First, **the structure of the graph is itself the dominant
+signal**: who you know predicts who you'll know far better than any
+profile attribute does. So graph-structural features and graph-aware
+candidate generation carry the system, and the ML term for the task is
+**link prediction**. Second, the outcome is **two-sided** — a
+recommendation only succeeds if one person sends an invite *and the other
+accepts*. A recommender that surfaces celebrities everyone wants to
+connect with, but who accept no one, is failing, even though every
+suggestion looks plausible. Walk it through the ML project loop with
+those two ideas in front.
+
+<Callout type="info" title="What this case assumes you already know">
+This case draws on graph ML vocabulary plus standard recommender
+machinery:
+
+- **Link prediction** — the graph ML task of predicting which edges
+  (connections) will appear next, given the current graph.
+- **Second-degree neighborhood / "friends of friends"** — everyone
+  connected to your connections but not (yet) to you. The empirical
+  backbone of this problem: most new edges form inside it.
+- **Adamic-Adar / common-neighbor scores** — classical link-prediction
+  heuristics: count shared neighbors, weighting rare (low-degree) shared
+  neighbors more, since sharing an obscure contact is more informative
+  than sharing a popular one.
+- **Node embeddings (node2vec / GNN)** — learned vectors placing
+  structurally similar nodes close together, so "similar position in the
+  graph" becomes measurable as vector distance.
+- **GNNs and message passing** — neural networks that compute a node's
+  representation by aggregating its neighbors' features, layer by layer —
+  covered in the GNN course, and visualized below.
+- **Candidate generation → ranking funnel** — the standard two-stage
+  recommender architecture: something cheap proposes a few hundred
+  plausible candidates, then an expensive model scores them.
+- **ANN / vector search** — approximate nearest-neighbor lookup over
+  embeddings, used for retrieval — see
+  [vector databases](/wiki/vector-databases).
+- **Temporal vs. random splits** — evaluating on *future* edges rather
+  than randomly held-out ones; the reasoning is a centerpiece of the
+  evaluation section.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** recommend people a user is likely to connect with *and* who will
-  accept — a two-sided outcome, not just similarity.
-- **Signal:** mutual connections, shared schools/employers/groups, co-location,
-  interaction history — mostly **graph-structural**.
-- **Guardrails:** avoid creepy recommendations (revealing sensitive relationships),
-  and avoid degenerate feedback (only recommending the already-popular).
-- **Scope:** candidate generation + ranking over the graph. Adjacent: the graph
-  storage/serving infra.
+The goal, stated carefully: recommend people the user is likely to
+*connect with* — meaning they send an invite **and** it gets accepted.
+Both halves matter. Optimizing only "will they send an invite" surfaces
+famous and aspirational profiles that ignore the invite; the recommender
+looks busy while producing no new edges. The objective is
+`P(connect AND accept)`.
+
+Where does the signal come from? Overwhelmingly from the graph itself:
+mutual connections, shared schools and employers, shared groups,
+co-location, interaction history. Profile-text similarity is a minor
+player — two people with identical job titles in the same city usually
+don't know each other, while two people with thirty mutual connections
+almost certainly do.
+
+This problem also carries **guardrails unusual for a recommender**,
+because the recommendations are *about people*. Surfacing a connection
+can reveal a sensitive relationship (a therapist's client list, an
+estranged family member, someone's second account) — "accurate" and
+"appropriate" are different tests. And popularity feedback loops have a
+human cost here: a system that only recommends the already-connected
+makes the network rich-get-richer.
+
+Scope: candidate generation and ranking over the graph. The graph
+storage and serving infrastructure is adjacent — acknowledge it, don't
+design it.
 
 <Callout type="tip" title="Interview signal">
-Frame it as **link prediction on a graph**, and note the objective is
-`P(connect AND accept)` — recommending someone who ignores the invite is a
-failure. This two-sided framing is the differentiator.
+Frame it as **link prediction on a graph**, and state the objective as
+`P(connect AND accept)` — naming the two-sided outcome is the
+differentiator between candidates who see the social structure and those
+porting a movie recommender.
 </Callout>
 
 ## 2. Requirements & scale
@@ -57,129 +118,199 @@ failure. This two-sided framing is the differentiator.
 
 <ThinkFirst question="Scoring every user pair is quadratic in a billion nodes — a non-starter. What cheap structural heuristic generates most of the good candidates?">
 **Friends of friends.** The overwhelming majority of new connections form
-within the 2nd-degree neighborhood, which is enumerable per user with a cheap
-graph traversal. That single heuristic collapses the candidate space from
-billions to hundreds, and everything fancier (embeddings, shared attributes)
-just supplements it.
+inside the second-degree neighborhood — people who share at least one
+mutual connection with you — and that set is enumerable per user with a
+cheap graph traversal. This one heuristic collapses the candidate space
+from a billion to a few hundred, and everything fancier (embedding
+retrieval, shared-attribute candidates) merely supplements it for the
+cases it misses.
 </ThinkFirst>
 
 ## 3. ML problem framing
 
-**Link prediction**, structured as a funnel like every large recommender:
+Like every large recommender, the system is a **funnel** — but here both
+stages are shaped by the graph:
 
-1. **Candidate generation** *(hypothesis space)* — cheaply propose plausible
-   connections. The workhorse heuristic: **"friends of friends"** (2nd-degree),
-   plus shared-attribute candidates.
-2. **Ranking** — score candidates on `P(connect & accept)` with graph + profile
-   features.
+1. **Candidate generation** *(hypothesis space)*: cheaply propose
+   plausible connections. The workhorse is the second-degree
+   neighborhood from the ThinkFirst; shared-attribute sources (same
+   employer, same school, imported contacts) and embedding-based
+   retrieval fill in candidates the graph traversal can't see — most
+   importantly for sparsely-connected users.
+2. **Ranking**: score each candidate on `P(connect & accept)` using
+   graph features plus profile and activity features.
 
-*What was breaking before?* Scoring all node pairs is quadratic and impossible;
-pure profile similarity ignores the graph structure that actually predicts
-connection.
+Why this shape and not something simpler? Scoring all pairs is quadratic
+in a billion nodes — arithmetic ends that conversation. And the
+pre-graph alternative, ranking by profile similarity, ignores the
+structure that actually predicts connection: people connect to people
+*near them in the graph*, not to people who resemble them on paper.
 
 ## 4. Data & features *(spine: data)*
 
-- **Labels:** sent invites, **accepted** invites (positive), ignored/declined
-  (hard negatives), impressions without action (weak negatives).
-- **Graph features:** number of mutual connections (the single strongest
-  feature), common neighbors / Adamic-Adar, shared communities, path distance.
-- **Node embeddings:** learned so structurally/behaviorally similar users are
-  close (node2vec-style or GNN embeddings), used for candidate retrieval.
+Labels fall out of the product's own event stream, in usefully graded
+tiers. An **accepted invite** is the true positive — both sides of the
+two-sided outcome happened. An invite that was **ignored or declined**
+is a *hard negative*, and an especially valuable one: the sender found
+the suggestion plausible, but the two-sided outcome failed, which is
+exactly the distinction the objective cares about. Impressions with no
+action are weak negatives — maybe a bad suggestion, maybe just unseen.
+
+Feature-wise, the hierarchy of value is stark. **Mutual-connection
+count** is the single strongest feature. Around it: refined
+common-neighbor scores like Adamic-Adar (which discount popular shared
+neighbors), shared communities, and graph distance. Then **learned node
+embeddings** — node2vec-style or GNN-produced — which serve double duty:
+as ranking features, and as the keys for embedding-based candidate
+retrieval via ANN search.
 
 <WikiLink slug="vector-databases" title="Serving node embeddings for candidate retrieval" />
 
 <ThinkFirst question="Before any GNN — what's the single strongest feature, and what baseline would you build first?">
-**Mutual-connection count.** On its own it's an embarrassingly strong
-predictor, and a GBDT over it plus a handful of graph features (Adamic-Adar,
-shared communities, path distance) is the baseline every neural model must
-beat. If your GNN doesn't clear it, the GNN isn't learning graph structure —
-it's overhead.
+**Mutual-connection count.** By itself it's an embarrassingly strong
+predictor of connection, and a GBDT over it plus a handful of classical
+graph features (Adamic-Adar, shared communities, path distance) is the
+baseline every neural model must beat. That baseline isn't a formality:
+if your GNN doesn't clear it, the GNN isn't extracting graph structure —
+it's expensive overhead. Interviewers reward candidates who commit to
+this ordering.
 </ThinkFirst>
 
 ## 5. Model *(spine: hypothesis space + objective)*
 
-- **Baseline:** logistic/GBDT on graph features (mutual-connection count alone is
-  remarkably strong) — the benchmark to beat.
-- **Graph neural network:** a GraphSAGE/GCN encoder learns node embeddings by
-  **aggregating neighborhood features**; the edge score is a function of the two
-  node embeddings. GNNs capture higher-order structure heuristics miss.
-- **Objective:** ranking / binary acceptance with hard negatives from ignored
-  invites.
+The baseline, per the ThinkFirst: logistic regression or GBDT over the
+classical graph features. It is genuinely hard to beat, cheap to serve,
+and interpretable — which matters when a recommendation needs explaining
+("12 mutual connections").
+
+The step up is a **graph neural network** — GraphSAGE or GCN — which
+learns each node's embedding by aggregating its neighborhood's features,
+layer by layer. An edge's score becomes a function of its two endpoint
+embeddings. What the GNN buys over the hand-built features is
+*higher-order structure*: patterns like "these two users sit in the same
+tightly-knit community three hops wide" that no pairwise count captures.
+It also naturally folds in node attributes (industry, school), letting
+structure and content reinforce each other.
 
 <MessagePassingViz />
 
-Message passing is the heart of the GNN: each node's representation is built from
-its neighbors', so two users embedded near each other share graph context — the
-essence of "you may know them."
+The visualization shows the core mechanism: each node's representation
+is built from its neighbors', so two users embedded near each other
+share graph context — which is precisely the meaning of "you may know
+them."
+
+The **objective** ties back to section 1: binary classification (or
+pairwise ranking) on acceptance, with the ignored-invite hard negatives
+doing the work of teaching the model the difference between "plausible"
+and "will actually connect."
 
 ## 6. Serving & scaling
 
-Offline: compute node embeddings + candidate lists (2nd-degree neighborhoods) in
-a batch graph job. Online: fetch the user's candidates, rank with the model +
-fresh features, apply guardrail filters (blocked, sensitive), return the top-k
-under 200ms. Update embeddings incrementally as the graph evolves.
+The compute splits cleanly along the batch/online line. **Offline**, a
+periodic graph job computes node embeddings and materializes each user's
+candidate list (their second-degree neighborhood plus
+embedding-retrieved and shared-attribute candidates). **Online**, a
+request fetches the precomputed candidates, ranks them with fresh
+features, applies guardrail filters — blocked users, sensitive-relation
+suppression — and returns the top-k, comfortably inside 200ms because
+nothing expensive happens at request time. Between batch runs,
+incremental updates fold new edges and new users into candidates and
+embeddings so the system doesn't go stale in the gaps.
 
 <ThinkFirst question="You hold out 10% of edges at random for the test set. Why are your metrics about to look better than they should?">
-Because edges aren't independent in time: a random holdout trains the model on
-edges that formed *after* the ones it's tested on, and the surrounding graph
-context effectively gives the answer away. The honest protocol is a **temporal
-split** — train on the graph up to time T, predict which edges form after T —
-which is also the deployment reality.
+Because edges aren't independent across time. A random holdout lets the
+model train on edges that formed *after* the test edges — including
+other edges of the very same node pairs' neighborhoods — so the
+surrounding graph context effectively hands the model the answer.
+The honest protocol is a **temporal split**: train on the graph as it
+existed at time T, predict which edges form after T. Which is also
+exactly the situation the deployed model faces.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Offline:** ranking metrics (AUC, Recall@k, MAP) on held-out future edges —
-  a **temporal split** (predict edges that form *next*), never random, to avoid
-  leaking the future.
-- **Online:** invite send rate, **acceptance rate** (the key two-sided metric),
-  and long-term network growth / engagement, with guardrails on complaints.
+Offline, the ranking metrics are standard — AUC, Recall@k, MAP — but the
+*protocol* is the point: they're computed on held-out **future** edges
+under the temporal split just described. A random split inflates every
+number and, worse, inflates them non-uniformly, so it can reverse model
+comparisons.
+
+Online, the metric hierarchy mirrors the two-sided objective: invite
+send rate tells you suggestions look plausible; **acceptance rate** tells
+you they were right; and the long-term measures — network growth,
+engagement of the resulting connections — tell you the new edges were
+worth creating. Complaint and block rates ride along as guardrails,
+because this recommender's failure modes include making people
+uncomfortable, not just being ignored.
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
-- **Evolving graph:** the graph changes constantly; embeddings and candidates
-  must refresh, or recommendations go stale.
-- **Feedback loops & fairness:** guard against only surfacing popular nodes
-  (rich-get-richer) and against revealing sensitive connections; monitor
-  diversity and complaint signals.
+The graph never stops changing — every accepted invite this system
+generates *changes its own input*. That makes staleness the baseline
+operational concern: embeddings and candidate lists must refresh on a
+cadence matched to edge velocity, or the system recommends against last
+month's graph.
+
+The subtler risks are the feedback loops. Popular, well-connected users
+attract more impressions, gain more connections, and become more
+recommendable — rich-get-richer by construction. Counter it by
+optimizing acceptance (popular nodes accept less), capping exposure of
+high-degree nodes, and monitoring recommendation diversity. And keep
+standing watch on the sensitive-reveal guardrail: complaint signals are
+the observable symptom of recommendations that were accurate but should
+never have been shown.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Candidate gen + rank | Score all pairs | All-pairs is quadratic — impossible at billions |
-| GNN embeddings | Profile-only similarity | Graph structure is the dominant signal |
-| Temporal eval split | Random split | Random splits leak future edges → inflated metrics |
-| `P(connect & accept)` | `P(similar)` | An ignored invite is a bad recommendation |
+| Candidate gen + rank | Score all pairs | All-pairs is quadratic — impossible at a billion nodes |
+| GNN embeddings | Profile-only similarity | Graph structure is the dominant signal; profiles are weak |
+| Temporal eval split | Random split | Random splits leak future edges → inflated, distorted metrics |
+| `P(connect & accept)` | `P(similar)` or `P(invite)` | An ignored invite is a failed recommendation; only the two-sided outcome counts |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="A brand-new user has no connections. What do you recommend?">
-Fall back on side features — imported contacts, shared email domain/employer/
-school, co-location, and content interactions — to seed the first candidates,
-plus popular-in-network suggestions. The graph signal grows once they make a few
-connections; until then it's a cold-start problem.
+The graph is silent, so fall back on everything that isn't the graph:
+imported contacts (the strongest cold-start signal by far), shared email
+domain, employer, school, co-location, and early content interactions —
+plus popular-in-their-context suggestions as filler. Every early
+connection they make rapidly unlocks the second-degree machinery; the
+cold-start phase is short but decisive for retention, since a user with
+zero connections has no reason to return.
 </Details>
 
 <Details summary="The system keeps recommending already-popular people. Why, and fix?">
-A feedback loop: popular nodes get more impressions, more connections, more
-recommendations. Add diversity/novelty terms, cap exposure of high-degree nodes,
-and calibrate on acceptance (not raw connection count) so it optimizes good
-matches, not popularity.
+It's a feedback loop: high-degree nodes appear in more second-degree
+neighborhoods, get more impressions, gain more edges, and appear in
+more neighborhoods still. Break it at three points: optimize
+*acceptance* rather than invite volume (celebrities don't accept), cap
+per-node exposure so no one dominates impression share, and add
+diversity terms to the re-rank. Monitor degree-distribution of
+recommendations so the loop can't quietly re-form.
 </Details>
 
 <Details summary="Why is a random train/test split wrong here?">
-It leaks the future: a random split can put an edge's endpoints' *other* future
-edges in the training set, so the model 'predicts' connections it effectively
-already saw. Use a temporal split — train on the graph up to time T, predict
-edges forming after T.
+It leaks the future through the graph. Edges cluster in time and space:
+when a user joins a workplace, a burst of related edges forms together.
+A random split scatters that burst across train and test, so the model
+"predicts" test edges it has effectively already seen the context of.
+Train on the graph up to time T and predict edges after T — matching
+both statistical honesty and the deployed reality.
 </Details>
 
 ## Key takeaways
 
-- Friend recommendation is **link prediction on a graph** — a candidate-
-  generation → ranking funnel, since scoring all pairs is impossible.
-- **Graph-structural features** (mutual connections) and **GNN embeddings** carry
-  the model; profile similarity alone is weak.
-- Optimize the **two-sided** `P(connect & accept)`, evaluate on a **temporal
-  split**, and guard against popularity feedback loops and sensitive reveals.
+- Friend recommendation is **link prediction on a graph**, run as a
+  candidate-generation → ranking funnel because all-pairs scoring is
+  arithmetically impossible.
+- **The graph is the signal**: mutual connections and their refinements
+  dominate, GNN embeddings add higher-order structure, and profile
+  similarity alone is weak.
+- The objective is **two-sided** — `P(connect & accept)` — and the
+  evaluation must respect time: temporal splits, acceptance rate, and
+  long-term network health.
+- The system feeds back into itself — it creates the edges it later
+  trains on — so **popularity loops, staleness, and sensitive reveals**
+  are standing operational concerns, not edge cases.
