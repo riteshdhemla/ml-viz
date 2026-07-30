@@ -12,7 +12,7 @@ relatedLessons:
   - "building-with-llms/06-ai-engineering-architecture"
   - "building-with-llms/10-guardrails-and-llmops-security"
   - "nlp/05-decoding-and-sampling"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Conversational AI Assistant at Scale
@@ -24,27 +24,74 @@ estimatedMinutes: 20
   difficulty="intermediate"
 />
 
-A general-purpose chat assistant (ChatGPT/Claude-style) is the flagship
-generative-AI *product*. The model is given — the system-design work is
-everything **around** it: managing conversation context, grounding with
-retrieval and memory, streaming responses, keeping it safe, and improving it from
-feedback. It reads through the **agentic loop** (context → orchestration →
-guardrails → operations).
+A hundred million people open a chat box and type anything at all —
+homework questions, code bugs, a request to plan a wedding, an attempt
+to jailbreak the model into something harmful. Each conversation may
+run for hundreds of turns, must feel instant, must stay coherent with
+everything said so far, must not hallucinate confidently, and must
+cost little enough per turn that the business survives its own
+popularity.
+
+The design insight that unlocks this interview: **the model is a
+given.** You are not asked to train a frontier LLM — you're asked to
+build the *product system around one*, and that system is where a
+ChatGPT-class assistant is actually won or lost. Concretely, four
+subsystems: the **context pipeline** (deciding what fills the prompt
+each turn — the highest-leverage surface you control), **grounding**
+(retrieval and tools that cut hallucination), **safety** (an
+adversarial user base at full internet scale), and the **feedback
+loop** (turning usage into improvement). It reads naturally through
+the agentic loop — context → orchestration → guardrails → operations
+— even though it's a genai-track product.
+
+<Callout type="info" title="What this case assumes you already know">
+The concepts this case builds on:
+
+- **Context windows** — the model attends to a bounded token budget;
+  a 200-turn conversation doesn't fit, which forces the
+  summarization/memory design below.
+- **Decoding & sampling** — temperature and top-p as the
+  determinism-vs-creativity dial; from the NLP course.
+- **RAG & tool use** — retrieving documents or calling tools
+  (calculator, code execution, web search) mid-conversation to ground
+  answers in something firmer than parametric memory.
+- **RLHF / DPO** — aligning a model with human preference data; here,
+  the mechanism that converts thumbs-down data into a better next
+  model version.
+- **LLM-as-judge & preference win-rate** — evaluating open-ended
+  generation by blind pairwise comparison, since there's no accuracy
+  number — see [LLM-as-judge](/wiki/llm-as-judge).
+- **Jailbreaks & prompt injection** — adversarial inputs crafted to
+  override the system policy — see
+  [prompt injection](/wiki/prompt-injection-attacks-and-defenses).
+- **Model tiering & prefix caching** — routing easy requests to cheap
+  models, and reusing the KV cache for shared prompt prefixes; the
+  cost machinery shared with the LLM inference-serving case.
+- **Refusal calibration** — refusing the genuinely harmful *without*
+  over-refusing the benign; both failure directions are measured.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** a helpful multi-turn assistant answering open-ended questions and
-  doing tasks, for a huge user base, safely and affordably.
-- **Key sub-problems:** long-conversation context management, factual grounding
-  (reduce hallucination), safety, and cost/latency at scale.
-- **Scope:** the product system around the LLM (context, retrieval, memory,
-  safety, serving). Base-model training and raw serving infra are adjacent
-  (see the LLM inference-serving case).
+The goal: a helpful multi-turn assistant that answers open-ended
+questions and performs tasks for an enormous user base — safely and
+affordably. Each adverb is a subsystem: *multi-turn* means context
+management; *open-ended* means evaluation without ground truth;
+*safely* means moderation and jailbreak defense against a user
+population that includes adversaries by the thousand; *affordably*
+means routing and caching, because frontier inference on every turn
+at this scale is ruinous.
+
+Scope: the product system around the LLM — context, retrieval,
+memory, safety, serving economics. Base-model training and the raw
+GPU serving layer are adjacent (the latter is its own case:
+LLM inference serving).
 
 <Callout type="tip" title="Interview signal">
-The model is a given — signal comes from the **context pipeline** (what goes into
-the prompt), **safety**, and **the feedback loop**. Treat it as a product/systems
-problem, not a modeling one.
+The model is a given — the signal comes from the **context pipeline**
+(what goes into the prompt), **safety**, and **the feedback loop**.
+Treat it as a product/systems problem, not a modeling one, from the
+first sentence.
 </Callout>
 
 ## 2. Requirements & constraints
@@ -58,86 +105,133 @@ problem, not a modeling one.
 | Cost | Frontier models are expensive | Route easy turns to smaller models; cache |
 
 <ThinkFirst question="A conversation reaches turn 200; the context window fits 20. What's your strategy — and why is plain truncation wrong?">
-Truncation silently drops the thread — the user's name, the constraint from
-turn 3, the decision from turn 50. The working pattern is layered: keep
-**recent turns verbatim**, roll older turns into a **running summary**, and
-move durable facts into **retrievable memory** pulled in only when relevant.
-The context window is a budget to allocate, not a buffer to overflow.
+Truncation silently drops the thread — the user's name from turn 1,
+the constraint from turn 3, the decision made at turn 50 — and the
+user experiences it as the assistant developing amnesia mid-project.
+The working pattern is layered by information lifetime: keep **recent
+turns verbatim** (full fidelity where it matters most), roll older
+turns into a **running summary** (the gist survives at a fraction of
+the tokens), and move durable facts into **retrievable memory**,
+pulled into context only when relevant. The governing mindset: the
+context window is a budget to allocate deliberately, not a buffer
+that overflows.
 </ThinkFirst>
 
 ## 3. Context & memory *(spine: context)*
 
-The heart of the product is **what fills the prompt**:
-
-- **Conversation window:** recent turns verbatim; older turns **summarized** or
-  truncated to fit the context budget without losing the thread.
-- **Long-term memory:** durable user facts/preferences retrieved into context
-  when relevant (RAG over the user's own history), not stuffed every turn.
-- **Grounding tools:** optional retrieval (web/docs) and tools (calculator, code)
-  when a turn needs facts or actions — with citations to curb hallucination.
-- **System prompt:** the assistant's persona, policies, and capabilities.
+The heart of the product is what fills the prompt each turn, and the
+ThinkFirst's layers become the architecture. The **conversation
+window** holds recent turns verbatim, with older history compressed
+into a rolling summary. **Long-term memory** holds durable user facts
+and preferences — retrieved into context when the current turn makes
+them relevant, RAG-over-the-user's-history style, rather than
+stuffed into every prompt at permanent token cost. **Grounding
+tools** — web/doc retrieval, calculator, code execution — attach when
+a turn needs facts or computation, with citations so the user can
+verify rather than trust. And the **system prompt** carries persona,
+policies, and capability descriptions — the fixed overhead every turn
+pays, which is exactly why prefix caching (section 7) matters so
+much.
 
 ## 4. Orchestration *(spine: orchestration)*
 
-Per turn: assemble context (system prompt + memory + summarized history +
-retrieved grounding) → decide if tools/retrieval are needed → generate a
-**streamed** response → post-process (safety, citations). **Decoding strategy**
-(temperature, top-p) trades determinism vs. creativity; tool-calling turns loop
-through act→observe like an agent.
+Per turn, the pipeline runs: assemble the context (system prompt +
+retrieved memory + summarized history + any grounding) → decide
+whether this turn needs tools or retrieval at all (most don't — a
+routing decision with real cost implications) → generate with
+**streaming**, so the user sees tokens immediately → post-process
+(safety checks, citation formatting). When tools fire, the turn
+becomes a miniature agent loop — act, observe, continue — before the
+final streamed answer.
 
 <SamplingViz />
 
-Sampling parameters shape the assistant's "voice" — low temperature for factual
-tasks, higher for brainstorming; the product often adapts them per intent.
+Decoding parameters are a quiet product surface: low temperature for
+factual tasks, higher for brainstorming — often adapted per detected
+intent, which is why the same assistant can feel precise in one turn
+and imaginative in the next.
 
 <ThinkFirst question="Outputs are open-ended prose — there's no accuracy number. How do you decide a new model version is actually better?">
-**Preference win-rate**: sample real prompts, generate with old and new, and
-have humans (and a calibrated LLM judge) pick blind winners. Add targeted
-checks the win-rate hides — groundedness when retrieval is used, refusal
-correctness in both directions — and watch live signals (thumbs, regeneration
-rate) after rollout. No single number; a panel of them.
+**Preference win-rate**: sample real prompts, generate with old and
+new versions, and have humans — plus a calibrated LLM judge — pick
+winners blind. But win-rate alone hides specific regressions, so add
+targeted checks where it's blind: groundedness when retrieval was
+used, refusal correctness in *both* directions (refusing harm,
+not refusing the benign). Then watch the live signals after rollout —
+thumbs, regeneration rate, retention. The honest answer is a panel of
+numbers, not one; anyone offering a single metric for open-ended
+chat quality is measuring something narrower than the product.
 </ThinkFirst>
 
 ## 5. Evaluation *(spine: evaluation)*
 
-- **Quality:** helpfulness/correctness via **human preference** and **LLM-as-a-
-  judge** on curated + live prompts; track win-rate against the previous version.
-- **Faithfulness:** groundedness when retrieval is used (are claims supported?).
-- **Safety:** refusal correctness (refuses harmful, doesn't over-refuse benign),
-  jailbreak resistance.
-- **Product metrics:** retention, thumbs up/down, regeneration rate.
+The ThinkFirst's panel, laid out. **Quality**: preference win-rate
+against the previous version via human raters and calibrated
+LLM-as-judge, on curated suites *and* samples of live traffic —
+curated sets alone drift away from what users actually ask.
+**Faithfulness**: when retrieval fired, are the claims supported by
+what was retrieved? **Safety**: refusal correctness measured in both
+directions, plus jailbreak-resistance suites. **Product signals**:
+retention, thumbs, regeneration rate — regeneration being the
+quietly informative one, since a user who regenerates is telling you
+the first answer failed without filing a complaint.
 
 <WikiLink slug="llm-as-judge" title="LLM-as-a-judge for open-ended quality" />
 <WikiLink slug="text-generation-metrics" title="Generation-quality metrics" />
 
 ## 6. Safety & guardrails *(spine: guardrails)*
 
-- **Input moderation:** classify and block disallowed requests before generation.
-- **Output moderation:** scan generations for harmful content, PII leakage.
-- **Jailbreak/prompt-injection defense:** user text (and any retrieved content) is
-  untrusted and must not override the system policy.
-- **Refusal calibration:** helpful on benign edge cases, firm on genuinely harmful
-  ones — measured, not vibes.
+At 100M users, some meaningful fraction of traffic is adversarial —
+jailbreak attempts are a constant background hum, not an event. The
+defense is layered, each layer catching what the others miss:
+**input moderation** classifies and blocks disallowed requests before
+any generation is paid for; the **system policy** is hardened so user
+text (and any retrieved content — injection can arrive through a
+fetched webpage too) cannot override it; **output moderation** scans
+generations for harmful content and PII leakage before they reach the
+user; and **alignment training** underneath makes the model itself
+refuse appropriately even when a wrapper fails.
+
+The subtle, measured discipline is **refusal calibration**: a model
+that refuses benign medical or creative requests is failing users
+just as surely as one that complies with harmful ones — so
+over-refusal is tracked as a first-class metric next to safety
+recall, not treated as a safe default.
 
 <WikiLink slug="prompt-injection-attacks-and-defenses" title="Jailbreak & injection defenses" />
 
 <ThinkFirst question="Frontier-model inference on every turn for 100M users is ruinous. Where does most of the cost saving come from?">
-From admitting most turns are easy: **route** them to a small, cheap model and
-escalate only the hard ones — plus **prefix caching** for the shared system
-prompt and response caching for repeated queries. Model tiering typically
-saves more than any inference optimization, because the cheapest token is one
-a frontier model never generates.
+From admitting that most turns are easy. "Thanks!", "make it
+shorter", simple factual questions — none of them need a frontier
+model. **Route** turns by difficulty to a small, cheap model,
+escalating only the hard ones; add **prefix caching** for the shared
+system prompt (paid once, reused by everyone) and response caching
+for repeated queries. Model tiering typically saves more than any
+inference-level optimization, for the simplest reason in the case:
+the cheapest token is one a frontier model never generates.
 </ThinkFirst>
 
 ## 7. Operations *(spine: operations)*
 
-- **Serving:** streaming, **model tiering** (small model for easy turns, frontier
-  for hard), prompt/prefix caching — heavy overlap with the LLM inference-serving
-  case.
-- **Observability:** trace prompts, retrievals, tool calls, tokens, cost, latency,
-  and feedback per conversation.
-- **Feedback loop:** thumbs down, regenerations, and preference data drive RLHF/
-  DPO alignment and prompt/policy updates — closing back into the product.
+The serving story implements the ThinkFirst: streaming everywhere,
+**model tiering** with a difficulty router whose threshold is set by
+the measured quality delta between tiers, and prefix/response caching
+— with the raw GPU-level machinery (continuous batching, KV-cache
+management) delegated to the LLM inference-serving case.
+
+**Observability** traces each conversation end to end — prompt
+assembly, retrievals, tool calls, tokens, cost, latency, feedback —
+because when a user reports "it got weird at turn 40," the trace of
+what actually filled the context at turn 40 is the only way to know
+whether summarization, memory retrieval, or the model itself
+misbehaved.
+
+The **feedback loop** closes the system: thumbs-down and
+regeneration events become preference data; preference data feeds
+RLHF/DPO for the next model version and sharpens prompts and
+policies for this one. At this scale the loop is the product's
+compounding advantage — every day of traffic is training signal
+competitors don't have.
 
 ## 8. Tradeoffs & alternatives
 
@@ -145,37 +239,55 @@ a frontier model never generates.
 |---|---|---|
 | Summarize long history | Full history in context | Context is a finite, costly budget |
 | Model tiering | One frontier model for all | Most turns are easy; tiering slashes cost |
-| Optional RAG + tools | Rely on parametric knowledge | Grounding cuts hallucination & staleness |
-| Layered moderation | Trust the model to self-police | Defense-in-depth; models can be jailbroken |
+| Optional RAG + tools | Rely on parametric knowledge | Grounding cuts hallucination and staleness |
+| Layered moderation | Trust the model to self-police | Defense-in-depth; any single layer can be jailbroken |
 
 ## 9. Interviewer follow-ups
 
 <Details summary="A conversation exceeds the context window. What happens?">
-Summarize older turns into a running synopsis and keep recent turns verbatim,
-plus retrieve any specifically-referenced earlier content. Naive truncation drops
-the thread; a rolling summary preserves it within the budget. Long-term facts live
-in memory and are retrieved when relevant rather than kept in-window.
+The layered strategy absorbs it: older turns collapse into a rolling
+summary, recent turns stay verbatim, and anything specifically
+referenced from deep history ("that budget from earlier") is
+retrieved back in on demand. Durable facts live in long-term memory
+rather than in-window. The failure being avoided is naive truncation,
+which the user experiences as the assistant forgetting the
+conversation's own premises mid-stream.
 </Details>
 
 <Details summary="How do you cut cost when most conversations are trivial?">
-Route by difficulty: a small/cheap model handles easy turns and only escalates
-hard ones to a frontier model, plus prompt/prefix caching for shared system
-prompts. Most traffic is easy, so tiering is the biggest cost lever — measure the
-quality delta per tier to set the routing threshold.
+Route by difficulty: a small model handles the easy majority and
+escalates hard turns to the frontier model, with prefix caching
+covering the shared system-prompt overhead on every request. The key
+operational discipline is *measuring* the routing threshold — compare
+tiers' quality deltas on real traffic and place the boundary where
+users stop noticing, rather than guessing. Tiering is the biggest
+lever because it changes which model runs at all; everything else
+optimizes a model that's already running.
 </Details>
 
 <Details summary="A user tries to jailbreak the assistant into harmful output. Defenses?">
-Layered: input moderation on the request, a system policy the user text can't
-override, output moderation on the generation, and alignment training (RLHF/DPO)
-for refusal behavior. Treat user (and retrieved) text as untrusted; no single
-layer holds, so defense-in-depth plus continuous red-teaming is the answer.
+All four layers, because each alone fails: input moderation catches
+known-pattern requests; the hardened system policy resists override
+attempts embedded in user or retrieved text; output moderation
+catches harmful generations however they were induced; and RLHF/DPO
+alignment makes the model refuse even when the wrappers miss. Then
+the ongoing part: continuous red-teaming, with successful jailbreaks
+fed back into classifiers and alignment training — it's an arms race
+against a creative population, and the defense that stands still
+loses.
 </Details>
 
 ## Key takeaways
 
-- A chat assistant is a **product/systems** problem around a given model — the
-  **context pipeline**, **safety**, and **feedback loop** are where it's won.
-- Manage long conversations with **summarization + retrieved memory**; ground with
-  **RAG/tools** to cut hallucination.
-- **Layered moderation + jailbreak defense** are mandatory, and **model tiering +
-  caching** make it affordable at scale.
+- A chat assistant is a **product/systems problem around a given
+  model** — the context pipeline, safety layers, and feedback loop
+  are where it's won, not the model choice.
+- **The context window is a budget**: recent turns verbatim, older
+  history summarized, durable facts in retrievable memory — never
+  naive truncation.
+- Safety is **layered and calibrated**: input/output moderation,
+  hardened policy, and alignment underneath, with over-refusal
+  measured as seriously as missed harm.
+- The economics run on **model tiering and caching** — the cheapest
+  token is one a frontier model never generates — and the **feedback
+  loop** compounds live traffic into the next model version.

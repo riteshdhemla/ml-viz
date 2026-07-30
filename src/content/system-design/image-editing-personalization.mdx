@@ -12,7 +12,7 @@ relatedLessons:
   - "generative-models/05-diffusion-models"
   - "fine-tuning-alignment/02-peft-lora-qlora"
   - "generative-models/03-variational-autoencoders"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design an Image Editing & Personalization System
@@ -24,27 +24,73 @@ estimatedMinutes: 18
   difficulty="advanced"
 />
 
-Beyond "generate from a prompt," a real product needs to **edit** existing images
-(inpaint a region, extend a canvas, change a style) and **personalize** to a
-specific subject ("put *my dog* in a spacesuit"). This adds **conditioning on an
-input image + mask** and **lightweight per-user fine-tuning** on top of a diffusion
-base — the interesting system-design twists over plain text-to-image.
+Text-to-image gets the headlines, but watch what users actually do
+next. They don't want *an* image — they want *this* image, changed:
+"remove the person in the background," "extend the sky upward,"
+and the request that breaks every prompt-only system — "put **my
+dog** in a spacesuit." Not a generic golden retriever. This one.
+
+Those requests define the two capabilities this case adds on top of
+the plain text-to-image system (which this case assumes as its
+foundation). **Editing** means the generation must be *conditioned
+on an existing image and a mask* — change only what was asked,
+keep everything else pixel-faithful, and blend the boundary
+invisibly. **Personalization** means teaching the model a subject it
+has never seen from a handful of user photos — and the key fork to
+name in an interview is that this is a *fine-tuning* problem, not a
+prompting one: no sequence of words can select a specific unseen dog
+out of the model's imagination. Both capabilities come with a
+distinctive systems twist — per-user training jobs, per-user weights,
+and a serving story that must not become "a model copy per user" —
+plus the sharpest consent question in the generative catalog.
+
+<Callout type="info" title="What this case assumes you already know">
+This case stacks on the text-to-image case and the fine-tuning
+course:
+
+- **Latent diffusion** — generating by iterative denoising in a
+  compressed latent space; the base model here. See the text-to-image
+  case and generative-models/05.
+- **Inpainting / outpainting** — regenerating a masked region of an
+  image so it fits its surroundings / extending the canvas beyond the
+  original borders.
+- **LoRA** — low-rank adapters: instead of updating a model's full
+  weights, train a tiny low-rank delta (megabytes) on top of the
+  frozen base; from the PEFT lesson. The economic hinge of this case.
+- **DreamBooth** — the subject-personalization recipe: fine-tune a
+  diffusion model on a few photos of a subject bound to a rare token
+  ("a photo of sks dog"), with **class-preservation regularization**
+  (training also on generic dogs) so the model doesn't forget what
+  dogs in general look like.
+- **Textual inversion** — a lighter alternative: learn only a new
+  *embedding* for the subject, leaving all model weights untouched.
+- **Overfitting** — here in a vivid form: an over-trained adapter
+  memorizes the exact training photos and can only reproduce them.
+- **CLIP/DINO similarity, FID** — automated measures of subject
+  fidelity and realism used in evaluation.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** two capabilities — (a) **editing**: inpainting/outpainting/instructed
-  edits that change only what's asked while keeping the rest coherent; (b)
-  **personalization**: learning a new subject/style from a few user images and
-  generating it in new contexts.
-- **Quality bar:** edits blend seamlessly (no seams); personalization preserves
-  **identity** without overfitting.
-- **Scope:** conditioning + personalization on a diffusion base + serving/safety.
-  Assumes the base text-to-image case as foundation.
+Two goals, each with its own quality bar. **Editing**: inpainting,
+outpainting, and instructed edits ("make the jacket red") that change
+*only* what was asked while keeping the rest coherent — the failure
+users punish hardest is a visible seam or a background that subtly
+shifted. **Personalization**: from 3–20 user photos, learn the
+subject well enough to generate it in entirely new scenes, poses, and
+styles — preserving **identity** without collapsing into copies of
+the training shots.
+
+Scope: the conditioning and personalization machinery on top of a
+diffusion base, plus its serving and safety. The base model's
+training, sampling, and general safety story live in the
+text-to-image case.
 
 <Callout type="tip" title="Interview signal">
-The two hard subproblems are **mask-conditioned generation that stays coherent**
-and **fast, cheap per-user personalization**. Naming personalization as a
-*fine-tuning* problem (not prompting) is the key fork.
+The two hard subproblems are **mask-conditioned generation that stays
+coherent** and **fast, cheap per-user personalization**. Naming
+personalization as a *fine-tuning* problem (not prompting) is the key
+fork — and LoRA as the production answer is the follow-through.
 </Callout>
 
 ## 2. Requirements & scale
@@ -54,91 +100,146 @@ and **fast, cheap per-user personalization**. Naming personalization as a
 | Edit fidelity | Change only the masked region | Mask-conditioned inpainting; latent blending |
 | Personalization | Few images, minutes to train | LoRA/textual-inversion, not full fine-tune |
 | Storage | Per-user weights | Tiny LoRA adapters, not full models |
-| Serving | Swap adapters at inference | Adapter hot-loading on shared base |
+| Serving | Swap adapters at inference | Adapter hot-loading on a shared base |
 
 <ThinkFirst question="The base model has never seen the user's dog. What are the candidate ways to teach it — and what does each cost?">
-Prompting can't do it — no words select a specific unseen subject. The options
-are: **textual inversion** (learn just an embedding — lightest, lower
-fidelity), **full fine-tuning** DreamBooth-style (best fidelity, hours of GPU
-and gigabytes per user), and the production sweet spot: a **LoRA adapter** —
-minutes to train, megabytes to store, hot-swappable onto a shared base.
+Prompting is out — words describe categories, and no description
+selects a specific unseen individual. That leaves a spectrum of
+"how much do we change the model." **Textual inversion** learns only
+a new embedding: the lightest option (kilobytes, no weight changes)
+but the lowest fidelity — often enough for a *style*, rarely for a
+*face*. **Full DreamBooth fine-tuning** changes the whole model: best
+fidelity, but hours of GPU and gigabytes of weights *per user* —
+economically dead at scale. The production sweet spot is the **LoRA
+adapter**: minutes to train, megabytes to store, and — crucially for
+serving — hot-swappable onto a shared frozen base.
 </ThinkFirst>
 
 ## 3. GenAI problem framing
 
-- **Editing:** conditional diffusion where the condition is the **input image +
-  mask** (inpainting), or an instruction (instruct-pix2pix style). The model
-  denoises only the masked latent region, conditioned on the unmasked context.
-- **Personalization:** teach the model a new concept from ~3–20 images —
-  **DreamBooth** (fine-tune) or **textual inversion** (learn an embedding), made
-  cheap with **LoRA** adapters.
+**Editing** is conditional diffusion with a richer condition: instead
+of just a text prompt, the model receives the input image, the mask,
+and the instruction. Denoising regenerates the masked latent region
+*conditioned on the untouched context around it* — which is how the
+new content comes out lit, styled, and perspective-matched to its
+surroundings rather than pasted on.
 
-*Pre-generative baseline?* Manual editing (Photoshop) — powerful but slow/skilled;
-generative editing makes it a prompt.
+**Personalization** is few-shot concept learning by fine-tuning:
+bind the subject to a rare token, adapt the model on the user's
+photos (DreamBooth recipe), and pay for the data efficiency with
+regularization against forgetting — implemented economically as a
+LoRA adapter per the ThinkFirst.
+
+The pre-generative baseline is manual Photoshop work: enormously
+capable, but gated on skill and time. Generative editing collapses
+"an hour of masking and clone-stamping" into a sentence — that's the
+product's value proposition, and also why edit *fidelity* is the bar:
+the tool competes with a careful human's output.
 
 ## 4. Data & training *(spine: data)*
 
-- **Editing data:** (image, mask, edited-image) or instruction-edit pairs; masks
-  synthesized during training.
-- **Personalization data:** the *user's* few images at request time — a privacy-
-  sensitive, per-user training set.
-- **Regularization:** class-preservation images prevent the personalized model
-  from forgetting the general concept (language drift/overfitting).
+Editing models train on (image, mask, target) triples and
+instruction-edit pairs — with the practical note that masks are
+usually *synthesized* during training (random regions, object
+segments), because "images with human-drawn masks" isn't a dataset
+that exists at scale.
+
+Personalization inverts the usual data story: the training set is the
+*user's own photos, supplied at request time*. That has two
+consequences worth naming. First, privacy: these per-user images and
+the adapters trained from them are sensitive data — scoped to the
+user, deletable on request. Second, statistics: with 3–20 images,
+overfitting isn't a risk, it's the default — which is why
+**class-preservation regularization** (training alongside generic
+images of the subject's class) is part of the recipe, keeping the
+model's general concept of "dog" intact while it learns *this* dog.
 
 ## 5. Model & generation *(spine: hypothesis-space + optimization)*
 
-- **Base:** a latent diffusion model (shared across users).
-- **Personalization via LoRA:** train a small low-rank adapter per subject —
-  minutes on one GPU, a few MB to store, hot-swappable onto the shared base.
-- **Inpainting:** condition the denoiser on the masked latent + surrounding
-  context; blend in latent space so edits are seamless.
+The architecture assembles from parts already established: one
+**shared latent-diffusion base**, frozen, serving everyone. Per-user
+**LoRA adapters** — trained in minutes on a single GPU, a few
+megabytes each — carry the personalization. **Inpainting** runs the
+conditioned denoiser on the masked region and blends in latent space,
+which is what makes edits seamless rather than pasted.
 
 <LoRAViz />
 
-LoRA is what makes per-user personalization economical: freeze the giant base,
-train a tiny low-rank update, store/serve thousands of them cheaply.
+The visualization shows why LoRA is the economic unlock: the base
+stays frozen while a tiny low-rank update captures the new subject —
+so "thousands of personalized models" is really "one model plus
+thousands of small files."
 
 <WikiLink slug="ddim-sampling" title="DDIM sampling for diffusion edits" />
 
 <ThinkFirst question="A million users each have a personalized model. How do you serve that without a million model copies?">
-Notice what personalization actually changed: a few megabytes of low-rank
-deltas. Keep **one** frozen base model resident on the GPUs and **hot-load the
-requesting user's LoRA adapter** per request; personalization training itself
-is an async job whose output is just the adapter. "A model per user" becomes
-"a weight-delta per user" — that reframing is the entire economics.
+Notice what personalization actually changed: a few megabytes of
+low-rank deltas — nothing else. So keep **one** frozen base model
+resident on the GPUs, and **hot-load the requesting user's LoRA
+adapter** onto it per request; training itself is an async job whose
+entire output is the adapter file. The reframing — "a model per user"
+becomes "a weight-delta per user" — is the whole economics of the
+feature. Without it, personalization is a demo; with it, it's a
+product.
 </ThinkFirst>
 
 ## 6. Serving & scaling
 
-Shared base model resident on GPUs; **hot-load the user's LoRA adapter** for their
-request (no per-user model copy). Personalization training runs as an async job
-(minutes) → adapter stored keyed to the user. Inpainting requests carry the image
-+ mask; batch where possible.
+The serving design implements the ThinkFirst directly. The shared
+base stays resident; adapters live in storage keyed by user and
+hot-load in milliseconds at request time. Personalization requests
+enqueue an async training job (minutes on one GPU) whose completion
+makes the adapter available — the user uploads photos, gets a
+progress indicator, and returns to a personalized model.
+Editing requests carry their image and mask as conditioning inputs
+and batch like ordinary generation traffic.
 
 <ThinkFirst question="Personalization “worked” — by what measure? Two qualities pull against each other here. Which?">
-**Identity fidelity vs. editability.** Overtrain the adapter and it memorizes
-the training photos — perfect likeness, but every generation is the same pose
-and it ignores prompts. Undertrain and it re-poses beautifully but doesn't look
-like the subject. Both axes must be evaluated explicitly; optimizing likeness
-alone quietly destroys the product's point.
+**Identity fidelity versus editability.** Overtrain the adapter and
+it memorizes the training photos: perfect likeness, but every
+generation is the same pose against the same backyard, and prompts
+bounce off it — the dog cannot be put in the spacesuit, which was the
+entire point. Undertrain and it re-poses beautifully but stops
+looking like *this* dog. These are two axes, and optimizing likeness
+alone quietly destroys the product; both must be measured, and the
+training recipe (LoRA rank, steps, regularization) tuned against the
+pair.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Edit quality:** masked-region realism + **background preservation** (did it
-  change only what was asked?), measured by human eval and reference metrics.
-- **Personalization:** **identity/subject fidelity** vs. **prompt editability**
-  (can you still pose it in new scenes?) — the core tradeoff; plus overfitting
-  checks.
-- **Automated:** CLIPScore/DINO similarity for subject fidelity; FID for realism.
+For **edits**, two measurements matching the two promises: quality of
+the regenerated region (realism, human-rated and FID-style), and —
+the one teams forget — **background preservation**: did anything
+outside the mask change? Pixel-difference checks outside the mask
+make the "change only what was asked" promise verifiable rather than
+aspirational.
+
+For **personalization**, the ThinkFirst's two axes, measured
+explicitly: **subject fidelity** via CLIP/DINO embedding similarity
+between generations and the reference photos, and **prompt
+editability** via adherence checks on a standard battery of re-posing
+prompts ("in the snow," "as a watercolor"). An adapter is evaluated
+as a point on that two-axis plane — never on likeness alone — with
+overfitting flagged when generations start reproducing training-shot
+compositions.
 
 ## 8. Safety & guardrails
 
-- **Consent & likeness:** personalization on real people is high-risk — require
-  consent, block nonconsensual/celebrity personalization, watermark outputs.
-- **Content safety:** the same input/output filters as text-to-image, plus
-  edit-specific abuse (e.g. removing watermarks, deepfakes).
-- **Data privacy:** user images and adapters are private; delete on request.
+Personalization sharpens the safety question, because its defining
+abuse is specific: **training an adapter on a real person without
+their consent** — the machinery of a deepfake, offered as a product
+feature. The gates: consent requirements for human subjects,
+face/identity checks that block celebrity and nonconsensual
+personalization, and watermarking on outputs. This is a hard
+guardrail, not a filter with a threshold.
+
+Editing adds its own abuse patterns on top of the base model's
+content-safety stack: watermark removal, evidence tampering, and
+compositing real people into fabricated scenes — screened at the
+edit-instruction and output layers. And the privacy line from
+section 4 holds throughout: user photos and adapters are private
+artifacts, deletable on request.
 
 ## 9. Tradeoffs & alternatives
 
@@ -147,36 +248,54 @@ alone quietly destroys the product's point.
 | LoRA personalization | Full DreamBooth fine-tune | Minutes vs. hours, MBs vs. GBs, hot-swappable |
 | Adapter hot-loading | Per-user model copies | One shared base serves everyone |
 | Mask-conditioned inpainting | Regenerate whole image | Preserves the untouched regions exactly |
-| Textual inversion | LoRA | Even lighter, but usually lower fidelity |
+| Textual inversion | LoRA | Even lighter, but usually lower fidelity — fine for styles, weak for faces |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Personalization either doesn't look like the subject or can't be re-posed. Tradeoff?">
-Identity fidelity vs. editability. Over-train and the adapter memorizes the exact
-training images (great likeness, can't re-pose); under-train and it loses
-identity. Tune LoRA rank/steps and add class-preservation regularization; evaluate
-both axes explicitly rather than optimizing likeness alone.
+That's the identity-vs-editability axis showing up as a support
+ticket. Over-trained: the adapter memorized the training images —
+great likeness, zero flexibility. Under-trained: flexible but
+generic. The levers: LoRA rank and training steps (capacity and
+exposure), class-preservation regularization (protects the general
+concept so prompts still work), and — the process fix — evaluating
+every adapter on both axes before it ships, so the tradeoff is chosen
+deliberately instead of discovered by the user.
 </Details>
 
 <Details summary="How do you serve millions of personalized users without a model per user?">
-One shared frozen base on the GPUs; each user is just a few-MB LoRA adapter
-hot-loaded for their request. Personalization is an async training job producing
-the adapter. This turns 'a model per user' into 'a tiny weight-delta per user' —
-the economic unlock.
+By noticing that a "personalized model" is 99.9% the same weights as
+everyone else's. One shared frozen base sits on the GPUs; each user
+is a few-megabyte LoRA adapter hot-loaded for their request;
+personalization is an async training job whose output is just that
+file. Storage scales in megabytes per user, GPU memory holds one
+model, and the marginal serving cost of personalization is an adapter
+load — that reframing is the entire feasibility argument.
 </Details>
 
 <Details summary="A user uploads photos of a celebrity to personalize. What happens?">
-Block it: consent and likeness policy gates personalization on real
-(especially public) people, backed by a face/identity check and output
-watermarking. Personalization on nonconsensual likenesses is the signature abuse
-of this feature, so it's a hard guardrail, not a soft filter.
+Blocked, as a hard guardrail: the consent-and-likeness policy gates
+personalization on real people, enforced by face/identity matching
+against public figures and consent attestation for private ones, with
+output watermarking as the downstream backstop. Nonconsensual
+likeness personalization is *the* signature abuse of this feature —
+it's deepfake tooling if unguarded — so it gets the
+never-should-happen treatment rather than a tunable threshold.
 </Details>
 
 ## Key takeaways
 
-- Image editing/personalization adds **image+mask conditioning** and **per-user
-  fine-tuning** on top of a diffusion base.
-- **LoRA adapters + hot-loading** make personalization cheap and scalable — a tiny
-  weight delta per user on a shared base.
-- The core quality tradeoff is **identity fidelity vs. editability**, and
-  **consent/likeness** is the defining safety guardrail.
+- Editing and personalization extend text-to-image with **image+mask
+  conditioning** and **per-user fine-tuning** — and personalization
+  is a fine-tuning problem by nature; no prompt selects an unseen
+  subject.
+- **LoRA + adapter hot-loading is the economic unlock**: one frozen
+  base, a megabytes-scale weight-delta per user, minutes-scale async
+  training.
+- Quality is two-dimensional twice over: edits need **masked-region
+  realism *and* background preservation**; personalization needs
+  **identity fidelity *and* editability** — each pair trades off and
+  must be measured as a pair.
+- **Consent and likeness are the defining guardrails**: unguarded,
+  this feature is deepfake machinery — real-person personalization is
+  gated hard, watermarked, and privacy-scoped.

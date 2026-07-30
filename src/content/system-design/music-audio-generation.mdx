@@ -12,7 +12,7 @@ relatedLessons:
   - "speech-audio/01-audio-representations"
   - "generative-models/05-diffusion-models"
   - "speech-audio/02-speech-recognition"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design a Music & Audio Generation System
@@ -24,26 +24,76 @@ estimatedMinutes: 18
   difficulty="advanced"
 />
 
-Text-to-music/audio generation shares the generative-AI playbook but has its own
-twists: audio is a **very long, high-sample-rate signal**, music needs **long-range
-structure** (a song has verses and choruses, not just local coherence), and
-**copyright** is uniquely fraught (styles, voices, melodies). The dominant trick is
-generating in a **compressed audio-token / latent space**, not raw waveform.
+"An upbeat indie-folk song about leaving home, female vocals, with a
+big chorus" — and ninety seconds later, a full three-minute track with
+verses, a chorus that returns, and a bridge that resolves. Audio
+generation shares the generative-AI playbook with images and text,
+but three properties push the design in its own directions, and each
+gets its own act in this case.
+
+First, **the signal is enormous**: CD-quality audio runs tens of
+thousands of samples per second, so a song is *millions* of timesteps
+— no sequence model attends over that raw, and the enabling move of
+the whole field is generating in a **compressed representation** (a
+neural codec's tokens or a latent) instead of the waveform. Second,
+**music has long-range structure**: unlike an image, where coherence
+is local, a song's quality lives in its *form* — verses that return,
+a chorus you recognize the second time, a key that resolves — and
+models that nail ten seconds routinely fall apart at three minutes.
+Third, **copyright and voice are uniquely fraught**: the training
+data is the recorded-music industry's crown jewels, and the
+modality's signature abuse — cloning a real person's voice — enables
+fraud in a way no image quite matches.
+
+<Callout type="info" title="What this case assumes you already know">
+This case builds on the speech-audio and generative-models courses:
+
+- **Audio representations** — waveforms, sample rates, and
+  spectrograms; from speech-audio/01. The key number: 44.1kHz means
+  44,100 samples per second per channel.
+- **Neural audio codecs & RVQ** — learned compressors that turn a
+  waveform into a short sequence of discrete tokens (residual vector
+  quantization stacks several codebooks for fidelity) and decode
+  tokens back to audio. The "tokenizer for sound."
+- **Autoregressive transformers over tokens** — the LLM recipe
+  applied to audio tokens (MusicGen/AudioLM-style): predict the next
+  token, where tokens now encode sound.
+- **Latent diffusion** — the alternative family: denoise in a
+  compressed audio latent, then decode; same trick as image latent
+  diffusion, pointed at sound.
+- **Hierarchical (coarse→fine) generation** — generating a coarse
+  structural sequence first, then filling in fine acoustic detail
+  conditioned on it.
+- **FAD & CLAP score** — Fréchet Audio Distance (realism of the audio
+  distribution) and CLAP (prompt–audio alignment) — the audio
+  analogues of FID and CLIPScore.
+- **MOS** — mean opinion score, the standard human rating for voice
+  naturalness.
+- **Vocoder** — the final decoder from an intermediate representation
+  to waveform.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** generate music or audio (song, sound effect, voice) from a text
-  prompt (and optionally lyrics/reference), coherent over minutes.
-- **The hard axes:** **long-range structure** (musical form) and **high temporal
-  resolution** (audio is tens of thousands of samples/second).
-- **Copyright:** generating in the style/voice of real artists is the defining
-  legal risk.
-- **Scope:** the generation pipeline (model + serving + safety).
+The goal: generate music or audio — songs, sound effects, voices —
+from a text prompt, optionally with lyrics or a reference melody,
+**coherent over minutes**. That last phrase carries the quality bar:
+a ten-second demo and a listenable three-minute song are different
+products, and the gap between them is the structure problem.
+
+The two hard axes to name up front: **temporal resolution** (the
+16-million-sample arithmetic below) and **long-range structure**
+(musical form). And the risk to name in the same breath: **copyright
+and likeness** — generating in a named artist's style or voice is the
+defining legal exposure, and it shapes data sourcing, prompt
+filtering, and output monitoring throughout. Scope: the generation
+pipeline — model, serving, safety.
 
 <Callout type="tip" title="Interview signal">
-Raw waveforms are far too long to model directly — name the **neural audio codec /
-tokenization** (compress audio into a short token sequence) as the enabling move,
-plus **long-range musical structure** as the quality challenge.
+Raw waveforms are far too long to model directly — name the **neural
+audio codec / tokenization** as the enabling move, and **long-range
+musical structure** as the quality challenge. Those two points are
+the audio-specific content of this interview.
 </Callout>
 
 ## 2. Requirements & scale
@@ -56,127 +106,196 @@ plus **long-range musical structure** as the quality challenge.
 | Copyright | No artist/voice cloning without consent | Style/voice filters, provenance |
 
 <ThinkFirst question="A 3-minute song at 44.1kHz stereo — roughly how many samples is that, and what does the number rule out?">
-About **16 million samples**. No sequence model attends over that directly —
-raw-waveform generation is off the table. The enabling move is a **neural audio
-codec**: compress audio into a short discrete-token or latent sequence
-(hundreds of tokens per second, not tens of thousands of samples), generate in
-that space, and decode back to waveform.
+180 seconds × 44,100 samples × 2 channels ≈ **16 million samples**.
+No sequence model attends over 16 million timesteps — raw-waveform
+generation is arithmetically off the table before any modeling
+discussion starts. The enabling move: a **neural audio codec**
+compresses the waveform into a short discrete-token or latent
+sequence — hundreds of tokens per second instead of tens of thousands
+of samples — the generative model works in that space, and a decoder
+reconstructs the waveform. Same shape of trick as latent diffusion
+for images: never model the raw signal.
 </ThinkFirst>
 
 ## 3. GenAI problem framing
 
-Two dominant families:
+With the codec established, two model families dominate, and they're
+both "borrow a proven recipe and point it at audio tokens":
 
-- **Tokenized-audio autoregressive:** a **neural audio codec** (e.g. residual
-  vector quantization) compresses audio into discrete tokens; a transformer
-  models the token sequence (MusicGen/AudioLM-style). Long context handles
-  structure.
-- **Latent diffusion on audio** (or mel-spectrogram): diffuse in a compressed
-  audio latent, then decode to waveform.
+- **Tokenized-audio autoregressive** (MusicGen/AudioLM-style): the
+  codec turns audio into discrete tokens; a transformer models the
+  token sequence exactly as an LLM models text. Long context windows
+  over compact tokens are what make minutes of structure reachable.
+- **Latent diffusion on audio** (or on mel-spectrograms): denoise in
+  the compressed audio latent, decode to waveform — the image
+  playbook, transposed.
 
-*Pre-generative baseline?* Sample libraries + rule-based composition — no
-open-ended text control. Generative models turn a prompt into novel audio.
+The pre-generative baseline: sample libraries and rule-based
+composition tools — professional, but with no open-ended text
+control. The step change is the same as in every generative modality:
+an arbitrary natural-language request becomes novel output.
 
 ## 4. Data & training *(spine: data)*
 
-- **Data:** licensed music/audio with text/metadata; captioning and
-  genre/instrument tagging are subsystems.
-- **Representation:** train the **audio codec** first (compress → discrete
-  tokens/latents), then the generative model over that compact space.
-- **Copyright hygiene:** licensing provenance and artist opt-outs are central, not
-  an afterthought.
+Training happens in two stages with distinct data needs. First,
+**train the codec** — the compressed representation everything else
+lives in — on broad audio. Then train the **generative model** over
+codec tokens, on music and audio *paired with text*: captions, genre
+and instrument tags, tempo and mood metadata. That pairing rarely
+exists naturally at scale, so captioning and tagging pipelines are
+real subsystems here, the way caption quality was for text-to-image.
+
+And the data decision that towers over the others in this modality:
+**licensing**. Music rights-holders are concentrated, organized, and
+litigious in a way image rights-holders are not — training-data
+provenance, licensed catalogs, and artist opt-outs are existential
+business questions, not compliance hygiene. The design should treat
+"what are we allowed to train on" as a first-class constraint that
+shapes what the model can do.
 
 <ThinkFirst question="Your model produces gorgeous 10-second clips, but 3-minute songs meander and repeat. What's missing?">
-**Long-range structure.** Local coherence (the next bar sounds right) is a
-different skill from musical form (verses return, a chorus repeats, the key
-resolves). The fix is **hierarchical generation** — model coarse structural
-tokens first, then fill in fine acoustic detail conditioned on them — plus long
-context and explicit form conditioning (lyrics, section tags).
+**Long-range structure.** Local coherence — the next bar following
+naturally from this one — is a different skill from musical *form*:
+verses that return, a chorus that repeats recognizably, a key that
+eventually resolves. A flat next-token model optimizes the former and
+drifts on the latter; nothing pulls it back to material from two
+minutes ago. The fix is **hierarchical generation** — model coarse
+structural tokens first (the song's skeleton), then fill in fine
+acoustic detail conditioned on them — plus long context and explicit
+form conditioning: lyrics with section tags, verse/chorus markers.
+Structure has to be represented to be preserved.
 </ThinkFirst>
 
 ## 5. Model & generation *(spine: hypothesis-space)*
 
-- **Codec:** RVQ-based neural codec turns waveform into a short sequence of tokens
-  (the key to tractable length).
-- **Generator:** a transformer (autoregressive over tokens) or latent diffusion,
-  conditioned on text (+ lyrics/melody); **hierarchical** coarse→fine token
-  generation captures both structure and detail.
-- **Vocoder/decoder:** tokens/latents → waveform.
+The stack, bottom to top. The **codec** — RVQ-based — is the
+foundation: waveform in, short token sequence out, and its fidelity
+caps the whole system's audio quality the way the autoencoder caps
+latent diffusion. The **generator** — autoregressive transformer or
+latent diffusion — models the token/latent sequence conditioned on
+text (plus lyrics or melody reference), generating **hierarchically**
+coarse-to-fine per the ThinkFirst: structure tokens first, acoustic
+detail second. The **decoder/vocoder** turns tokens or latents back
+into waveform.
 
 <DiffusionViz />
 
-Whether autoregressive or diffusion, the win is the same as images/video:
-**generate in a compressed representation**, then decode — never model raw signal
-directly.
+Whichever family you pick, the through-line is the one from the
+arithmetic: **generate in a compressed representation, then decode**.
+The families differ in sampling behavior and latency profile;
+they agree on never touching raw signal.
 
 ## 6. Serving & scaling
 
-Generation is a GPU job; support **streaming** by generating and decoding in
-chunks so playback can start before the full track is done. Cache the codec/
-vocoder; batch generation requests; store outputs in object storage + CDN. Voice
-synthesis (TTS) is lower-latency and can be near-real-time with a light vocoder.
+Song generation is a GPU *job* — tens of seconds to minutes — so the
+serving pattern is queue-and-notify rather than request-response.
+The experience fix is **streaming**: generate and decode in chunks so
+playback starts while the rest of the track is still being generated
+— the perceived latency is time-to-first-audio, not time-to-complete
+(the same insight as the voice-agent case, at a different timescale).
+Outputs land in object storage behind a CDN; codec and vocoder stay
+cached; generation requests batch.
+
+One contrast worth naming: **voice synthesis (TTS) is a different
+serving regime** — short utterances with a light vocoder can run
+near-real-time, which is why voice products feel interactive while
+song products feel like a render queue. Same stack, different
+operating points.
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Automated:** Fréchet Audio Distance (FAD), prompt–audio alignment (CLAP
-  score), and objective quality proxies.
-- **Human eval** dominates: musicality, structure, prompt adherence, and (for
-  voice) naturalness (MOS).
-- **Structure checks:** does a 2-minute song hold together, or drift/repeat?
+Automated metrics mirror the image world's pair: **FAD** for
+distributional realism, **CLAP score** for prompt–audio alignment —
+useful as checkpoint screens, weak as taste. More than in any other
+modality, **human evaluation dominates**: musicality and structure
+resist automation almost completely, and voice naturalness has its
+own standard (MOS). One eval this case uniquely needs: **explicit
+structure checks at full length** — does a two-minute song hold
+together, do choruses return, or does it meander? — because
+per-clip metrics computed on short windows are structurally blind to
+exactly the failure the ThinkFirst described.
 
 <ThinkFirst question="What's the abuse case unique to audio generation — the one that's worse here than in any other modality?">
-**Voice cloning.** A convincing synthetic voice enables fraud (fake calls from
-a family member or CEO), nonconsensual impersonation, and misinformation — and
-audio deepfakes are cheap to make and hard for humans to spot. That's why
-consent gates on voice reference, voice-likeness detection on outputs, and
-watermarking are hard requirements, ahead of general content filtering.
+**Voice cloning.** A convincing synthetic voice enables fraud with a
+directness no image matches: the fake distress call from a family
+member, the fake CEO authorizing a wire transfer — attacks that
+exploit trust in a *channel* (a voice on the phone) that predates any
+notion of synthetic media. Audio deepfakes are cheap to make, hard
+for humans to detect, and deployable in real time over a phone line.
+That's why consent gates on voice references, voice-likeness
+detection on outputs, and watermarking rank *ahead of* general
+content filtering in this modality's safety ordering.
 </ThinkFirst>
 
 ## 8. Safety & guardrails
 
-- **Voice cloning:** synthesizing a real person's voice without consent is the top
-  abuse — consent gates, voice-likeness detection, watermarking.
-- **Style/copyright:** filter prompts targeting specific artists; monitor for
-  melodic/verbatim regurgitation of training tracks.
-- **Provenance:** watermark generated audio (audible/inaudible + metadata).
+The guardrails follow the ThinkFirst's ordering. **Voice cloning**
+first: consent verification before any voice reference is used,
+voice-likeness detection screening outputs against known and
+protected voices, and watermarking throughout. **Style and
+copyright** second: prompt filters on requests targeting named
+artists, and output monitoring for melodic or verbatim regurgitation
+of training tracks — the audio version of the memorization problem,
+with the dedup-and-detect answer. **Provenance** underneath:
+inaudible watermarks plus metadata marking generated audio as
+generated, so downstream platforms and investigators can tell — which
+matters more here than anywhere, precisely because human ears can't.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Tokenized/latent audio | Raw waveform modeling | Waveforms are far too long to model directly |
-| Hierarchical coarse→fine | Flat single-scale generation | Captures both long structure and fine detail |
-| Streaming chunked synthesis | Generate-then-serve whole | Lets playback start quickly |
-| Licensed data + opt-outs | Scrape everything | Copyright exposure is existential here |
+| Tokenized/latent audio | Raw waveform modeling | 16M samples per song — intractable directly |
+| Hierarchical coarse→fine | Flat single-scale generation | Captures long-range form *and* fine detail |
+| Streaming chunked synthesis | Generate-then-serve whole | Playback starts in seconds, not minutes |
+| Licensed data + opt-outs | Scrape everything | Copyright exposure is existential in music |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Why not model the raw audio waveform directly?">
-A few seconds of audio is tens of thousands of samples — sequence lengths are
-intractable and local sample prediction misses musical structure. A neural codec
-compresses audio into a short token/latent sequence, so the generative model
-works over a tractable representation and a decoder reconstructs the waveform.
+Run the arithmetic: minutes of audio is millions of samples, far past
+any tractable attention span — and even if you could, sample-level
+prediction spends all its capacity on waveform minutiae while
+learning nothing about musical structure. The codec solves both at
+once: compression makes the sequence short enough to model, and
+because codec tokens encode perceptually meaningful chunks of sound,
+the generative model's capacity goes toward music rather than
+waveform bookkeeping. The decoder handles reconstruction.
 </Details>
 
 <Details summary="A 10-second clip sounds great but a 3-minute song falls apart. Why?">
-Long-range structure. Local coherence is easy; maintaining verses/choruses and
-key over minutes needs long context and hierarchical (coarse structure → fine
-detail) generation, plus conditioning that encodes song form. Evaluate structure
-explicitly, not just short-clip quality.
+Because local coherence and musical form are different skills, and a
+flat next-token model only has the first. Nothing in its objective
+rewards a chorus returning or a key resolving — so songs meander and
+repeat. The fixes: hierarchical generation (coarse structural
+skeleton first, acoustic detail conditioned on it), long context over
+compact tokens, and explicit form conditioning (section-tagged
+lyrics). And evaluate at full length — short-clip metrics literally
+cannot see this failure, which is how it ships.
 </Details>
 
 <Details summary="A user prompts 'a song in the voice of [famous artist].' What happens?">
-Blocked: prompt filters catch targeted artist/voice cloning, voice-likeness
-detection gates outputs, and provenance watermarking marks anything generated.
-Unconsented voice/style cloning is the defining copyright and likeness risk for
-audio, so it's a hard guardrail backed by licensing hygiene in training.
+Blocked at multiple layers: prompt filters catch the named-artist
+voice request; voice-likeness detection screens outputs against
+protected voices (catching what a rephrased prompt slipped through);
+and watermarking marks whatever is generated for downstream
+attribution. Unconsented voice and style cloning is the modality's
+defining legal and safety risk — treated as a hard guardrail backed by
+training-data licensing hygiene, not a tunable content preference.
 </Details>
 
 ## Key takeaways
 
-- Audio/music generation models a **compressed audio representation** (neural
-  codec tokens or latents), never raw waveform.
-- **Long-range structure** (via hierarchical generation) is the quality challenge;
-  **streaming chunked synthesis** enables fast playback.
-- **Voice cloning and style copyright** are the defining safety risks — consent
-  gates, likeness detection, and watermarking are mandatory.
+- The enabling move of all audio generation is the **neural codec**:
+  compress 16 million samples into hundreds of tokens per second,
+  generate there, decode back — never model raw signal.
+- **Long-range structure is the quality frontier**: local coherence
+  is cheap, musical form needs hierarchical coarse-to-fine
+  generation, form conditioning, and full-length evaluation.
+- **Human ears are the judge**: FAD and CLAP screen checkpoints, but
+  musicality, structure, and naturalness are human-rated — and
+  structure must be evaluated at song length, not clip length.
+- **Voice cloning is the modality's signature abuse** — consent
+  gates, likeness detection, and watermarking outrank general content
+  filtering — and **music licensing is existential**, shaping the
+  training data before any model decision is made.
