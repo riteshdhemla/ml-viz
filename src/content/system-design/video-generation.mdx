@@ -12,7 +12,7 @@ relatedLessons:
   - "generative-models/05-diffusion-models"
   - "generative-models/06-vit-and-modern-genai"
   - "gpu-programming/05-distributed-training-at-scale"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design a Text-to-Video Generation System
@@ -24,164 +24,278 @@ estimatedMinutes: 18
   difficulty="advanced"
 />
 
-Text-to-video is text-to-image with a brutal extra dimension: **time**. A video is
-dozens of frames that must be individually realistic *and* temporally coherent
-(objects persist, motion is smooth), which explodes compute, memory, and storage.
-It's the frontier generative-AI system-design problem — the answer is all about
-**taming the temporal + compute cost**.
+Suppose you already own a superb text-to-image model. Video is just
+many images — so run the model once per frame and stitch the results?
+Try it, and the failure is instructive: the golden retriever in frame
+one is a different dog in frame two, textures shimmer and crawl, the
+camera teleports. Every frame is beautiful; the *video* is unwatchable.
+
+That failed experiment contains the whole case. Video is text-to-image
+plus one brutal extra dimension — **time** — and time is not a loop
+over frames. The frames of a real video are deeply correlated
+(objects persist, motion continues, lighting evolves smoothly), so
+they must be generated **jointly**, as one coherent spacetime object.
+Doing that multiplies every cost that was already painful in image
+generation: attention over frames × patches explodes compute, training
+sits at the extreme end of distributed infrastructure, a single clip
+takes minutes of GPU, and the outputs are enormous. Text-to-video is
+the frontier generative-AI systems problem, and the design is one long
+exercise in **taming the temporal and compute cost** without giving up
+the coherence that was the point.
+
+<Callout type="info" title="What this case assumes you already know">
+This case stacks directly on the text-to-image case; read that first.
+The additional concepts:
+
+- **Latent diffusion & CFG** — denoising in a compressed latent
+  space, guided toward the text condition; the spatial foundation,
+  from the text-to-image case and generative-models/05.
+- **Diffusion transformers & patches** — treating a latent as a
+  sequence of patch tokens processed by a transformer; video extends
+  the patches across time ("spacetime patches").
+- **Attention's quadratic cost** — attention scales with the square
+  of token count; the reason full 3D (space × time) attention is
+  prohibitive and factorization is required.
+- **Temporal consistency** — the video-specific quality axis: no
+  flicker, stable object identities, physically plausible motion.
+- **Super-resolution & frame interpolation** — models that upscale
+  spatially and synthesize in-between frames; the second and third
+  stages of cascaded generation.
+- **FVD (Fréchet Video Distance)** — FID's video counterpart,
+  computed over *clips* so it can see temporal failures that
+  per-frame metrics miss.
+- **Distributed training** — data/tensor/pipeline parallelism and
+  gradient checkpointing, from the GPU course; video training is
+  among its most extreme customers.
+- **C2PA / watermarking** — provenance marking, here at its highest
+  stakes: video deepfakes.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** generate a short, coherent video clip from a text prompt (optionally an
-  image/first-frame), temporally consistent and prompt-faithful.
-- **The new hard axis:** **temporal consistency** — no flicker, stable identities,
-  physically plausible motion — on top of per-frame quality.
-- **Compute reality:** generation is minutes of GPU per clip; training is at the
-  extreme end of distributed compute.
-- **Scope:** the generation pipeline (model + serving + safety). Assumes the
-  text-to-image case as the spatial foundation.
+The goal: generate a short, coherent video clip from a text prompt —
+optionally conditioned on an image or first frame — that is
+temporally consistent and prompt-faithful.
+
+The new hard axis is **temporal consistency**, and it's worth
+spelling out what it contains: no flicker (textures stable across
+frames), persistent identities (the same dog throughout), and
+physically plausible motion (things move, they don't teleport). This
+axis is *additional to* per-frame quality, and — the interview-signal
+point — it's the harder and more distinctive of the two.
+
+The compute reality frames everything else: generation costs minutes
+of GPU per clip (so serving is asynchronous by nature), and training
+sits at the far end of distributed-systems scale (so the data and
+optimization stages are dominated by infrastructure). Scope: the
+generation pipeline — model, serving, safety — with the
+text-to-image case assumed as the spatial foundation.
 
 <Callout type="tip" title="Interview signal">
-"Video = image generation + temporal consistency, and the cost is dominated by the
-time dimension." Framing temporal coherence and compute/storage as *the* problems
-(not per-frame quality) is the differentiator.
+"Video = image generation + temporal consistency, and the cost is
+dominated by the time dimension." Framing temporal coherence and
+compute/storage as *the* problems — not per-frame quality — is the
+differentiator.
 </Callout>
 
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Temporal consistency | Smooth, flicker-free, stable identities | Spatiotemporal attention; latent video model |
+| Temporal consistency | Smooth, flicker-free, stable identities | Spatiotemporal attention; joint latent generation |
 | Compute | Minutes of GPU per clip | Latent + spacetime compression; staged generation |
-| Storage/bandwidth | Videos are huge | Aggressive latent compression; CDN |
+| Storage/bandwidth | Videos are huge | Aggressive latent compression; CDN delivery |
 | Latency | Async (not interactive) | Job queue; progress streaming |
 
 <ThinkFirst question="You already have a great text-to-image model. Why not just run it once per frame?">
-Because each frame would be an *independent* sample from the distribution — the
-dog changes breed between frames, textures flicker, the camera teleports.
-Temporal coherence requires frames to be generated **jointly**, which is why
-video models denoise a whole spacetime latent with temporal attention rather
-than looping an image model.
+Because each frame would be an **independent sample** from the image
+distribution — and independence is exactly what video cannot tolerate.
+Nothing ties frame two's dog to frame one's dog, so identity drifts;
+nothing ties adjacent textures, so everything flickers; nothing ties
+camera position, so the viewpoint jumps. Temporal coherence is a
+property of the *joint* distribution over frames, so frames must be
+generated jointly — which is why video models denoise a whole
+spacetime latent with temporal attention, rather than looping an
+image model however good it is.
 </ThinkFirst>
 
 ## 3. GenAI problem framing
 
-**Spatiotemporal latent diffusion.** Encode the video into a compressed
-**spacetime latent** (compress both spatially and temporally), then run a
-diffusion transformer with **spatial + temporal attention** so frames are
-generated jointly, not independently. Generation is diffusion over the whole clip's
-latent.
+The framing the ThinkFirst forces: **spatiotemporal latent
+diffusion**. Encode the clip into a compressed **spacetime latent** —
+compression applied along both space *and* time, since adjacent
+frames are highly redundant — then run a diffusion transformer over
+that latent with both spatial and temporal attention, so the entire
+clip denoises as one object. Generation is diffusion over the whole
+clip's latent, not over any frame.
 
-*Pre-generative baseline?* Frame-by-frame image generation — fails badly:
-independent frames flicker and drift. Joint spacetime modeling is what buys
-coherence.
+The pre-generative baseline is the failed experiment from the intro —
+frame-by-frame generation — and it's worth stating *as* the baseline
+in an interview, because explaining precisely why it fails
+(independent samples, no joint structure) is the cleanest
+demonstration that you understand what the spatiotemporal machinery
+is for.
 
 ## 4. Data & training *(spine: optimization)*
 
-- **Data:** large video–text corpora with quality/caption filtering; captioning
-  videos (often with a VLM) is itself a subsystem.
-- **Compute:** training needs **distributed training at scale** — data/tensor/
-  pipeline parallelism, gradient checkpointing, huge clusters. This is where the
-  money goes.
-- **Curation:** dedup, resolution/FPS normalization, safety filtering of training
-  video.
+The data problem: large video–text corpora, where the *text* half is
+the bottleneck — raw video rarely comes with captions describing its
+content and motion, so **captioning videos with a VLM is itself a
+subsystem**, and caption quality gates prompt adherence exactly as it
+did for images. Curation adds video-specific chores: dedup,
+resolution and frame-rate normalization, and safety filtering of the
+training corpus.
+
+The optimization problem is scale, plainly: spacetime latents make
+long sequences, models are large, and training runs on big clusters
+with the full distributed toolkit — data/tensor/pipeline parallelism,
+gradient checkpointing. In this case study, "optimization" is less
+about loss functions than about the engineering that makes the loss
+computable at all — and it is where the money goes.
 
 <WikiLink slug="ddim-sampling" title="Diffusion sampling (extended to video latents)" />
 
 <ThinkFirst question="Full attention over every spacetime patch of a 10-second clip — feasible? Where does the cost go, and what do you factor?">
-Attention is quadratic in tokens, and video multiplies tokens by the frame
-count — full 3D attention is prohibitive. Two factorizations tame it:
-**separate spatial and temporal attention** (attend within a frame, then
-across time at each location), and **staged generation** — produce a
-low-res/low-FPS clip first, then super-resolve spatially and interpolate
-temporally. Never pay full price in one pass.
+Attention is quadratic in token count, and video multiplies tokens by
+the frame count — so full 3D attention over all spacetime patches is
+prohibitive at any useful resolution. Two factorizations tame it,
+attacking different dimensions. **Factorized attention**: alternate
+spatial attention (within each frame) and temporal attention (across
+time at each spatial location) — each pass is quadratic in a much
+smaller token set. **Staged generation**: produce a low-resolution,
+low-frame-rate clip first, then super-resolve spatially and
+interpolate temporally — so the expensive joint modeling happens on a
+small problem and cheap specialist models do the upscaling. The
+principle: never pay full price in one pass.
 </ThinkFirst>
 
 ## 5. Model & generation *(spine: hypothesis-space)*
 
-- **Architecture:** a diffusion transformer over spacetime latent patches with
-  factorized spatial/temporal attention (full 3D attention is too expensive).
-- **Conditioning:** text (and optionally a first frame/image) via cross-attention;
-  CFG for adherence.
-- **Staged generation:** generate a low-res/low-FPS clip, then **super-resolve**
-  spatially and **interpolate** temporally — cheaper than generating full-res
-  directly.
+The architecture assembles the ThinkFirst's answers: a **diffusion
+transformer over spacetime latent patches** with **factorized
+spatial/temporal attention** — the design that keeps joint generation
+affordable. **Conditioning** enters via cross-attention on the text
+embedding (and optionally a first frame, which anchors both content
+and the visual identity everything else must stay consistent with),
+with CFG for adherence. And generation runs as the **staged cascade**:
+base clip at low res/FPS → spatial super-resolution → temporal
+interpolation, each stage cheaper and simpler than the one job it
+inherits.
 
 <DiffusionViz />
 
-The same denoising idea as images, but the model denoises a *spacetime* latent so
-motion and identity stay coherent across frames.
+The visualization shows the same denoising idea as images — but here
+the model denoises a *spacetime* latent, which is what keeps motion
+and identity coherent across frames: they were never generated
+separately in the first place.
 
 ## 6. Serving & scaling
 
-Inherently **async**: a request is a GPU job (minutes) on a queue with progress
-streaming, not an interactive call. Multi-GPU per clip for large models;
-autoscale GPU pools by queue depth. Outputs are large — store in object storage,
-serve via CDN, transcode to delivery formats.
+Serving is **asynchronous by physics**: a request is a multi-minute
+GPU job, so the pattern is a job queue with progress streaming (and
+partial previews), never an interactive call. Large models run
+multi-GPU per clip; pools autoscale on queue depth. Then the
+often-forgotten half: the *outputs* are heavy too — finished clips
+land in object storage, transcode to delivery formats, and serve
+through a CDN. Video is the one generative modality where storage and
+bandwidth engineering is a first-class part of the serving design
+rather than a footnote.
 
 <ThinkFirst question="Every individual frame scores beautifully on FID. Is the video good?">
-Not necessarily — per-frame metrics are blind to time. A clip can have
-photorealistic frames that flicker, drift, and morph between them. Video needs
-**temporal** metrics: FVD (distributional realism over clips, not frames),
-warp/flicker consistency, motion smoothness — and ultimately human judgment,
-because "does it look real over time" is what viewers actually perceive.
+Not necessarily — and this is the evaluation version of the intro's
+failed experiment. Per-frame metrics are computed on frames in
+isolation, so they are *structurally blind to time*: a clip whose
+frames are individually photorealistic can still flicker, drift, and
+morph between them, and per-frame FID will never know. Video needs
+**temporal metrics** — FVD (distributional realism over whole
+clips), warp/flicker consistency, motion smoothness — and ultimately
+human judgment, because "does it look real *over time*" is the thing
+viewers actually perceive and the hardest thing to automate.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Per-frame quality:** FID/aesthetic scores.
-- **Temporal metrics:** FVD (Fréchet Video Distance), warp/flicker consistency,
-  motion smoothness.
-- **Prompt adherence:** CLIP-style video–text alignment.
-- **Human eval** dominates — coherence and "does it look real over time" are what
-  people judge; collect preference data.
+The metric stack mirrors the two quality axes. **Per-frame quality**
+keeps its image-world metrics (FID, aesthetic scores) as a floor.
+**Temporal quality** gets its own instruments per the ThinkFirst:
+FVD over clips, flicker/warp consistency, motion smoothness.
+**Prompt adherence** is scored with CLIP-style video–text alignment.
+And as everywhere in generative evaluation — but most of all here —
+**human preference dominates**: temporal realism is precisely the
+perceptual judgment automated metrics approximate worst, so
+side-by-side human evaluation makes the ship calls, and collected
+preference data feeds the improvement loop.
 
 ## 8. Safety & guardrails
 
-- **Deepfakes:** likeness of real people is the top risk — block/consent-gate,
-  watermark (visible + C2PA provenance).
-- **Content safety:** input/output filtering as with images, extended to
-  temporal content.
-- **IP:** training-data provenance and memorization monitoring.
+Video inherits the image safety stack and raises its stakes, because
+**video deepfakes are the most potent synthetic-media abuse there
+is** — moving, talking footage of a real person carries an evidentiary
+weight no still image matches. The controls are layered accordingly:
+consent/likeness gating on prompts and reference images, output
+classifiers for recognizable real individuals, and mandatory
+provenance — visible marks plus C2PA metadata — on everything
+generated. Content safety filters extend from single images to
+temporal content (actions and events, not just depictions), and the
+IP posture carries over from images: training-data provenance and
+memorization monitoring.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Joint spacetime diffusion | Frame-by-frame image gen | Independent frames flicker/drift; joint gives coherence |
+| Joint spacetime diffusion | Frame-by-frame image gen | Independent frames flicker and drift; only joint generation buys coherence |
 | Spacetime latent compression | Pixel-space video | Pixels are astronomically expensive at video scale |
 | Staged (low-res → SR → interpolate) | Direct full-res generation | Far cheaper for the same output quality |
-| Factorized space/time attention | Full 3D attention | 3D attention cost is prohibitive |
+| Factorized space/time attention | Full 3D attention | Quadratic cost over frames × patches is prohibitive |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Frames look great individually but the video flickers. Why, and fix?">
-You're effectively generating frames too independently. Add/strengthen temporal
-attention so frames are denoised jointly, condition later frames on earlier latent
-state, and train with temporal-consistency objectives. Measure FVD/flicker, not
-just per-frame FID — per-frame quality can be high while temporal coherence is
-poor.
+The diagnosis: frames are being generated too independently —
+temporal coupling is too weak somewhere in the stack. The fixes
+strengthen the coupling: more/stronger temporal attention so frames
+denoise jointly, conditioning later frames on earlier latent state,
+and temporal-consistency terms in training. And fix the measurement
+too: track FVD and flicker metrics alongside per-frame FID, because
+this failure is invisible to per-frame scores — which is exactly how
+it reaches production unnoticed.
 </Details>
 
 <Details summary="Generating full-res video directly is impossibly expensive. Alternatives?">
-Stage it: generate a low-resolution, low-FPS clip in a compressed spacetime
-latent, then spatially super-resolve and temporally interpolate. Each stage is
-much cheaper than direct high-res generation, and the latent compression keeps
-tensors tractable. This cascade is standard for video and high-res image models.
+Cascade it: generate a low-resolution, low-FPS clip in the compressed
+spacetime latent — where the expensive joint spatiotemporal modeling
+happens on the smallest possible problem — then hand off to cheap
+specialists: spatial super-resolution, then temporal interpolation.
+Each stage does one job on inputs the previous stage made tractable.
+This staging is the standard recipe for video (and for very-high-res
+images) because it delivers near-direct quality at a fraction of the
+compute.
 </Details>
 
 <Details summary="How do you prevent realistic deepfakes of real people?">
-Consent/likeness gating on prompts and reference images, output classifiers for
-recognizable real individuals, and mandatory provenance watermarking (visible +
-C2PA metadata). Video deepfakes are the highest-stakes abuse here, so it's
-layered prevention plus traceability, not a single filter.
+Layered prevention plus traceability, because at these stakes no
+single mechanism is trusted alone: consent/likeness gating on prompts
+and reference images (stopping the request), output classifiers for
+recognizable real individuals (stopping the result), and mandatory
+provenance — visible marks and C2PA metadata — on everything generated
+(making whatever escapes attributable). Video is the modality where
+this matters most: moving footage of a real person is the
+highest-impact synthetic-media abuse there is.
 </Details>
 
 ## Key takeaways
 
-- Text-to-video is **spatiotemporal diffusion** — the defining challenge is
-  **temporal consistency**, not per-frame quality.
-- **Spacetime latent compression + staged generation** (low-res → super-res →
-  interpolate) tame otherwise impossible compute and storage costs.
-- Evaluate with **temporal metrics (FVD/flicker)** and human preference; **deepfake
-  prevention + provenance watermarking** are the critical guardrails.
+- Text-to-video is **spatiotemporal diffusion**: frames must be
+  generated *jointly* — the frame-by-frame shortcut fails by
+  construction, and temporal consistency, not per-frame quality, is
+  the defining challenge.
+- The costs are tamed by **never paying full price in one pass**:
+  spacetime latent compression, factorized space/time attention, and
+  staged low-res → super-resolve → interpolate generation.
+- Evaluation must be able to *see time*: **FVD and flicker metrics
+  alongside per-frame scores**, with human preference as the final
+  judge of temporal realism.
+- Serving is an **async GPU job with heavy outputs** (queues, CDN,
+  transcoding), and safety runs at maximum stakes: **deepfake
+  gating and provenance watermarking are mandatory**.
