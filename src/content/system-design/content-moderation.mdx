@@ -57,6 +57,14 @@ is policy-driven, not a one-number classifier.
 | Adversarial | Evasion (leetspeak, cropping) | Robust features + continual retraining |
 | Fairness / auditability | Explainable, appealable | Reason codes, human review, appeals |
 
+<ThinkFirst question="Human review can't scale to billions of items, and full automation is unacceptable for high-stakes calls. What's the resolution?">
+Route by **confidence**: auto-act where the model is very sure, auto-allow
+where it's very sure the other way, and spend scarce human attention only on
+the uncertain middle — ranked by severity and reach. The design question isn't
+"model or human" but *where the boundary between them sits, per policy
+category*.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 **Multi-label, multimodal classification** with per-category thresholds, feeding
@@ -66,6 +74,15 @@ the safety net — the system is designed around *where the model is unsure*.
 
 *What was breaking before?* Keyword blocklists miss context and are trivially
 evaded; pure human review can't scale to billions of items.
+
+<ThinkFirst question="Labels come from human reviewers at real cost per item. You can't label everything — where do you spend the budget?">
+On the items where a label changes the most: content the model is **uncertain**
+about, and content where the model **disagrees with humans** — that's active
+learning. Random labeling mostly buys you confident duplicates of what the
+model already knows. And because policy labels are subjective, part of the
+budget goes to labeling the *same* items twice to measure inter-annotator
+agreement.
+</ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
@@ -95,6 +112,13 @@ Tiered pipeline: (1) instant hash/keyword + light model gate at upload; (2) asyn
 deep multimodal scan; (3) **human review queue** for the uncertain band, ranked
 by severity × reach × uncertainty; (4) **appeals** route back through senior
 review. Reviewer decisions feed labels back to training.
+
+<ThinkFirst question="What's the north-star metric — and why is “amount of violating content removed” the wrong one?">
+Removal counts reward volume, not impact: taking down a million zero-view spam
+posts matters less than one viral violating video. The right target is
+**prevalence** — the fraction of *views* that land on violating content that
+slipped through — because it weights misses by the harm they actually caused.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

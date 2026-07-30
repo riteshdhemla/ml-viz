@@ -49,6 +49,13 @@ proxy-metric risk (CTR → clickbait) is the single highest-signal thing you can
 say in the first two minutes.
 </Callout>
 
+<ThinkFirst question="Billions of candidate items, a 200ms end-to-end budget. Before any modeling — what does the arithmetic alone force on the architecture?">
+Divide the budget by the scale: at 10k QPS you can afford to run an expensive
+model over a few hundred candidates per request, not billions. Something cheap
+has to shrink billions down to hundreds first — the arithmetic forces a
+**funnel** before you've picked a single model.
+</ThinkFirst>
+
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence for the design |
@@ -80,6 +87,14 @@ each stage a different ML slot:
 budget; pure popularity ignores personalization. The funnel exists to make
 personalized scoring **tractable** under the budget.
 
+<ThinkFirst question="Nobody rates their feed. Where do the training labels come from — and what's the catch?">
+Implicit feedback: impressions, clicks, saves, dwell, hides. Abundant but
+biased — users can only engage with what the *old* model chose to show them, so
+naive training just relearns yesterday's policy. You have to correct for the
+logging policy (propensity weighting, a randomized-exposure slice) or the loop
+feeds on itself.
+</ThinkFirst>
+
 ## 4. Data & features *(spine: data)*
 
 - **Labels:** implicit feedback — impressions, clicks, saves, long dwell,
@@ -98,6 +113,15 @@ Logged feedback is biased by what the *old* model showed. Correct for it —
 inverse-propensity weighting, or reserving a small randomized-exposure slice —
 or the model just relearns its own past behavior.
 </Callout>
+
+<ThinkFirst question="Retrieval has ~40ms to find 1000 relevant items among billions. What shape must the model take for that to even be possible?">
+User and item can't interact *inside* the model at query time — that would mean
+scoring billions of pairs per request. Encode them **separately**, so item
+embeddings are precomputed and indexed offline, and query-time work collapses
+to one user embedding plus an approximate nearest-neighbor lookup. That
+constraint is exactly why the two-tower architecture exists — and why
+cross-attention retrieval is off the table.
+</ThinkFirst>
 
 ## 5. Model *(spine: hypothesis space + objective + optimization)*
 
@@ -140,6 +164,13 @@ in a nightly + streaming hybrid; degrade gracefully to a popularity feed if the
 ranker times out.
 
 <WikiLink slug="vector-databases" title="Vector databases — serving the ANN index" />
+
+<ThinkFirst question="Your new ranker lifts offline NDCG by 3%. Do you ship it?">
+Not yet. Offline gains are computed on logged data the *old* model produced —
+position bias, training-serving skew, and proxy-metric mismatch can each fake a
+win. Ship behind an **A/B test** on the real objective (long-term engagement)
+with guardrail metrics, and let that — not NDCG — be the judge.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

@@ -57,6 +57,14 @@ problem, not a modeling one.
 | Safety | Block harmful content/misuse | Input/output moderation, jailbreak defense |
 | Cost | Frontier models are expensive | Route easy turns to smaller models; cache |
 
+<ThinkFirst question="A conversation reaches turn 200; the context window fits 20. What's your strategy — and why is plain truncation wrong?">
+Truncation silently drops the thread — the user's name, the constraint from
+turn 3, the decision from turn 50. The working pattern is layered: keep
+**recent turns verbatim**, roll older turns into a **running summary**, and
+move durable facts into **retrievable memory** pulled in only when relevant.
+The context window is a budget to allocate, not a buffer to overflow.
+</ThinkFirst>
+
 ## 3. Context & memory *(spine: context)*
 
 The heart of the product is **what fills the prompt**:
@@ -82,6 +90,14 @@ through act→observe like an agent.
 Sampling parameters shape the assistant's "voice" — low temperature for factual
 tasks, higher for brainstorming; the product often adapts them per intent.
 
+<ThinkFirst question="Outputs are open-ended prose — there's no accuracy number. How do you decide a new model version is actually better?">
+**Preference win-rate**: sample real prompts, generate with old and new, and
+have humans (and a calibrated LLM judge) pick blind winners. Add targeted
+checks the win-rate hides — groundedness when retrieval is used, refusal
+correctness in both directions — and watch live signals (thumbs, regeneration
+rate) after rollout. No single number; a panel of them.
+</ThinkFirst>
+
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Quality:** helpfulness/correctness via **human preference** and **LLM-as-a-
@@ -104,6 +120,14 @@ tasks, higher for brainstorming; the product often adapts them per intent.
   ones — measured, not vibes.
 
 <WikiLink slug="prompt-injection-attacks-and-defenses" title="Jailbreak & injection defenses" />
+
+<ThinkFirst question="Frontier-model inference on every turn for 100M users is ruinous. Where does most of the cost saving come from?">
+From admitting most turns are easy: **route** them to a small, cheap model and
+escalate only the hard ones — plus **prefix caching** for the shared system
+prompt and response caching for repeated queries. Model tiering typically
+saves more than any inference optimization, because the cheapest token is one
+a frontier model never generates.
+</ThinkFirst>
 
 ## 7. Operations *(spine: operations)*
 

@@ -55,6 +55,14 @@ different mining strategies. Pin this before choosing a loss.
 | Robustness | Real-world photos (lighting, angle, clutter) | Heavy augmentation; detect-then-crop |
 | Freshness | New products searchable in minutes | Incremental embedding + index updates |
 
+<ThinkFirst question="There's no text query — the photo is the query. What does the whole system reduce to, and what single artifact caps its quality?">
+It reduces to **learning a distance**: map every image to a vector such that
+"similar" means "nearby," then nearest-neighbor search does the rest. That
+makes the encoder the whole game — retrieval quality is bounded by embedding
+quality, and no amount of index engineering can recover similarity the
+embedding failed to encode.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 **Metric / representation learning**: train an encoder so that similar images map
@@ -76,6 +84,14 @@ time is computationally impossible at billions of items.
 - **Multimodal:** vision-language encoders let text and image share a space
   (search by photo, refine by words).
 
+<ThinkFirst question="For contrastive training, which examples matter more — the positives or the negatives?">
+The negatives — specifically the **hard** ones. Random negatives (a shoe vs. a
+sofa) are separated after one epoch and teach nothing; the model's final
+quality comes from learning to push apart items that are visually close but
+wrong (the same chair in a different style). Hard-negative mining is where the
+metric actually gets learned.
+</ThinkFirst>
+
 <WikiLink slug="vector-databases" title="Vector databases — storing & serving embeddings" />
 
 ## 5. Model *(spine: hypothesis space + objective)*
@@ -92,6 +108,13 @@ time is computationally impossible at billions of items.
 
 A shared image–text embedding space (CLIP-style) is what lets a photo query and a
 catalog image land near each other — and enables "find this, but in blue."
+
+<ThinkFirst question="A billion 512-dimensional float32 embeddings — roughly how much memory is that, and what does the number force?">
+512 × 4 bytes × 10⁹ ≈ **2 TB** — too much to hold in RAM on a serving node,
+before you've even built an index. That's why billion-scale ANN pairs a graph
+or inverted-list index with **product quantization**, compressing each vector
+~30–60× at a small recall cost, with an exact re-rank on the shortlist.
+</ThinkFirst>
 
 ## 6. Serving & scaling
 

@@ -56,6 +56,15 @@ topology by parallelism or genuinely distinct roles.
 | Coherence | Aggregated output is consistent | Aggregation + conflict resolution |
 | Cost/latency | Bounded despite many agents | Budgets per agent; avoid chatter loops |
 
+<ThinkFirst question="You've decided the task genuinely needs multiple agents. What are the candidate ways to wire them together — and what property of the task picks between them?">
+Three basic topologies: **orchestrator–worker** (a planner delegates and
+aggregates — fits parallelizable, decomposable work), a **sequential pipeline**
+(stages hand off — fits inherently linear work), and **generator–critic**
+(iterate for quality — fits output where correctness is hard to get in one
+pass). The task's structure — parallel, linear, or quality-bound — picks the
+wiring; picking a topology for its novelty is how complexity spirals.
+</ThinkFirst>
+
 ## 3. Orchestration topology *(spine: orchestration)*
 
 The core design decision is the **topology**:
@@ -75,6 +84,14 @@ The orchestrator: plans → fans out subtasks (parallel where independent) → e
 worker runs its own agent loop with a scoped context and tools → orchestrator
 **aggregates, resolves conflicts, and verifies** the combined result → replans if
 gaps remain.
+
+<ThinkFirst question="Should every worker agent see the full task context and every other worker's output?">
+No — shared-everything multiplies cost, dilutes attention, and lets one agent's
+mistake contaminate the rest. Give each worker a **scoped context** (just its
+subtask and inputs), coordinate through a **shared artifact store** rather than
+chatty messages, and define **structured interface contracts** so the
+orchestrator aggregates typed results instead of parsing prose.
+</ThinkFirst>
 
 ## 4. Context isolation *(spine: context)*
 
@@ -98,6 +115,14 @@ gaps remain.
 
 A generator–critic setup can improve quality, but beware groupthink and endless
 agreement — independent verification beats agents rubber-stamping each other.
+
+<ThinkFirst question="What are the two signature failure modes unique to multi-agent systems — the ones a single agent can't have?">
+**Error propagation** — one worker's hallucination flows through aggregation
+into the final output, laundered by the agents downstream — and **runaway
+chatter** — unbounded inter-agent messaging that burns budget without
+converging. The countermeasures are structural: validate outputs at the
+aggregation boundary, and cap inter-agent turns and total spend.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

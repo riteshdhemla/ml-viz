@@ -56,6 +56,14 @@ time dimension." Framing temporal coherence and compute/storage as *the* problem
 | Storage/bandwidth | Videos are huge | Aggressive latent compression; CDN |
 | Latency | Async (not interactive) | Job queue; progress streaming |
 
+<ThinkFirst question="You already have a great text-to-image model. Why not just run it once per frame?">
+Because each frame would be an *independent* sample from the distribution — the
+dog changes breed between frames, textures flicker, the camera teleports.
+Temporal coherence requires frames to be generated **jointly**, which is why
+video models denoise a whole spacetime latent with temporal attention rather
+than looping an image model.
+</ThinkFirst>
+
 ## 3. GenAI problem framing
 
 **Spatiotemporal latent diffusion.** Encode the video into a compressed
@@ -80,6 +88,15 @@ coherence.
 
 <WikiLink slug="ddim-sampling" title="Diffusion sampling (extended to video latents)" />
 
+<ThinkFirst question="Full attention over every spacetime patch of a 10-second clip — feasible? Where does the cost go, and what do you factor?">
+Attention is quadratic in tokens, and video multiplies tokens by the frame
+count — full 3D attention is prohibitive. Two factorizations tame it:
+**separate spatial and temporal attention** (attend within a frame, then
+across time at each location), and **staged generation** — produce a
+low-res/low-FPS clip first, then super-resolve spatially and interpolate
+temporally. Never pay full price in one pass.
+</ThinkFirst>
+
 ## 5. Model & generation *(spine: hypothesis-space)*
 
 - **Architecture:** a diffusion transformer over spacetime latent patches with
@@ -101,6 +118,14 @@ Inherently **async**: a request is a GPU job (minutes) on a queue with progress
 streaming, not an interactive call. Multi-GPU per clip for large models;
 autoscale GPU pools by queue depth. Outputs are large — store in object storage,
 serve via CDN, transcode to delivery formats.
+
+<ThinkFirst question="Every individual frame scores beautifully on FID. Is the video good?">
+Not necessarily — per-frame metrics are blind to time. A clip can have
+photorealistic frames that flicker, drift, and morph between them. Video needs
+**temporal** metrics: FVD (distributional realism over clips, not frames),
+warp/flicker consistency, motion smoothness — and ultimately human judgment,
+because "does it look real over time" is what viewers actually perceive.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

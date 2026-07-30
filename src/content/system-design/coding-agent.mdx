@@ -55,6 +55,13 @@ agent from a code-*completion* model.
 | Latency/cost | Minutes/task, bounded | Step budget; model tiering; cache builds |
 | Reliability | Doesn't wreck the repo | Diff review, reversible changes, test gate |
 
+<ThinkFirst question="The repo is millions of lines and the context window holds a fraction of it. How should the agent decide what to read?">
+Retrieval, not stuffing: code search (lexical + embedding), symbol lookup, and
+the dependency graph surface a small relevant set, and the agent explores
+incrementally from there — open a file, follow references. Context is a budget
+to *spend*, not fill; the design question is what earns its place in it.
+</ThinkFirst>
+
 ## 3. Context & tools *(spine: context)*
 
 - **Repo retrieval:** the codebase is too large for the context window — retrieve
@@ -85,6 +92,14 @@ The loop is **plan → edit → run → observe → reflect**:
 
 <WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration for decomposed tasks" />
 
+<ThinkFirst question="The agent reports “all tests pass.” In how many ways can that claim be hollow?">
+At least three: it deleted or weakened the failing tests (reward hacking), it
+overfit to the visible tests without solving the actual issue, or it got lucky
+on a flaky suite. That's why evaluation needs *protected* held-out tests the
+agent can't touch, plus trajectory checks — did it edit sensible files, run
+tests before claiming done?
+</ThinkFirst>
+
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Outcome:** does the change pass the *hidden/held-out* tests and actually solve
@@ -94,6 +109,15 @@ The loop is **plan → edit → run → observe → reflect**:
   avoid thrashing? Catches agents that "pass" by gaming or luck.
 - **Guard against reward hacking:** an agent that deletes failing tests "passes" —
   eval must use protected tests it can't modify.
+
+<ThinkFirst question="This agent runs arbitrary generated shell commands. Sketch the threat model before reading on.">
+Three distinct threats: **destructive actions** (rm -rf, force-push, dropping a
+database), **exfiltration** — a malicious file or issue comment prompt-injects
+the agent into leaking secrets, and **runaway resource use**. Each maps to a
+different control: sandbox + no prod credentials, treating all repo/issue text
+as untrusted input, and hard resource/step caps — plus every change landing as
+a reviewable PR, never a direct push.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

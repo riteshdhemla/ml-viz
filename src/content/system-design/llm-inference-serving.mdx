@@ -54,6 +54,14 @@ and why throughput and latency trade off — the core of the whole answer.
 | Concurrency | Thousands of streams | Async scheduler; token streaming |
 | Cost | GPUs dominate | Quantization, multi-tenancy, autoscaling |
 
+<ThinkFirst question="You batch 32 requests together for throughput. One generates 2,000 tokens; the rest finish in 100. What happens to the GPU — and what's the fix?">
+With naive static batching, the 31 finished slots sit idle while the long
+request grinds on — the batch runs at the speed of its slowest member.
+The fix is scheduling at the **token level**: every decoding step, finished
+sequences leave the batch and queued requests join. That's continuous
+batching, and it's the single biggest throughput win in LLM serving.
+</ThinkFirst>
+
 ## 3. The core techniques
 
 **Continuous (in-flight) batching.** Naive static batching stalls: fast requests
@@ -86,6 +94,14 @@ streams tokens back. Large models are **sharded** across GPUs (tensor/pipeline
 parallelism). A queue with **priority tiers** protects interactive traffic; an
 autoscaler adds GPU replicas by queue depth.
 
+<ThinkFirst question="Every request to your API starts with the same 2,000-token system prompt. What's the free win?">
+**Prefix caching**: the KV cache for that shared prefix is identical across
+requests, so compute it once and let every request reuse the pages. Prefill
+cost for the shared portion drops to ~zero, cutting time-to-first-token and
+freeing compute — one of the rare optimizations with no quality tradeoff at
+all.
+</ThinkFirst>
+
 ## 5. Optimizations & tradeoffs
 
 - **Quantization** (INT8/FP8/4-bit weights) shrinks memory and boosts throughput
@@ -96,6 +112,14 @@ autoscaler adds GPU replicas by queue depth.
 - **Disaggregated prefill/decode** on separate GPU pools when profiles diverge.
 
 <WikiLink slug="paged-attention" title="Memory management is the throughput ceiling" />
+
+<ThinkFirst question="Bigger batches always raise tokens/sec/GPU. So why not run the biggest batch that fits — and what metric captures the real objective?">
+Because throughput and tail latency are a **frontier**: a huge batch means new
+requests wait behind long prefills and every stream's inter-token latency
+degrades. Raw tokens/sec can go up while more requests *miss their SLO*. The
+honest metric is **goodput** — requests served within the latency SLO — and the
+batch size is chosen as an operating point on the frontier, not maximized.
+</ThinkFirst>
 
 ## 6. Evaluation & SLOs
 

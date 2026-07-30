@@ -7,7 +7,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Brilliant.org-inspired palette
+        // ML Viz core palette
         brand: {
           50: "#eef2ff",
           100: "#e0e7ff",

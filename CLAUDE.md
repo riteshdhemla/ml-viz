@@ -1,8 +1,10 @@
 # ML Viz — Claude Code Context
 
-**Purpose:** Interactive ML education website inspired by Brilliant.org.
-Every lesson teaches a concept visually, followed by an exercise.
-Each lesson also links to a Jupyter/Colab notebook with runnable Python code.
+**Purpose:** ML Viz — an interactive, visual-first ML education site with its
+own identity: every concept is taught by an interactive visualization, checked
+by an exercise, and paired with a runnable Jupyter/Colab notebook. Two project
+loops (the ML loop and the agentic loop) thread the entire curriculum, and the
+system-design section teaches Socratically — ask first, reveal second.
 
 ---
 
@@ -13,8 +15,8 @@ Each lesson also links to a Jupyter/Colab notebook with runnable Python code.
 | Framework | Next.js 15 (App Router) | `src/app/` directory |
 | Language | TypeScript strict mode | All files `.ts` / `.tsx` |
 | Styling | Tailwind CSS v4 | Dark-first, design tokens in `tailwind.config.ts` |
-| Animations | Framer Motion | Transitions, entrance animations |
-| Visualizations | D3.js | All SVG-based ML diagrams |
+| Animations | CSS transitions + `useAnimationLoop` | From `viz-kit.tsx`; no animation library |
+| Visualizations | Pure-SVG React components | No D3 — see `viz-kit.tsx` primitives |
 | Content | MDX via `next-mdx-remote` | Lessons in `src/content/courses/` |
 | State | Zustand + `persist` | Progress in `src/lib/progress.ts` |
 | Math | KaTeX | Rendered in MDX via rehype-katex |
@@ -40,10 +42,13 @@ src/
 │   ├── mdx/                    # mdxComponents.tsx (registry), Callout
 │   └── visualizations/         # One folder per viz (see below)
 │
-├── content/courses/            # MDX files — one folder per course
-│   └── [course-slug]/
-│       ├── index.mdx           # Course metadata (frontmatter only)
-│       └── NN-title.mdx        # Lessons (NN = 2-digit order number)
+├── content/
+│   ├── courses/                # MDX files — one folder per course
+│   │   └── [course-slug]/
+│   │       ├── index.mdx       # Course metadata (frontmatter only)
+│   │       └── NN-title.mdx    # Lessons (NN = 2-digit order number)
+│   ├── wiki/                   # Concept-wiki deep dives — [slug].mdx
+│   └── system-design/          # System-design case studies — [slug].mdx
 │
 ├── lib/
 │   ├── utils.ts                # cn(), clamp(), lerp(), range(), getNotebookUrl()
@@ -306,6 +311,28 @@ sentence summary and link out with a styled card.
 6. When extracting a section from a lesson, reduce the lesson's
    `estimatedMinutes` and recompute the course `estimatedHours`
 
+### Adding a system-design case study
+
+Interview-style walkthroughs live at `/system-design/[slug]`, grouped into three
+tracks: **ML System Design** (`spine: ml`), **Agentic System Design**
+(`spine: agentic`), and **Generative AI System Design** (`track: genai`, usually
+still `spine: ml`). Routing, search, sitemap, `SpineNav`, and the related-lesson
+footer are wired automatically from `src/content/system-design/{slug}.mdx`.
+
+1. Follow **`prompts/new-system-design-case.md`** — it has the frontmatter
+   schema and the fixed section skeleton per track.
+2. **Write Socratically.** Every case threads 3+ `<ThinkFirst question="…">`
+   blocks (registered in `mdxComponents.tsx`) at its key decision points —
+   the question stays visible, the model answer is collapsed until the reader
+   commits. Place each at the end of the section *before* the one that answers
+   it. Existing cases are the reference for tone and placement.
+3. Components: `<SystemDesignMeta>` header card after the H1; `<Details>` for
+   interviewer follow-ups; `<WikiLink>`/viz components as in lessons (plain
+   string props only — `blockJS: true`).
+4. Integrity rules enforced by `src/lib/__tests__/system-design-integrity.test.ts`:
+   valid resolved track, `spineStages` (1–3) require a declared spine, every
+   `relatedLessons` entry and `<WikiLink>` must resolve. Notebooks are optional.
+
 ### The spine & the concept graph
 
 Two orthogonal structures thread the whole curriculum. Both are **generated from
@@ -386,7 +413,7 @@ re-authoring; just keep those links accurate.
 
 ---
 
-## Design System (Brilliant-inspired)
+## Design System
 
 ### Color tokens (Tailwind custom)
 
@@ -566,6 +593,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 - **New lesson?** Copy `prompts/new-lesson.md` into chat
 - **New exercise type?** Copy `prompts/new-exercise-type.md` into chat
 - **New course?** Copy `prompts/new-course.md` into chat
+- **New system-design case?** Copy `prompts/new-system-design-case.md` into chat
 
 The `prompts/` directory contains ready-made task descriptions for each common operation.
 Paste them directly into Claude Code to generate new content following established patterns.

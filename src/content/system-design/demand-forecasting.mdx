@@ -57,6 +57,14 @@ this in production, not just fit an ARIMA to one series.
 | Output | Quantiles / full distribution | Quantile loss or probabilistic models |
 | Events | Holidays, promos, weather | Event features / covariates |
 
+<ThinkFirst question="Millions of item × store series. Would you fit one model per series? What breaks — and what's the alternative?">
+Per-series models break three ways: the fitting itself doesn't scale, sparse
+and new items have too little history to fit anything, and independent
+forecasts won't sum coherently across the hierarchy. The modern answer is one
+**global** model trained across all series — sharing statistical strength, so a
+new SKU borrows from similar ones — plus a reconciliation step for coherence.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 **Probabilistic, multi-horizon, hierarchical time-series forecasting.** The modern
@@ -67,6 +75,13 @@ strength, handling cold-start items) rather than a local model per series, plus 
 *What was breaking before?* One ARIMA per series doesn't scale to millions, can't
 borrow strength for sparse/new items, and produces incoherent totals; simple
 moving averages ignore promotions, seasonality, and events.
+
+<ThinkFirst question="Your training target is historical sales. When is “sales” not “demand” — and what does the model learn if you ignore the difference?">
+Whenever you **stocked out**: sales flatline at inventory, not at what
+customers wanted. Train on raw sales and the model learns suppressed demand as
+true demand, forecasts low, orders less — and manufactures the next stockout.
+Censored periods must be masked or demand-corrected before training.
+</ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
@@ -100,6 +115,14 @@ Mostly **batch**: retrain and generate forecasts on a schedule (nightly/weekly),
 write quantiles to a store the inventory optimizer reads. Real-time isn't the
 constraint — *scale* (millions of series) and *coherence* are. Backfill and
 recompute when big covariates (a promo calendar) change.
+
+<ThinkFirst question="How would you construct the train/test split — and why does the split you'd use for tabular ML overstate accuracy here?">
+A random split leaks the future: the model trains on observations *after* the
+ones it's tested on, so seasonality and trends are effectively given away.
+Time series demands **walk-forward** (rolling-origin) backtesting — train up to
+time T, forecast beyond it, roll forward, repeat — and probabilistic outputs
+need pinball loss and coverage checks, not just MAPE.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

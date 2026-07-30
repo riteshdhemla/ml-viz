@@ -66,6 +66,14 @@ suffix (after). The product decides *when* to trigger, *how much* to generate, a
 — great for single symbols, useless for multi-line intent. Generative completion
 writes whole logical spans.
 
+<ThinkFirst question="You'll train on public code from the internet. What's the legal landmine — and at which layers do you defuse it?">
+**License contamination**: the model can memorize and regurgitate copyleft
+(GPL) code verbatim into a customer's proprietary codebase. Defuse at three
+layers: filter and dedup training data by license, detect and suppress
+verbatim matches at generation time, and offer users a "block matching public
+code" mode. One layer is never enough — memorization survives filtering.
+</ThinkFirst>
+
 ## 4. Data & training *(spine: data)*
 
 - **Data:** large permissively-licensed code corpora; **license filtering** and
@@ -90,6 +98,14 @@ writes whole logical spans.
 Decoding strategy matters: greedy/low-temp for precise completions, with early
 stopping so the suggestion is a tidy span, not a runaway block.
 
+<ThinkFirst question="The model would run on nearly every keystroke of millions of developers. What keeps that from being absurdly wasteful?">
+Mostly *not running it*: **debounce** until typing pauses, **cancel** in-flight
+requests the next keystroke supersedes, and **cache** completions for repeated
+contexts. Then make the runs that survive cheap — a small model, KV-cache
+reuse, speculative decoding. The generations you never start are the biggest
+saving.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 Sub-300ms means: a small model on optimized inference (continuous batching, KV
@@ -98,6 +114,14 @@ cache), **debouncing** keystrokes, **cancellation** of superseded requests,
 are generated speculatively and discarded if the user types on.
 
 <WikiLink slug="speculative-decoding" title="Speculative decoding for low-latency completion" />
+
+<ThinkFirst question="What's the north-star metric for a completion product — and how can it mislead you?">
+**Acceptance rate** — but it's gameable: a system that spams short, trivial
+completions gets accepted often while feeling like noise. Pair it with
+**retention** (does accepted code survive the next few minutes of editing?)
+and suggestion frequency. A quieter system with higher retention usually beats
+a chattier one with higher raw acceptance.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

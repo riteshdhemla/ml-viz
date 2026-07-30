@@ -74,6 +74,14 @@ sampling time.
 — GANs are fast but unstable and mode-collapse-prone; diffusion won on quality and
 controllability.
 
+<ThinkFirst question="For a generative model, what does the training data determine beyond output quality?">
+Everything the model *can* and *can't* be made to do. Curation — dedup,
+aesthetic filtering, NSFW/CSAM removal, caption quality — is simultaneously the
+quality lever, the first safety layer (a model can't easily generate what it
+never learned), and the legal exposure (training-data provenance and IP). For
+generative systems, dataset curation isn't preprocessing; it's product design.
+</ThinkFirst>
+
 ## 4. Data & training *(spine: data)*
 
 - **Data:** large image–text pair datasets (LAION-style). **Curation is the
@@ -100,6 +108,14 @@ controllability.
 Diffusion learns to reverse a gradual noising process — generation is running that
 reverse chain from pure noise, guided by the text embedding.
 
+<ThinkFirst question="One image costs ~30–50 denoising steps, each a full forward pass on a GPU. Enumerate the cost levers before reading on.">
+Attack each factor of the product: **fewer steps** (distilled/consistency
+samplers get to 1–4 steps), **cheaper steps** (denoise in a compressed latent
+space, quantize the network), and **better GPU packing** (batch concurrent
+requests, autoscale by queue depth). Caching identical prompts is the bonus
+lever product teams forget.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 The crux. Per request: encode prompt → run *N* denoising steps on GPU → decode
@@ -109,6 +125,14 @@ latent → safety-check → return. Optimize by:
   tensors), **quantization**, and **batching** requests to saturate GPUs.
 - **Autoscaling** GPU pools by queue depth; a job queue with priority tiers.
 - **Caching** for identical/similar prompts and reusable seeds.
+
+<ThinkFirst question="FID improved on the new checkpoint. Ship it? What do FID and CLIPScore each actually measure — and what do both miss?">
+FID measures **distributional realism** (do generated images statistically
+resemble real ones); CLIPScore measures **prompt adherence**. Neither measures
+what users buy: aesthetic taste. Both can improve while humans prefer the old
+model — so automated metrics screen checkpoints, and **human preference A/B**
+makes the ship call.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

@@ -54,6 +54,14 @@ is the defining data problem of search ranking.
 | Robustness | Typos, synonyms, multilingual | Query understanding + semantic retrieval |
 | Freshness | New/updated items searchable in minutes | Incremental indexing |
 
+<ThinkFirst question="You already have BM25 over an inverted index — a classic search engine. What can't it do, and where exactly does ML enter?">
+Lexical match can't bridge vocabulary ("beach house" vs "oceanfront villa"),
+can't personalize, and doesn't know that relevance ≠ conversion. ML enters in
+three slots: query understanding, a *semantic* retrieval channel alongside
+BM25, and a learned ranker on top — not as a replacement for the index but as
+stages around it.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 Search is a **pipeline of ML slots**:
@@ -68,6 +76,14 @@ Search is a **pipeline of ML slots**:
 *What was breaking before?* Pure lexical match (BM25) misses semantics ("beach
 house" vs "oceanfront villa") and can't personalize; a single ranker over the
 whole catalog blows the latency budget. The funnel fixes both.
+
+<ThinkFirst question="You're building the ranker's training set. Clicked items are the positives — what should the negatives be?">
+Not random catalog items: separating "beach house" from a lawnmower is too easy
+and teaches the model nothing. Use **hard negatives** — items shown in the same
+session that the user skipped — so the model learns to resolve close calls. And
+remember the positives are biased by position: the user clicked partly because
+you ranked it first.
+</ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
@@ -107,6 +123,14 @@ Cache popular-query results; precompute item embeddings; degrade to BM25-only if
 the ranker times out.
 
 <WikiLink slug="vector-databases" title="Vector databases — serving the ANN index" />
+
+<ThinkFirst question="You have two candidate rankers and limited live traffic. How do you find the better one without burning weeks of A/B tests?">
+**Interleaving**: blend both rankers' results into one list and see whose items
+get clicked — far more statistically sensitive than a traffic-split A/B, so it
+works as a cheap screen. Offline NDCG on de-biased labels filters first;
+interleaving picks the promising challenger; the full A/B on bookings makes the
+final call.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

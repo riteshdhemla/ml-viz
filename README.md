@@ -1,15 +1,31 @@
 # ML Viz
 
-> Interactive machine learning education, inspired by Brilliant.org.
+> Learn machine learning by seeing it, questioning it, and building it.
 
-See every weight, gradient, and decision boundary come alive.
-Concepts are taught visually, followed by exercises that build real intuition.
+See every weight, gradient, and decision boundary come alive. Every concept is
+taught three ways: an **interactive visualization** you can poke at, a
+**runnable notebook** where you build it from scratch, and **exercises** that
+check the intuition stuck. Two project loops — the ML loop and the agentic
+loop — thread the whole curriculum, so every technique answers the same
+question: *which slot does this fill, and what was breaking without it?*
+
+What's inside:
+
+- **30+ courses** from linear algebra to GPU programming, LLM engineering, and
+  agent design — each lesson paired with an "Open in Colab" notebook
+- **Interactive visualizations** (80+ pure-SVG components) for the ideas that
+  only click when you can drag a slider
+- **Concept wiki** of deep-dive reference pages with worked traces
+- **System-design case studies** — Socratic, interview-style walkthroughs of
+  real ML, agentic, and generative-AI systems that ask you to commit to an
+  answer before revealing one
+- **Concept map & spine navigation** generated from content metadata, plus
+  local progress tracking and ⌘K search
 
 ## Stack
 
 - **Next.js 15** (App Router) + **TypeScript**
-- **D3.js** for ML visualizations
-- **Framer Motion** for animations
+- **Pure-SVG React components** for ML visualizations (shared primitives in `viz-kit.tsx`)
 - **MDX** for lesson content with embedded interactive components
 - **Tailwind CSS v4** with dark-first design system
 - **KaTeX** for math rendering
@@ -83,6 +99,7 @@ The `prompts/` directory has ready-made prompts for Claude Code:
 | Add a new lesson | `prompts/new-lesson.md` |
 | Add a new course | `prompts/new-course.md` |
 | Add a new exercise type | `prompts/new-exercise-type.md` |
+| Add a system-design case study | `prompts/new-system-design-case.md` |
 
 Paste any prompt into Claude Code and fill in the brackets.
 
@@ -92,11 +109,14 @@ Paste any prompt into Claude Code and fill in the brackets.
 src/
 ├── app/              # Next.js pages
 ├── components/
-│   ├── visualizations/  # D3.js ML diagrams
+│   ├── visualizations/  # Pure-SVG ML diagrams
 │   ├── exercises/       # Interactive exercises
 │   ├── lessons/         # Course/lesson UI
 │   └── mdx/             # MDX component registry
-├── content/courses/  # MDX lesson files
+├── content/
+│   ├── courses/      # MDX lesson files
+│   ├── wiki/         # Concept-wiki deep dives
+│   └── system-design/# Socratic system-design case studies
 ├── lib/              # Utilities, content loader, progress store
 └── types/            # TypeScript types
 

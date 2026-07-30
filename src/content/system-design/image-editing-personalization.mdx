@@ -56,6 +56,14 @@ and **fast, cheap per-user personalization**. Naming personalization as a
 | Storage | Per-user weights | Tiny LoRA adapters, not full models |
 | Serving | Swap adapters at inference | Adapter hot-loading on shared base |
 
+<ThinkFirst question="The base model has never seen the user's dog. What are the candidate ways to teach it — and what does each cost?">
+Prompting can't do it — no words select a specific unseen subject. The options
+are: **textual inversion** (learn just an embedding — lightest, lower
+fidelity), **full fine-tuning** DreamBooth-style (best fidelity, hours of GPU
+and gigabytes per user), and the production sweet spot: a **LoRA adapter** —
+minutes to train, megabytes to store, hot-swappable onto a shared base.
+</ThinkFirst>
+
 ## 3. GenAI problem framing
 
 - **Editing:** conditional diffusion where the condition is the **input image +
@@ -92,12 +100,28 @@ train a tiny low-rank update, store/serve thousands of them cheaply.
 
 <WikiLink slug="ddim-sampling" title="DDIM sampling for diffusion edits" />
 
+<ThinkFirst question="A million users each have a personalized model. How do you serve that without a million model copies?">
+Notice what personalization actually changed: a few megabytes of low-rank
+deltas. Keep **one** frozen base model resident on the GPUs and **hot-load the
+requesting user's LoRA adapter** per request; personalization training itself
+is an async job whose output is just the adapter. "A model per user" becomes
+"a weight-delta per user" — that reframing is the entire economics.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 Shared base model resident on GPUs; **hot-load the user's LoRA adapter** for their
 request (no per-user model copy). Personalization training runs as an async job
 (minutes) → adapter stored keyed to the user. Inpainting requests carry the image
 + mask; batch where possible.
+
+<ThinkFirst question="Personalization “worked” — by what measure? Two qualities pull against each other here. Which?">
+**Identity fidelity vs. editability.** Overtrain the adapter and it memorizes
+the training photos — perfect likeness, but every generation is the same pose
+and it ignores prompts. Undertrain and it re-poses beautifully but doesn't look
+like the subject. Both axes must be evaluated explicitly; optimizing likeness
+alone quietly destroys the product's point.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

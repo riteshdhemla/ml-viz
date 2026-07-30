@@ -56,6 +56,14 @@ conclude "raise prices to reduce demand" naively — that's correlation. You nee
 | Stability | No oscillation, bounded changes | Smoothing, rate limits, hysteresis |
 | Fairness | No exploitative or discriminatory pricing | Caps, constraints, audits |
 
+<ThinkFirst question="What predictions does the price decision need — and which of them can never be learned from logged data alone?">
+Three: demand per region/time, supply and how it responds, and **elasticity** —
+how both react to a price change. The first two are forecasting problems logged
+data supports. Elasticity is **causal**: historically, prices were high
+*because* demand was high, so the observational fit gets the sign of the
+relationship wrong. Only deliberate price experiments can estimate it.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 Three ML sub-problems feed one **optimization**:
@@ -84,6 +92,14 @@ oscillates, and can't anticipate predictable peaks (events, weather, rush hour).
 
 <WikiLink slug="uplift-modeling" title="Uplift modeling — estimating causal response to a treatment" />
 
+<ThinkFirst question="Your optimizer recomputes each region's price every minute. What failure mode does the naive version hit almost immediately?">
+Oscillation. Price rises → demand dips and supply floods in → the imbalance
+flips → price crashes → repeat. The optimizer is a **controller** acting on the
+system it measures, so it needs control-systems hygiene: rate limits,
+hysteresis, smoothed inputs, and an objective defined over a horizon rather
+than the instantaneous imbalance.
+</ThinkFirst>
+
 ## 5. Model & optimization *(spine: objective + optimization)*
 
 - **Forecasting:** time-series / GBDT models for demand and supply per region.
@@ -100,6 +116,14 @@ oscillates, and can't anticipate predictable peaks (events, weather, rush hour).
 Per region every minute: pull live supply/demand, forecast the short horizon,
 apply the optimizer + constraints + smoothing, publish the multiplier. Bound the
 action space and cap maximum surge for fairness and PR safety.
+
+<ThinkFirst question="Why can't you evaluate a pricing policy offline the way you'd evaluate a ranker — and what breaks standard A/B tests too?">
+Offline replay assumes the world would have behaved the same under your new
+prices — but the market *reacts* to price, so logged outcomes don't transfer.
+And standard A/B assumes independent units, while riders and drivers in
+treatment regions spill into control regions. The fix is **switchback**
+experiments: toggle the policy over time within a region and compare periods.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

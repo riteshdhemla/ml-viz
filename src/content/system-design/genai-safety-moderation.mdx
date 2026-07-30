@@ -58,6 +58,16 @@ alignment — each catching what the others miss.
 | Precision | Don't over-block benign use | Calibrated, per-category thresholds |
 | Auditability | Explain + appeal decisions | Logging, reason codes, human review |
 
+<ThinkFirst question="Your adversary gets unlimited retries against a static defense. What layers would you stack — and what does each catch that the others miss?">
+Input moderation catches obviously disallowed *requests* before you pay for a
+generation; the hardened system policy resists *manipulation* (jailbreaks,
+injection) that slips past input checks; output moderation catches disallowed
+*generations* however they were induced; and model-level alignment makes the
+model refuse even when every wrapper fails. Each layer's misses are a different
+population — that's why stacking works and any single layer loses the arms
+race.
+</ThinkFirst>
+
 ## 3. The layered pipeline *(spine: guardrails)*
 
 Around each generation:
@@ -88,6 +98,15 @@ Around each generation:
 A reward/safety model scores outputs for policy compliance — used both to align
 the base model (RLHF) and, distilled, as an output classifier at serving time.
 
+<ThinkFirst question="Safety recall hits 99.9%. Is the system good? What's the other side of the ledger?">
+**Over-refusal.** Recall alone is trivially maxed by blocking everything — and
+a safety layer that refuses benign medical questions or legitimate creative
+work silently kills the product. The real objective is a calibrated operating
+point per category: high recall where errors are catastrophic, precision-
+favoring where over-blocking harms legitimate use. Measure false positives as
+seriously as misses.
+</ThinkFirst>
+
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Safety recall:** fraction of genuinely disallowed content caught (per
@@ -99,6 +118,15 @@ the base model (RLHF) and, distilled, as an output classifier at serving time.
 - **LLM-as-judge + human audit** on sampled decisions.
 
 <WikiLink slug="llm-as-judge" title="LLM-as-a-judge for safety scoring" />
+
+<ThinkFirst question="Every generation now passes through multiple safety checks. How do you keep that from doubling latency?">
+Make the checks small and concurrent: distilled per-category classifiers (not
+frontier models), **input checks run in parallel with prompt processing**,
+output checks streamed over tokens as they're generated rather than after the
+full response, and verdict caching for repeated content. Safety that doubles
+latency gets quietly bypassed by product teams — cheapness is part of the
+design requirement.
+</ThinkFirst>
 
 ## 6. Operations & feedback
 
