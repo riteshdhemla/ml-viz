@@ -69,6 +69,14 @@ matters is `expected value = bid × pCTR × quality`, computed in the auction.
 context and can't price efficiently; a ranker without calibration breaks the
 auction's economics.
 
+<ThinkFirst question="CTR is around 1%, so 99% of your training rows are negatives. What's the standard fix — and its hidden cost?">
+**Negative downsampling** keeps training tractable and balanced — but it
+distorts the output: a model trained on downsampled data predicts probabilities
+that are too high. In most systems that would be harmless (ranking survives a
+monotone distortion); here the auction prices on the absolute number, so you
+must analytically correct or **recalibrate** after downsampling.
+</ThinkFirst>
+
 ## 4. Data & features *(spine: data)*
 
 - **Labels:** impressions → click (and click → conversion, delayed). **Delayed
@@ -96,6 +104,14 @@ auction's economics.
 A reliability diagram like this is *the* artifact you monitor: points on the
 diagonal mean predicted probabilities match observed click rates.
 
+<ThinkFirst question="The model emits pCTR = 0.03 for an ad. What consumes that number next, and what does that imply about the model's real job?">
+The **auction**: ads are ranked by `bid × pCTR`, and the price the winner pays
+is derived from the runner-up's expected value. So the model isn't producing a
+relevance score — it's producing one factor in a *price*. Overestimate pCTR by
+2× and you overcharge the advertiser by 2×; the model's real job is honest
+probabilities, not just correct ordering.
+</ThinkFirst>
+
 ## 6. Serving & the auction
 
 Prediction feeds the **auction**: ads are ranked by `bid × pCTR` (× quality), and
@@ -106,6 +122,14 @@ Budget pacing throttles delivery so advertisers spend evenly.
 
 Serving: feature-fetch from a low-latency store, batch-score all candidate ads,
 apply pacing/floor rules, run the auction — all under 10ms.
+
+<ThinkFirst question="Which two offline numbers must you track — and how can one improve while the other silently loses money?">
+**AUC** (ranking) and **calibration** (ECE / reliability curves). They're
+independent: a new model can order ads better *and* systematically overpredict
+probabilities, and since price = bid × pCTR, the calibration regression
+misprices every auction while your AUC dashboard glows green. Track both, per
+segment.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

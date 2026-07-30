@@ -56,6 +56,15 @@ base model, and tuning it with preference data.
 | Long-form | Coherent multi-section docs | Outline-then-expand; section planning |
 | Quality | Matches human preference | RLHF/DPO on preference data |
 
+<ThinkFirst question="Any frontier model already writes fluent prose. So where does a writing product actually add value?">
+In everything fluency doesn't cover: **reliable control** (this brand's voice,
+this format, every time — not "usually"), **grounding** (claims tied to the
+user's sources, because a hallucinated statistic in a customer's blog post is
+*their* reputation), and **long-form structure** (a 2,000-word piece that
+doesn't drift). The base model is a commodity; the control system is the
+product.
+</ThinkFirst>
+
 ## 3. GenAI problem framing
 
 **Controllable, grounded long-form generation** on top of a base LLM. Control
@@ -82,6 +91,15 @@ Generative writing adapts to any prompt while (ideally) staying on-brand.
 Decoding parameters are a control surface: lower temperature for factual/brand-
 safe copy, higher for ideation — often exposed to the user as "creativity."
 
+<ThinkFirst question="A customer uploads brand guidelines and source documents. Through what mechanisms do those actually shape the generated text?">
+Three, in increasing strength: **retrieval** pulls the sources and guidelines
+into context with a requirement to cite; **style conditioning** puts voice
+exemplars and explicit constraints (tone, reading level, format) in the
+prompt; and where prompting isn't reliable enough, a **LoRA adapter**
+fine-tuned on the brand's corpus bakes the voice in. Format guarantees come
+from constrained decoding, not hope.
+</ThinkFirst>
+
 ## 5. Grounding & control
 
 - **RAG:** retrieve the user's provided sources/brand guidelines into context;
@@ -92,6 +110,14 @@ safe copy, higher for ideation — often exposed to the user as "creativity."
   structured docs) via constrained decoding / schemas.
 
 <WikiLink slug="text-generation-metrics" title="Text-generation quality metrics" />
+
+<ThinkFirst question="Fluency is table stakes — every draft reads well. What do you actually measure to know the product is working?">
+The things fluency hides: **control adherence** (did it match the requested
+tone/length/format — a checkable constraint), **faithfulness** (is every claim
+supported by the provided sources), and the bluntest product signal of all —
+**edit rate**: how much of the draft users rewrite before shipping it. A
+beautiful draft that gets 80% rewritten failed.
+</ThinkFirst>
 
 ## 6. Evaluation *(spine: evaluation)*
 

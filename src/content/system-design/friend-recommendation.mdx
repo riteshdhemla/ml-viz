@@ -55,6 +55,14 @@ failure. This two-sided framing is the differentiator.
 | Freshness | New users/edges matter fast | Incremental graph + embedding updates |
 | Sparsity | Most users have few edges | Cold-start handling, side features |
 
+<ThinkFirst question="Scoring every user pair is quadratic in a billion nodes — a non-starter. What cheap structural heuristic generates most of the good candidates?">
+**Friends of friends.** The overwhelming majority of new connections form
+within the 2nd-degree neighborhood, which is enumerable per user with a cheap
+graph traversal. That single heuristic collapses the candidate space from
+billions to hundreds, and everything fancier (embeddings, shared attributes)
+just supplements it.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 **Link prediction**, structured as a funnel like every large recommender:
@@ -80,6 +88,14 @@ connection.
 
 <WikiLink slug="vector-databases" title="Serving node embeddings for candidate retrieval" />
 
+<ThinkFirst question="Before any GNN — what's the single strongest feature, and what baseline would you build first?">
+**Mutual-connection count.** On its own it's an embarrassingly strong
+predictor, and a GBDT over it plus a handful of graph features (Adamic-Adar,
+shared communities, path distance) is the baseline every neural model must
+beat. If your GNN doesn't clear it, the GNN isn't learning graph structure —
+it's overhead.
+</ThinkFirst>
+
 ## 5. Model *(spine: hypothesis space + objective)*
 
 - **Baseline:** logistic/GBDT on graph features (mutual-connection count alone is
@@ -102,6 +118,14 @@ Offline: compute node embeddings + candidate lists (2nd-degree neighborhoods) in
 a batch graph job. Online: fetch the user's candidates, rank with the model +
 fresh features, apply guardrail filters (blocked, sensitive), return the top-k
 under 200ms. Update embeddings incrementally as the graph evolves.
+
+<ThinkFirst question="You hold out 10% of edges at random for the test set. Why are your metrics about to look better than they should?">
+Because edges aren't independent in time: a random holdout trains the model on
+edges that formed *after* the ones it's tested on, and the surrounding graph
+context effectively gives the answer away. The honest protocol is a **temporal
+split** — train on the graph up to time T, predict which edges form after T —
+which is also the deployment reality.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

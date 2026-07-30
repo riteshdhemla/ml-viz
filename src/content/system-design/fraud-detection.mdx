@@ -68,6 +68,14 @@ chargebacks is the core.
 device") are brittle and gamed instantly; a plain classifier ignores the
 asymmetric costs and the imbalance.
 
+<ThinkFirst question="Your label is “this transaction got a chargeback.” Before building features — what's wrong with that label?">
+It's **late** (chargebacks arrive weeks after the transaction, so recent data
+is unlabeled), **noisy** (not all fraud is disputed, not all disputes are
+fraud), and **selection-biased** (you only ever see chargebacks on transactions
+you *approved*). Each flaw needs its own countermeasure — maturation windows,
+human review as a faster label source, and a bounded randomized-approval slice.
+</ThinkFirst>
+
 ## 4. Data & features *(spine: data)*
 
 - **Labels:** chargebacks / confirmed fraud — **delayed** (weeks) and **noisy**
@@ -87,6 +95,14 @@ asymmetric costs and the imbalance.
 Message passing propagates risk across the entity graph: an account linked to
 known-fraud nodes inherits elevated risk its own features wouldn't reveal.
 
+<ThinkFirst question="Tabular features, a 100ms inline budget, and regulators want reason codes for every decline. What model family — and why not the deepest one you know?">
+Gradient-boosted trees. On tabular velocity features they're still
+state-of-the-art or close, they score in microseconds, and feature attributions
+give the required reason codes. Deep models earn their place as *feature
+producers* (entity embeddings, GNN risk scores) feeding the tabular model — not
+as the inline decision-maker.
+</ThinkFirst>
+
 ## 5. Model *(spine: hypothesis space + objective)*
 
 - **Baseline:** gradient-boosted trees (XGBoost) on velocity + account features —
@@ -102,6 +118,14 @@ Inline with checkout under 100ms: fetch streaming features + precomputed graph
 score, run the ensemble, map the score to an action band, emit reason codes.
 A rules layer sits alongside the model for known-bad patterns and instant
 response to emerging attacks (rules ship faster than a retrain).
+
+<ThinkFirst question="The model outputs a risk score. Where do you set the decision threshold — and why is 0.5 the wrong answer?">
+0.5 assumes errors cost the same in both directions; here a missed fraud costs
+the transaction value while a false decline costs a customer. Put the threshold
+where the **expected dollar cost** curve says — and usually not one threshold
+but bands: approve below, step-up challenge in the middle, decline above. The
+threshold is a business decision the model merely parameterizes.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

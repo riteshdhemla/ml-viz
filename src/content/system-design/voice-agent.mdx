@@ -54,6 +54,14 @@ the signal that you've built voice, not just chat.
 | Robustness | Noise, accents, disfluency | Strong streaming ASR; tolerate partial transcripts |
 | Scale | Many concurrent calls | Efficient serving; telephony integration |
 
+<ThinkFirst question="Add up a sequential pipeline: full ASR (~300ms after end of speech) → LLM response (~1–2s) → TTS synthesis (~300ms). Does it fit the 800ms budget — and if not, where does the time come back from?">
+It doesn't — sequential is 2–3× over budget before network. The time comes
+back from **overlap**: ASR streams partials while the user is still talking,
+the LLM starts on the near-final transcript before the turn formally ends, and
+TTS speaks the first sentence while the rest is still generating. No stage
+waits for the previous one to finish.
+</ThinkFirst>
+
 ## 3. Context & tools *(spine: context)*
 
 - **Pipeline components:** streaming **ASR** (speech→text), the **LLM** (reasoning
@@ -77,6 +85,13 @@ The loop is **listen → understand → act/speak**, but **streamed and overlapp
   re-listen — interruption handling is core, not an edge case.
 - Tool calls happen mid-turn; fill dead air with a brief "let me check that."
 
+<ThinkFirst question="Which single number best predicts whether the agent feels responsive — total response time, or something else?">
+**Time-to-first-audio.** Users perceive the pause before the agent *starts*
+speaking, not how long the full answer takes — a response that begins in 400ms
+and talks for ten seconds feels snappy; one that starts after two seconds feels
+broken regardless of length. Optimize and monitor the start, not the total.
+</ThinkFirst>
+
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Latency:** p50/p95 turn latency and time-to-first-audio — the primary metric.
@@ -87,6 +102,14 @@ The loop is **listen → understand → act/speak**, but **streamed and overlapp
   user — often human-rated.
 
 <WikiLink slug="text-generation-metrics" title="Generation & conversation quality metrics" />
+
+<ThinkFirst question="ASR might mis-hear a payment amount or an address. Confirm every detail with the user, then?">
+No — every confirmation costs a full slow turn and makes the agent feel
+robotic. The policy is **selective**: confirm only high-stakes,
+hard-to-reverse slots (payments, identity, addresses), triggered by ASR
+confidence, and let low-stakes details flow. Safety spent uniformly is latency
+wasted; spend it where an error actually hurts.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

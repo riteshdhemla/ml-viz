@@ -56,6 +56,14 @@ alone.
 | Coverage | Multiple vendors | Tool/connector per vendor; normalize results |
 | Trust | Transparent choices | Show comparison + reasoning before buying |
 
+<ThinkFirst question="“Book me a flight under $400, morning departure, aisle seat if possible.” What must the agent carry through the whole session for the final purchase to be right?">
+A **structured preference state** — hard constraints (budget, dates) versus
+soft preferences (aisle seat), tracked explicitly rather than left implicit in
+chat history. Comparisons are made *against this record*, and the final
+transaction is checked against it. Agents that keep constraints only in the
+conversation blur "under $400" into "around $400" by turn six.
+</ThinkFirst>
+
 ## 3. Context & tools *(spine: context)*
 
 - **Tools:** `search_inventory(vendor, query)`, `get_details`, `add_to_cart`,
@@ -65,6 +73,14 @@ alone.
   priorities, carried across the session so comparisons honor them.
 - **Grounding:** prices/availability must be fetched live (they change); never
   transact on stale/hallucinated details.
+
+<ThinkFirst question="A network timeout hits mid-checkout. Did the booking go through? What makes a retry safe rather than hopeful?">
+You don't know — that's the point. A naive retry risks a **double booking**;
+not retrying risks no booking. The fix is transactional discipline:
+**idempotency keys** so the vendor deduplicates repeated requests, plus a
+status query before any retry. The safety lives in the transaction layer, not
+in the model being careful.
+</ThinkFirst>
 
 <WikiLink slug="agent-protocols-mcp-a2a" title="Tool/agent protocols (MCP) for vendor integration" />
 
@@ -92,6 +108,14 @@ alone.
 - **Constraint adherence:** did it violate budget/date/policy? — a strict check.
 - **Trajectory:** efficient search, correct comparison, no unnecessary steps.
 - **Safety:** zero unauthorized transactions, zero double-bookings.
+
+<ThinkFirst question="The user approved a $380 fare. At checkout the vendor returns $412. What's the rule — and the principle behind it?">
+Pause and re-confirm. The user authorized *specific terms*, not the general
+intent to buy — a changed price voids the approval. The principle generalizes:
+verify final terms match the approved terms **immediately before charging**,
+in code, so neither a stale cache nor a bait-and-switch listing can turn an
+authorized purchase into an unauthorized one.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

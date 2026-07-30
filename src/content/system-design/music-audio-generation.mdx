@@ -55,6 +55,14 @@ plus **long-range musical structure** as the quality challenge.
 | Latency | Streamable | Chunked/streaming synthesis |
 | Copyright | No artist/voice cloning without consent | Style/voice filters, provenance |
 
+<ThinkFirst question="A 3-minute song at 44.1kHz stereo — roughly how many samples is that, and what does the number rule out?">
+About **16 million samples**. No sequence model attends over that directly —
+raw-waveform generation is off the table. The enabling move is a **neural audio
+codec**: compress audio into a short discrete-token or latent sequence
+(hundreds of tokens per second, not tens of thousands of samples), generate in
+that space, and decode back to waveform.
+</ThinkFirst>
+
 ## 3. GenAI problem framing
 
 Two dominant families:
@@ -77,6 +85,14 @@ open-ended text control. Generative models turn a prompt into novel audio.
   tokens/latents), then the generative model over that compact space.
 - **Copyright hygiene:** licensing provenance and artist opt-outs are central, not
   an afterthought.
+
+<ThinkFirst question="Your model produces gorgeous 10-second clips, but 3-minute songs meander and repeat. What's missing?">
+**Long-range structure.** Local coherence (the next bar sounds right) is a
+different skill from musical form (verses return, a chorus repeats, the key
+resolves). The fix is **hierarchical generation** — model coarse structural
+tokens first, then fill in fine acoustic detail conditioned on them — plus long
+context and explicit form conditioning (lyrics, section tags).
+</ThinkFirst>
 
 ## 5. Model & generation *(spine: hypothesis-space)*
 
@@ -107,6 +123,14 @@ synthesis (TTS) is lower-latency and can be near-real-time with a light vocoder.
 - **Human eval** dominates: musicality, structure, prompt adherence, and (for
   voice) naturalness (MOS).
 - **Structure checks:** does a 2-minute song hold together, or drift/repeat?
+
+<ThinkFirst question="What's the abuse case unique to audio generation — the one that's worse here than in any other modality?">
+**Voice cloning.** A convincing synthetic voice enables fraud (fake calls from
+a family member or CEO), nonconsensual impersonation, and misinformation — and
+audio deepfakes are cheap to make and hard for humans to spot. That's why
+consent gates on voice reference, voice-likeness detection on outputs, and
+watermarking are hard requirements, ahead of general content filtering.
+</ThinkFirst>
 
 ## 8. Safety & guardrails
 

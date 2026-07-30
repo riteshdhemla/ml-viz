@@ -55,6 +55,13 @@ backbone of a good answer.
 | Grounding | Every claim cited | Track claim→source provenance |
 | Cost/latency | Bounded | Budget, parallel sub-agents, caching |
 
+<ThinkFirst question="Over ten minutes the agent will read dozens of pages — far more than its context window holds. What structure does that force?">
+**External memory**: a structured notes store of findings-with-provenance that
+the agent writes to and reads back, so the context window holds the *current*
+sub-task plus a summary of everything learned, not the raw pages. Without it,
+long runs either overflow or silently forget the first half of the research.
+</ThinkFirst>
+
 ## 3. Context & tools *(spine: context)*
 
 - **Tools:** `web_search`, `open_url` / browse, `read_pdf`, and a **scratchpad /
@@ -80,6 +87,14 @@ backbone of a good answer.
 - **Planner–worker topology** keeps the long horizon organized; the planner tracks
   progress against the plan so the agent doesn't wander or loop.
 
+<ThinkFirst question="The final report reads beautifully. What's the cardinal failure that polished prose can hide — and how do you measure for it?">
+**Hallucinated or mis-attributed citations** — claims dressed in sources that
+don't exist or don't say that. Fluency and truth are uncorrelated in generated
+text, so groundedness must be measured directly: verify every citation
+resolves, check claim-against-source with an LLM judge, and audit samples by
+hand. It's the first metric, not an afterthought.
+</ThinkFirst>
+
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Groundedness:** is each claim supported by a real, correctly-cited source?
@@ -90,6 +105,15 @@ backbone of a good answer.
 - **Factuality** against expert-written references where available.
 
 <WikiLink slug="llm-as-judge" title="LLM-as-a-judge for report grounding & quality" />
+
+<ThinkFirst question="This agent reads arbitrary web pages written by strangers. What's the attack surface?">
+Every fetched page is potential **prompt injection**: hidden text telling the
+agent to change its recommendation, exfiltrate its notes, or visit a URL. And
+below outright attack sits ordinary **misinformation** — confident wrong
+sources. The defenses differ: injected instructions are structural (content is
+data, never instructions), while misinformation needs source ranking and
+cross-checking claims across independent sources.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

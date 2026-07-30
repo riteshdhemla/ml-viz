@@ -5,6 +5,7 @@
 import type { MDXComponents } from "mdx/types";
 import { Callout } from "./Callout";
 import { Details } from "./Details";
+import { ThinkFirst } from "./ThinkFirst";
 import { CodeBlock } from "./CodeBlock";
 import { WikiLink } from "./WikiLink";
 import { SystemDesignMeta } from "./SystemDesignMeta";
@@ -102,6 +103,7 @@ export const mdxComponents: MDXComponents = {
 
   Callout,
   Details,
+  ThinkFirst,
   Exercise,
   WikiLink,
   SystemDesignMeta,

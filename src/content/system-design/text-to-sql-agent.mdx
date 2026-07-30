@@ -54,6 +54,14 @@ syntactic validity — is the key insight.
 | Safety | No destructive queries, cost control | Read-only role, row/scan limits, sandboxing |
 | Latency | Interactive (seconds) | Bounded correction loop; cache schema |
 
+<ThinkFirst question="The warehouse has 2,000 tables. What goes in the prompt — and what's the single biggest lever on SQL quality?">
+Retrieve, don't dump: embed table/column descriptions and pull only the
+relevant handful, with their joins, keys, and example queries. The biggest
+lever isn't the model — it's **metadata quality**: human-written column
+descriptions, synonyms, and sampled values. A model can't guess that revenue
+lives in `fct_orders.gmv_net` unless something tells it.
+</ThinkFirst>
+
 ## 3. Context & tools *(spine: context)*
 
 - **Schema retrieval:** the schema is too big for the prompt — retrieve the
@@ -66,6 +74,14 @@ syntactic validity — is the key insight.
   semantic layer keep business definitions consistent ("revenue" means one thing).
 
 <WikiLink slug="text-to-sql" title="Text-to-SQL — schema grounding & self-correction" />
+
+<ThinkFirst question="The model generates plausible SQL on the first try maybe 70% of the time. What system structure turns that into a reliable product?">
+A **loop, not a shot**: execute the query (or `EXPLAIN` it), feed errors and
+suspicious results back, and let the model correct itself — the database is a
+free, grounded verifier. The same generate → run → observe → fix pattern as a
+coding agent; the environment's feedback does the work the single-shot model
+can't.
+</ThinkFirst>
 
 ## 4. Orchestration *(spine: orchestration)*
 
@@ -93,6 +109,13 @@ environment.
   "California" vs "CA"). **pass@k** reflects the self-correction retries.
 - Guard against **plausible-but-wrong**: track cases that run but return wrong
   numbers — the most dangerous failure.
+
+<ThinkFirst question="What stops this agent from dropping a table or scanning the entire warehouse — and where must that control live?">
+At the **database boundary**, not in the prompt: a read-only role that
+physically cannot execute DDL, plus scan/row caps, statement timeouts, and cost
+guards. Asking the model nicely to "write safe, efficient SQL" is a wish;
+a restricted DB user is a guarantee.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

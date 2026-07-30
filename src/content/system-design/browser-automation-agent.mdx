@@ -56,6 +56,15 @@ guardrails aren't features here — they're the core of the design.
 | Robustness | UIs change, load slowly, error | Verify-after-act, retries, recovery |
 | Latency/cost | Bounded steps per task | Step budget; efficient perception |
 
+<ThinkFirst question="The agent's “API” is a rendered page. How does it know where to click — is a screenshot enough?">
+Pixels alone are brittle: coordinates drift with viewport and layout, and
+vision models misground small elements. The reliable answer pairs the
+screenshot with the **DOM / accessibility tree** — structured elements with
+roles, labels, and stable IDs the model can reference ("click element #42")
+instead of guessing coordinates. Perception design, not model choice, is the
+first-order lever.
+</ThinkFirst>
+
 ## 3. Context & tools *(spine: context)*
 
 - **Perception:** a **screenshot** (vision) plus the **DOM / accessibility tree**
@@ -65,6 +74,14 @@ guardrails aren't features here — they're the core of the design.
   `go_back` — a small, typed action space over the perceived elements.
 - **Task state/memory:** what's been done, the goal, and sub-goals — to avoid
   repeating actions or losing the thread across many steps.
+
+<ThinkFirst question="An API call returns a status code. What does a GUI click “return” — and what does that force on the loop?">
+Nothing. The click may have missed, the page may still be loading, a popup may
+have swallowed it — and the agent won't know unless it looks. That forces
+**verify-after-act**: re-perceive the screen after every action and confirm the
+intended effect before proceeding. Agents that assume success compound one
+silent misclick into a ruined trajectory.
+</ThinkFirst>
 
 ## 4. Orchestration *(spine: orchestration)*
 
@@ -90,6 +107,15 @@ guardrails aren't features here — they're the core of the design.
 - **Trajectory:** efficiency (steps taken), grounding accuracy (right element
   clicked), and safety (no unintended actions).
 - **pass@k** for retryable tasks; per-site breakdowns to find brittle UIs.
+
+<ThinkFirst question="Two properties of the browser environment make guardrails the crux of this design. Name them — and the control each one demands.">
+**Everything on screen is untrusted** — any page can carry injected
+instructions, so page content must be structurally separated from the user's
+task and can never grant permissions. And **actions can be irreversible** —
+purchases, submissions, deletions — so high-consequence actions hit a
+confirmation gate or allowlist. One property threatens the agent's *intent*,
+the other its *actions*; both need controls outside the model.
+</ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 

@@ -56,6 +56,14 @@ than a composed, interpretable estimate.
 | Accuracy target | Low MAE *and* calibrated intervals | Quantile / probabilistic outputs |
 | Freshness | React to live traffic, store load | Streaming features (courier supply, kitchen backlog) |
 
+<ThinkFirst question="Suppose you train a regressor to minimize MAE and display its prediction. Roughly half your deliveries will now be “late.” Why?">
+Minimizing MAE makes the model predict the **median** — by definition, actuals
+land above it half the time. Since being late costs far more than being early,
+the displayed ETA should be a *higher quantile* (P70–P90), which means the
+model must predict a distribution, not a point. The asymmetry of the loss is
+the whole design twist.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 **Regression with uncertainty** on spatial-temporal data. Predict a point
@@ -66,6 +74,14 @@ toward slightly conservative promises.
 *What was breaking before?* A static "distance ÷ average speed" heuristic ignores
 traffic, kitchen backlog, and courier supply; a point-only model can't express
 the confidence the business needs to make promises.
+
+<ThinkFirst question="“Distance ÷ average speed” gets you a crude baseline. What real-world signals dominate the remaining error — and what infrastructure do they force?">
+The live state of the system: current traffic, how backed up the kitchen is,
+how many couriers are free right now. Those are **streaming** signals with
+sub-minute freshness requirements, which forces a real-time feature store —
+and the same pipeline must serve training and inference, or you've built
+train-serve skew into your best features.
+</ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
@@ -95,6 +111,13 @@ Fetch precomputed + streaming features, run the composed models (prep + transit)
 sum with uncertainty propagation, and return an ETA + range under 100ms.
 Re-predict as the trip progresses (courier assigned, en route) so the number
 tightens over time.
+
+<ThinkFirst question="You show users a range, not just a number. How do you check the range is honest?">
+Coverage: the P90 estimate should exceed the actual arrival time in 90% of
+trips — no more, no less. Run a reliability check on each predicted quantile,
+sliced by region and merchant, because intervals that are globally calibrated
+can still be badly wrong for specific segments.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 

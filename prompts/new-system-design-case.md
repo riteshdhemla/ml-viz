@@ -111,7 +111,30 @@ annotate deep-dive sections with the spine slot they fill.
 11. **Interviewer follow-ups** — 3–5 `<Details>` curveballs.
 12. **Key takeaways.**
 
-## 3. Conventions
+## 3. Socratic pause-points (required)
+
+Cases are written **ask-first**: before each major reveal, pose the question an
+interviewer would and let the reader commit to an answer before scrolling.
+Thread **3+ `<ThinkFirst>` blocks** through every case:
+
+```mdx
+<ThinkFirst question="Billions of items, a 200ms budget — what does the arithmetic alone force?">
+The short model answer, revealed only after the reader commits. 2–5 sentences:
+the crux, not a restatement of the next section.
+</ThinkFirst>
+```
+
+- **Placement:** at the end of the section *before* the one that answers the
+  question (the following section is then the full elaboration).
+- **Target the cruxes:** the constraint that forces the architecture, the
+  labels/data trap, the model-choice fork, the "which metric — and how it
+  misleads" question, the defining failure mode or attack.
+- **Make questions concrete** (numbers, scenarios, "what happens when…"), not
+  quiz-like definitions; the reveal should reward having actually thought.
+- Don't duplicate an existing `<Details>` follow-up verbatim — follow-ups are
+  retrospective curveballs, ThinkFirst is prospective.
+
+## 4. Conventions
 
 - **Components:** reuse `<Callout>`, `<Details>` (perfect for follow-up Q&A),
   markdown tables, KaTeX (`$…$` / `$$…$$`), any registered `*Viz`
@@ -124,7 +147,7 @@ annotate deep-dive sections with the spine slot they fill.
   genuinely adds value.
 - **No new nav/route/search wiring needed** — the section is content-driven.
 
-## 4. Verify
+## 5. Verify
 
 ```bash
 npm run type-check
