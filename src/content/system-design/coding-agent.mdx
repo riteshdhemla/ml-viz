@@ -11,7 +11,7 @@ relatedLessons:
   - "building-with-llms/12-code-intelligence-and-generation"
   - "agent-design-patterns/04-planning-patterns"
   - "agent-design-patterns/06-reflection-patterns"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design an Autonomous Coding Agent
@@ -26,8 +26,14 @@ estimatedMinutes: 20
 A coding agent is the agentic interview where **the environment does the
 verification**: the agent can *run the code* and read the result, so the design
 centers on a tight **plan → edit → run tests → observe** loop with a real
-feedback signal. Walk it through the **agentic project loop** — context and
-orchestration are where it's won, and tests give evaluation for free.
+feedback signal. It is also the domain with the clearest public evidence of what
+works: on SWE-bench — 2,294 real GitHub issues from 12 Python repositories —
+the best 2023 systems resolved under 2% of tasks
+([Jimenez et al.](https://arxiv.org/abs/2310.06770)); by late 2024 a
+deliberately *simple* agent around Claude 3.5 Sonnet resolved 49% of SWE-bench
+Verified ([Anthropic](https://www.anthropic.com/engineering/swe-bench-sonnet)).
+Walk it through the **agentic project loop** — context and orchestration are
+where it's won, and tests give evaluation for free.
 
 ## 1. Clarify the task *(spine: task)*
 
@@ -46,6 +52,16 @@ signal." Naming the executable environment as the core asset separates a coding
 agent from a code-*completion* model.
 </Callout>
 
+<ThinkFirst question="SWE-bench solve rates jumped from under 2% to ~50% in about eighteen months — on the same benchmark. Models improved, but that's not the whole story. What else was being engineered?">
+The **agent–environment interface**. SWE-agent showed that with the *same*
+model, redesigning how the agent views files, searches, and edits code lifted
+solve rates several-fold (to 12.5% pass@1) — the interface, not the model, was
+the bottleneck. Anthropic's 49% run pushed the opposite lesson to its limit: a
+minimal scaffold with two general-purpose tools, letting a stronger model
+drive. Both agree on the design principle: an agent is a model *plus* an
+environment you control — and the environment is your half of the work.
+</ThinkFirst>
+
 ## 2. Requirements & constraints
 
 | Dimension | Target | Consequence |
@@ -59,7 +75,9 @@ agent from a code-*completion* model.
 Retrieval, not stuffing: code search (lexical + embedding), symbol lookup, and
 the dependency graph surface a small relevant set, and the agent explores
 incrementally from there — open a file, follow references. Context is a budget
-to *spend*, not fill; the design question is what earns its place in it.
+to *spend*, not fill; the design question is what earns its place in it. The
+agent loop is exactly this discipline: gather context → take action → verify,
+repeated ([Anthropic](https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk)).
 </ThinkFirst>
 
 ## 3. Context & tools *(spine: context)*
@@ -70,8 +88,26 @@ to *spend*, not fill; the design question is what earns its place in it.
 - **Tools:** `read_file`, `edit_file`, `run_shell` / `run_tests`, `search_code`,
   `git` — typed and sandboxed. Execution is a first-class tool, not an
   afterthought.
+- **Interface design matters as much as tool choice.** The SWE-agent paper
+  ([Yang et al.](https://arxiv.org/abs/2405.15793)) calls this the
+  **agent–computer interface (ACI)**: compact search results instead of pages of
+  hits, a file viewer showing ~100 lines at a time, and an edit command that
+  runs a linter and *rejects malformed edits with feedback* — each measurably
+  moved the solve rate. Anthropic's SWE-bench scaffold went further in the
+  minimal direction: essentially a bash tool and a string-replacement edit tool,
+  with the model deciding everything else
+  ([Anthropic](https://www.anthropic.com/engineering/swe-bench-sonnet)).
 - **Environment:** an isolated container with the repo checked out; the agent's
   actions (edits, commands) mutate it.
+
+<ThinkFirst question="The agent has made three edits and the same test still fails with the same error. What should the harness do that a naive retry loop wouldn't?">
+Detect the stuck state and force a change of strategy. Repeated identical
+failures mean the agent's model of the bug is wrong — the harness should feed
+the full failure history back, prompt an explicit re-diagnosis (reflection)
+rather than another blind edit, and if the loop persists, stop and escalate.
+Budgets exist precisely because an agent that can't tell it's stuck will
+happily burn the whole budget on one wrong theory.
+</ThinkFirst>
 
 ## 4. Orchestration *(spine: orchestration)*
 
@@ -88,23 +124,35 @@ The loop is **plan → edit → run → observe → reflect**:
   rather than blindly re-editing.
 - **Step budget & stop conditions:** cap iterations; stop on green, on repeated
   identical failures (stuck), or on ambiguity → escalate.
-- **Sub-agents** for large tasks: a planner decomposes; workers implement pieces.
+- **Keep the topology simple.** Anthropic's guidance is to start with a single
+  augmented loop and add structure only when it measurably helps
+  ([Anthropic](https://www.anthropic.com/engineering/building-effective-agents)).
+  Cognition (Devin) goes further for code: parallel sub-agents making *edits*
+  tend to make conflicting implicit decisions, because each holds a partial
+  context — so keep write-actions single-threaded and share full context
+  ([Cognition](https://cognition.ai/blog/dont-build-multi-agents)). Sub-agents
+  are safest for read-only work: exploring the repo, reproducing the bug.
 
 <WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration for decomposed tasks" />
 
 <ThinkFirst question="The agent reports “all tests pass.” In how many ways can that claim be hollow?">
 At least three: it deleted or weakened the failing tests (reward hacking), it
 overfit to the visible tests without solving the actual issue, or it got lucky
-on a flaky suite. That's why evaluation needs *protected* held-out tests the
-agent can't touch, plus trajectory checks — did it edit sensible files, run
-tests before claiming done?
+on a flaky suite. That's why SWE-bench grades against **held-out fail-to-pass
+tests** the agent never sees — and why your own eval needs protected tests plus
+trajectory checks: did it edit sensible files, run tests before claiming done?
 </ThinkFirst>
 
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Outcome:** does the change pass the *hidden/held-out* tests and actually solve
-  the issue? Benchmarks like SWE-bench measure exactly this; **pass@k** captures
-  the retry-until-solved reality.
+  the issue? SWE-bench measures exactly this; **pass@k** captures the
+  retry-until-solved reality.
+- **Benchmark hygiene:** the original SWE-bench contained under-specified issues
+  and broken tests that unfairly penalized correct patches — SWE-bench Verified
+  is a 500-task subset screened by human annotators to fix this
+  ([OpenAI](https://openai.com/index/introducing-swe-bench-verified/)). The
+  lesson generalizes: audit your eval set before trusting movement on it.
 - **Trajectory:** did it edit the right files, run tests before claiming done, and
   avoid thrashing? Catches agents that "pass" by gaming or luck.
 - **Guard against reward hacking:** an agent that deletes failing tests "passes" —
@@ -128,12 +176,21 @@ a reviewable PR, never a direct push.
 - **Prompt injection:** repo content, issue text, and dependency output are
   untrusted — a malicious file must not exfiltrate secrets or run unsafe commands.
 
+<ThinkFirst question="A full eval run is 500 tasks × dozens of model calls each, and two identical runs give different scores. How do you make the numbers trustworthy without unbounded spend?">
+Report across **multiple trials** (pass@k or mean ± spread), never a single
+run — agent variance easily swamps a 2-point "improvement." Contain cost with
+a fixed cheap smoke subset for every change and the full suite only for
+candidate releases. And trace everything: when the score moves, per-task
+trajectories tell you *which* tasks flipped and why — without traces, a
+regression is just a number.
+</ThinkFirst>
+
 ## 7. Operations *(spine: operations)*
 
 - **Tracing:** log every tool call, edit, and test result — essential for
   debugging non-deterministic runs and for the eval set.
 - **Cost/latency:** tier models (cheap for navigation, strong for hard reasoning),
-  cache builds/deps, parallelize independent sub-tasks.
+  cache builds/deps, parallelize independent read-only sub-tasks.
 - **Feedback:** failed/abandoned tasks become eval cases and prompt improvements.
 
 ## 8. Tradeoffs & alternatives
@@ -142,6 +199,8 @@ a reviewable PR, never a direct push.
 |---|---|---|
 | Retrieve repo context | Stuff whole repo in context | Repos exceed context; retrieval is cheaper and sharper |
 | Test-driven loop | Generate-and-hope | Execution gives a real, groundable reward signal |
+| Minimal general tools | Many specialized tools + rigid workflow | Simple scaffolds transfer; ACI quality beats tool count |
+| Single-threaded writes | Parallel editing sub-agents | Partial-context workers make conflicting decisions |
 | PR + human review | Auto-merge | Reversibility and trust; code is high-stakes |
 | Protected test eval | Any tests pass | Prevents reward hacking (deleting tests) |
 
@@ -151,6 +210,8 @@ a reviewable PR, never a direct push.
 Evaluate against protected, hidden tests the agent can't see or modify, and diff-
 check that it didn't weaken the test suite. Reward hacking is the defining failure
 mode of code agents — the eval, not the agent, must own the ground-truth tests.
+This is exactly how SWE-bench grades: held-out fail-to-pass tests applied after
+the agent finishes.
 </Details>
 
 <Details summary="The repo is millions of lines. How does the agent find the right code?">
@@ -158,6 +219,14 @@ Retrieval: code search (lexical + embedding), symbol/definition lookup, and the
 dependency graph surface a small relevant set. The agent explores incrementally
 (open a file, follow references) rather than loading everything — context is a
 budget to spend, not fill.
+</Details>
+
+<Details summary="Would you use multiple agents in parallel to go faster?">
+Only for read-only work (exploration, reproduction, review). Parallel sub-agents
+that *edit* hold partial context and make conflicting implicit decisions — the
+failure mode Cognition documents from building Devin. Keep writes
+single-threaded with full shared context; buy speed with caching and model
+tiering instead.
 </Details>
 
 <Details summary="How do you keep it from running something destructive?">
@@ -171,7 +240,20 @@ agent's permissions.
 
 - A coding agent's superpower is a **sandboxed executable environment** — tests
   are a grounded reward signal for a **plan → edit → run → reflect** loop.
+- The **agent–computer interface** is a measured, first-order lever: SWE-agent's
+  ACI redesign and Anthropic's two-tool 49% SWE-bench Verified scaffold both
+  show the environment matters as much as the model.
 - **Repo retrieval** (not whole-repo context) and **reflection on test failures**
-  drive success; **step budgets** prevent thrashing.
-- Evaluate on **protected tests** (pass@k) to stop reward hacking, and keep every
-  change **sandboxed and reversible**.
+  drive success; **step budgets** and stuck-detection prevent thrashing.
+- Evaluate on **protected tests** (pass@k, multiple trials) to stop reward
+  hacking, and keep every change **sandboxed and reversible**.
+
+## References
+
+- [SWE-bench: Can Language Models Resolve Real-World GitHub Issues?](https://arxiv.org/abs/2310.06770) — Jimenez et al., ICLR 2024; the benchmark (2,294 real issues) and the under-2% 2023 baseline.
+- [SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering](https://arxiv.org/abs/2405.15793) — Yang et al., NeurIPS 2024; ACI design and the 12.5% pass@1 result.
+- [Raising the bar on SWE-bench Verified with Claude 3.5 Sonnet](https://www.anthropic.com/engineering/swe-bench-sonnet) — Anthropic engineering; the 49% minimal two-tool scaffold.
+- [Introducing SWE-bench Verified](https://openai.com/index/introducing-swe-bench-verified/) — OpenAI; the human-validated 500-task subset and why eval sets need auditing.
+- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) — Anthropic engineering; start simple, workflows vs. agents, add structure only when it pays.
+- [Don't Build Multi-Agents](https://cognition.ai/blog/dont-build-multi-agents) — Cognition (Devin); context engineering and why parallel editing sub-agents conflict.
+- [Building agents with the Claude Agent SDK](https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk) — Anthropic engineering; the gather-context → take-action → verify-work loop.

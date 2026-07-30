@@ -11,7 +11,7 @@ relatedLessons:
   - "agent-design-patterns/07-multi-agent-cooperation-patterns"
   - "agent-design-patterns/04-planning-patterns"
   - "agent-design-patterns/10-evaluating-agents"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Multi-Agent Orchestration Pipeline
@@ -25,10 +25,13 @@ estimatedMinutes: 20
 
 Some tasks are too big or too varied for one agent — generate a market report,
 migrate a codebase, run a content pipeline. A **multi-agent system** decomposes
-the work across specialized agents coordinated by an orchestrator. This is the
-interview about **orchestration topology**: how to decompose, delegate, run in
-parallel, and aggregate — *without* the complexity spiraling. Walk it through the
-**agentic project loop**.
+the work across specialized agents coordinated by an orchestrator — the
+architecture behind Anthropic's production
+[Research system](https://www.anthropic.com/engineering/built-multi-agent-research-system)
+and frameworks like [AutoGen](https://arxiv.org/abs/2308.08155) and LangGraph.
+This is the interview about **orchestration topology**: how to decompose,
+delegate, run in parallel, and aggregate — *without* the complexity spiraling.
+Walk it through the **agentic project loop**.
 
 ## 1. Clarify the task *(spine: task)*
 
@@ -42,10 +45,22 @@ parallel, and aggregate — *without* the complexity spiraling. Walk it through 
 - **Scope:** the orchestration layer. Each worker reuses single-agent patterns.
 
 <Callout type="warning" title="Multi-agent is a cost, not a default">
-More agents = more latency, cost, and failure surface. The interview trap is
-reaching for multi-agent when a single agent with tools would do. Justify the
-topology by parallelism or genuinely distinct roles.
+More agents = more latency, cost, and failure surface. Cognition's engineering
+position piece [argues against multi-agent by default](https://cognition.ai/blog/dont-build-multi-agents)
+for exactly this reason: dispersed decision-making and fragmented context make
+fragile systems. Justify the topology by parallelism or genuinely distinct roles.
 </Callout>
+
+<ThinkFirst question="Anthropic measured its multi-agent Research system: it beat a single-agent Claude Opus 4 by 90.2% on their research eval — while burning ~15× the tokens of a chat. What do those two numbers jointly tell you about when this architecture pays?">
+That multi-agent is an **economics decision, not just an architecture
+decision**. In [Anthropic's analysis](https://www.anthropic.com/engineering/built-multi-agent-research-system),
+token spend explains most of the performance variance — the system wins
+largely because parallel subagents deploy *more total reasoning* onto a
+parallelizable task. So it pays only when (a) the task value justifies ~15×
+chat cost, and (b) the task actually decomposes into parallel reads. A linear,
+low-value, or write-heavy task fails one of those conditions and belongs to a
+single agent.
+</ThinkFirst>
 
 ## 2. Requirements & constraints
 
@@ -58,20 +73,24 @@ topology by parallelism or genuinely distinct roles.
 
 <ThinkFirst question="You've decided the task genuinely needs multiple agents. What are the candidate ways to wire them together — and what property of the task picks between them?">
 Three basic topologies: **orchestrator–worker** (a planner delegates and
-aggregates — fits parallelizable, decomposable work), a **sequential pipeline**
-(stages hand off — fits inherently linear work), and **generator–critic**
-(iterate for quality — fits output where correctness is hard to get in one
-pass). The task's structure — parallel, linear, or quality-bound — picks the
-wiring; picking a topology for its novelty is how complexity spirals.
+aggregates — fits parallelizable, decomposable work; Anthropic's Research
+system and the orchestrator-workers pattern in *Building Effective Agents*),
+a **sequential pipeline** (stages hand off — fits inherently linear work), and
+**generator–critic** (iterate for quality — fits output where correctness is
+hard to get in one pass). The task's structure — parallel, linear, or
+quality-bound — picks the wiring; picking a topology for its novelty is how
+complexity spirals.
 </ThinkFirst>
 
 ## 3. Orchestration topology *(spine: orchestration)*
 
 The core design decision is the **topology**:
 
-- **Orchestrator–worker (recommended default):** a planner decomposes the task,
-  delegates subtasks to specialist workers, and **aggregates** results. Clear
-  control flow, easy to trace.
+- **Orchestrator–worker (recommended default):** a lead agent decomposes the
+  task, delegates subtasks to specialist workers, and **aggregates** results.
+  Clear control flow, easy to trace. In Anthropic's production system the lead
+  agent spawns 3–5 subagents in parallel, each searching with its own tools —
+  cutting research time by up to 90% on complex queries.
 - **Sequential pipeline:** stages hand off (research → draft → edit) — simple when
   work is linear.
 - **Debate / review:** a generator and a critic iterate — good for quality-critical
@@ -83,31 +102,49 @@ The core design decision is the **topology**:
 The orchestrator: plans → fans out subtasks (parallel where independent) → each
 worker runs its own agent loop with a scoped context and tools → orchestrator
 **aggregates, resolves conflicts, and verifies** the combined result → replans if
-gaps remain.
+gaps remain. Delegation quality is the make-or-break skill: Anthropic found
+early orchestrators gave vague instructions ("research the semiconductor
+shortage") and got duplicated, drifting workers — each subtask needs an
+objective, an output format, and boundaries.
 
 <ThinkFirst question="Should every worker agent see the full task context and every other worker's output?">
 No — shared-everything multiplies cost, dilutes attention, and lets one agent's
 mistake contaminate the rest. Give each worker a **scoped context** (just its
 subtask and inputs), coordinate through a **shared artifact store** rather than
 chatty messages, and define **structured interface contracts** so the
-orchestrator aggregates typed results instead of parsing prose.
+orchestrator aggregates typed results instead of parsing prose. (This is also
+Cognition's core objection to naive multi-agent: implicit decisions hide in
+context that other agents never see.)
 </ThinkFirst>
 
 ## 4. Context isolation *(spine: context)*
 
 - **Scoped context per worker:** each agent gets only what it needs — isolation
   keeps contexts small (latency/cost) and prevents cross-contamination.
-- **Shared artifacts:** a common workspace/blackboard for results, rather than
-  agents flooding each other with messages.
+- **Shared artifacts:** a common workspace/blackboard for results — workers write
+  outputs to the store and the orchestrator reads them, rather than agents
+  flooding each other with messages.
 - **Interface contracts:** structured inputs/outputs between agents so aggregation
   is reliable, not free-text guessing.
+
+<ThinkFirst question="Researchers annotated 1,600+ real multi-agent traces to build a failure taxonomy (MAST). The failures clustered in three places — none of them “the model wasn't smart enough.” Guess the three, and what they imply your evaluation must measure.">
+The [MAST taxonomy](https://arxiv.org/abs/2503.13657) found 14 failure modes
+in three clusters: **system design flaws** (bad specs, role violations),
+**inter-agent misalignment** (workers ignoring each other, withholding or
+duplicating work), and **task verification failures** (no one checks the
+result). The implication: evaluating only the final output misses most of the
+causes. You need trajectory-level eval — was the decomposition sensible, did
+handoffs preserve intent, did verification actually run — with errors
+attributed to the responsible agent.
+</ThinkFirst>
 
 ## 5. Evaluation *(spine: evaluation)*
 
 - **End-to-end outcome:** is the final aggregate correct and coherent? (This is
   what matters — not any single agent's local success.)
 - **Per-agent + trajectory:** which worker failed, was decomposition sensible,
-  did agents loop or chatter unproductively?
+  did agents loop or chatter unproductively? Most multi-agent failures are
+  coordination failures, so this is where the signal lives.
 - **Attribution:** trace errors to the responsible agent — essential for
   debugging a distributed system.
 
@@ -120,7 +157,8 @@ agreement — independent verification beats agents rubber-stamping each other.
 **Error propagation** — one worker's hallucination flows through aggregation
 into the final output, laundered by the agents downstream — and **runaway
 chatter** — unbounded inter-agent messaging that burns budget without
-converging. The countermeasures are structural: validate outputs at the
+converging (MAST's inter-agent misalignment cluster, at 15× chat-level token
+prices). The countermeasures are structural: validate outputs at the
 aggregation boundary, and cap inter-agent turns and total spend.
 </ThinkFirst>
 
@@ -133,14 +171,26 @@ aggregation boundary, and cap inter-agent turns and total spend.
 - **Consistent policy:** all agents inherit the same safety guardrails; a worker
   can't be tricked into escalating privileges for the group.
 
+<ThinkFirst question="A 30-minute, 20-agent run dies at minute 28 with one worker's API error. What must operations provide so this isn't a from-scratch restart — and how do you find which agent burned 80% of the budget?">
+**Durable execution and unified tracing.** Anthropic's production lesson:
+long-running agents need **checkpoint/resume** so errors don't force expensive
+restarts from the beginning, and let the *system* handle retries around a
+saved state. For the budget question, a **distributed trace** with one span
+per agent (inputs, outputs, tool calls, tokens, wall time) makes per-agent
+spend a query instead of an investigation — and exposes the critical path that
+actually determines latency.
+</ThinkFirst>
+
 ## 7. Operations *(spine: operations)*
 
 - **Distributed tracing:** a unified trace across all agents (who did what, when,
   cost) — the only way to debug and to see the critical path.
-- **Cost/latency:** parallelism cuts latency but multiplies cost; monitor per-agent
-  spend and prune unnecessary agents.
-- **Checkpointing:** long multi-agent runs should checkpoint so a single failure
-  doesn't restart everything.
+- **Cost/latency:** parallelism cuts latency but multiplies cost — budget at the
+  system level (recall the ~15× token multiplier) and prune agents that don't
+  earn their spend.
+- **Checkpointing & durable execution:** long multi-agent runs checkpoint so a
+  single failure resumes rather than restarts; production systems also need
+  rainbow-style deploys, since a prompt change mid-run strands in-flight agents.
 
 <WikiLink slug="agent-observability" title="Agent observability & tracing" />
 
@@ -148,7 +198,7 @@ aggregation boundary, and cap inter-agent turns and total spend.
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Single agent + tools (first) | Multi-agent by default | Fewer moving parts; only add agents when justified |
+| Single agent + tools (first) | Multi-agent by default | Fewer moving parts; only add agents when parallelism/roles justify 15× cost |
 | Orchestrator–worker | Free-for-all message passing | Clear control flow, traceable, parallelizable |
 | Scoped per-agent context | Shared everything | Isolation controls cost and cross-contamination |
 | Structured interfaces | Free-text handoffs | Reliable aggregation; fewer coordination errors |
@@ -158,30 +208,44 @@ aggregation boundary, and cap inter-agent turns and total spend.
 <Details summary="When is multi-agent actually worth it over one agent with tools?">
 When subtasks are genuinely parallel (fan-out speeds things up), require distinct
 skills/contexts that would bloat a single prompt, or benefit from separation-of-
-duties (an independent critic). If none apply, a single agent is simpler, cheaper,
-and easier to debug — start there.
+duties (an independent critic) — and the task value covers the ~15× token cost.
+Anthropic's rule of thumb: multi-agent suits parallelizable *read/research* work;
+write-heavy work (most coding) coordinates poorly. If none apply, a single agent
+is simpler, cheaper, and easier to debug — start there.
 </Details>
 
 <Details summary="One worker hallucinates and the final report inherits the error. Prevent it?">
 Validate worker outputs at the aggregation boundary (schema checks, an independent
 verifier/critic, cross-checking overlapping claims) rather than trusting them
-blindly. Error propagation is the signature multi-agent failure; the orchestrator
-must be a gate, not just a concatenator.
+blindly. MAST classifies this as task-verification failure — one of the three
+dominant clusters — and the fix is structural: the orchestrator must be a gate,
+not just a concatenator.
 </Details>
 
 <Details summary="Costs blew up — the agents kept messaging each other. Why?">
 Unbounded inter-agent communication. Cap turns and total budget, prefer a shared
 artifact/blackboard over chatty message passing, and use an orchestrator that
-drives control flow instead of agents free-forming. Multi-agent chatter is a
-common runaway-cost mode.
+drives control flow instead of agents free-forming. At 15× chat-level token
+usage, multi-agent chatter is the canonical runaway-cost mode.
 </Details>
 
 ## Key takeaways
 
-- Multi-agent is an **orchestration-topology** decision — **orchestrator–worker**
-  (plan → fan-out → aggregate → verify) is the sane default; single-agent is the
-  even saner starting point.
+- Multi-agent is an **economics + topology** decision: **orchestrator–worker**
+  (plan → fan-out → aggregate → verify) is the sane default, single-agent the
+  saner starting point — the ~15× token multiplier must be earned by
+  parallelizable, high-value work.
 - **Scoped context, structured interfaces, and output validation** at aggregation
-  prevent cost blowups and error propagation.
-- **Distributed tracing** and **per-agent + end-to-end evaluation** are how you
-  debug and trust a system of agents.
+  prevent cost blowups and error propagation; most real failures are **system
+  design, misalignment, or verification** problems (MAST), not model problems.
+- **Distributed tracing, checkpoint/resume, and per-agent + end-to-end
+  evaluation** are how you debug and trust a system of agents.
+
+## References
+
+- [How we built our multi-agent research system](https://www.anthropic.com/engineering/built-multi-agent-research-system) — Anthropic, orchestrator–worker in production: +90.2% over single-agent, ~15× token usage, delegation and durable-execution lessons.
+- [Why Do Multi-Agent LLM Systems Fail?](https://arxiv.org/abs/2503.13657) — Cemri et al. (MAST), 14 failure modes across system design, inter-agent misalignment, and task verification, from 1,600+ annotated traces.
+- [AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation](https://arxiv.org/abs/2308.08155) — Wu et al., the conversable-agents framework that popularized multi-agent orchestration.
+- [Don't Build Multi-Agents](https://cognition.ai/blog/dont-build-multi-agents) — Cognition, the counter-position: fragmented context and dispersed decisions make naive multi-agent fragile.
+- [How and when to build multi-agent systems](https://www.langchain.com/blog/how-and-when-to-build-multi-agent-systems) — LangChain, reconciling the for/against positions into criteria for when the topology is justified.
+- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) — Anthropic, the orchestrator-workers and evaluator-optimizer patterns this design builds on.

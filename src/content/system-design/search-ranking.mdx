@@ -11,7 +11,7 @@ relatedLessons:
   - "recommender-systems/01-the-recommendation-problem"
   - "recommender-systems/03-deep-and-two-tower"
   - "nlp/07-training-embedding-models"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Search & Ranking System
@@ -26,7 +26,10 @@ estimatedMinutes: 20
 "Design search" looks like an information-retrieval question, but a modern search
 system is an **ML ranking** system with an IR front-end. Walk it through the **ML
 project loop** — the winning move is separating **retrieval** (cheap, high
-recall) from **ranking** (expensive, high precision), exactly like a feed.
+recall) from **ranking** (expensive, high precision), exactly like a feed. This
+domain is unusually well documented: Airbnb has published its ranking evolution
+end-to-end, Amazon its semantic retrieval system, and Facebook its
+embedding-based retrieval stack — we'll lean on all three.
 
 ## 1. Clarify the problem
 
@@ -43,6 +46,15 @@ State early that relevance labels are **implicit and biased** (you only observe
 clicks/bookings on what you showed, in the order you showed it) — position bias
 is the defining data problem of search ranking.
 </Callout>
+
+<ThinkFirst question="In a marketplace, the searcher isn't the only party — a host or seller can decline the booking. What does 'relevant' mean now, and what extra label does your ranker need?">
+Relevance becomes **two-sided**: the best result is one the guest wants *and*
+the host will accept. That means host rejections are labels too — Airbnb feeds
+host-rejection signals into its search embeddings so listings whose hosts
+decline this kind of guest get demoted. A guest-side-only ranker fills the top
+slots with bookings that will bounce off a rejection, which is worse than a
+weaker match that completes.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
@@ -75,7 +87,14 @@ Search is a **pipeline of ML slots**:
 
 *What was breaking before?* Pure lexical match (BM25) misses semantics ("beach
 house" vs "oceanfront villa") and can't personalize; a single ranker over the
-whole catalog blows the latency budget. The funnel fixes both.
+whole catalog blows the latency budget. The funnel fixes both. Amazon's product
+search team catalogued exactly where lexical match fails — hypernyms and
+synonyms, morphological variants ("woman" vs "women"), spelling errors — and
+reported a **+4.7% Recall@100** lift from adding a trained semantic-matching
+channel ([Nigam et al., KDD 2019](https://arxiv.org/abs/1907.00937)). Facebook
+Search ran on Boolean lexical matching for years before adding embedding-based
+retrieval *alongside* — not instead of — the inverted index
+([Huang et al., KDD 2020](https://arxiv.org/abs/2006.11632)).
 
 <ThinkFirst question="You're building the ranker's training set. Clicked items are the positives — what should the negatives be?">
 Not random catalog items: separating "beach house" from a lawnmower is too easy
@@ -93,22 +112,55 @@ you ranked it first.
   price, quality, popularity), query–item (BM25 score, semantic similarity,
   historical CTR), and user context.
 - **Hard negatives:** sample non-clicked items *shown in the same session* — the
-  model must learn to separate close calls, not just random junk.
+  model must learn to separate close calls, not just random junk. Amazon's
+  semantic-search loss makes this explicit with **three tiers** — purchased,
+  impressed-but-not-purchased, and random — so the model learns both the coarse
+  and the fine distinction.
+- **Position bias:** treat the probability that a user *examined* a position as
+  a propensity and inverse-weight the logged clicks — the counterfactual
+  learning-to-rank recipe
+  ([Joachims et al., WSDM 2017](https://www.cs.cornell.edu/~tj/publications/joachims_etal_17a.pdf)).
 
 <WikiLink slug="bm25-ranking" title="BM25 — the lexical retrieval baseline" />
+
+<ThinkFirst question="Airbnb rode a GBDT ranker for years until its gains plateaued, then went neural. What is the first neural network you'd actually ship — and why is 'a deep net on all the features' the wrong answer?">
+Airbnb's published answer: a **single-hidden-layer network on the same features
+as the GBDT**, shipped mainly to prove the training-serving pipeline end to
+end, then a lambdarank NN, then deeper nets. Going straight to a deep
+architecture stacks two risks — new plumbing and new hypothesis space — so when
+the metric drops you can't tell which broke. Most of their paper is failed
+"obvious" ideas; the pipeline-first discipline is what let them find the ones
+that worked.
+</ThinkFirst>
 
 ## 5. Model *(spine: hypothesis space + objective + optimization)*
 
 **Retrieval — two-tower + inverted index.** A query tower and an item tower
 share an embedding space; item embeddings are precomputed and indexed in an ANN
-structure, merged with BM25 candidates.
+structure, merged with BM25 candidates. Personalization can ride on the same
+machinery: Airbnb learns listing embeddings from click *sessions* (skip-gram
+over co-clicked listings, with the booked listing as a global positive) and
+uses the user's recent-click embeddings as real-time ranking features — the
+search-and-similar-listings channels they personalize this way drive **99% of
+conversions** ([Grbovic & Cheng, KDD 2018](https://dl.acm.org/doi/10.1145/3219819.3219885)).
 
-**Ranking — learning to rank.** Start with a **pointwise** GBDT (LambdaMART is
-still a production workhorse) on the query–item features; graduate to a
-**pairwise/listwise** neural ranker optimizing NDCG. Baseline first: BM25-only,
-to measure the lift retrieval and the ranker each add.
+**Ranking — learning to rank.** Start with a GBDT — **LambdaMART** is still a
+production workhorse and won the Yahoo! Learning to Rank Challenge
+([Burges, MSR-TR-2010-82](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/))
+— on the query–item features; graduate to a **pairwise/listwise** neural
+ranker optimizing NDCG. Baseline first: BM25-only, to measure the lift
+retrieval and the ranker each add.
 
 <WikiLink slug="hnsw" title="HNSW — the graph index behind semantic retrieval" />
+
+<ThinkFirst question="BM25 scores and embedding cosine similarities live on incomparable scales, and the union of both channels is ~1000 candidates. Who decides the final order — and what role do the retrieval scores still play?">
+The ranker decides; retrieval scores **select, they don't rank**. Naively
+blending a BM25 score with a cosine similarity is arbitrary — the robust
+pattern is to pass both scores in as *features* of the learning-to-rank model,
+which is exactly what Facebook does with its ANN similarity in embedding-based
+retrieval. Retrieval's only job is to make sure the right answer is somewhere
+in the thousand.
+</ThinkFirst>
 
 ## 6. Serving & scaling
 
@@ -139,6 +191,15 @@ final call.
 - **Online:** A/B on the business metric (bookings/purchases per search), with
   guardrails: zero-result rate, latency, query-abandonment.
 - **Human relevance judgments** for a gold set the implicit metrics can't cover.
+
+<ThinkFirst question="Bookings — your online metric — lag searches by days to weeks. What signals warn you within hours that search quality regressed, without waiting for any labels?">
+Behavioral proxies that need no labels: **zero-result rate**, **query
+reformulation rate**, abandonment, click-position distribution, and latency.
+A user who immediately re-types a longer query is telling you the first result
+page failed — that signal lands in your logs within minutes, weeks before the
+booking numbers move. Alert on these; treat the lagging business metric as the
+verdict, not the alarm.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
@@ -183,3 +244,12 @@ the booking label, not clicks, and interleave before trusting offline NDCG.
   matches, semantic adds meaning.
 - Optimize the **downstream conversion**, correct **position bias** in the labels,
   and let interleaving/A-B — not offline NDCG — decide.
+
+## References
+
+- [Real-time Personalization using Embeddings for Search Ranking at Airbnb](https://dl.acm.org/doi/10.1145/3219819.3219885) — Grbovic & Cheng, KDD 2018 (best paper, applied track); session-based listing embeddings, booked-listing global positives, and two-sided host-rejection signals.
+- [Applying Deep Learning To Airbnb Search](https://arxiv.org/abs/1810.09591) — Haldar et al., KDD 2019; the GBDT-plateau-to-neural journey, pipeline-first NN rollout, and candid failed experiments.
+- [Semantic Product Search](https://arxiv.org/abs/1907.00937) — Nigam et al., Amazon, KDD 2019; where lexical matching fails, the three-tier loss over purchased/impressed/random, and the Recall@100 lift.
+- [Embedding-based Retrieval in Facebook Search](https://arxiv.org/abs/2006.11632) — Huang et al., KDD 2020; serving ANN retrieval alongside an inverted index, hard-negative mining, and full-stack tuning.
+- [Unbiased Learning-to-Rank with Biased Feedback](https://www.cs.cornell.edu/~tj/publications/joachims_etal_17a.pdf) — Joachims et al., WSDM 2017; propensity-weighted correction of position bias in click data.
+- [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) — Burges, Microsoft Research TR 2010; the learning-to-rank workhorse family.

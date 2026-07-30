@@ -11,7 +11,7 @@ relatedLessons:
   - "recommender-systems/06-ad-ranking-and-ctr-prediction"
   - "model-evaluation/07-calibration-and-uncertainty"
   - "recommender-systems/03-deep-and-two-tower"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design an Ad Click-Through-Rate Prediction System
@@ -27,8 +27,11 @@ Ad CTR prediction is the highest-stakes ML slot on the internet — the model's
 output is multiplied by a bid to decide what runs and what an advertiser pays.
 Two things make it distinct from feed ranking: the prediction must be a
 **calibrated probability** (not just a good ranking), and it feeds an
-**auction** with real economics. Walk it through the **ML project loop** with
-the objective and evaluation stages front and center.
+**auction** with real economics. It's also the domain with the best paper
+trail — Google and Facebook both published unusually frank accounts of their
+production CTR systems, and this case leans on them throughout. Walk it through
+the **ML project loop** with the objective and evaluation stages front and
+center.
 
 ## 1. Clarify the problem
 
@@ -58,6 +61,16 @@ a feed-ranking answer.
 **Back-of-envelope:** scoring hundreds of ads in under 10ms means a model that's cheap
 per item — wide-and-deep / factorization-based, not a giant transformer per ad.
 
+<ThinkFirst question="Facebook measured what happens when a CTR model trained on one day's data is evaluated on each of the following days. What did the curve look like — and what does it force operationally?">
+Monotonic decay: prediction quality degrades steadily as the gap between
+training data and serving traffic grows — new ads launch, campaigns end, user
+behavior shifts. Their conclusion was that **data freshness is worth more than
+most modeling cleverness**, pushing retraining to at least daily and motivating
+online learning. Google went all the way: FTRL-Proximal updates the model
+per-example, in a streaming loop. A weekly batch retrain is not a smaller
+version of this system — it's a different, worse system.
+</ThinkFirst>
+
 ## 3. ML problem framing
 
 Binary probability estimation under **extreme class imbalance** (CTRs are often
@@ -85,15 +98,41 @@ must analytically correct or **recalibrate** after downsampling.
   (placement, device, time), and dense **cross features** (user × ad category).
   ID features are embedded; the embedding tables dominate model size.
 - **Imbalance:** negative downsampling with **calibration correction** to recover
-  true probabilities after resampling.
+  true probabilities after resampling — Facebook's recipe: downsample negatives
+  by rate $w$, then map the model output back with
+  $q = p / (p + (1-p)/w)$
+  ([He et al., ADKDD 2014](https://dl.acm.org/doi/10.1145/2648584.2648589)).
+- **Freshness:** the same paper showed model quality decays day over day when
+  training lags serving — so labels flow into (at least) daily retrains, and the
+  feature pipeline is streaming, not nightly.
+
+<ThinkFirst question="Your feature space is billions of sparse IDs (every user × ad × placement cross). One weight per feature can't fit in serving memory. What are your levers before you reach for a smaller model?">
+Three, all from Google's production playbook: **hashing** IDs into a bounded
+space, an **L1-inducing online update** (FTRL-Proximal) so most weights are
+exactly zero and never stored, and **probabilistic feature inclusion** — only
+admit a feature once it has appeared enough times to plausibly matter. The
+model stays expressive over billions of possible features while materializing
+only the tiny fraction that earns its memory.
+</ThinkFirst>
 
 ## 5. Model *(spine: hypothesis space + objective + optimization)*
 
-- **Baseline:** logistic regression with hashed cross features — still a shockingly
-  strong, cheap baseline and the historical workhorse.
-- **Production:** a **DLRM / Wide-and-Deep / DeepFM** — sparse embeddings for IDs,
-  explicit feature crosses, an MLP for higher-order interactions. Objective:
-  logloss (proper scoring rule → calibrated by construction, if not distorted).
+- **Baseline:** logistic regression with hashed cross features, trained online —
+  Google's ads system ran on exactly this, with **FTRL-Proximal** per-coordinate
+  updates over billions of coefficients
+  ([McMahan et al., KDD 2013](https://research.google/pubs/ad-click-prediction-a-view-from-the-trenches/)).
+  Still a shockingly strong, cheap baseline.
+- **Feature learning:** Facebook's classic upgrade kept the LR but fed it
+  **GBDT leaf indices** as learned categorical features — trees as automatic
+  feature crossers — beating either model alone by **>3%** in normalized
+  entropy ([He et al., ADKDD 2014](https://dl.acm.org/doi/10.1145/2648584.2648589)).
+- **Production today:** a **Wide & Deep / DLRM-family** network — a wide linear
+  side that *memorizes* proven crosses plus a deep embedding side that
+  *generalizes* to unseen ones, the split Google introduced for Play
+  recommendations ([Cheng et al., 2016](https://arxiv.org/abs/1606.07792));
+  at Meta scale the sparse embedding tables dominate model size
+  ([DLRM](https://arxiv.org/abs/1906.00091)). Objective: logloss (a proper
+  scoring rule → calibrated by construction, if not distorted).
 - **Recalibration:** Platt scaling / isotonic regression on a held-out slice to
   correct residual miscalibration (and the downsampling bias).
 
@@ -139,12 +178,25 @@ segment.
   experience (ad load, relevance) and calibration by segment.
 - **Counterfactual:** replay/off-policy estimation before spending live traffic.
 
+<ThinkFirst question="Aggregate calibration is perfect: mean pCTR equals observed CTR to the third decimal. Why can the system still be losing money every hour?">
+Because calibration errors can **cancel in aggregate**: overpredicting on video
+placements while underpredicting on mobile ones nets to zero overall, yet every
+video auction is overpriced and every mobile one underdelivers — advertisers on
+each side notice even when your dashboard doesn't. Calibration is only
+meaningful **per slice** (placement, advertiser vertical, device, ad age); the
+aggregate number is a vanity metric. This is why calibration monitoring, not
+AUC monitoring, is the pager-worthy alert.
+</ThinkFirst>
+
 ## 8. Monitoring & feedback *(spine: feedback)*
 
 - **Calibration drift** by slice (advertiser, placement) is the alarm that
   matters most — it silently distorts pricing.
-- **Delayed conversions:** attribution windows require care; retrain with
-  corrected labels as conversions arrive. The loop closes into **data**.
+- **Delayed conversions:** a conversion can land up to a month after the click,
+  so recent "negatives" are really *censored* labels — model the delay
+  distribution explicitly rather than mislabeling them
+  ([Chapelle, KDD 2014](https://www.semanticscholar.org/paper/Modeling-delayed-feedback-in-display-advertising-Chapelle/9eed333dcaade2c1dd32590eff6b0c0e670a5674)),
+  and backfill labels as conversions arrive. The loop closes into **data**.
 
 ## 9. Tradeoffs & alternatives
 
@@ -181,5 +233,16 @@ Cold start in ads is expensive, so exploration is bounded and tracked.
   **auction** that prices on the absolute number.
 - **Latency and cost** force small, embedding-heavy models (DLRM-style), not giant
   networks — it runs billions of times a day.
-- Track **AUC *and* calibration** separately; a ranking win with a calibration
-  regression loses money.
+- **Data freshness beats model cleverness**: day-old training data measurably
+  degrades predictions, which is why the field invented online learning (FTRL)
+  and daily GBDT+LR refresh cycles.
+- Track **AUC *and* calibration** separately — and calibration **per slice**; a
+  ranking win with a calibration regression loses money.
+
+## References
+
+- [Ad Click Prediction: a View from the Trenches](https://research.google/pubs/ad-click-prediction-a-view-from-the-trenches/) — McMahan et al., Google, KDD 2013; FTRL-Proximal online learning, per-coordinate rates, memory-saving sparsity tricks, and calibration in production.
+- [Practical Lessons from Predicting Clicks on Ads at Facebook](https://dl.acm.org/doi/10.1145/2648584.2648589) — He et al., ADKDD 2014; GBDT-feature + LR hybrid, the data-freshness decay experiment, normalized entropy, and downsampling recalibration.
+- [Wide & Deep Learning for Recommender Systems](https://arxiv.org/abs/1606.07792) — Cheng et al., Google, 2016; the memorization-vs-generalization split behind modern wide-and-deep CTR models.
+- [Deep Learning Recommendation Model for Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091) — Naumov et al., Meta, 2019; the DLRM architecture and why embedding tables dominate size and parallelism strategy.
+- [Modeling Delayed Feedback in Display Advertising](https://www.semanticscholar.org/paper/Modeling-delayed-feedback-in-display-advertising-Chapelle/9eed333dcaade2c1dd32590eff6b0c0e670a5674) — Chapelle, Criteo, KDD 2014; treating not-yet-converted impressions as censored rather than negative.

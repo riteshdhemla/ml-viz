@@ -11,7 +11,7 @@ relatedLessons:
   - "ml-in-practice/20-fraud-detection-at-scale"
   - "ml-in-practice/14-anomaly-detection"
   - "model-evaluation/01-classification-metrics"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Real-Time Fraud Detection System
@@ -27,16 +27,22 @@ Fraud detection is the ML interview where **the data and the evaluation are the
 hard parts**, not the model. Two forces define it: **extreme class imbalance**
 (fraud is a fraction of a percent) and an **adaptive adversary** who changes
 behavior the moment you catch them — so the loop's **data → evaluation →
-feedback** stages carry the weight.
+feedback** stages carry the weight. The reference production system here is
+**Stripe Radar**, which evaluates over 1,000 characteristics of each payment
+and decides in under 100 milliseconds
+([Stripe](https://stripe.com/guides/primer-on-machine-learning-for-fraud-protection)).
 
 ## 1. Clarify the problem
 
 - **Goal:** score each transaction for fraud risk in real time and **act** —
   approve, decline, or challenge (step-up auth) — balancing fraud loss against
   false-positive friction on good customers.
-- **Asymmetric costs:** a missed fraud loses the transaction value; a false
-  positive blocks a real customer and erodes trust. These are *not* symmetric —
-  the threshold is a business decision.
+- **Asymmetric costs:** a missed fraud loses the transaction value plus a
+  chargeback fee; a false positive blocks a real customer, loses the sale, and
+  erodes trust. These are *not* symmetric — the threshold is a business
+  decision. Radar's benchmark for the friction side: it falsely blocks about
+  **0.1% of legitimate payments**, and even that is a number merchants tune
+  against.
 - **Scope:** real-time transaction scoring + feedback loop. Related: chargebacks,
   KYC, account-takeover (mention as adjacent).
 
@@ -45,6 +51,15 @@ At under 0.5% fraud, predicting "never fraud" is 99.5% accurate and useless. The
 interview red flag is anyone who reaches for accuracy — use precision/recall at
 an operating point, AUPRC, and dollar-weighted cost.
 </Callout>
+
+<ThinkFirst question="Stripe scores every payment inline with over 1,000 features in under 100ms. Which kinds of features does that budget rule out computing at request time — and what does it force you to build instead?">
+Anything that scans history at request time: "transactions on this card in the
+last 24h" is a query over billions of rows if computed naively. The budget
+forces **precomputation** — streaming aggregations maintained continuously so
+the request path is a handful of key-value lookups plus a sub-millisecond model
+call. The architecture is decided by the latency budget before you pick any
+model.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
@@ -55,6 +70,11 @@ an operating point, AUPRC, and dollar-weighted cost.
 | Imbalance | Fraud < 0.5% | Class weighting, cost-sensitive thresholds, AUPRC |
 | Adversarial | Fraud shifts weekly | Fast retraining + drift monitoring + human review |
 | Explainability | Reason codes for declines | Feature attributions, often regulatory |
+
+For scale calibration: Nubank's risk platform processes about **500 million
+events per day at 5 million requests per minute** across its products
+([Building Nubank](https://building.nubank.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/)) —
+this is firmly "streaming infrastructure" territory, not batch scoring.
 
 ## 3. ML problem framing
 
@@ -85,8 +105,17 @@ human review as a faster label source, and a bounded randomized-approval slice.
   `tx_count_5min`, `distinct_countries_24h`, `device_age`, `merchant_decline_rate`.
   These require a **streaming feature store** answering count/sum/distinct in under 10ms
   with sub-second freshness, computed by the *same* pipeline for train and serve.
-- **Graph signals:** fraudsters reuse devices, cards, addresses — a shared-entity
-  graph exposes rings that look clean per-transaction.
+- **Network features:** a processor sees the same card across many businesses —
+  Stripe's core data advantage is that most cards hitting one merchant have
+  already been seen elsewhere on the network, so card- and device-history
+  features exist even for a merchant's first-ever transaction.
+- **Graph signals:** fraudsters reuse devices, cards, and addresses — a
+  shared-entity graph exposes rings that look clean per-transaction. Grab
+  builds exactly this graph (accounts, devices, payment instruments) to catch
+  professional syndicates running **device farms and GPS-spoofing apps**, where
+  per-account behavior looks plausible but the shared-hardware structure gives
+  the ring away
+  ([Grab Engineering](https://engineering.grab.com/graph-for-fraud-detection)).
 
 <WikiLink slug="graph-fraud-detection" title="Graph-based fraud detection with GNNs" />
 
@@ -96,35 +125,63 @@ Message passing propagates risk across the entity graph: an account linked to
 known-fraud nodes inherits elevated risk its own features wouldn't reveal.
 
 <ThinkFirst question="Tabular features, a 100ms inline budget, and regulators want reason codes for every decline. What model family — and why not the deepest one you know?">
-Gradient-boosted trees. On tabular velocity features they're still
-state-of-the-art or close, they score in microseconds, and feature attributions
-give the required reason codes. Deep models earn their place as *feature
-producers* (entity embeddings, GNN risk scores) feeding the tabular model — not
-as the inline decision-maker.
+Gradient-boosted trees are the classic answer: on tabular velocity features
+they're strong, they score in microseconds, and feature attributions give the
+required reason codes. But note the frontier has moved — Stripe ran a
+GBDT-plus-DNN ensemble for years and now serves a pure deep model, because at
+their data volume the DNN kept improving where XGBoost plateaued. The honest
+answer is "GBDT until your data size and team can pay for the deep-learning
+upgrade, and deep models as feature producers in between."
 </ThinkFirst>
 
 ## 5. Model *(spine: hypothesis space + objective)*
 
 - **Baseline:** gradient-boosted trees (XGBoost) on velocity + account features —
-  the production default for tabular fraud: strong, fast, interpretable.
-- **Add:** entity embeddings and GNN risk scores as features; a real-time
-  ensemble blends the tabular model with graph and rules.
+  the long-time production default for tabular fraud: strong, fast, interpretable.
+- **The production frontier:** Stripe Radar ran a "wide-and-deep" **XGBoost +
+  DNN ensemble**, then moved to a **DNN-only architecture with
+  ResNeXt-inspired branches** — naively dropping XGBoost cost ~1.5 points of
+  recall, so the branch structure had to re-earn it. The payoff: training time
+  fell **over 85%, to under two hours**, turning retraining from a nightly job
+  into something that runs several times a day
+  ([Stripe Engineering](https://stripe.dev/blog/how-we-built-it-stripe-radar)).
+  Fast retraining *is* a modeling feature when the adversary adapts weekly.
+- **Add:** entity embeddings and GNN risk scores as precomputed features; for
+  attacks with no labels yet, Grab layers an **unsupervised graph autoencoder
+  (GraphBEAN)** that flags anomalous subgraph structure and has surfaced
+  previously unknown fraud MOs
+  ([Grab Engineering](https://engineering.grab.com/graph-anomaly-model)).
 - **Objective:** class-weighted / focal loss, weights set by **business cost** of
   each error type, not just inverse frequency.
+
+<ThinkFirst question="A new attack pattern starts at 2am. Even Stripe's two-hour retrain leaves a multi-hour exposure window. What system component covers the gap — and what does it cost you?">
+A **rules layer** beside the model: an analyst ships "decline BIN range X from
+country Y" in minutes, no training data required. The cost is entropy — rules
+accumulate, overlap, and silently over-block. Nubank made the rules path a
+first-class product: a declarative policy engine that cut policy deployment
+from 3–5 weeks to 1–2 days and now runs 300+ policies in production. Treat
+rules as a managed system with owners and expiry, not a pile of if-statements.
+</ThinkFirst>
 
 ## 6. Serving & scaling
 
 Inline with checkout under 100ms: fetch streaming features + precomputed graph
-score, run the ensemble, map the score to an action band, emit reason codes.
-A rules layer sits alongside the model for known-bad patterns and instant
-response to emerging attacks (rules ship faster than a retrain).
+score, run the model, map the score to an action band, emit reason codes. A
+**rules/policy layer** sits alongside the model for known-bad patterns and
+instant response to emerging attacks — rules ship in minutes while a retrain
+takes hours. Nubank's version is a dedicated policy engine with a DSL, policy
+registry, and feature registry, which took policy changes from a 3–5 week
+engineering task to a 1–2 day analyst task and scaled from ~20 to 300+ live
+policies
+([Building Nubank](https://building.nubank.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/)).
 
 <ThinkFirst question="The model outputs a risk score. Where do you set the decision threshold — and why is 0.5 the wrong answer?">
 0.5 assumes errors cost the same in both directions; here a missed fraud costs
 the transaction value while a false decline costs a customer. Put the threshold
 where the **expected dollar cost** curve says — and usually not one threshold
 but bands: approve below, step-up challenge in the middle, decline above. The
-threshold is a business decision the model merely parameterizes.
+threshold is a business decision the model merely parameterizes — Stripe
+exposes exactly this as a merchant-tunable risk-threshold setting.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
@@ -133,29 +190,44 @@ threshold is a business decision the model merely parameterizes.
   precision/recall @ operating threshold, and **dollar-weighted** cost curves.
 - **Threshold selection:** pick the operating point on the cost curve, not a
   default 0.5 — often multiple thresholds for approve/challenge/decline.
-- **Online:** monitor approval rate, fraud loss, and false-positive complaints;
-  A/B new models on a slice with a shadow period first.
+- **Online:** monitor approval rate, fraud loss (basis points of volume), and
+  false-positive complaints; A/B new models on a slice with a shadow period
+  first — Stripe shadow-scores with the new model before it takes over
+  decisions.
 
 <WikiLink slug="roc-auc" title="ROC-AUC vs PR-AUC — why PR-AUC for rare positives" />
+
+<ThinkFirst question="Offline AUPRC improved on the holdout, you shipped, and three weeks later fraud losses are climbing. Walk through the two or three most likely explanations.">
+(1) **The adversary moved** — your holdout measured the *old* attack mix; the
+new model may even have been gamed by probing (card testers watch which
+attempts survive). (2) **Feedback lag fooled you** — chargebacks take weeks, so
+early "wins" were just unlabeled fraud sailing through. (3) **Selection bias**
+— the new model approves a different slice, and you have no labels on what the
+old model used to decline. This is why fraud evaluation is never a one-shot
+offline exercise.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
 - **Adversarial drift:** the adversary adapts, so distributions shift by design.
   Monitor feature and score drift; keep a **human review queue** whose decisions
-  become fresh labels.
-- **Fast retrain:** the loop must close quickly — daily/continuous retraining plus
-  rapid rule deployment for new attack vectors.
+  become fresh labels far faster than chargebacks.
+- **Fast retrain:** the loop must close quickly — this is the operational reason
+  Stripe's 85% training-time cut mattered: retraining several times a day
+  shrinks the window between a new attack and a model that has seen it.
 - **Feedback bias:** you only get labels on transactions you *approved* (declined
-  ones never charge back) — correct for this selection bias when retraining.
+  ones never charge back) — correct for this selection bias when retraining,
+  including a small, bounded randomized-approval slice in the risky band.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| GBDT + graph + rules ensemble | Single deep model | Interpretability, speed, and rules react faster than retrains |
+| GBDT/DNN + graph + rules ensemble | Single monolithic model | Rules react in minutes; graph catches rings; retrains take hours |
 | Cost-sensitive threshold bands | Single 0.5 cutoff | Asymmetric costs + step-up auth reduce friction |
 | Streaming feature store | Batch features | Fraud is real-time; stale features miss velocity attacks |
-| Supervised + anomaly hybrid | Pure supervised | Anomaly catches novel patterns before labels exist |
+| Supervised + graph-anomaly hybrid | Pure supervised | Unsupervised graph models catch novel MOs before labels exist |
+| Frequent retrains (hours) | Weekly/monthly retrains | The adversary's iteration speed sets yours |
 
 ## 10. Interviewer follow-ups
 
@@ -168,8 +240,10 @@ ambiguous cases.
 
 <Details summary="Fraudsters found a new pattern overnight. Model or rules?">
 Rules — they deploy in minutes and give instant coverage while you gather labels.
-The model catches up on the next retrain. A mature system runs both: ML for the
-broad, learned surface; rules for known-bad and rapid response.
+The model catches up on the next retrain (hours, if you've invested in fast
+training like Stripe). A mature system runs both: ML for the broad, learned
+surface; a governed policy engine (Nubank-style) for known-bad and rapid
+response.
 </Details>
 
 <Details summary="You only see chargebacks on approved transactions. Isn't that biased?">
@@ -179,11 +253,29 @@ slice (bounded, for the riskiest band), and reject-inference techniques when
 retraining.
 </Details>
 
+<Details summary="Why does a payments processor have an edge over a single merchant's in-house model?">
+Network data. Radar scores a merchant's first-ever transaction from a card
+using history accumulated across the whole Stripe network — velocity, device,
+and dispute history that no single merchant could observe. The lesson
+generalizes: in fraud, the moat is label and feature coverage, not model
+architecture.
+</Details>
+
 ## Key takeaways
 
 - Fraud is **cost-sensitive classification** under **extreme imbalance** and an
   **adaptive adversary** — accuracy and AUROC are traps; use AUPRC and dollar cost.
-- **Real-time velocity features** and **graph signals** carry the model; a
-  streaming feature store prevents train-serve skew.
+- **Real-time velocity features**, **network history**, and **graph signals**
+  carry the model; a streaming feature store prevents train-serve skew.
 - The system is a **fast loop**: human review generates labels, models retrain
-  quickly, and rules cover the gap between attack and retrain.
+  in hours (Stripe retrains several times a day), and a governed rules layer
+  covers the gap between attack and retrain.
+
+## References
+
+- [A primer on machine learning for fraud detection](https://stripe.com/guides/primer-on-machine-learning-for-fraud-protection) — Stripe Radar guide; grounds the 1,000+ signals, sub-100ms decision, ~0.1% false-block rate, and network-data advantage.
+- [How we built it: Stripe Radar](https://stripe.dev/blog/how-we-built-it-stripe-radar) — Stripe engineering blog; grounds the wide-and-deep → DNN-only (ResNeXt-inspired) architecture evolution and the 85% training-time reduction.
+- [Graph for fraud detection](https://engineering.grab.com/graph-for-fraud-detection) — Grab engineering blog; grounds entity graphs and GNNs for detecting fraud syndicates and shared-device rings.
+- [Unsupervised graph anomaly detection — Catching new fraudulent behaviours](https://engineering.grab.com/graph-anomaly-model) — Grab engineering blog; grounds the GraphBEAN unsupervised graph autoencoder for label-free detection of new fraud MOs.
+- [Graph Networks — Striking fraud syndicates in the dark](https://engineering.grab.com/graph-networks) — Grab engineering blog; grounds device farms / GPS-spoofing syndicates as the adversary model.
+- [Scaling fraud defense: How Nubank evolved its risk analysis platform](https://building.nubank.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/) — Building Nubank; grounds the 500M events/day scale and the policy-engine numbers (3–5 weeks → 1–2 days, 300+ policies).

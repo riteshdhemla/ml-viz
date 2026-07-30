@@ -12,7 +12,7 @@ relatedLessons:
   - "speech-audio/01-audio-representations"
   - "generative-models/05-diffusion-models"
   - "speech-audio/02-speech-recognition"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Music & Audio Generation System
@@ -46,6 +46,14 @@ tokenization** (compress audio into a short token sequence) as the enabling move
 plus **long-range musical structure** as the quality challenge.
 </Callout>
 
+<ThinkFirst question="A 3-minute song at 44.1kHz stereo — roughly how many samples is that, and what does the number rule out?">
+About **16 million samples** (2 × 44,100 × 180). No sequence model attends
+over that directly — raw-waveform generation is off the table. The enabling
+move is a **neural audio codec**: compress audio into a short discrete-token
+or latent sequence (tens to hundreds of steps per second, not tens of
+thousands of samples), generate in that space, and decode back to waveform.
+</ThinkFirst>
+
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
@@ -55,52 +63,71 @@ plus **long-range musical structure** as the quality challenge.
 | Latency | Streamable | Chunked/streaming synthesis |
 | Copyright | No artist/voice cloning without consent | Style/voice filters, provenance |
 
-<ThinkFirst question="A 3-minute song at 44.1kHz stereo — roughly how many samples is that, and what does the number rule out?">
-About **16 million samples**. No sequence model attends over that directly —
-raw-waveform generation is off the table. The enabling move is a **neural audio
-codec**: compress audio into a short discrete-token or latent sequence
-(hundreds of tokens per second, not tens of thousands of samples), generate in
-that space, and decode back to waveform.
-</ThinkFirst>
+**Back-of-envelope on compression:** EnCodec-style codecs turn 32kHz music into
+~50 token-steps per second via residual vector quantization — MusicGen models
+4 parallel codebooks at that rate, so a 3-minute song is ~9K steps instead of
+16M samples ([Copet et al., 2023](https://arxiv.org/abs/2306.05284)). That
+~1000× reduction is the entire feasibility argument.
 
 ## 3. GenAI problem framing
 
 Two dominant families:
 
-- **Tokenized-audio autoregressive:** a **neural audio codec** (e.g. residual
-  vector quantization) compresses audio into discrete tokens; a transformer
-  models the token sequence (MusicGen/AudioLM-style). Long context handles
-  structure.
-- **Latent diffusion on audio** (or mel-spectrogram): diffuse in a compressed
-  audio latent, then decode to waveform.
+- **Tokenized-audio autoregressive:** a **neural audio codec** with residual
+  vector quantization compresses audio into discrete tokens
+  ([Défossez et al., 2022](https://arxiv.org/abs/2210.13438)); a transformer
+  models the token sequence. AudioLM's key split: **semantic tokens** carry
+  long-term structure, **acoustic tokens** carry fidelity, generated
+  coarse-to-fine ([Borsos et al., 2022](https://arxiv.org/abs/2209.03143)).
+  MusicGen collapses this to a single-stage LM with interleaved codebooks.
+- **Latent diffusion on audio:** diffuse in a compressed audio latent, then
+  decode — Stable Audio's 907M-parameter latent diffusion model with timing
+  conditioning generates variable-length stereo 44.1kHz music
+  ([Evans et al., 2024](https://arxiv.org/abs/2402.04825)).
 
 *Pre-generative baseline?* Sample libraries + rule-based composition — no
 open-ended text control. Generative models turn a prompt into novel audio.
 
+<ThinkFirst question="Which do you train first — the generator or the codec? And why does codec quality put a hard ceiling on the whole product?">
+**Codec first.** The codec defines the vocabulary the generator writes in:
+every generation is decoded through it, so the product can never sound better
+than the codec's reconstructions — artifacts in the decoder appear in every
+output, forever. That's why codecs are trained separately with reconstruction
+plus adversarial (spectrogram-discriminator) losses before any generative
+training, and why a codec upgrade is a whole-catalog quality upgrade.
+</ThinkFirst>
+
 ## 4. Data & training *(spine: data)*
 
 - **Data:** licensed music/audio with text/metadata; captioning and
-  genre/instrument tagging are subsystems.
+  genre/instrument tagging are subsystems (MusicLM released MusicCaps — 5.5K
+  expert-written music descriptions — because such data barely existed).
 - **Representation:** train the **audio codec** first (compress → discrete
   tokens/latents), then the generative model over that compact space.
-- **Copyright hygiene:** licensing provenance and artist opt-outs are central, not
-  an afterthought.
+- **Copyright hygiene:** licensing provenance and artist opt-outs are central,
+  not an afterthought — Stable Audio trained on ~19.5K hours of *licensed*
+  stock-library audio rather than scraped music, a deliberately smaller but
+  litigable-risk-free corpus.
 
 <ThinkFirst question="Your model produces gorgeous 10-second clips, but 3-minute songs meander and repeat. What's missing?">
 **Long-range structure.** Local coherence (the next bar sounds right) is a
 different skill from musical form (verses return, a chorus repeats, the key
-resolves). The fix is **hierarchical generation** — model coarse structural
-tokens first, then fill in fine acoustic detail conditioned on them — plus long
-context and explicit form conditioning (lyrics, section tags).
+resolves). The fix is **hierarchical generation** — model coarse
+structural/semantic tokens first, then fill in fine acoustic detail
+conditioned on them — plus long context and explicit form conditioning
+(lyrics, section tags). This is exactly AudioLM/MusicLM's semantic→acoustic
+split.
 </ThinkFirst>
 
 ## 5. Model & generation *(spine: hypothesis-space)*
 
-- **Codec:** RVQ-based neural codec turns waveform into a short sequence of tokens
-  (the key to tractable length).
+- **Codec:** RVQ-based neural codec turns waveform into a short multi-codebook
+  token sequence (the key to tractable length).
 - **Generator:** a transformer (autoregressive over tokens) or latent diffusion,
-  conditioned on text (+ lyrics/melody); **hierarchical** coarse→fine token
-  generation captures both structure and detail.
+  conditioned on text (+ lyrics/melody). **Hierarchical coarse→fine** generation
+  captures both structure and detail — MusicLM chains MuLan text embeddings →
+  semantic tokens → acoustic tokens and stays consistent over minutes at 24kHz
+  ([Agostinelli et al., 2023](https://arxiv.org/abs/2301.11325)).
 - **Vocoder/decoder:** tokens/latents → waveform.
 
 <DiffusionViz />
@@ -109,12 +136,35 @@ Whether autoregressive or diffusion, the win is the same as images/video:
 **generate in a compressed representation**, then decode — never model raw signal
 directly.
 
+<ThinkFirst question="Two products: a sound-effects tool that should respond in about a second, and a full-song generator where users happily wait a minute. Map each to the two model families — what's the time-to-first-audio of each?">
+Autoregressive token models decode **causally**, so you can stream: decode
+the first chunk of tokens, vocode, start playback while generation continues
+— time-to-first-audio is sub-second even if the full track takes a minute.
+Diffusion denoises the **whole window jointly** — Stable Audio renders 95
+seconds in ~8 seconds on an A100, far faster than real time but nothing is
+playable until the last denoising step. So: diffusion suits short
+effects/stems and batch song rendering; AR tokens suit streaming playback
+and interactive voice.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 Generation is a GPU job; support **streaming** by generating and decoding in
-chunks so playback can start before the full track is done. Cache the codec/
-vocoder; batch generation requests; store outputs in object storage + CDN. Voice
-synthesis (TTS) is lower-latency and can be near-real-time with a light vocoder.
+chunks so playback starts before the full track is done (AR models stream
+natively; diffusion models render segments). Cache the codec/vocoder; batch
+generation requests; store outputs in object storage + CDN. Voice synthesis
+(TTS) is the latency-critical sibling — light causal vocoders make it
+near-real-time.
+
+<ThinkFirst question="No clicks, no ground truth, and taste is subjective. A new checkpoint lands — how do you decide it's actually better?">
+Screen automatically, decide with humans. FAD and CLAP-style text–audio
+alignment on a fixed prompt suite (e.g. MusicCaps) catch regressions cheaply;
+then **pairwise human preference** on musicality, structure, and prompt
+adherence makes the call — MusicLM's evaluation used exactly this
+metric-plus-listener protocol, and for voice, MOS naturalness panels. The
+structural failure mode (songs that drift over minutes) only shows up if you
+evaluate *full-length* outputs, so don't A/B on 10-second clips.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
@@ -123,6 +173,9 @@ synthesis (TTS) is lower-latency and can be near-real-time with a light vocoder.
 - **Human eval** dominates: musicality, structure, prompt adherence, and (for
   voice) naturalness (MOS).
 - **Structure checks:** does a 2-minute song hold together, or drift/repeat?
+  Evaluate at full product length, not clip length.
+- **Regurgitation audits:** search generations against the training catalog
+  (melody/audio fingerprinting) for memorized material.
 
 <ThinkFirst question="What's the abuse case unique to audio generation — the one that's worse here than in any other modality?">
 **Voice cloning.** A convincing synthetic voice enables fraud (fake calls from
@@ -134,35 +187,40 @@ watermarking are hard requirements, ahead of general content filtering.
 
 ## 8. Safety & guardrails
 
-- **Voice cloning:** synthesizing a real person's voice without consent is the top
-  abuse — consent gates, voice-likeness detection, watermarking.
+- **Voice cloning:** synthesizing a real person's voice without consent is the
+  top abuse — consent gates, voice-likeness detection, watermarking. Meta's
+  AudioSeal embeds a watermark detectable at the *sample level* with a
+  single-pass detector fast enough for real-time screening
+  ([San Roman et al., 2024](https://arxiv.org/abs/2401.17264)).
 - **Style/copyright:** filter prompts targeting specific artists; monitor for
-  melodic/verbatim regurgitation of training tracks.
-- **Provenance:** watermark generated audio (audible/inaudible + metadata).
+  melodic/verbatim regurgitation of training tracks via fingerprinting.
+- **Provenance:** watermark generated audio (inaudible + signed metadata).
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Tokenized/latent audio | Raw waveform modeling | Waveforms are far too long to model directly |
+| Tokenized/latent audio | Raw waveform modeling | ~1000× shorter sequences; waveforms are intractable |
 | Hierarchical coarse→fine | Flat single-scale generation | Captures both long structure and fine detail |
-| Streaming chunked synthesis | Generate-then-serve whole | Lets playback start quickly |
+| AR tokens (streamable) | Latent diffusion (whole-window) | Sub-second first audio vs. faster batch rendering |
 | Licensed data + opt-outs | Scrape everything | Copyright exposure is existential here |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Why not model the raw audio waveform directly?">
-A few seconds of audio is tens of thousands of samples — sequence lengths are
-intractable and local sample prediction misses musical structure. A neural codec
-compresses audio into a short token/latent sequence, so the generative model
-works over a tractable representation and a decoder reconstructs the waveform.
+A 3-minute song is ~16M samples — sequence lengths are intractable and local
+sample prediction misses musical structure. An RVQ neural codec compresses
+audio ~1000× into a short token/latent sequence, so the generative model works
+over a tractable representation and a decoder reconstructs the waveform. The
+codec's reconstruction quality is then a hard ceiling on output quality.
 </Details>
 
 <Details summary="A 10-second clip sounds great but a 3-minute song falls apart. Why?">
 Long-range structure. Local coherence is easy; maintaining verses/choruses and
-key over minutes needs long context and hierarchical (coarse structure → fine
-detail) generation, plus conditioning that encodes song form. Evaluate structure
-explicitly, not just short-clip quality.
+key over minutes needs long context and hierarchical (semantic/structural
+tokens → acoustic detail) generation, plus conditioning that encodes song form
+(lyrics, section tags). Evaluate structure explicitly at full length, not just
+short-clip quality.
 </Details>
 
 <Details summary="A user prompts 'a song in the voice of [famous artist].' What happens?">
@@ -174,9 +232,20 @@ audio, so it's a hard guardrail backed by licensing hygiene in training.
 
 ## Key takeaways
 
-- Audio/music generation models a **compressed audio representation** (neural
-  codec tokens or latents), never raw waveform.
-- **Long-range structure** (via hierarchical generation) is the quality challenge;
-  **streaming chunked synthesis** enables fast playback.
+- Audio/music generation models a **compressed audio representation** (RVQ codec
+  tokens or latents, ~1000× shorter than waveform) — and codec quality caps the
+  product.
+- **Long-range structure** (via hierarchical semantic→acoustic generation) is
+  the quality challenge; **AR tokens stream, diffusion batch-renders** — pick
+  per product.
 - **Voice cloning and style copyright** are the defining safety risks — consent
-  gates, likeness detection, and watermarking are mandatory.
+  gates, likeness detection, licensed data, and watermarking are mandatory.
+
+## References
+
+- [High Fidelity Neural Audio Compression](https://arxiv.org/abs/2210.13438) — Défossez et al., Meta, 2022 (EnCodec); the RVQ neural codec that makes token-space generation tractable.
+- [AudioLM: a Language Modeling Approach to Audio Generation](https://arxiv.org/abs/2209.03143) — Borsos et al., Google, 2022; the semantic-vs-acoustic token split behind hierarchical audio generation.
+- [MusicLM: Generating Music From Text](https://arxiv.org/abs/2301.11325) — Agostinelli et al., Google, 2023; hierarchical text-to-music at 24kHz, coherent over minutes, plus the MusicCaps benchmark.
+- [Simple and Controllable Music Generation](https://arxiv.org/abs/2306.05284) — Copet et al., Meta, NeurIPS 2023 (MusicGen); single-stage LM over interleaved EnCodec codebooks at ~50Hz.
+- [Fast Timing-Conditioned Latent Audio Diffusion](https://arxiv.org/abs/2402.04825) — Evans et al., Stability AI, ICML 2024 (Stable Audio); 907M-parameter latent diffusion, 95s of 44.1kHz stereo in ~8s on an A100, trained on licensed audio.
+- [Proactive Detection of Voice Cloning with Localized Watermarking](https://arxiv.org/abs/2401.17264) — San Roman et al., Meta, ICML 2024 (AudioSeal); sample-level localized audio watermarking with a real-time detector.

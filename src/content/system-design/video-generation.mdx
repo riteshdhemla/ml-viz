@@ -12,7 +12,7 @@ relatedLessons:
   - "generative-models/05-diffusion-models"
   - "generative-models/06-vit-and-modern-genai"
   - "gpu-programming/05-distributed-training-at-scale"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Text-to-Video Generation System
@@ -25,10 +25,11 @@ estimatedMinutes: 18
 />
 
 Text-to-video is text-to-image with a brutal extra dimension: **time**. A video is
-dozens of frames that must be individually realistic *and* temporally coherent
+hundreds of frames that must be individually realistic *and* temporally coherent
 (objects persist, motion is smooth), which explodes compute, memory, and storage.
-It's the frontier generative-AI system-design problem — the answer is all about
-**taming the temporal + compute cost**.
+It's the frontier generative-AI system-design problem — production systems like
+Sora, Veo, and Runway all converge on the same answer: **tame the temporal +
+compute cost with compression, factorization, and staging**.
 
 ## 1. Clarify the problem
 
@@ -56,6 +57,13 @@ time dimension." Framing temporal coherence and compute/storage as *the* problem
 | Storage/bandwidth | Videos are huge | Aggressive latent compression; CDN |
 | Latency | Async (not interactive) | Job queue; progress streaming |
 
+**Back-of-envelope:** a 16-second 1080p clip at 16 fps is 256 frames — even a
+single frame equals an entire text-to-image request, and the frames can't be
+made independently. Meta's Movie Gen represents such a clip as ~73K latent
+tokens inside a 30B-parameter transformer
+([Movie Gen team, 2024](https://arxiv.org/abs/2410.13720)) — context lengths
+and model sizes that dictate everything downstream.
+
 <ThinkFirst question="You already have a great text-to-image model. Why not just run it once per frame?">
 Because each frame would be an *independent* sample from the distribution — the
 dog changes breed between frames, textures flicker, the camera teleports.
@@ -68,56 +76,86 @@ than looping an image model.
 
 **Spatiotemporal latent diffusion.** Encode the video into a compressed
 **spacetime latent** (compress both spatially and temporally), then run a
-diffusion transformer with **spatial + temporal attention** so frames are
-generated jointly, not independently. Generation is diffusion over the whole clip's
-latent.
+diffusion transformer over **spacetime patches** so frames are generated
+jointly, not independently. This is Sora's core recipe — a DiT trained on
+spacetime patches of video latents, at variable durations, resolutions, and
+aspect ratios
+([OpenAI, 2024](https://openai.com/index/video-generation-models-as-world-simulators/)).
 
 *Pre-generative baseline?* Frame-by-frame image generation — fails badly:
 independent frames flicker and drift. Joint spacetime modeling is what buys
 coherence.
 
+<ThinkFirst question="You've scraped a billion web videos. List what must happen before a single training step runs — and identify the preprocessing step that is itself a frontier ML system.">
+Cut raw footage into single-shot clips (scene detection), filter for quality
+(resolution, motion, text overlays, aesthetics), dedup, safety-screen — and
+then **caption everything densely**, because alt-text for video barely
+exists. That captioning step is a video-language model in its own right:
+Sora applies the DALL·E 3 re-captioning technique to video, and Stable Video
+Diffusion showed that this curation stage matters as much as architecture —
+its recipe cut a ~600M-clip corpus down before high-quality finetuning.
+</ThinkFirst>
+
 ## 4. Data & training *(spine: optimization)*
 
-- **Data:** large video–text corpora with quality/caption filtering; captioning
-  videos (often with a VLM) is itself a subsystem.
+- **Data:** large video–text corpora; captioning with a VLM is a subsystem, and
+  curation is staged. Stable Video Diffusion's recipe is explicit: image
+  pretraining → large-scale video pretraining on a curated ~600M-clip dataset →
+  high-quality video finetuning, with ablations showing the curation stages
+  drive the win ([Blattmann et al., 2023](https://arxiv.org/abs/2311.15127)).
 - **Compute:** training needs **distributed training at scale** — data/tensor/
   pipeline parallelism, gradient checkpointing, huge clusters. This is where the
   money goes.
-- **Curation:** dedup, resolution/FPS normalization, safety filtering of training
-  video.
+- **Curation:** dedup, resolution/FPS normalization, cut detection, safety
+  filtering of training video.
 
 <WikiLink slug="ddim-sampling" title="Diffusion sampling (extended to video latents)" />
 
 <ThinkFirst question="Full attention over every spacetime patch of a 10-second clip — feasible? Where does the cost go, and what do you factor?">
 Attention is quadratic in tokens, and video multiplies tokens by the frame
-count — full 3D attention is prohibitive. Two factorizations tame it:
-**separate spatial and temporal attention** (attend within a frame, then
-across time at each location), and **staged generation** — produce a
-low-res/low-FPS clip first, then super-resolve spatially and interpolate
-temporally. Never pay full price in one pass.
+count — full 3D attention over hundreds of thousands of patches is
+prohibitive. Two factorizations tame it: **separate spatial and temporal
+attention** (attend within a frame, then across time at each location), and
+**staged generation** — produce a low-res/low-FPS clip first, then
+super-resolve spatially and interpolate temporally. Never pay full price in
+one pass.
 </ThinkFirst>
 
 ## 5. Model & generation *(spine: hypothesis-space)*
 
-- **Architecture:** a diffusion transformer over spacetime latent patches with
-  factorized spatial/temporal attention (full 3D attention is too expensive).
-- **Conditioning:** text (and optionally a first frame/image) via cross-attention;
-  CFG for adherence.
+- **Architecture:** a diffusion transformer over spacetime latent patches;
+  smaller models factorize spatial/temporal attention, while the largest (Sora,
+  Movie Gen's 30B flow-matching transformer) afford joint attention over the
+  full latent — the frontier is exactly where that line sits.
+- **Conditioning:** text (and optionally a first frame/image) via
+  cross-attention; CFG for adherence.
 - **Staged generation:** generate a low-res/low-FPS clip, then **super-resolve**
   spatially and **interpolate** temporally — cheaper than generating full-res
-  directly.
+  directly (Movie Gen generates at 768px and upsamples to 1080p).
 
 <DiffusionViz />
 
 The same denoising idea as images, but the model denoises a *spacetime* latent so
 motion and identity stay coherent across frames.
 
+<ThinkFirst question="A 30B-parameter model with a 73K-token context takes minutes to produce 16 seconds of video. Design the request path — and say why 'interactive latency' is the wrong goal.">
+Treat every generation as an **async GPU job**: enqueue, schedule onto a
+multi-GPU worker (a 30B model at that context won't fit a single GPU's
+memory + KV budget), stream progress and a low-res preview, notify on
+completion. Users tolerate minutes for a clip they'll keep; they don't
+tolerate a spinner with no feedback. So the system optimizes **throughput
+per GPU-hour and queue fairness** (priority tiers, preemption), not p50
+latency — the opposite of a chat-serving stack.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 Inherently **async**: a request is a GPU job (minutes) on a queue with progress
-streaming, not an interactive call. Multi-GPU per clip for large models;
-autoscale GPU pools by queue depth. Outputs are large — store in object storage,
-serve via CDN, transcode to delivery formats.
+streaming, not an interactive call. Multi-GPU inference per clip for the largest
+models; autoscale GPU pools by queue depth; priority tiers (draft vs. final
+render). Outputs are large — store in object storage, serve via CDN, transcode
+to delivery formats. Charge per generated second: unit economics are visible in
+this product like almost no other.
 
 <ThinkFirst question="Every individual frame scores beautifully on FID. Is the video good?">
 Not necessarily — per-frame metrics are blind to time. A clip can have
@@ -130,18 +168,34 @@ because "does it look real over time" is what viewers actually perceive.
 ## 7. Evaluation *(spine: evaluation)*
 
 - **Per-frame quality:** FID/aesthetic scores.
-- **Temporal metrics:** FVD (Fréchet Video Distance), warp/flicker consistency,
-  motion smoothness.
-- **Prompt adherence:** CLIP-style video–text alignment.
-- **Human eval** dominates — coherence and "does it look real over time" are what
-  people judge; collect preference data.
+- **Temporal metrics:** **FVD** (Fréchet Video Distance) — an FID analogue
+  computed on features from a video network (an I3D action classifier), so it
+  sees temporal coherence, and it correlates with human judgment
+  ([Unterthiner et al., 2018](https://arxiv.org/abs/1812.01717)); plus
+  warp/flicker consistency and motion smoothness.
+- **Prompt adherence:** video–text alignment plus physics/object-permanence
+  probes — the Sora report evaluates exactly these emergent behaviors.
+- **Human eval** dominates — Movie Gen shipped a human A/B benchmark
+  (MovieGenBench) precisely because automated metrics under-measure coherence.
+
+<ThinkFirst question="Deepfake detectors keep losing to better generators. As the platform generating the video, what stronger position can you take than post-hoc detection?">
+**Provenance at generation time.** A detector fights an arms race it loses as
+models improve; the generator, by contrast, can mark every output at the
+source — an invisible watermark in the pixels plus cryptographically signed
+C2PA metadata. Neither survives a determined adversary (metadata dies on
+screenshot; watermarks can be attacked), but together they make honest
+distribution channels verifiable and raise the cost of laundering — which is
+the realistic goal. Detection is a fallback, not the plan.
+</ThinkFirst>
 
 ## 8. Safety & guardrails
 
-- **Deepfakes:** likeness of real people is the top risk — block/consent-gate,
-  watermark (visible + C2PA provenance).
+- **Deepfakes:** likeness of real people is the top risk — block/consent-gate
+  prompts and reference images; watermark and attach C2PA provenance to every
+  output (Sora and Veo both ship watermark + metadata provenance).
 - **Content safety:** input/output filtering as with images, extended to
-  temporal content.
+  temporal content (an innocuous frame sequence can compose into a violent
+  action).
 - **IP:** training-data provenance and memorization monitoring.
 
 ## 9. Tradeoffs & alternatives
@@ -151,12 +205,12 @@ because "does it look real over time" is what viewers actually perceive.
 | Joint spacetime diffusion | Frame-by-frame image gen | Independent frames flicker/drift; joint gives coherence |
 | Spacetime latent compression | Pixel-space video | Pixels are astronomically expensive at video scale |
 | Staged (low-res → SR → interpolate) | Direct full-res generation | Far cheaper for the same output quality |
-| Factorized space/time attention | Full 3D attention | 3D attention cost is prohibitive |
+| Factorized space/time attention | Full 3D attention | Quadratic cost; full 3D only affordable at frontier scale |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Frames look great individually but the video flickers. Why, and fix?">
-You're effectively generating frames too independently. Add/strengthen temporal
+You're effectively generating frames too independently. Strengthen temporal
 attention so frames are denoised jointly, condition later frames on earlier latent
 state, and train with temporal-consistency objectives. Measure FVD/flicker, not
 just per-frame FID — per-frame quality can be high while temporal coherence is
@@ -165,23 +219,37 @@ poor.
 
 <Details summary="Generating full-res video directly is impossibly expensive. Alternatives?">
 Stage it: generate a low-resolution, low-FPS clip in a compressed spacetime
-latent, then spatially super-resolve and temporally interpolate. Each stage is
-much cheaper than direct high-res generation, and the latent compression keeps
-tensors tractable. This cascade is standard for video and high-res image models.
+latent, then spatially super-resolve and temporally interpolate — Movie Gen's
+768px→1080p upsampling is this pattern in production. Each stage is much
+cheaper than direct high-res generation, and the latent compression keeps
+tensors tractable. This cascade is standard for video and high-res image
+models.
 </Details>
 
 <Details summary="How do you prevent realistic deepfakes of real people?">
 Consent/likeness gating on prompts and reference images, output classifiers for
-recognizable real individuals, and mandatory provenance watermarking (visible +
-C2PA metadata). Video deepfakes are the highest-stakes abuse here, so it's
-layered prevention plus traceability, not a single filter.
+recognizable real individuals, and mandatory provenance (invisible watermark +
+C2PA signed metadata) on everything generated. Video deepfakes are the
+highest-stakes abuse here, so it's layered prevention plus traceability, not a
+single filter.
 </Details>
 
 ## Key takeaways
 
-- Text-to-video is **spatiotemporal diffusion** — the defining challenge is
-  **temporal consistency**, not per-frame quality.
+- Text-to-video is **spatiotemporal diffusion over spacetime latent patches** —
+  the defining challenge is **temporal consistency**, not per-frame quality.
 - **Spacetime latent compression + staged generation** (low-res → super-res →
-  interpolate) tame otherwise impossible compute and storage costs.
-- Evaluate with **temporal metrics (FVD/flicker)** and human preference; **deepfake
-  prevention + provenance watermarking** are the critical guardrails.
+  interpolate) tame otherwise impossible compute; serving is **async jobs
+  optimized for throughput**, not latency.
+- Evaluate with **temporal metrics (FVD/flicker)** and human preference;
+  **provenance at generation time** (watermark + C2PA) beats post-hoc deepfake
+  detection.
+
+## References
+
+- [Video generation models as world simulators](https://openai.com/index/video-generation-models-as-world-simulators/) — OpenAI, 2024 (Sora technical report); spacetime latent patches, DiT scaling, and video re-captioning.
+- [Movie Gen: A Cast of Media Foundation Models](https://arxiv.org/abs/2410.13720) — Meta, 2024; the 30B-parameter video model, 73K-token context, 16s/16fps 1080p generation, and human-eval benchmark.
+- [Stable Video Diffusion: Scaling Latent Video Diffusion Models to Large Datasets](https://arxiv.org/abs/2311.15127) — Blattmann et al., Stability AI, 2023; the three-stage training recipe and evidence that data curation drives video quality.
+- [Towards Accurate Generative Models of Video: A New Metric & Challenges](https://arxiv.org/abs/1812.01717) — Unterthiner et al., 2018; introduces FVD, the standard temporal-realism metric.
+- [State-of-the-art video and image generation with Veo 2 and Imagen 3](https://deepmind.google/discover/blog/state-of-the-art-video-and-image-generation-with-veo-2-and-imagen-3/) — Google DeepMind, 2024; a production text-to-video system and its watermarking/provenance stance.
+- [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752) — Rombach et al., CVPR 2022; the latent-compression foundation video models extend into time.

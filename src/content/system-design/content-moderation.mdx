@@ -11,7 +11,7 @@ relatedLessons:
   - "ml-in-practice/21-content-moderation"
   - "computer-vision/04-vision-language-models"
   - "model-evaluation/01-classification-metrics"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Content Moderation System
@@ -27,7 +27,9 @@ Content moderation is a **multimodal classification** system wrapped in a
 **human-in-the-loop policy machine**. The ML is only half the answer — the
 interview reward is designing the loop between models, human reviewers, policy
 thresholds, and appeals, so it stays accurate *and* fair as policy and adversaries
-evolve. Walk it through **data → evaluation → feedback**.
+evolve. Walk it through **data → evaluation → feedback**. The reference systems
+here are Meta's integrity stack, whose progress is published quarterly in the
+**Community Standards Enforcement Report**, and OpenAI's moderation pipeline.
 
 ## 1. Clarify the problem
 
@@ -47,6 +49,14 @@ target set by the cost of each error." Naming this shows you understand moderati
 is policy-driven, not a one-number classifier.
 </Callout>
 
+<ThinkFirst question="A violating post that 10 people saw and one that 10 million saw count the same in “items removed.” How should the harm actually be measured, and how does that reshape the pipeline?">
+Harm scales with **exposure**, so the pipeline can't treat all items equally:
+upload-time gating must be instant and cheap for everything, but deeper scans
+and scarce human attention should be spent in proportion to predicted reach and
+severity. This is also why the field's north-star metric is defined over
+*views*, not posts — a design decision you'll meet again in evaluation.
+</ThinkFirst>
+
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
@@ -62,7 +72,9 @@ Route by **confidence**: auto-act where the model is very sure, auto-allow
 where it's very sure the other way, and spend scarce human attention only on
 the uncertain middle — ranked by severity and reach. The design question isn't
 "model or human" but *where the boundary between them sits, per policy
-category*.
+category*. Meta's proactive-detection rate — the share of actioned content
+flagged by systems before any user report — went from 23.6% in 2017 to roughly
+95% for hate speech, which is this boundary moving over five years.
 </ThinkFirst>
 
 ## 3. ML problem framing
@@ -73,71 +85,135 @@ a **triage** decision: auto-act (very high confidence), auto-allow (very low), o
 the safety net — the system is designed around *where the model is unsure*.
 
 *What was breaking before?* Keyword blocklists miss context and are trivially
-evaded; pure human review can't scale to billions of items.
+evaded; pure human review can't scale to billions of items. The lineage runs
+from crowdsourced toxicity classifiers — Jigsaw's Perspective work began with
+100k human-labeled Wikipedia comments
+([Wulczyn et al.](https://arxiv.org/abs/1610.08914)) — to today's multimodal,
+policy-conditioned models.
 
 <ThinkFirst question="Labels come from human reviewers at real cost per item. You can't label everything — where do you spend the budget?">
 On the items where a label changes the most: content the model is **uncertain**
 about, and content where the model **disagrees with humans** — that's active
 learning. Random labeling mostly buys you confident duplicates of what the
-model already knows. And because policy labels are subjective, part of the
-budget goes to labeling the *same* items twice to measure inter-annotator
-agreement.
+model already knows — OpenAI's production moderation pipeline leans on active
+learning precisely because violating content is rare in random samples. And
+because policy labels are subjective, part of the budget goes to labeling the
+*same* items multiple times to measure inter-annotator agreement.
 </ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
 - **Labels:** human-reviewer decisions against a policy taxonomy — expensive,
   subjective, and evolving as policy changes. **Inter-annotator agreement** and
-  clear guidelines are part of the data system.
+  clear guidelines are part of the data system; OpenAI's moderation paper
+  treats taxonomy design, labeling instructions, and label quality control as
+  the core engineering, ahead of modeling
+  ([Markov et al., AAAI 2023](https://arxiv.org/abs/2208.03274)).
 - **Multimodal features:** text encoders, image/video encoders, and
   **vision-language** models for image+caption context (a benign image with a
   harmful caption, or vice-versa).
 - **Active learning:** label the items the model is most *uncertain* or
-  *disagrees with humans* on — the highest-value labels per dollar.
+  *disagrees with humans* on — the highest-value labels per dollar, and the
+  only affordable way to capture rare-event categories.
 
 <WikiLink slug="roc-auc" title="Precision/recall & operating points" />
 
+<ThinkFirst question="You hold a database of millions of known CSAM and terror images. Why is a classifier the wrong first tool for them — and why won't an ordinary cryptographic hash work either?">
+For *known* content you don't want generalization, you want **exact recall at
+near-zero false positives** — a lookup, not a prediction. But MD5/SHA break on
+a one-pixel change, so you need **perceptual hashing**: Meta's open-sourced PDQ
+(images) and TMK+PDQF (videos) produce compact signatures that survive
+re-encoding, resizing, and light edits, and can be shared across companies via
+GIFCT without sharing the content itself. Classifiers are for *novel* content;
+hashes are for *known* content.
+</ThinkFirst>
+
 ## 5. Model *(spine: hypothesis space + objective)*
 
-- **First-pass filter:** cheap models + hashed-match databases (e.g. perceptual
-  hashes for known CSAM/terror content) catch the obvious at scale.
-- **Deep classifiers:** fine-tuned multimodal transformers per policy area;
-  vision-language models for cross-modal context.
+- **First-pass filter:** hash-match databases — perceptual hashes like Meta's
+  **PDQ / TMK+PDQF** for known CSAM/terror/violent media
+  ([Meta](https://about.fb.com/news/2019/08/open-source-photo-video-matching/)) —
+  plus cheap keyword/embedding models catch the known and obvious at scale.
+- **Deep classifiers:** fine-tuned multimodal transformers per policy area.
+  Efficiency research is load-bearing here: Meta credits the **Linformer**
+  (linear-attention) architecture with making large language models cheap
+  enough to run on billions of posts, and its **RIO** (Reinforced Integrity
+  Optimizer) framework trains classifiers against live production metrics
+  rather than a static offline dataset
+  ([Meta AI](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/)).
 - **Objective:** per-category weighting; high-recall regimes for catastrophic
   categories, precision-favoring for expression-sensitive ones.
+
+<ThinkFirst question="A new harmful-content policy launches Monday. Your usual pipeline needs tens of thousands of labels and months of iteration. What breaks, and what's the modern fix?">
+The bottleneck is label accumulation: by the time the classifier is trained,
+the harm has evolved or peaked. The fix is **few-/zero-shot policy
+conditioning**: Meta's Few-Shot Learner starts from a large multimodal,
+multilingual pretrained model and takes action on new violation types from the
+policy *text* plus a handful of examples — adapting in **weeks instead of
+months**, across 100+ languages. The trade: lower peak accuracy than a mature
+supervised classifier, so it's a bridge while labels accrue, not a
+replacement.
+</ThinkFirst>
 
 ## 6. Serving & the human loop
 
 Tiered pipeline: (1) instant hash/keyword + light model gate at upload; (2) async
 deep multimodal scan; (3) **human review queue** for the uncertain band, ranked
 by severity × reach × uncertainty; (4) **appeals** route back through senior
-review. Reviewer decisions feed labels back to training.
+review. Reviewer decisions feed labels back to training. For brand-new harm
+types, a few-shot policy-conditioned model (Meta's **Few-Shot Learner**) covers
+the gap before a dedicated classifier exists
+([Meta AI](https://ai.meta.com/blog/harmful-content-can-evolve-quickly-our-new-ai-system-adapts-to-tackle-it/)).
 
 <ThinkFirst question="What's the north-star metric — and why is “amount of violating content removed” the wrong one?">
 Removal counts reward volume, not impact: taking down a million zero-view spam
 posts matters less than one viral violating video. The right target is
 **prevalence** — the fraction of *views* that land on violating content that
 slipped through — because it weights misses by the harm they actually caused.
+Meta reports it per category: hate-speech prevalence on Facebook was down to
+about 0.02%, i.e. ~2 views per 10,000, by mid-2022.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Offline:** per-category precision/recall at the policy's operating point;
-  track recall hard on catastrophic categories.
-- **Prevalence:** the north-star metric — what fraction of *views* are of
-  violating content that slipped through (not just caught count).
+- **Prevalence:** the north-star — violating **views per 10,000 views**,
+  estimated by human review of sampled content. Meta reported hate-speech
+  prevalence falling from ~0.10% in 2020 to **0.02% (2 in 10,000 views)** by
+  Q2 2022
+  ([Meta](https://about.fb.com/news/2022/08/community-standards-enforcement-report-q2-2022/)).
+- **Proactive rate:** share of actioned content caught before any user report —
+  a recall proxy at the system level.
+- **Per-category precision/recall** at the policy's operating point; track
+  recall hard on catastrophic categories. Note the metrics trade off publicly:
+  Meta's hate-speech proactive rate *dropped* from 95.6% to 90.2% in Q3 2022
+  when it retuned for precision using appeals data — a deliberate move along
+  the curve, not a regression.
 - **Fairness:** error rates across languages, demographics, and content types —
   over-enforcement on specific groups is a failure even at good aggregate metrics.
 - **Human audits** on sampled auto-decisions to catch silent drift.
 
+<ThinkFirst question="Prevalence is estimated by humans reviewing a sample of viewed content. What are the two ways this estimate silently degrades — and what does each one force you to build?">
+First, **reviewer drift**: the humans defining ground truth disagree with each
+other or shift with policy rewrites, so you need ongoing inter-annotator
+measurement and re-calibration sets. Second, **evasion outpacing the sample**:
+adversarial content the reviewers don't recognize (new coded language,
+re-edited media) reads as compliant, so prevalence undercounts exactly the
+newest harms. That forces adversarial red-teaming and evasion-rate tracking as
+their own monitoring stream — which is the next section.
+</ThinkFirst>
+
 ## 8. Monitoring & feedback *(spine: feedback)*
 
 - **Adversarial drift:** evasion tactics evolve (obfuscated text, cropped/edited
-  media); monitor evasion rates and retrain continually.
+  media); monitor evasion rates and retrain continually — Meta's RIO exists
+  precisely to keep classifiers optimizing against *live* prevalence instead of
+  a frozen dataset.
 - **Policy changes:** when policy shifts, labels and thresholds must be
-  re-versioned — a governance problem as much as an ML one.
-- **Appeals as signal:** overturned removals are precision errors; reinstated-
-  after-appeal rates feed both metrics and retraining.
+  re-versioned — a governance problem as much as an ML one; few-shot models
+  bridge the label gap for brand-new policies.
+- **Appeals as signal:** overturned removals are precision errors; Meta
+  explicitly used past-appeal data to retune its hate-speech classifiers for
+  accuracy. Reinstated-after-appeal rates feed both metrics and retraining.
 
 ## 9. Tradeoffs & alternatives
 
@@ -145,15 +221,17 @@ slipped through — because it weights misses by the harm they actually caused.
 |---|---|---|
 | Per-category thresholds | One global threshold | Error costs differ wildly by policy |
 | Tiered filter → deep scan → human | All-human or all-model | Only tiering scales to billions with acceptable accuracy |
-| Active learning | Random labeling | Uncertain/disagreement items are far more informative |
-| Hash-match + ML | ML only | Known-bad content is caught instantly and exactly by hashing |
+| Active learning | Random labeling | Violating content is rare; random samples waste label budget |
+| Perceptual hash-match + ML | ML only | Known-bad content is caught instantly, exactly, and shareably |
+| Few-shot policy conditioning | Wait for labels | Weeks-not-months response to new harm types |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="A benign image gets a harmful caption. How do you catch it?">
 Cross-modal reasoning: a vision-language model that scores the image *and* text
 *together*, not two independent unimodal classifiers. Context — the caption
-recontextualizing the image — is exactly what unimodal pipelines miss.
+recontextualizing the image — is exactly what unimodal pipelines miss, and it's
+why Meta's few-shot integrity models are trained multimodally.
 </Details>
 
 <Details summary="How do you keep up with adversaries obfuscating text (l33tspeak, homoglyphs)?">
@@ -169,11 +247,32 @@ even with strong global numbers. Add the slice to your dashboards and
 retraining objectives.
 </Details>
 
+<Details summary="Your proactive-detection rate fell this quarter. Is the system worse?">
+Not necessarily — it depends what moved it. Meta's rate fell ~5 points in 2022
+because they deliberately traded recall for precision after appeals showed
+over-enforcement. A single rate can't distinguish "catching less" from
+"removing less wrongly"; always read proactive rate jointly with prevalence and
+appeal-overturn rate.
+</Details>
+
 ## Key takeaways
 
 - Moderation is **multimodal classification** + a **human-in-the-loop policy
   machine**; design the loop, not just the classifier.
-- **Per-policy thresholds** and **prevalence** (violating views that slip through)
-  are the right targets — never one global accuracy number.
+- **Per-policy thresholds** and **prevalence** (violating views per 10,000)
+  are the right targets — never one global accuracy number; proactive rate and
+  precision trade off deliberately.
+- **Perceptual hashing for known content, classifiers for novel content,
+  few-shot models for new policies** — three tools, three time horizons.
 - **Active learning, appeals, and fairness slicing** keep it accurate and just as
   adversaries and policy evolve.
+
+## References
+
+- [Community Standards Enforcement Report, Second Quarter 2022](https://about.fb.com/news/2022/08/community-standards-enforcement-report-q2-2022/) — Meta Newsroom; grounds the 0.02% hate-speech prevalence and the precision-vs-proactive-rate retuning.
+- [Measuring Our Progress Combating Hate Speech](https://about.fb.com/news/2020/11/measuring-progress-combating-hate-speech/) — Meta Newsroom; grounds the prevalence metric definition and the proactive-detection-rate trajectory from 23.6%.
+- [How AI is getting better at detecting hate speech](https://ai.meta.com/blog/how-ai-is-getting-better-at-detecting-hate-speech/) — Meta AI blog; grounds RIO (training against live prevalence) and Linformer-based efficient serving at scale.
+- [Harmful content can evolve quickly. Our new AI system adapts to tackle it.](https://ai.meta.com/blog/harmful-content-can-evolve-quickly-our-new-ai-system-adapts-to-tackle-it/) — Meta AI blog; grounds the Few-Shot Learner: weeks-not-months adaptation, 100+ languages, policy-text conditioning.
+- [A Holistic Approach to Undesired Content Detection in the Real World](https://arxiv.org/abs/2208.03274) — Markov et al., OpenAI (AAAI 2023); grounds taxonomy design, labeling quality control, and active learning for rare events.
+- [Open-Sourcing Photo- and Video-Matching Technology to Make the Internet Safer](https://about.fb.com/news/2019/08/open-source-photo-video-matching/) — Meta Newsroom; grounds PDQ / TMK+PDQF perceptual hashing and cross-industry hash sharing.
+- [Ex Machina: Personal Attacks Seen at Scale](https://arxiv.org/abs/1610.08914) — Wulczyn, Thain & Dixon (WWW 2017, Wikimedia/Jigsaw); grounds crowdsourced labeling and the lineage of toxicity classification behind Perspective API.

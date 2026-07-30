@@ -11,7 +11,7 @@ relatedLessons:
   - "computer-vision/04-vision-language-models"
   - "computer-vision/05-self-supervised-learning"
   - "pca-dimensionality/02-t-sne-and-umap"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Visual Search System
@@ -27,7 +27,12 @@ Visual search ("point your camera at a couch, find ones to buy") is a
 **representation-learning + nearest-neighbor retrieval** problem. There's no text
 query — the *image is the query* — so the whole system hinges on learning an
 embedding where visually/semantically similar items are close, then searching it
-fast. Walk it through the **ML project loop**.
+fast. Pinterest, eBay, and Alibaba have all published their production systems —
+Pinterest's 2015 paper is famous for showing a **small team with open-source
+tools and commodity cloud infra** could build one, and that visual search
+measurably lifted engagement in live A/Bs
+([Jing et al., KDD 2015](https://arxiv.org/abs/1505.07647)). Walk it through
+the **ML project loop**.
 
 ## 1. Clarify the problem
 
@@ -45,6 +50,16 @@ The core question is "what does *similar* mean, and how do I get labels for it?"
 — exact-match (same product) and visually-similar are different objectives with
 different mining strategies. Pin this before choosing a loss.
 </Callout>
+
+<ThinkFirst question="One surface needs exact-product matches ('buy this lamp'), another needs style-similar browsing, a third needs shop-the-look. Three embeddings or one — and what changes at the data level?">
+Pinterest tried both and consolidated: separate specialized embeddings became
+an operational tax (three models to train, serve, and keep consistent), so they
+moved to **one unified embedding trained multi-task** across all three
+objectives, which matched or beat the specialists because the tasks share
+signal. The data-level consequence: each task contributes its own labeled pairs
+(engagement for browse, human-verified exact matches for shop), and the
+sampling mix across tasks becomes a first-class tuning knob.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
@@ -100,7 +115,16 @@ metric actually gets learned.
   loss (metric learning), or a self-supervised (SimCLR/DINO-style) then fine-tuned
   encoder.
 - **Objective:** pull positives together, push hard negatives apart — the choice
-  of *which* negatives dominates final quality.
+  of *which* negatives dominates final quality. Train **multi-task** across
+  surfaces: Pinterest's unified embedding jointly optimizes browse, search, and
+  shop objectives in one network, and **binarizes** the output embedding for
+  cheap storage and retrieval without measurable precision loss
+  ([Zhai et al., KDD 2019](https://arxiv.org/abs/1908.01707)).
+- **Multimodal option:** contrastive image–text pretraining at scale (CLIP
+  trained on 400M web pairs) yields a joint space where photos and words are
+  directly comparable
+  ([Radford et al., ICML 2021](https://arxiv.org/abs/2103.00020)) — the
+  foundation for "this, but in blue."
 - **Re-ranker:** a heavier model (or cross-attention over query+candidate) refines
   the ANN top-k on price, availability, and finer similarity.
 
@@ -118,12 +142,28 @@ or inverted-list index with **product quantization**, compressing each vector
 
 ## 6. Serving & scaling
 
-Offline: embed the whole catalog, quantize (PQ), build an ANN index. Online:
-detect the object → crop → embed the query once → ANN search → re-rank →
-availability/business filters, all under 300ms. Update the index incrementally as
-inventory changes.
+Offline: embed the whole catalog, quantize (PQ), build an ANN index — the
+IVF+PQ compressed-domain search popularized by Faiss is the standard recipe at
+billions of vectors ([Johnson et al., 2017](https://arxiv.org/abs/1702.08734)).
+Online: detect the object → crop → embed the query once → ANN search → re-rank
+→ availability/business filters, all under 300ms. The detect-then-search step
+is production practice, not a nicety: Alibaba's Pailitao runs **category
+prediction plus object localization** before embedding, precisely because
+user photos are cluttered scenes, not catalog shots
+([Zhang et al., KDD 2018](https://dl.acm.org/doi/10.1145/3219819.3219820)).
+Update the index incrementally as inventory changes.
 
 <WikiLink slug="hnsw" title="HNSW — the graph index for billion-scale ANN" />
+
+<ThinkFirst question="You need an offline eval set for 'similar'. Clicks are abundant — why can't you just use click-through on results as ground truth, and what do you use instead?">
+Clicks conflate similarity with salience, position, and price — users click the
+eye-catching or cheap result, not the most similar one, and you only observe
+clicks on what the *current* embedding retrieved (selection bias). The honest
+setup layers three sources: **human side-by-side judgments** on a gold set for
+fine-grained similarity, **known exact-match pairs** (same product, different
+photos) for objective recall, and engagement as a *directional* online signal —
+never the offline ground truth.
+</ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
@@ -132,6 +172,16 @@ inventory changes.
 - **Online:** click-through and purchase rate on visual-search results, plus
   zero/low-result rate.
 - **Human eval:** side-by-side similarity judgments the implicit metrics miss.
+
+<ThinkFirst question="eBay's catalog isn't a catalog — it's live listings that end, sell out, and appear by the million daily. What breaks in your beautifully precomputed index, and what's the redesign?">
+Staleness in both directions: results pointing at ended listings (visible
+breakage users punish immediately) and new inventory that's invisible until
+the next index build. A nightly rebuild can't keep up, so the eBay-style
+answer is a **streaming ingest path** — embed new listings on arrival, append
+to the index, tombstone dead ones and filter them at query time — with
+periodic full rebuilds to compact and retrain quantizers. Index freshness
+becomes a monitored SLA, just like latency.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
@@ -178,3 +228,14 @@ similarity label against real engagement.
   supervised training and **detect-then-crop** handle messy real-world photos.
 - Serve with **quantized ANN indexes**; a shared **image–text space** unlocks
   multimodal "this but in blue" queries.
+- One **unified multi-task embedding** beats a zoo of specialized ones — in
+  quality and, just as importantly, in operational cost.
+
+## References
+
+- [Visual Search at Pinterest](https://arxiv.org/abs/1505.07647) — Jing et al., KDD 2015; a cost-effective large-scale system on commodity infra, with live-experiment engagement lifts.
+- [Learning a Unified Embedding for Visual Search at Pinterest](https://arxiv.org/abs/1908.01707) — Zhai et al., KDD 2019; one multi-task embedding replacing specialized ones, plus embedding binarization for serving.
+- [Visual Search at eBay](https://arxiv.org/abs/1706.03154) — Yang et al., KDD 2017; visual search over a massive, volatile live-listing inventory.
+- [Visual Search at Alibaba](https://dl.acm.org/doi/10.1145/3219819.3219820) — Zhang et al., KDD 2018; Pailitao's category-prediction + object-localization (detect-then-search) pipeline at billion-image scale.
+- [Billion-scale similarity search with GPUs](https://arxiv.org/abs/1702.08734) — Johnson, Douze & Jégou, Meta AI, 2017; the Faiss IVF/PQ machinery for ANN over billions of vectors.
+- [Learning Transferable Visual Models From Natural Language Supervision](https://arxiv.org/abs/2103.00020) — Radford et al., OpenAI, ICML 2021; CLIP's joint image–text embedding space from 400M pairs.
