@@ -1,0 +1,158 @@
+---
+title: "Design an AI Writing Assistant"
+description: "A controllable long-form writing product like Jasper or Notion AI — style/tone control, factual grounding, structured long-form generation, and preference-tuned quality — walked through the generative-AI system-design lens."
+track: genai
+spine: ml
+spineStages: [objective, evaluation, feedback]
+company: "Jasper / Notion AI"
+domain: "Text generation"
+scale: "long-form · brand-voice control · grounded · human-preference tuned"
+difficulty: intermediate
+relatedLessons:
+  - "nlp/05-decoding-and-sampling"
+  - "building-with-llms/01-prompt-engineering"
+  - "fine-tuning-alignment/04-rlhf-and-dpo"
+estimatedMinutes: 18
+---
+
+# Design an AI Writing Assistant
+
+<SystemDesignMeta
+  track="Generative AI System Design"
+  company="Jasper / Notion AI"
+  scale="long-form · brand-voice control · grounded · preference-tuned"
+  difficulty="intermediate"
+/>
+
+A writing assistant (marketing copy, blog posts, emails, docs) is a
+**controllable long-form text generation** product. The model is given — the
+system-design work is **control** (tone, style, brand voice, format),
+**grounding** (facts, no hallucination), **long-form coherence**, and tuning
+quality from **human preference**. It reads through the ML loop's objective →
+evaluation → feedback stages.
+
+## 1. Clarify the problem
+
+- **Goal:** help users produce high-quality long-form text in a **controlled**
+  style/format, grounded in provided facts/sources, efficiently.
+- **Control axes:** tone, brand voice, length, format/structure, audience — the
+  product's differentiator over raw chat.
+- **Grounding:** for factual content, cite sources / stay faithful to provided
+  material — hallucination is a brand risk for users.
+- **Scope:** the generation product (control + grounding + long-form + feedback).
+
+<Callout type="tip" title="Interview signal">
+The differentiator isn't the model — it's **controllability** (reliable tone/
+brand/format) and **grounding**. Frame it as steering and constraining a strong
+base model, and tuning it with preference data.
+</Callout>
+
+## 2. Requirements & constraints
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Control | Reliable tone/brand/format | Structured prompting, style conditioning, fine-tuning |
+| Grounding | Faithful to sources; cite | RAG over user material; faithfulness checks |
+| Long-form | Coherent multi-section docs | Outline-then-expand; section planning |
+| Quality | Matches human preference | RLHF/DPO on preference data |
+
+## 3. GenAI problem framing
+
+**Controllable, grounded long-form generation** on top of a base LLM. Control
+comes from (a) **structured prompting** (system prompt + style exemplars), (b)
+optional **fine-tuning** on a brand's corpus for voice, and (c) **decoding**
+choices. Grounding comes from **RAG** over the user's sources. Long-form coherence
+comes from **plan-then-write** (generate an outline, expand sections) rather than
+one long unstructured generation.
+
+*Pre-generative baseline?* Templates + human writers — inflexible or slow.
+Generative writing adapts to any prompt while (ideally) staying on-brand.
+
+## 4. Model & generation *(spine: objective)*
+
+- **Base + light adaptation:** a strong instruction-tuned base; **LoRA fine-tune**
+  on a brand's writing for consistent voice where prompting isn't enough.
+- **Decoding:** moderate temperature/top-p for fluent-but-controlled prose; the
+  objective balances helpfulness with adherence to the style constraints.
+- **Structure:** outline → section drafts → revise, so a 2000-word piece stays
+  coherent and on-topic.
+
+<SamplingViz />
+
+Decoding parameters are a control surface: lower temperature for factual/brand-
+safe copy, higher for ideation — often exposed to the user as "creativity."
+
+## 5. Grounding & control
+
+- **RAG:** retrieve the user's provided sources/brand guidelines into context;
+  generate with citations; verify claims are supported.
+- **Style conditioning:** brand-voice exemplars and explicit constraints (tone,
+  reading level, format) in the prompt or a fine-tuned adapter.
+- **Structured output:** enforce format (sections, bullet limits, JSON for
+  structured docs) via constrained decoding / schemas.
+
+<WikiLink slug="text-generation-metrics" title="Text-generation quality metrics" />
+
+## 6. Evaluation *(spine: evaluation)*
+
+- **Human preference / LLM-as-judge:** the primary signal for quality, tone
+  adherence, and helpfulness; track win-rate vs. the previous version.
+- **Faithfulness:** when grounded, are claims supported by the sources? (judge +
+  human audit).
+- **Control adherence:** does output match requested tone/length/format? — a
+  measurable constraint check.
+- **Product metrics:** acceptance/edit rate (how much users change the draft).
+
+<WikiLink slug="llm-as-judge" title="LLM-as-a-judge for writing quality" />
+
+## 7. Feedback & operations *(spine: feedback)*
+
+- **Preference loop:** user edits, regenerations, and thumbs feed **RLHF/DPO** and
+  prompt improvements — the model gets better at *this product's* notion of good
+  writing.
+- **Serving:** streaming for responsiveness; model tiering (draft vs. polish);
+  caching of retrieved brand material.
+- **Guardrails:** plagiarism/verbatim-source checks, disallowed-content filters,
+  and disclosure that content is AI-assisted.
+
+## 8. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Plan-then-write | One long generation | Long-form coherence and structure control |
+| Prompt + LoRA for voice | Full fine-tune | Cheap, adapter-per-brand, easy to update |
+| RAG grounding | Rely on parametric knowledge | Faithfulness, freshness, citeability |
+| Preference (RLHF/DPO) tuning | Prompt-only | Aligns to the product's quality bar over time |
+
+## 9. Interviewer follow-ups
+
+<Details summary="Output is fluent but off-brand. How do you enforce voice?">
+Layer control: brand-voice exemplars and explicit style constraints in the prompt
+first; if that's insufficient, LoRA fine-tune on the brand's corpus for a
+consistent voice adapter. Measure tone/voice adherence explicitly (rubric-based
+LLM-judge + human) so 'off-brand' is caught pre-ship, not by users.
+</Details>
+
+<Details summary="The assistant invents statistics in a factual article. Fix?">
+Ground it: retrieve the user's sources and require claims to be supported +
+cited, run a faithfulness check (judge over claim vs. source), and for
+unsupported claims, hedge or omit rather than fabricate. Ungrounded long-form is
+a hallucination magnet — RAG + a faithfulness gate is the standard remedy.
+</Details>
+
+<Details summary="How do you keep a 2000-word piece coherent and on-topic?">
+Plan-then-write: generate an outline, expand each section conditioned on the
+outline + prior sections, then a revision pass for consistency. One monolithic
+generation drifts and repeats; explicit structure keeps long-form on track and
+lets the user steer at the outline level.
+</Details>
+
+## Key takeaways
+
+- A writing assistant is **controllable, grounded long-form generation** — the
+  value is in **control (tone/brand/format)** and **faithfulness**, not the base
+  model.
+- Use **plan-then-write** for coherence, **RAG** for grounding, and **prompt +
+  LoRA** for brand voice.
+- Tune quality with **human-preference (RLHF/DPO)** and measure **control adherence
+  + faithfulness**, not just fluency.

@@ -7,7 +7,6 @@ import { AskAiButton } from "@/components/lessons/AskAiButton";
 import { ReadingProgressBar } from "@/components/lessons/ReadingProgressBar";
 import { getNotebookUrl } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/site";
-import { getSpine } from "@/lib/spine";
 import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
 import { SpineNav } from "@/components/lessons/SpineNav";
 
@@ -25,10 +24,13 @@ interface Props {
 }
 
 export function SystemDesignLayout({ meta, source, relatedLessons }: Props) {
+  const resolvedTrack = meta.track ?? meta.spine;
   const trackLabel =
-    getSpine(meta.spine)?.id === "agentic"
-      ? "Agentic System Design"
-      : "ML System Design";
+    resolvedTrack === "genai"
+      ? "Generative AI System Design"
+      : resolvedTrack === "agentic"
+        ? "Agentic System Design"
+        : "ML System Design";
   // Notebooks are optional for case studies — only surface the button when one
   // is explicitly provided via `notebookUrl`.
   const notebookUrl = meta.notebookUrl

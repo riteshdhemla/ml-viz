@@ -2,11 +2,16 @@
 
 Add a worked **system-design interview walkthrough** to the `/system-design`
 section. Each case lives at `src/content/system-design/{slug}.mdx` and is
-structured by its **spine** (project loop). `spine` selects the track it appears
-under on the index:
+structured by its **spine** (project loop). The **resolved track** (`track ??
+spine`) selects the section it appears under on the index:
 
 - `spine: ml` → **ML System Design** (ranking, retrieval, detection, forecasting)
 - `spine: agentic` → **Agentic System Design** (LLM agents, tools, orchestration)
+- `track: genai` → **Generative AI System Design** (image/text/code/video/audio
+  generation, inference serving, safety). GenAI cases usually still set
+  `spine: ml` (training a generative model *is* the ML loop) so the SpineNav
+  strip renders; a pure serving/infra GenAI case may omit `spine` entirely and
+  simply render no strip.
 
 Everything else (routing, search, sitemap, the `SpineNav` strip, the "Related
 lessons" footer) is wired automatically — you only write the MDX.
@@ -34,6 +39,27 @@ Valid `spineStages` come from `src/lib/spine.ts`:
 - **agentic:** `task`, `context`, `orchestration`, `evaluation`, `guardrails`, `operations`
 
 Pick the **1–3** the problem leans on hardest (the integrity test rejects 0 or >3).
+
+**Generative AI cases** add `track: genai` and keep `spine`/`spineStages` when a
+loop applies (most do — usually `spine: ml`); omit `spine` only for pure
+serving/infra cases (the strip then hides). Example GenAI frontmatter:
+
+```yaml
+---
+title: "Design a Text-to-Image Generation Service"
+description: "..."
+track: genai                  # → Generative AI System Design
+spine: ml                     # optional for genai; keep it when a loop applies
+spineStages: [data, hypothesis-space, evaluation]
+company: "Midjourney / Stable Diffusion"
+domain: "Image generation"
+scale: "..."
+difficulty: intermediate
+relatedLessons:
+  - "generative-models/05-diffusion-models"
+estimatedMinutes: 20
+---
+```
 
 ## 2. Body — start with the header card
 
@@ -70,6 +96,20 @@ annotate deep-dive sections with the spine slot they fill.
 8. **Tradeoffs & alternatives** — a table.
 9. **Interviewer follow-ups** — 3–5 `<Details>` curveballs.
 10. **Key takeaways.**
+
+### Template 3 — Generative AI System Design (`track: genai`, usually `spine: ml`)
+1. **Clarify the problem** — what's generated, the quality bar, modality, product surface.
+2. **Requirements & scale** — latency/throughput and **GPU cost** (the defining GenAI constraint); quality vs. cost.
+3. **GenAI problem framing** — model family (diffusion / autoregressive transformer / GAN / flow) + conditioning; *what was the pre-generative baseline?*
+4. **Data & training** *(data / optimization)* — dataset curation, licensing/IP, dedup, pretraining vs. fine-tuning.
+5. **Model & generation** *(hypothesis-space + objective)* — architecture, conditioning (CFG/control), decoding/sampling.
+6. **Serving & scaling** — the GenAI crux: **inference optimization** (batching, KV cache, quantization, distillation, speculative decoding), GPU autoscaling, caching.
+7. **Evaluation** *(evaluation)* — generation quality is hard: FID/CLIPScore (image), perplexity/human-pref/LLM-judge (text), plus safety evals.
+8. **Safety & guardrails** — harmful content, **IP/copyright & memorization**, watermarking/provenance, hallucination, jailbreak defense.
+9. **Feedback & iteration** *(feedback)* — preference data → RLHF/DPO, drift, model updates.
+10. **Tradeoffs & alternatives** — quality vs. latency vs. cost; closed vs. open; fine-tune vs. prompt.
+11. **Interviewer follow-ups** — 3–5 `<Details>` curveballs.
+12. **Key takeaways.**
 
 ## 3. Conventions
 

@@ -1,0 +1,159 @@
+---
+title: "Design a Code Completion System (Copilot)"
+description: "An inline code-completion product like GitHub Copilot — fill-in-the-middle generation with repo context, ultra-low-latency serving, and acceptance-driven evaluation — walked through the generative-AI system-design lens."
+track: genai
+spine: ml
+spineStages: [data, hypothesis-space, evaluation]
+company: "GitHub Copilot"
+domain: "Code generation"
+scale: "millions of devs · <300ms suggestions · fill-in-the-middle · repo-aware"
+difficulty: intermediate
+relatedLessons:
+  - "building-with-llms/12-code-intelligence-and-generation"
+  - "nlp/05-decoding-and-sampling"
+  - "fine-tuning-alignment/01-supervised-fine-tuning"
+estimatedMinutes: 18
+---
+
+# Design a Code Completion System (Copilot)
+
+<SystemDesignMeta
+  track="Generative AI System Design"
+  company="GitHub Copilot"
+  scale="millions of devs · <300ms suggestions · fill-in-the-middle"
+  difficulty="intermediate"
+/>
+
+Inline code completion (as you type, in the editor) is a distinct generative-AI
+problem from an autonomous coding *agent*: there's no multi-step loop, no code
+execution — just **predict the next span of code, extremely fast, with the right
+context**. Latency and context assembly are the whole game. Note this is the
+*completion product*; the agentic coding agent is a separate case study.
+
+## 1. Clarify the problem
+
+- **Goal:** suggest the code the developer is about to type — completions that get
+  **accepted** and kept, right in the editor as they work.
+- **The bar is latency:** a suggestion must appear in a few hundred ms or the
+  developer has already typed past it. Usefulness × speed.
+- **Fill-in-the-middle (FIM):** the model completes *between* existing code
+  (cursor mid-file), not just append — it must see code after the cursor too.
+- **Scope:** the completion model + context assembly + low-latency serving.
+
+<Callout type="tip" title="Interview signal">
+Two things distinguish this from generic LLM chat: **fill-in-the-middle** (the
+model sees prefix *and* suffix) and a **sub-300ms** budget that dominates every
+design choice. Lead with both.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | Under 300 ms to first suggestion | Small/fast model; short context; cancellation |
+| Acceptance | Suggestions actually kept | Good context + ranking + right length |
+| Context | Repo-aware, current file | FIM + cross-file retrieval, budgeted |
+| Cost | Runs on nearly every keystroke | Debounce, cache, cheap model, batching |
+
+## 3. GenAI problem framing
+
+**Fill-in-the-middle autoregressive generation.** The model is trained with a FIM
+objective so it can condition on both the prefix (code before the cursor) and
+suffix (after). The product decides *when* to trigger, *how much* to generate, and
+*whether* to show it (confidence/ranking).
+
+*What was the pre-generative baseline?* Rule/AST-based autocomplete (IntelliSense)
+— great for single symbols, useless for multi-line intent. Generative completion
+writes whole logical spans.
+
+## 4. Data & training *(spine: data)*
+
+- **Data:** large permissively-licensed code corpora; **license filtering** and
+  dedup are critical (regurgitating GPL code is a real risk).
+- **FIM training:** documents are split into prefix/middle/suffix so the model
+  learns infilling, not just left-to-right.
+- **Fine-tuning:** on high-quality code + acceptance-weighted signals for the
+  product's languages.
+
+## 5. Model & generation *(spine: hypothesis-space + objective)*
+
+- **Model:** a decoder-only code LLM sized for latency (smaller than a chat
+  frontier model) with FIM support.
+- **Context assembly:** current-file prefix+suffix, plus **retrieved** relevant
+  snippets from open files / the repo (imports, signatures, neighboring code) —
+  budgeted to fit the latency-bound context.
+- **Decoding:** low temperature; generate a bounded span; stop at a natural
+  boundary.
+
+<SamplingStrategiesViz />
+
+Decoding strategy matters: greedy/low-temp for precise completions, with early
+stopping so the suggestion is a tidy span, not a runaway block.
+
+## 6. Serving & scaling
+
+Sub-300ms means: a small model on optimized inference (continuous batching, KV
+cache), **debouncing** keystrokes, **cancellation** of superseded requests,
+**caching** identical contexts, and speculative decoding for latency. Suggestions
+are generated speculatively and discarded if the user types on.
+
+<WikiLink slug="speculative-decoding" title="Speculative decoding for low-latency completion" />
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Acceptance rate** — the north star: fraction of suggestions accepted.
+- **Retention:** do accepted suggestions survive (not immediately deleted/edited)?
+  — the truer quality signal.
+- **Offline:** exact-match / pass@k on held-out FIM tasks and unit-tested
+  benchmarks (HumanEval-style) before rollout.
+- **Latency SLOs:** p50/p95 time-to-suggestion.
+
+## 8. Safety & guardrails
+
+- **License/IP:** filter training data; detect and suppress verbatim regurgitation
+  of licensed code; offer a "block matching public code" mode.
+- **Security:** avoid suggesting insecure patterns (hardcoded secrets, SQL
+  injection); scan suggestions.
+- **Privacy:** the user's proprietary code context must never leak across tenants
+  or into training without consent.
+
+## 9. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| FIM code LLM | Left-to-right only | Editing happens mid-file; suffix context is essential |
+| Small fast model | Frontier model | Latency budget beats marginal quality here |
+| Retrieved repo context | Current file only | Cross-file signatures/imports raise acceptance |
+| Debounce + cancel | Complete every keystroke | Cuts cost and wasted generations dramatically |
+
+## 10. Interviewer follow-ups
+
+<Details summary="Why not just use a big chat model for completions?">
+Latency and cost. A frontier model can't reliably return in under 300ms on every
+keystroke, and the marginal quality doesn't help if the suggestion arrives after
+the developer typed past it. A smaller FIM-tuned model on optimized serving wins
+the speed/usefulness tradeoff that defines this product.
+</Details>
+
+<Details summary="Acceptance rate looks fine but developers say suggestions are 'noise.' What's missing?">
+Acceptance can be gamed by frequent trivial completions. Track *retention* (do
+accepted suggestions survive edits?) and suggestion frequency — a lower-volume,
+higher-retention setup often feels far better. Tune when to trigger and how long
+to suggest, not just raw acceptance.
+</Details>
+
+<Details summary="How do you prevent leaking one company's private code to another?">
+Strict tenant isolation: a user's context is used only for their own completions,
+never pooled for serving or training without explicit consent, and never cached
+across tenants. Combined with license filtering on training data and verbatim-
+match suppression, this is both a privacy and an IP requirement.
+</Details>
+
+## Key takeaways
+
+- Code completion is **fill-in-the-middle generation** under a **sub-300ms**
+  budget — latency and context assembly dominate, not model size.
+- **Repo-aware context + FIM** raise acceptance; **debounce, cancel, cache, and
+  speculative decoding** make per-keystroke serving affordable.
+- Optimize for **acceptance *and* retention**, and treat **license/IP and tenant
+  privacy** as first-class guardrails.

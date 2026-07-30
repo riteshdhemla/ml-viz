@@ -29,6 +29,8 @@ const wikiSlugs = new Set(
 );
 
 describe("system-design cases", () => {
+  const TRACKS = ["ml", "agentic", "genai"];
+
   it.each(cases.map((c) => [c.file, c] as const))(
     "%s has valid frontmatter",
     (_name, c) => {
@@ -37,8 +39,21 @@ describe("system-design cases", () => {
       expect(typeof c.data.domain, "domain must be a string").toBe("string");
       expect(typeof c.data.estimatedMinutes).toBe("number");
       expect(Array.isArray(c.data.relatedLessons), "relatedLessons must be an array").toBe(true);
-      // `spine` is required — it selects the track (ML vs Agentic).
-      expect(SPINE_IDS.includes(c.data.spine), `${c.file} spine=${c.data.spine}`).toBe(true);
+
+      // `track` (when present) must be a known track.
+      if (c.data.track !== undefined) {
+        expect(TRACKS.includes(c.data.track), `${c.file} track=${c.data.track}`).toBe(true);
+      }
+      // The resolved track (`track ?? spine`) must exist and be valid.
+      const resolvedTrack = c.data.track ?? c.data.spine;
+      expect(TRACKS.includes(resolvedTrack), `${c.file} has no valid track (track ?? spine)`).toBe(true);
+      // `spine` is required unless this is a GenAI case (which may be serving/infra).
+      if (resolvedTrack !== "genai") {
+        expect(SPINE_IDS.includes(c.data.spine), `${c.file} spine=${c.data.spine}`).toBe(true);
+      } else if (c.data.spine !== undefined) {
+        // A GenAI case that declares a spine must still declare a valid one.
+        expect(SPINE_IDS.includes(c.data.spine), `${c.file} spine=${c.data.spine}`).toBe(true);
+      }
     }
   );
 
@@ -47,6 +62,11 @@ describe("system-design cases", () => {
     for (const c of cases) {
       const stages = c.data.spineStages;
       if (stages === undefined) continue;
+      // spineStages require a declared spine to validate against.
+      if (c.data.spine === undefined) {
+        problems.push(`${c.file}: has spineStages but no spine`);
+        continue;
+      }
       if (!Array.isArray(stages)) {
         problems.push(`${c.file}: spineStages is not an array`);
         continue;
