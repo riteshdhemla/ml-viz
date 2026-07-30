@@ -11,7 +11,7 @@ relatedLessons:
   - "building-with-llms/12-code-intelligence-and-generation"
   - "building-with-llms/06-ai-engineering-architecture"
   - "agent-design-patterns/06-reflection-patterns"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design a Text-to-SQL Data-Analyst Agent
@@ -23,153 +23,277 @@ estimatedMinutes: 18
   difficulty="intermediate"
 />
 
-"Ask your data a question in English" is a deceptively hard agentic problem: the
-model must map ambiguous language onto a **specific, large schema** and produce
-SQL that not only parses but returns the *right* answer. The design win is
-**grounding in the schema** and **validating by execution** with a self-correction
-loop. Walk it through the **agentic project loop**.
+A product manager types: "What was our revenue from returning
+customers last quarter, by region?" No SQL knowledge, no idea that
+"revenue" lives in a column called `gmv_net` inside a table called
+`fct_orders`, or that "returning customer" requires a self-join
+against first-purchase dates. The agent's job is to bridge that gap:
+map ambiguous English onto a specific warehouse with two thousand
+tables, generate SQL, run it, and hand back a number the PM will put
+in a board deck.
+
+That last clause is why the correctness bar here is unusual. In most
+agent systems, the dangerous failure is an error; here, **the
+dangerous failure is a query that runs**. SQL that errors out is
+self-announcing — annoying, harmless. SQL that executes cleanly but
+joins the wrong table, or forgets the returns filter, produces a
+*wrong number delivered with full confidence*, and the PM has no way
+to tell. So the design win is twofold: **ground the generation in the
+schema** (so the model knows what `gmv_net` is), and **validate by
+execution with a self-correction loop** (so the database — a free,
+grounded verifier — does the checking the model can't do alone). Walk
+it through the agentic project loop.
+
+<Callout type="info" title="What this case assumes you already know">
+The concepts this case builds on:
+
+- **Data-warehouse basics** — fact/dimension tables (the `fct_` /
+  `dim_` naming), joins and keys, DDL (schema-changing statements like
+  `DROP TABLE`) vs. read-only queries, and `EXPLAIN` (asking the
+  database for a query's execution plan — a free dry-run).
+- **Schema metadata** — table and column descriptions, documented
+  join paths, sampled values; the documentation layer this case
+  elevates into the primary quality lever.
+- **Semantic / metrics layer** — a governed layer (dbt-style) where
+  business terms like "revenue" or "active user" are defined *once* as
+  canonical queries, so every consumer computes them identically.
+- **RAG-style retrieval** — embedding descriptions and retrieving
+  the relevant few into context; here applied to schemas rather than
+  documents.
+- **The reflection loop** — generate → execute → observe → fix; the
+  same pattern as the coding agent, with the database as the
+  environment — see [text-to-SQL](/wiki/text-to-sql).
+- **Execution accuracy & Spider/BIRD** — the standard text-to-SQL
+  metric (does the generated query return the same *result set* as a
+  gold query?) and the benchmarks built on it.
+- **Database roles & permissions** — grants that make a DB user
+  physically incapable of writes/DDL; the enforcement point for every
+  safety property below.
+</Callout>
 
 ## 1. Clarify the task *(spine: task)*
 
-- **Goal:** convert a natural-language question into correct SQL over a warehouse,
-  run it, and return the answer (often with a chart/explanation).
-- **Correctness bar:** subtly-wrong SQL that *runs* is the danger — a wrong number
-  presented confidently is worse than an error.
-- **Read-only by default:** analytics queries; writes/DDL are out of scope or
-  heavily gated.
-- **Scope:** NL → SQL → execute → answer. Adjacent: BI/visualization layer.
+The goal: convert a natural-language question into correct SQL over a
+real warehouse, execute it, and return the answer — usually with a
+chart and a plain-language explanation of what was computed, because
+the explanation is how a non-SQL user can sanity-check the result.
+
+State the correctness bar the way the intro did, because it inverts
+the usual instinct: **subtly-wrong SQL that runs is the danger**, not
+SQL that errors. The design must treat "returns a plausible number"
+as unverified until proven otherwise, which is what motivates the
+execution-validation loop, the semantic layer, and the sanity checks
+throughout.
+
+And bound the power early: **read-only by default**. This is an
+analytics agent — writes and DDL are out of scope entirely, or gated
+so heavily they might as well be. Scope: NL → SQL → execute → answer;
+the BI/visualization layer downstream is adjacent.
 
 <Callout type="tip" title="Interview signal">
-"A query that runs isn't a query that's *correct*." Emphasizing execution
-validation *and* semantic correctness (right tables, joins, filters) — not just
-syntactic validity — is the key insight.
+"A query that runs isn't a query that's *correct*." Leading with the
+gap between syntactic validity and semantic correctness — right
+tables, right joins, right filters — is the insight that organizes
+this whole design.
 </Callout>
 
 ## 2. Requirements & constraints
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Schema size | Hundreds/thousands of tables | Schema retrieval, not whole-schema in prompt |
+| Schema size | Hundreds/thousands of tables | Schema retrieval, not whole-schema-in-prompt |
 | Correctness | Right answer, not just valid SQL | Execution + self-correction + verification |
-| Safety | No destructive queries, cost control | Read-only role, row/scan limits, sandboxing |
-| Latency | Interactive (seconds) | Bounded correction loop; cache schema |
+| Safety | No destructive queries, cost control | Read-only role, scan limits, sandboxing |
+| Latency | Interactive (seconds) | Bounded correction loop; cached schema |
 
 <ThinkFirst question="The warehouse has 2,000 tables. What goes in the prompt — and what's the single biggest lever on SQL quality?">
-Retrieve, don't dump: embed table/column descriptions and pull only the
-relevant handful, with their joins, keys, and example queries. The biggest
-lever isn't the model — it's **metadata quality**: human-written column
-descriptions, synonyms, and sampled values. A model can't guess that revenue
-lives in `fct_orders.gmv_net` unless something tells it.
+Retrieve, don't dump: embed the table and column descriptions, pull
+only the relevant handful into the prompt, along with their join
+paths, keys, and example queries. But the deeper answer is about what
+makes that retrieval *work*: the single biggest quality lever is
+**metadata quality** — human-written column descriptions, business
+synonyms, sampled values — not the model. The reasoning is blunt: no
+model, however capable, can *deduce* that revenue lives in
+`fct_orders.gmv_net` rather than the deprecated `orders_v1.revenue`
+column. Something has to tell it, and that something is
+documentation. Teams that invest in metadata beat teams that invest
+in prompts.
 </ThinkFirst>
 
 ## 3. Context & tools *(spine: context)*
 
-- **Schema retrieval:** the schema is too big for the prompt — retrieve the
-  relevant tables/columns via embeddings over table/column descriptions, plus
-  documented **joins**, keys, and example queries. Good metadata (descriptions,
-  synonyms, value samples) is the single biggest quality lever.
-- **Tools:** `search_schema`, `run_sql` (read-only, sandboxed), `get_sample_rows`,
-  `explain_query`. Execution is the verification tool.
-- **Few-shot / semantic layer:** curated example NL↔SQL pairs and a metrics/
-  semantic layer keep business definitions consistent ("revenue" means one thing).
+**Schema retrieval** implements the ThinkFirst: descriptions embedded,
+the relevant tables retrieved per question, enriched with documented
+joins and example queries — so the prompt contains a small, dense,
+*navigable* slice of the warehouse rather than an overwhelming dump.
+
+The **tool belt** makes the database itself the agent's instrument:
+`search_schema`, `run_sql` (read-only, sandboxed), `get_sample_rows`,
+and `explain_query`. Two of these deserve a comment.
+`get_sample_rows` solves the value-grounding problem — the model needs
+to *see* that the state column stores `"CA"`, not `"California"`,
+before it writes the filter. And `run_sql` is not just the delivery
+mechanism; it is the **verification tool** the orchestration loop is
+built around.
+
+The third context element is the **semantic/metrics layer** plus
+curated NL↔SQL few-shot pairs: business definitions ("revenue,"
+"active user") defined once, canonically. Without it, every question
+that touches a business term re-derives the definition — and
+sometimes derives it differently, which is exactly the
+subtly-wrong-number failure this system exists to prevent.
 
 <WikiLink slug="text-to-sql" title="Text-to-SQL — schema grounding & self-correction" />
 
 <ThinkFirst question="The model generates plausible SQL on the first try maybe 70% of the time. What system structure turns that into a reliable product?">
-A **loop, not a shot**: execute the query (or `EXPLAIN` it), feed errors and
-suspicious results back, and let the model correct itself — the database is a
-free, grounded verifier. The same generate → run → observe → fix pattern as a
-coding agent; the environment's feedback does the work the single-shot model
-can't.
+A **loop, not a shot**. Execute the candidate query (or `EXPLAIN` it
+first), feed database errors and suspicious results back into
+context, and let the model correct itself. The database is a free,
+grounded verifier — it knows the schema, the types, and the data, and
+its error messages are precise. This is the same
+generate → run → observe → fix pattern as the coding agent, with the
+warehouse as the environment: the environment's feedback does the
+work that no amount of single-shot prompt engineering can.
 </ThinkFirst>
 
 ## 4. Orchestration *(spine: orchestration)*
 
-**Generate → execute → observe → self-correct:**
+The loop is **generate → execute → observe → self-correct**:
 
-1. Retrieve relevant schema for the question.
+1. Retrieve the relevant schema slice for the question.
 2. Generate candidate SQL.
-3. **Execute** (or dry-run/`EXPLAIN`) — if it errors, feed the DB error back and
-   fix.
-4. Check the result is sensible (types, non-empty, ballpark); if the question was
-   ambiguous, ask a clarifying question.
+3. **Execute** it (or dry-run via `EXPLAIN` for expensive queries) —
+   on error, feed the database's message back and regenerate; DB
+   errors are unusually good feedback, naming the exact missing column
+   or type mismatch.
+4. **Check the result is sensible** — types match the question,
+   result isn't unexpectedly empty, magnitude is in the ballpark. A
+   revenue query returning zero rows usually means a wrong filter,
+   not zero revenue.
 
 <AgentLoopViz />
 
-The execution result is the grounded feedback that turns a plausible query into a
-correct one — the same reflection loop as a coding agent, with the database as the
-environment.
+One more branch belongs in the loop: **ambiguity detection**. "Top
+customers" has at least four readings (by revenue? order count?
+recency? over what window?), and the correct behavior is to ask a
+clarifying question, not to pick one silently — because a
+wrong-but-confident answer erodes trust faster than a five-second
+clarification costs.
 
 ## 5. Evaluation *(spine: evaluation)*
 
-- **Execution accuracy:** does the generated query return the *same result set* as
-  a gold query? (The standard text-to-SQL metric — Spider/BIRD benchmarks.)
-- **Exact/semantic match** as a secondary check.
-- **Robustness:** ambiguity handling, correct joins, and value grounding (e.g.
-  "California" vs "CA"). **pass@k** reflects the self-correction retries.
-- Guard against **plausible-but-wrong**: track cases that run but return wrong
-  numbers — the most dangerous failure.
+The headline metric is **execution accuracy**: does the generated
+query return the *same result set* as a gold query written by an
+analyst? This is the standard because it's robust to the many
+different SQL strings that compute the same answer — exact-match and
+semantic-match scores serve only as secondary checks. Spider and BIRD
+are the public benchmarks; a private suite over *your* schema and
+*your* business terms matters more, because that's where the model
+actually lives. **pass@k** reflects the retry reality of the
+self-correction loop.
+
+Beyond the aggregate: **robustness slices** for the known hard cases —
+ambiguity handling, multi-table joins, value grounding ("California"
+vs. "CA") — and a metric this case uniquely needs: track
+**runs-but-wrong** cases as their own category, because they are the
+most dangerous failure and the one execution accuracy exists to
+surface.
 
 <ThinkFirst question="What stops this agent from dropping a table or scanning the entire warehouse — and where must that control live?">
-At the **database boundary**, not in the prompt: a read-only role that
-physically cannot execute DDL, plus scan/row caps, statement timeouts, and cost
-guards. Asking the model nicely to "write safe, efficient SQL" is a wish;
-a restricted DB user is a guarantee.
+At the **database boundary**, not in the prompt. A read-only role
+that physically cannot execute DDL — the grant simply doesn't exist —
+plus scan/row caps, statement timeouts, and cost guards enforced by
+the warehouse itself. The contrast to internalize: asking the model
+to "write safe, efficient SQL" is a wish that fails under injection,
+confusion, or ordinary error; a restricted DB user is a guarantee
+that holds no matter what the model generates.
 </ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 
-- **Read-only role + limits:** a restricted DB user, row/scan/cost caps, statement
-  timeouts — the agent can't drop tables or run away with warehouse spend.
-- **Injection:** the question and any retrieved metadata are untrusted; never let
-  them escalate to DDL or cross-tenant access.
-- **PII/governance:** respect column-level access controls; mask sensitive fields.
+- **Read-only role + resource limits** — the ThinkFirst's guarantee:
+  a restricted database user, row/scan/cost caps, statement timeouts.
+  The agent cannot drop tables or torch the warehouse budget, by
+  construction.
+- **Injection posture** — the user's question and even retrieved
+  metadata (a table description is text someone wrote) are untrusted;
+  nothing in them can escalate to DDL or cross-tenant access, because
+  the DB role makes escalation impossible rather than forbidden.
+- **PII and governance** — column-level access controls respected in
+  retrieval and execution, sensitive fields masked in results; the
+  agent inherits the warehouse's governance rather than bypassing it.
 
 ## 7. Operations *(spine: operations)*
 
-- **Tracing:** log question → retrieved schema → SQL → result → corrections.
-- **Cost control:** monitor and cap query cost; cache schema embeddings and hot
-  results.
-- **Feedback:** thumbs-down / corrected queries become few-shot examples and eval
-  cases, steadily improving accuracy on *your* schema.
+**Tracing** logs the full chain — question, retrieved schema slice,
+generated SQL, result, and every correction round — which is both the
+debugging record and a diagnostic goldmine: correction-loop
+transcripts show exactly *which* schema confusions recur, pointing at
+the metadata that needs improving.
+
+**Cost control** monitors and caps per-query spend (warehouse compute
+is real money), and caches schema embeddings and hot results.
+
+The **feedback loop** is unusually direct in this domain: every
+thumbs-down and every analyst-corrected query becomes a few-shot
+example and an eval case. This compounds — the agent gets steadily
+better *on your schema specifically*, which is where generic model
+improvements can't reach.
 
 ## 8. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
 | Schema retrieval | Whole schema in prompt | Large schemas blow the context and dilute attention |
-| Execution self-correction | Single-shot generation | DB errors + results are a groundable signal |
-| Semantic/metrics layer | Raw table access | Consistent business definitions; fewer subtle errors |
-| Read-only + limits | Full DB access | Analytics is read-only; caps prevent cost/destruction |
+| Execution self-correction | Single-shot generation | DB errors and results are free, grounded feedback |
+| Semantic/metrics layer | Raw table access | Business terms defined once; kills a whole class of subtle errors |
+| Read-only + limits | Full DB access | Analytics is read-only; the DB boundary makes safety a guarantee |
 
 ## 9. Interviewer follow-ups
 
 <Details summary="The SQL runs and returns a number, but it's wrong. How do you catch it?">
-Execution validity ≠ correctness. Mitigate with a semantic/metrics layer (so
-'revenue' is defined once), value grounding (map 'California'→'CA' from sampled
-values), result sanity checks, and — for high-stakes answers — showing the query
-+ assumptions for human confirmation. Track 'runs-but-wrong' as its own metric.
+Accept that no single mechanism catches it — layer them. The
+semantic/metrics layer removes the biggest source (divergent business
+definitions); value grounding from sampled rows fixes filter
+mismatches ('California' vs 'CA'); result sanity checks flag empty and
+out-of-ballpark answers; and for high-stakes numbers, the agent shows
+its query and stated assumptions for human confirmation — the
+explanation is the PM's audit trail. And measure it: 'runs-but-wrong'
+tracked as its own metric, fed by every correction users report.
 </Details>
 
 <Details summary="The question is ambiguous ('top customers'). What does the agent do?">
-Detect ambiguity (top by revenue? count? recency? over what period?) and ask a
-clarifying question rather than guessing. A wrong-but-confident answer erodes
-trust faster than a quick clarification — the agent should know when it doesn't
-know what's being asked.
+Detects the ambiguity and asks — top by revenue, order count, or
+recency, and over what period? — rather than silently picking one.
+The trust arithmetic favors asking: a clarifying question costs five
+seconds; a confident answer to the wrong interpretation costs the
+user's faith in every future answer. Knowing *when it doesn't know
+what's being asked* is part of the agent's competence, and ambiguity
+cases belong in the eval suite.
 </Details>
 
 <Details summary="How do you stop it from running a query that scans the whole warehouse?">
-Enforce it at the database boundary: a read-only role with scan/row limits,
-statement timeouts, and cost guards, plus a dry-run/`EXPLAIN` before executing
-expensive queries. Never rely on the prompt to 'write efficient SQL' as the safety
-mechanism.
+At the database boundary, where prevention is a property rather than a
+request: scan/row limits and statement timeouts on the agent's DB
+role, cost guards in the warehouse, and an `EXPLAIN` dry-run before
+executing anything the planner prices as expensive. The prompt can
+*encourage* efficient SQL as a quality matter, but the safety
+mechanism is the boundary — it holds even when the model writes a
+catastrophic join by accident.
 </Details>
 
 ## Key takeaways
 
-- Text-to-SQL is **schema grounding + execution-validated self-correction** — a
-  query that runs is not a query that's correct.
-- **Schema retrieval** and a **semantic/metrics layer** are the biggest quality
-  levers; the **execution result** is the reflection signal.
-- Evaluate on **execution accuracy** (does it match the gold result), and enforce
-  **read-only limits** at the DB boundary, not in the prompt.
+- Text-to-SQL's defining risk is the **query that runs but is wrong**
+  — a confident wrong number — so the design is built around
+  execution validation, sanity checks, and a semantic layer, not just
+  generation quality.
+- **Metadata is the biggest quality lever**: schema retrieval works
+  exactly as well as the descriptions, synonyms, and sampled values
+  behind it — no model can deduce your naming conventions.
+- The reliability mechanism is the **reflection loop** — generate →
+  execute → observe → fix — with the database as a free, grounded
+  verifier, same pattern as the coding agent.
+- Safety lives at the **database boundary**: a read-only role with
+  scan and cost limits is a guarantee; prompt-level requests for safe
+  SQL are a wish.
