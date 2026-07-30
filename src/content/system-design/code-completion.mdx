@@ -12,7 +12,7 @@ relatedLessons:
   - "building-with-llms/12-code-intelligence-and-generation"
   - "nlp/05-decoding-and-sampling"
   - "fine-tuning-alignment/01-supervised-fine-tuning"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design a Code Completion System (Copilot)
@@ -24,26 +24,77 @@ estimatedMinutes: 18
   difficulty="intermediate"
 />
 
-Inline code completion (as you type, in the editor) is a distinct generative-AI
-problem from an autonomous coding *agent*: there's no multi-step loop, no code
-execution — just **predict the next span of code, extremely fast, with the right
-context**. Latency and context assembly are the whole game. Note this is the
-*completion product*; the agentic coding agent is a separate case study.
+A developer pauses mid-keystroke, cursor in the middle of a
+half-written function. Within a few hundred milliseconds, gray ghost
+text appears: the next several lines, guessed from the code above the
+cursor, the code *below* it, and the shape of the rest of the repo.
+Tab to accept, keep typing to dismiss. This happens on nearly every
+pause, for millions of developers, all day.
+
+Be precise about what this product is *not*, because the distinction
+frames the whole design: it is not a coding **agent**. There's no
+multi-step loop, no test execution, no repo-wide task — just one
+prediction, made absurdly fast, over and over. (The autonomous coding
+agent is its own case study.) Strip it down and two things remain,
+and they are the whole game: **latency** — a suggestion that arrives
+after ~300ms is worthless because the developer has typed past it, so
+speed isn't a quality attribute, it's the product working at all —
+and **context assembly** — choosing which slice of the repo the model
+sees in the few thousand tokens the latency budget affords. Model
+quality matters, but a mid-sized model with the right context beats a
+frontier model with the wrong one, and the frontier model can't hit
+the budget anyway.
+
+<Callout type="info" title="What this case assumes you already know">
+The concepts this case builds on:
+
+- **Fill-in-the-middle (FIM)** — training and prompting a model to
+  complete text *between* a prefix and a suffix, rather than only
+  appending. Essential because editing happens mid-file: the code
+  after the cursor constrains what belongs at it.
+- **Decoding & sampling** — temperature, early stopping, and length
+  control from the NLP course; completions want near-greedy decoding
+  and tidy stopping points.
+- **KV cache & speculative decoding** — inference optimizations from
+  the LLM-serving world — see
+  [speculative decoding](/wiki/speculative-decoding); reused here to
+  hit the latency budget.
+- **Debouncing & request cancellation** — client-side patterns:
+  waiting for a pause before firing a request, and killing in-flight
+  requests a newer keystroke has made obsolete.
+- **Code licensing (copyleft vs. permissive)** — GPL-style licenses
+  require derived code to carry the license; MIT/Apache-style don't.
+  This becomes a live product risk when a model can memorize and
+  regurgitate training code verbatim.
+- **HumanEval-style benchmarks & pass@k** — offline code-generation
+  evaluation: does the completion pass unit tests, in at least one of
+  k samples.
+- **Acceptance / retention** — the product's behavioral metrics: was
+  the suggestion accepted, and did the accepted code *survive*
+  subsequent editing — both defined and dissected below.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** suggest the code the developer is about to type — completions that get
-  **accepted** and kept, right in the editor as they work.
-- **The bar is latency:** a suggestion must appear in a few hundred ms or the
-  developer has already typed past it. Usefulness × speed.
-- **Fill-in-the-middle (FIM):** the model completes *between* existing code
-  (cursor mid-file), not just append — it must see code after the cursor too.
-- **Scope:** the completion model + context assembly + low-latency serving.
+The goal: suggest the code the developer is about to write —
+completions that get **accepted and kept** — inline, as they work.
+"Accepted and kept" is the careful phrasing: the target isn't
+impressive code, it's code the developer would have typed, delivered
+before they type it.
+
+The two structural facts from the intro become requirements. The
+**latency bar**: a few hundred milliseconds from pause to suggestion,
+or the moment has passed — usefulness × speed, where speed is a hard
+gate. And **fill-in-the-middle**: the cursor sits mid-file, so the
+model must condition on the suffix too — a completion that ignores
+the code below the cursor will redeclare variables that already exist
+and close braces that are already closed. Scope: the completion
+model, context assembly, and the low-latency serving path.
 
 <Callout type="tip" title="Interview signal">
-Two things distinguish this from generic LLM chat: **fill-in-the-middle** (the
-model sees prefix *and* suffix) and a **sub-300ms** budget that dominates every
-design choice. Lead with both.
+Two things distinguish this from generic LLM chat: **fill-in-the-
+middle** (the model sees prefix *and* suffix) and a **sub-300ms**
+budget that dominates every design choice. Lead with both.
 </Callout>
 
 ## 2. Requirements & scale
@@ -57,127 +108,197 @@ design choice. Lead with both.
 
 ## 3. GenAI problem framing
 
-**Fill-in-the-middle autoregressive generation.** The model is trained with a FIM
-objective so it can condition on both the prefix (code before the cursor) and
-suffix (after). The product decides *when* to trigger, *how much* to generate, and
-*whether* to show it (confidence/ranking).
+Formally: **fill-in-the-middle autoregressive generation** — the
+model is trained with a FIM objective (documents split into
+prefix/middle/suffix during training) so it can infill rather than
+only append. Around the model sit three product decisions that matter
+as much as it does: *when* to trigger (not every keystroke), *how
+much* to generate (a tidy span, not a runaway page), and *whether* to
+show the result at all (confidence gating — a bad suggestion costs
+attention even when rejected).
 
-*What was the pre-generative baseline?* Rule/AST-based autocomplete (IntelliSense)
-— great for single symbols, useless for multi-line intent. Generative completion
-writes whole logical spans.
+The pre-generative baseline is instructive: rule/AST-based
+autocomplete (IntelliSense) — precise and instant for single symbols,
+structurally incapable of multi-line intent. Generative completion's
+step change is writing whole logical spans: the loop body, the error
+handler, the test case. The two coexist in practice; symbol
+completion didn't die, it got a colleague.
 
 <ThinkFirst question="You'll train on public code from the internet. What's the legal landmine — and at which layers do you defuse it?">
-**License contamination**: the model can memorize and regurgitate copyleft
-(GPL) code verbatim into a customer's proprietary codebase. Defuse at three
-layers: filter and dedup training data by license, detect and suppress
-verbatim matches at generation time, and offer users a "block matching public
-code" mode. One layer is never enough — memorization survives filtering.
+**License contamination**: the model can memorize copyleft (GPL) code
+and regurgitate it verbatim into a customer's proprietary codebase —
+silently attaching license obligations the customer never agreed to.
+Defuse it at three layers, because each leaks: filter and dedup
+training data by license (reduces memorization at the source), detect
+and suppress verbatim matches against public code at generation time
+(catches what training filtering missed), and offer users a "block
+matching public code" mode (their risk tolerance, their call). One
+layer is never enough — memorization survives filtering.
 </ThinkFirst>
 
 ## 4. Data & training *(spine: data)*
 
-- **Data:** large permissively-licensed code corpora; **license filtering** and
-  dedup are critical (regurgitating GPL code is a real risk).
-- **FIM training:** documents are split into prefix/middle/suffix so the model
-  learns infilling, not just left-to-right.
-- **Fine-tuning:** on high-quality code + acceptance-weighted signals for the
-  product's languages.
+The training corpus is large-scale public code, and the two
+non-negotiable curation steps are exactly the ThinkFirst's first
+layer: **license filtering** (train on permissively-licensed code)
+and **deduplication** — which pulls double duty, improving model
+quality *and* directly reducing verbatim memorization, since the
+snippets a model regurgitates are overwhelmingly the ones it saw many
+times.
+
+**FIM training** restructures documents into prefix/middle/suffix
+triples so infilling is a first-class capability rather than a
+prompting trick. Fine-tuning then sharpens the product: high-quality
+code in the product's target languages, weighted by acceptance
+signals from production — the feedback loop teaching the model what
+this product's users actually keep.
 
 ## 5. Model & generation *(spine: hypothesis-space + objective)*
 
-- **Model:** a decoder-only code LLM sized for latency (smaller than a chat
-  frontier model) with FIM support.
-- **Context assembly:** current-file prefix+suffix, plus **retrieved** relevant
-  snippets from open files / the repo (imports, signatures, neighboring code) —
-  budgeted to fit the latency-bound context.
-- **Decoding:** low temperature; generate a bounded span; stop at a natural
-  boundary.
+The **model** is a decoder-only code LLM deliberately sized for the
+latency budget — smaller than a chat frontier model, because
+section 1's arithmetic is unforgiving: marginal quality from a bigger
+model is worth nothing at 800ms.
+
+**Context assembly** is where the quality actually lives. The budget
+(a few thousand tokens, bounded by prefill latency) is spent in
+priority order: the current file's prefix and suffix first, then
+*retrieved* cross-file context — imports, type signatures,
+neighboring definitions, similar code from open tabs and the repo.
+This is what makes suggestions repo-aware: the model completes your
+call correctly because the function's signature from another file is
+in its context, not because it's smarter.
+
+**Decoding**: low temperature (completion wants the likely answer,
+not a creative one), a bounded span, and early stopping at natural
+boundaries — a suggestion should end at the close of a statement or
+block, not trail off mid-expression.
 
 <SamplingStrategiesViz />
 
-Decoding strategy matters: greedy/low-temp for precise completions, with early
-stopping so the suggestion is a tidy span, not a runaway block.
-
 <ThinkFirst question="The model would run on nearly every keystroke of millions of developers. What keeps that from being absurdly wasteful?">
-Mostly *not running it*: **debounce** until typing pauses, **cancel** in-flight
-requests the next keystroke supersedes, and **cache** completions for repeated
-contexts. Then make the runs that survive cheap — a small model, KV-cache
-reuse, speculative decoding. The generations you never start are the biggest
-saving.
+Mostly *not running it*. **Debounce** — fire only when typing pauses,
+which eliminates the majority of candidate invocations outright.
+**Cancel** — kill any in-flight request the next keystroke has
+superseded; its answer is already wrong. **Cache** — identical
+contexts (common in practice) return instantly. Only then optimize
+the runs that survive: a small model, KV-cache reuse across
+overlapping contexts, speculative decoding. The ordering is the
+insight — the generations you never start are a bigger saving than
+any inference optimization applied to the ones you do.
 </ThinkFirst>
 
 ## 6. Serving & scaling
 
-Sub-300ms means: a small model on optimized inference (continuous batching, KV
-cache), **debouncing** keystrokes, **cancellation** of superseded requests,
-**caching** identical contexts, and speculative decoding for latency. Suggestions
-are generated speculatively and discarded if the user types on.
+The serving story assembles the pieces: debouncing and cancellation
+at the client, caching in front, and — for requests that reach the
+model — a small FIM model on an optimized inference stack (continuous
+batching across the millions of concurrent users, KV-cache reuse,
+speculative decoding to pull time-to-suggestion down). One inversion
+from typical serving is worth naming: *speculative wastage is part of
+the design* — suggestions are generated knowing most will be
+discarded unseen because the user kept typing. The economics only
+work because each generation has been made so cheap.
 
 <WikiLink slug="speculative-decoding" title="Speculative decoding for low-latency completion" />
 
 <ThinkFirst question="What's the north-star metric for a completion product — and how can it mislead you?">
-**Acceptance rate** — but it's gameable: a system that spams short, trivial
-completions gets accepted often while feeling like noise. Pair it with
-**retention** (does accepted code survive the next few minutes of editing?)
-and suggestion frequency. A quieter system with higher retention usually beats
-a chattier one with higher raw acceptance.
+**Acceptance rate** — the fraction of shown suggestions the developer
+takes. And it's gameable in a specific way: a system that spams
+short, trivial completions ("`return`", a closing brace) racks up
+accepts while feeling like noise, because trivial suggestions are
+cheap to accept and worthless. Pair it with **retention** — does
+accepted code survive the next few minutes of editing? — and watch
+suggestion frequency. A quieter system with higher retention usually
+beats a chattier one with higher raw acceptance, which is why "when
+to trigger" is a tuned product decision, not a constant.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Acceptance rate** — the north star: fraction of suggestions accepted.
-- **Retention:** do accepted suggestions survive (not immediately deleted/edited)?
-  — the truer quality signal.
-- **Offline:** exact-match / pass@k on held-out FIM tasks and unit-tested
-  benchmarks (HumanEval-style) before rollout.
-- **Latency SLOs:** p50/p95 time-to-suggestion.
+The metric stack runs offline-to-online. **Offline**: exact-match on
+held-out FIM tasks and unit-tested benchmarks (HumanEval-style
+pass@k) gate checkpoints before rollout — cheap, controlled,
+necessary, and insufficient, because benchmark completion isn't
+editor completion. **Online**: the acceptance/retention pair from the
+ThinkFirst — acceptance as the headline, retention as the honesty
+check — segmented by language and suggestion length, because
+aggregate acceptance hides that the product might be great at Python
+one-liners and useless at Rust. And **latency SLOs** (p50/p95
+time-to-suggestion) sit alongside as co-equal metrics, since a
+quality win that costs 100ms can be a net product loss.
 
 ## 8. Safety & guardrails
 
-- **License/IP:** filter training data; detect and suppress verbatim regurgitation
-  of licensed code; offer a "block matching public code" mode.
-- **Security:** avoid suggesting insecure patterns (hardcoded secrets, SQL
-  injection); scan suggestions.
-- **Privacy:** the user's proprietary code context must never leak across tenants
-  or into training without consent.
+Three guardrail families, all product-shaped:
+
+- **License/IP** — the ThinkFirst's three layers: license-filtered
+  training data, generation-time verbatim-match suppression, and the
+  user-facing block-matching-code mode.
+- **Security** — completions are code that ships: scan suggestions
+  for insecure patterns (hardcoded secrets, injection-prone string
+  building) and suppress or annotate them, because a completion
+  product that autocompletes vulnerabilities at scale is a supply
+  chain risk.
+- **Privacy/tenancy** — the user's proprietary code is the context;
+  it must never leak across tenants via caches or logs, and never
+  enter training without explicit consent.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
 | FIM code LLM | Left-to-right only | Editing happens mid-file; suffix context is essential |
-| Small fast model | Frontier model | Latency budget beats marginal quality here |
-| Retrieved repo context | Current file only | Cross-file signatures/imports raise acceptance |
-| Debounce + cancel | Complete every keystroke | Cuts cost and wasted generations dramatically |
+| Small fast model | Frontier model | The latency budget beats marginal quality here |
+| Retrieved repo context | Current file only | Cross-file signatures/imports are what make suggestions correct |
+| Debounce + cancel | Complete every keystroke | The generations never started are the biggest saving |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Why not just use a big chat model for completions?">
-Latency and cost. A frontier model can't reliably return in under 300ms on every
-keystroke, and the marginal quality doesn't help if the suggestion arrives after
-the developer typed past it. A smaller FIM-tuned model on optimized serving wins
-the speed/usefulness tradeoff that defines this product.
+Because the product's binding constraint is the 300ms window, and a
+frontier model can't reliably return within it — and marginal quality
+delivered after the developer typed past the suggestion is worth
+exactly zero. The completion product's quality lever isn't model
+scale; it's context assembly and FIM training on a model sized to the
+budget. (The frontier model has its place — in the chat panel and the
+coding agent, where seconds are acceptable.)
 </Details>
 
 <Details summary="Acceptance rate looks fine but developers say suggestions are 'noise.' What's missing?">
-Acceptance can be gamed by frequent trivial completions. Track *retention* (do
-accepted suggestions survive edits?) and suggestion frequency — a lower-volume,
-higher-retention setup often feels far better. Tune when to trigger and how long
-to suggest, not just raw acceptance.
+The acceptance metric is being gamed — probably by the system itself:
+frequent trivial completions inflate accepts while degrading the
+experience. Bring in the counterweights: retention (accepted code
+that survives editing — trivial noise doesn't move it) and
+suggestion frequency. Then tune the *trigger policy* — when to offer
+and how long a span to propose — rather than the model. Often the fix
+is suggesting less: a quieter, higher-retention configuration feels
+dramatically better at identical model quality.
 </Details>
 
 <Details summary="How do you prevent leaking one company's private code to another?">
-Strict tenant isolation: a user's context is used only for their own completions,
-never pooled for serving or training without explicit consent, and never cached
-across tenants. Combined with license filtering on training data and verbatim-
-match suppression, this is both a privacy and an IP requirement.
+Strict tenant isolation, enforced at every layer the context touches:
+a user's code informs only their own completions; nothing is pooled
+across tenants for serving; caches are tenant-scoped so a completion
+computed from one company's context can never be served to another;
+and customer code enters training only with explicit consent. This is
+simultaneously a privacy obligation and an IP one — and it composes
+with the license controls: filtered training data and verbatim
+suppression protect against public-code leakage, tenant isolation
+against private-code leakage.
 </Details>
 
 ## Key takeaways
 
-- Code completion is **fill-in-the-middle generation** under a **sub-300ms**
-  budget — latency and context assembly dominate, not model size.
-- **Repo-aware context + FIM** raise acceptance; **debounce, cancel, cache, and
-  speculative decoding** make per-keystroke serving affordable.
-- Optimize for **acceptance *and* retention**, and treat **license/IP and tenant
-  privacy** as first-class guardrails.
+- Code completion is **fill-in-the-middle generation under a hard
+  sub-300ms budget** — latency is the product working at all, and
+  context assembly, not model size, is where quality lives.
+- The economics run on *not generating*: **debounce, cancel, cache**
+  — then make surviving runs cheap with a small model, KV reuse, and
+  speculative decoding.
+- **Acceptance is the north star and retention is its conscience** —
+  raw acceptance is gameable by trivial suggestions, so tune the
+  trigger policy against both.
+- **License/IP, security scanning, and tenant isolation** are
+  first-class guardrails: this product ships code into customers'
+  codebases millions of times a day.
