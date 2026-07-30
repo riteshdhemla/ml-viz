@@ -1,0 +1,157 @@
+---
+title: "Design a GenAI Safety & Output Moderation System"
+description: "The safety layer around generative models — input/output classifiers, jailbreak and prompt-injection defense, watermarking/provenance, and red-teaming — walked through the agentic project loop's guardrails and evaluation stages."
+track: genai
+spine: agentic
+spineStages: [guardrails, evaluation]
+company: "cross-industry (OpenAI / Anthropic / Meta)"
+domain: "Safety & moderation"
+scale: "every generation · low added latency · adversarial · policy-driven"
+difficulty: advanced
+relatedLessons:
+  - "building-with-llms/10-guardrails-and-llmops-security"
+  - "fine-tuning-alignment/03-reward-models"
+  - "model-evaluation/04-llm-evaluation"
+estimatedMinutes: 18
+---
+
+# Design a GenAI Safety & Output Moderation System
+
+<SystemDesignMeta
+  track="Generative AI System Design"
+  company="cross-industry"
+  scale="every generation · low added latency · adversarial · policy-driven"
+  difficulty="advanced"
+/>
+
+Every generative product needs a **safety layer** wrapping the model — the system
+that decides what prompts are allowed, what outputs may be returned, and how to
+mark generated content. It's a cross-cutting generative-AI system-design problem:
+a **defense-in-depth** pipeline against an **adversarial** user, added to *every*
+generation with minimal latency. It reads through the agentic loop's **guardrails**
+and **evaluation** stages.
+
+## 1. Clarify the problem
+
+- **Goal:** prevent a generative model from producing disallowed content (harmful,
+  illegal, privacy-violating) and from being manipulated (jailbreaks, prompt
+  injection), while marking outputs as AI-generated — without wrecking latency or
+  over-blocking benign use.
+- **Adversarial by nature:** users actively try to bypass it, so it's an arms race.
+- **Policy-driven:** "allowed" is defined by a policy taxonomy that evolves;
+  thresholds differ by category (self-harm vs. mild profanity).
+- **Scope:** the safety layer around any generation model (text/image/audio/video).
+
+<Callout type="warning" title="Defense-in-depth, not one classifier">
+No single filter is robust against a determined adversary. The design is layers —
+input moderation, a hardened system policy, output moderation, and model-level
+alignment — each catching what the others miss.
+</Callout>
+
+## 2. Requirements & constraints
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Coverage | Block disallowed in + out | Input + output classifiers per modality |
+| Latency | Minimal added latency | Small fast classifiers; parallel checks |
+| Robustness | Resist jailbreaks/injection | Adversarial training; layered defenses |
+| Precision | Don't over-block benign use | Calibrated, per-category thresholds |
+| Auditability | Explain + appeal decisions | Logging, reason codes, human review |
+
+## 3. The layered pipeline *(spine: guardrails)*
+
+Around each generation:
+
+1. **Input moderation:** classify the prompt; block clearly disallowed requests
+   before spending a generation.
+2. **Hardened system policy:** the model's instructions/policy that user (and
+   retrieved) text cannot override — the core **prompt-injection / jailbreak**
+   defense.
+3. **Output moderation:** classify the generation (text toxicity, image NSFW/
+   likeness, etc.) before returning; block or regenerate.
+4. **Provenance:** watermark and tag outputs (C2PA metadata, invisible marks) so
+   generated content is identifiable downstream.
+
+<WikiLink slug="prompt-injection-attacks-and-defenses" title="Prompt injection & jailbreak defenses" />
+
+## 4. The classifiers & alignment
+
+- **Moderation classifiers:** fast per-category models (fine-tuned encoders or
+  distilled LLMs) for input and output — small enough to add little latency.
+- **Model-level alignment:** RLHF/DPO with a **reward/safety model** so the base
+  model refuses appropriately on its own (the deepest layer).
+- **Human-in-the-loop:** uncertain cases and appeals route to reviewers, whose
+  decisions become training labels.
+
+<RewardModelViz />
+
+A reward/safety model scores outputs for policy compliance — used both to align
+the base model (RLHF) and, distilled, as an output classifier at serving time.
+
+## 5. Evaluation *(spine: evaluation)*
+
+- **Safety recall:** fraction of genuinely disallowed content caught (per
+  category; high recall on catastrophic categories).
+- **Over-refusal / false-positive rate:** benign requests wrongly blocked — the
+  precision side; over-blocking silently kills the product.
+- **Adversarial/jailbreak benchmarks:** red-team suites; **attack success rate**
+  is the headline robustness metric.
+- **LLM-as-judge + human audit** on sampled decisions.
+
+<WikiLink slug="llm-as-judge" title="LLM-as-a-judge for safety scoring" />
+
+## 6. Operations & feedback
+
+- **Latency:** run input/output classifiers in parallel with (or overlapped on)
+  generation; keep them small; cache verdicts for identical content.
+- **Red-teaming loop:** continuous adversarial testing feeds new jailbreaks into
+  training — the arms race never stops.
+- **Policy versioning & audit:** decisions are logged with reason codes; policy
+  and thresholds are versioned; appeals overturn and relabel.
+- **Monitoring:** track attack-success and over-refusal rates as live dashboards;
+  new evasion patterns trigger targeted retraining.
+
+## 7. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Layered defense-in-depth | Single moderation model | No one layer is robust to adversaries |
+| Separate fast classifiers | Rely on model self-refusal only | Classifiers catch what alignment misses, and vice-versa |
+| Calibrated per-category thresholds | One global threshold | Error costs differ hugely by category |
+| Watermark + provenance | No marking | Downstream accountability & deepfake mitigation |
+
+## 8. Interviewer follow-ups
+
+<Details summary="Users jailbreak the model with role-play prompts. How do you respond?">
+Layered: strengthen the system policy so user text can't override it, add
+adversarially-trained input/output classifiers for known jailbreak patterns, and
+align the base model (RLHF/DPO) to refuse regardless of framing. Track attack-
+success rate on a red-team suite and feed new jailbreaks back into training — it's
+a continuous arms race, not a fixed rule set.
+</Details>
+
+<Details summary="Safety is blocking legitimate requests (e.g. medical questions). Fix?">
+Over-refusal is a real failure. Calibrate per-category thresholds, use
+finer-grained policies (allow safe medical info, block dangerous instructions),
+and measure false-positive/over-refusal rate as a first-class metric. A safety
+layer optimized only for recall will strangle the product; you're balancing recall
+against precision explicitly.
+</Details>
+
+<Details summary="Why watermark outputs if classifiers already block bad content?">
+Different job: classifiers gate what's returned; watermarking/provenance makes
+returned content *identifiable as AI-generated* downstream (deepfake attribution,
+platform policy, regulation). Blocking and provenance are complementary — one
+prevents, the other enables accountability for what is generated.
+</Details>
+
+## Key takeaways
+
+- GenAI safety is a **defense-in-depth pipeline** — input moderation, hardened
+  policy, output moderation, and model-level alignment — wrapped around every
+  generation.
+- It's **adversarial and policy-driven**: calibrate per-category thresholds,
+  balance **safety recall vs. over-refusal**, and run a continuous **red-teaming**
+  loop.
+- **Watermarking/provenance** complements blocking, enabling downstream
+  accountability for generated content.

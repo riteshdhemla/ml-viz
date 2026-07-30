@@ -3,30 +3,40 @@ import { Clock, Building2 } from "lucide-react";
 import { getAllSystemDesignCases } from "@/lib/content";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { absoluteUrl } from "@/lib/site";
-import type { SystemDesignCase } from "@/types/system-design";
-import type { SpineId } from "@/types/course";
+import type { SystemDesignCase, SystemDesignTrack } from "@/types/system-design";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "System Design",
   description:
-    "Worked ML and agentic system-design interview walkthroughs — clarify requirements, estimate scale, design the system, and reason through the tradeoffs, structured by the project loop.",
+    "Worked ML, agentic, and generative-AI system-design interview walkthroughs — clarify requirements, estimate scale, design the system, and reason through the tradeoffs, structured by the project loop.",
   alternates: { canonical: absoluteUrl("/system-design") },
 };
 
-/** The two interview tracks, in display order, keyed by spine. */
-const TRACKS: { spine: SpineId; label: string; blurb: string }[] = [
+/** Resolve a case to its track — an explicit `track` wins, else it falls back to `spine`. */
+function trackOf(c: SystemDesignCase): SystemDesignTrack | undefined {
+  return c.track ?? c.spine;
+}
+
+/** The three interview tracks, in display order. */
+const TRACKS: { id: SystemDesignTrack; label: string; blurb: string }[] = [
   {
-    spine: "ml",
+    id: "ml",
     label: "ML System Design",
     blurb:
       "Ranking, retrieval, detection, and forecasting systems — walked through the ML project loop.",
   },
   {
-    spine: "agentic",
+    id: "agentic",
     label: "Agentic System Design",
     blurb:
       "LLM agents, tools, and orchestration — walked through the agentic project loop.",
+  },
+  {
+    id: "genai",
+    label: "Generative AI System Design",
+    blurb:
+      "Image, text, code, video & audio generation — model training, inference serving, and safety.",
   },
 ];
 
@@ -83,9 +93,10 @@ export default function SystemDesignIndexPage() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-4xl font-bold text-white">System Design</h1>
         <p className="mt-2 text-slate-400 max-w-2xl">
-          Interview-style walkthroughs of real ML and agentic systems. Each one
-          clarifies requirements, estimates scale, designs the system, and reasons
-          through the tradeoffs — structured as a walk through the project loop.
+          Interview-style walkthroughs of real ML, agentic, and generative-AI
+          systems. Each one clarifies requirements, estimates scale, designs the
+          system, and reasons through the tradeoffs — structured as a walk through
+          the project loop.
         </p>
 
         {cases.length === 0 && (
@@ -93,10 +104,10 @@ export default function SystemDesignIndexPage() {
         )}
 
         {TRACKS.map((track) => {
-          const trackCases = cases.filter((c) => c.spine === track.spine);
+          const trackCases = cases.filter((c) => trackOf(c) === track.id);
           if (trackCases.length === 0) return null;
           return (
-            <section key={track.spine} className="mt-12">
+            <section key={track.id} className="mt-12">
               <h2 className="text-lg font-semibold text-white">{track.label}</h2>
               <p className="mt-1 text-sm text-slate-500 max-w-2xl">{track.blurb}</p>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">

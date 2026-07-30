@@ -1,0 +1,177 @@
+---
+title: "Design a Text-to-Image Generation Service"
+description: "A production text-to-image product like Midjourney or Stable Diffusion — latent diffusion with classifier-free guidance, GPU-bound serving, and content safety — walked through the generative-AI system-design lens."
+track: genai
+spine: ml
+spineStages: [data, hypothesis-space, evaluation]
+company: "Midjourney / Stability AI"
+domain: "Image generation"
+scale: "millions of images/day · GPU-bound · seconds per image · safety-filtered"
+difficulty: intermediate
+relatedLessons:
+  - "generative-models/05-diffusion-models"
+  - "generative-models/06-vit-and-modern-genai"
+  - "computer-vision/04-vision-language-models"
+estimatedMinutes: 20
+---
+
+# Design a Text-to-Image Generation Service
+
+<SystemDesignMeta
+  track="Generative AI System Design"
+  company="Midjourney / Stability AI"
+  scale="millions of images/day · GPU-bound · seconds per image"
+  difficulty="intermediate"
+/>
+
+"Type a prompt, get an image" is the flagship generative-AI system-design
+problem. Unlike a classifier, the output is a **sample from a learned
+distribution** — so the challenges are generation *quality*, **GPU cost** (the
+model runs a heavy denoising loop), and **safety** (it can generate anything).
+Most of the pipeline is an instance of the ML loop (train a generative model),
+with a serving stage that dominates cost.
+
+## 1. Clarify the problem
+
+- **Goal:** given a text prompt, generate high-quality, prompt-faithful images,
+  fast and affordably, at product scale.
+- **Quality bar:** aesthetic quality *and* prompt adherence (the image matches
+  what was asked) — two axes that trade off.
+- **Product surface:** resolution, styles, editing, number of variants; safety is
+  non-negotiable (no CSAM, no nonconsensual imagery, IP concerns).
+- **Scope:** the generation service (model + serving + safety). Training the base
+  model is in scope conceptually; we'd usually fine-tune an open base.
+
+<Callout type="tip" title="Interview signal">
+Name the two quality axes early — **aesthetics vs. prompt faithfulness** — and
+that the system is **GPU-bound** at inference. Those two facts drive the model,
+serving, and cost story.
+</Callout>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | Seconds per image | Fewer denoising steps; distilled/accelerated samplers |
+| Cost | GPU is the dominant cost | Batching, step reduction, quantization, latent-space diffusion |
+| Quality | Aesthetic + prompt-faithful | Strong text encoder + guidance + fine-tuning |
+| Safety | Block harmful/IP-infringing output | Input + output filters, dataset curation |
+
+**Back-of-envelope:** a diffusion model runs *N* denoising steps, each a full
+UNet/transformer forward pass on a GPU. The whole cost story is "how do we cut
+steps and pack GPUs," which is why **latent** diffusion (denoise in a compressed
+space) and step-distilled samplers matter so much.
+
+## 3. GenAI problem framing
+
+**Conditional generative modeling.** The dominant family is the **latent
+diffusion model**: an autoencoder compresses images to a latent space, and a
+diffusion model learns to denoise latents conditioned on a text embedding.
+**Classifier-free guidance (CFG)** trades diversity for prompt adherence at
+sampling time.
+
+*What was the pre-generative baseline?* Retrieval (search a stock library) or GANs
+— GANs are fast but unstable and mode-collapse-prone; diffusion won on quality and
+controllability.
+
+## 4. Data & training *(spine: data)*
+
+- **Data:** large image–text pair datasets (LAION-style). **Curation is the
+  product**: dedup, aesthetic filtering, NSFW/CSAM removal, and caption quality
+  gate what the model can do — and what it *can't* be made to do.
+- **IP/licensing:** training-data provenance is a legal and ethical minefield;
+  document sources and honor opt-outs.
+- **Fine-tuning:** start from an open base, then fine-tune / LoRA for style,
+  brand, or safety.
+
+<WikiLink slug="ddim-sampling" title="DDIM — fast deterministic diffusion sampling" />
+
+## 5. Model & generation *(spine: hypothesis-space + objective)*
+
+- **Text encoder:** a strong (CLIP/T5-style) encoder conditions the model;
+  prompt faithfulness lives or dies here.
+- **Denoiser:** a UNet or diffusion transformer over latents, trained with the
+  denoising (noise-prediction) objective.
+- **Sampling:** DDIM/DPM-Solver with few steps + **CFG** for adherence;
+  step-distillation (e.g. consistency/turbo models) for near-real-time.
+
+<DiffusionViz />
+
+Diffusion learns to reverse a gradual noising process — generation is running that
+reverse chain from pure noise, guided by the text embedding.
+
+## 6. Serving & scaling
+
+The crux. Per request: encode prompt → run *N* denoising steps on GPU → decode
+latent → safety-check → return. Optimize by:
+
+- **Fewer steps** (distilled samplers), **latent-space** diffusion (smaller
+  tensors), **quantization**, and **batching** requests to saturate GPUs.
+- **Autoscaling** GPU pools by queue depth; a job queue with priority tiers.
+- **Caching** for identical/similar prompts and reusable seeds.
+
+## 7. Evaluation *(spine: evaluation)*
+
+- **Automated:** **FID** (distributional realism) and **CLIPScore** (prompt
+  adherence) — necessary but weakly correlated with human taste.
+- **Human preference:** side-by-side A/B on aesthetics + adherence is the real
+  judge; collect preference data continuously.
+- **Safety evals:** red-team prompts for harmful/IP-infringing generations.
+
+## 8. Safety & guardrails
+
+- **Input filtering:** block prompts seeking harmful/illegal content.
+- **Output filtering:** a classifier on generated images (NSFW, violence,
+  likeness of real people) before returning.
+- **Provenance:** watermark outputs (visible/invisible, C2PA metadata) so AI
+  images are identifiable.
+- **Memorization/IP:** monitor for training-image regurgitation; dedup training
+  data to reduce it.
+
+## 9. Feedback & iteration *(spine: feedback)*
+
+- **Preference data** from user picks/upscales feeds fine-tuning (RLHF-style
+  alignment for aesthetics/safety).
+- **Drift:** prompt trends shift; monitor rejection/safety-filter rates and
+  refresh models.
+
+## 10. Tradeoffs & alternatives
+
+| Choice | Alternative | Why |
+|---|---|---|
+| Latent diffusion | Pixel-space diffusion | Denoising a compressed latent is far cheaper |
+| Diffusion | GANs | Better quality/diversity/control; GANs are faster but unstable |
+| Step-distilled sampling | Full 50-step sampling | Cuts GPU cost/latency dramatically at slight quality loss |
+| Fine-tune open base | Train from scratch | Orders of magnitude cheaper; base models are strong |
+
+## 11. Interviewer follow-ups
+
+<Details summary="Images look great but ignore half the prompt. How do you improve adherence?">
+Prompt faithfulness is driven by the text encoder and guidance. Raise the CFG
+scale (more adherence, less diversity), use a stronger text encoder, and fine-tune
+on high-quality caption–image pairs. Measure with CLIPScore + human adherence
+ratings, not just FID (which only captures realism).
+</Details>
+
+<Details summary="Generation takes 8 seconds and GPU costs are killing us. What do you do?">
+Cut denoising steps with a distilled/consistency sampler, denoise in latent (not
+pixel) space, quantize the UNet, and batch requests to saturate GPUs. Each step is
+a full forward pass, so fewer steps + smaller tensors + better packing is the
+whole cost lever.
+</Details>
+
+<Details summary="A user prompts for a real celebrity in a compromising scene. How is that blocked?">
+Layered: an input filter rejects the prompt class, an output classifier flags
+disallowed likeness/NSFW before returning, and training data + fine-tuning reduce
+the model's ability to produce it. No single layer is sufficient — safety is
+defense-in-depth, and provenance watermarking aids downstream accountability.
+</Details>
+
+## Key takeaways
+
+- Text-to-image is **conditional generative modeling** (latent diffusion + CFG) —
+  the axes are **aesthetics vs. prompt faithfulness**.
+- The system is **GPU-bound**: fewer steps, latent-space diffusion, quantization,
+  and batching are the cost/latency levers.
+- **Data curation** defines capability and safety; **layered input/output
+  filtering + watermarking** are mandatory, not optional.

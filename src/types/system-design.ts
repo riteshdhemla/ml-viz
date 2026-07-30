@@ -1,19 +1,36 @@
 import type { SpineId } from "./course";
 
+/** The three interview tracks on the /system-design index. */
+export type SystemDesignTrack = "ml" | "agentic" | "genai";
+
 /**
  * A worked system-design interview walkthrough. Each case lives under
  * `src/content/system-design/{slug}.mdx` and is structured by its project loop
  * (`spine`) — the ML loop or the agentic loop — so the interview reads as a walk
- * through the stages. `spine` also selects which **track** the case appears
- * under on the `/system-design` index: "ML System Design" or "Agentic System
- * Design".
+ * through the stages.
+ *
+ * The **resolved track** (`track ?? spine`) selects which section the case
+ * appears under on the index: "ML System Design", "Agentic System Design", or
+ * "Generative AI System Design". Track is orthogonal to spine: most GenAI cases
+ * still carry `spine: ml` (training a generative model is the ML loop) so the
+ * SpineNav strip renders; serving/infra GenAI cases may omit `spine` entirely.
  */
 export interface SystemDesignCase {
   slug: string;
   title: string;
   description: string;
-  /** Selects the track. `ml` → "ML System Design", `agentic` → "Agentic System Design". */
-  spine: SpineId;
+  /**
+   * Overrides the track grouping when it differs from the spine. Set
+   * `track: "genai"` for Generative AI cases. When omitted, the track resolves
+   * to `spine`.
+   */
+  track?: SystemDesignTrack;
+  /**
+   * The project loop this case walks through. Drives the SpineNav strip.
+   * Required for ML/agentic cases; optional for `track: "genai"` cases that are
+   * pure serving/infra with no natural loop.
+   */
+  spine?: SpineId;
   /** Loop stages this problem chiefly stresses (stage ids of `spine`). Drives the SpineNav strip. */
   spineStages?: string[];
   /** Company the design is inspired by, e.g. "Pinterest". Shown in the header + card. */

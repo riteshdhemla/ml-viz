@@ -45,17 +45,23 @@ export function buildSearchIndex(): SearchItem[] {
     })
   );
 
-  const systemDesignItems = getAllSystemDesignCases().map(
-    (c): SearchItem => ({
+  const systemDesignItems = getAllSystemDesignCases().map((c): SearchItem => {
+    const track = c.track ?? c.spine;
+    const trackTitle =
+      track === "genai"
+        ? "Generative AI System Design"
+        : track === "agentic"
+          ? "Agentic System Design"
+          : "ML System Design";
+    return {
       href: `/system-design/${c.slug}`,
       title: c.title,
       description: c.description,
-      courseTitle:
-        c.spine === "agentic" ? "Agentic System Design" : "ML System Design",
+      courseTitle: trackTitle,
       kind: "system-design",
       estimatedMinutes: c.estimatedMinutes,
-    })
-  );
+    };
+  });
 
   return [...courseAndLessonItems, ...wikiItems, ...systemDesignItems];
 }
