@@ -11,7 +11,7 @@ relatedLessons:
   - "time-series/04-demand-forecasting-in-production"
   - "ml-in-practice/17-feature-stores"
   - "model-evaluation/07-calibration-and-uncertainty"
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Design an ETA / Delivery-Time Prediction System
@@ -23,152 +23,266 @@ estimatedMinutes: 18
   difficulty="intermediate"
 />
 
-ETA prediction is the classic **real-time regression** interview: predict a
-continuous arrival/delivery time, fast, per request, with **calibrated
-uncertainty** because the number is shown to users and used to make dispatch
-decisions. Walk it through the **ML project loop** — the twist versus a
-classifier is that the *distribution*, not just the point estimate, matters.
+A customer opens a food-delivery app and sees "35–45 min." That number is
+not a decoration — it's a **promise**. The customer decides whether to
+order based on it; the dispatch system decides which courier to assign
+based on it; and when the food arrives at minute 52, the customer
+remembers. Meanwhile the same model is making millions of these promises
+per minute, each computed in under 100 milliseconds from the live state of
+kitchens, couriers, and traffic.
+
+That's the shape of the ETA problem, and it's the classic **real-time
+regression** interview. The surface task — predict a continuous number —
+looks like textbook regression. The twist that separates a good answer
+from a mediocre one: because the number is a promise with asymmetric
+consequences (being late is much worse than being early), the model must
+predict a *distribution*, and the business chooses which quantile of it to
+promise. A point estimate isn't just insufficient — as we'll see, a model
+trained the obvious way makes half your deliveries "late" by construction.
+Walk it through the ML project loop with that distribution-first mindset.
+
+<Callout type="info" title="What this case assumes you already know">
+The concepts this case builds on:
+
+- **Quantiles (P50 / P90)** — the P90 of a delivery-time distribution is
+  the time that 90% of deliveries beat. "Promise the P80" means being
+  early four times out of five.
+- **MAE minimizes toward the median** — a regressor trained to minimize
+  mean absolute error learns to predict the *median* of the target
+  distribution. This innocuous statistical fact is the hinge of the whole
+  case: promise the median and half your actuals land above it.
+- **Quantile regression / pinball loss** — a loss function that makes a
+  model predict a chosen quantile instead of the median; train several
+  heads and you get a predictive interval (P10/P50/P90).
+- **Coverage** — the honesty check for intervals: a P90 prediction should
+  exceed the actual outcome in 90% of cases. More means padded promises;
+  less means broken ones.
+- **GBDT (LightGBM/XGBoost)** — gradient-boosted trees, the default model
+  family for tabular features with fast inference.
+- **Feature store & train-serve skew** — infrastructure ensuring the
+  features the model trains on are computed *identically* at serving
+  time; "streaming" features update within seconds of real-world events.
+- **MAE / MAPE** — mean absolute error, and its percentage cousin;
+  standard point-accuracy metrics for regression.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** predict end-to-end delivery time (or ride ETA) at request time, and
-  keep updating it as the trip progresses.
-- **Why uncertainty:** a promised ETA is a commitment. Being *late* is worse than
-  being *early*, so the loss is asymmetric and users need a reliable range, not a
-  point guess.
-- **Composed of stages:** e.g. food prep + courier assignment + drive time — each
-  a sub-prediction that composes.
-- **Scope:** the ETA model + feedback from actuals. Dispatch/assignment is
-  adjacent (it *consumes* ETAs).
+The system predicts end-to-end delivery time (or ride ETA) at request time
+— *before* the customer orders, since the number influences the ordering
+decision — and then keeps re-predicting as the trip progresses, so the
+promise tightens as uncertainty resolves.
+
+Two structural facts shape the design. First, the target **decomposes into
+physical stages**: for food delivery, prep time (kitchen) + courier
+assignment and travel-to-store + transit to the customer. Each stage has
+different drivers and different uncertainty, which argues for predicting
+the stages and composing them rather than regressing on the total. Second,
+**the loss is asymmetric**: an early delivery is a pleasant surprise; a
+late one is a broken promise that generates support tickets and churn.
+That asymmetry is why the *distribution* matters — the business wants to
+promise a deliberately conservative quantile, and it can only do that if
+the model provides one.
+
+Scope: the ETA model and its feedback loop from actual delivery times.
+The dispatch/assignment optimizer is adjacent — it *consumes* ETAs to
+decide courier assignments — and stays out of scope.
 
 <Callout type="tip" title="Interview signal">
-Decompose the ETA into its physical stages (prep, wait, transit) and predict
-each — a single black-box regressor on total time is weaker and harder to debug
-than a composed, interpretable estimate.
+Decompose the ETA into its physical stages (prep, wait, transit) and
+predict each. A single black-box regressor on total time is weaker and —
+worse for production — undebuggable: when ETAs go bad, you can't tell
+whether kitchens slowed down or traffic changed.
 </Callout>
 
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Latency | < 100 ms per request | Cheap model; precomputed spatial features |
-| Volume | Millions of ETAs/min | Feature store + lightweight serving |
-| Accuracy target | Low MAE *and* calibrated intervals | Quantile / probabilistic outputs |
-| Freshness | React to live traffic, store load | Streaming features (courier supply, kitchen backlog) |
+| Latency | < 100 ms per request | Cheap model; spatial features precomputed |
+| Volume | Millions of ETAs/min | Feature store + lightweight serving tier |
+| Accuracy | Low error *and* calibrated intervals | Quantile / probabilistic outputs |
+| Freshness | React to live traffic, kitchen load, courier supply | Streaming features with sub-minute freshness |
 
 <ThinkFirst question="Suppose you train a regressor to minimize MAE and display its prediction. Roughly half your deliveries will now be “late.” Why?">
-Minimizing MAE makes the model predict the **median** — by definition, actuals
-land above it half the time. Since being late costs far more than being early,
-the displayed ETA should be a *higher quantile* (P70–P90), which means the
-model must predict a distribution, not a point. The asymmetry of the loss is
-the whole design twist.
+Because minimizing MAE makes the model predict the **median** — and by
+definition, actual times land above the median half the time. Nothing is
+wrong with the model; the promise policy is wrong. Since lateness costs
+far more than earliness, the *displayed* ETA should be a higher quantile
+(P70–P90), which the business can only choose if the model predicts a
+distribution rather than a point. This asymmetry is the entire design
+twist of the case.
 </ThinkFirst>
 
 ## 3. ML problem framing
 
-**Regression with uncertainty** on spatial-temporal data. Predict a point
-estimate (MAE/MAPE objective) *and* a predictive interval (quantile regression or
-a probabilistic head). The asymmetric cost of lateness pushes the operating point
-toward slightly conservative promises.
+Formally: **regression with calibrated uncertainty on spatial-temporal
+data**. The model outputs both a point estimate and a predictive interval
+— via quantile regression or a distributional head — and the product
+surfaces a chosen quantile as the promise. The asymmetric lateness cost
+sets *which* quantile: slightly conservative, tuned to the acceptable
+lateness rate.
 
-*What was breaking before?* A static "distance ÷ average speed" heuristic ignores
-traffic, kitchen backlog, and courier supply; a point-only model can't express
-the confidence the business needs to make promises.
+What was breaking before ML? The heuristic baseline — distance ÷ average
+speed, plus a fixed prep-time constant — fails on exactly the inputs that
+dominate real variance: live traffic, how backed up this particular
+kitchen is right now, whether any courier is nearby. And even a good
+*point*-prediction model can't express confidence, which the promise
+policy needs. The framing must deliver both the live-signal features and
+the distributional output.
 
 <ThinkFirst question="“Distance ÷ average speed” gets you a crude baseline. What real-world signals dominate the remaining error — and what infrastructure do they force?">
-The live state of the system: current traffic, how backed up the kitchen is,
-how many couriers are free right now. Those are **streaming** signals with
-sub-minute freshness requirements, which forces a real-time feature store —
-and the same pipeline must serve training and inference, or you've built
-train-serve skew into your best features.
+The **live state of the system**: current traffic on the route, the
+kitchen's real-time backlog, how many couriers are free nearby. These
+signals change minute to minute, so they must be **streaming** features
+with sub-minute freshness — which forces a real-time feature store. And
+the same pipeline must compute them for training and for serving:
+hand-compute them differently in the training job and you've built
+train-serve skew into precisely your most valuable features.
 </ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
-- **Labels:** observed actual times — abundant and low-latency (you learn the
-  truth within an hour), the nice inverse of fraud's delayed labels.
-- **Features:** origin/destination geo, historical segment speeds, live traffic,
-  time-of-day/day-of-week, weather, **real-time supply/demand** (available
-  couriers, kitchen backlog), and merchant-specific prep-time history.
-- **Feature store:** the same streaming pipeline computes courier-supply and
-  kitchen-load features for train and serve to avoid skew.
+Start with the good news, because it's rare in this course: **labels here
+are abundant, clean, and fast**. Every delivery produces its actual
+end-to-end time within the hour. Compare that to fraud (labels arrive
+weeks late via chargebacks) — ETA's fast ground truth is what makes the
+tight retraining loop in section 8 possible.
+
+Features layer from static to live. Static and slow-moving: origin and
+destination geography, historical speeds per road segment, merchant
+prep-time history, time-of-day and day-of-week patterns, weather. Live
+and streaming — the layer the ThinkFirst identified as decisive:
+current courier supply in the area, each kitchen's current backlog and
+recent prep times, live traffic. The feature store's job is keeping that
+live layer fresh at serving time *and* consistent with what training saw.
 
 <WikiLink slug="hierarchical-forecasting" title="Hierarchical forecasting for composed estimates" />
 
 ## 5. Model *(spine: hypothesis space + objective)*
 
-- **Baseline:** GBDT (LightGBM) on the engineered features with a quantile loss —
-  strong, fast, and the production default for tabular spatial-temporal
-  regression.
-- **Add:** graph/embedding features for road segments; deep models where
-  sequence/route structure pays off.
-- **Uncertainty:** quantile regression (predict P10/P50/P90) or a distributional
-  output; the shown ETA is a chosen quantile, not the mean.
+The baseline — and, as usual for tabular features, quite plausibly the
+production model — is **gradient-boosted trees (LightGBM) trained with
+quantile loss**. Trees handle the mixed feature types natively, score fast
+enough to be irrelevant to the latency budget, and the quantile objective
+directly produces the P10/P50/P90 heads the promise policy needs.
+
+Refinements attach where structure pays: learned embeddings for road
+segments and merchants (letting the model share strength across similar
+entities), and deep sequence models where route structure genuinely
+matters (e.g. turn-by-turn transit estimation from live GPS traces). Each
+stage of the decomposition — prep, wait, transit — gets its own model,
+trained on that stage's own actuals.
+
+The through-line: **the shown ETA is a chosen quantile of a predicted
+distribution, not the mean of anything.** Every modeling choice serves
+that output.
 
 ## 6. Serving & scaling
 
-Fetch precomputed + streaming features, run the composed models (prep + transit),
-sum with uncertainty propagation, and return an ETA + range under 100ms.
-Re-predict as the trip progresses (courier assigned, en route) so the number
-tightens over time.
+At request time: fetch precomputed spatial features and streaming
+supply/load features, run the per-stage models, compose them —
+summing stage estimates with uncertainty propagated, since independent
+stage errors partially cancel — and return an ETA with its range, all
+inside 100ms. The model itself is microseconds; the budget is spent on
+feature fetches, which is why everything is precomputed or streamed
+rather than calculated inline.
+
+Prediction doesn't stop at order time. As the trip progresses — courier
+assigned, food picked up, en route — the system re-predicts at each
+milestone. Stages that have completed contribute their *actual* time
+instead of an estimate, so the interval tightens monotonically: the
+"35–45 min" at order time becomes "8–11 min" once the courier is driving.
 
 <ThinkFirst question="You show users a range, not just a number. How do you check the range is honest?">
-Coverage: the P90 estimate should exceed the actual arrival time in 90% of
-trips — no more, no less. Run a reliability check on each predicted quantile,
-sliced by region and merchant, because intervals that are globally calibrated
-can still be badly wrong for specific segments.
+**Coverage.** The P90 estimate should exceed the actual arrival in
+exactly 90% of trips — more means you're padding promises (and losing
+orders to inflated ETAs), less means you're breaking them. Check each
+predicted quantile against realized frequencies — and do it *sliced* by
+region, merchant type, and time of day, because globally-calibrated
+intervals can still be badly dishonest for specific segments.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Point accuracy:** MAE / MAPE, and **asymmetric** metrics (lateness rate,
-  minutes-late) that reflect the real cost.
-- **Calibration of intervals:** does the P90 actually cover 90% of actuals? A
-  reliability check on the quantiles is essential.
-- **Online:** A/B on user-facing outcomes (order completion, satisfaction,
-  support contacts about late orders), not just MAE.
+Offline metrics come in matched pairs — one symmetric, one honest about
+the asymmetry. MAE/MAPE track point accuracy, but the metrics the
+business feels are **lateness rate** (what fraction of promises were
+broken) and **minutes-late-when-late** (how badly). A model can improve
+MAE while worsening lateness rate, if its errors shift toward the late
+side — so both must be tracked. For the intervals, the coverage check
+from the ThinkFirst is the standing evaluation, per quantile and per
+segment.
+
+Online, A/B tests measure what ETAs are *for*: order conversion (do
+honest, tighter ETAs increase ordering?), completion and cancellation
+rates, and support contacts about late orders. MAE is a proxy; "did
+customers stop complaining about lateness" is the outcome.
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
-- **Fast loop:** actuals arrive quickly, so drift (new traffic patterns, a
-  merchant's kitchen slowing down) is caught and retrained on rapidly.
-- **Regime shifts:** weather events, holidays, surges — monitor segment-level
-  error and keep event features fresh.
+Because actuals arrive within the hour, this system enjoys the fastest
+feedback loop in the ML-systems catalog — and the design should exploit
+that. Drift that would take weeks to detect in fraud (where labels lag)
+shows up here the same day: a merchant's kitchen slowing down, a road
+closure changing segment speeds, a new neighborhood coming online.
+Segment-level error monitoring catches these; frequent retraining absorbs
+them.
+
+The events that outrun even a fast retrain — weather shocks, holidays,
+demand surges — are handled as *features* rather than retraining
+problems: as long as event covariates are fresh, the model conditions on
+the anomaly instead of being surprised by it.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Composed stage models | Single end-to-end regressor | Interpretable, debuggable, each stage improvable |
-| Quantile / probabilistic output | Point estimate only | The business needs calibrated ranges to make promises |
-| GBDT baseline | Deep model first | Tabular spatial-temporal → GBDT is strong and cheap |
-| Streaming supply features | Static averages | Live courier/kitchen load is the biggest error driver |
+| Composed stage models | Single end-to-end regressor | Interpretable and debuggable; each stage improvable and re-predictable independently |
+| Quantile / probabilistic output | Point estimate only | The promise policy needs a distribution to choose its quantile from |
+| GBDT baseline | Deep model first | Tabular spatial-temporal features → trees are strong, cheap, fast |
+| Streaming supply features | Static averages | Live courier/kitchen state is the biggest error driver; averages lag regime changes |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Users complain deliveries are 'always late.' MAE looks fine. What's wrong?">
-MAE is symmetric but the cost isn't. A model minimizing MAE promises the median,
-so ~50% of orders are late. Predict and display a higher quantile (e.g. P70–P90)
-so promises are conservative, and track lateness rate, not just MAE.
+The promise policy, not the model. MAE is symmetric, so a model that
+minimizes it predicts the median — and half of actuals exceed the median
+by construction, so half of orders are "late" even though average error
+is small. Display a higher quantile (P70–P90) so promises are
+conservative, and put **lateness rate** on the dashboard next to MAE so
+the asymmetry is measured, not assumed away.
 </Details>
 
 <Details summary="A kitchen suddenly slows down at lunch. How does the ETA adapt?">
-Streaming merchant-load features (live backlog, recent prep times) feed the prep-
-time sub-model, so ETAs lengthen within minutes. Static historical averages would
-lag the regime change entirely — this is why the feature store must be real-time.
+Through the streaming features: the kitchen's live backlog and its last
+few orders' actual prep times feed the prep-time sub-model, so ETAs for
+that merchant lengthen within minutes of the slowdown starting. This is
+the concrete case for the real-time feature store — a model on static
+historical averages would keep quoting the merchant's usual prep time
+through the entire lunch rush.
 </Details>
 
 <Details summary="How do you keep the ETA accurate as the trip progresses?">
-Re-predict at each milestone (order placed → courier assigned → picked up → en
-route). Uncertainty shrinks as more is known; the transit sub-model switches from
-a prior to live GPS-based estimation once the courier is moving.
+Re-predict at every milestone: order placed → courier assigned → picked
+up → en route. Completed stages swap their estimates for actuals, and
+the transit sub-model switches from a statistical prior to live
+GPS-based estimation once the courier is moving — so uncertainty shrinks
+monotonically and the displayed range tightens from "35–45" toward
+"8–11."
 </Details>
 
 ## Key takeaways
 
-- ETA is **real-time regression with calibrated uncertainty** — the *interval*
-  matters because the number is a promise.
-- **Compose** the estimate from physical stages (prep, wait, transit) for
-  accuracy and debuggability.
-- **Asymmetric lateness cost** means predicting a conservative quantile, not the
-  mean; **fast actuals** make drift easy to catch and retrain on.
+- An ETA is a **promise**, and the cost of breaking it is asymmetric —
+  so the model predicts a **distribution** and the business promises a
+  conservative quantile, never the MAE-trained median.
+- **Compose the estimate from physical stages** (prep, wait, transit):
+  more accurate, debuggable when things go wrong, and re-predictable
+  stage by stage as the trip progresses.
+- The dominant error drivers are **live-state signals** — kitchen
+  backlog, courier supply, traffic — which force a streaming feature
+  store with train/serve consistency.
+- **Fast actuals are a gift**: labels arrive within the hour, so build
+  the tight loop they enable — segment-level drift monitoring, frequent
+  retraining, and coverage checks that keep the promised intervals honest.

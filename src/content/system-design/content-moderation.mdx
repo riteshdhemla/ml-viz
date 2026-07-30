@@ -11,7 +11,7 @@ relatedLessons:
   - "ml-in-practice/21-content-moderation"
   - "computer-vision/04-vision-language-models"
   - "model-evaluation/01-classification-metrics"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Content Moderation System
@@ -23,157 +23,289 @@ estimatedMinutes: 20
   difficulty="advanced"
 />
 
-Content moderation is a **multimodal classification** system wrapped in a
-**human-in-the-loop policy machine**. The ML is only half the answer — the
-interview reward is designing the loop between models, human reviewers, policy
-thresholds, and appeals, so it stays accurate *and* fair as policy and adversaries
-evolve. Walk it through **data → evaluation → feedback**.
+Every day, billions of posts — text, images, video, audio — flow onto a
+large platform. Buried in that stream is content that violates policy:
+spam, hate speech, graphic violence, self-harm content, child sexual abuse
+material (CSAM). The platform must find it and act on it, at a scale where
+even a 0.01% error rate means hundreds of thousands of mistakes a day, and
+where the two kinds of mistake are both public failures: miss harmful
+content and it goes viral; over-remove and you're censoring legitimate
+speech.
+
+The instinct is to frame this as "build a harmful-content classifier." That
+framing misses what actually makes the system work. Content moderation is a
+**multimodal classification system wrapped in a human-in-the-loop policy
+machine** — and the machine around the model is the harder design. The
+model produces scores; but *policy* decides what counts as violating,
+*thresholds tuned per policy* decide what happens at each score, *human
+reviewers* handle what the model can't decide and produce the labels the
+model learns from, and *appeals* correct the mistakes and feed back
+measurement. The interview reward is designing that loop — which is why
+this walkthrough leans on the **data → evaluation → feedback** stages of
+the ML loop.
+
+<Callout type="info" title="What this case assumes you already know">
+The vocabulary this case leans on, spelled out:
+
+- **Policy taxonomy** — the platform's rulebook: a tree of violation
+  categories (violence, hate, spam, CSAM, self-harm, misinformation…),
+  each with its own definition, severity, and enforcement rules. Labels
+  only mean something relative to this taxonomy.
+- **CSAM** — child sexual abuse material; the category where a miss is
+  catastrophic and legally reportable, which is why it gets dedicated
+  machinery (hash matching) rather than just a classifier.
+- **Precision / recall and operating points** — precision: of what we
+  removed, how much actually violated; recall: of what violated, how much
+  we caught. A threshold picks one point on that tradeoff — see
+  [precision/recall & operating points](/wiki/roc-auc).
+- **Perceptual hashing** — fingerprints (e.g. PhotoDNA-style) that match
+  *known* bad images/videos even after resizing or small edits — exact,
+  instant lookup against a database, no ML judgment involved.
+- **Vision-language models** — encoders that score an image and its text
+  *jointly*, so meaning that only exists in the combination (a benign
+  photo + a menacing caption) is visible.
+- **Active learning** — choosing which items to spend the labeling budget
+  on based on where the model is uncertain, rather than sampling randomly.
+- **Inter-annotator agreement** — how often two human reviewers give the
+  same item the same label; low agreement means the *policy definition* is
+  ambiguous, and no model can beat the noise floor of its own labels.
+- **Prevalence** — trust-and-safety's north-star metric: the fraction of
+  *views* that land on violating content. Defined here because it's the
+  centerpiece of the evaluation section.
+</Callout>
 
 ## 1. Clarify the problem
 
-- **Goal:** detect and act on policy-violating content (violence, hate, spam,
-  CSAM, self-harm, misinformation) across text, image, video, and audio — at
-  upload time and after.
-- **Actions:** remove, age-gate, demote/reduce reach, or route to human review.
-  Not binary — a graded response by confidence and severity.
-- **Asymmetry varies by category:** missing CSAM is catastrophic (high recall at
-  any cost); over-removing satire harms free expression. **Thresholds are per-policy.**
-- **Scope:** the detection + review pipeline. Adjacent: coordinated-behavior /
-  network detection (mention).
+The goal: detect policy-violating content across all modalities, both at
+upload time and retroactively (policies change; old content gets
+re-evaluated), and **act** on it. The actions form a ladder, not a
+binary: remove outright, age-gate, demote (reduce distribution without
+removal), or route to a human reviewer. Which rung is appropriate depends
+on both the model's confidence and the category's severity.
+
+The most important thing to say early: **the cost asymmetry between error
+types is different for every policy category, so there is no single
+threshold.** For CSAM, a miss is catastrophic and the system runs at
+maximum recall, accepting false positives freely. For satire that resembles
+hate speech, over-removal is the expensive error — suppressing legitimate
+expression at scale is its own harm — so the threshold favors precision.
+One classifier score, many per-policy operating points.
+
+Scope: the detection and review pipeline for individual pieces of content.
+Coordinated-behavior detection (bot networks, influence operations) is an
+adjacent system operating on account graphs rather than content — name it,
+set it aside.
 
 <Callout type="tip" title="Interview signal">
-"There is no single threshold — each policy category has its own precision/recall
-target set by the cost of each error." Naming this shows you understand moderation
-is policy-driven, not a one-number classifier.
+"There is no single threshold — each policy category has its own
+precision/recall target set by the cost of each error type." Naming this in
+the first minutes shows you understand moderation is policy-driven, not a
+one-number classifier.
 </Callout>
 
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Volume | Billions of items/day | Cheap first-pass filter; humans only on the margin |
-| Modality | Text, image, video, audio | Multimodal encoders; video is expensive |
-| Latency | Fast for upload-time gating | Tiered: instant filter → async deep scan |
-| Adversarial | Evasion (leetspeak, cropping) | Robust features + continual retraining |
-| Fairness / auditability | Explainable, appealable | Reason codes, human review, appeals |
+| Volume | Billions of items/day | Cheap first-pass filter; human attention only on the margin |
+| Modality | Text, image, video, audio | Multimodal encoders; video is by far the most expensive |
+| Latency | Fast gating at upload | Tiered: instant filter first, deeper async scan after |
+| Adversarial | Deliberate evasion (leetspeak, cropping, re-encoding) | Robust features + continual retraining |
+| Fairness / auditability | Decisions explainable and appealable | Reason codes, human review, an appeals path |
+
+The volume row is the one that forces the architecture. Human review
+capacity is maybe hundreds of thousands of items a day; the stream is
+billions. So humans cannot be *in* the main path — the design question
+becomes where to spend the scarce human attention, which the next
+ThinkFirst poses directly.
 
 <ThinkFirst question="Human review can't scale to billions of items, and full automation is unacceptable for high-stakes calls. What's the resolution?">
-Route by **confidence**: auto-act where the model is very sure, auto-allow
-where it's very sure the other way, and spend scarce human attention only on
-the uncertain middle — ranked by severity and reach. The design question isn't
-"model or human" but *where the boundary between them sits, per policy
-category*.
+Route by **confidence**. Where the model is very sure content violates,
+auto-act. Where it's very sure content is fine, auto-allow. Spend human
+attention only on the uncertain middle — and rank that queue by severity
+and potential reach, so reviewers see the highest-stakes ambiguous items
+first. The design question is never "model or human"; it's *where the
+boundary between them sits, separately for each policy category*.
 </ThinkFirst>
 
 ## 3. ML problem framing
 
-**Multi-label, multimodal classification** with per-category thresholds, feeding
-a **triage** decision: auto-act (very high confidence), auto-allow (very low), or
-**route to human review** (the uncertain middle). Humans are the label source and
-the safety net — the system is designed around *where the model is unsure*.
+Formally: **multi-label, multimodal classification** — multi-label because
+one post can violate several policies at once, multimodal because meaning
+can live in any modality or in their combination. But the classifier's
+output doesn't directly become an action; it feeds a **triage decision**
+with three outcomes per category: auto-act at very high confidence,
+auto-allow at very low, and route to human review in between. The system is
+deliberately designed *around where the model is unsure* — humans are
+simultaneously the safety net for those cases and the source of every
+training label.
 
-*What was breaking before?* Keyword blocklists miss context and are trivially
-evaded; pure human review can't scale to billions of items.
+What was breaking before this design? Keyword blocklists — the first
+generation — have no sense of context (they flag reclaimed slurs and
+medical discussion, miss coded language) and are trivially evaded by
+obfuscation. Pure human review — the other pole — is accurate but cannot
+scale past a tiny fraction of the stream. The tiered model-plus-human
+machine is the only architecture that gets both scale and judgment.
 
 <ThinkFirst question="Labels come from human reviewers at real cost per item. You can't label everything — where do you spend the budget?">
-On the items where a label changes the most: content the model is **uncertain**
-about, and content where the model **disagrees with humans** — that's active
-learning. Random labeling mostly buys you confident duplicates of what the
-model already knows. And because policy labels are subjective, part of the
-budget goes to labeling the *same* items twice to measure inter-annotator
-agreement.
+On items where a label changes the most: content the model is **uncertain**
+about, and content where the model **disagrees** with existing human
+decisions — that's active learning. Random sampling mostly buys confident
+duplicates of what the model already knows. And because policy judgments
+are genuinely subjective, part of the budget goes to labeling the *same*
+items with multiple reviewers — measuring inter-annotator agreement tells
+you whether your problem is the model or an ambiguous policy definition.
 </ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
-- **Labels:** human-reviewer decisions against a policy taxonomy — expensive,
-  subjective, and evolving as policy changes. **Inter-annotator agreement** and
-  clear guidelines are part of the data system.
-- **Multimodal features:** text encoders, image/video encoders, and
-  **vision-language** models for image+caption context (a benign image with a
-  harmful caption, or vice-versa).
-- **Active learning:** label the items the model is most *uncertain* or
-  *disagrees with humans* on — the highest-value labels per dollar.
+Labels here are unusual in three ways, and each shapes the data system.
+They are **expensive** — every label is minutes of a trained human's time,
+which is what makes the active-learning strategy above necessary rather
+than nice. They are **subjective** — "is this satire or hate speech?" gets
+honest disagreement, so labeling guidelines, reviewer training, and
+inter-annotator agreement tracking are part of the data infrastructure,
+not HR overhead. And they are **non-stationary in a unique way**: when
+policy changes, existing labels don't just age — they become *wrong under
+the new definition*, and label sets must be versioned against the policy
+version they were collected under.
 
-<WikiLink slug="roc-auc" title="Precision/recall & operating points" />
+On the feature side, the system needs text encoders, image and video
+encoders, and — critically — **vision-language models** that score
+modalities *jointly*. The reason is that violation often lives in the
+combination: an innocuous photo with a caption that turns it into a threat,
+or a slur-laden image macro whose text component is embedded in pixels.
+Two independent unimodal classifiers each see half the meaning and both
+pass it.
 
 ## 5. Model *(spine: hypothesis space + objective)*
 
-- **First-pass filter:** cheap models + hashed-match databases (e.g. perceptual
-  hashes for known CSAM/terror content) catch the obvious at scale.
-- **Deep classifiers:** fine-tuned multimodal transformers per policy area;
-  vision-language models for cross-modal context.
-- **Objective:** per-category weighting; high-recall regimes for catastrophic
-  categories, precision-favoring for expression-sensitive ones.
+The model layer is a hierarchy matched to cost. At the front, **the cheap
+and the exact**: perceptual-hash lookups against databases of known
+violating content (industry-shared CSAM and terror-content hash sets) catch
+re-uploads instantly with essentially perfect precision — no ML judgment
+needed for content already adjudicated. Alongside, lightweight text models
+handle the obvious at line rate.
+
+Behind that filter sit the **deep classifiers**: multimodal transformers
+fine-tuned per policy area, with vision-language models covering the
+cross-modal cases. Per-category heads share a common backbone — policies
+differ, but the underlying representations transfer.
+
+The **objective** encodes the per-category asymmetry from section 1:
+category-specific class weights and thresholds put catastrophic-miss
+categories (CSAM, imminent-harm) in high-recall regimes, and
+expression-sensitive categories (satire-adjacent hate speech,
+misinformation) in precision-favoring ones.
 
 ## 6. Serving & the human loop
 
-Tiered pipeline: (1) instant hash/keyword + light model gate at upload; (2) async
-deep multimodal scan; (3) **human review queue** for the uncertain band, ranked
-by severity × reach × uncertainty; (4) **appeals** route back through senior
-review. Reviewer decisions feed labels back to training.
+Follow one uploaded post through the tiers. **Tier 1, at upload,
+synchronous**: hash lookups and light models gate the clearly-known-bad
+before it's ever visible. **Tier 2, seconds-to-minutes, async**: the deep
+multimodal scan scores everything against every policy category. **Tier 3,
+the human queue**: items in the uncertain band land in review, ranked by
+severity × reach × uncertainty — a borderline post going viral outranks a
+borderline post nobody sees. **Tier 4, appeals**: users contest decisions,
+and appeals route to senior reviewers whose decisions are treated as the
+highest-quality labels in the system.
+
+The loop closes here: every reviewer decision — queue or appeal — flows
+back into the training set. The humans aren't just handling edge cases;
+they are continuously teaching the model where its boundary should be.
 
 <ThinkFirst question="What's the north-star metric — and why is “amount of violating content removed” the wrong one?">
-Removal counts reward volume, not impact: taking down a million zero-view spam
-posts matters less than one viral violating video. The right target is
-**prevalence** — the fraction of *views* that land on violating content that
-slipped through — because it weights misses by the harm they actually caused.
+Removal counts reward volume, not impact: a million zero-view spam posts
+removed counts a million, while one violating video that reached ten
+million people counts one. The honest target is **prevalence** — the
+fraction of *views* that land on violating content that slipped through —
+because it weights every miss by the harm it actually caused. Prevalence is
+also harder to game: you can inflate removal counts by over-removing;
+you can only improve prevalence by actually protecting users.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Offline:** per-category precision/recall at the policy's operating point;
-  track recall hard on catastrophic categories.
-- **Prevalence:** the north-star metric — what fraction of *views* are of
-  violating content that slipped through (not just caught count).
-- **Fairness:** error rates across languages, demographics, and content types —
-  over-enforcement on specific groups is a failure even at good aggregate metrics.
-- **Human audits** on sampled auto-decisions to catch silent drift.
+Offline evaluation is per-category by construction: precision and recall
+at each policy's operating point, with recall watched hardest on the
+catastrophic categories. But the headline metric is the one from the
+ThinkFirst: **prevalence**, measured by human-auditing a random sample of
+*viewed* content. That sampling detail matters — auditing what the model
+flagged only measures precision; auditing what users actually saw measures
+what got through.
+
+The dimension unique to this domain is **fairness measurement**. Aggregate
+precision/recall can be excellent while errors concentrate on one language,
+dialect, or community — a model over-removing posts in one language is a
+real-world harm and a policy failure even when the global dashboard is
+green. Error rates must be sliced by language, region, and content type as
+first-class metrics. Finally, continuous **human audits of sampled
+auto-decisions** guard against the failure mode where the model drifts and
+nobody notices because the confident decisions never reach a human.
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
-- **Adversarial drift:** evasion tactics evolve (obfuscated text, cropped/edited
-  media); monitor evasion rates and retrain continually.
-- **Policy changes:** when policy shifts, labels and thresholds must be
-  re-versioned — a governance problem as much as an ML one.
-- **Appeals as signal:** overturned removals are precision errors; reinstated-
-  after-appeal rates feed both metrics and retraining.
+Three feedback channels, each catching a different failure. **Adversarial
+drift**: evaders iterate — obfuscated text, cropped and filtered media,
+re-encoded video that dodges hashes — so evasion rate is monitored as a
+live metric, and new tactics trigger targeted labeling and retraining
+rather than waiting for scheduled cycles. **Policy change**: when the
+rulebook shifts, thresholds and label sets must be re-versioned together —
+this is governance machinery as much as ML, because training on labels
+collected under the old policy silently enforces the old policy.
+**Appeals as measurement**: every overturned removal is a confirmed
+precision error, so the overturn rate per category is a free, continuous,
+adversarially-surfaced precision metric — users appeal exactly the mistakes
+that matter to them — feeding both dashboards and retraining.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Per-category thresholds | One global threshold | Error costs differ wildly by policy |
-| Tiered filter → deep scan → human | All-human or all-model | Only tiering scales to billions with acceptable accuracy |
-| Active learning | Random labeling | Uncertain/disagreement items are far more informative |
-| Hash-match + ML | ML only | Known-bad content is caught instantly and exactly by hashing |
+| Per-category thresholds | One global threshold | Error costs differ wildly by policy — CSAM recall vs. satire precision |
+| Tiered filter → deep scan → human | All-human or all-model | Only tiering gets both billions-scale and human judgment |
+| Active learning | Random labeling | Uncertain/disagreement items are worth far more per labeling dollar |
+| Hash-match + ML | ML only | Known-bad content deserves exact, instant matching, not probabilistic scoring |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="A benign image gets a harmful caption. How do you catch it?">
-Cross-modal reasoning: a vision-language model that scores the image *and* text
-*together*, not two independent unimodal classifiers. Context — the caption
-recontextualizing the image — is exactly what unimodal pipelines miss.
+With cross-modal reasoning: a vision-language model that scores the image
+*and* text together. Two independent unimodal classifiers each pass their
+half — the image is genuinely benign, the caption alone is ambiguous — and
+the violation, which exists only in the combination, sails through. This
+recontextualization case is the standard argument for joint multimodal
+models in moderation.
 </Details>
 
 <Details summary="How do you keep up with adversaries obfuscating text (l33tspeak, homoglyphs)?">
-Normalize/augment training data with obfuscation transforms, use subword/character
-robust encoders, and monitor evasion rate as a live metric so new tactics trigger
-targeted labeling and retraining. It's a continual arms race, not a one-time fix.
+Three layers: normalize and augment training data with the obfuscation
+transforms you've seen (so the model learns them), use character- and
+subword-robust encoders (so novel variants degrade gracefully instead of
+failing), and monitor evasion rate as a live metric so new tactics trigger
+targeted labeling and retraining. It's a continual arms race — the design
+goal is a fast loop, not a permanent fix.
 </Details>
 
 <Details summary="Aggregate precision/recall look great, but a community complains of over-removal. What's wrong?">
-Sliced metrics hide it. Break precision/recall down by language, region, and
-content type — over-enforcement concentrated in one slice is a fairness failure
-even with strong global numbers. Add the slice to your dashboards and
-retraining objectives.
+The aggregate is hiding a concentrated slice failure. Break error rates
+down by language, region, and content type — over-enforcement focused on
+one community is a fairness failure even with strong global numbers, and
+it's invisible until you slice. The fix is structural: add the slice to
+standing dashboards and to the training objective, so the regression can't
+recur silently.
 </Details>
 
 ## Key takeaways
 
-- Moderation is **multimodal classification** + a **human-in-the-loop policy
-  machine**; design the loop, not just the classifier.
-- **Per-policy thresholds** and **prevalence** (violating views that slip through)
-  are the right targets — never one global accuracy number.
-- **Active learning, appeals, and fairness slicing** keep it accurate and just as
-  adversaries and policy evolve.
+- Moderation is **multimodal classification wrapped in a human-in-the-loop
+  policy machine** — the loop between model, thresholds, reviewers, and
+  appeals is the design, not an accessory to the classifier.
+- **There is no single threshold.** Each policy category gets its own
+  operating point, set by the cost of each error type — maximum recall for
+  catastrophic categories, precision-favoring for expression-sensitive ones.
+- The honest north star is **prevalence** — violating *views* that slipped
+  through — not removal counts, which reward volume over impact.
+- **Active learning, appeals, and fairness slicing** are what keep the
+  system accurate and just as adversaries evade, policy evolves, and errors
+  try to concentrate where no one is looking.
