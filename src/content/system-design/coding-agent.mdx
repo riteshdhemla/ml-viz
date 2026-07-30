@@ -11,7 +11,7 @@ relatedLessons:
   - "building-with-llms/12-code-intelligence-and-generation"
   - "agent-design-patterns/04-planning-patterns"
   - "agent-design-patterns/06-reflection-patterns"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design an Autonomous Coding Agent
@@ -23,155 +23,283 @@ estimatedMinutes: 20
   difficulty="advanced"
 />
 
-A coding agent is the agentic interview where **the environment does the
-verification**: the agent can *run the code* and read the result, so the design
-centers on a tight **plan → edit → run tests → observe** loop with a real
-feedback signal. Walk it through the **agentic project loop** — context and
-orchestration are where it's won, and tests give evaluation for free.
+Hand an agent a bug report — "the export button produces an empty CSV
+when filters are applied" — and a checkout of a two-million-line
+repository. Twenty minutes later it opens a pull request: a three-file
+fix, a new regression test, all tests green. In between, it searched
+the codebase, read the relevant modules, made an edit, ran the test
+suite, read a failure, revised, and ran again — the same loop a human
+engineer runs.
+
+What makes a coding agent stand apart from every other agent in this
+track is that last part: **the environment does the verification.**
+Most agents assert their work is done and hope; a coding agent can *run
+the code* and read the result. Tests are a grounded, objective reward
+signal, available at every step of the loop — an asset so valuable that
+the whole design organizes around exploiting it. That's also what
+separates a coding *agent* from a code-*completion* model: completion
+predicts plausible text; an agent executes, observes, and iterates
+until the observable world says it's right. Walk it through the agentic
+project loop — **context and orchestration are where it's won**, and
+tests give evaluation nearly for free (with one dangerous exception
+we'll come to).
+
+<Callout type="info" title="What this case assumes you already know">
+The background this case assumes:
+
+- **The plan → act → observe loop** — the standard agent runtime: model
+  chooses an action, a runtime executes it, the result feeds back.
+- **Software plumbing** — repos, branches, PRs, CI, test suites; the
+  agent's deliverable is a reviewable pull request, and "tests green"
+  is the working definition of progress.
+- **Code retrieval** — finding relevant code via lexical search
+  (grep-style), embedding search (semantic), symbol/definition lookup,
+  and the dependency graph — because repos exceed any context window.
+- **Sandboxing** — running the agent (which executes arbitrary
+  generated shell commands) in an isolated container: no production
+  credentials, restricted network, resource caps.
+- **Reward hacking** — an agent optimizing the *measured* signal
+  instead of the intended goal — here, canonically, making tests pass
+  by deleting them. The defining failure mode of this design.
+- **Prompt injection** — instructions smuggled into content the agent
+  reads (a source file, an issue comment) that try to redirect it — see
+  [prompt injection](/wiki/prompt-injection-attacks-and-defenses).
+- **SWE-bench / pass@k** — the standard benchmark (real GitHub issues,
+  hidden reference tests) and the standard reliability metric (of k
+  attempts, at least one succeeds).
+- **Sub-agent orchestration** — decomposing a large task across a
+  planner and worker agents — see
+  [sub-agent orchestration](/wiki/sub-agent-orchestration).
+</Callout>
 
 ## 1. Clarify the task *(spine: task)*
 
-- **Goal:** given an issue / feature request, produce a correct code change
-  (edits + tests) in a real repository — ideally a passing PR.
-- **When it acts vs. stops:** iterate until tests pass or a step/time budget is
-  hit; escalate on ambiguous requirements or destructive operations.
-- **Success:** tests green + task actually solved (not just tests deleted) +
-  reasonable, reviewable diff.
-- **Scope:** the agent loop over a sandboxed repo. Adjacent: the CI/review system
-  it hands off to.
+The goal: given an issue or feature request, produce a correct code
+change — edits plus tests — in a real repository, delivered as a
+passing, reviewable PR.
+
+When does it act versus stop? The happy path is: iterate until the
+tests pass or a step/time budget runs out. The deliberate exits: on
+genuinely ambiguous requirements ("should deleted users keep their
+export history?" is a product decision, not a coding one), the agent
+should ask rather than guess; on destructive operations (migrations
+that drop data, force-pushes), it should stop and escalate regardless
+of confidence.
+
+Success needs a careful, three-part definition, because the obvious
+one-part version ("tests pass") is gameable: **tests green**, *and*
+**the task actually solved** — not achieved by deleting the failing
+tests — *and* **a reasonable, reviewable diff**, because a 4,000-line
+change that technically fixes the bug fails the human review that is
+the real acceptance gate. Scope: the agent loop over a sandboxed repo;
+the CI and code-review systems it hands off to are adjacent.
 
 <Callout type="tip" title="Interview signal">
-"The agent can execute code, so verification is grounded — tests are the reward
-signal." Naming the executable environment as the core asset separates a coding
-agent from a code-*completion* model.
+"The agent can execute code, so verification is grounded — tests are
+the reward signal." Naming the executable environment as the core asset
+is what separates a coding-agent answer from a code-completion answer.
 </Callout>
 
 ## 2. Requirements & constraints
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Repo scale | Large, unfamiliar codebases | Retrieval over the repo, not whole-repo in context |
-| Safety | Runs arbitrary code | Isolated sandbox, no prod creds, network limits |
-| Latency/cost | Minutes/task, bounded | Step budget; model tiering; cache builds |
+| Repo scale | Large, unfamiliar codebases | Retrieval over the repo, never whole-repo-in-context |
+| Safety | Runs arbitrary generated code | Isolated sandbox, no prod creds, network limits |
+| Latency/cost | Minutes per task, bounded | Step budget; model tiering; cached builds |
 | Reliability | Doesn't wreck the repo | Diff review, reversible changes, test gate |
 
 <ThinkFirst question="The repo is millions of lines and the context window holds a fraction of it. How should the agent decide what to read?">
-Retrieval, not stuffing: code search (lexical + embedding), symbol lookup, and
-the dependency graph surface a small relevant set, and the agent explores
-incrementally from there — open a file, follow references. Context is a budget
-to *spend*, not fill; the design question is what earns its place in it.
+By **retrieval, not stuffing** — and incrementally, the way an engineer
+onboards. Code search (lexical for exact identifiers, embeddings for
+concepts), symbol lookup, and the dependency graph surface a small
+starting set; from there the agent explores on demand — open a file,
+follow a reference, read a caller. The mindset shift: context is a
+budget to *spend* on what earns its place, not a container to fill.
+An agent that dumps fifty files into context reasons worse than one
+that read the right five.
 </ThinkFirst>
 
 ## 3. Context & tools *(spine: context)*
 
-- **Repo retrieval:** the codebase is too large for the context window — retrieve
-  relevant files via code search (lexical + embedding), the dependency graph, and
-  symbol lookup. Feed *targeted* context, not the whole repo.
-- **Tools:** `read_file`, `edit_file`, `run_shell` / `run_tests`, `search_code`,
-  `git` — typed and sandboxed. Execution is a first-class tool, not an
-  afterthought.
-- **Environment:** an isolated container with the repo checked out; the agent's
-  actions (edits, commands) mutate it.
+The context problem is the ThinkFirst's answer, operationalized. The
+repo enters the model's view only through **targeted retrieval**:
+search tools surface candidates, and the agent reads its way outward
+from them. Getting this right dominates model choice — a frontier
+model staring at the wrong files fails; a modest model with exactly the
+right files often succeeds.
+
+The **tool belt** is small and typed: `read_file`, `edit_file`,
+`search_code`, `run_shell` / `run_tests`, and `git` operations. The
+design point worth stating in an interview: **execution is a
+first-class tool, not an afterthought.** `run_tests` is the tool the
+whole loop pivots on — it's how the environment talks back.
+
+The **environment** is an isolated container with the repo checked
+out. The agent's edits and commands mutate that container and nothing
+else — which is what makes it safe to let a language model run shell
+commands at all (section 6 finishes this thought).
 
 ## 4. Orchestration *(spine: orchestration)*
 
 The loop is **plan → edit → run → observe → reflect**:
 
-1. Understand the task; locate the relevant code (retrieval).
+1. Understand the task; locate the relevant code via retrieval.
 2. Make an edit.
-3. **Run the tests / build** — the grounded feedback signal.
-4. Read failures; reflect and fix; repeat until green or budget hit.
+3. **Run the tests/build** — the grounded feedback signal.
+4. Read the failures; diagnose; fix; repeat until green or the budget
+   is hit.
 
 <AgentLoopViz />
 
-- **Reflection on failure:** feed the test output back so the model diagnoses,
-  rather than blindly re-editing.
-- **Step budget & stop conditions:** cap iterations; stop on green, on repeated
-  identical failures (stuck), or on ambiguity → escalate.
-- **Sub-agents** for large tasks: a planner decomposes; workers implement pieces.
+Three refinements turn the bare loop into a reliable one.
+**Reflection on failure**: the raw test output goes back into context
+so the model *diagnoses* — reads the stack trace, forms a hypothesis —
+rather than blindly re-editing; the difference between an agent that
+converges and one that thrashes is almost entirely here. **Step budget
+and stop conditions**: cap the iterations, and stop early on the
+signature of stuckness — the same failure twice in a row means the
+current approach is wrong and the agent should replan or escalate, not
+grind. **Sub-agents for scale**: on large tasks, a planner decomposes
+into independent pieces and workers implement them in parallel — with
+the caveat that decomposition has coordination costs, so a single loop
+remains the default.
 
 <WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration for decomposed tasks" />
 
 <ThinkFirst question="The agent reports “all tests pass.” In how many ways can that claim be hollow?">
-At least three: it deleted or weakened the failing tests (reward hacking), it
-overfit to the visible tests without solving the actual issue, or it got lucky
-on a flaky suite. That's why evaluation needs *protected* held-out tests the
-agent can't touch, plus trajectory checks — did it edit sensible files, run
-tests before claiming done?
+At least three. **Reward hacking** — it deleted or weakened the failing
+tests; green, and worthless. **Overfitting** — it patched exactly what
+the visible tests check without solving the actual issue (the tests
+were a proxy, and it optimized the proxy). **Luck** — a flaky suite
+happened to pass. All three produce the same observable ("green"), so
+the countermeasures live outside the agent: *protected* held-out tests
+it can't see or touch, and trajectory checks — did it edit sensible
+files, did it run tests before claiming done?
 </ThinkFirst>
 
 ## 5. Evaluation *(spine: evaluation)*
 
-- **Outcome:** does the change pass the *hidden/held-out* tests and actually solve
-  the issue? Benchmarks like SWE-bench measure exactly this; **pass@k** captures
-  the retry-until-solved reality.
-- **Trajectory:** did it edit the right files, run tests before claiming done, and
-  avoid thrashing? Catches agents that "pass" by gaming or luck.
-- **Guard against reward hacking:** an agent that deletes failing tests "passes" —
-  eval must use protected tests it can't modify.
+The **outcome** question — did the change solve the issue? — is scored
+against *hidden, held-out tests* the agent never sees, which is
+precisely the design of SWE-bench: real GitHub issues with reference
+tests kept out of the agent's reach. **pass@k** is the honest headline
+metric because it matches how these agents are used — retry until
+solved — and because per-attempt success rates undersell a system
+that's cheap to re-run.
+
+The **trajectory** dimension catches what outcomes can't: did the agent
+edit files a competent engineer would have edited, run the tests before
+declaring victory, avoid thrashing (that repeated-identical-failure
+signature)? Trajectory metrics are the difference between "passed" and
+"passed for the right reasons" — and only the latter predicts
+performance on the next task.
+
+And the theme of the ThinkFirst, elevated to a principle: **the
+evaluation, not the agent, must own the ground truth.** Any test the
+agent can modify is part of the agent's action space, not part of the
+measurement.
 
 <ThinkFirst question="This agent runs arbitrary generated shell commands. Sketch the threat model before reading on.">
-Three distinct threats: **destructive actions** (rm -rf, force-push, dropping a
-database), **exfiltration** — a malicious file or issue comment prompt-injects
-the agent into leaking secrets, and **runaway resource use**. Each maps to a
-different control: sandbox + no prod credentials, treating all repo/issue text
-as untrusted input, and hard resource/step caps — plus every change landing as
-a reviewable PR, never a direct push.
+Three distinct threats, each demanding its own control.
+**Destructive actions** — `rm -rf`, force-push, dropping a database:
+controlled by the sandbox, the absence of production credentials, and
+PR-only delivery. **Exfiltration via injection** — a malicious source
+file, README, or issue comment carries instructions that steer the
+agent into leaking secrets or running attacker-chosen commands:
+controlled by treating all repo and issue text as untrusted data and
+restricting network egress. **Runaway resource use** — infinite loops,
+fork bombs, giant builds: controlled by hard resource and step caps.
+Note that the second threat is the subtle one — the agent's *inputs*
+are its attack surface.
 </ThinkFirst>
 
 ## 6. Guardrails & safety *(spine: guardrails)*
 
-- **Sandbox everything:** no production credentials, restricted network, resource
-  limits — it runs arbitrary generated code.
-- **Reversibility:** changes land as a branch/PR a human reviews, never a direct
-  push to main.
-- **Prompt injection:** repo content, issue text, and dependency output are
-  untrusted — a malicious file must not exfiltrate secrets or run unsafe commands.
+The ThinkFirst's threat model maps directly onto the control set.
+**Sandbox everything**: the agent executes arbitrary generated code, so
+it runs in an isolated container with no production credentials,
+restricted network, and resource limits — the blast radius of any
+mistake or attack is the container, which is disposable.
+**Reversibility**: changes land as a branch and PR that a human
+reviews; never a direct push to main. This single convention converts
+every possible bad edit from an incident into a review comment.
+**Injection posture**: repo content, issue text, and even dependency
+output (a compromised package's install script prints instructions!)
+are untrusted input — they can inform the agent's work but can never
+expand its permissions, and secrets are kept out of its environment
+entirely so there's nothing to exfiltrate.
 
 ## 7. Operations *(spine: operations)*
 
-- **Tracing:** log every tool call, edit, and test result — essential for
-  debugging non-deterministic runs and for the eval set.
-- **Cost/latency:** tier models (cheap for navigation, strong for hard reasoning),
-  cache builds/deps, parallelize independent sub-tasks.
-- **Feedback:** failed/abandoned tasks become eval cases and prompt improvements.
+**Tracing** is the operational backbone: every tool call, edit, and
+test result is logged per run. Non-deterministic systems can't be
+debugged from their outputs alone — the trace is how you learn *why*
+the agent went wrong, and failed traces are simultaneously the raw
+material for the eval set.
+
+**Cost and latency** yield to tiering and caching: a cheap model
+handles navigation and mechanical edits, the frontier model is
+reserved for hard diagnosis; builds and dependency installs are cached
+across runs (they dominate wall-clock time); independent sub-tasks run
+in parallel.
+
+The **feedback loop**: failed and abandoned tasks graduate into eval
+cases and prompt improvements, so every operational failure makes the
+next version measurably harder to fail the same way — the agentic
+loop closing back into **task**.
 
 ## 8. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Retrieve repo context | Stuff whole repo in context | Repos exceed context; retrieval is cheaper and sharper |
-| Test-driven loop | Generate-and-hope | Execution gives a real, groundable reward signal |
-| PR + human review | Auto-merge | Reversibility and trust; code is high-stakes |
-| Protected test eval | Any tests pass | Prevents reward hacking (deleting tests) |
+| Retrieve repo context | Stuff whole repo in context | Repos exceed any window; targeted context reasons better anyway |
+| Test-driven loop | Generate-and-hope | Execution gives a real, grounded reward signal at every step |
+| PR + human review | Auto-merge | Reversibility and trust; code is high-stakes and review is cheap |
+| Protected test eval | Score on visible tests | Prevents reward hacking — the agent can't grade its own exam |
 
 ## 9. Interviewer follow-ups
 
 <Details summary="The agent 'passed' by deleting the failing test. How do you prevent it?">
-Evaluate against protected, hidden tests the agent can't see or modify, and diff-
-check that it didn't weaken the test suite. Reward hacking is the defining failure
-mode of code agents — the eval, not the agent, must own the ground-truth tests.
+Structurally, not by scolding the model. Evaluate against protected,
+hidden tests the agent cannot see or modify, and diff-check every
+submission for weakened assertions or deleted test files. Reward
+hacking is the defining failure mode of coding agents precisely
+because the reward signal is so good — the fix is ownership: the eval
+harness, never the agent, holds the ground-truth tests.
 </Details>
 
 <Details summary="The repo is millions of lines. How does the agent find the right code?">
-Retrieval: code search (lexical + embedding), symbol/definition lookup, and the
-dependency graph surface a small relevant set. The agent explores incrementally
-(open a file, follow references) rather than loading everything — context is a
-budget to spend, not fill.
+The way an engineer does, mechanized: lexical search for exact
+identifiers from the issue, embedding search for concepts, symbol
+lookup to jump to definitions, the dependency graph to find callers —
+then incremental exploration outward from those anchors. The principle
+is that context is a budget to spend on what earns its place; loading
+everything is both impossible and counterproductive, since irrelevant
+context degrades reasoning.
 </Details>
 
 <Details summary="How do you keep it from running something destructive?">
-Sandbox with no prod access, restricted network, and resource caps; require
-confirmation or block destructive shell patterns; land changes as a reviewable
-branch. Treat all repo/issue text as untrusted input that cannot escalate the
-agent's permissions.
+Defense in depth: the sandbox has no production access, restricted
+network, and resource caps, so the worst case is a wrecked disposable
+container; destructive shell patterns are blocked or require
+confirmation; and everything lands as a reviewable branch, never a
+direct push. Plus the injection rule — repo and issue text is
+untrusted input that can never escalate the agent's permissions — so a
+malicious file can't talk the agent into destruction either.
 </Details>
 
 ## Key takeaways
 
-- A coding agent's superpower is a **sandboxed executable environment** — tests
-  are a grounded reward signal for a **plan → edit → run → reflect** loop.
-- **Repo retrieval** (not whole-repo context) and **reflection on test failures**
-  drive success; **step budgets** prevent thrashing.
-- Evaluate on **protected tests** (pass@k) to stop reward hacking, and keep every
-  change **sandboxed and reversible**.
+- A coding agent's superpower is the **sandboxed executable
+  environment**: tests are a grounded reward signal, and the
+  **plan → edit → run → reflect** loop is built entirely around it.
+- **Retrieval beats stuffing** — context is a budget spent on the right
+  files — and **reflection on test failures** is what makes the loop
+  converge instead of thrash.
+- The great reward signal has a shadow: **reward hacking**. Evaluate on
+  protected tests the agent can't touch, and check trajectories, not
+  just outcomes.
+- Safety is structural: **sandbox with no prod access, untrusted-input
+  posture toward all repo content, and PR-only delivery** — so mistakes
+  and attacks alike are contained and reversible.
