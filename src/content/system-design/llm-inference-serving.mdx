@@ -10,7 +10,7 @@ relatedLessons:
   - "ml-in-practice/22-optimizing-llm-inference"
   - "gpu-programming/04-gpus-for-deep-learning"
   - "building-with-llms/06-ai-engineering-architecture"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design an LLM Inference Serving Platform
@@ -24,162 +24,256 @@ estimatedMinutes: 20
 
 This is the generative-AI **systems/infra** interview: not *what* the model
 generates but *how you serve it* efficiently. LLM inference is **autoregressive**
-(one token at a time), **memory-bound**, and runs on **scarce, expensive GPUs**,
-so the entire design is about squeezing throughput out of GPUs without blowing
-latency SLOs. It's pure serving — there's no training loop, so no SpineNav strip.
+(one token at a time), **memory-bound during decode**, and runs on **scarce,
+expensive GPUs**, so the entire design is about squeezing throughput out of GPUs
+without blowing latency SLOs. It's pure serving — there's no training loop, so
+no SpineNav strip.
 
 ## 1. Clarify the problem
 
 - **Goal:** serve LLM completions to many concurrent users — high **throughput**
-  (tokens/sec/GPU, i.e. cost) with low **latency** (time-to-first-token and
-  inter-token latency), streaming as tokens are produced.
-- **Two-phase workload:** **prefill** (process the prompt, compute-bound) then
-  **decode** (generate tokens one at a time, memory-bandwidth-bound) — they have
-  very different performance profiles.
+  (tokens/sec/GPU, i.e. cost) with low **latency**, streaming as tokens are
+  produced.
+- **Two latency numbers, not one:** **TTFT** (time-to-first-token — how long the
+  user stares at nothing) and **TPOT** (time-per-output-token — the streaming
+  rate). Interactive chat wants TTFT in the low hundreds of ms and TPOT faster
+  than reading speed (~30–50ms/token); batch summarization tolerates seconds.
+- **Two-phase workload:** **prefill** (process the whole prompt in parallel,
+  compute-bound) then **decode** (generate tokens one at a time,
+  memory-bandwidth-bound) — the two phases have opposite performance profiles
+  ([Pope et al., 2022](https://arxiv.org/abs/2211.05102)).
 - **Scope:** the serving system. Model training/fine-tuning is out of scope.
 
 <Callout type="tip" title="Interview signal">
-Distinguish **prefill vs. decode** and name inference as **memory-bound during
-decode**. That single insight explains continuous batching, KV-cache management,
-and why throughput and latency trade off — the core of the whole answer.
+Distinguish **prefill vs. decode** and name decode as **memory-bandwidth-bound**:
+each step reloads all weights plus the KV cache to produce one token. That single
+insight explains continuous batching, KV-cache management, and why throughput and
+latency trade off — the core of the whole answer.
 </Callout>
+
+<ThinkFirst question="A 13B model in FP16 occupies 26GB of an A100's 40GB. A request arrives with a 2,000-token context. Roughly how much memory does that one request's KV cache need — and what does the arithmetic say about your maximum batch size?">
+Per token you cache a key and a value vector per layer: 2 × 40 layers × 5,120
+dims × 2 bytes ≈ **800KB per token**. At 2,000 tokens that's ~**1.6GB for one
+request**. With ~14GB left after weights, naive per-request allocation caps you
+at fewer than ten concurrent sequences — the GPU's compute sits idle because
+**memory, not FLOPs, limits the batch**. Every major serving technique attacks
+this number.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
 |---|---|---|
 | Throughput | Max tokens/sec/GPU (cost) | Continuous batching, big effective batch |
-| Latency | Low TTFT + inter-token | Prioritize prefill; cap batch to bound tail |
-| Memory | KV cache grows with context × batch | PagedAttention; evict/offload |
+| Latency | TTFT p99 in hundreds of ms; steady TPOT | Prioritize prefill; cap batch to bound tail |
+| Memory | KV cache grows with context × batch | PagedAttention; paging, prefix sharing |
 | Concurrency | Thousands of streams | Async scheduler; token streaming |
 | Cost | GPUs dominate | Quantization, multi-tenancy, autoscaling |
 
+The KV-cache math above is why the vLLM authors measured that contiguous
+per-request allocation (sized for max length, fragmented between requests)
+wastes **60–80% of KV memory** in prior systems, versus under 4% with paging
+([Kwon et al., 2023](https://arxiv.org/abs/2309.06180)). Batch size — hence
+throughput — is downstream of that waste.
+
 <ThinkFirst question="You batch 32 requests together for throughput. One generates 2,000 tokens; the rest finish in 100. What happens to the GPU — and what's the fix?">
 With naive static batching, the 31 finished slots sit idle while the long
-request grinds on — the batch runs at the speed of its slowest member.
-The fix is scheduling at the **token level**: every decoding step, finished
-sequences leave the batch and queued requests join. That's continuous
-batching, and it's the single biggest throughput win in LLM serving.
+request grinds on — the batch runs at the speed of its slowest member, and
+newly-arrived requests queue behind it. The fix is scheduling at the **token
+level**: every decoding step, finished sequences leave the batch and queued
+requests join. That's continuous batching, and it's the single biggest
+throughput win in LLM serving.
 </ThinkFirst>
 
 ## 3. The core techniques
 
-**Continuous (in-flight) batching.** Naive static batching stalls: fast requests
-wait for the slowest in the batch. Continuous batching schedules at the
-**token/iteration** level — finished sequences leave and new ones join every
-step, keeping the GPU saturated.
+**Continuous (in-flight) batching.** Orca introduced **iteration-level
+scheduling**: the scheduler invokes the engine for *one decode step* at a time,
+admitting and evicting sequences between steps, keeping the GPU saturated. On
+GPT-3 175B this delivered a **36.9× throughput gain over FasterTransformer at
+the same latency**
+([Yu et al., OSDI 2022](https://www.usenix.org/conference/osdi22/presentation/yu)).
 
 <WikiLink slug="continuous-batching" title="Continuous batching — iteration-level scheduling" />
 
 **KV cache + PagedAttention.** Each token attends to all previous tokens' keys/
-values; caching them avoids recomputation but the cache is huge and variable.
-**PagedAttention** manages it like OS virtual memory — non-contiguous pages —
-eliminating fragmentation and enabling far higher concurrency.
+values; caching them avoids recomputation, but the cache is huge and grows
+unpredictably. **PagedAttention** manages it like OS virtual memory — fixed-size
+non-contiguous blocks with a per-sequence block table — eliminating internal and
+external fragmentation and enabling copy-on-write sharing. vLLM's paged cache
+raised throughput **2–4× over FasterTransformer and Orca** at equal latency,
+with the edge growing for long sequences
+([Kwon et al., 2023](https://arxiv.org/abs/2309.06180)).
 
 <WikiLink slug="paged-attention" title="PagedAttention — paged KV-cache memory" />
 
-**Speculative decoding.** A small draft model proposes several tokens; the big
-model verifies them in one pass — multiple tokens per step when the draft is
-right, cutting latency with no quality loss.
+**Speculative decoding.** A cheap draft model proposes several tokens; the big
+model verifies them in a single parallel pass, accepting a prefix of them via
+rejection sampling. Output distribution is **provably identical** to the target
+model's, and wall-clock decoding speeds up **2–3×** when the draft's acceptance
+rate is high ([Leviathan et al., 2023](https://arxiv.org/abs/2211.17192)) —
+which it is for predictable spans (code, boilerplate) and less so for creative
+prose.
 
 <WikiLink slug="speculative-decoding" title="Speculative decoding — draft-and-verify" />
 
+Inside the kernel, **FlashAttention** computes exact attention with tiling so
+the softmax never materializes in HBM — an IO-aware kernel that makes long-prompt
+prefill far cheaper ([Dao et al., 2022](https://arxiv.org/abs/2205.14135)).
+
 <LatencyCriticalPathViz />
+
+<ThinkFirst question="A 3,000-token prompt's prefill and thirty in-flight decode streams share one GPU. The prefill takes ~200ms of solid compute. What do the thirty streaming users experience, and what are your scheduling options?">
+Their streams **stall**: every decode step waits behind the monolithic prefill,
+so inter-token latency spikes from ~30ms to ~230ms — visible stutter in thirty
+UIs to serve one new user. Options: **chunk the prefill** into pieces
+interleaved with decode steps (bounded TPOT, slightly worse TTFT), or
+**disaggregate** — run prefill and decode on separate GPU pools and ship the KV
+cache across, so the phases never contend.
+</ThinkFirst>
 
 ## 4. Serving architecture
 
 Request → **router/scheduler** → GPU worker pool. The scheduler does continuous
-batching, separates or interleaves prefill/decode, manages KV-cache pages, and
-streams tokens back. Large models are **sharded** across GPUs (tensor/pipeline
-parallelism). A queue with **priority tiers** protects interactive traffic; an
-autoscaler adds GPU replicas by queue depth.
+batching, interleaves or separates prefill/decode, manages KV-cache pages, and
+streams tokens back over SSE/gRPC. A queue with **priority tiers** protects
+interactive traffic; an autoscaler adds GPU replicas on queue depth.
 
-<ThinkFirst question="Every request to your API starts with the same 2,000-token system prompt. What's the free win?">
-**Prefix caching**: the KV cache for that shared prefix is identical across
-requests, so compute it once and let every request reuse the pages. Prefill
-cost for the shared portion drops to ~zero, cutting time-to-first-token and
-freeing compute — one of the rare optimizations with no quality tradeoff at
-all.
+Large models are **sharded**: tensor parallelism splits each layer's matmuls
+across GPUs (needs NVLink-class interconnect, cuts latency), pipeline
+parallelism splits layers into stages (cheaper interconnect, adds bubbles). The
+right partitioning depends on batch size and latency target — at low batch you
+shard for weight-bandwidth, at high batch for compute — a tradeoff Google mapped
+analytically for 500B+ models, reaching a Pareto frontier of cost vs. latency
+([Pope et al., 2022](https://arxiv.org/abs/2211.05102)).
+
+<ThinkFirst question="Every request to your API starts with the same 2,000-token system prompt. What's the free win, and what mechanism makes it nearly free?">
+**Prefix caching**: the KV cache for a shared prefix is byte-identical across
+requests, so compute it once and let every request's block table point at the
+same physical pages — PagedAttention's copy-on-write makes the sharing safe.
+Prefill cost for the shared portion drops to ~zero, cutting TTFT and freeing
+compute — one of the rare optimizations with no quality tradeoff at all.
 </ThinkFirst>
 
 ## 5. Optimizations & tradeoffs
 
-- **Quantization** (INT8/FP8/4-bit weights) shrinks memory and boosts throughput
-  at a small quality cost.
-- **Prefix caching:** reuse KV cache for shared system prompts across requests.
-- **Chunked prefill** to interleave long prompts with ongoing decodes and protect
-  inter-token latency.
-- **Disaggregated prefill/decode** on separate GPU pools when profiles diverge.
+- **Quantization.** 4-bit weight-only quantization (GPTQ/AWQ) shrinks weights
+  ~4× and speeds up bandwidth-bound decode ~3× over FP16; AWQ's trick is
+  protecting the ~1% of weight channels with the largest activations, which
+  preserves quality without mixed precision
+  ([Lin et al., MLSys 2024](https://arxiv.org/abs/2306.00978)). FP8 KV-cache
+  quantization doubles cache capacity — i.e. batch size.
+- **Prefix caching:** share KV pages for common system prompts and few-shot
+  headers across requests.
+- **Chunked prefill:** split long prompts into chunks interleaved with decode
+  steps to protect inter-token latency.
+- **Disaggregated prefill/decode:** DistServe assigns the phases to separate GPU
+  pools, each with its own parallelism plan, transferring KV caches between
+  them — up to **7.4× more requests (or 12.6× tighter SLO)** served within
+  latency targets versus colocated serving
+  ([Zhong et al., OSDI 2024](https://arxiv.org/abs/2401.09670)).
 
 <WikiLink slug="paged-attention" title="Memory management is the throughput ceiling" />
 
 <ThinkFirst question="Bigger batches always raise tokens/sec/GPU. So why not run the biggest batch that fits — and what metric captures the real objective?">
 Because throughput and tail latency are a **frontier**: a huge batch means new
-requests wait behind long prefills and every stream's inter-token latency
-degrades. Raw tokens/sec can go up while more requests *miss their SLO*. The
-honest metric is **goodput** — requests served within the latency SLO — and the
-batch size is chosen as an operating point on the frontier, not maximized.
+requests wait behind long prefills and every stream's TPOT degrades. Raw
+tokens/sec can rise while more requests *miss their SLO*. The honest metric is
+**goodput** — requests served within both the TTFT and TPOT targets, per GPU —
+and batch size is chosen as an operating point on the frontier, not maximized.
+A system optimized for goodput can look "slower" on a throughput benchmark and
+be strictly better in production.
 </ThinkFirst>
 
 ## 6. Evaluation & SLOs
 
 - **Throughput:** tokens/sec/GPU (the cost metric) at a target concurrency.
-- **Latency SLOs:** p50/p99 **time-to-first-token** and **inter-token latency**;
-  the throughput↔latency frontier is the key operating choice (bigger batches =
-  more throughput, worse tail latency).
-- **Goodput:** requests served within SLO, not raw throughput.
-- **Correctness:** quantized/optimized paths must match the reference model
-  outputs within tolerance.
+- **Latency SLOs:** p50/p99 **TTFT** and **TPOT** measured separately — they
+  fail for different reasons (queueing + prefill vs. batch contention).
+- **Goodput:** requests/sec/GPU meeting *both* SLOs — the metric DistServe
+  optimizes for and the one that should drive capacity planning
+  ([Zhong et al., 2024](https://arxiv.org/abs/2401.09670)).
+- **Correctness:** quantized/speculative paths must match the reference model —
+  speculative decoding exactly (by construction), quantization within a measured
+  quality budget (perplexity + task evals, not vibes).
+
+<ThinkFirst question="Traffic is near-zero at 4am and spikes 10× at 9am. Loading a 70B model onto a fresh GPU node takes several minutes. How do you autoscale without either burning idle GPUs all night or queueing users all morning?">
+You can't scale reactively on request latency — by the time p99 degrades, a
+multi-minute cold start guarantees a bad half hour. Scale **predictively** on
+queue depth and diurnal forecasts, keep a warm pool with weights pre-loaded
+(or stream weights from local NVMe), and admit degraded modes: route overflow
+to a quantized replica or a smaller model tier. Cold-start time is a
+first-class design constraint, not an ops detail.
+</ThinkFirst>
 
 ## 7. Operations & guardrails
 
-- **Autoscaling & multi-tenancy:** pack tenants/models, scale GPU pools on load;
-  handle cold starts (model load is slow).
-- **Observability:** per-request TTFT, tokens, GPU utilization, KV-cache
-  occupancy, queue depth — the dashboard that finds bottlenecks.
-- **Fairness/limits:** per-tenant rate limits and quotas so one user can't starve
-  others; abuse and prompt-injection handling at the API edge.
+- **Autoscaling & multi-tenancy:** pack tenants/models per GPU pool, scale on
+  queue depth and KV-cache occupancy, pre-warm replicas ahead of forecast load.
+- **Observability:** per-request TTFT/TPOT, tokens in/out, GPU utilization,
+  KV-cache occupancy, preemption/eviction counts, speculative acceptance rate —
+  the dashboard that finds bottlenecks.
+- **Fairness/limits:** per-tenant rate limits and token quotas so one user can't
+  starve others; abuse and prompt-injection handling at the API edge.
 
 ## 8. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
 | Continuous batching | Static batching | Avoids head-of-line blocking; saturates the GPU |
-| PagedAttention | Contiguous KV cache | Eliminates fragmentation → much higher concurrency |
-| Speculative decoding | Plain decoding | More tokens/step, lower latency, same outputs |
-| Quantization | Full precision | Big throughput/memory win for small quality cost |
+| PagedAttention | Contiguous KV cache | 60–80% memory waste → under 4%; higher concurrency |
+| Speculative decoding | Plain decoding | 2–3× lower latency, provably identical outputs |
+| 4-bit quantization | Full precision | ~3× decode speedup for a small, measurable quality cost |
+| Disaggregated prefill/decode | Colocated phases | No interference; per-phase parallelism; costs KV transfer |
 
 ## 9. Interviewer follow-ups
 
 <Details summary="Why is decode memory-bound while prefill is compute-bound?">
-Prefill processes the whole prompt in parallel — lots of matmul, compute-bound.
-Decode generates one token at a time, so each step reloads the model weights and
-the growing KV cache from memory for very little compute — bandwidth, not FLOPs,
-is the bottleneck. This is why batching many decodes together (continuous
-batching) is the key throughput lever.
+Prefill processes all prompt tokens in one pass — big matmuls, high arithmetic
+intensity, compute-bound. Decode produces one token per step, so each step
+streams the full weights plus the growing KV cache from HBM for a tiny amount
+of compute — arithmetic intensity is ~1 FLOP/byte, far below the GPU's
+compute/bandwidth ratio. Bandwidth, not FLOPs, is the ceiling, which is why
+batching many decode streams (amortizing the weight reads) is the key
+throughput lever, and why weight quantization speeds decode up almost linearly.
 </Details>
 
 <Details summary="Throughput is great but p99 time-to-first-token is terrible. Why?">
 Big batches maximize throughput but long prompts' prefill blocks the batch,
-delaying first tokens for everyone. Fixes: chunked prefill (interleave with
-decodes), prioritize/short-circuit prefill, cap batch size, or disaggregate
-prefill onto a separate pool. Throughput and tail latency are a frontier — pick
-the operating point per SLO.
+delaying first tokens for everyone behind them in the queue. Fixes: chunked
+prefill (interleave with decodes), priority scheduling for short interactive
+prompts, capping batch size, or disaggregating prefill onto a separate pool
+(the DistServe result). Throughput and tail latency are a frontier — pick the
+operating point per SLO and report goodput, not tokens/sec.
 </Details>
 
 <Details summary="A 70B model won't fit on one GPU. How do you serve it?">
-Shard it: tensor parallelism splits each layer across GPUs (low latency, high
-interconnect need), pipeline parallelism splits layers across GPUs (higher
-throughput, adds pipeline latency). Combine with quantization to cut the memory
-footprint. The interconnect (NVLink) often decides which parallelism wins.
+Shard it: tensor parallelism splits each layer across GPUs (lowest latency,
+needs NVLink-class bandwidth since it all-reduces every layer), pipeline
+parallelism splits layers into stages (tolerates slower interconnect, adds
+pipeline bubbles). Pope et al. show the optimal partitioning shifts with batch
+size and latency target. Combine with 4-bit quantization — 70B weights drop
+from ~140GB to ~35GB, turning a 4-GPU problem into a 1–2-GPU one.
 </Details>
 
 ## Key takeaways
 
-- LLM serving is **GPU-bound and memory-bound during decode** — the design is all
-  about GPU utilization vs. latency SLOs.
-- **Continuous batching + PagedAttention** (KV-cache management) are the
-  throughput foundations; **speculative decoding + quantization** cut latency and
-  cost.
-- Serve to **goodput** (requests within SLO) on the **throughput↔latency
-  frontier**, and shard large models across GPUs.
+- LLM serving is **memory-bound during decode** — do the KV-cache arithmetic
+  first; it explains why batch size, not compute, is the ceiling.
+- **Continuous batching + PagedAttention** are the throughput foundations
+  (36.9× and 2–4× measured gains); **speculative decoding + quantization** cut
+  latency and cost with bounded quality impact.
+- Serve to **goodput** — requests within TTFT *and* TPOT SLOs — on the
+  throughput↔latency frontier; shard large models with tensor/pipeline
+  parallelism matched to the interconnect.
+
+## References
+
+- [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) — Kwon et al., SOSP 2023; the vLLM paper — KV-cache fragmentation numbers, paging design, 2–4× throughput result.
+- [Orca: A Distributed Serving System for Transformer-Based Generative Models](https://www.usenix.org/conference/osdi22/presentation/yu) — Yu et al., OSDI 2022; introduced iteration-level (continuous) batching, 36.9× throughput vs. FasterTransformer.
+- [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192) — Leviathan et al., ICML 2023; draft-and-verify decoding with identical output distribution, 2–3× speedup.
+- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102) — Pope et al., MLSys 2023; prefill/decode cost model and optimal multi-GPU partitioning for 500B+ models.
+- [DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving](https://arxiv.org/abs/2401.09670) — Zhong et al., OSDI 2024; goodput framing and 7.4×/12.6× disaggregation results.
+- [AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978) — Lin et al., MLSys 2024 (Best Paper); 4-bit weight-only quantization via salient-channel scaling.
+- [FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness](https://arxiv.org/abs/2205.14135) — Dao et al., NeurIPS 2022; IO-aware exact attention kernel behind cheap long-prompt prefill.
+- [Mastering LLM Techniques: Inference Optimization](https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/) — NVIDIA Technical Blog; practitioner survey of batching, KV-cache, quantization, and parallelism techniques in TensorRT-LLM.
