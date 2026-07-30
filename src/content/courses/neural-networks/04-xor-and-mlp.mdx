@@ -4,7 +4,7 @@ description: "Why a single perceptron can't solve XOR, how a hidden layer fixes 
 order: 4
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 10
+estimatedMinutes: 12
 ---
 
 # XOR, MLPs & Softmax
@@ -13,7 +13,7 @@ A single perceptron draws one straight line. That is all it can ever do. The **X
 
 ## The perceptron learning rule
 
-The **perceptron** is a linear classifier: $\hat{y} = \mathbb{1}[\mathbf{w}^\top \mathbf{x} + b > 0]$. It predicts class 1 when the input is on one side of the hyperplane $\mathbf{w}^\top \mathbf{x} + b = 0$, and class 0 otherwise.
+The **perceptron** ([Rosenblatt, 1958](https://doi.org/10.1037/h0042519)) is a linear classifier: $\hat{y} = \mathbb{1}[\mathbf{w}^\top \mathbf{x} + b > 0]$. It predicts class 1 when the input is on one side of the hyperplane $\mathbf{w}^\top \mathbf{x} + b = 0$, and class 0 otherwise.
 
 The **perceptron learning rule** adjusts weights only when the prediction is wrong:
 
@@ -45,7 +45,7 @@ XOR outputs 1 when exactly one input is 1:
 Plot these four points: the two 0-outputs are at $(0,0)$ and $(1,1)$ (the diagonal), and the two 1-outputs are at $(1,0)$ and $(0,1)$ (the other diagonal). No single straight line separates the two classes — a formal proof by contradiction using the four boundary inequalities shows this is impossible (see the wiki page above).
 
 <Callout type="info" title="Why XOR matters historically">
-  Minsky and Papert's 1969 book *Perceptrons* proved this limitation and severely cooled AI funding for a decade (the first "AI winter"). The invention of backpropagation and multi-layer networks in the 1980s reignited interest by showing that XOR is trivially solved with one hidden layer.
+  Minsky and Papert's 1969 book *Perceptrons* ([Minsky & Papert, 1969](https://mitpress.mit.edu/9780262630221/perceptrons/)) proved this limitation and severely cooled AI funding for a decade (the first "AI winter"). The invention of backpropagation and multi-layer networks in the 1980s ([Rumelhart et al., 1986](https://www.nature.com/articles/323533a0)) reignited interest by showing that XOR is trivially solved with one hidden layer.
 </Callout>
 
 ## The hidden layer fix
@@ -82,7 +82,7 @@ The hidden layer maps $(1,0)$ and $(0,1)$ to the *same* hidden representation $(
 
 ## Universal approximation theorem
 
-A neural network with **one hidden layer** of sufficient width can approximate any continuous function on a compact subset of $\mathbb{R}^n$ to arbitrary precision. This is the **universal approximation theorem** (Cybenko 1989, Hornik 1991).
+A neural network with **one hidden layer** of sufficient width can approximate any continuous function on a compact subset of $\mathbb{R}^n$ to arbitrary precision. This is the **universal approximation theorem** ([Cybenko, 1989](https://doi.org/10.1007/BF02551274); [Hornik, 1991](https://doi.org/10.1016/0893-6080%2891%2990009-T)).
 
 **What it says vs. what it doesn't say:**
 - ✅ There *exists* a network of finite width that approximates any function.
@@ -95,7 +95,7 @@ A neural network with **one hidden layer** of sufficient width can approximate a
 
 For binary classification the output neuron uses a sigmoid: $\hat{y} = \sigma(z) \in (0, 1)$, interpreted as $P(y=1|\mathbf{x})$.
 
-For **$K$-class classification**, replace the sigmoid with **softmax** over $K$ output neurons:
+For **$K$-class classification**, replace the sigmoid with **softmax** ([Bridle, 1990](https://link.springer.com/chapter/10.1007/978-3-642-76153-9_28)) over $K$ output neurons:
 
 $$
 \hat{p}_k = \frac{e^{z_k}}{\sum_{j=1}^{K} e^{z_j}}, \quad k = 1, \ldots, K
@@ -137,6 +137,15 @@ The gradient of the cross-entropy loss with respect to each logit $z_k$ takes a 
 - **Temperature scaling in language models** — dividing logits by $T < 1$ makes generations more focused ("greedy"); $T > 1$ makes them more diverse. Every LLM API exposes a `temperature` parameter that wraps exactly this operation.
 - **Universal approximation in practice** — a single hidden layer of *sufficient* width can approximate any continuous function (Cybenko 1989, Hornik 1991), but the theorem gives no useful width bound; the required width can grow exponentially in the input dimension. Real networks rely on depth rather than width to stay efficient.
 - **Softmax + cross-entropy everywhere** — this combination is the default output for any multi-class classification network, from image classifiers (ImageNet) to language models (next-token prediction over a vocabulary of 50 000+ tokens).
+
+## Further reading
+
+- [The Perceptron: A Probabilistic Model for Information Storage and Organization in the Brain](https://doi.org/10.1037/h0042519) — Rosenblatt (1958), the perceptron and its learning rule.
+- [Perceptrons: An Introduction to Computational Geometry](https://mitpress.mit.edu/9780262630221/perceptrons/) — Minsky & Papert (1969), the proof that a single perceptron cannot compute XOR.
+- [Learning Representations by Back-Propagating Errors](https://www.nature.com/articles/323533a0) — Rumelhart, Hinton & Williams (1986), the multi-layer training that solves XOR.
+- [Approximation by Superpositions of a Sigmoidal Function](https://doi.org/10.1007/BF02551274) — Cybenko (1989), the universal approximation theorem.
+- [Approximation Capabilities of Multilayer Feedforward Networks](https://doi.org/10.1016/0893-6080%2891%2990009-T) — Hornik (1991), the activation-agnostic generalization.
+- [Probabilistic Interpretation of Feedforward Classification Network Outputs](https://link.springer.com/chapter/10.1007/978-3-642-76153-9_28) — Bridle (1990), the origin of the softmax output layer.
 
 ## Related concepts
 

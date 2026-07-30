@@ -4,7 +4,7 @@ description: "Stacking neurons into layers turns dot products into matrix multip
 order: 3
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Layers & the Forward Pass
@@ -99,7 +99,7 @@ print("z1 = {}  h1 = {}  z2 = {}  y = {}".format(z1, h1, z2, y.round(4)))
 
 ## Why depth composes features
 
-Each layer doesn't see the raw input — it sees the *previous layer's* activations. Layer 1 might learn simple detectors ("is $x_1$ bigger than $x_2$?"); layer 2 combines those detectors into more abstract ones ("are both edge detectors on?"). Mathematically, the network is a **composition of functions**:
+Each layer doesn't see the raw input — it sees the *previous layer's* activations. Layer 1 might learn simple detectors ("is $x_1$ bigger than $x_2$?"); layer 2 combines those detectors into more abstract ones ("are both edge detectors on?"). This is exactly what backpropagation was shown to produce: hidden units that "come to represent important features of the task domain" ([Rumelhart et al., 1986](https://www.nature.com/articles/323533a0)). Mathematically, the network is a **composition of functions**:
 
 $$
 \hat{y} = g\Bigl(W^{(3)}\, f\bigl(W^{(2)}\, f(W^{(1)}\mathbf{x} + \mathbf{b}^{(1)}) + \mathbf{b}^{(2)}\bigr) + \mathbf{b}^{(3)}\Bigr)
@@ -130,7 +130,7 @@ The practical trade-off:
 | **Deeper** | Composes features hierarchically, parameter-efficient | Harder to train (vanishing gradients) without tricks |
 
 <Callout type="warning" title="Width is not a substitute for depth">
-  The universal approximation theorem says one hidden layer *can* fit anything — but possibly only with exponentially many neurons. Depth re-uses intermediate features, so deep-and-narrow usually beats shallow-and-huge at equal parameter count. In practice: start with 1–2 hidden layers of modest width and grow only when underfitting.
+  The universal approximation theorem ([Cybenko, 1989](https://doi.org/10.1007/BF02551274); [Hornik, 1991](https://doi.org/10.1016/0893-6080%2891%2990009-T)) says one hidden layer *can* fit anything — but possibly only with exponentially many neurons. Depth re-uses intermediate features, so deep-and-narrow usually beats shallow-and-huge at equal parameter count. In practice: start with 1–2 hidden layers of modest width and grow only when underfitting.
 </Callout>
 
 <Exercise id="forward-pass-matrix" />
@@ -152,6 +152,13 @@ The practical trade-off:
 - The non-linearity between layers is what stops the stack collapsing into a single linear map.
 - **Depth composes features** — later layers build abstractions out of earlier ones, which is more parameter-efficient than going wide.
 - **Width adds capacity** within a layer; each hidden ReLU neuron adds one "fold" to the function the network can express.
+
+## Further reading
+
+- [Learning Representations by Back-Propagating Errors](https://www.nature.com/articles/323533a0) — Rumelhart, Hinton & Williams (1986), how stacked layers learn hierarchical feature detectors.
+- [Approximation by Superpositions of a Sigmoidal Function](https://doi.org/10.1007/BF02551274) — Cybenko (1989), one hidden layer can approximate any continuous function.
+- [Approximation Capabilities of Multilayer Feedforward Networks](https://doi.org/10.1016/0893-6080%2891%2990009-T) — Hornik (1991), universal approximation for arbitrary bounded nonconstant activations.
+- [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385) — He et al. (2015), why depth pays off and how skip connections make very deep stacks trainable.
 
 ## Related concepts
 

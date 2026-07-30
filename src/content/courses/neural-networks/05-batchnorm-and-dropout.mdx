@@ -4,7 +4,7 @@ description: "The two training stabilizers every deep network uses — why inter
 order: 5
 type: concept
 spineStages: [optimization, hypothesis-space]
-estimatedMinutes: 12
+estimatedMinutes: 13
 ---
 
 # BatchNorm & Dropout
@@ -16,7 +16,7 @@ Two techniques transformed deep learning from an art into an engineering discipl
 Each layer of a deep network receives inputs whose distribution shifts every time the weights of the previous layer change. This **internal covariate shift** slows training because later layers must constantly adapt to a moving target.
 
 <Callout type="warning" title="Settled vs folklore">
-Internal covariate shift is the *original* (2015) motivation for batch norm, and it's the story you'll hear most often — but it is **contested**. A well-known 2018 study ("How Does Batch Normalization Help Optimization?") showed you can inject covariate shift *after* batch norm and still train fine, and argued the real mechanism is a **smoother loss landscape** — a genuine **optimization** effect. Treat covariate shift as useful intuition, not settled fact; the smoothing account is where the field currently sits.
+Internal covariate shift is the *original* (2015) motivation for batch norm, and it's the story you'll hear most often — but it is **contested**. A well-known 2018 study ([How Does Batch Normalization Help Optimization?](https://arxiv.org/abs/1805.11604)) showed you can inject covariate shift *after* batch norm and still train fine, and argued the real mechanism is a **smoother loss landscape** — a genuine **optimization** effect. Treat covariate shift as useful intuition, not settled fact; the smoothing account is where the field currently sits.
 </Callout>
 
 Concretely, imagine training a five-layer network. After one gradient step, the first layer's weights change slightly, which changes the distribution of activations entering the second layer, which changes what the second layer needs to do, which changes the gradients the third layer sees — a cascade that makes each layer's job harder than it needs to be.
@@ -29,7 +29,7 @@ Concretely, imagine training a five-layer network. After one gradient step, the 
 
 ## Batch Normalization
 
-**Batch Normalization** (Ioffe & Szegedy, 2015) normalizes the pre-activations of each layer across the current mini-batch, then re-scales with learnable parameters:
+**Batch Normalization** ([Ioffe & Szegedy, 2015](https://arxiv.org/abs/1502.03167)) normalizes the pre-activations of each layer across the current mini-batch, then re-scales with learnable parameters:
 
 $$
 \hat{x}_i = \frac{x_i - \mu_B}{\sqrt{\sigma_B^2 + \epsilon}}, \qquad y_i = \gamma \hat{x}_i + \beta
@@ -69,7 +69,7 @@ def batchnorm_forward(x, gamma, beta, eps=1e-5):
 
 ## Dropout
 
-**Dropout** (Srivastava et al., 2014) randomly zeroes a fraction $p$ of a layer's activations during each training forward pass — each neuron is independently retained with probability $(1-p)$ and dropped (set to zero) with probability $p$.
+**Dropout** ([Srivastava et al., 2014](https://jmlr.org/papers/v15/srivastava14a.html)) randomly zeroes a fraction $p$ of a layer's activations during each training forward pass — each neuron is independently retained with probability $(1-p)$ and dropped (set to zero) with probability $p$.
 
 $$
 r_i \sim \text{Bernoulli}(1-p), \qquad \tilde{h}_i = r_i \cdot h_i / (1-p)
@@ -141,7 +141,7 @@ For inverted-dropout scaling in full, the regularization math, and MC dropout as
 | **Not effective for** | Very small batches (< 4) | Convolutional feature maps (use SpatialDropout) |
 | **Modern substitute** | LayerNorm (Transformers) | Weight decay / data augmentation |
 
-For CNNs specifically — where batch size is often small (large images, detection/segmentation) but LayerNorm's "pool everything" reduction is too coarse — **GroupNorm** and **InstanceNorm** offer a middle ground, each normalizing per-sample so neither needs running statistics at all:
+For CNNs specifically — where batch size is often small (large images, detection/segmentation) but LayerNorm's ([Ba et al., 2016](https://arxiv.org/abs/1607.06450)) "pool everything" reduction is too coarse — **GroupNorm** and **InstanceNorm** ([Wu & He, 2018](https://arxiv.org/abs/1803.08494)) offer a middle ground, each normalizing per-sample so neither needs running statistics at all:
 
 <WikiLink slug="groupnorm-and-instancenorm" title="GroupNorm & InstanceNorm: Batch-Independent Normalization" />
 
@@ -167,6 +167,14 @@ For CNNs specifically — where batch size is often small (large images, detecti
 - At **inference**, BatchNorm uses running statistics (computed during training) — always call `model.eval()`.
 - **Dropout** randomly zeroes activations during training; at test time all neurons are active (no scaling needed with inverted dropout).
 - Dropout ≈ **implicit ensemble** of $2^N$ networks; also similar to L2 regularization on the feature representation.
+
+## Further reading
+
+- [Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift](https://arxiv.org/abs/1502.03167) — Ioffe & Szegedy (2015), the original BatchNorm paper.
+- [How Does Batch Normalization Help Optimization?](https://arxiv.org/abs/1805.11604) — Santurkar et al. (2018), the loss-landscape-smoothing account that contests internal covariate shift.
+- [Dropout: A Simple Way to Prevent Neural Networks from Overfitting](https://jmlr.org/papers/v15/srivastava14a.html) — Srivastava et al. (2014), dropout and its ensemble interpretation.
+- [Layer Normalization](https://arxiv.org/abs/1607.06450) — Ba, Kiros & Hinton (2016), the batch-independent norm used in transformers.
+- [Group Normalization](https://arxiv.org/abs/1803.08494) — Wu & He (2018), the middle-ground normalizer for small-batch vision.
 
 ## Related concepts
 

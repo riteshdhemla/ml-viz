@@ -4,7 +4,7 @@ description: "How a network learns — following the slope of the loss surface d
 order: 2
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # Gradient Descent
@@ -202,18 +202,18 @@ In the example above we summed the gradient over **all three** points before eac
 | **Stochastic (SGD)** | One | Noisy, cheap, the noise can jump out of shallow minima |
 | **Mini-batch** | 32–512 | Best of both — the practical default |
 
-The key insight: a mini-batch gradient is an **unbiased estimate** of the full gradient. On average it points the right way; any single step is noisy, but over many steps the noise averages out while each step costs a fraction of the full-batch price. With $n$ examples and batch size $B$, one pass over the data (an **epoch**) does $n/B$ updates instead of just one — so mini-batch SGD makes far more progress per pass.
+The key insight: a mini-batch gradient is an **unbiased estimate** of the full gradient — the stochastic-approximation idea that lets a noisy sampled gradient still converge ([Robbins & Monro, 1951](https://doi.org/10.1214/aoms/1177729586)). On average it points the right way; any single step is noisy, but over many steps the noise averages out while each step costs a fraction of the full-batch price. With $n$ examples and batch size $B$, one pass over the data (an **epoch**) does $n/B$ updates instead of just one — so mini-batch SGD makes far more progress per pass.
 
 ## Beyond vanilla: momentum and Adam
 
 Plain SGD crawls through narrow **ravines** — regions where the loss is very steep in one direction (say, along $w_1$) but nearly flat in another (say, along $w_2$). It bounces back and forth across the steep walls while barely advancing along the flat valley floor. Smarter optimizers fix this:
 
-- **Momentum** keeps a running **velocity** $v$ that accumulates past gradients, so consistent downhill directions build up speed while side-to-side oscillations cancel out:
+- **Momentum** ([Sutskever et al., 2013](https://proceedings.mlr.press/v28/sutskever13.html)) keeps a running **velocity** $v$ that accumulates past gradients, so consistent downhill directions build up speed while side-to-side oscillations cancel out:
   $$
   v \leftarrow \beta v - \eta\,\nabla L, \qquad w \leftarrow w + v
   $$
   The decay $\beta$ (typically $0.9$) sets how much past momentum carries over. **One-step example:** starting from $w=0$, $v=0$, with $\eta=0.1$ and $\nabla L = -2$: first, $v \leftarrow 0.9(0) - 0.1(-2) = 0.2$, then $w \leftarrow 0 + 0.2 = 0.2$. Next step with $\nabla L = -2$ again: $v \leftarrow 0.9(0.2) + 0.2 = 0.38$ — momentum has nearly doubled the effective step size by building on the previous gradient. Think of a ball rolling downhill: it gathers speed on long slopes and isn't deflected by small bumps.
-- **Adam** combines momentum with a **per-parameter adaptive** learning rate — it divides each parameter's step by a running estimate of that parameter's gradient magnitude, so flat directions get larger effective steps and steep directions get smaller ones. This is why Adam handles ravines without manual tuning.
+- **Adam** ([Kingma & Ba, 2014](https://arxiv.org/abs/1412.6980)) combines momentum with a **per-parameter adaptive** learning rate — it divides each parameter's step by a running estimate of that parameter's gradient magnitude, so flat directions get larger effective steps and steep directions get smaller ones. This is why Adam handles ravines without manual tuning.
 
 <Callout type="info" title="Which optimizer?">
   Start with **Adam** — it works well out of the box and is the default for most deep learning. Well-tuned SGD with momentum can generalize slightly better on some vision tasks, but Adam needs far less tuning.
@@ -255,6 +255,13 @@ Watch gradient descent move across a 2D loss surface — small learning rates in
 - The **learning rate** is the most important hyperparameter — too big diverges to NaN, too small crawls.
 - **Mini-batch** SGD is the practical default; **momentum** and **Adam** speed convergence.
 - Normalize inputs and tune $\eta$ first when training stalls.
+
+## Further reading
+
+- [A Stochastic Approximation Method](https://doi.org/10.1214/aoms/1177729586) — Robbins & Monro (1951), the theoretical basis for optimizing from noisy sampled gradients (SGD).
+- [On the Importance of Initialization and Momentum in Deep Learning](https://proceedings.mlr.press/v28/sutskever13.html) — Sutskever et al. (2013), why momentum (and its schedule) matters for deep nets.
+- [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980) — Kingma & Ba (2014), the adaptive per-parameter optimizer that is the default today.
+- [Decoupled Weight Decay Regularization](https://arxiv.org/abs/1711.05101) — Loshchilov & Hutter (2017), AdamW and why weight decay must be decoupled from adaptive steps.
 
 ## Related concepts
 

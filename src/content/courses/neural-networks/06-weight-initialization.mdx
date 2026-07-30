@@ -4,7 +4,7 @@ description: "Getting training to start at all — why initialization scale deci
 order: 6
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 15
+estimatedMinutes: 16
 ---
 
 # Weight Initialization & Training Dynamics
@@ -33,13 +33,13 @@ The whole goal of principled initialization is to make $g \approx 1$: keep the *
 
 The fix: scale the random weights by the layer width so variance is preserved. With $n_{\text{in}}$ inputs to a layer:
 
-**Xavier/Glorot** (for tanh / sigmoid, symmetric activations) keeps variance stable in both directions:
+**Xavier/Glorot** ([Glorot & Bengio, 2010](https://proceedings.mlr.press/v9/glorot10a.html)) (for tanh / sigmoid, symmetric activations) keeps variance stable in both directions:
 
 $$
 \text{Var}(W) = \frac{2}{n_{\text{in}} + n_{\text{out}}}
 $$
 
-**He/Kaiming** (for ReLU) accounts for ReLU zeroing out half its inputs (halving the variance), so it compensates with a factor of 2:
+**He/Kaiming** ([He et al., 2015](https://arxiv.org/abs/1502.01852)) (for ReLU) accounts for ReLU zeroing out half its inputs (halving the variance), so it compensates with a factor of 2:
 
 $$
 \text{Var}(W) = \frac{2}{n_{\text{in}}}
@@ -53,15 +53,15 @@ $$
 
 Good init gets you started, but keeping a *very* deep network stable needs structural help:
 
-- **Residual (skip) connections** — $\mathbf{y} = \mathbf{x} + F(\mathbf{x})$. The identity path lets gradients flow directly backward, so signal strength doesn't decay through depth. This is the single change that made 100+ layer networks (ResNets) trainable, and it's in every transformer.
-- **Normalization** — BatchNorm / LayerNorm (previous lesson) re-center and re-scale activations each layer, actively counteracting drift in their statistics and making training robust to the initialization scale.
+- **Residual (skip) connections** — $\mathbf{y} = \mathbf{x} + F(\mathbf{x})$. The identity path lets gradients flow directly backward, so signal strength doesn't decay through depth. This is the single change that made 100+ layer networks (ResNets) trainable ([He et al., 2015](https://arxiv.org/abs/1512.03385)), and it's in every transformer.
+- **Normalization** — BatchNorm ([Ioffe & Szegedy, 2015](https://arxiv.org/abs/1502.03167)) / LayerNorm (previous lesson) re-center and re-scale activations each layer, actively counteracting drift in their statistics and making training robust to the initialization scale.
 - Together, init + residuals + normalization are why modern architectures train reliably where 1990s-style deep nets simply wouldn't.
 
 ## Learning-rate dynamics
 
 Initialization sets the starting point; the **learning rate schedule** governs the path:
 
-- **Warmup** — start with a tiny learning rate and ramp up over the first few hundred/thousand steps. Early on, weights (and adaptive-optimizer statistics) are unreliable, so a large LR can blow up; warmup avoids that. It's standard for transformers.
+- **Warmup** — start with a tiny learning rate and ramp up over the first few hundred/thousand steps. Early on, weights (and adaptive-optimizer statistics) are unreliable, so a large LR can blow up; warmup avoids that. It's standard for transformers ([Vaswani et al., 2017](https://arxiv.org/abs/1706.03762)), and later analysis showed *why* it is essential — the Post-LN transformer has large output-layer gradients at initialization ([Xiong et al., 2020](https://arxiv.org/abs/2002.04745)).
 - **Decay** — anneal the LR downward (cosine, step) as training proceeds, so the model takes big steps early and fine steps near a minimum.
 
 <Callout type="tip" title="Init, normalization, and LR interact">
@@ -87,6 +87,14 @@ Initialization sets the starting point; the **learning rate schedule** governs t
 - Weights must be **random** (symmetry breaking) but carefully **scaled**: **He** ($2/n_{\text{in}}$) for ReLU, **Xavier** ($2/(n_{\text{in}}{+}n_{\text{out}})$) for tanh/sigmoid.
 - **Residual connections** and **normalization** keep very deep nets stable by providing identity gradient paths and controlling activation statistics.
 - **Warmup + decay** learning-rate schedules manage the early-instability and late-precision phases; init, normalization, and LR all interact.
+
+## Further reading
+
+- [Understanding the Difficulty of Training Deep Feedforward Neural Networks](https://proceedings.mlr.press/v9/glorot10a.html) — Glorot & Bengio (2010), Xavier initialization and the variance-preservation argument.
+- [Delving Deep into Rectifiers](https://arxiv.org/abs/1502.01852) — He et al. (2015), He initialization for ReLU-family activations.
+- [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385) — He et al. (2015), residual connections that make very deep nets trainable.
+- [Batch Normalization](https://arxiv.org/abs/1502.03167) — Ioffe & Szegedy (2015), normalization that reduces sensitivity to initialization scale.
+- [On Layer Normalization in the Transformer Architecture](https://arxiv.org/abs/2002.04745) — Xiong et al. (2020), why learning-rate warmup is essential and how norm placement changes it.
 
 ## Related concepts
 

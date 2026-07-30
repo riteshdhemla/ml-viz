@@ -4,12 +4,12 @@ description: "The building block of every neural network — what it computes, w
 order: 1
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 14
+estimatedMinutes: 15
 ---
 
 # What is a Neuron?
 
-A biological neuron fires when its inputs — signals from other neurons — surpass a threshold. Artificial neurons borrow this idea and make it **differentiable**, so a network of them can be trained with gradient descent. Every deep network, from a tiny classifier to GPT, is built from this one simple unit. In [project-loop](/wiki/ml-project-loop) terms this course splits neatly into two slots: stacking neurons builds the **hypothesis space** (this lesson, layers, XOR), while training them is **optimization** (gradient descent, initialization, batch norm).
+A biological neuron fires when its inputs — signals from other neurons — surpass a threshold. Artificial neurons borrow this idea ([McCulloch & Pitts, 1943](https://doi.org/10.1007/BF02478259)) and make it **differentiable**, so a network of them can be trained with gradient descent. Every deep network, from a tiny classifier to GPT, is built from this one simple unit. In [project-loop](/wiki/ml-project-loop) terms this course splits neatly into two slots: stacking neurons builds the **hypothesis space** (this lesson, layers, XOR), while training them is **optimization** (gradient descent, initialization, batch norm).
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -59,7 +59,7 @@ $$
 \text{Tanh: } y = \tanh(7) \approx 1.000
 $$
 
-Notice how sigmoid and tanh have *saturated* — once $z$ is large, pushing it higher barely changes the output. That saturation is exactly what makes their gradients vanish in deep networks.
+Notice how sigmoid and tanh have *saturated* — once $z$ is large, pushing it higher barely changes the output. That saturation is exactly what makes their gradients vanish in deep networks ([Glorot & Bengio, 2010](https://proceedings.mlr.press/v9/glorot10a.html)).
 
 ```python
 import numpy as np
@@ -116,7 +116,7 @@ Common choices:
 <ActivationFunctionViz />
 
 <Callout type="info" title="Why ReLU is the default">
-  ReLU is cheap to compute and its gradient is exactly 1 for positive inputs, so it doesn't shrink gradients the way sigmoid/tanh do (which saturate near their extremes). This makes deep networks train much faster.
+  ReLU is cheap to compute and its gradient is exactly 1 for positive inputs, so it doesn't shrink gradients the way sigmoid/tanh do (which saturate near their extremes). This makes deep networks train much faster ([Nair & Hinton, 2010](https://dl.acm.org/doi/10.5555/3104322.3104425)).
 </Callout>
 
 For the full family — Leaky ReLU, ELU, GELU, Swish — with derivatives, the dead-neuron failure mode, and a practical chooser:
@@ -125,10 +125,10 @@ For the full family — Leaky ReLU, ELU, GELU, Swish — with derivatives, the d
 
 ## What a single neuron can learn
 
-A single neuron with a sigmoid activation is **exactly logistic regression** — it can only carve the input space with a straight line (a linear decision boundary). It cannot solve XOR or any problem that isn't linearly separable. That limitation is precisely why we stack neurons into **layers** and add non-linear activations: depth lets the network compose simple boundaries into complex ones.
+A single neuron with a sigmoid activation is **exactly logistic regression** — it can only carve the input space with a straight line (a linear decision boundary), the same limitation Rosenblatt's original perceptron had ([Rosenblatt, 1958](https://doi.org/10.1037/h0042519)). It cannot solve XOR or any problem that isn't linearly separable. That limitation is precisely why we stack neurons into **layers** and add non-linear activations: depth lets the network compose simple boundaries into complex ones.
 
 <Callout type="info" title="Universal approximation">
-  The universal approximation theorem says a single hidden layer (with enough neurons) can approximate any continuous function. We still go *deep* because depth is far more **parameter-efficient** — a deep network learns reusable, hierarchical features, while a shallow one might need exponentially many neurons.
+  The universal approximation theorem ([Cybenko, 1989](https://doi.org/10.1007/BF02551274); [Hornik, 1991](https://doi.org/10.1016/0893-6080%2891%2990009-T)) says a single hidden layer (with enough neurons) can approximate any continuous function. We still go *deep* because depth is far more **parameter-efficient** — a deep network learns reusable, hierarchical features, while a shallow one might need exponentially many neurons.
 </Callout>
 
 <Exercise id="neuron-weights-quiz" />
@@ -149,6 +149,15 @@ A single neuron with a sigmoid activation is **exactly logistic regression** —
 - **Weights** scale inputs; the **bias** shifts the threshold.
 - The **activation** adds non-linearity — without it, depth is pointless.
 - One sigmoid neuron is logistic regression; **depth + non-linearity** unlock complex functions.
+
+## Further reading
+
+- [A Logical Calculus of the Ideas Immanent in Nervous Activity](https://doi.org/10.1007/BF02478259) — McCulloch & Pitts (1943), the original artificial-neuron model as a threshold logic unit.
+- [The Perceptron: A Probabilistic Model for Information Storage and Organization in the Brain](https://doi.org/10.1037/h0042519) — Rosenblatt (1958), the single-neuron linear classifier and its learning rule.
+- [Rectified Linear Units Improve Restricted Boltzmann Machines](https://dl.acm.org/doi/10.5555/3104322.3104425) — Nair & Hinton (2010), why ReLU became the default hidden activation.
+- [Understanding the Difficulty of Training Deep Feedforward Neural Networks](https://proceedings.mlr.press/v9/glorot10a.html) — Glorot & Bengio (2010), how sigmoid/tanh saturation stalls deep training.
+- [Approximation by Superpositions of a Sigmoidal Function](https://doi.org/10.1007/BF02551274) — Cybenko (1989), the universal approximation theorem for one-hidden-layer networks.
+- [Approximation Capabilities of Multilayer Feedforward Networks](https://doi.org/10.1016/0893-6080%2891%2990009-T) — Hornik (1991), the activation-agnostic generalization of universal approximation.
 
 ## Related concepts
 
