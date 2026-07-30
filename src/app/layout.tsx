@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
 import { buildSearchIndex } from "@/lib/search-index";
 import { CommandPalette } from "@/components/search/CommandPalette";
+import { ReviewWidget } from "@/components/review/ReviewWidget";
 import "./globals.css";
 
 const inter = Inter({
@@ -44,6 +45,7 @@ export default function RootLayout({
       <body>
         {children}
         <CommandPalette items={searchItems} />
+        <ReviewWidget />
       </body>
     </html>
   );
