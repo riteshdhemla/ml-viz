@@ -11,7 +11,7 @@ relatedLessons:
   - "recommender-systems/01-the-recommendation-problem"
   - "recommender-systems/03-deep-and-two-tower"
   - "recommender-systems/06-ad-ranking-and-ctr-prediction"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Home-Feed Ranking System
@@ -28,7 +28,10 @@ to reach for a model on the first sentence. Strong answers move through the
 **ML project loop** in order — data → hypothesis space → objective →
 optimization → evaluation → feedback — and treat every design choice as *which
 slot am I filling, and what breaks if I skip it?* The `SpineNav` strip above
-marks the stages this problem leans on hardest.
+marks the stages this problem leans on hardest. The design below is not
+hypothetical — it is, to a first approximation, how Instagram Explore,
+YouTube's recommender, and Twitter's For You feed are actually built, and each
+stage is anchored in what those teams have published.
 
 ## 1. Clarify the problem
 
@@ -38,6 +41,9 @@ Before designing anything, pin down scope with the interviewer:
   posts) personalized per user, refreshed on each session.
 - **What are we optimizing?** Long-term engagement (return visits, time well
   spent) — *not* raw click-through, which is easy to game with clickbait.
+  YouTube made this concrete by ranking on **expected watch time** rather than
+  click probability, precisely because clickbait wins clicks it can't hold
+  ([Covington et al., RecSys 2016](https://dl.acm.org/doi/10.1145/2959100.2959190)).
 - **Who are the users / items?** 300M+ users, billions of candidate items,
   heavy-tailed popularity, constant cold-start on both sides.
 - **What's out of scope?** Ads ranking (a separate auction — see the ad-ranking
@@ -68,7 +74,11 @@ has to shrink billions down to hundreds first — the arithmetic forces a
 
 **Back-of-envelope:** 10k QPS × 200ms budget means each request scores maybe a
 few hundred candidates through a heavy model, not millions. That single
-constraint dictates the whole architecture: a **funnel**.
+constraint dictates the whole architecture: a **funnel**. For calibration on
+what the top end looks like: Meta reports that Instagram's recommendation
+systems extract **65 billion features and make 90 million model predictions
+every second**
+([Meta Engineering](https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/)).
 
 ## 3. ML problem framing
 
@@ -82,6 +92,13 @@ each stage a different ML slot:
    with an expensive model predicting `P(engage)`, framed as **learning to
    rank** / pointwise CTR-style prediction with an engagement objective.
 3. **Re-ranking** — apply business logic: diversity, freshness, dedup, policy.
+
+Production systems make the funnel even deeper. Instagram Explore retrieves
+thousands of candidates from many sources, cuts them to hundreds with a
+**lightweight first-stage ranker**, and only then pays for the heavy model;
+YouTube's classic design narrows millions of videos to hundreds in candidate
+generation and ranks only dozens at the final stage. Each extra stage buys the
+next one a smaller, better pool.
 
 *What was breaking before?* A single ranker over all items blows the latency
 budget; pure popularity ignores personalization. The funnel exists to make
@@ -106,7 +123,10 @@ feeds on itself.
   serving to avoid **training-serving skew** — the classic production bug where
   offline metrics look great and online performance tanks.
 - **Freshness:** velocity/recency features stream in near-real-time so a
-  minutes-old viral item can surface.
+  minutes-old viral item can surface. A subtle trick from YouTube: include the
+  **age of the training example** as a feature, so the model can separate
+  "this item is good" from "this item was new when logged" — without it, the
+  model implicitly ranks by historical popularity and demotes everything fresh.
 
 <Callout type="warning" title="Position & popularity bias">
 Logged feedback is biased by what the *old* model showed. Correct for it —
@@ -135,18 +155,38 @@ $$
 Item embeddings are precomputed offline and indexed in an ANN index; at request
 time we embed the user once and query the index. Start from a **matrix
 factorization** baseline to build intuition, then replace the towers with deep
-encoders.
+encoders. Train with **in-batch negatives** — Pinterest's home-feed two-tower
+uses batch sizes around 6000 so every positive gets thousands of negatives for
+free ([Pinterest Engineering](https://medium.com/pinterest-engineering/pinterest-home-feed-unified-lightweight-scoring-a-two-tower-approach-b3143ac70b55)).
 
 <MatrixFactorizationViz />
 
-**Ranking — a deep CTR model.** The ~1000 retrieved candidates go through a
-richer model (DLRM/DeepFM-style: embeddings + cross features + MLP) trained on
-the engagement objective. Baseline: logistic regression on hand-crafted
-features → prove the pipeline end-to-end before adding depth.
+**Ranking — a deep multi-task model.** The ~1000 retrieved candidates go
+through a richer model (DLRM-style: sparse ID embeddings + feature crosses +
+MLP, where the embedding tables dominate the parameter count —
+[Naumov et al., 2019](https://arxiv.org/abs/1906.00091)). Production rankers
+are **multi-task**: one shared network with heads for `P(click)`, `P(save)`,
+`P(share)`, `P(hide)`, combined into a single score by a hand-tuned value
+formula. Twitter's open-sourced For You ranker made its weights public — a
+reply that draws the author back into conversation is worth on the order of
+**100× a like**, and a report is a large negative
+([twitter/the-algorithm](https://github.com/twitter/the-algorithm)) — so the
+value formula, not the model, is where product strategy lives. Baseline:
+logistic regression on hand-crafted features → prove the pipeline end-to-end
+before adding depth.
 
 For the retrieval index, the ANN structure itself is worth knowing cold:
 
 <WikiLink slug="hnsw" title="HNSW — the graph index behind fast retrieval" />
+
+<ThinkFirst question="Peak traffic, and the heavy ranker breaches its 80ms budget on 5% of requests. What do those users see — an error, a spinner, or something else?">
+Neither. The funnel doubles as a **degradation ladder**: serve the first-stage
+(lightweight) scores without the heavy re-rank, fall back to a
+popularity-plus-recency feed, or replay the user's last cached ranking. Each
+rung trades personalization quality for availability — which is why 99.9%
+availability was a requirements-table row, not an afterthought. An empty feed
+costs you the session; a slightly worse feed costs you almost nothing.
+</ThinkFirst>
 
 ## 6. Serving & scaling
 
@@ -178,9 +218,23 @@ with guardrail metrics, and let that — not NDCG — be the judge.
   the ranker. Offline gains are necessary but *not sufficient*.
 - **Online:** the real judge is an **A/B test** on engagement, with
   **guardrail metrics** (dwell quality, hide rate, creator diversity, latency)
-  so you don't ship a CTR win that quietly harms the ecosystem.
+  so you don't ship a CTR win that quietly harms the ecosystem. Netflix runs
+  its recommender A/Bs against **member retention and medium-term engagement**
+  and credits personalization with over **$1B/year** of retained value
+  ([Gomez-Uribe & Hunt, 2016](https://dl.acm.org/doi/10.1145/2843948)) — the
+  online judge is a business metric, not a ranking metric.
 - **Counterfactual:** off-policy estimators (IPS) to screen candidates before
   spending A/B traffic.
+
+<ThinkFirst question="Thought experiment: you freeze everything — no retrains, no embedding refreshes — for 90 days. Offline metrics on the old test set don't move. What actually decays in production, and in what order?">
+Retrieval rots first: items uploaded after the freeze have no learned
+embeddings, so the fresh half of the corpus is invisible within days. Then the
+ranker's feature distributions drift — seasonality, trends, new creators — and
+its calibration goes with them. The old test set can't detect any of this
+because it's drawn from the old world. The feed degrades into a greatest-hits
+archive of the quarter you froze, which is why retraining cadence is part of
+the architecture, not an ops detail.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
@@ -236,3 +290,12 @@ information. Check feature parity first.
 - The whole thing is a **loop**: production feedback becomes tomorrow's training
   data, so drift monitoring and retraining are part of the design, not an
   afterthought.
+
+## References
+
+- [Scaling the Instagram Explore recommendations system](https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/) — Meta Engineering, 2023; the production multi-stage funnel, Two Towers retrieval, and the 90M-predictions/second serving numbers.
+- [Deep Neural Networks for YouTube Recommendations](https://dl.acm.org/doi/10.1145/2959100.2959190) — Covington et al., RecSys 2016; the canonical candidate-generation → ranking design, the watch-time objective, and the example-age trick.
+- [Twitter's Recommendation Algorithm](https://github.com/twitter/the-algorithm) — X/Twitter open-source release, 2023; the For You heavy ranker's multi-head engagement weights.
+- [Deep Learning Recommendation Model for Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091) — Naumov et al., Meta, 2019; the embedding-table-dominated ranking architecture (DLRM).
+- [The Netflix Recommender System: Algorithms, Business Value, and Innovation](https://dl.acm.org/doi/10.1145/2843948) — Gomez-Uribe & Hunt, ACM TMIS 2016; A/B testing on retention and the business value of personalization.
+- [Pinterest Home Feed Unified Lightweight Scoring: A Two-tower Approach](https://medium.com/pinterest-engineering/pinterest-home-feed-unified-lightweight-scoring-a-two-tower-approach-b3143ac70b55) — Pinterest Engineering, 2021; two-tower training with in-batch negatives and embedding serving.

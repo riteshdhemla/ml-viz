@@ -12,7 +12,7 @@ relatedLessons:
   - "generative-models/05-diffusion-models"
   - "generative-models/06-vit-and-modern-genai"
   - "computer-vision/04-vision-language-models"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Text-to-Image Generation Service
@@ -40,13 +40,23 @@ with a serving stage that dominates cost.
 - **Product surface:** resolution, styles, editing, number of variants; safety is
   non-negotiable (no CSAM, no nonconsensual imagery, IP concerns).
 - **Scope:** the generation service (model + serving + safety). Training the base
-  model is in scope conceptually; we'd usually fine-tune an open base.
+  model is in scope conceptually; in practice you'd fine-tune an open base like
+  SDXL rather than train from scratch.
 
 <Callout type="tip" title="Interview signal">
 Name the two quality axes early — **aesthetics vs. prompt faithfulness** — and
 that the system is **GPU-bound** at inference. Those two facts drive the model,
 serving, and cost story.
 </Callout>
+
+<ThinkFirst question="Stable Diffusion 1.x runs an ~860M-parameter UNet ~50 times per image. Walk the arithmetic: roughly how long is one image on a modern datacenter GPU, how many images per GPU-hour — and what fleet does 'millions of images/day' imply?">
+Each denoising step is a full forward pass, so time ≈ steps × per-step cost —
+a few seconds per image at 50 steps, i.e. on the order of 1–2K images per
+GPU-hour. Millions of images a day therefore means a fleet of hundreds of
+GPUs running hot. And because cost is *linear in step count*, halving steps
+halves the fleet — which is why step reduction, not model shrinking, is the
+first cost lever every image product pulls.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
@@ -58,17 +68,25 @@ serving, and cost story.
 | Safety | Block harmful/IP-infringing output | Input + output filters, dataset curation |
 
 **Back-of-envelope:** a diffusion model runs *N* denoising steps, each a full
-UNet/transformer forward pass on a GPU. The whole cost story is "how do we cut
-steps and pack GPUs," which is why **latent** diffusion (denoise in a compressed
-space) and step-distilled samplers matter so much.
+UNet/transformer forward pass on a GPU. Total cost is
+$N \times \text{cost}(\text{step})$, so the whole cost story is "how do we cut
+$N$, shrink each step, and pack GPUs" — which is why **latent** diffusion
+(denoise a compressed representation) and step-distilled samplers matter so
+much.
 
 ## 3. GenAI problem framing
 
 **Conditional generative modeling.** The dominant family is the **latent
-diffusion model**: an autoencoder compresses images to a latent space, and a
-diffusion model learns to denoise latents conditioned on a text embedding.
-**Classifier-free guidance (CFG)** trades diversity for prompt adherence at
-sampling time.
+diffusion model**: an autoencoder compresses images into a latent space and a
+diffusion model learns to denoise latents conditioned on a text embedding
+([Rombach et al., 2022](https://arxiv.org/abs/2112.10752)). At sampling time,
+**classifier-free guidance (CFG)** extrapolates away from the unconditional
+prediction,
+
+$$\hat{\epsilon} = \epsilon_{\text{uncond}} + w\,(\epsilon_{\text{cond}} - \epsilon_{\text{uncond}}),$$
+
+trading diversity for prompt adherence as the guidance scale $w$ (typically
+5–8) rises ([Ho & Salimans, 2022](https://arxiv.org/abs/2207.12598)).
 
 *What was the pre-generative baseline?* Retrieval (search a stock library) or GANs
 — GANs are fast but unstable and mode-collapse-prone; diffusion won on quality and
@@ -84,36 +102,57 @@ generative systems, dataset curation isn't preprocessing; it's product design.
 
 ## 4. Data & training *(spine: data)*
 
-- **Data:** large image–text pair datasets (LAION-style). **Curation is the
-  product**: dedup, aesthetic filtering, NSFW/CSAM removal, and caption quality
+- **Data:** web-scale image–text pairs — LAION-5B is the canonical open corpus:
+  5.85B CLIP-filtered pairs, shipped with NSFW, watermark, and toxicity
+  detection scores precisely so trainers can filter
+  ([Schuhmann et al., 2022](https://arxiv.org/abs/2210.08402)). **Curation is
+  the product**: dedup, aesthetic filtering, CSAM removal, and caption quality
   gate what the model can do — and what it *can't* be made to do.
 - **IP/licensing:** training-data provenance is a legal and ethical minefield;
-  document sources and honor opt-outs.
+  document sources and honor opt-outs (Stability and others now run artist
+  opt-out programs).
 - **Fine-tuning:** start from an open base, then fine-tune / LoRA for style,
-  brand, or safety.
+  brand, or safety; aesthetic fine-tuning on a small curated set moves human
+  preference more than architecture changes.
 
 <WikiLink slug="ddim-sampling" title="DDIM — fast deterministic diffusion sampling" />
 
+<ThinkFirst question="Stable Diffusion's autoencoder maps a 512×512×3 image to a 64×64×4 latent. Compute the reduction factor — and name what you risk losing by denoising there instead of in pixel space.">
+786K values down to 16K — a ~48× reduction that every one of the ~50
+denoising passes enjoys. That, more than any sampler trick, is what made
+text-to-image affordable. The price: final quality is capped by the VAE
+decoder, so high-frequency detail the 8×-downsampled latent can't carry —
+legible text, faces, hands — becomes the signature failure mode, and decoder
+upgrades ship as quality wins on their own.
+</ThinkFirst>
+
 ## 5. Model & generation *(spine: hypothesis-space + objective)*
 
-- **Text encoder:** a strong (CLIP/T5-style) encoder conditions the model;
-  prompt faithfulness lives or dies here.
+- **Text encoder:** prompt faithfulness lives or dies here. Imagen showed that
+  scaling a frozen T5-XXL text encoder improved both fidelity and image–text
+  alignment *more* than scaling the diffusion model itself
+  ([Saharia et al., 2022](https://arxiv.org/abs/2205.11487)); SDXL runs two
+  text encoders (CLIP ViT-L + OpenCLIP ViT-bigG) feeding a 2.6B-parameter UNet
+  ([Podell et al., 2023](https://arxiv.org/abs/2307.01952)).
 - **Denoiser:** a UNet or diffusion transformer over latents, trained with the
   denoising (noise-prediction) objective.
-- **Sampling:** DDIM/DPM-Solver with few steps + **CFG** for adherence;
-  step-distillation (e.g. consistency/turbo models) for near-real-time.
+- **Sampling:** DDIM/DPM-Solver at 20–50 steps + CFG for adherence; **step
+  distillation** collapses this — adversarial diffusion distillation (SDXL
+  Turbo) samples in 1–4 steps at near-teacher quality
+  ([Sauer et al., 2023](https://arxiv.org/abs/2311.17042)).
 
 <DiffusionViz />
 
 Diffusion learns to reverse a gradual noising process — generation is running that
 reverse chain from pure noise, guided by the text embedding.
 
-<ThinkFirst question="One image costs ~30–50 denoising steps, each a full forward pass on a GPU. Enumerate the cost levers before reading on.">
-Attack each factor of the product: **fewer steps** (distilled/consistency
-samplers get to 1–4 steps), **cheaper steps** (denoise in a compressed latent
-space, quantize the network), and **better GPU packing** (batch concurrent
-requests, autoscale by queue depth). Caching identical prompts is the bonus
-lever product teams forget.
+<ThinkFirst question="One image costs 20–50 denoising steps, each a full forward pass on a GPU. Enumerate the cost levers before reading on — and estimate what each is worth.">
+Attack each factor of the product: **fewer steps** (distillation gets 50 →
+1–4, a ~10–25× win), **cheaper steps** (the ~48× latent compression, plus
+quantizing the denoiser), and **better GPU packing** (batch concurrent
+requests, autoscale by queue depth). Caching — identical prompts, reusable
+text-encoder embeddings, seeds for variants — is the bonus lever product
+teams forget. Note the levers multiply, and step count dominates.
 </ThinkFirst>
 
 ## 6. Serving & scaling
@@ -121,10 +160,13 @@ lever product teams forget.
 The crux. Per request: encode prompt → run *N* denoising steps on GPU → decode
 latent → safety-check → return. Optimize by:
 
-- **Fewer steps** (distilled samplers), **latent-space** diffusion (smaller
-  tensors), **quantization**, and **batching** requests to saturate GPUs.
-- **Autoscaling** GPU pools by queue depth; a job queue with priority tiers.
-- **Caching** for identical/similar prompts and reusable seeds.
+- **Fewer steps** (distilled samplers: 50 → 1–4), **latent-space** diffusion
+  (~48× smaller tensors per step), **quantization** (fp16/int8 denoiser), and
+  **batching** concurrent requests to saturate GPUs.
+- **Autoscaling** GPU pools by queue depth; a job queue with priority tiers
+  (interactive draft vs. batch upscale) — Midjourney's "fast/relax" modes are
+  exactly this split.
+- **Caching** text-encoder embeddings and identical prompt+seed results.
 
 <ThinkFirst question="FID improved on the new checkpoint. Ship it? What do FID and CLIPScore each actually measure — and what do both miss?">
 FID measures **distributional realism** (do generated images statistically
@@ -137,25 +179,42 @@ makes the ship call.
 ## 7. Evaluation *(spine: evaluation)*
 
 - **Automated:** **FID** (distributional realism) and **CLIPScore** (prompt
-  adherence) — necessary but weakly correlated with human taste.
+  adherence) — necessary but weakly correlated with human taste; run them on a
+  fixed prompt suite spanning composition, counting, text rendering, and style.
 - **Human preference:** side-by-side A/B on aesthetics + adherence is the real
-  judge; collect preference data continuously.
-- **Safety evals:** red-team prompts for harmful/IP-infringing generations.
+  judge; collect preference data continuously from user picks and upscales.
+- **Safety evals:** red-team prompt suites for harmful/IP-infringing
+  generations, tracked per policy category.
+
+<ThinkFirst question="A generation comes back with a stock-photo watermark ghosted into the corner. The model has no retrieval component. What happened — and which training-time decision most reduces it?">
+The model **memorized**. Diffusion models trained on billions of web images
+can emit near-copies of training examples — Carlini et al. extracted over a
+thousand training images from Stable Diffusion with a generate-and-filter
+attack, and found heavily *duplicated* training images are by far the
+likeliest to regurgitate. So deduplication is the highest-leverage
+mitigation, and extraction-style audits belong in your eval suite — this is
+an IP and privacy exposure, not a curiosity.
+</ThinkFirst>
 
 ## 8. Safety & guardrails
 
-- **Input filtering:** block prompts seeking harmful/illegal content.
-- **Output filtering:** a classifier on generated images (NSFW, violence,
-  likeness of real people) before returning.
-- **Provenance:** watermark outputs (visible/invisible, C2PA metadata) so AI
-  images are identifiable.
-- **Memorization/IP:** monitor for training-image regurgitation; dedup training
-  data to reduce it.
+- **Input filtering:** classify prompts and block clearly disallowed requests
+  before spending a generation.
+- **Output filtering:** a classifier on generated images (CSAM, NSFW, violence,
+  likeness of real people) before returning. DALL·E 3 ships exactly this
+  layered stack — external red-teaming plus prompt- and image-level classifiers
+  with category-specific handling
+  ([OpenAI, 2023](https://openai.com/index/dall-e-3-system-card/)).
+- **Provenance:** watermark outputs (visible/invisible + C2PA signed metadata)
+  so AI images are identifiable downstream.
+- **Memorization/IP:** dedup training data and monitor for training-image
+  regurgitation ([Carlini et al., 2023](https://arxiv.org/abs/2301.13188)).
 
 ## 9. Feedback & iteration *(spine: feedback)*
 
 - **Preference data** from user picks/upscales feeds fine-tuning (RLHF-style
-  alignment for aesthetics/safety).
+  alignment for aesthetics/safety) — the pick-one-of-four UI is a preference
+  labeler in disguise.
 - **Drift:** prompt trends shift; monitor rejection/safety-filter rates and
   refresh models.
 
@@ -163,25 +222,28 @@ makes the ship call.
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Latent diffusion | Pixel-space diffusion | Denoising a compressed latent is far cheaper |
+| Latent diffusion | Pixel-space diffusion | ~48× smaller tensors per denoising step |
 | Diffusion | GANs | Better quality/diversity/control; GANs are faster but unstable |
-| Step-distilled sampling | Full 50-step sampling | Cuts GPU cost/latency dramatically at slight quality loss |
+| Distilled 1–4-step sampling | Full 50-step sampling | ~10–25× less GPU per image at slight quality loss |
 | Fine-tune open base | Train from scratch | Orders of magnitude cheaper; base models are strong |
 
 ## 11. Interviewer follow-ups
 
 <Details summary="Images look great but ignore half the prompt. How do you improve adherence?">
-Prompt faithfulness is driven by the text encoder and guidance. Raise the CFG
-scale (more adherence, less diversity), use a stronger text encoder, and fine-tune
-on high-quality caption–image pairs. Measure with CLIPScore + human adherence
-ratings, not just FID (which only captures realism).
+Prompt faithfulness is driven by the text encoder, the captions, and guidance.
+Raise the CFG scale (more adherence, less diversity — but too high causes
+oversaturated artifacts), use a stronger/larger text encoder (the Imagen
+result), and fine-tune on high-quality caption–image pairs. Measure with
+CLIPScore + human adherence ratings, not just FID (which only captures
+realism).
 </Details>
 
 <Details summary="Generation takes 8 seconds and GPU costs are killing us. What do you do?">
-Cut denoising steps with a distilled/consistency sampler, denoise in latent (not
-pixel) space, quantize the UNet, and batch requests to saturate GPUs. Each step is
-a full forward pass, so fewer steps + smaller tensors + better packing is the
-whole cost lever.
+Cut denoising steps with a distilled sampler (adversarial or consistency
+distillation reaches 1–4 steps), stay in latent space, quantize the denoiser,
+and batch requests to saturate GPUs. Each step is a full forward pass, so
+fewer steps × smaller tensors × better packing is the whole cost lever — and
+step count is the dominant factor.
 </Details>
 
 <Details summary="A user prompts for a real celebrity in a compromising scene. How is that blocked?">
@@ -195,7 +257,19 @@ defense-in-depth, and provenance watermarking aids downstream accountability.
 
 - Text-to-image is **conditional generative modeling** (latent diffusion + CFG) —
   the axes are **aesthetics vs. prompt faithfulness**.
-- The system is **GPU-bound**: fewer steps, latent-space diffusion, quantization,
-  and batching are the cost/latency levers.
-- **Data curation** defines capability and safety; **layered input/output
-  filtering + watermarking** are mandatory, not optional.
+- The system is **GPU-bound**: fewer steps (distillation to 1–4), latent-space
+  diffusion (~48× compression), quantization, and batching are the cost levers —
+  and they multiply.
+- **Data curation** defines capability, safety, and memorization risk; **layered
+  input/output filtering + watermarking** are mandatory, not optional.
+
+## References
+
+- [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752) — Rombach et al., CVPR 2022; the latent-diffusion architecture and its compression economics.
+- [Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598) — Ho & Salimans, 2022; the CFG sampling rule and its fidelity–diversity tradeoff.
+- [Photorealistic Text-to-Image Diffusion Models with Deep Language Understanding](https://arxiv.org/abs/2205.11487) — Saharia et al., NeurIPS 2022 (Imagen); scaling the frozen T5 text encoder beats scaling the diffusion model.
+- [SDXL: Improving Latent Diffusion Models for High-Resolution Image Synthesis](https://arxiv.org/abs/2307.01952) — Podell et al., Stability AI, 2023; the 2.6B UNet, dual text encoders, and refiner design.
+- [Adversarial Diffusion Distillation](https://arxiv.org/abs/2311.17042) — Sauer et al., Stability AI, 2023 (SDXL Turbo); 1–4-step sampling via score + adversarial distillation.
+- [LAION-5B: An open large-scale dataset for training next generation image-text models](https://arxiv.org/abs/2210.08402) — Schuhmann et al., NeurIPS 2022; 5.85B CLIP-filtered pairs with NSFW/watermark scores, the canonical training corpus.
+- [Extracting Training Data from Diffusion Models](https://arxiv.org/abs/2301.13188) — Carlini et al., USENIX Security 2023; memorization/regurgitation risk and the dedup mitigation.
+- [DALL·E 3 System Card](https://openai.com/index/dall-e-3-system-card/) — OpenAI, 2023; a deployed example of layered red-teaming, prompt filtering, and output classification.

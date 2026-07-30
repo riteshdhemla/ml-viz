@@ -11,7 +11,7 @@ relatedLessons:
   - "time-series/04-demand-forecasting-in-production"
   - "time-series/02-arima-models"
   - "time-series/03-deep-learning-for-time-series"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Demand Forecasting System
@@ -27,7 +27,11 @@ Demand forecasting powers inventory, staffing, and supply-chain decisions. It's
 the canonical **time-series at scale** interview: not one series but *millions*
 (item × store × time), at multiple horizons, where the forecasts must be
 **coherent** across a hierarchy and **probabilistic** because the downstream
-decision is about risk. Walk it through the **ML project loop**.
+decision is about risk. The reference system is Amazon's, which generates
+demand forecasts for **over 400 million items daily** with a single unified
+deep model
+([Amazon Science](https://www.amazon.science/latest-news/the-history-of-amazons-forecasting-algorithm)).
+Walk it through the **ML project loop**.
 
 ## 1. Clarify the problem
 
@@ -35,7 +39,8 @@ decision is about risk. Walk it through the **ML project loop**.
   next quarter) to drive ordering, staffing, and logistics.
 - **Why probabilistic:** you don't stock the mean — you stock to a service level
   (e.g. P90) to trade off stockouts vs. holding cost. The *distribution* is the
-  product.
+  product; Amazon's system has output **quantiles**, not points, since its
+  random-forest era.
 - **Hierarchy:** SKU → category → store → region → total must **reconcile** —
   the store forecasts should sum to the regional one.
 - **Scope:** the forecasting system. The inventory optimizer consumes forecasts
@@ -63,6 +68,8 @@ and new items have too little history to fit anything, and independent
 forecasts won't sum coherently across the hierarchy. The modern answer is one
 **global** model trained across all series — sharing statistical strength, so a
 new SKU borrows from similar ones — plus a reconciliation step for coherence.
+This is exactly the DeepAR insight: train a single autoregressive network on
+the whole panel of related series.
 </ThinkFirst>
 
 ## 3. ML problem framing
@@ -70,37 +77,66 @@ new SKU borrows from similar ones — plus a reconciliation step for coherence.
 **Probabilistic, multi-horizon, hierarchical time-series forecasting.** The modern
 answer is a **global model** trained across *all* series (sharing statistical
 strength, handling cold-start items) rather than a local model per series, plus a
-**reconciliation** step to make the hierarchy coherent.
+**reconciliation** step to make the hierarchy coherent. Amazon's published
+lineage traces this arc: quantile random forests (SQRF) with hand-engineered
+features → **DeepAR** and **MQ-RNN/MQ-CNN** → a unified transformer-era model —
+"a decade-plus-long journey," not one breakthrough.
 
 *What was breaking before?* One ARIMA per series doesn't scale to millions, can't
 borrow strength for sparse/new items, and produces incoherent totals; simple
-moving averages ignore promotions, seasonality, and events.
+moving averages ignore promotions, seasonality, and events; and the
+feature-engineered SQRF still needed humans to hand-craft features per product
+line.
 
 <ThinkFirst question="Your training target is historical sales. When is “sales” not “demand” — and what does the model learn if you ignore the difference?">
 Whenever you **stocked out**: sales flatline at inventory, not at what
 customers wanted. Train on raw sales and the model learns suppressed demand as
 true demand, forecasts low, orders less — and manufactures the next stockout.
-Censored periods must be masked or demand-corrected before training.
+Censored periods must be masked or demand-corrected before training. At
+Instacart the same problem appears one level down: predicting real-time
+*availability* of 200M+ grocery items is its own ML system, because observed
+sales say nothing when the shelf was empty.
 </ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
 
 - **Target:** historical demand (careful: *sales* ≠ *demand* when you stock out —
-  censored demand is a real bias).
+  censored demand is a real bias). Instacart runs a dedicated **availability
+  model** (XGBoost over item, time, and shopper-scan features) to estimate what
+  was actually on shelves
+  ([Instacart Engineering](https://tech.instacart.com/predicting-real-time-availability-of-200-million-grocery-items-in-us-canada-stores-61f43a16eafe)).
 - **Covariates:** price, promotions, holidays, weather, day-of-week/seasonality,
-  product metadata, and cross-series signals.
+  product metadata, and cross-series signals. Future-known covariates (promo
+  calendar, holidays) are what separate a forecaster from an extrapolator.
 - **Cold-start items:** new SKUs with no history lean on the global model +
-  attribute-based similarity.
+  attribute-based similarity — MQ-RNN was designed explicitly to handle
+  cold-starts and planned event spikes.
 
-<WikiLink slug="hierarchical-forecasting" title="Hierarchical forecasting & reconciliation (MinT)" />
+<ThinkFirst question="The M5 competition (42,840 Walmart series) was won overwhelmingly by LightGBM-based models, yet Amazon runs deep models. When does deep actually win — and what baseline must survive in your system regardless?">
+GBDT on lag/calendar features wins when series are few enough to feature-
+engineer and covariates are tabular — it's cheap, robust, and was the M5
+winners' workhorse. Deep global models earn their keep at **extreme scale and
+heterogeneity**: millions of series, cold-starts, distributional targets, and
+raw covariates you'd rather learn than hand-craft (DeepAR reported ~15%
+accuracy gains over prior methods across benchmarks). Regardless: keep
+seasonal-naive and ETS baselines running forever — in forecasting, fancy
+models embarrassingly often fail to beat them, and you need to know when.
+</ThinkFirst>
 
 ## 5. Model *(spine: hypothesis space + objective)*
 
-- **Baseline:** classical (ARIMA/ETS) per series and simple seasonal-naive — the
+- **Baseline:** classical (ARIMA/ETS) per series and seasonal-naive — the
   benchmark every fancy model must beat (often it doesn't, by much).
-- **Production:** a **global** model — gradient-boosted trees on lag/calendar
-  features, or deep architectures (DeepAR, N-BEATS, Temporal Fusion Transformer)
-  trained across all series with **quantile loss** for probabilistic output.
+- **Production:** a **global** model. The two canonical deep designs are both
+  Amazon research: **DeepAR**, an autoregressive RNN trained on many related
+  series that outputs a full predictive distribution
+  ([Salinas et al.](https://arxiv.org/abs/1704.04110)), and **MQ-RNN/MQ-CNN**,
+  a seq2seq that emits **all horizons × all quantiles directly** in one shot,
+  trained with quantile (pinball) loss
+  ([Wen et al.](https://arxiv.org/abs/1711.11053)). GBDT on lag/calendar
+  features — the M5-winning recipe
+  ([Makridakis et al.](https://www.sciencedirect.com/science/article/pii/S0169207021001874)) —
+  is the strong tabular alternative.
 - **Reconciliation:** MinT / top-down / bottom-up to make hierarchical forecasts
   coherent after the base models run.
 
@@ -109,19 +145,35 @@ Censored periods must be masked or demand-corrected before training.
 Classical models like ARIMA remain the baseline and a component; the win from
 deep global models is sharing strength across millions of series and covariates.
 
+<WikiLink slug="hierarchical-forecasting" title="Hierarchical forecasting & reconciliation (MinT)" />
+
+<ThinkFirst question="Forecasts for 400 million items — do you need a real-time serving stack like the fraud or ETA systems? What is the binding constraint instead?">
+No — demand forecasts feed *planning* decisions (orders, staffing) made on
+daily/weekly cadences, so this is a **batch** system: the binding constraints
+are throughput (scoring millions of series nightly), **coherence** across the
+hierarchy, and backfill correctness when covariates change. Spending your
+complexity budget on a sub-100ms serving path here is solving the wrong
+problem — a classic interview differentiator between this case and ETA.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 Mostly **batch**: retrain and generate forecasts on a schedule (nightly/weekly),
 write quantiles to a store the inventory optimizer reads. Real-time isn't the
 constraint — *scale* (millions of series) and *coherence* are. Backfill and
-recompute when big covariates (a promo calendar) change.
+recompute when big covariates (a promo calendar) change. Direct multi-horizon
+architectures (MQ-RNN-style) help operationally too: one forward pass per
+series emits every horizon and quantile, instead of error-accumulating
+recursive rollouts.
 
 <ThinkFirst question="How would you construct the train/test split — and why does the split you'd use for tabular ML overstate accuracy here?">
 A random split leaks the future: the model trains on observations *after* the
 ones it's tested on, so seasonality and trends are effectively given away.
 Time series demands **walk-forward** (rolling-origin) backtesting — train up to
 time T, forecast beyond it, roll forward, repeat — and probabilistic outputs
-need pinball loss and coverage checks, not just MAPE.
+need pinball loss and coverage checks, not just MAPE. The M5 competition's
+companion **uncertainty track** scored exactly this: quantile forecasts under
+pinball loss.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
@@ -135,12 +187,27 @@ need pinball loss and coverage checks, not just MAPE.
 
 <WikiLink slug="walk-forward-validation" title="Walk-forward validation for time series" />
 
+<ThinkFirst question="Backtested P90 coverage was perfect at launch. Three months in, stockouts are up although the dashboards look fine. How might the system be eating its own tail?">
+Through the **censoring loop**: the model under-forecasts somewhere → the
+optimizer orders less → the item stocks out → recorded sales are censored at
+the low inventory → the next training run sees "low demand" confirmed → it
+forecasts lower still. Coverage metrics computed on *sales* can't see it,
+because the labels themselves are corrupted. The fix is upstream: stockout-
+aware demand correction (or masking censored periods) before data re-enters
+training — the feedback stage closing back into data.
+</ThinkFirst>
+
 ## 8. Monitoring & feedback *(spine: feedback)*
 
 - **Drift & regime change:** demand shifts with trends, competitors, and shocks;
-  monitor error by segment and retrain on schedule.
+  monitor error by segment (new items, promoted items, high-velocity SKUs) and
+  retrain on schedule.
 - **Censored-demand correction:** feed stockout-aware demand back so the model
-  doesn't learn suppressed sales as true demand.
+  doesn't learn suppressed sales as true demand — the loop above is the
+  classic silent failure of production forecasters.
+- **Human overrides:** planners will override forecasts for events the model
+  can't know; log overrides and score them against actuals, or the model gets
+  blamed for human edits (and vice versa).
 
 ## 9. Tradeoffs & alternatives
 
@@ -148,6 +215,8 @@ need pinball loss and coverage checks, not just MAPE.
 |---|---|---|
 | Global model across series | One model per series | Scales to millions; shares strength; handles new items |
 | Probabilistic (quantiles) | Point forecast | Inventory decisions need service-level quantiles |
+| Direct multi-horizon (MQ-style) | Recursive one-step rollout | No error accumulation; one pass emits all horizons/quantiles |
+| GBDT global (M5 recipe) | Deep global (DeepAR-style) | GBDT wins at moderate scale; deep wins at extreme scale/heterogeneity |
 | Reconciliation | Independent level forecasts | Otherwise totals don't add up — decisions conflict |
 | Walk-forward backtest | Random train/test split | Random splits leak the future and overstate accuracy |
 
@@ -156,26 +225,51 @@ need pinball loss and coverage checks, not just MAPE.
 <Details summary="Store forecasts don't sum to the regional forecast. Problem?">
 Yes — incoherence breaks downstream planning (regional buyers and store managers
 act on conflicting numbers). Apply reconciliation (MinT optimally combines the
-levels) so forecasts are coherent across the SKU→store→region→total hierarchy.
+levels) so forecasts are coherent across the SKU→store→region→total hierarchy —
+coherence was a scored requirement of the M5 setup, where the 30,490
+bottom-level series had to aggregate consistently upward.
 </Details>
 
 <Details summary="A big promotion is coming — how does the model know?">
 It's a covariate: past promotions with their lifts are in the training data, and
 the upcoming promo calendar is a future-known input the model conditions on.
-Without promo features the model treats the spike as noise and under-forecasts.
+Without promo features the model treats the spike as noise and under-forecasts —
+MQ-RNN's design calls out exactly this "planned event spike" case.
 </Details>
 
 <Details summary="You stocked out last week — won't the model learn low demand?">
 Only if you feed it raw sales. Stockouts *censor* true demand (you sold what you
 had, not what customers wanted). Use stockout-aware demand estimates or mask
-censored periods, or the model learns a downward-biased demand and under-orders.
+censored periods, or the model learns a downward-biased demand and under-orders —
+and the bias compounds through the ordering loop.
+</Details>
+
+<Details summary="Would you use a transformer for this?">
+Maybe — Amazon's current unified model is transformer-based, and attention
+handles long seasonal context and cross-series structure well. But the honest
+ordering is: seasonal-naive → ETS/ARIMA → global GBDT → deep global model,
+promoting only when backtests justify the added cost. M5's lesson is humbling:
+the frontier at 40k series was boosted trees, not attention.
 </Details>
 
 ## Key takeaways
 
 - Demand forecasting is **hierarchical, multi-horizon, probabilistic time-series
-  at scale** — a **global** model beats per-series models on millions of series.
+  at scale** — a **global** model (DeepAR/MQ-RNN/global GBDT) beats per-series
+  models on millions of series; Amazon forecasts 400M+ items daily this way.
 - Forecast a **distribution** and **reconcile** the hierarchy; the downstream
   decision is about service level and risk, not a point number.
 - **Walk-forward backtesting** and **censored-demand** handling are the
-  correctness essentials.
+  correctness essentials — the stockout-censoring feedback loop is the
+  system's signature silent failure.
+- Keep naive and classical baselines alive forever; M5 says the fancy model
+  must earn its place.
+
+## References
+
+- [The history of Amazon's forecasting algorithm](https://www.amazon.science/latest-news/the-history-of-amazons-forecasting-algorithm) — Amazon Science; grounds the SQRF → DeepAR/MQ-RNN → unified-model lineage and the 400M-items-daily scale.
+- [DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks](https://arxiv.org/abs/1704.04110) — Salinas et al. (Amazon), International Journal of Forecasting; grounds global probabilistic models over many related series and the ~15% accuracy gains.
+- [A Multi-Horizon Quantile Recurrent Forecaster](https://arxiv.org/abs/1711.11053) — Wen et al. (Amazon), NeurIPS 2017 Time Series Workshop; grounds direct multi-horizon quantile output, forking-sequences training, cold-starts, and planned event spikes.
+- [M5 accuracy competition: Results, findings, and conclusions](https://www.sciencedirect.com/science/article/pii/S0169207021001874) — Makridakis, Spiliotis & Assimakopoulos, International Journal of Forecasting 2022; grounds the 42,840-series Walmart benchmark and LightGBM's dominance among winners.
+- [The M5 uncertainty competition: Results, findings and conclusions](https://www.sciencedirect.com/science/article/pii/S0169207021001722) — International Journal of Forecasting; grounds quantile/pinball evaluation of probabilistic forecasts at scale.
+- [Predicting the real-time availability of 200 million grocery items](https://tech.instacart.com/predicting-real-time-availability-of-200-million-grocery-items-in-us-canada-stores-61f43a16eafe) — Instacart Engineering (tech-at-instacart); grounds availability modeling and the sales-vs-demand censoring problem at grocery scale.

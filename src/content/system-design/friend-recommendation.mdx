@@ -11,7 +11,7 @@ relatedLessons:
   - "graph-neural-networks/01-graphs-as-data"
   - "graph-neural-networks/02-graph-convolutions"
   - "recommender-systems/03-deep-and-two-tower"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Friend / Connection Recommendation System
@@ -26,8 +26,11 @@ estimatedMinutes: 18
 "People You May Know" is the canonical **graph ML** interview: the data is a
 social graph, and the task is **link prediction** — which edge (friendship) is
 most likely to form and be accepted. The structure of the graph *is* the signal,
-so candidate generation and graph features dominate. Walk it through the **ML
-project loop**.
+so candidate generation and graph features dominate. The feature was invented at
+LinkedIn, which credits PYMK with building **more than 50% of its professional
+graph** ([LinkedIn Engineering](https://www.linkedin.com/blog/engineering/recommendations/building-a-large-scale-recommendation-system-people-you-may-know));
+Twitter and Facebook have both published their versions too. Walk it through
+the **ML project loop**.
 
 ## 1. Clarify the problem
 
@@ -45,6 +48,16 @@ Frame it as **link prediction on a graph**, and note the objective is
 `P(connect AND accept)` — recommending someone who ignores the invite is a
 failure. This two-sided framing is the differentiator.
 </Callout>
+
+<ThinkFirst question="The degree distribution is power-law: most members have a few hundred connections, a few have millions. Which end of that distribution breaks your system, and how?">
+Both ends, differently. The sparse end has almost no graph signal — cold start,
+so side features must carry it. The hub end breaks the *machinery*: connect to
+one celebrity and your 2nd-degree neighborhood explodes to millions of nodes,
+so naive friends-of-friends enumeration melts. Real systems cap and sample
+per-source, and treat high-degree nodes specially in both candidate generation
+and training. Any design that assumes an "average" member is wrong for the
+users at both tails.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
@@ -69,13 +82,22 @@ just supplements it.
 
 1. **Candidate generation** *(hypothesis space)* — cheaply propose plausible
    connections. The workhorse heuristic: **"friends of friends"** (2nd-degree),
-   plus shared-attribute candidates.
+   plus shared-attribute candidates. LinkedIn's production PYMK blends exactly
+   these source types — random-walk / n-hop graph sources, embedding-based
+   retrieval, and plain heuristics like "new members near you" — then ranks in
+   two stages, an L0 that emits a few thousand candidates and an L1 that
+   calibrates them down to a few hundred
+   ([LinkedIn Engineering](https://www.linkedin.com/blog/engineering/recommendations/candidate-generation-in-a-large-scale-graph-recommendation-system-people-you-may-know)).
 2. **Ranking** — score candidates on `P(connect & accept)` with graph + profile
    features.
 
 *What was breaking before?* Scoring all node pairs is quadratic and impossible;
 pure profile similarity ignores the graph structure that actually predicts
-connection.
+connection. Twitter's original Who-to-Follow service is a useful data point for
+how far structure alone goes: it held the **entire follow graph in memory on a
+single server** (Cassovary) and ranked by random-walk algorithms (personalized
+PageRank/SALSA), creating millions of follows per day
+([Gupta et al., WWW 2013](https://stanford.edu/~rezab/papers/wtf_overview.pdf)).
 
 ## 4. Data & features *(spine: data)*
 
@@ -83,6 +105,11 @@ connection.
   (hard negatives), impressions without action (weak negatives).
 - **Graph features:** number of mutual connections (the single strongest
   feature), common neighbors / Adamic-Adar, shared communities, path distance.
+  The classic way to fuse structure with attributes is **supervised random
+  walks** — learn edge strengths from node/edge features so the walk drifts
+  toward people you'll actually befriend, which beat both unsupervised walks
+  and pure feature models on the Facebook graph
+  ([Backstrom & Leskovec, WSDM 2011](https://arxiv.org/abs/1011.4071)).
 - **Node embeddings:** learned so structurally/behaviorally similar users are
   close (node2vec-style or GNN embeddings), used for candidate retrieval.
 
@@ -101,8 +128,10 @@ it's overhead.
 - **Baseline:** logistic/GBDT on graph features (mutual-connection count alone is
   remarkably strong) — the benchmark to beat.
 - **Graph neural network:** a GraphSAGE/GCN encoder learns node embeddings by
-  **aggregating neighborhood features**; the edge score is a function of the two
-  node embeddings. GNNs capture higher-order structure heuristics miss.
+  **sampling and aggregating neighborhood features**
+  ([Hamilton et al., NeurIPS 2017](https://arxiv.org/abs/1706.02216)); the edge
+  score is a function of the two node embeddings. GNNs capture higher-order
+  structure the hand-built heuristics miss.
 - **Objective:** ranking / binary acceptance with hard negatives from ignored
   invites.
 
@@ -112,12 +141,25 @@ Message passing is the heart of the GNN: each node's representation is built fro
 its neighbors', so two users embedded near each other share graph context — the
 essence of "you may know them."
 
+<ThinkFirst question="GraphSAGE learns an aggregator function over sampled neighborhoods instead of an embedding per node. Why is that distinction — not the accuracy — the reason it's the production choice here?">
+Because the graph won't sit still. A per-node ("transductive") embedding table
+is stale the moment a member joins or an edge forms, and refreshing it means
+re-running the factorization. An **inductive** model is a *function* — feed it
+any node's features and sampled neighborhood and it emits an embedding, so new
+members get embeddings on day one and edge churn is absorbed by re-running a
+cheap forward pass, not retraining. Neighborhood *sampling* is the second half:
+it bounds compute per node, which is what makes hubs tractable.
+</ThinkFirst>
+
 ## 6. Serving & scaling
 
 Offline: compute node embeddings + candidate lists (2nd-degree neighborhoods) in
 a batch graph job. Online: fetch the user's candidates, rank with the model +
 fresh features, apply guardrail filters (blocked, sensitive), return the top-k
-under 200ms. Update embeddings incrementally as the graph evolves.
+under 200ms. Update embeddings incrementally as the graph evolves. Candidate
+generation itself can go online too: LinkedIn moved part of PYMK's graph work to
+**online traversal** (its Gaia service) so freshly formed edges surface without
+waiting for the next batch job.
 
 <ThinkFirst question="You hold out 10% of edges at random for the test set. Why are your metrics about to look better than they should?">
 Because edges aren't independent in time: a random holdout trains the model on
@@ -134,6 +176,17 @@ which is also the deployment reality.
   leaking the future.
 - **Online:** invite send rate, **acceptance rate** (the key two-sided metric),
   and long-term network growth / engagement, with guardrails on complaints.
+
+<ThinkFirst question="Your A/B test wins: invites +8%, acceptance rate flat. Six months later, is the network better — and what could this launch have quietly made worse?">
+Not necessarily better. Impressions concentrate on high-degree nodes (they
+appear in the most 2nd-degree neighborhoods), so a send-rate win can mean the
+model got better at pushing already-popular people — a **rich-get-richer loop**
+that compounds every retrain, since today's recommendations create tomorrow's
+edges and training data. Watch degree-distribution drift, exposure
+concentration (what fraction of impressions the top 1% of nodes absorb), and
+new-member connection rates — the six-month metrics your two-week A/B can't
+see.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
@@ -183,3 +236,11 @@ edges forming after T.
   the model; profile similarity alone is weak.
 - Optimize the **two-sided** `P(connect & accept)`, evaluate on a **temporal
   split**, and guard against popularity feedback loops and sensitive reveals.
+
+## References
+
+- [Building a Large-Scale Recommendation System: People You May Know](https://www.linkedin.com/blog/engineering/recommendations/building-a-large-scale-recommendation-system-people-you-may-know) — LinkedIn Engineering; the multi-stage PYMK architecture (L0/L1 ranking) and the >50%-of-graph impact figure.
+- [Candidate Generation in a Large Scale Graph Recommendation System](https://www.linkedin.com/blog/engineering/recommendations/candidate-generation-in-a-large-scale-graph-recommendation-system-people-you-may-know) — LinkedIn Engineering; graph-walk, embedding, and heuristic candidate sources plus online traversal with Gaia.
+- [WTF: The Who to Follow Service at Twitter](https://stanford.edu/~rezab/papers/wtf_overview.pdf) — Gupta et al., WWW 2013; whole-graph-in-memory serving (Cassovary) and random-walk recommendation at production scale.
+- [Supervised Random Walks: Predicting and Recommending Links in Social Networks](https://arxiv.org/abs/1011.4071) — Backstrom & Leskovec, WSDM 2011; learning edge strengths to fuse graph structure with node/edge attributes on the Facebook graph.
+- [Inductive Representation Learning on Large Graphs (GraphSAGE)](https://arxiv.org/abs/1706.02216) — Hamilton et al., NeurIPS 2017; sample-and-aggregate embeddings that generalize to unseen nodes.

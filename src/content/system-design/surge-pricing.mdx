@@ -11,7 +11,7 @@ relatedLessons:
   - "reinforcement-learning/01-markov-decision-processes"
   - "time-series/04-demand-forecasting-in-production"
   - "causal-inference/01-correlation-and-confounding"
-estimatedMinutes: 20
+estimatedMinutes: 25
 ---
 
 # Design a Dynamic / Surge Pricing System
@@ -27,16 +27,22 @@ Surge pricing is the interview where the **objective and optimization** stages o
 the loop dominate — the ML predictions (demand, supply, elasticity) feed a
 **decision** that acts back on the market it's predicting. That feedback (a high
 price suppresses demand and attracts supply) makes it a control problem, not a
-plain prediction problem.
+plain prediction problem. The production references are Uber's surge system and
+Lyft's **PrimeTime**, and the best natural experiment in the literature is the
+night Uber's surge briefly *broke*.
 
 ## 1. Clarify the problem
 
 - **Goal:** set a price multiplier per region/time that **balances supply and
   demand** — enough drivers for the riders who want trips — while maximizing a
   long-term objective (completed trips, marketplace health, revenue).
-- **Why not a fixed price?** At peak, demand far exceeds supply; without pricing,
-  wait times explode and reliability collapses. Price is the lever that clears the
-  market and pulls in supply.
+- **Why not a fixed price?** The evidence is unusually clean. When surge worked
+  after a sold-out Ariana Grande show at Madison Square Garden (March 2015),
+  the multiplier floated between 1.2–1.8x and average wait times held around
+  **2.6 minutes** with completion rates near 100%. On New Year's Eve 2014–15, a
+  bug disabled surge for **26 minutes**: ETAs tripled to ~8 minutes and the
+  share of unfulfilled requests jumped to ~**25%**
+  ([Hall, Kendrick & Nosko](https://andrewchen.com/wp-content/uploads/2016/01/effects_of_ubers_surge_pricing.pdf)).
 - **Constraints:** fairness (no exploitative spikes), stability (no wild
   oscillation), transparency/regulation.
 - **Scope:** the pricing engine. Matching/dispatch consumes prices (adjacent).
@@ -46,6 +52,16 @@ Price *changes the data*. A model trained on "high price → low demand" can't
 conclude "raise prices to reduce demand" naively — that's correlation. You need
 **causal** elasticity estimation, or you'll chase your own tail.
 </Callout>
+
+<ThinkFirst question="Price is one lever to close a supply-demand gap. Name two others — and why does price usually win at the minutes timescale?">
+The other levers are **repositioning supply** (driver incentives, heatmaps,
+dispatch radius) and **rationing demand** (longer waits, queueing). But
+repositioning takes tens of minutes and incentives leak money, while rationing
+by wait time degrades everyone's experience and — worse — collapses matching
+efficiency. Price acts on *both sides simultaneously and immediately*: it
+sorts riders by willingness to pay and signals drivers toward the gap. The
+others are complements on slower timescales, not substitutes.
+</ThinkFirst>
 
 ## 2. Requirements & scale
 
@@ -75,15 +91,25 @@ Three ML sub-problems feed one **optimization**:
 Then **optimize** the price multiplier to balance the market against the
 long-term objective — framed as constrained optimization or a **reinforcement
 learning** / bandit control problem, because today's price affects tomorrow's
-supply.
+supply. Lyft describes PrimeTime exactly this way: successive iterations of a
+real-time controller whose job is to keep a volatile marketplace in balance,
+not to maximize instantaneous revenue
+([Lyft Engineering](https://eng.lyft.com/dynamic-pricing-to-sustain-marketplace-balance-1d23a8d1be90)).
 
 *What was breaking before?* Static or purely reactive pricing overshoots,
-oscillates, and can't anticipate predictable peaks (events, weather, rush hour).
+oscillates, and can't anticipate predictable peaks. And undersupply doesn't
+just mean waiting — Castillo, Knoepfle & Weyl show it triggers the **"wild
+goose chase"**: with too few free drivers, the dispatcher matches riders to
+faraway cars, drivers burn their time on long pickups, effective supply falls
+further, and throughput collapses. Surge exists to keep the market out of that
+regime, which is why it's a reliability mechanism before it's a revenue one
+([EC 2017](https://dl.acm.org/doi/10.1145/3033274.3085098)).
 
 ## 4. Data & features *(spine: data)*
 
 - **Labels/signals:** historical requests, completions, cancellations, driver
-  positions, prices offered and outcomes.
+  positions, prices offered and outcomes — including *app opens without
+  request*, the cleanest demand-suppression signal you have.
 - **Elasticity data:** the hard part — you need **experimental variation** (price
   experiments / geo holdouts) to estimate causal response, since observational
   price–demand correlation is confounded by the conditions that caused the price.
@@ -102,43 +128,82 @@ than the instantaneous imbalance.
 
 ## 5. Model & optimization *(spine: objective + optimization)*
 
-- **Forecasting:** time-series / GBDT models for demand and supply per region.
+- **Forecasting:** time-series / GBDT models for demand and supply per region;
+  Lyft leans on contextual bandits and RL where multiple objectives interact.
 - **Elasticity:** causal models estimated from pricing experiments (the treatment
   is the price change).
 - **Optimizer:** given forecasts + elasticity, choose the multiplier maximizing
   expected long-term objective subject to fairness/stability constraints —
   constrained optimization, or an RL policy where the state is market imbalance
   and the action is the price.
+- **The driver side has its own theory:** Garg & Nazerzadeh prove that the
+  classic *multiplicative* surge is not incentive-compatible for drivers when
+  surge varies over time — it overpays long trips and tempts drivers to
+  decline short surged trips — and that **additive** surge (a flat per-trip
+  bonus) is closer to incentive-compatible; Uber's surge moved in this
+  direction ([Management Science](https://pubsonline.informs.org/doi/10.1287/mnsc.2021.4058)).
 - **Smoothing:** rate-limit changes and add hysteresis so prices don't flap.
+
+<ThinkFirst question="During a storm your optimizer's unconstrained solution is a 4.9x multiplier in one neighborhood. Ship it?">
+No — and not only for PR reasons. Extreme multipliers exploit exactly the
+riders with the fewest alternatives, invite regulatory caps written *for* you
+rather than by you (post-Sandy, Uber agreed to cap surge during emergencies),
+and the trust damage suppresses long-run demand more than the spike earns.
+Bound the action space: hard caps, jurisdiction-aware emergency rules, and let
+the imbalance clear partly through wait times. The optimizer proposes; the
+constraint layer disposes.
+</ThinkFirst>
 
 ## 6. Serving & scaling
 
 Per region every minute: pull live supply/demand, forecast the short horizon,
 apply the optimizer + constraints + smoothing, publish the multiplier. Bound the
-action space and cap maximum surge for fairness and PR safety.
+action space and cap maximum surge for fairness and PR safety. Publish
+*explainable* prices — riders see the multiplier (or an upfront price) before
+requesting, which is itself part of the mechanism: the MSG data shows riders
+sorting themselves by willingness to pay when the price is visible upfront.
 
 <ThinkFirst question="Why can't you evaluate a pricing policy offline the way you'd evaluate a ranker — and what breaks standard A/B tests too?">
 Offline replay assumes the world would have behaved the same under your new
 prices — but the market *reacts* to price, so logged outcomes don't transfer.
 And standard A/B assumes independent units, while riders and drivers in
-treatment regions spill into control regions. The fix is **switchback**
-experiments: toggle the policy over time within a region and compare periods.
+treatment regions spill into control regions (drivers literally drive to the
+higher-paying cell). The fix is **switchback** experiments: toggle the policy
+over time within a region and compare time-region units — the design DoorDash
+uses for exactly this class of marketplace interference
+([DoorDash Engineering](https://careersatdoordash.com/blog/switchback-tests-and-randomized-experimentation-under-network-effects-at-doordash/)).
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
 - **Offline is weak here** — you can't replay a market that reacts to your prices.
-  Rely on **geo/time-based experiments** (switchback tests) as the primary
-  evaluation.
+  Rely on **geo/time-based experiments** (switchbacks) as the primary
+  evaluation, randomizing time-region units rather than individual requests,
+  and analyze with cluster-robust errors (naive analysis of switchbacks
+  inflates false positives).
 - **Metrics:** completion rate, wait times, reliability, driver earnings, revenue,
   and **fairness** metrics — balanced, since optimizing one alone degrades the
-  marketplace.
+  marketplace. The NYE outage numbers (ETAs 3x, 25% unfulfilled) are the
+  canonical picture of what "reliability" means here.
+
+<ThinkFirst question="The switchback says your new policy wins on completion rate. Two months after full launch, driver hours are quietly declining. What did the experiment miss?">
+Horizon. Switchback windows are hours long, so they capture immediate matching
+effects but not **slow supply-side adaptation**: drivers learn the new earnings
+distribution over weeks and reduce hours or churn. This is the
+incentive-compatibility problem Garg & Nazerzadeh formalize — a policy can
+clear the market today while eroding the supply base that clears it tomorrow.
+You need long-running holdout regions and driver-cohort retention metrics on
+top of switchbacks.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
 - **Closed-loop control:** monitor for oscillation, over/under-supply, and
   regions stuck at cap. The price acts on the market, so instability is a live
   risk.
+- **Slow-loop supply health:** track driver earnings distributions, acceptance
+  rates on surged trips, and cohort retention — the metrics that catch
+  incentive problems switchbacks can't see.
 - **Regime shifts:** events and weather change elasticity; keep experiments
   running to refresh causal estimates. The loop closes hard into **data**.
 
@@ -148,6 +213,7 @@ experiments: toggle the policy over time within a region and compare periods.
 |---|---|---|
 | Causal elasticity (experiments) | Observational price–demand fit | Observational is confounded → wrong sign, chases its own tail |
 | RL / long-term objective | Myopic revenue maximization | Short-term greed drives away supply and riders |
+| Additive driver surge | Multiplicative surge | Multiplicative isn't incentive-compatible; drivers game trip selection |
 | Smoothed, capped prices | Unconstrained optimizer | Oscillation and exploitative spikes destroy trust |
 | Switchback experiments | Standard A/B | Market interference breaks unit-independent A/B assumptions |
 
@@ -170,15 +236,37 @@ forecasting one.
 <Details summary="How do you A/B test pricing when one region's price affects neighbors?">
 Standard A/B assumes independent units, which breaks under market interference.
 Use **switchback** experiments (toggle the treatment on/off over time in a region)
-or region-level randomization with buffer zones, and analyze with interference in
-mind.
+or region-level randomization with buffer zones, randomize time-region units, and
+analyze with cluster-robust standard errors, as DoorDash documents for its
+dispatch experiments.
+</Details>
+
+<Details summary="Surge is unpopular. Why not just cap it at 1.0 and eat the shortage?">
+Because the alternative isn't "same service, lower price" — it's the wild goose
+chase: undersupply makes matches longer, which wastes driver hours, which
+deepens undersupply. The NYE natural experiment quantifies it: 26 minutes
+without surge took unfulfilled requests to ~25%. The honest framing is that
+surge trades some riders priced out against the marketplace staying functional
+for the rest — then defend the caps and fairness constraints you'd add.
 </Details>
 
 ## Key takeaways
 
 - Surge pricing is a **control problem**: predictions feed an **optimizer** whose
-  action changes the market it predicts.
+  action changes the market it predicts — and whose absence causes measurable
+  collapse (ETAs 3x, 25% unfulfilled in Uber's 26-minute outage).
 - Elasticity must be **causal** — estimated from price experiments, not
   observational correlation, or the system chases its own tail.
-- Evaluate with **switchback experiments**, optimize a **long-term** marketplace
-  objective, and **smooth/cap** for stability and fairness.
+- Evaluate with **switchback experiments** for short-run effects and long-running
+  holdouts for supply-side adaptation; multiplicative vs. **additive surge** is
+  an incentive-design question, not a cosmetic one.
+- **Smooth, cap, and constrain**: the optimizer proposes, the fairness and
+  stability layer disposes.
+
+## References
+
+- [The Effects of Uber's Surge Pricing: A Case Study](https://andrewchen.com/wp-content/uploads/2016/01/effects_of_ubers_surge_pricing.pdf) — Hall, Kendrick & Nosko (Uber / U. Chicago); grounds the Ariana Grande concert and NYE surge-outage numbers (wait 2.6 min vs. ETAs 3x and ~25% unfulfilled).
+- [Surge Pricing Solves the Wild Goose Chase](https://dl.acm.org/doi/10.1145/3033274.3085098) — Castillo, Knoepfle & Weyl, ACM EC 2017; grounds the wild-goose-chase matching failure and surge as a reliability mechanism.
+- [Driver Surge Pricing](https://pubsonline.informs.org/doi/10.1287/mnsc.2021.4058) — Garg & Nazerzadeh, Management Science; grounds the incentive-compatibility analysis of multiplicative vs. additive surge.
+- [Dynamic Pricing to Sustain Marketplace Balance](https://eng.lyft.com/dynamic-pricing-to-sustain-marketplace-balance-1d23a8d1be90) — Lyft Engineering (Davide Crapis); grounds PrimeTime as an iterated real-time balance controller.
+- [Switchback Tests and Randomized Experimentation Under Network Effects at DoorDash](https://careersatdoordash.com/blog/switchback-tests-and-randomized-experimentation-under-network-effects-at-doordash/) — DoorDash Engineering; grounds switchback design with time-region units under marketplace interference.

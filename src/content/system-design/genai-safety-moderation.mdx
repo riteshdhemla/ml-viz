@@ -12,7 +12,7 @@ relatedLessons:
   - "building-with-llms/10-guardrails-and-llmops-security"
   - "fine-tuning-alignment/03-reward-models"
   - "model-evaluation/04-llm-evaluation"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a GenAI Safety & Output Moderation System
@@ -48,6 +48,17 @@ input moderation, a hardened system policy, output moderation, and model-level
 alignment — each catching what the others miss.
 </Callout>
 
+<ThinkFirst question="Before a single classifier can be trained: what does 'unsafe' mean, operationally? Name the artifacts that must exist first.">
+A written **policy taxonomy** — categories and subcategories (sexual content,
+hate, violence, self-harm, harassment, …) with definitions, edge cases, and
+severity tiers — plus **labeling instructions** precise enough that two
+annotators agree, and **per-category thresholds** because error costs differ
+wildly. OpenAI's moderation team found the taxonomy and labeling design were
+the hard part, ahead of modeling, and that rare-but-catastrophic categories
+need **active learning** to even find training examples. Policy is the spec;
+the classifier is just its compiler.
+</ThinkFirst>
+
 ## 2. Requirements & constraints
 
 | Dimension | Target | Consequence |
@@ -72,24 +83,41 @@ race.
 
 Around each generation:
 
-1. **Input moderation:** classify the prompt; block clearly disallowed requests
-   before spending a generation.
+1. **Input moderation:** classify the prompt against the taxonomy; block clearly
+   disallowed requests before spending a generation
+   ([Markov et al., 2022](https://arxiv.org/abs/2208.03274)).
 2. **Hardened system policy:** the model's instructions/policy that user (and
    retrieved) text cannot override — the core **prompt-injection / jailbreak**
    defense.
 3. **Output moderation:** classify the generation (text toxicity, image NSFW/
    likeness, etc.) before returning; block or regenerate.
-4. **Provenance:** watermark and tag outputs (C2PA metadata, invisible marks) so
-   generated content is identifiable downstream.
+4. **Provenance:** watermark and tag outputs (C2PA signed metadata, invisible
+   marks) so generated content is identifiable downstream.
 
 <WikiLink slug="prompt-injection-attacks-and-defenses" title="Prompt injection & jailbreak defenses" />
 
+<ThinkFirst question="What actually is a 'moderation classifier' in 2025 — a keyword list, a fine-tuned encoder, or an LLM? What did Llama Guard's design change?">
+The stack moved from blocklists → fine-tuned encoders → **safeguard LLMs**.
+Llama Guard is a Llama-2-7B instruction-tuned to classify both prompts *and*
+responses against a taxonomy that is written into its prompt — so you can
+swap or extend the policy zero-shot without retraining, and get per-category
+verdicts with a rationale. The tradeoff: an LLM judge costs more per call
+than an encoder, which is why production stacks distill or cascade (cheap
+encoder first, LLM safeguard on the uncertain slice).
+</ThinkFirst>
+
 ## 4. The classifiers & alignment
 
-- **Moderation classifiers:** fast per-category models (fine-tuned encoders or
-  distilled LLMs) for input and output — small enough to add little latency.
+- **Moderation classifiers:** fast per-category models — fine-tuned encoders,
+  distilled LLMs, or safeguard LLMs like Llama Guard with prompt-swappable
+  taxonomies ([Inan et al., 2023](https://arxiv.org/abs/2312.06674)) — for
+  input and output, small enough to add little latency.
 - **Model-level alignment:** RLHF/DPO with a **reward/safety model** so the base
-  model refuses appropriately on its own (the deepest layer).
+  model refuses appropriately on its own (the deepest layer). Jailbreaks work
+  by exploiting **competing objectives** (helpfulness vs. safety) and
+  **mismatched generalization** (attacks phrased outside the safety-training
+  distribution) ([Wei et al., 2023](https://arxiv.org/abs/2307.02483)) — name
+  the failure mode before picking the fix.
 - **Human-in-the-loop:** uncertain cases and appeals route to reviewers, whose
   decisions become training labels.
 
@@ -98,13 +126,15 @@ Around each generation:
 A reward/safety model scores outputs for policy compliance — used both to align
 the base model (RLHF) and, distilled, as an output classifier at serving time.
 
-<ThinkFirst question="Safety recall hits 99.9%. Is the system good? What's the other side of the ledger?">
+<ThinkFirst question="Safety recall hits 99.9%. Is the system good? What's the other side of the ledger — and what would a production-grade operating point look like, in numbers?">
 **Over-refusal.** Recall alone is trivially maxed by blocking everything — and
 a safety layer that refuses benign medical questions or legitimate creative
 work silently kills the product. The real objective is a calibrated operating
-point per category: high recall where errors are catastrophic, precision-
-favoring where over-blocking harms legitimate use. Measure false positives as
-seriously as misses.
+point per category, and it's achievable: Anthropic's Constitutional
+Classifiers survived 3,000+ hours of red-teaming with no universal jailbreak
+found, at an absolute **+0.38%** refusal increase on production traffic. That
+pair of numbers — robustness gained vs. benign traffic lost — is the honest
+way to report any safety system.
 </ThinkFirst>
 
 ## 5. Evaluation *(spine: evaluation)*
@@ -112,9 +142,12 @@ seriously as misses.
 - **Safety recall:** fraction of genuinely disallowed content caught (per
   category; high recall on catastrophic categories).
 - **Over-refusal / false-positive rate:** benign requests wrongly blocked — the
-  precision side; over-blocking silently kills the product.
+  precision side; measure it as seriously as misses.
 - **Adversarial/jailbreak benchmarks:** red-team suites; **attack success rate**
-  is the headline robustness metric.
+  is the headline robustness metric. Anthropic's classifier evaluation —
+  thousands of hours of incentivized human red-teaming against a live target
+  ([Sharma et al., 2025](https://arxiv.org/abs/2501.18837)) — is the reference
+  bar for "we tried hard to break it."
 - **LLM-as-judge + human audit** on sampled decisions.
 
 <WikiLink slug="llm-as-judge" title="LLM-as-a-judge for safety scoring" />
@@ -123,9 +156,10 @@ seriously as misses.
 Make the checks small and concurrent: distilled per-category classifiers (not
 frontier models), **input checks run in parallel with prompt processing**,
 output checks streamed over tokens as they're generated rather than after the
-full response, and verdict caching for repeated content. Safety that doubles
-latency gets quietly bypassed by product teams — cheapness is part of the
-design requirement.
+full response, and verdict caching for repeated content. Even a strong
+classifier stack costs real compute — Anthropic reported ~24% inference
+overhead — and safety that doubles latency gets quietly bypassed by product
+teams. Cheapness is part of the design requirement.
 </ThinkFirst>
 
 ## 6. Operations & feedback
@@ -133,11 +167,24 @@ design requirement.
 - **Latency:** run input/output classifiers in parallel with (or overlapped on)
   generation; keep them small; cache verdicts for identical content.
 - **Red-teaming loop:** continuous adversarial testing feeds new jailbreaks into
-  training — the arms race never stops.
+  training — Constitutional Classifiers train on *synthetic* attack/benign data
+  generated from a natural-language constitution, so a policy change regenerates
+  the training set overnight.
 - **Policy versioning & audit:** decisions are logged with reason codes; policy
   and thresholds are versioned; appeals overturn and relabel.
 - **Monitoring:** track attack-success and over-refusal rates as live dashboards;
   new evasion patterns trigger targeted retraining.
+
+<ThinkFirst question="Provenance marking: a C2PA-signed AI image gets screenshotted, an LLM's watermarked essay gets paraphrased. What survives — and what is watermarking actually for?">
+Screenshots strip signed metadata; heavy paraphrase and re-encoding degrade
+statistical watermarks — no marking survives a determined adversary. But
+that's not the job. SynthID-Text watermarks by modifying only the sampling
+step, detectable without the model and cheap enough for production LLM
+traffic; C2PA gives cryptographic attribution on honest distribution paths.
+Together they make the *default* ecosystem legible (platform labeling,
+attribution, audit) and raise laundering costs — accountability
+infrastructure, not an unbreakable seal.
+</ThinkFirst>
 
 ## 7. Tradeoffs & alternatives
 
@@ -146,30 +193,35 @@ design requirement.
 | Layered defense-in-depth | Single moderation model | No one layer is robust to adversaries |
 | Separate fast classifiers | Rely on model self-refusal only | Classifiers catch what alignment misses, and vice-versa |
 | Calibrated per-category thresholds | One global threshold | Error costs differ hugely by category |
+| Safeguard LLM (swappable taxonomy) | Fixed fine-tuned encoder | Policy changes without retraining; costs more per call |
 | Watermark + provenance | No marking | Downstream accountability & deepfake mitigation |
 
 ## 8. Interviewer follow-ups
 
 <Details summary="Users jailbreak the model with role-play prompts. How do you respond?">
-Layered: strengthen the system policy so user text can't override it, add
-adversarially-trained input/output classifiers for known jailbreak patterns, and
-align the base model (RLHF/DPO) to refuse regardless of framing. Track attack-
-success rate on a red-team suite and feed new jailbreaks back into training — it's
-a continuous arms race, not a fixed rule set.
+Diagnose the failure mode first (competing objectives vs. mismatched
+generalization — Wei et al.'s split), then layer: strengthen the system policy
+so user text can't override it, add adversarially-trained input/output
+classifiers for the attack family, and align the base model (RLHF/DPO) to
+refuse regardless of framing. Track attack-success rate on a red-team suite
+and feed new jailbreaks back into training — it's a continuous arms race, not
+a fixed rule set.
 </Details>
 
 <Details summary="Safety is blocking legitimate requests (e.g. medical questions). Fix?">
 Over-refusal is a real failure. Calibrate per-category thresholds, use
 finer-grained policies (allow safe medical info, block dangerous instructions),
-and measure false-positive/over-refusal rate as a first-class metric. A safety
-layer optimized only for recall will strangle the product; you're balancing recall
-against precision explicitly.
+and measure false-positive/over-refusal rate as a first-class metric — the
+benchmark to beat is strong jailbreak robustness at well under a 1% increase
+in benign refusals. A safety layer optimized only for recall will strangle the
+product; you're balancing recall against precision explicitly.
 </Details>
 
 <Details summary="Why watermark outputs if classifiers already block bad content?">
 Different job: classifiers gate what's returned; watermarking/provenance makes
 returned content *identifiable as AI-generated* downstream (deepfake attribution,
-platform policy, regulation). Blocking and provenance are complementary — one
+platform policy, regulation — Google deploys SynthID across text, image, and
+audio for exactly this). Blocking and provenance are complementary — one
 prevents, the other enables accountability for what is generated.
 </Details>
 
@@ -177,9 +229,19 @@ prevents, the other enables accountability for what is generated.
 
 - GenAI safety is a **defense-in-depth pipeline** — input moderation, hardened
   policy, output moderation, and model-level alignment — wrapped around every
-  generation.
+  generation, compiled from a **written policy taxonomy**.
 - It's **adversarial and policy-driven**: calibrate per-category thresholds,
-  balance **safety recall vs. over-refusal**, and run a continuous **red-teaming**
-  loop.
-- **Watermarking/provenance** complements blocking, enabling downstream
-  accountability for generated content.
+  report **robustness gained vs. benign refusals lost** as a pair, and run a
+  continuous **red-teaming** loop.
+- **Watermarking/provenance** complements blocking — accountability
+  infrastructure for the honest path, not an unbreakable seal.
+
+## References
+
+- [A Holistic Approach to Undesired Content Detection in the Real World](https://arxiv.org/abs/2208.03274) — Markov et al., OpenAI, AAAI 2023; taxonomy design, labeling, and active learning behind a production moderation system.
+- [Llama Guard: LLM-based Input-Output Safeguard for Human-AI Conversations](https://arxiv.org/abs/2312.06674) — Inan et al., Meta, 2023; the safeguard-LLM pattern with prompt-swappable safety taxonomies.
+- [Constitutional Classifiers: Defending against Universal Jailbreaks across Thousands of Hours of Red Teaming](https://arxiv.org/abs/2501.18837) — Anthropic, 2025; synthetic-data classifiers, the 3,000-hour red-team result, and the +0.38% refusal / ~24% overhead operating point.
+- [Jailbroken: How Does LLM Safety Training Fail?](https://arxiv.org/abs/2307.02483) — Wei et al., NeurIPS 2023; the competing-objectives and mismatched-generalization failure modes of safety training.
+- [Scalable watermarking for identifying large language model outputs](https://www.nature.com/articles/s41586-024-08025-4) — Dathathri et al., Google DeepMind, Nature 2024 (SynthID-Text); production text watermarking via sampling modification.
+- [Content Credentials: C2PA Technical Specification](https://spec.c2pa.org/specifications/specifications/2.4/specs/C2PA_Specification.html) — C2PA; the signed-manifest provenance standard for media content.
+- [DALL·E 3 System Card](https://openai.com/index/dall-e-3-system-card/) — OpenAI, 2023; a deployed multi-layer safety stack for an image-generation product.

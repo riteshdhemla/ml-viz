@@ -11,7 +11,7 @@ relatedLessons:
   - "time-series/04-demand-forecasting-in-production"
   - "ml-in-practice/17-feature-stores"
   - "model-evaluation/07-calibration-and-uncertainty"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design an ETA / Delivery-Time Prediction System
@@ -26,8 +26,10 @@ estimatedMinutes: 18
 ETA prediction is the classic **real-time regression** interview: predict a
 continuous arrival/delivery time, fast, per request, with **calibrated
 uncertainty** because the number is shown to users and used to make dispatch
-decisions. Walk it through the **ML project loop** — the twist versus a
-classifier is that the *distribution*, not just the point estimate, matters.
+decisions. The reference systems are **Uber's DeepETA** (rides and Eats,
+globally) and **DoorDash's deep-learning ETA stack** (2B+ orders a year). Walk
+it through the **ML project loop** — the twist versus a classifier is that the
+*distribution*, not just the point estimate, matters.
 
 ## 1. Clarify the problem
 
@@ -39,7 +41,8 @@ classifier is that the *distribution*, not just the point estimate, matters.
 - **Composed of stages:** e.g. food prep + courier assignment + drive time — each
   a sub-prediction that composes.
 - **Scope:** the ETA model + feedback from actuals. Dispatch/assignment is
-  adjacent (it *consumes* ETAs).
+  adjacent (it *consumes* ETAs — Uber's ETAs also feed pricing and matching, so
+  errors compound downstream).
 
 <Callout type="tip" title="Interview signal">
 Decompose the ETA into its physical stages (prep, wait, transit) and predict
@@ -51,7 +54,7 @@ than a composed, interpretable estimate.
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Latency | < 100 ms per request | Cheap model; precomputed spatial features |
+| Latency | A few ms of model time inside a sub-100 ms request | Cheap model; precomputed spatial features |
 | Volume | Millions of ETAs/min | Feature store + lightweight serving |
 | Accuracy target | Low MAE *and* calibrated intervals | Quantile / probabilistic outputs |
 | Freshness | React to live traffic, store load | Streaming features (courier supply, kitchen backlog) |
@@ -61,26 +64,35 @@ Minimizing MAE makes the model predict the **median** — by definition, actuals
 land above it half the time. Since being late costs far more than being early,
 the displayed ETA should be a *higher quantile* (P70–P90), which means the
 model must predict a distribution, not a point. The asymmetry of the loss is
-the whole design twist.
+the whole design twist — Uber bakes it directly into training with an
+**asymmetric Huber loss**, tunable in both its outlier-robustness and its
+asymmetry.
 </ThinkFirst>
 
 ## 3. ML problem framing
 
-**Regression with uncertainty** on spatial-temporal data. Predict a point
-estimate (MAE/MAPE objective) *and* a predictive interval (quantile regression or
-a probabilistic head). The asymmetric cost of lateness pushes the operating point
-toward slightly conservative promises.
+**Regression with uncertainty** on spatial-temporal data — and in production,
+usually **residual** regression. Uber's DeepETA doesn't predict the trip time
+from scratch: a routing engine first computes a physics-style ETA as the sum of
+segment traversal times along the best path, and the ML model predicts the
+**residual** between that estimate and reality
+([Uber Engineering](https://www.uber.com/us/en/blog/deepeta-how-uber-predicts-arrival-times/)).
+The model corrects for what the map can't see — real driver behavior, pickup
+and drop-off overhead, marketplace state.
 
 *What was breaking before?* A static "distance ÷ average speed" heuristic ignores
 traffic, kitchen backlog, and courier supply; a point-only model can't express
-the confidence the business needs to make promises.
+the confidence the business needs to make promises; and a from-scratch ML
+predictor throws away the routing engine's strong physical prior.
 
-<ThinkFirst question="“Distance ÷ average speed” gets you a crude baseline. What real-world signals dominate the remaining error — and what infrastructure do they force?">
+<ThinkFirst question="“Route time from the map” gets you a strong baseline. What real-world signals dominate the remaining error — and what infrastructure do they force?">
 The live state of the system: current traffic, how backed up the kitchen is,
 how many couriers are free right now. Those are **streaming** signals with
 sub-minute freshness requirements, which forces a real-time feature store —
 and the same pipeline must serve training and inference, or you've built
-train-serve skew into your best features.
+train-serve skew into your best features. This is why DoorDash pairs its ETA
+models with time-series and embedding features computed on a shared feature
+platform.
 </ThinkFirst>
 
 ## 4. Data & features *(spine: data)*
@@ -90,33 +102,69 @@ train-serve skew into your best features.
 - **Features:** origin/destination geo, historical segment speeds, live traffic,
   time-of-day/day-of-week, weather, **real-time supply/demand** (available
   couriers, kitchen backlog), and merchant-specific prep-time history.
+- **Encoding matters more than you'd think:** DeepETA **buckets every
+  continuous feature by quantiles and embeds the buckets** — discretizing then
+  embedding beat feeding raw floats — and encodes origin/destination lat-longs
+  as multi-resolution geohash grids mapped to embeddings via feature hashing.
 - **Feature store:** the same streaming pipeline computes courier-supply and
   kitchen-load features for train and serve to avoid skew.
 
 <WikiLink slug="hierarchical-forecasting" title="Hierarchical forecasting for composed estimates" />
 
+<ThinkFirst question="You want feature interactions a GBDT gives you for free, but Uber replaced XGBoost with a transformer that must answer in a few milliseconds. A vanilla transformer is quadratic in the number of features. How do you make it fit the budget?">
+Attack the quadratic term: DeepETA uses a **linear transformer** (kernelized
+attention) so self-attention over the feature set no longer materializes the
+full attention matrix, plus aggressive embedding lookups instead of deep
+per-feature towers. Served this way, the network answers with a **median
+latency of ~3.25 ms (p95 ≈ 4 ms)** — transformer interactions at GBDT-like
+serving cost. The general lesson: at high QPS, architecture choices are latency
+choices.
+</ThinkFirst>
+
 ## 5. Model *(spine: hypothesis space + objective)*
 
-- **Baseline:** GBDT (LightGBM) on the engineered features with a quantile loss —
-  strong, fast, and the production default for tabular spatial-temporal
-  regression.
-- **Add:** graph/embedding features for road segments; deep models where
-  sequence/route structure pays off.
-- **Uncertainty:** quantile regression (predict P10/P50/P90) or a distributional
-  output; the shown ETA is a chosen quantile, not the mean.
+- **Baseline:** GBDT (XGBoost/LightGBM) on the engineered features with a
+  quantile loss — for years the production default at both Uber and DoorDash
+  for tabular spatial-temporal regression.
+- **Production frontier:** both companies outgrew trees. Uber's **DeepETA** — a
+  linear-transformer residual model — beat the incumbent XGBoost's MAE while
+  serving globally ([DeeprETA paper](https://arxiv.org/abs/2206.02127));
+  DoorDash moved from tree-based models to a deep network with **parallel
+  mixture-of-experts encoders** and multi-task heads to handle its diverse
+  delivery scenarios in one model
+  ([DoorDash Engineering](https://careersatdoordash.com/blog/deep-learning-for-smarter-eta-predictions/)).
+- **Segment bias correction:** one global model, many segments — DeepETA ends
+  in a **bias-adjustment decoder** with per-segment adjustment (rides vs.
+  delivery, long vs. short haul, city) rather than separate models per segment.
+- **Uncertainty:** quantile regression (predict P10/P50/P90), an asymmetric
+  loss, or a full probabilistic output — DoorDash's latest generation ships
+  **probabilistic ETAs** rather than points
+  ([DoorDash Engineering](https://careersatdoordash.com/blog/improving-etas-with-multi-task-models-deep-learning-and-probabilistic-forecasts/)).
+
+<ThinkFirst question="The ETA you promised at checkout is 35 minutes. Ten minutes in, the kitchen backs up and the courier is rerouted. What must the serving design support that a train-once-predict-once view misses?">
+**Re-prediction as state changes.** The ETA is not one prediction but a
+sequence: order placed → courier assigned → picked up → en route, each with
+more observed reality and less prior. The serving path must accept live trip
+state, and the model family must handle the shifting feature availability
+(pre-assignment you have marketplace priors; en-route you have GPS). Uncertainty
+should shrink monotonically as stages resolve — if your intervals don't
+tighten, your stage decomposition is broken.
+</ThinkFirst>
 
 ## 6. Serving & scaling
 
-Fetch precomputed + streaming features, run the composed models (prep + transit),
-sum with uncertainty propagation, and return an ETA + range under 100ms.
-Re-predict as the trip progresses (courier assigned, en route) so the number
-tightens over time.
+Fetch precomputed + streaming features, run the composed models (prep + transit)
+or the residual model over the routing engine's base ETA, sum with uncertainty
+propagation, and return an ETA + range within the request budget (the DeepETA
+network itself answers in ~3–4 ms). Re-predict at each trip milestone so the
+number tightens over time.
 
 <ThinkFirst question="You show users a range, not just a number. How do you check the range is honest?">
 Coverage: the P90 estimate should exceed the actual arrival time in 90% of
 trips — no more, no less. Run a reliability check on each predicted quantile,
-sliced by region and merchant, because intervals that are globally calibrated
-can still be badly wrong for specific segments.
+sliced by region, merchant, and trip type, because intervals that are globally
+calibrated can still be badly wrong for specific segments — exactly the
+segments a bias-adjustment decoder exists to fix.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
@@ -126,22 +174,38 @@ can still be badly wrong for specific segments.
 - **Calibration of intervals:** does the P90 actually cover 90% of actuals? A
   reliability check on the quantiles is essential.
 - **Online:** A/B on user-facing outcomes (order completion, satisfaction,
-  support contacts about late orders), not just MAE.
+  support contacts about late orders), not just MAE — DoorDash frames ETA
+  quality explicitly as a consumer-trust metric, and Uber gates new ETA models
+  on marketplace metrics because ETAs feed pricing and matching.
+
+<ThinkFirst question="MAE in one metro creeps up 5% over two days. In fraud you'd wait weeks for labels to confirm anything. What can you do here, and how fast?">
+Actuals arrive within the hour, so you can localize the regression almost in
+real time: slice error by stage (prep vs. transit) to find whether it's a
+merchant-load shift or a traffic-model failure, check feature freshness for the
+streaming inputs, and retrain or recalibrate on days of data, not weeks.
+Fast, abundant labels are this system's structural gift — a candidate who
+designs the same slow feedback loop as fraud is leaving accuracy on the table.
+</ThinkFirst>
 
 ## 8. Monitoring & feedback *(spine: feedback)*
 
 - **Fast loop:** actuals arrive quickly, so drift (new traffic patterns, a
-  merchant's kitchen slowing down) is caught and retrained on rapidly.
+  merchant's kitchen slowing down) is caught and retrained on rapidly —
+  segment-level dashboards on lateness rate and interval coverage, not just
+  global MAE.
 - **Regime shifts:** weather events, holidays, surges — monitor segment-level
-  error and keep event features fresh.
+  error and keep event features fresh; re-fit calibration heads more often than
+  the base model.
 
 ## 9. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Composed stage models | Single end-to-end regressor | Interpretable, debuggable, each stage improvable |
+| Routing-engine ETA + ML residual | End-to-end ML from raw features | Physical prior does the heavy lifting; ML corrects what maps miss |
+| Composed stage models | Single total-time regressor | Interpretable, debuggable, each stage improvable |
 | Quantile / probabilistic output | Point estimate only | The business needs calibrated ranges to make promises |
-| GBDT baseline | Deep model first | Tabular spatial-temporal → GBDT is strong and cheap |
+| GBDT baseline → deep model | Deep model first | Trees are strong and cheap; earn the upgrade with data volume (Uber, DoorDash both did) |
+| Linear transformer | Vanilla transformer | Quadratic attention doesn't fit a few-ms serving budget |
 | Streaming supply features | Static averages | Live courier/kitchen load is the biggest error driver |
 
 ## 10. Interviewer follow-ups
@@ -149,7 +213,8 @@ can still be badly wrong for specific segments.
 <Details summary="Users complain deliveries are 'always late.' MAE looks fine. What's wrong?">
 MAE is symmetric but the cost isn't. A model minimizing MAE promises the median,
 so ~50% of orders are late. Predict and display a higher quantile (e.g. P70–P90)
-so promises are conservative, and track lateness rate, not just MAE.
+so promises are conservative, and track lateness rate, not just MAE. Uber's
+asymmetric Huber loss is the same idea pushed into training.
 </Details>
 
 <Details summary="A kitchen suddenly slows down at lunch. How does the ETA adapt?">
@@ -158,17 +223,37 @@ time sub-model, so ETAs lengthen within minutes. Static historical averages woul
 lag the regime change entirely — this is why the feature store must be real-time.
 </Details>
 
-<Details summary="How do you keep the ETA accurate as the trip progresses?">
-Re-predict at each milestone (order placed → courier assigned → picked up → en
-route). Uncertainty shrinks as more is known; the transit sub-model switches from
-a prior to live GPS-based estimation once the courier is moving.
+<Details summary="Why does Uber predict the residual instead of the ETA itself?">
+The routing engine already encodes road network, distances, and speed profiles —
+a strong physical prior that would be wasteful to relearn. Predicting the
+residual makes the learning problem smaller and better-conditioned, keeps the
+system interpretable (map estimate + learned correction), and degrades
+gracefully: if the model fails, you still have a sane routing-engine ETA.
+</Details>
+
+<Details summary="One global model or per-city models?">
+One global model with segment awareness. Per-city models fragment data, multiply
+operational surface, and still miss cross-cutting segments (rain, long-haul,
+new merchants). DeepETA's answer is a shared network with a bias-adjustment
+decoder that learns per-segment corrections — global statistical strength,
+local calibration.
 </Details>
 
 ## Key takeaways
 
 - ETA is **real-time regression with calibrated uncertainty** — the *interval*
   matters because the number is a promise.
-- **Compose** the estimate from physical stages (prep, wait, transit) for
-  accuracy and debuggability.
-- **Asymmetric lateness cost** means predicting a conservative quantile, not the
-  mean; **fast actuals** make drift easy to catch and retrain on.
+- Production systems **anchor on a physical prior** (routing engine) and learn
+  the residual; **compose** the estimate from stages for debuggability.
+- **Asymmetric lateness cost** means a conservative quantile (or asymmetric
+  loss), not the mean; **fast actuals** make drift easy to catch and retrain on.
+- At scale, **architecture is a latency decision**: bucketed-embedding features
+  and linear attention are how a transformer serves in ~3 ms.
+
+## References
+
+- [DeepETA: How Uber Predicts Arrival Times Using Deep Learning](https://www.uber.com/us/en/blog/deepeta-how-uber-predicts-arrival-times/) — Uber Engineering blog; grounds the routing-engine + residual design, linear transformer, quantile-bucketed embeddings, asymmetric Huber loss, and ~3.25 ms median serving latency.
+- [DeeprETA: An ETA Post-processing System at Scale](https://arxiv.org/abs/2206.02127) — Uber (arXiv, 2022); the paper version of the production ETA post-processing system, grounding the residual framing and bias-adjustment decoder.
+- [Precision in Motion: Deep learning for smarter ETA predictions](https://careersatdoordash.com/blog/deep-learning-for-smarter-eta-predictions/) — DoorDash Engineering; grounds the tree-to-deep migration, MoE parallel encoders, and 2B+ orders/year scale.
+- [Improving ETAs with multi-task models, deep learning, and probabilistic forecasts](https://careersatdoordash.com/blog/improving-etas-with-multi-task-models-deep-learning-and-probabilistic-forecasts/) — DoorDash Engineering; grounds multi-task ETA modeling and probabilistic (distributional) ETA outputs.
+- [Scaling Real-Time Traffic Forecasting with a Graph-Aware Transformer](https://www.uber.com/gb/en/blog/scaling-real-time-traffic/) — Uber Engineering blog; grounds live traffic as a first-class streaming input to routing and ETA.

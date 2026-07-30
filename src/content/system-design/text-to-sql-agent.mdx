@@ -11,7 +11,7 @@ relatedLessons:
   - "building-with-llms/12-code-intelligence-and-generation"
   - "building-with-llms/06-ai-engineering-architecture"
   - "agent-design-patterns/06-reflection-patterns"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Text-to-SQL Data-Analyst Agent
@@ -25,9 +25,14 @@ estimatedMinutes: 18
 
 "Ask your data a question in English" is a deceptively hard agentic problem: the
 model must map ambiguous language onto a **specific, large schema** and produce
-SQL that not only parses but returns the *right* answer. The design win is
-**grounding in the schema** and **validating by execution** with a self-correction
-loop. Walk it through the **agentic project loop**.
+SQL that not only parses but returns the *right* answer. It's also a problem
+with real production mileage — Uber's QueryGPT sits in front of a platform
+serving ~1.2 million interactive queries a month
+([Uber](https://www.uber.com/blog/query-gpt/)), and Pinterest ships text-to-SQL
+inside its internal query tool
+([Pinterest](https://medium.com/pinterest-engineering/how-we-built-text-to-sql-at-pinterest-30bad30dabff)).
+The design win is **grounding in the schema** and **validating by execution**
+with a self-correction loop. Walk it through the **agentic project loop**.
 
 ## 1. Clarify the task *(spine: task)*
 
@@ -45,6 +50,16 @@ validation *and* semantic correctness (right tables, joins, filters) — not jus
 syntactic validity — is the key insight.
 </Callout>
 
+<ThinkFirst question="GPT-4-era systems reach ~85% execution accuracy on the Spider benchmark, but GPT-4 alone scored ~55% on BIRD — against a human baseline of 93%. What's different about BIRD that erases thirty points?">
+BIRD looks like a real warehouse. Spider's databases are small and clean;
+BIRD's 95 databases total 33.4 GB across 37 domains, with dirty values,
+ambiguous column names, and questions that require *external business
+knowledge* to interpret ([Li et al.](https://arxiv.org/abs/2305.03111)). The
+gap is precisely the production problem: not SQL syntax, but grounding
+language in a messy, underdocumented schema — which is why metadata and
+schema retrieval, not the model, dominate this design.
+</ThinkFirst>
+
 ## 2. Requirements & constraints
 
 | Dimension | Target | Consequence |
@@ -58,8 +73,11 @@ syntactic validity — is the key insight.
 Retrieve, don't dump: embed table/column descriptions and pull only the
 relevant handful, with their joins, keys, and example queries. The biggest
 lever isn't the model — it's **metadata quality**: human-written column
-descriptions, synonyms, and sampled values. A model can't guess that revenue
-lives in `fct_orders.gmv_net` unless something tells it.
+descriptions, synonyms, and sampled values. Pinterest's production experience
+matches: real-world accuracy diverged sharply from benchmark numbers, and
+**table search became a core part of the problem**, solved with a vector index
+over table metadata. A model can't guess that revenue lives in
+`fct_orders.gmv_net` unless something tells it.
 </ThinkFirst>
 
 ## 3. Context & tools *(spine: context)*
@@ -67,7 +85,13 @@ lives in `fct_orders.gmv_net` unless something tells it.
 - **Schema retrieval:** the schema is too big for the prompt — retrieve the
   relevant tables/columns via embeddings over table/column descriptions, plus
   documented **joins**, keys, and example queries. Good metadata (descriptions,
-  synonyms, value samples) is the single biggest quality lever.
+  synonyms, value samples — Pinterest also injects low-cardinality column
+  *values* so filters match real data) is the single biggest quality lever.
+- **Domain scoping:** Uber's QueryGPT organizes context into **workspaces** —
+  curated bundles of tables + vetted SQL samples per business domain (Mobility,
+  Ads, …) — plus an intent agent that routes each question to the right
+  workspace before generation ([Uber](https://www.uber.com/blog/query-gpt/)).
+  Scoping first, generating second.
 - **Tools:** `search_schema`, `run_sql` (read-only, sandboxed), `get_sample_rows`,
   `explain_query`. Execution is the verification tool.
 - **Few-shot / semantic layer:** curated example NL↔SQL pairs and a metrics/
@@ -78,17 +102,22 @@ lives in `fct_orders.gmv_net` unless something tells it.
 <ThinkFirst question="The model generates plausible SQL on the first try maybe 70% of the time. What system structure turns that into a reliable product?">
 A **loop, not a shot**: execute the query (or `EXPLAIN` it), feed errors and
 suspicious results back, and let the model correct itself — the database is a
-free, grounded verifier. The same generate → run → observe → fix pattern as a
-coding agent; the environment's feedback does the work the single-shot model
-can't.
+free, grounded verifier. This is measured, not folklore: DIN-SQL's decomposed
+pipeline with an explicit self-correction stage pushed Spider execution
+accuracy to 85.3% from a prior state of the art of 79.9%
+([Pourreza & Rafiei](https://arxiv.org/abs/2304.11015)). Same generate → run →
+observe → fix pattern as a coding agent; the environment's feedback does the
+work the single-shot model can't.
 </ThinkFirst>
 
 ## 4. Orchestration *(spine: orchestration)*
 
 **Generate → execute → observe → self-correct:**
 
-1. Retrieve relevant schema for the question.
-2. Generate candidate SQL.
+1. Retrieve relevant schema for the question (route to a domain workspace if
+   you have them).
+2. Generate candidate SQL — decomposing first helps: schema linking → query
+   sketch → full SQL, the DIN-SQL recipe.
 3. **Execute** (or dry-run/`EXPLAIN`) — if it errors, feed the DB error back and
    fix.
 4. Check the result is sensible (types, non-empty, ballpark); if the question was
@@ -100,11 +129,27 @@ The execution result is the grounded feedback that turns a plausible query into 
 correct one — the same reflection loop as a coding agent, with the database as the
 environment.
 
+<ThinkFirst question="Two ways to score generated SQL against a gold query: exact string match, or “both return the same result set.” Each has a characteristic false negative or false positive. Name them.">
+Exact match **fails correct queries**: infinitely many SQL strings compute the
+same answer (join order, aliases, equivalent predicates), so it undercounts
+real accuracy. Execution match **passes wrong queries**: a query can return
+the gold result *on this database instance* by coincidence — wrong filter, but
+no rows happened to hit it. That's why benchmarks moved to execution accuracy,
+ideally checked across multiple database states, and why "runs-but-wrong"
+needs its own production metric.
+</ThinkFirst>
+
 ## 5. Evaluation *(spine: evaluation)*
 
 - **Execution accuracy:** does the generated query return the *same result set* as
-  a gold query? (The standard text-to-SQL metric — Spider/BIRD benchmarks.)
-- **Exact/semantic match** as a secondary check.
+  a gold query? The standard metric on Spider — 200 databases across 138
+  domains, built to force cross-schema generalization
+  ([Yu et al.](https://arxiv.org/abs/1809.08887)) — and BIRD, its
+  large-and-dirty successor where GPT-4 managed 54.89% against a 92.96% human
+  baseline.
+- **Your schema is the benchmark that matters:** build an in-house eval set of
+  real questions with verified gold queries; public leaderboard gains don't
+  transfer automatically (Pinterest's benchmark-vs-production gap).
 - **Robustness:** ambiguity handling, correct joins, and value grounding (e.g.
   "California" vs "CA"). **pass@k** reflects the self-correction retries.
 - Guard against **plausible-but-wrong**: track cases that run but return wrong
@@ -125,22 +170,34 @@ a restricted DB user is a guarantee.
   them escalate to DDL or cross-tenant access.
 - **PII/governance:** respect column-level access controls; mask sensitive fields.
 
+<ThinkFirst question="You launch at 40% query acceptance. The model won't change this quarter. Where does improvement come from — and what did Uber's 20+ iterations of QueryGPT actually iterate on?">
+Everything *around* the model: richer table/column descriptions, curated
+NL↔SQL examples harvested from accepted queries, domain workspaces that shrink
+the search space, better value samples, and clarifying-question behavior.
+Uber's iterations were largely context and routing changes — intent
+classification, table selection, column pruning — not model swaps. The
+flywheel is operational: every accepted or corrected query in production is a
+labeled example that improves retrieval and few-shots on *your* schema.
+</ThinkFirst>
+
 ## 7. Operations *(spine: operations)*
 
 - **Tracing:** log question → retrieved schema → SQL → result → corrections.
 - **Cost control:** monitor and cap query cost; cache schema embeddings and hot
   results.
 - **Feedback:** thumbs-down / corrected queries become few-shot examples and eval
-  cases, steadily improving accuracy on *your* schema.
+  cases, steadily improving accuracy on *your* schema — the highest-leverage
+  loop in the whole system.
 
 ## 8. Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Schema retrieval | Whole schema in prompt | Large schemas blow the context and dilute attention |
-| Execution self-correction | Single-shot generation | DB errors + results are a groundable signal |
+| Schema retrieval + workspaces | Whole schema in prompt | Large schemas blow the context and dilute attention |
+| Execution self-correction | Single-shot generation | DB errors + results are a groundable signal (85.3% vs 79.9% on Spider) |
 | Semantic/metrics layer | Raw table access | Consistent business definitions; fewer subtle errors |
 | Read-only + limits | Full DB access | Analytics is read-only; caps prevent cost/destruction |
+| In-house eval set | Public benchmark scores | Benchmark gains don't transfer to your messy schema (the BIRD lesson) |
 
 ## 9. Interviewer follow-ups
 
@@ -158,6 +215,14 @@ trust faster than a quick clarification — the agent should know when it doesn'
 know what's being asked.
 </Details>
 
+<Details summary="Why do production accuracy numbers lag the Spider leaderboard by so much?">
+Spider is small, clean, and well-normalized; real warehouses have thousands of
+underdocumented tables, dirty values, and questions needing business knowledge —
+the regime BIRD was built to measure, where GPT-4 dropped to ~55% vs a 93%
+human baseline. Close the gap with metadata curation, domain scoping, and an
+in-house eval set, not by chasing leaderboard prompts.
+</Details>
+
 <Details summary="How do you stop it from running a query that scans the whole warehouse?">
 Enforce it at the database boundary: a read-only role with scan/row limits,
 statement timeouts, and cost guards, plus a dry-run/`EXPLAIN` before executing
@@ -169,7 +234,19 @@ mechanism.
 
 - Text-to-SQL is **schema grounding + execution-validated self-correction** — a
   query that runs is not a query that's correct.
-- **Schema retrieval** and a **semantic/metrics layer** are the biggest quality
-  levers; the **execution result** is the reflection signal.
-- Evaluate on **execution accuracy** (does it match the gold result), and enforce
-  **read-only limits** at the DB boundary, not in the prompt.
+- **Schema retrieval, metadata quality, and domain scoping** (Pinterest's table
+  search, Uber's workspaces) are the biggest quality levers; the **execution
+  result** is the reflection signal (DIN-SQL: 85.3% on Spider with
+  self-correction).
+- The **Spider→BIRD gap** (~85% → ~55%, humans at 93%) is the benchmark-to-
+  production gap — build an in-house eval set on your own schema.
+- Enforce **read-only limits at the DB boundary**, not in the prompt, and turn
+  accepted/corrected queries into the improvement flywheel.
+
+## References
+
+- [Spider: A Large-Scale Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL Task](https://arxiv.org/abs/1809.08887) — Yu et al., EMNLP 2018; the cross-domain benchmark and execution-accuracy evaluation regime.
+- [Can LLM Already Serve as A Database Interface? A BIg Bench for Large-Scale Database Grounded Text-to-SQLs](https://arxiv.org/abs/2305.03111) — Li et al., NeurIPS 2023 (BIRD); 33.4 GB of dirty databases, GPT-4 at 54.89% vs 92.96% human.
+- [DIN-SQL: Decomposed In-Context Learning of Text-to-SQL with Self-Correction](https://arxiv.org/abs/2304.11015) — Pourreza & Rafiei, NeurIPS 2023; decomposition + self-correction, 85.3% Spider execution accuracy.
+- [QueryGPT – Natural Language to SQL Using Generative AI](https://www.uber.com/blog/query-gpt/) — Uber engineering; workspaces, intent/table/column agents, ~1.2M queries-a-month platform, 20+ iterations.
+- [How we built Text-to-SQL at Pinterest](https://medium.com/pinterest-engineering/how-we-built-text-to-sql-at-pinterest-30bad30dabff) — Pinterest engineering; benchmark-vs-production gap and table search via vector retrieval as a core sub-problem.
