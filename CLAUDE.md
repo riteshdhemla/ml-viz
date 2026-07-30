@@ -326,6 +326,9 @@ footer are wired automatically from `src/content/system-design/{slug}.mdx`.
    the question stays visible, the model answer is collapsed until the reader
    commits. Place each at the end of the section *before* the one that answers
    it. Existing cases are the reference for tone and placement.
+   **Ground every case in published primary sources** (engineering blogs,
+   papers, system cards): cite sparsely inline with markdown links and end with
+   a `## References` section listing 4–8 verified sources.
 3. Components: `<SystemDesignMeta>` header card after the H1; `<Details>` for
    interviewer follow-ups; `<WikiLink>`/viz components as in lessons (plain
    string props only — `blockJS: true`).

@@ -133,6 +133,28 @@ the crux, not a restatement of the next section.
   quiz-like definitions; the reveal should reward having actually thought.
 - Don't duplicate an existing `<Details>` follow-up verbatim — follow-ups are
   retrospective curveballs, ThinkFirst is prospective.
+- **Density:** aim for 6–8 per case — roughly one before every major reveal.
+  Never place two back-to-back; each needs a section of elaboration after it.
+
+## 3b. Research grounding & References (required)
+
+Cases are **grounded in published primary sources** — the engineering blogs and
+papers behind the real systems (e.g. Stripe Radar, Uber DeepETA, vLLM,
+Anthropic's agent posts). Before writing:
+
+1. Research 4–8 authoritative sources for the domain: company engineering blog
+   posts, papers, system cards, benchmark reports. Verify every URL resolves.
+2. Use them to make the case *specific*: named production systems, real scale
+   numbers, latency budgets, published metric wins — not generic hand-waving.
+3. Cite sparsely inline (~4–8 markdown links per case) where a claim leans on a
+   source, e.g. `([Uber Engineering](https://…))`.
+4. End the case with a `## References` section (after Key takeaways):
+
+   ```mdx
+   ## References
+
+   - [Exact Source Title](https://…) — Publisher, what it grounds.
+   ```
 
 ## 4. Conventions
 

@@ -12,7 +12,7 @@ relatedLessons:
   - "building-with-llms/12-code-intelligence-and-generation"
   - "nlp/05-decoding-and-sampling"
   - "fine-tuning-alignment/01-supervised-fine-tuning"
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Design a Code Completion System (Copilot)
@@ -32,12 +32,15 @@ context**. Latency and context assembly are the whole game. Note this is the
 
 ## 1. Clarify the problem
 
-- **Goal:** suggest the code the developer is about to type — completions that get
-  **accepted** and kept, right in the editor as they work.
-- **The bar is latency:** a suggestion must appear in a few hundred ms or the
-  developer has already typed past it. Usefulness × speed.
+- **Goal:** suggest the code the developer is about to type — completions that
+  get **accepted** and kept, right in the editor as they work.
+- **The bar is latency:** a suggestion must appear within a few hundred ms or
+  the developer has already typed past it. Usefulness × speed.
 - **Fill-in-the-middle (FIM):** the model completes *between* existing code
   (cursor mid-file), not just append — it must see code after the cursor too.
+- **The lineage:** Copilot began as a product wrapper around **Codex**, a
+  12B-parameter GPT fine-tuned on public GitHub code
+  ([Chen et al., 2021](https://arxiv.org/abs/2107.03374)).
 - **Scope:** the completion model + context assembly + low-latency serving.
 
 <Callout type="tip" title="Interview signal">
@@ -46,100 +49,154 @@ model sees prefix *and* suffix) and a **sub-300ms** budget that dominates every
 design choice. Lead with both.
 </Callout>
 
+<ThinkFirst question="Codex solved only 28.8% of HumanEval problems on the first sample. How can a model that's wrong two times out of three anchor a product used by millions of developers?">
+Because the product isn't "write correct code" — it's "propose code a human
+will vet in one glance." The developer is the verifier: a wrong suggestion
+costs one keypress to dismiss, a right one saves a whole thought. That
+asymmetry means moderate pass@1 plus **speed and volume** beats high accuracy
+delivered slowly — and it means the metric that matters is acceptance in the
+editor, not benchmark correctness. It also explains why sampling more
+candidates helps: Codex hit 70.2% when allowed 100 samples.
+</ThinkFirst>
+
 ## 2. Requirements & scale
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Latency | Under 300 ms to first suggestion | Small/fast model; short context; cancellation |
-| Acceptance | Suggestions actually kept | Good context + ranking + right length |
+| Latency | Under ~300 ms to first suggestion | Small/fast model; short context; cancellation |
+| Acceptance | Suggestions actually kept (~20–30% is strong) | Good context + ranking + right length |
 | Context | Repo-aware, current file | FIM + cross-file retrieval, budgeted |
 | Cost | Runs on nearly every keystroke | Debounce, cache, cheap model, batching |
 
+The acceptance target isn't arbitrary: in GitHub's own study, Copilot's
+acceptance rate sat around **27%** — and acceptance rate, more than any
+persistence metric, was what predicted developers' perceived productivity
+([Ziegler et al., 2022](https://arxiv.org/abs/2205.06537)).
+
+<ThinkFirst question="Your model was trained purely left-to-right. The cursor is inside a function body, with a return statement and three more functions below it. What specifically goes wrong with its completions?">
+The model can't see the suffix, so it completes as if the file ends at the
+cursor: it re-implements the return that already exists below, generates a
+closing brace that will duplicate one, or drifts into writing the *next*
+function that's already there. Syntactically fine, contextually broken — and
+the developer notices instantly. You need the model to condition on both sides
+of the cursor, which is a **training-time** change (an infilling objective),
+not a prompting trick.
+</ThinkFirst>
+
 ## 3. GenAI problem framing
 
-**Fill-in-the-middle autoregressive generation.** The model is trained with a FIM
-objective so it can condition on both the prefix (code before the cursor) and
-suffix (after). The product decides *when* to trigger, *how much* to generate, and
-*whether* to show it (confidence/ranking).
+**Fill-in-the-middle autoregressive generation.** OpenAI showed you get
+infilling almost for free: during pretraining, move a random middle span to the
+end of the document (marked with sentinel tokens), and the model learns to
+generate the middle conditioned on prefix + suffix — with **no measurable loss
+in left-to-right ability** ("FIM-for-free"), which is why they recommend
+training all code models this way by default
+([Bavarian et al., 2022](https://arxiv.org/abs/2207.14255)). At serving time,
+the product decides *when* to trigger, *how much* to generate, and *whether* to
+show it.
 
-*What was the pre-generative baseline?* Rule/AST-based autocomplete (IntelliSense)
-— great for single symbols, useless for multi-line intent. Generative completion
-writes whole logical spans.
+*What was the pre-generative baseline?* Rule/AST-based autocomplete
+(IntelliSense) — great for single symbols, useless for multi-line intent.
+Generative completion writes whole logical spans.
 
 <ThinkFirst question="You'll train on public code from the internet. What's the legal landmine — and at which layers do you defuse it?">
 **License contamination**: the model can memorize and regurgitate copyleft
 (GPL) code verbatim into a customer's proprietary codebase. Defuse at three
 layers: filter and dedup training data by license, detect and suppress
 verbatim matches at generation time, and offer users a "block matching public
-code" mode. One layer is never enough — memorization survives filtering.
+code" mode — which is exactly the control GitHub shipped. One layer is never
+enough — memorization survives filtering.
 </ThinkFirst>
 
 ## 4. Data & training *(spine: data)*
 
 - **Data:** large permissively-licensed code corpora; **license filtering** and
-  dedup are critical (regurgitating GPL code is a real risk).
-- **FIM training:** documents are split into prefix/middle/suffix so the model
-  learns infilling, not just left-to-right.
-- **Fine-tuning:** on high-quality code + acceptance-weighted signals for the
-  product's languages.
+  near-dedup are critical (regurgitating GPL code is a real product risk).
+- **FIM training:** documents transformed prefix/suffix/middle with sentinel
+  tokens, mixed at a high FIM rate alongside ordinary left-to-right data.
+- **Fine-tuning:** on high-quality code for the product's languages, weighted by
+  what real telemetry says gets accepted.
+
+<ThinkFirst question="The repo has 500k lines; your latency budget affords a few thousand tokens of context. The cursor is mid-file. What goes into the prompt, and in what priority order?">
+Closest-first, cheapest-first: (1) the current file's prefix and suffix around
+the cursor — non-negotiable; (2) snippets from the developer's **other open
+tabs** that textually match the cursor neighborhood — open files are a free
+relevance signal, no index needed; (3) symbol-level context — imports and
+signatures of referenced functions; (4) only then repo-wide retrieval. A
+ranked "prompt library" assembles these under the token budget. GitHub found
+the open-tabs trick alone lifted acceptance ~5% relative — cheap context beats
+clever context.
+</ThinkFirst>
 
 ## 5. Model & generation *(spine: hypothesis-space + objective)*
 
-- **Model:** a decoder-only code LLM sized for latency (smaller than a chat
-  frontier model) with FIM support.
-- **Context assembly:** current-file prefix+suffix, plus **retrieved** relevant
-  snippets from open files / the repo (imports, signatures, neighboring code) —
-  budgeted to fit the latency-bound context.
+- **Model:** a decoder-only code LLM sized for latency (Codex-class ~12B, far
+  smaller than a chat frontier model) with FIM support.
+- **Context assembly:** current-file prefix+suffix, plus **neighboring tabs** —
+  snippets from other open files matched against the code around the cursor —
+  and repo signals (imports, signatures), prioritized into the prompt by a
+  dedicated prompt-assembly component
+  ([GitHub Blog, 2024](https://github.blog/ai-and-ml/github-copilot/how-github-copilot-is-getting-better-at-understanding-your-code/)).
 - **Decoding:** low temperature; generate a bounded span; stop at a natural
-  boundary.
+  syntactic boundary so the suggestion is a tidy unit.
 
 <SamplingStrategiesViz />
 
 Decoding strategy matters: greedy/low-temp for precise completions, with early
-stopping so the suggestion is a tidy span, not a runaway block.
+stopping so the suggestion is a clean span, not a runaway block.
 
 <ThinkFirst question="The model would run on nearly every keystroke of millions of developers. What keeps that from being absurdly wasteful?">
 Mostly *not running it*: **debounce** until typing pauses, **cancel** in-flight
 requests the next keystroke supersedes, and **cache** completions for repeated
-contexts. Then make the runs that survive cheap — a small model, KV-cache
-reuse, speculative decoding. The generations you never start are the biggest
-saving.
+contexts. Then make the runs that survive cheap — a small model, KV-cache reuse
+across keystrokes (the prefix barely changes), speculative decoding. The
+generations you never start are the biggest saving.
 </ThinkFirst>
 
 ## 6. Serving & scaling
 
-Sub-300ms means: a small model on optimized inference (continuous batching, KV
-cache), **debouncing** keystrokes, **cancellation** of superseded requests,
-**caching** identical contexts, and speculative decoding for latency. Suggestions
-are generated speculatively and discarded if the user types on.
+Sub-300ms means: a small model on optimized inference (continuous batching,
+KV-cache reuse — consecutive keystrokes share almost their entire prefix),
+**debouncing** keystrokes, **cancellation** of superseded requests, **caching**
+identical contexts, and speculative decoding for latency. Suggestions are
+generated speculatively and discarded if the user types on.
 
 <WikiLink slug="speculative-decoding" title="Speculative decoding for low-latency completion" />
 
-<ThinkFirst question="What's the north-star metric for a completion product — and how can it mislead you?">
-**Acceptance rate** — but it's gameable: a system that spams short, trivial
-completions gets accepted often while feeling like noise. Pair it with
-**retention** (does accepted code survive the next few minutes of editing?)
-and suggestion frequency. A quieter system with higher retention usually beats
-a chattier one with higher raw acceptance.
+<ThinkFirst question="What's the north-star metric for a completion product — and how can optimizing it naively make the product worse?">
+**Acceptance rate** — the metric GitHub found actually tracks perceived
+productivity. But it's gameable: a system that spams short, trivial
+completions gets accepted often while feeling like noise, and acceptance rises
+mechanically if you only trigger on easy spots. Pair it with **retention**
+(does accepted code survive the next few minutes of editing?) and suggestion
+frequency, and A/B against task-level outcomes. A quieter system with higher
+retention usually beats a chattier one with higher raw acceptance.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
 
-- **Acceptance rate** — the north star: fraction of suggestions accepted.
-- **Retention:** do accepted suggestions survive (not immediately deleted/edited)?
-  — the truer quality signal.
-- **Offline:** exact-match / pass@k on held-out FIM tasks and unit-tested
-  benchmarks (HumanEval-style) before rollout.
-- **Latency SLOs:** p50/p95 time-to-suggestion.
+- **Acceptance rate** — the north star (~27% for Copilot in published data);
+  best single predictor of perceived productivity
+  ([Ziegler et al., 2022](https://arxiv.org/abs/2205.06537)).
+- **Retention:** do accepted suggestions survive subsequent edits? — the truer
+  quality signal.
+- **Offline:** exact-match on held-out FIM tasks; pass@k on unit-tested
+  benchmarks (HumanEval-style) before rollout — necessary but not sufficient,
+  since benchmark gains don't guarantee editor acceptance.
+- **Outcome studies:** in a controlled experiment, developers with Copilot
+  finished an HTTP-server task **55.8% faster** than the control group
+  ([Peng et al., 2023](https://arxiv.org/abs/2302.06590)) — the product-level
+  effect all the proxy metrics approximate.
+- **Latency SLOs:** p50/p95 time-to-suggestion, measured in the editor.
 
 ## 8. Safety & guardrails
 
-- **License/IP:** filter training data; detect and suppress verbatim regurgitation
-  of licensed code; offer a "block matching public code" mode.
+- **License/IP:** filter training data; detect and suppress verbatim
+  regurgitation; offer a "block matching public code" setting.
 - **Security:** avoid suggesting insecure patterns (hardcoded secrets, SQL
-  injection); scan suggestions.
-- **Privacy:** the user's proprietary code context must never leak across tenants
-  or into training without consent.
+  injection); scan suggestions before display.
+- **Privacy:** the user's proprietary code context must never leak across
+  tenants or into training without consent.
 
 ## 9. Tradeoffs & alternatives
 
@@ -147,37 +204,52 @@ a chattier one with higher raw acceptance.
 |---|---|---|
 | FIM code LLM | Left-to-right only | Editing happens mid-file; suffix context is essential |
 | Small fast model | Frontier model | Latency budget beats marginal quality here |
-| Retrieved repo context | Current file only | Cross-file signatures/imports raise acceptance |
+| Neighboring-tab + repo context | Current file only | Measured ~5% relative acceptance lift from open-tab snippets |
 | Debounce + cancel | Complete every keystroke | Cuts cost and wasted generations dramatically |
 
 ## 10. Interviewer follow-ups
 
 <Details summary="Why not just use a big chat model for completions?">
-Latency and cost. A frontier model can't reliably return in under 300ms on every
-keystroke, and the marginal quality doesn't help if the suggestion arrives after
-the developer typed past it. A smaller FIM-tuned model on optimized serving wins
-the speed/usefulness tradeoff that defines this product.
+Latency and cost. A frontier model can't reliably return in under 300ms on
+every keystroke, and marginal quality doesn't help if the suggestion arrives
+after the developer typed past it. A smaller FIM-trained model on optimized
+serving wins the speed/usefulness tradeoff — the same reason Copilot ran on a
+12B-class Codex model rather than the largest GPT available.
 </Details>
 
 <Details summary="Acceptance rate looks fine but developers say suggestions are 'noise.' What's missing?">
 Acceptance can be gamed by frequent trivial completions. Track *retention* (do
 accepted suggestions survive edits?) and suggestion frequency — a lower-volume,
-higher-retention setup often feels far better. Tune when to trigger and how long
-to suggest, not just raw acceptance.
+higher-retention configuration often feels far better. Tune when to trigger and
+how long to suggest, not just raw acceptance; Ziegler et al. found acceptance
+correlates with perceived productivity, but that correlation assumes suggestions
+are triggered honestly, not farmed.
 </Details>
 
 <Details summary="How do you prevent leaking one company's private code to another?">
-Strict tenant isolation: a user's context is used only for their own completions,
-never pooled for serving or training without explicit consent, and never cached
-across tenants. Combined with license filtering on training data and verbatim-
-match suppression, this is both a privacy and an IP requirement.
+Strict tenant isolation: a user's context is used only for their own
+completions, never pooled for serving or training without explicit consent, and
+never cached across tenants. Combined with license filtering on training data
+and verbatim-match suppression, this is both a privacy and an IP requirement.
 </Details>
 
 ## Key takeaways
 
 - Code completion is **fill-in-the-middle generation** under a **sub-300ms**
-  budget — latency and context assembly dominate, not model size.
-- **Repo-aware context + FIM** raise acceptance; **debounce, cancel, cache, and
-  speculative decoding** make per-keystroke serving affordable.
-- Optimize for **acceptance *and* retention**, and treat **license/IP and tenant
-  privacy** as first-class guardrails.
+  budget — latency and context assembly dominate, not model size; FIM comes
+  free at training time if you transform the data.
+- **Cheap context wins:** current file + neighboring tabs + signatures,
+  priority-ranked into a budgeted prompt, measurably lift acceptance; debounce,
+  cancel, cache, and speculative decoding make per-keystroke serving affordable.
+- Optimize for **acceptance *and* retention** (Copilot's published acceptance is
+  ~27%, and it predicts perceived productivity), and treat **license/IP and
+  tenant privacy** as first-class guardrails.
+
+## References
+
+- [Evaluating Large Language Models Trained on Code](https://arxiv.org/abs/2107.03374) — Chen et al., 2021; the Codex paper — HumanEval, pass@k, and the 12B model behind the original Copilot.
+- [Efficient Training of Language Models to Fill in the Middle](https://arxiv.org/abs/2207.14255) — Bavarian et al. (OpenAI), 2022; the FIM data transformation and the "FIM-for-free" result.
+- [How GitHub Copilot is getting better at understanding your code](https://github.blog/ai-and-ml/github-copilot/how-github-copilot-is-getting-better-at-understanding-your-code/) — GitHub Blog; neighboring-tabs context and its ~5% relative acceptance lift, prompt-library design.
+- [Inside GitHub: Working with the LLMs behind GitHub Copilot](https://github.blog/ai-and-ml/github-copilot/inside-github-working-with-the-llms-behind-github-copilot/) — GitHub Blog; how the Copilot team iterated on models and prompt engineering with OpenAI.
+- [Productivity Assessment of Neural Code Completion](https://arxiv.org/abs/2205.06537) — Ziegler et al., MAPS 2022; Copilot's ~27% acceptance rate and acceptance as the best predictor of perceived productivity.
+- [The Impact of AI on Developer Productivity: Evidence from GitHub Copilot](https://arxiv.org/abs/2302.06590) — Peng et al., 2023; controlled experiment showing 55.8% faster task completion with Copilot.
