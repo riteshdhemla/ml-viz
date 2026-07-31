@@ -4,7 +4,7 @@ description: "Non-linear dimensionality reduction for visualization and cluster 
 order: 2
 type: concept
 spineStages: [data]
-estimatedMinutes: 20
+estimatedMinutes: 21
 ---
 
 # t-SNE & UMAP
@@ -14,6 +14,8 @@ PCA finds linear projections. But what if the data lies on a **curved manifold**
 **Real-world examples:** Visualizing single-cell RNA data (thousands of cell types), exploring word embeddings, visualizing deep network activations, cluster discovery in high-dimensional data.
 
 ## t-SNE (t-distributed Stochastic Neighbor Embedding)
+
+t-SNE ([van der Maaten & Hinton, 2008](https://jmlr.org/papers/v9/vandermaaten08a.html)) is a variant of Stochastic Neighbor Embedding that swaps in a Student-t low-dimensional kernel to fight the crowding problem.
 
 ### The idea
 
@@ -95,18 +97,18 @@ plt.show()
 
 ### Limitations of t-SNE
 
-1. **Slow:** $O(n^2)$ in naive implementation (Barnes-Hut approximation: $O(n \log n)$)
+1. **Slow:** $O(n^2)$ in naive implementation (the [Barnes-Hut approximation](https://jmlr.org/papers/v15/vandermaaten14a.html) of van der Maaten (2014) brings it to $O(n \log n)$)
 2. **Non-deterministic:** Different runs give different embeddings
 3. **Preserves local, not global structure:** Cluster sizes and distances between clusters are not meaningful
 4. **Cannot embed new points:** No `transform()` method — must retrain
 
 <Callout type="warning" title="Don't over-interpret t-SNE plots">
-  t-SNE cluster sizes, distances between clusters, and global geometry are NOT meaningful. Only the relative positions within clusters are reliable. A tight cluster means the points are similar; that's all you can conclude.
+  t-SNE cluster sizes, distances between clusters, and global geometry are NOT meaningful. Only the relative positions within clusters are reliable. A tight cluster means the points are similar; that's all you can conclude. [Wattenberg, Viégas & Johnson (2016)](https://distill.pub/2016/misread-tsne/) walk through exactly how perplexity and random seeds distort these plots.
 </Callout>
 
 ## UMAP (Uniform Manifold Approximation and Projection)
 
-UMAP is faster and often better at preserving global structure than t-SNE.
+UMAP ([McInnes, Healy & Melville, 2018](https://arxiv.org/abs/1802.03426)) is faster and often better at preserving global structure than t-SNE, built on a Riemannian-geometry and algebraic-topology framework rather than probabilistic neighbor matching.
 
 ### Advantages over t-SNE
 
@@ -187,6 +189,13 @@ X_embedded = pipeline.fit_transform(X_high_dim)
 - They preserve **local** neighborhoods; cluster sizes/distances aren't literal.
 - t-SNE's **perplexity** and UMAP's **n_neighbors** balance local vs global structure.
 - Denoise with PCA first; never feed these embeddings to a downstream model.
+
+## Further reading
+
+- [Visualizing Data using t-SNE](https://jmlr.org/papers/v9/vandermaaten08a.html) — van der Maaten & Hinton, JMLR 2008; the original t-SNE.
+- [Accelerating t-SNE using Tree-Based Algorithms](https://jmlr.org/papers/v15/vandermaaten14a.html) — van der Maaten, JMLR 2014; the Barnes-Hut $O(n \log n)$ variant.
+- [UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction](https://arxiv.org/abs/1802.03426) — McInnes, Healy & Melville, 2018; the UMAP algorithm.
+- [How to Use t-SNE Effectively](https://distill.pub/2016/misread-tsne/) — Wattenberg, Viégas & Johnson, Distill 2016; interactive guide to reading these plots.
 
 ## Related concepts
 

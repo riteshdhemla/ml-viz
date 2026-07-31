@@ -4,7 +4,7 @@ description: "Soft clustering with probabilistic assignments — a flexible gene
 order: 1
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 20
+estimatedMinutes: 21
 ---
 
 # Gaussian Mixture Models (GMMs)
@@ -17,7 +17,7 @@ K-Means assigns each point to exactly one cluster. **GMMs** assign soft probabil
 
 ## The model
 
-A GMM assumes data is generated from a mixture of $K$ Gaussian distributions:
+A GMM assumes data is generated from a mixture of $K$ Gaussian distributions (the finite-mixture framework surveyed in [McLachlan & Peel, 2000](https://doi.org/10.1002/0471721182)):
 
 $$
 P(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \cdot \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)
@@ -153,6 +153,8 @@ labels = gmm.predict(X)
 
 ### BIC (Bayesian Information Criterion)
 
+[Schwarz (1978)](https://doi.org/10.1214/aos/1176344136):
+
 $$
 \text{BIC} = -2 \log P(X \mid \hat{\theta}) + k \ln(n)
 $$
@@ -160,6 +162,8 @@ $$
 where $k$ is the total number of free parameters in the model (not the number of components $K$) and $n$ is the number of data points. Penalizes complexity more than AIC — prefers simpler models.
 
 ### AIC (Akaike Information Criterion)
+
+[Akaike (1974)](https://doi.org/10.1109/TAC.1974.1100705):
 
 $$
 \text{AIC} = -2 \log P(X \mid \hat{\theta}) + 2k
@@ -219,6 +223,13 @@ plt.show()
 - Unlike K-Means it captures **elliptical** clusters and probabilistic membership.
 - **Covariance type** trades flexibility for parameters; `full` is most expressive.
 - Choose the number of components with **BIC/AIC**, not the likelihood alone.
+
+## Further reading
+
+- [Maximum Likelihood from Incomplete Data via the EM Algorithm](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) — Dempster, Laird & Rubin, JRSS-B 1977; the algorithm that fits a GMM.
+- [Finite Mixture Models](https://doi.org/10.1002/0471721182) — McLachlan & Peel, Wiley 2000; the definitive treatment of mixtures and their identifiability.
+- [Estimating the Dimension of a Model](https://doi.org/10.1214/aos/1176344136) — Schwarz, Annals of Statistics 1978; the BIC.
+- [A New Look at the Statistical Model Identification](https://doi.org/10.1109/TAC.1974.1100705) — Akaike, IEEE TAC 1974; the AIC.
 
 ## Related concepts
 

@@ -4,12 +4,12 @@ description: "The independence assumption that shouldn't work but does — build
 order: 3
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # Naive Bayes
 
-[Gaussian mixture models](/courses/probabilistic-models/01-gaussian-mixture-models) modeled how data is *generated* without labels. Naive Bayes applies the same generative thinking to classification: model how each class generates its features, then invert with Bayes' rule. It powered the first generation of spam filters and remains a startlingly strong baseline for text.
+[Gaussian mixture models](/courses/probabilistic-models/01-gaussian-mixture-models) modeled how data is *generated* without labels. Naive Bayes applies the same generative thinking to classification: model how each class generates its features, then invert with Bayes' rule. The probabilistic-indexing idea goes back to [Maron (1961)](https://doi.org/10.1145/321075.321084); it powered the first generation of spam filters ([Sahami et al., 1998](https://aaai.org/papers/055-ws98-05-009/)) and remains a startlingly strong baseline for text.
 
 ## From Bayes' rule to a classifier
 
@@ -53,12 +53,12 @@ P(x_j \mid y) = \frac{\text{count}(x_j, y) + \alpha}{\text{count}(y) + \alpha \,
 $$
 
 <Callout type="info" title="Pick the flavor to match the features">
-  **Multinomial** — word counts, the text workhorse. **Bernoulli** — binary present/absent features. **Gaussian** — continuous features, fitting a per-class mean and variance to each (the same per-dimension Gaussian estimation you saw in [the EM algorithm](/courses/probabilistic-models/02-em-algorithm), but with labels making it a one-shot count).
+  **Multinomial** — word counts, the text workhorse. **Bernoulli** — binary present/absent features. ([McCallum & Nigam, 1998](https://aaai.org/papers/041-ws98-05-007/) compare these two event models and find multinomial wins at larger vocabularies.) **Gaussian** — continuous features, fitting a per-class mean and variance to each (the same per-dimension Gaussian estimation you saw in [the EM algorithm](/courses/probabilistic-models/02-em-algorithm), but with labels making it a one-shot count).
 </Callout>
 
 ## Why the wrong assumption still works
 
-Words are *not* independent given the class — "machine" and "learning" travel together. So $P(y \mid \mathbf{x})$ is badly calibrated: correlated evidence gets double-counted and the predicted probabilities saturate toward 0 or 1. But classification only needs the **argmax** to be right, and the ranking of classes survives a lot of double-counting. Wrong probabilities, right answers.
+Words are *not* independent given the class — "machine" and "learning" travel together. So $P(y \mid \mathbf{x})$ is badly calibrated: correlated evidence gets double-counted and the predicted probabilities saturate toward 0 or 1. But classification only needs the **argmax** to be right, and the ranking of classes survives a lot of double-counting. [Domingos & Pazzani (1997)](https://doi.org/10.1023/A:1007413511361) proved this formally: the classifier can be optimal under zero-one loss even when the independence assumption is violated by a wide margin. Wrong probabilities, right answers.
 
 The trade-offs follow directly:
 
@@ -73,6 +73,13 @@ The trade-offs follow directly:
 - Training is counting; prediction is summing log-likelihood votes
 - Laplace smoothing prevents a single unseen word from vetoing the entire prediction
 - The independence assumption breaks calibration, not (usually) the argmax — great classifier, untrustworthy probabilities
+
+## Further reading
+
+- [Automatic Indexing: An Experimental Inquiry](https://doi.org/10.1145/321075.321084) — Maron, J. ACM 1961; the origin of probabilistic text classification.
+- [On the Optimality of the Simple Bayesian Classifier under Zero-One Loss](https://doi.org/10.1023/A:1007413511361) — Domingos & Pazzani, Machine Learning 1997; why the wrong assumption still classifies well.
+- [A Bayesian Approach to Filtering Junk E-Mail](https://aaai.org/papers/055-ws98-05-009/) — Sahami, Dumais, Heckerman & Horvitz, AAAI 1998; the canonical spam-filter application.
+- [A Comparison of Event Models for Naive Bayes Text Classification](https://aaai.org/papers/041-ws98-05-007/) — McCallum & Nigam, AAAI 1998; multinomial vs Bernoulli models.
 
 ## Related concepts
 

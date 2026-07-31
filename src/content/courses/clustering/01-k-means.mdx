@@ -4,7 +4,7 @@ description: "Partitioning data into K groups by minimizing within-cluster varia
 order: 1
 type: concept
 spineStages: [objective, optimization]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # K-Means Clustering
@@ -32,7 +32,7 @@ where $C_k$ is the set of points in cluster $k$ and $\boldsymbol{\mu}_k$ is its 
   Imagine hanging $K$ magnets on a whiteboard and placing nails near each. Each nail jumps to the nearest magnet, then each magnet moves to the center of its nails. Repeat until nothing moves.
 </Callout>
 
-Both steps provably decrease the objective $J$: the assign step picks the nearest centroid for each point; the update step sets each centroid to the mean of its cluster, which is the unique minimizer of within-cluster squared distance (shown by setting the gradient to zero). Since $J$ can only decrease and there are finitely many assignments, K-Means must converge — to a local optimum.
+This two-step iteration is **Lloyd's algorithm** ([Lloyd, 1982](https://doi.org/10.1109/TIT.1982.1056489), first circulated as a 1957 Bell Labs report); the name "k-means" itself is due to [MacQueen (1967)](https://projecteuclid.org/euclid.bsmsp/1200512992). Both steps provably decrease the objective $J$: the assign step picks the nearest centroid for each point; the update step sets each centroid to the mean of its cluster, which is the unique minimizer of within-cluster squared distance (shown by setting the gradient to zero). Since $J$ can only decrease and there are finitely many assignments, K-Means must converge — to a local optimum.
 
 For the gradient derivation and a complete 5-point 2-cluster worked iteration (all distance calculations, centroid updates, and the $J$ decrease verified numerically), see:
 
@@ -59,7 +59,7 @@ K-Means never complains about a bad $K$ — its objective $J$ *always* decreases
 
 ## K-Means++ initialization
 
-Standard K-Means can get stuck in bad local optima. K-Means++ spreads initial centroids far apart:
+Standard K-Means can get stuck in bad local optima. **K-Means++** ([Arthur & Vassilvitskii, 2007](https://theory.stanford.edu/~sergei/papers/kMeansPP-soda.pdf)) spreads initial centroids far apart and comes with an $O(\log K)$ approximation guarantee on the objective:
 
 1. Pick first centroid randomly
 2. For each remaining centroid, pick a point with probability proportional to its distance from the nearest existing centroid
@@ -108,6 +108,13 @@ kmeans = KMeans(n_clusters=3, init='k-means++', n_init=10, random_state=42)
 - It minimizes within-cluster variance but assumes spherical, similar-size clusters.
 - Pick $K$ with the **elbow** or **silhouette**; use **K-Means++** and `n_init>1`.
 - Always **standardize** — K-Means uses Euclidean distance.
+
+## Further reading
+
+- [Least Squares Quantization in PCM](https://doi.org/10.1109/TIT.1982.1056489) — Lloyd, IEEE Trans. Information Theory 1982 (1957 report); the assign/update iteration now called Lloyd's algorithm.
+- [Some Methods for Classification and Analysis of Multivariate Observations](https://projecteuclid.org/euclid.bsmsp/1200512992) — MacQueen, Berkeley Symposium 1967; coins the term "k-means".
+- [k-means++: The Advantages of Careful Seeding](https://theory.stanford.edu/~sergei/papers/kMeansPP-soda.pdf) — Arthur & Vassilvitskii, SODA 2007; the distance-weighted seeding with an $O(\log K)$ guarantee.
+- [Silhouettes: A Graphical Aid to the Interpretation and Validation of Cluster Analysis](https://doi.org/10.1016/0377-0427(87)90125-7) — Rousseeuw, J. Comp. Appl. Math. 1987; the score used to pick $K$.
 
 ## Related concepts
 

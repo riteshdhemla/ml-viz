@@ -4,12 +4,12 @@ description: "Finding the directions of maximum variance to reduce dimensions."
 order: 1
 type: concept
 spineStages: [data, hypothesis-space]
-estimatedMinutes: 20
+estimatedMinutes: 21
 ---
 
 # Principal Component Analysis (PCA)
 
-PCA finds the directions of **maximum variance** in the data and projects onto them. It's the most popular dimensionality reduction technique. In the [ML project loop](/wiki/ml-project-loop) it lives in the **data** slot: it's a representation transform applied *before* modelling, changing what the raw material looks like rather than what the model or the loss is.
+PCA finds the directions of **maximum variance** in the data and projects onto them. It's the most popular dimensionality reduction technique, tracing to [Pearson (1901)](https://doi.org/10.1080/14786440109462720), who framed it as fitting lines and planes of closest fit, and [Hotelling (1933)](https://doi.org/10.1037/h0071325), who gave the modern variance-maximizing formulation and the name "principal components". In the [ML project loop](/wiki/ml-project-loop) it lives in the **data** slot: it's a representation transform applied *before* modelling, changing what the raw material looks like rather than what the model or the loss is.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -206,7 +206,7 @@ Projecting to fewer components and reconstructing (`inverse_transform`) denoises
 | Foundational technique | Components are hard to interpret |
 
 <Callout type="warning" title="PCA maximizes variance, not accuracy">
-  PCA finds directions of maximum variance, but these may not be the best for classification. If you want class-discriminative projections, use **Linear Discriminant Analysis (LDA)** instead.
+  PCA finds directions of maximum variance, but these may not be the best for classification. If you want class-discriminative projections, use **Linear Discriminant Analysis (LDA)** — [Fisher's (1936)](https://doi.org/10.1111/j.1469-1809.1936.tb02137.x) supervised projection that maximizes between-class over within-class scatter — instead.
 </Callout>
 
 <Exercise id="pca-projection" />
@@ -227,6 +227,13 @@ Projecting to fewer components and reconstructing (`inverse_transform`) denoises
 - Projecting onto the top $k$ components reduces dimensions while keeping most variance.
 - Choose $k$ from **cumulative explained variance** (e.g. 95%) or the scree elbow.
 - **Standardize first**; PCA is linear and unsupervised, computed via **SVD**.
+
+## Further reading
+
+- [On Lines and Planes of Closest Fit to Systems of Points in Space](https://doi.org/10.1080/14786440109462720) — Pearson, Phil. Mag. 1901; the closest-fit origin of PCA.
+- [Analysis of a Complex of Statistical Variables into Principal Components](https://doi.org/10.1037/h0071325) — Hotelling, J. Educ. Psychol. 1933; the variance-maximizing formulation and the name.
+- [Principal Component Analysis: A Review and Recent Developments](https://doi.org/10.1098/rsta.2015.0202) — Jolliffe & Cadima, Phil. Trans. R. Soc. A 2016; an accessible modern survey.
+- [The Use of Multiple Measurements in Taxonomic Problems](https://doi.org/10.1111/j.1469-1809.1936.tb02137.x) — Fisher, Annals of Eugenics 1936; LDA, the supervised alternative.
 
 ## Related concepts
 

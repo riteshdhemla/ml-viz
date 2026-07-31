@@ -4,7 +4,7 @@ description: "Grouping data without pre-specifying K — agglomerative and densi
 order: 2
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 10
+estimatedMinutes: 11
 ---
 
 # Hierarchical Clustering & DBSCAN
@@ -25,6 +25,8 @@ How do we measure distance between clusters?
 | **Complete** | Max distance between any two points | Compact clusters; sensitive to outliers |
 | **Average** | Mean distance between all pairs | Balanced; most commonly used |
 | **Ward** | Minimizes within-cluster variance | Produces equally-sized clusters |
+
+**Ward's** criterion — merge the pair that adds the least within-cluster sum of squares — comes from [Ward (1963)](https://doi.org/10.1080/01621459.1963.10500845), the paper that framed agglomerative clustering as optimizing an explicit objective at each merge.
 
 For A(1,1), B(2,2), C(8,8), D(9,9), all three linkages produce the same clusters ($\{A,B\}$ and $\{C,D\}$) but at different dendrogram heights: single at 8.49, average at 9.90, complete at 11.31. Key pairwise distances: $d(A,B)=d(C,D)=\sqrt{2}\approx1.41$ (intra-cluster, first merges); then $d(B,C)\approx8.49$, $d(A,C)=d(B,D)\approx9.90$, $d(A,D)\approx11.31$ — single linkage uses the minimum (8.49), complete the maximum (11.31), average the mean ($\approx9.90$). The structure matches because the blobs are well-separated — linkages disagree on cluster *assignments* only when clusters are elongated, of unequal size, or connected by bridge points. For the full pairwise distance matrix, step-by-step merge trace, Ward linkage derivation, and a comparison on crescents:
 
@@ -67,7 +69,7 @@ print(f"Labels: {labels}")  # [0, 0, 1, 1, 0]
 
 ## DBSCAN (Density-Based Spatial Clustering)
 
-DBSCAN finds clusters of arbitrary shape based on **density** — regions where points are closely packed. A core point has at least `min_samples` neighbors within radius $\varepsilon$; border points lie within reach of a core point; everything else is noise (label $-1$). For the formal point-type definitions, the complete 9-point worked example classifying every point at $\varepsilon=2$ / `min_samples=3`, and the k-distance elbow method for parameter selection:
+DBSCAN ([Ester, Kriegel, Sander & Xu, 1996](https://cdn.aaai.org/KDD/1996/KDD96-037.pdf) — the KDD paper that won the 2014 test-of-time award) finds clusters of arbitrary shape based on **density** — regions where points are closely packed. A core point has at least `min_samples` neighbors within radius $\varepsilon$; border points lie within reach of a core point; everything else is noise (label $-1$). For the formal point-type definitions, the complete 9-point worked example classifying every point at $\varepsilon=2$ / `min_samples=3`, and the k-distance elbow method for parameter selection:
 
 <WikiLink slug="dbscan-algorithm" title="DBSCAN: Core, Border, Noise Classification" />
 
@@ -124,7 +126,7 @@ plt.show()
 | DBSCAN | No | Arbitrary | Yes | $O(n \log n)$ w/ index (low-dim); $O(n^2)$ worst case |
 
 <Callout type="warning" title="DBSCAN struggles with varying density">
-  DBSCAN uses a single $\varepsilon$ for all clusters. If clusters have very different densities, DBSCAN will either merge dense clusters or fragment sparse ones. Consider HDBSCAN for varying densities.
+  DBSCAN uses a single $\varepsilon$ for all clusters. If clusters have very different densities, DBSCAN will either merge dense clusters or fragment sparse ones. Consider **HDBSCAN** ([Campello, Moulavi & Sander, 2013](https://doi.org/10.1007/978-3-642-37456-2_14)), which builds a hierarchy of density levels and so tolerates varying densities.
 </Callout>
 
 <Exercise id="dbscan-parameters" />
@@ -145,6 +147,13 @@ plt.show()
 - **Linkage** (single/complete/average/ward) changes cluster shape.
 - **DBSCAN** finds arbitrary shapes by density and labels sparse points as **noise**.
 - Tune DBSCAN's `eps` via the k-distance elbow; it struggles with varying densities.
+
+## Further reading
+
+- [Hierarchical Grouping to Optimize an Objective Function](https://doi.org/10.1080/01621459.1963.10500845) — Ward, JASA 1963; the variance-minimizing linkage.
+- [A Density-Based Algorithm for Discovering Clusters in Large Spatial Databases with Noise](https://cdn.aaai.org/KDD/1996/KDD96-037.pdf) — Ester, Kriegel, Sander & Xu, KDD 1996; the original DBSCAN.
+- [Density-Based Clustering Based on Hierarchical Density Estimates](https://doi.org/10.1007/978-3-642-37456-2_14) — Campello, Moulavi & Sander, PAKDD 2013; HDBSCAN for varying densities.
+- [Density-Based Clustering in Spatial Databases: The Algorithm GDBSCAN and Its Applications](https://doi.org/10.1023/A:1009745219419) — Sander, Ester, Kriegel & Xu, DMKD 1998; the generalized DBSCAN framework.
 
 ## Related concepts
 

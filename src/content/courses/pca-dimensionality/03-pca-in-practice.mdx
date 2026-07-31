@@ -4,7 +4,7 @@ description: "Choosing the number of components, reconstructing data, whitening,
 order: 3
 type: concept
 spineStages: [data]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # PCA in Practice
@@ -25,7 +25,7 @@ Three standard answers, in increasing order of principle:
 
 ## Reconstruction: compression with a quality dial
 
-Projecting to $m$ components and mapping back gives the best rank-$m$ approximation of your data:
+Projecting to $m$ components and mapping back gives the best rank-$m$ approximation of your data — the [Eckart & Young (1936)](https://doi.org/10.1007/BF02288367) theorem guarantees no rank-$m$ matrix has smaller squared error:
 
 $$
 \hat{\mathbf{x}} = \boldsymbol{\mu} + \sum_{i=1}^{m} (\mathbf{v}_i^\top (\mathbf{x} - \boldsymbol{\mu}))\, \mathbf{v}_i
@@ -33,7 +33,7 @@ $$
 
 The mean squared reconstruction error equals exactly the sum of the *discarded* eigenvalues $\sum_{i > m} \lambda_i$ — variance kept is fidelity kept. This is PCA as lossy compression: store $m$ coefficients per sample instead of $d$ features.
 
-The classic demonstration is **eigenfaces**: run PCA on thousands of face images and the leading components are ghostly face-like patterns — lighting direction, face width, glasses. Any face compresses to ~50–150 coefficients with recognizable reconstruction, from inputs of thousands of pixels. Reconstruction error also doubles as a simple **anomaly detector**: a sample that reconstructs poorly doesn't live in the subspace the training data occupies.
+The classic demonstration is **eigenfaces** ([Turk & Pentland, 1991](https://doi.org/10.1162/jocn.1991.3.1.71)): run PCA on thousands of face images and the leading components are ghostly face-like patterns — lighting direction, face width, glasses. Any face compresses to ~50–150 coefficients with recognizable reconstruction, from inputs of thousands of pixels. Reconstruction error also doubles as a simple **anomaly detector**: a sample that reconstructs poorly doesn't live in the subspace the training data occupies.
 
 Here is that equation as a picture — toggle how many components survive and watch where the error goes:
 
@@ -57,6 +57,12 @@ PCA is linear and variance-chasing. It will not unroll a swiss-roll manifold, an
 - Reconstruction error = discarded eigenvalues; it powers compression and simple anomaly detection
 - Whitening equalizes component variances — useful for scale-sensitive consumers, risky on noise components
 - Fit PCA on training data only; for non-linear structure, PCA first, then t-SNE/UMAP
+
+## Further reading
+
+- [The Approximation of One Matrix by Another of Lower Rank](https://doi.org/10.1007/BF02288367) — Eckart & Young, Psychometrika 1936; why truncated PCA is the optimal low-rank fit.
+- [Eigenfaces for Recognition](https://doi.org/10.1162/jocn.1991.3.1.71) — Turk & Pentland, J. Cognitive Neuroscience 1991; the eigenfaces application.
+- [Principal Component Analysis: A Review and Recent Developments](https://doi.org/10.1098/rsta.2015.0202) — Jolliffe & Cadima, Phil. Trans. R. Soc. A 2016; component selection, scaling, and whitening in practice.
 
 ## Related concepts
 

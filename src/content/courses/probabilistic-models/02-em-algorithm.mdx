@@ -4,12 +4,12 @@ description: "Iteratively estimating latent variables — the engine behind GMMs
 order: 2
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # The Expectation-Maximization Algorithm
 
-GMMs have latent variables (which component generated each point?) that we never observe. The **EM algorithm** handles this by iteratively guessing the latent variables and optimizing parameters — it is the **optimization** slot for models with hidden structure, where plain gradient descent is awkward but a guaranteed-to-improve alternating scheme works beautifully.
+GMMs have latent variables (which component generated each point?) that we never observe. The **EM algorithm** ([Dempster, Laird & Rubin, 1977](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x), which unified decades of special cases under one name) handles this by iteratively guessing the latent variables and optimizing parameters — it is the **optimization** slot for models with hidden structure, where plain gradient descent is awkward but a guaranteed-to-improve alternating scheme works beautifully.
 
 **Real-world examples:** Missing data imputation, topic modeling (LDA), hidden Markov models, clustering with partial labels.
 
@@ -100,7 +100,7 @@ def em_gmm(X, K, max_iter=100, tol=1e-6):
 
 ## Why it works and worked example
 
-The E-step and M-step are coordinate ascent on the **ELBO** — an evidence lower bound on the log-likelihood obtained via Jensen's inequality. Each E-step makes the bound tight (zero KL gap); each M-step pushes the bound up. Chaining these two moves proves the log-likelihood never decreases, guaranteeing convergence to a local optimum.
+The E-step and M-step are coordinate ascent on the **ELBO** — an evidence lower bound on the log-likelihood obtained via Jensen's inequality. This free-energy view is due to [Neal & Hinton (1998)](https://doi.org/10.1007/978-94-011-5014-9_12). Each E-step makes the bound tight (zero KL gap); each M-step pushes the bound up. Chaining these two moves proves the log-likelihood never decreases, guaranteeing convergence to a local optimum (with the precise conditions worked out by [Wu, 1983](https://doi.org/10.1214/aos/1176346060), who patched a gap in the original convergence proof).
 
 For the full ELBO derivation, the monotonic proof, and a complete one-iteration hand trace on $X=\{1,2,4,5\}$ with $K=2$ (including every responsibility calculation and parameter re-estimate), see:
 
@@ -144,7 +144,7 @@ EM is a general framework for latent variable models:
 | Model | Latent variables | What EM does |
 |-------|-----------------|--------------|
 | GMM | Cluster assignments $z_i$ | Soft clustering |
-| HMM | Hidden states | Forward-backward algorithm |
+| HMM | Hidden states | Forward-backward algorithm ([Baum et al., 1970](https://doi.org/10.1214/aoms/1177697196)) |
 | Topic models (LDA) | Topic assignments | Topic inference |
 | Missing data | Missing values | Imputation |
 
@@ -171,6 +171,13 @@ EM is a general framework for latent variable models:
 - It handles **latent variables** — which component generated each point is unknown.
 - The log-likelihood is **non-decreasing**; EM finds a **local** optimum (use restarts).
 - The same E/M pattern powers HMMs, missing-data imputation, and more.
+
+## Further reading
+
+- [Maximum Likelihood from Incomplete Data via the EM Algorithm](https://doi.org/10.1111/j.2517-6161.1977.tb01600.x) — Dempster, Laird & Rubin, JRSS-B 1977; the paper that named and generalized EM.
+- [A View of the EM Algorithm that Justifies Incremental, Sparse, and Other Variants](https://doi.org/10.1007/978-94-011-5014-9_12) — Neal & Hinton, 1998; the free-energy / coordinate-ascent view.
+- [On the Convergence Properties of the EM Algorithm](https://doi.org/10.1214/aos/1176346060) — Wu, Annals of Statistics 1983; the corrected convergence analysis.
+- [A Maximization Technique Occurring in the Statistical Analysis of Probabilistic Functions of Markov Chains](https://doi.org/10.1214/aoms/1177697196) — Baum et al., Annals of Math. Stat. 1970; Baum-Welch, EM for HMMs.
 
 ## Related concepts
 
