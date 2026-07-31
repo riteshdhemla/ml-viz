@@ -3,7 +3,7 @@ title: "SVD & Low-Rank Approximation"
 description: "Every matrix is a rotation, a stretch, and another rotation — and cutting the stretch short is the best compression there is."
 order: 4
 type: concept
-estimatedMinutes: 10
+estimatedMinutes: 11
 spineStages: [hypothesis-space, data]
 ---
 
@@ -29,15 +29,15 @@ The matrices $A^\top A$ and $A A^\top$ are always symmetric, so the [spectral th
 - $U$ = eigenvectors of $A A^\top$
 - $\sigma_i = \sqrt{\lambda_i}$, the square roots of their (shared, non-negative) eigenvalues
 
-This is also exactly the [PCA](/courses/pca-dimensionality/01-pca) connection: for centered data $X$, the covariance is $\frac{1}{n}X^\top X$, so the principal components *are* the right singular vectors of $X$, and explained variances are $\sigma_i^2 / n$. Numerical libraries compute PCA via SVD rather than forming the covariance matrix — it's more stable.
+This is also exactly the [PCA](/courses/pca-dimensionality/01-pca) connection: for centered data $X$, the covariance is $\frac{1}{n}X^\top X$, so the principal components *are* the right singular vectors of $X$, and explained variances are $\sigma_i^2 / n$. Numerical libraries compute PCA via SVD rather than forming the covariance matrix — squaring the data into $X^\top X$ doubles the condition number and loses precision, so the SVD of $X$ is preferred ([Golub & Van Loan, *Matrix Computations*](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/)).
 
 ## The sum-of-layers view and best rank-$k$ approximation
 
-Rewriting $A = U\Sigma V^\top$ one column at a time gives a sum of rank-1 layers: $A = \sum_i \sigma_i \mathbf{u}_i\mathbf{v}_i^\top$. Truncating to the first $k$ layers gives $A_k$ — and the **Eckart–Young theorem** proves this is the best rank-$k$ approximation in Frobenius norm, with error $\sqrt{\sum_{i>k}\sigma_i^2}$.
+Rewriting $A = U\Sigma V^\top$ one column at a time gives a sum of rank-1 layers: $A = \sum_i \sigma_i \mathbf{u}_i\mathbf{v}_i^\top$. Truncating to the first $k$ layers gives $A_k$ — and the **Eckart–Young theorem** proves this is the best rank-$k$ approximation in Frobenius norm, with error $\sqrt{\sum_{i>k}\sigma_i^2}$ ([Eckart & Young, 1936](https://doi.org/10.1007/BF02288367)).
 
 **Quick numeric example.** Suppose $A$ has singular values $[10, 5, 0.3]$. The full Frobenius norm is $\sqrt{10^2+5^2+0.3^2} = \sqrt{125.09} \approx 11.18$. Keeping only $k=2$ gives error $\sqrt{0.3^2} = 0.3$ — we captured 99.9% of the "signal" in just two layers. Keeping only $k=1$ gives error $\sqrt{5^2+0.3^2} = \sqrt{25.09} \approx 5.01$ — still meaningful structure, but a lot is lost. The singular value spectrum tells you at a glance where to cut.
 
-This fact powers image compression, recommender systems, LoRA fine-tuning, and noise filtering.
+This fact powers image compression, recommender systems, [LoRA fine-tuning](https://arxiv.org/abs/2106.09685) — which adapts a large model by learning a low-rank update to its weight matrices ([Hu et al., 2021](https://arxiv.org/abs/2106.09685)) — and noise filtering.
 
 <WikiLink slug="svd-low-rank" title="SVD and the Eckart-Young Theorem" />
 
@@ -72,6 +72,13 @@ Sweep the truncation rank $k$ below and watch the rank-$k$ reconstruction sharpe
 - $U$, $V$ are eigenvectors of $AA^\top$ and $A^\top A$; $\sigma_i = \sqrt{\lambda_i}$ — and PCA is the SVD of centered data
 - $A = \sum_i \sigma_i \mathbf{u}_i \mathbf{v}_i^\top$: a stack of rank-1 layers, sorted by importance
 - Truncating the stack gives the provably best rank-k approximation (Eckart–Young) — the engine behind compression, recommenders, denoising, and LoRA
+
+## Further reading
+
+- [The Approximation of One Matrix by Another of Lower Rank](https://doi.org/10.1007/BF02288367) — Eckart & Young (1936); the theorem that makes truncated SVD the optimal low-rank approximation.
+- [Matrix Computations](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/) — Golub & Van Loan; how the SVD is actually computed, and why PCA-via-SVD is more stable.
+- [LoRA: Low-Rank Adaptation of Large Language Models](https://arxiv.org/abs/2106.09685) — Hu et al. (2021); low-rank weight updates as a modern application of the sum-of-layers view.
+- [Mathematics for Machine Learning](https://mml-book.github.io/) — Deisenroth, Faisal & Ong (2020); Ch. 4 derives the SVD and its link to eigendecomposition and PCA.
 
 ## Related concepts
 

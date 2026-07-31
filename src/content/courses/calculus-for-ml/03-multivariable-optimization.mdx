@@ -3,7 +3,7 @@ title: "Multivariable Optimization"
 description: "Finding minima in high-dimensional landscapes — critical points, convexity, the Hessian, and why most ML losses are non-convex."
 order: 3
 type: concept
-estimatedMinutes: 12
+estimatedMinutes: 13
 spineStages: [optimization]
 ---
 
@@ -69,7 +69,7 @@ Then $x = -2(-1) = 2$. The single critical point is $\mathbf{x}^* = (2, -1)$.
 We still do not know *what kind* of critical point it is — for that we need the Hessian.
 
 <Callout type="info" title="Deep networks rarely hit local minima">
-  Research has shown that most critical points in deep network loss landscapes are saddle points, not poor local minima. The loss value at any local minimum in a large network tends to be close to the global minimum. Saddle points are more problematic because gradient descent slows down — the gradient is near zero.
+  Research has shown that most critical points in deep network loss landscapes are saddle points, not poor local minima ([Dauphin et al., 2014](https://arxiv.org/abs/1406.2572)). The loss value at any local minimum in a large network tends to be close to the global minimum ([Choromanska et al., 2015](https://arxiv.org/abs/1412.0233)). Saddle points are more problematic because gradient descent slows down — the gradient is near zero.
 </Callout>
 
 ## The Hessian matrix
@@ -153,7 +153,7 @@ Each eigendirection contributes $\tfrac{1}{2}\lambda_i$ times the squared distan
 
 ### Newton's method: one step, derived
 
-Newton's method minimizes the quadratic Taylor model exactly in one step: taking $\nabla_{\mathbf{s}}[\nabla f^T\mathbf{s} + \tfrac{1}{2}\mathbf{s}^T\mathbf{H}\mathbf{s}] = 0$ gives $\mathbf{s} = -\mathbf{H}^{-1}\nabla f$, so the update is $\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1}\nabla f(\mathbf{x})$. For our $f$ starting at $(0,0)$, this reaches the minimum $(2,-1)$ in exactly one step — compared to dozens of gradient-descent iterations. For the full derivation, the $2\times 2$ inversion ($\det\mathbf{H}=3$), step-by-step numeric verification, and a comparison of Newton vs. GD convergence rates, see:
+Newton's method minimizes the quadratic Taylor model exactly in one step: taking $\nabla_{\mathbf{s}}[\nabla f^T\mathbf{s} + \tfrac{1}{2}\mathbf{s}^T\mathbf{H}\mathbf{s}] = 0$ gives $\mathbf{s} = -\mathbf{H}^{-1}\nabla f$, so the update is $\mathbf{x} \leftarrow \mathbf{x} - \mathbf{H}^{-1}\nabla f(\mathbf{x})$ ([Nocedal & Wright, *Numerical Optimization*](https://doi.org/10.1007/978-0-387-40065-5)). For our $f$ starting at $(0,0)$, this reaches the minimum $(2,-1)$ in exactly one step — compared to dozens of gradient-descent iterations. For the full derivation, the $2\times 2$ inversion ($\det\mathbf{H}=3$), step-by-step numeric verification, and a comparison of Newton vs. GD convergence rates, see:
 
 <WikiLink slug="newtons-method" title="Newton's Method for Optimization" />
 
@@ -161,7 +161,7 @@ Newton's method minimizes the quadratic Taylor model exactly in one step: taking
 
 ## Convexity
 
-A function is **convex** if the line segment between any two points on its graph lies above or on the graph:
+A function is **convex** if the line segment between any two points on its graph lies above or on the graph ([Boyd & Vandenberghe, *Convex Optimization*](https://stanford.edu/~boyd/cvxbook/)):
 
 $$
 f(\lambda \mathbf{x} + (1-\lambda)\mathbf{y}) \leq \lambda f(\mathbf{x}) + (1-\lambda)f(\mathbf{y}), \quad \lambda \in [0,1]
@@ -289,6 +289,13 @@ At the constrained optimum, $\nabla f = -\lambda \nabla g$ — the gradient of t
 - **Convex** losses have guaranteed global optima; neural networks are non-convex.
 - Curvature sets the learning rate: $\eta = 1/\lambda_{\max}(\mathbf{H})$ is the safe default, and beyond $2/\lambda_{\max}$ you diverge.
 - Saddle points slow training; SGD noise, momentum, and adaptive methods help escape.
+
+## Further reading
+
+- [Convex Optimization](https://stanford.edu/~boyd/cvxbook/) — Boyd & Vandenberghe; convexity, the PSD-Hessian test, and Lagrange duality (free PDF).
+- [Numerical Optimization](https://doi.org/10.1007/978-0-387-40065-5) — Nocedal & Wright; Newton's method, line search, and the role of curvature in step sizes.
+- [Identifying and Attacking the Saddle Point Problem in High-Dimensional Non-Convex Optimization](https://arxiv.org/abs/1406.2572) — Dauphin et al. (2014); why saddle points, not local minima, dominate deep loss surfaces.
+- [The Loss Surfaces of Multilayer Networks](https://arxiv.org/abs/1412.0233) — Choromanska et al. (2015); the spin-glass analysis showing most minima cluster near the global optimum.
 
 ## Related concepts
 

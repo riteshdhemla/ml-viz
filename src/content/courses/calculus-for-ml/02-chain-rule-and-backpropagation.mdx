@@ -3,7 +3,7 @@ title: "Chain Rule and Backpropagation"
 description: "How gradients flow backward through composed functions — the chain rule is the only math you need to understand backpropagation."
 order: 2
 type: concept
-estimatedMinutes: 18
+estimatedMinutes: 19
 spineStages: [optimization]
 ---
 
@@ -11,7 +11,7 @@ spineStages: [optimization]
 
 Backpropagation is not magic — it's the chain rule applied to computational graphs. It's what makes the loop's **optimization** stage tractable for deep nets: without an efficient way to get the gradient of the loss w.r.t. millions of parameters, gradient descent would be a non-starter. Once you understand the chain rule, every step of backprop becomes a mechanical application of one idea.
 
-**Real-world examples:** Backpropagation — the algorithm that trains every deep neural network — is the chain rule applied recursively through a computational graph.
+**Real-world examples:** Backpropagation — the algorithm that trains every deep neural network — is the chain rule applied recursively through a computational graph. Its modern form was popularized for neural networks by [Rumelhart, Hinton & Williams (1986)](https://www.nature.com/articles/323533a0).
 
 ## The chain rule
 
@@ -200,12 +200,12 @@ Naively computing $\frac{\partial L}{\partial w_i}$ by finite differences requir
 Backpropagation computes **all gradients in one backward pass** by reusing intermediate results. The key insight: gradients at earlier layers are computed by multiplying already-computed downstream gradients with local Jacobians. Total cost: $\approx 2$–$3\times$ the forward pass cost (one pass to compute activations, one to propagate gradients, plus the weight gradient accumulation).
 
 <Callout type="info" title="Automatic differentiation">
-  Modern frameworks (PyTorch, JAX) implement **automatic differentiation** — they build the computational graph on-the-fly, store forward activations, and replay the backward pass automatically. You never write the backward pass by hand.
+  Modern frameworks (PyTorch, JAX) implement **automatic differentiation** — they build the computational graph on-the-fly, store forward activations, and replay the backward pass automatically. You never write the backward pass by hand. Reverse-mode autodiff generalizes backprop to arbitrary programs ([Baydin et al., 2018](https://arxiv.org/abs/1502.05767)).
 </Callout>
 
 ## Vanishing and exploding gradients
 
-When many small Jacobians are multiplied together (deep networks, long sequences), the gradient can **vanish**:
+When many small Jacobians are multiplied together (deep networks, long sequences), the gradient can **vanish** — the geometric picture of exploding and vanishing gradients is worked out in [Pascanu et al. (2013)](https://arxiv.org/abs/1211.5063):
 
 $$
 \frac{\partial L}{\partial \mathbf{w}_1} = \frac{\partial L}{\partial \mathbf{a}_n} \cdot \prod_{k=1}^{n-1} J_k
@@ -215,7 +215,7 @@ If each $\|J_k\| < 1$, the gradient decays exponentially. Sigmoid's max derivati
 
 Solutions:
 - **ReLU:** gradient is exactly 1 for positive inputs, no saturation
-- **Batch normalization:** stabilizes activations, preventing saturation
+- **Batch normalization:** stabilizes activations, preventing saturation ([Ioffe & Szegedy, 2015](https://arxiv.org/abs/1502.03167))
 - **Residual connections:** add the input directly, creating gradient highways
 
 <Exercise id="calc-chain-rule" />
@@ -234,6 +234,13 @@ Solutions:
 - Each node multiplies the upstream gradient by its local gradient and passes it back.
 - Backprop computes all gradients simultaneously in one pass — this is why neural network training is tractable.
 - **Vanishing gradients** happen when many $< 1$ factors multiply; solved by ReLU, batch norm, or residual connections.
+
+## Further reading
+
+- [Learning Representations by Back-Propagating Errors](https://www.nature.com/articles/323533a0) — Rumelhart, Hinton & Williams (1986); the paper that brought backpropagation to neural networks.
+- [Automatic Differentiation in Machine Learning: a Survey](https://arxiv.org/abs/1502.05767) — Baydin et al. (2018); forward- vs reverse-mode autodiff and how frameworks implement it.
+- [On the Difficulty of Training Recurrent Neural Networks](https://arxiv.org/abs/1211.5063) — Pascanu, Mikolov & Bengio (2013); the analysis of exploding/vanishing gradients under repeated Jacobian products.
+- [Batch Normalization: Accelerating Deep Network Training by Reducing Internal Covariate Shift](https://arxiv.org/abs/1502.03167) — Ioffe & Szegedy (2015); stabilizing activations to keep gradients flowing.
 
 ## Related concepts
 

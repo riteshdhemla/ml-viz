@@ -3,7 +3,7 @@ title: "Eigenvalues and Eigenvectors"
 description: "The special directions a matrix can't rotate — and why they underpin PCA, spectral methods, and the stability of neural networks."
 order: 3
 type: concept
-estimatedMinutes: 14
+estimatedMinutes: 15
 spineStages: [hypothesis-space]
 ---
 
@@ -11,7 +11,7 @@ spineStages: [hypothesis-space]
 
 When you apply a matrix $\mathbf{A}$ to most vectors, both the direction and the length change. But there exist special vectors — **eigenvectors** — that only get scaled, never rotated. These special directions reveal the matrix's fundamental geometry — the geometry that decides what a transformation-based model (PCA, a spectral method, a deep network's stability) can and can't represent.
 
-**Real-world examples:** PCA uses eigenvectors of the covariance matrix to find directions of maximum variance; Google PageRank is the dominant eigenvector of the web link graph; neural network stability analysis uses the spectral radius (largest absolute eigenvalue) to determine whether gradients will explode or vanish.
+**Real-world examples:** PCA uses eigenvectors of the covariance matrix to find directions of maximum variance ([Pearson, 1901](https://www.tandfonline.com/doi/abs/10.1080/14786440109462720); [Hotelling, 1933](https://doi.org/10.1037/h0071325)); Google PageRank is the dominant eigenvector of the web link graph ([Page & Brin, 1998](http://ilpubs.stanford.edu:8090/422/)); neural network stability analysis uses the spectral radius (largest absolute eigenvalue) to determine whether gradients will explode or vanish.
 
 <EigenvectorViz />
 
@@ -40,7 +40,7 @@ $$
 
 This is the **characteristic equation**. For a $2 \times 2$ matrix, it's a quadratic in $\lambda$.
 
-For $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$, the characteristic equation $\lambda^2 - 7\lambda + 10 = 0$ gives $\lambda_1 = 5$, $\lambda_2 = 2$. Substituting $\lambda_1 = 5$ back into $(\mathbf{A}-5\mathbf{I})\mathbf{v}=\mathbf{0}$ gives $\begin{bmatrix}-1&1\\2&-2\end{bmatrix}\mathbf{v}=\mathbf{0}$; both rows reduce to $v_1 = v_2$, so the eigenvector is any scalar multiple of $[1,1]^\top$. Similarly $\lambda_2 = 2$ yields $[1,-2]^\top$. The set of vectors satisfying $(A-\lambda I)\mathbf{v}=\mathbf{0}$ is called the **null space** of $A-\lambda I$ — finding it is always the last step. For the complete calculation, verification checks, and power iteration for large matrices:
+For $\mathbf{A} = \begin{bmatrix}4&1\\2&3\end{bmatrix}$, the characteristic equation $\lambda^2 - 7\lambda + 10 = 0$ gives $\lambda_1 = 5$, $\lambda_2 = 2$. Substituting $\lambda_1 = 5$ back into $(\mathbf{A}-5\mathbf{I})\mathbf{v}=\mathbf{0}$ gives $\begin{bmatrix}-1&1\\2&-2\end{bmatrix}\mathbf{v}=\mathbf{0}$; both rows reduce to $v_1 = v_2$, so the eigenvector is any scalar multiple of $[1,1]^\top$. Similarly $\lambda_2 = 2$ yields $[1,-2]^\top$. The set of vectors satisfying $(A-\lambda I)\mathbf{v}=\mathbf{0}$ is called the **null space** of $A-\lambda I$ — finding it is always the last step. For large matrices the characteristic polynomial is never formed explicitly; iterative methods such as power iteration and the QR algorithm are used instead ([Golub & Van Loan, *Matrix Computations*](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/)). For the complete calculation, verification checks, and power iteration for large matrices:
 
 <WikiLink slug="eigenvalue-computation" title="Computing Eigenvalues & Eigenvectors" />
 
@@ -55,7 +55,7 @@ $$
 where $\mathbf{V} = [\mathbf{v}_1 | \cdots | \mathbf{v}_n]$ and $\boldsymbol{\Lambda} = \text{diag}(\lambda_1, \ldots, \lambda_n)$.
 
 <Callout type="info" title="Symmetric matrices are special">
-  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal — a guarantee known as the **spectral theorem**. Covariance matrices are symmetric — this is why PCA always gives orthogonal components.
+  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal — a guarantee known as the **spectral theorem** ([Strang, *Introduction to Linear Algebra*](https://math.mit.edu/~gs/linearalgebra/)). Covariance matrices are symmetric — this is why PCA always gives orthogonal components.
 </Callout>
 
 ## Connection to PCA
@@ -132,6 +132,14 @@ Where $\mathbf{U}$, $\boldsymbol{\Sigma}$, $\mathbf{V}$ come from, why truncatin
 - PCA = finding eigenvectors of the covariance matrix; eigenvalues = variance along each component.
 - **SVD** generalizes to any matrix shape; singular values are always non-negative.
 - $\det(\mathbf{A}) = \prod \lambda_i$ — zero determinant means lost information (singular matrix).
+
+## Further reading
+
+- [The PageRank Citation Ranking: Bringing Order to the Web](http://ilpubs.stanford.edu:8090/422/) — Page, Brin, Motwani & Winograd (1998); web ranking as the dominant eigenvector of the link graph.
+- [On Lines and Planes of Closest Fit to Systems of Points in Space](https://www.tandfonline.com/doi/abs/10.1080/14786440109462720) — Pearson (1901); the geometric origin of PCA.
+- [Analysis of a Complex of Statistical Variables into Principal Components](https://doi.org/10.1037/h0071325) — Hotelling (1933); the variance-maximizing formulation via eigenvectors of the covariance matrix.
+- [Matrix Computations](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/) — Golub & Van Loan; power iteration, the QR algorithm, and the numerics of the eigenproblem.
+- [Introduction to Linear Algebra](https://math.mit.edu/~gs/linearalgebra/) — Gilbert Strang; the spectral theorem and diagonalization.
 
 ## Related concepts
 

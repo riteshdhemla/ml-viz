@@ -3,7 +3,7 @@ title: "Vectors and Spaces"
 description: "What vectors really are, how to operate on them, and why the dot product is the single most important operation in machine learning."
 order: 1
 type: concept
-estimatedMinutes: 16
+estimatedMinutes: 17
 spineStages: [data, hypothesis-space]
 ---
 
@@ -115,7 +115,7 @@ The denominator $\mathbf{a}\cdot\mathbf{a} = \|\mathbf{a}\|^2$ rescales by $\mat
 
 A **vector space** is a set of vectors that is closed under addition and scalar multiplication. $\mathbb{R}^n$ is the most common one in ML.
 
-A **basis** is a set of linearly independent vectors (defined in the next section) that span the space. In $\mathbb{R}^2$, the standard basis is:
+A **basis** is a set of linearly independent vectors (defined in the next section) that span the space — the compact coordinate system that turns geometry into arithmetic ([Strang, *Introduction to Linear Algebra*](https://math.mit.edu/~gs/linearalgebra/)). In $\mathbb{R}^2$, the standard basis is:
 
 $$
 \mathbf{e}_1 = \begin{bmatrix}1\\0\end{bmatrix}, \quad \mathbf{e}_2 = \begin{bmatrix}0\\1\end{bmatrix}
@@ -175,10 +175,17 @@ The vector operations in this lesson appear at the core of almost every ML algor
 
 - **Linear models** — $f(\mathbf{x}) = \mathbf{w}^\top\mathbf{x} + b$ is a single dot product between the weight vector and the input. The dot product is the prediction.
 - **Neural network neurons** — each neuron computes a dot product $\mathbf{w}^\top\mathbf{x}$ before applying a nonlinearity. A fully-connected layer applies this for every row of the weight matrix simultaneously.
-- **Cosine similarity** — used in word embeddings and recommendation systems to measure how similar two vectors are independent of their length: $\text{sim}(\mathbf{u}, \mathbf{v}) = \hat{\mathbf{u}}\cdot\hat{\mathbf{v}}$.
-- **Least-squares regression** — the OLS solution projects the target vector $\mathbf{y}$ onto the column space of the design matrix $\mathbf{X}$. The projection formula derived above is exactly what $(\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$ computes.
+- **Cosine similarity** — used in word embeddings and recommendation systems to measure how similar two vectors are independent of their length: $\text{sim}(\mathbf{u}, \mathbf{v}) = \hat{\mathbf{u}}\cdot\hat{\mathbf{v}}$. The angle-from-inner-product view is developed in the analytic-geometry chapter of [Mathematics for Machine Learning](https://mml-book.github.io/) ([Deisenroth, Faisal & Ong, 2020](https://mml-book.github.io/)).
+- **Least-squares regression** — the OLS solution projects the target vector $\mathbf{y}$ onto the column space of the design matrix $\mathbf{X}$. The projection formula derived above is exactly what $(\mathbf{X}^\top\mathbf{X})^{-1}\mathbf{X}^\top\mathbf{y}$ computes ([Strang, *Introduction to Linear Algebra*](https://math.mit.edu/~gs/linearalgebra/), Ch. 4).
 - **PCA** — finds the orthogonal basis of maximum variance. Projecting data onto principal components is a sequence of dot products with those basis vectors.
 - **Rank deficiency** — if a feature matrix is rank-deficient, two features are linearly dependent. The model gains no new information from the second feature, and OLS becomes unstable.
+
+## Further reading
+
+- [Introduction to Linear Algebra](https://math.mit.edu/~gs/linearalgebra/) — Gilbert Strang (MIT); the canonical treatment of vectors, span, bases, and least-squares projection.
+- [MIT 18.06 Linear Algebra (OpenCourseWare)](https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/) — Strang's full lecture course, free video + problem sets.
+- [Mathematics for Machine Learning](https://mml-book.github.io/) — Deisenroth, Faisal & Ong (2020); Ch. 2–3 build the vector-space and inner-product machinery used here.
+- [Matrix Computations](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/) — Golub & Van Loan; the reference for rank, row reduction, and numerical stability.
 
 ## Related concepts
 

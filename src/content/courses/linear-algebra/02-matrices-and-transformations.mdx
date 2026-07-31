@@ -3,7 +3,7 @@ title: "Matrices and Transformations"
 description: "Matrices as linear transformations — how they rotate, scale, and project data, and why matrix multiplication is the core of deep learning."
 order: 2
 type: concept
-estimatedMinutes: 18
+estimatedMinutes: 19
 spineStages: [hypothesis-space]
 ---
 
@@ -104,7 +104,7 @@ The **rank** of $\mathbf{A}$ is the dimension of its column space — the number
 
 ### The determinant
 
-The **determinant** measures the *signed factor by which a transformation scales area* (volume in higher dimensions). For a $2\times2$ matrix:
+The **determinant** measures the *signed factor by which a transformation scales area* (volume in higher dimensions) — the geometric reading developed in [Strang's *Introduction to Linear Algebra*](https://math.mit.edu/~gs/linearalgebra/). For a $2\times2$ matrix:
 
 $$
 \det\begin{bmatrix}a&b\\c&d\end{bmatrix} = ad - bc
@@ -124,7 +124,7 @@ The interactive figure shows the determinant updating as you drag the matrix col
   Rank-deficient matrices map multiple inputs to the same output — information is lost. In ML, this shows up as multicollinear features (OLS fails) or as underdetermined systems (more unknowns than equations).
 </Callout>
 
-The **OLS closed form** $\hat{\mathbf{w}} = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top \mathbf{y}$ requires $\mathbf{X}^\top \mathbf{X}$ to be invertible — hence why highly correlated features cause problems.
+The **OLS closed form** $\hat{\mathbf{w}} = (\mathbf{X}^\top \mathbf{X})^{-1}\mathbf{X}^\top \mathbf{y}$ requires $\mathbf{X}^\top \mathbf{X}$ to be invertible — hence why highly correlated features cause problems. In practice the normal equations are never solved by explicit inversion; a QR or SVD factorization is far more numerically stable ([Golub & Van Loan, *Matrix Computations*](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/)).
 
 ## Special matrix types in ML
 
@@ -132,7 +132,7 @@ The **OLS closed form** $\hat{\mathbf{w}} = (\mathbf{X}^\top \mathbf{X})^{-1}\ma
 |------|----------|-----------------|
 | Identity $\mathbf{I}$ | $\mathbf{IA} = \mathbf{A}$ | Residual connections (adding $\mathbf{x}$ back) |
 | Diagonal | Off-diagonal zeros | Efficient batch normalization |
-| Orthogonal | $\mathbf{Q}^\top \mathbf{Q} = \mathbf{I}$ | QR decomposition, rotations |
+| Orthogonal | $\mathbf{Q}^\top \mathbf{Q} = \mathbf{I}$ | QR decomposition ([Golub & Van Loan](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/)), rotations |
 | Positive semi-definite | $\mathbf{x}^\top \mathbf{A}\mathbf{x} \geq 0$ (never flips a vector past 90°) | Covariance matrices |
 
 <Exercise id="linalg-matmul" />
@@ -151,6 +151,13 @@ The **OLS closed form** $\hat{\mathbf{w}} = (\mathbf{X}^\top \mathbf{X})^{-1}\ma
 - Matrix multiplication chains transformations; a deep network is a long chain.
 - **Rank** measures how much information a transformation preserves.
 - Covariance and Gram matrices ($\mathbf{X}^\top\mathbf{X}$) are always symmetric and positive semi-definite.
+
+## Further reading
+
+- [Introduction to Linear Algebra](https://math.mit.edu/~gs/linearalgebra/) — Gilbert Strang; matrices as transformations, rank, determinant, and the four fundamental subspaces.
+- [Matrix Computations](https://www.hfsbooks.com/books/matrix-computations-4th-edition-golub-van-loan/) — Golub & Van Loan; the definitive account of rank, invertibility, QR, and the numerics of the normal equations.
+- [Mathematics for Machine Learning](https://mml-book.github.io/) — Deisenroth, Faisal & Ong (2020); Ch. 2 ties linear maps to matrices in ML notation.
+- [MIT 18.06 Linear Algebra (OpenCourseWare)](https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/) — lectures on transformations, determinants, and invertibility.
 
 ## Related concepts
 

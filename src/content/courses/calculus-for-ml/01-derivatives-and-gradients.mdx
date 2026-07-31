@@ -3,7 +3,7 @@ title: "Derivatives and Gradients"
 description: "How functions change — from single-variable derivatives to multi-dimensional gradients, the foundation of every learning algorithm."
 order: 1
 type: concept
-estimatedMinutes: 15
+estimatedMinutes: 16
 spineStages: [optimization]
 ---
 
@@ -58,7 +58,7 @@ $$
 \frac{e^{-x}}{(1+e^{-x})^2} = \underbrace{\frac{1}{1+e^{-x}}}_{\sigma(x)}\cdot\underbrace{\frac{e^{-x}}{1+e^{-x}}}_{1-\sigma(x)} = \sigma(x)\,(1 - \sigma(x))
 $$
 
-This compact form means a network can reuse the forward value $\sigma(x)$ to get its gradient for free. **Numeric check:** at $x=0$, $\sigma(0)=0.5$, so $\sigma'(0)=0.5(1-0.5)=0.25$. At $x=3$, $\sigma(3)\approx0.95$, so $\sigma'(3)\approx0.95(0.05)\approx0.048$ — the gradient is nearly 5× smaller. That's **saturation**: near 0 or 1, one factor is tiny so $\sigma'(x)\to0$ and gradients die.
+This compact form means a network can reuse the forward value $\sigma(x)$ to get its gradient for free. **Numeric check:** at $x=0$, $\sigma(0)=0.5$, so $\sigma'(0)=0.5(1-0.5)=0.25$. At $x=3$, $\sigma(3)\approx0.95$, so $\sigma'(3)\approx0.95(0.05)\approx0.048$ — the gradient is nearly 5× smaller. That's **saturation**: near 0 or 1, one factor is tiny so $\sigma'(x)\to0$ and gradients die — a key reason deep sigmoid networks were hard to train before better initialization and non-saturating activations ([Glorot & Bengio, 2010](https://proceedings.mlr.press/v9/glorot10a.html)).
 
 ## Partial derivatives
 
@@ -83,7 +83,7 @@ $$
 $$
 
 <Callout type="tip" title="The gradient points uphill">
-  The gradient $\nabla f(\mathbf{x})$ points in the direction of **steepest ascent**. Moving opposite to the gradient $(-\nabla f)$ decreases $f$ as fast as possible. That's gradient descent.
+  The gradient $\nabla f(\mathbf{x})$ points in the direction of **steepest ascent**. Moving opposite to the gradient $(-\nabla f)$ decreases $f$ as fast as possible. That's gradient descent — the foundational first-order method analyzed in [Nocedal & Wright's *Numerical Optimization*](https://doi.org/10.1007/978-0-387-40065-5).
 </Callout>
 
 ### Gradient descent in one equation
@@ -138,7 +138,7 @@ This is maximized when $\hat{\mathbf{d}} = \frac{\nabla f}{\|\nabla f\|}$ — i.
 **Numeric example:** If $\nabla f(\mathbf{x}) = [3, 4]$ and we move in direction $\hat{\mathbf{d}} = [0.6, 0.8]$ (a unit vector, since $0.6^2 + 0.8^2 = 1$), then $D_{\hat{\mathbf{d}}} f = 3(0.6) + 4(0.8) = 1.8 + 3.2 = 5.0$. Moving instead in $\hat{\mathbf{d}} = [0, 1]$ gives $D_{\hat{\mathbf{d}}} f = 4$ — less steep. The gradient direction $[3,4]/5 = [0.6, 0.8]$ was already the unit vector that achieves the maximum rate of $\|\nabla f\| = 5$.
 
 <Callout type="info" title="Gradient magnitude and loss landscapes">
-  When training neural networks, very large gradient magnitudes indicate steep curvature (exploding gradients). Very small gradients indicate flat regions (vanishing gradients or near-optimal parameters). Gradient clipping and careful initialization manage both.
+  When training neural networks, very large gradient magnitudes indicate steep curvature (exploding gradients). Very small gradients indicate flat regions (vanishing gradients or near-optimal parameters). Gradient clipping and careful initialization manage both ([Pascanu et al., 2013](https://arxiv.org/abs/1211.5063)).
 </Callout>
 
 For the full derivation — from the limit definition through the chain rule to the dot-product formula, and a proof that the gradient is steepest ascent — see the deep dive:
@@ -161,6 +161,13 @@ For the full derivation — from the limit definition through the chain rule to 
 - The gradient points **uphill** — gradient descent moves in the negative gradient direction.
 - Setting the gradient to zero finds critical points — candidates for minima, maxima, or saddle points.
 - The **directional derivative** is the dot product of the gradient with any unit direction.
+
+## Further reading
+
+- [Numerical Optimization](https://doi.org/10.1007/978-0-387-40065-5) — Nocedal & Wright; the standard reference for gradients, steepest descent, and line search.
+- [Mathematics for Machine Learning](https://mml-book.github.io/) — Deisenroth, Faisal & Ong (2020); Ch. 5 develops partial derivatives, gradients, and directional derivatives from first principles.
+- [Understanding the Difficulty of Training Deep Feedforward Neural Networks](https://proceedings.mlr.press/v9/glorot10a.html) — Glorot & Bengio (2010); how activation saturation kills gradients, and Xavier initialization.
+- [On the Difficulty of Training Recurrent Neural Networks](https://arxiv.org/abs/1211.5063) — Pascanu, Mikolov & Bengio (2013); the analysis behind gradient clipping for exploding gradients.
 
 ## Related concepts
 
