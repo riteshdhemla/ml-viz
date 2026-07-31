@@ -4,7 +4,7 @@ description: "Splitting data like 20 questions — Gini impurity, information ga
 order: 2
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Decision Trees
@@ -38,7 +38,7 @@ There are **5 approvals and 5 denials**. The pattern is "older applicants tend t
 
 ## Impurity measures and split scoring
 
-**Gini impurity** measures how mixed a node's labels are: $I_G = 1 - \sum_k p_k^2$, where $p_k$ is the fraction of class $k$ in the node. A Gini impurity of 0 means a pure node (one class only); 0.5 is maximum for binary problems. **Entropy** measures the same mixedness in bits (0 = pure, 1 = 50/50). In practice they produce nearly identical trees — Gini avoids the logarithm so sklearn defaults to it.
+**Gini impurity** measures how mixed a node's labels are: $I_G = 1 - \sum_k p_k^2$, where $p_k$ is the fraction of class $k$ in the node. A Gini impurity of 0 means a pure node (one class only); 0.5 is maximum for binary problems. It is the splitting criterion of the CART algorithm ([Breiman, Friedman, Olshen & Stone, 1984](https://doi.org/10.1201/9781315139470)). **Entropy** measures the same mixedness in bits (0 = pure, 1 = 50/50) and is the criterion behind the information-gain trees of ID3 ([Quinlan, 1986](https://doi.org/10.1007/BF00116251)). In practice they produce nearly identical trees — Gini avoids the logarithm so sklearn defaults to it.
 
 **Information gain** is the parent impurity minus the weighted average child impurity:
 
@@ -117,7 +117,7 @@ There are two ways to fight this:
 | `min_samples_leaf` | Require a minimum number of samples in each resulting leaf |
 | `max_features` | Consider only a random subset of features at each node |
 
-**2. Post-pruning (cost-complexity pruning).** Grow the full tree, then collapse branches whose accuracy gain does not justify their added complexity. sklearn exposes this via the `ccp_alpha` parameter — larger values prune more aggressively.
+**2. Post-pruning (cost-complexity pruning).** Grow the full tree, then collapse branches whose accuracy gain does not justify their added complexity. This minimal cost-complexity pruning is the original CART recipe ([Breiman et al., 1984](https://doi.org/10.1201/9781315139470)); sklearn exposes it via the `ccp_alpha` parameter — larger values prune more aggressively.
 
 ```python
 # The idiom (for your own X_train / y_train / X_test / y_test):
@@ -180,6 +180,12 @@ for i in range(min(5, len(indices))):
 - **Information gain** = parent impurity − weighted child impurity.
 - Unconstrained trees overfit; limit `max_depth`/`min_samples_leaf` or prune.
 - Interpretable and scale-free, but high-variance alone — hence ensembles.
+
+## Further reading
+
+- [Classification and Regression Trees](https://doi.org/10.1201/9781315139470) — Breiman, Friedman, Olshen & Stone, 1984; the CART book — Gini splits and cost-complexity pruning.
+- [Induction of Decision Trees](https://doi.org/10.1007/BF00116251) — Quinlan, *Machine Learning* 1986; the ID3 algorithm and information-gain splitting.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 9 covers tree growth, pruning, and instability.
 
 ## Related concepts
 

@@ -4,12 +4,12 @@ description: "The simplest ML algorithm — classify by majority vote of nearby 
 order: 1
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 14
+estimatedMinutes: 15
 ---
 
 # K-Nearest Neighbors (KNN)
 
-KNN is the simplest machine learning algorithm: **no training at all**. To classify a new point, just find the $k$ closest training examples and take a majority vote. In [project-loop](/wiki/ml-project-loop) terms it is a pure **hypothesis-space** choice — a non-parametric model family whose only dial, $k$, trades capacity against smoothness (the bias–variance story of lesson 03).
+KNN is the simplest machine learning algorithm: **no training at all**. To classify a new point, just find the $k$ closest training examples and take a majority vote. The nearest-neighbor decision rule and its famous error bound — never worse than twice the Bayes error asymptotically — were established by [Cover & Hart (1967)](https://doi.org/10.1109/TIT.1967.1053964). In [project-loop](/wiki/ml-project-loop) terms it is a pure **hypothesis-space** choice — a non-parametric model family whose only dial, $k$, trades capacity against smoothness (the bias–variance story of lesson 03).
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -121,7 +121,7 @@ Every query averages over a huge neighborhood, so noise washes out and predictio
 
 We want the $k$ that minimizes **total error = bias² + variance + irreducible noise**. As $k$ grows, variance falls but bias rises, so the test error typically traces a **U-shape** — too small overfits, too large underfits, and the bottom of the U is the sweet spot.
 
-You don't guess it — you measure it with **cross-validation**: try a range of $k$, score each on held-out folds, and pick the best. A useful starting point is the heuristic $k \approx \sqrt{n}$. For **binary** classification, prefer an **odd** $k$ so a two-way vote can never tie.
+You don't guess it — you measure it with **cross-validation**: try a range of $k$, score each on held-out folds, and pick the best ([Hastie, Tibshirani & Friedman, Ch. 13](https://hastie.su.domains/ElemStatLearn/)). A useful starting point is the heuristic $k \approx \sqrt{n}$. For **binary** classification, prefer an **odd** $k$ so a two-way vote can never tie.
 
 ```python
 from sklearn.neighbors import KNeighborsClassifier
@@ -150,7 +150,7 @@ As $k$ increases, the boundary becomes smoother. This is the **bias-variance tra
 
 ## The curse of dimensionality
 
-KNN's whole premise is that "nearest" means "most similar." In high dimensions that premise quietly breaks. As you add dimensions, **all pairwise distances bunch together** — the nearest and farthest neighbors become almost equally far away:
+KNN's whole premise is that "nearest" means "most similar." In high dimensions that premise quietly breaks. As you add dimensions, **all pairwise distances bunch together** — the nearest and farthest neighbors become almost equally far away, a concentration result made precise by [Beyer et al. (1999)](https://doi.org/10.1007/3-540-49257-7_15):
 
 $$
 \frac{d_{\max} - d_{\min}}{d_{\min}} \to 0 \quad \text{as } d \to \infty
@@ -208,6 +208,12 @@ This is why KNN is called a **lazy learner** — all the work happens at predict
 - Small $k$ is flexible/noisy; large $k$ is smooth/biased.
 - The **distance metric** and **feature scaling** dominate results — always standardize.
 - It degrades in high dimensions (curse of dimensionality) and is slow to predict.
+
+## Further reading
+
+- [Nearest Neighbor Pattern Classification](https://doi.org/10.1109/TIT.1967.1053964) — Cover & Hart, *IEEE Trans. Information Theory* 1967; the foundational analysis and the twice-Bayes-error bound.
+- [When Is "Nearest Neighbor" Meaningful?](https://doi.org/10.1007/3-540-49257-7_15) — Beyer, Goldstein, Ramakrishnan & Shaft, *ICDT* 1999; why distances concentrate in high dimensions.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 13 covers k-NN, prototype methods, and choosing $k$ by cross-validation.
 
 ## Related concepts
 

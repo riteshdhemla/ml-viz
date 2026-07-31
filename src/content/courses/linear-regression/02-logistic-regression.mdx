@@ -4,7 +4,7 @@ description: "From regression to classification — the sigmoid, cross-entropy, 
 order: 2
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Logistic Regression
@@ -63,7 +63,7 @@ $$
 \log \frac{\hat{y}}{1-\hat{y}} = z = \mathbf{w}^T \mathbf{x} + w_0
 $$
 
-This is the key identity. The model is **linear in the log-odds** (also called the *logit*). A one-unit increase in feature $x_j$ adds $w_j$ to the log-odds, i.e. multiplies the odds by $e^{w_j}$. This is exactly why coefficients are interpreted as odds ratios, not probabilities.
+This is the key identity. The model is **linear in the log-odds** (also called the *logit*) — the canonical link of the Bernoulli distribution in the [generalized-linear-model](/courses/linear-regression/04-generalized-linear-models) framework ([Nelder & Wedderburn, 1972](https://doi.org/10.2307/2344614)). A one-unit increase in feature $x_j$ adds $w_j$ to the log-odds, i.e. multiplies the odds by $e^{w_j}$. This regression on the logit of a binary outcome is exactly the model introduced by [Cox (1958)](https://doi.org/10.1111/j.2517-6161.1958.tb00292.x), which is why coefficients are interpreted as odds ratios, not probabilities.
 
 ### A useful derivative
 
@@ -177,7 +177,7 @@ $$
 \mathcal{L}(\mathbf{w}) = -\frac{1}{n} \sum_{i=1}^n \left[ y_i \log \hat{y}_i + (1 - y_i) \log(1 - \hat{y}_i) \right]
 $$
 
-This is not a heuristic — it *is* the negative log-likelihood of a Bernoulli model, so minimizing it is exactly MLE. It also penalizes confident wrong predictions heavily:
+This is not a heuristic — it *is* the negative log-likelihood of a Bernoulli model, so minimizing it is exactly MLE, and the convexity that makes it well-behaved is a standard result for exponential-family GLMs ([Hastie, Tibshirani & Friedman, Ch. 4](https://hastie.su.domains/ElemStatLearn/)). It also penalizes confident wrong predictions heavily:
 
 | Prediction | Actual | Loss |
 |-----------|--------|------|
@@ -285,6 +285,13 @@ print("Probabilities: {}".format(probs.round(3)))  # [[0.659 0.242 0.099]]
 - It is trained with **cross-entropy** loss, which punishes confident wrong answers.
 - The decision boundary is still **linear** in the features.
 - **Softmax** generalizes it to multi-class problems.
+
+## Further reading
+
+- [The Regression Analysis of Binary Sequences](https://doi.org/10.1111/j.2517-6161.1958.tb00292.x) — Cox, *JRSS-B* 1958; the origin of logistic regression as regression on the logit.
+- [Generalized Linear Models](https://doi.org/10.2307/2344614) — Nelder & Wedderburn, *JRSS-A* 1972; places logistic regression as the Bernoulli GLM with the logit link.
+- [On Discriminative vs. Generative Classifiers](https://proceedings.neurips.cc/paper/2001/hash/7b7a53e239400a13bd6be6c91c4f6c4e-Abstract.html) — Ng & Jordan, *NeurIPS* 2001; logistic regression versus its generative counterpart, naive Bayes.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 4 covers cross-entropy, convexity, and multinomial/softmax regression.
 
 ## Related concepts
 

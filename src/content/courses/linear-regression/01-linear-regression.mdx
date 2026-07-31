@@ -4,7 +4,7 @@ description: "Fitting a line to data — the model, Ordinary Least Squares, resi
 order: 1
 type: concept
 spineStages: [hypothesis-space, objective]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Linear Regression
@@ -49,7 +49,7 @@ $$
 \boxed{\;\mathbf{w}^* = (X^\top X)^{-1} X^\top \mathbf{y}\;}
 $$
 
-$(X^\top X)^{-1}$ exists when the feature columns are linearly independent; Ridge regression adds $\lambda I$ to guarantee invertibility. For the full derivation and a complete 3-point hand fit (including the $2\times2$ inversion and $R^2$ calculation), see:
+$(X^\top X)^{-1}$ exists when the feature columns are linearly independent; Ridge regression adds $\lambda I$ to guarantee invertibility ([Hoerl & Kennard, 1970](https://doi.org/10.1080/00401706.1970.10488634)). For the full derivation and a complete 3-point hand fit (including the $2\times2$ inversion and $R^2$ calculation), see:
 
 <WikiLink slug="ols-normal-equation" title="OLS: The Normal Equation" />
 
@@ -123,7 +123,7 @@ print("Prediction at x=4:", round(x_new @ w, 3))  # 6.333
 
 ## The problem: overfitting
 
-With many features (or correlated features), $X^T X$ can be nearly singular, causing the weights to blow up. The model fits the training noise perfectly but generalizes poorly.
+With many features (or correlated features), $X^T X$ can be nearly singular, causing the weights to blow up. The model fits the training noise perfectly but generalizes poorly — the classic bias–variance failure mode analyzed at length in *The Elements of Statistical Learning* ([Hastie, Tibshirani & Friedman](https://hastie.su.domains/ElemStatLearn/)).
 
 **Signs of overfitting in linear regression:**
 - Training error is much lower than test error
@@ -140,7 +140,7 @@ $$
 
 and the $\lambda I$ term lifts every eigenvalue of $X^\top X$ above zero — the numerical fix and the statistical fix are the same fix.
 
-How Ridge (L2) and Lasso (L1) differ — why L1 zeroes features out entirely while L2 only shrinks them, and how to choose $\lambda$ — is the subject of [Regularization: Ridge & Lasso](/courses/linear-regression/03-regularization).
+How Ridge (L2) and Lasso ([L1](https://doi.org/10.1111/j.2517-6161.1996.tb02080.x)) differ — why L1 zeroes features out entirely while L2 only shrinks them, and how to choose $\lambda$ — is the subject of [Regularization: Ridge & Lasso](/courses/linear-regression/03-regularization).
 
 <Exercise id="ols-formula" />
 <Exercise id="ols-worked-example" />
@@ -157,6 +157,13 @@ How Ridge (L2) and Lasso (L1) differ — why L1 zeroes features out entirely whi
 - **OLS** has a closed form: $\mathbf{w}^* = (X^\top X)^{-1}X^\top\mathbf{y}$.
 - $R^2$ measures the fraction of variance explained; residuals show where the fit misses.
 - Overfitting shows up as huge, unstable weights — the cure is **regularization**, covered in [Ridge & Lasso](/courses/linear-regression/03-regularization).
+
+## Further reading
+
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 3 is the canonical treatment of linear methods, the normal equation, and $R^2$.
+- [Ridge Regression: Biased Estimation for Nonorthogonal Problems](https://doi.org/10.1080/00401706.1970.10488634) — Hoerl & Kennard, *Technometrics* 1970; the $\lambda I$ fix for near-singular $X^\top X$.
+- [Regression Shrinkage and Selection via the Lasso](https://doi.org/10.1111/j.2517-6161.1996.tb02080.x) — Tibshirani, *JRSS-B* 1996; the L1 alternative that also performs feature selection.
+- [Generalized Linear Models](https://doi.org/10.2307/2344614) — Nelder & Wedderburn, *JRSS-A* 1972; the framework in which OLS is the Gaussian special case.
 
 ## Related concepts
 

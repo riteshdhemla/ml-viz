@@ -4,12 +4,12 @@ description: "The unifying framework behind linear and logistic regression — a
 order: 4
 type: concept
 spineStages: [hypothesis-space, objective]
-estimatedMinutes: 15
+estimatedMinutes: 16
 ---
 
 # Generalized Linear Models & GDA
 
-Linear regression and logistic regression look different on the surface — one outputs a real number, the other a probability — but they share the same update rule and the same theoretical justification. **Generalized Linear Models (GLMs)** expose why.
+Linear regression and logistic regression look different on the surface — one outputs a real number, the other a probability — but they share the same update rule and the same theoretical justification. **Generalized Linear Models (GLMs)** expose why — the framework was introduced by [Nelder & Wedderburn (1972)](https://doi.org/10.2307/2344614) and remains the standard reference in [McCullagh & Nelder's monograph](https://www.routledge.com/Generalized-Linear-Models/McCullagh-Nelder/p/book/9780412317606).
 
 ## The exponential family
 
@@ -161,7 +161,7 @@ print("theta:", theta.round(2))                 # ≈ [4, 0] → boundary x1 = 0
 | **Prediction** | Same sigmoid form at test time | Same sigmoid form |
 
 <Callout type="warning" title="When to prefer each">
-  If $x \mid y$ is truly Gaussian, GDA is asymptotically more efficient (lower test error with the same training set size). In practice, features are rarely Gaussian, so logistic regression usually wins — it makes no assumptions about the input distribution and only has to learn the boundary.
+  If $x \mid y$ is truly Gaussian, GDA is asymptotically more efficient (lower test error with the same training set size). This is the generative-versus-discriminative trade-off analyzed by [Ng & Jordan (2001)](https://proceedings.neurips.cc/paper/2001/hash/7b7a53e239400a13bd6be6c91c4f6c4e-Abstract.html): the generative model reaches its (higher) asymptotic error faster, so it can win in the small-sample regime. In practice, features are rarely Gaussian, so logistic regression usually wins — it makes no assumptions about the input distribution and only has to learn the boundary.
 </Callout>
 
 ---
@@ -187,6 +187,13 @@ The unifying message: once you pick a distribution, the GLM machinery gives you 
 - **GLMs** assume (1) $y|x$ follows an exponential family, (2) $\eta = \theta^\top x$, and (3) predict the conditional mean. This unifies linear and logistic regression.
 - All GLMs share the same gradient form $\nabla_\theta \ell = X^\top(y - \hat{y})$, which is why one optimizer works for all of them.
 - **GDA** is the generative alternative: model $P(x|y)$ as Gaussian and recover $P(y|x)$ via Bayes. It has the same linear boundary as logistic regression but is more data-efficient when its Gaussian assumption holds.
+
+## Further reading
+
+- [Generalized Linear Models](https://doi.org/10.2307/2344614) — Nelder & Wedderburn, *JRSS-A* 1972; the paper that unified regression under the exponential family and iterative weighted least squares.
+- [Generalized Linear Models, 2nd ed.](https://www.routledge.com/Generalized-Linear-Models/McCullagh-Nelder/p/book/9780412317606) — McCullagh & Nelder, Chapman & Hall 1989; the definitive book-length treatment of link functions and exponential-family fitting.
+- [On Discriminative vs. Generative Classifiers](https://proceedings.neurips.cc/paper/2001/hash/7b7a53e239400a13bd6be6c91c4f6c4e-Abstract.html) — Ng & Jordan, *NeurIPS* 2001; the asymptotic-efficiency argument behind GDA versus logistic regression.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 4 covers linear discriminant analysis and its logistic counterpart.
 
 ## Related concepts
 

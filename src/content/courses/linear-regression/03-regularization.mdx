@@ -4,7 +4,7 @@ description: "Taming overfitting by penalizing large weights — and why L1 perf
 order: 3
 type: concept
 spineStages: [objective]
-estimatedMinutes: 12
+estimatedMinutes: 13
 ---
 
 # Regularization: Ridge & Lasso
@@ -34,7 +34,7 @@ $$
 \Omega(\mathbf{w}) = \|\mathbf{w}\|_2^2 = \sum_j w_j^2
 $$
 
-Squaring means the penalty's gradient is $2\lambda w_j$ — proportional to the weight itself. Big weights feel strong pressure, small weights barely any. The result: Ridge **shrinks all weights smoothly toward zero but almost never exactly to zero**.
+Squaring means the penalty's gradient is $2\lambda w_j$ — proportional to the weight itself. Big weights feel strong pressure, small weights barely any. The result: Ridge **shrinks all weights smoothly toward zero but almost never exactly to zero**. This is the estimator Hoerl & Kennard introduced to stabilize regression with correlated predictors ([Hoerl & Kennard, 1970](https://doi.org/10.1080/00401706.1970.10488634)).
 
 Ridge also has a closed-form solution: $\mathbf{w}^* = (X^\top X + \lambda I)^{-1} X^\top \mathbf{y}$. Adding $\lambda I$ makes the matrix invertible even when features are perfectly correlated — the numerical fix and the statistical fix are the same fix. For the 4-step algebraic derivation, the Lasso sparsity proof via subdifferential calculus, and coefficient path plots across λ:
 
@@ -52,7 +52,7 @@ $$
 
 The absolute value's gradient is $\pm\lambda$ — a **constant** force regardless of the weight's size. A weight whose contribution to fitting the data is worth less than $\lambda$ gets pushed all the way to exactly zero and stays there.
 
-This is why Lasso performs **feature selection**: as you raise $\lambda$, features drop out of the model one by one, leaving a sparse, interpretable subset.
+This is why Lasso performs **feature selection**: as you raise $\lambda$, features drop out of the model one by one, leaving a sparse, interpretable subset ([Tibshirani, 1996](https://doi.org/10.1111/j.2517-6161.1996.tb02080.x)).
 
 Watch it happen. Below, six weights are re-fit at every $\lambda$: three carry real signal, one is a correlated echo, two are pure noise. Switch between Ridge and Lasso and drag $\lambda$ — Ridge shrinks everything smoothly, Lasso snaps the useless weights to exactly zero first:
 
@@ -68,7 +68,7 @@ Watch it happen. Below, six weights are re-fit at every $\lambda$: three carry r
 |-----------|-----------|
 | Many features, most probably irrelevant | Lasso — prunes them |
 | Many correlated, all somewhat relevant | Ridge — shares weight gracefully |
-| Want both behaviors | Elastic Net — a blend: $\alpha\|\mathbf{w}\|_1 + (1-\alpha)\|\mathbf{w}\|_2^2$ |
+| Want both behaviors | [Elastic Net](https://doi.org/10.1111/j.1467-9868.2005.00503.x) — a blend: $\alpha\|\mathbf{w}\|_1 + (1-\alpha)\|\mathbf{w}\|_2^2$ |
 
 $\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick the one with the best held-out error. Plotting validation error against $\lambda$ reproduces the classic U-shape — underfitting on the right, overfitting on the left, the sweet spot in between. This is the same bias–variance trade-off you'll meet in [the bias–variance lesson](/courses/knn-decision-trees/03-bias-variance), expressed as a single dial.
 
@@ -88,6 +88,13 @@ $\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick th
 - Ridge (L2) shrinks weights smoothly; great with correlated features; never sparse
 - Lasso (L1) zeroes out weak features entirely — built-in feature selection
 - $\lambda$ trades bias for variance; tune it with cross-validation, never on training error
+
+## Further reading
+
+- [Ridge Regression: Biased Estimation for Nonorthogonal Problems](https://doi.org/10.1080/00401706.1970.10488634) — Hoerl & Kennard, *Technometrics* 1970; introduces the L2 penalty and the ridge trace.
+- [Regression Shrinkage and Selection via the Lasso](https://doi.org/10.1111/j.2517-6161.1996.tb02080.x) — Tibshirani, *JRSS-B* 1996; the L1 penalty and its sparsity.
+- [Regularization and Variable Selection via the Elastic Net](https://doi.org/10.1111/j.1467-9868.2005.00503.x) — Zou & Hastie, *JRSS-B* 2005; the L1/L2 blend for grouped correlated features.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 3 relates the geometry of the L1/L2 constraint regions to sparsity.
 
 ## Related concepts
 

@@ -4,16 +4,16 @@ description: "Why every model choice is a bet between being too rigid and too ju
 order: 3
 type: concept
 spineStages: [evaluation]
-estimatedMinutes: 10
+estimatedMinutes: 11
 ---
 
 # The Bias–Variance Tradeoff
 
-You've now met two models with an obvious "complexity dial": the $k$ in [K-Nearest Neighbors](/courses/knn-decision-trees/01-knn) and the depth of a [decision tree](/courses/knn-decision-trees/02-decision-trees). Turn the dial one way and the model ignores real structure; turn it the other way and it hallucinates structure that isn't there. This tension has a name — the **bias–variance tradeoff** — and it governs every model you will ever train. It is the theory underneath the loop's **evaluation** stage: it explains *why* a model that looks great on training data can fail on new data, and what the generalization gap you measure is made of.
+You've now met two models with an obvious "complexity dial": the $k$ in [K-Nearest Neighbors](/courses/knn-decision-trees/01-knn) and the depth of a [decision tree](/courses/knn-decision-trees/02-decision-trees). Turn the dial one way and the model ignores real structure; turn it the other way and it hallucinates structure that isn't there. This tension has a name — the **bias–variance tradeoff** — and it governs every model you will ever train. The dilemma was framed in its modern, general form by [Geman, Bienenstock & Doursat (1992)](https://doi.org/10.1162/neco.1992.4.1.1). It is the theory underneath the loop's **evaluation** stage: it explains *why* a model that looks great on training data can fail on new data, and what the generalization gap you measure is made of.
 
 ## The decomposition
 
-Expected test error splits into three additive pieces: $\text{Bias}^2 + \text{Variance} + \sigma^2$ (irreducible noise). Bias is how far the average prediction is from the truth; variance is how much it swings across different training sets. Total error is minimized somewhere in between — simpler models accept bias to cut variance, complex models do the reverse.
+Expected test error splits into three additive pieces: $\text{Bias}^2 + \text{Variance} + \sigma^2$ (irreducible noise). Bias is how far the average prediction is from the truth; variance is how much it swings across different training sets. Total error is minimized somewhere in between — simpler models accept bias to cut variance, complex models do the reverse. The derivation and its consequences for model selection are laid out in [Hastie, Tibshirani & Friedman, Ch. 7](https://hastie.su.domains/ElemStatLearn/).
 
 <WikiLink slug="bias-variance-decomposition" title="Bias-Variance Decomposition" />
 
@@ -46,6 +46,12 @@ The definitions above talk about "many training sets" — an experiment you can 
 - Small $k$ / deep trees → low bias, high variance; large $k$ / shallow trees → the reverse
 - Diagnose by comparing training vs. validation error; the gap is variance, the floor is bias
 - More data cures variance, never bias; ensembles cancel the variance of low-bias models
+
+## Further reading
+
+- [Neural Networks and the Bias/Variance Dilemma](https://doi.org/10.1162/neco.1992.4.1.1) — Geman, Bienenstock & Doursat, *Neural Computation* 1992; the paper that framed the modern bias–variance tradeoff.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman; Ch. 7 gives the full test-error decomposition and its use in model selection.
+- [Nearest Neighbor Pattern Classification](https://doi.org/10.1109/TIT.1967.1053964) — Cover & Hart, 1967; grounds the $k$-as-complexity-dial example that opens this lesson.
 
 ## Related concepts
 
