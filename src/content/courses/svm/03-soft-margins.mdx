@@ -4,7 +4,7 @@ description: "Real data isn't separable — slack variables let the margin bend,
 order: 3
 type: concept
 spineStages: [objective]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # Soft Margins & Tuning C
@@ -13,7 +13,7 @@ The [maximum-margin classifier](/courses/svm/01-maximum-margin) assumed the two 
 
 ## Slack variables
 
-Give every training point a slack $\xi_i \geq 0$ measuring how badly it violates the margin:
+Slack variables and the price $C$ were introduced with the original SVM by [Cortes & Vapnik (1995)](https://doi.org/10.1007/BF00994018) precisely to handle non-separable data. Give every training point a slack $\xi_i \geq 0$ measuring how badly it violates the margin:
 
 $$
 y_i(\mathbf{w}^\top \mathbf{x}_i + b) \geq 1 - \xi_i
@@ -70,7 +70,7 @@ $$
 The $\max(0, 1 - \text{margin})$ term is the **hinge loss**: zero for points beyond the margin, growing linearly for violators. Two things fall out of this view:
 
 1. Points outside the margin contribute *nothing* — gradient zero. Only margin violators and boundary points (the support vectors) shape the solution.
-2. The SVM is "just" a linear model with hinge loss plus L2 regularization, where $1/C$ plays the role of the regularization strength $\lambda$. The same bias–variance dial as everywhere else.
+2. The SVM is "just" a linear model with hinge loss plus L2 regularization, where $1/C$ plays the role of the regularization strength $\lambda$. The same bias–variance dial as everywhere else. This regularization view is developed in depth by [Schölkopf & Smola (2002)](https://mitpress.mit.edu/9780262536578/learning-with-kernels/).
 
 Plotting hinge against its neighbours makes the shape memorable — a free-pass region beyond the margin, then a straight-line penalty, versus log-loss which never reaches zero:
 
@@ -103,6 +103,11 @@ plt.show()
 - $C$ is that price: small $C$ → wide tolerant margin, large $C$ → strict narrow margin, $C \to \infty$ → hard margin
 - Soft-margin SVM ≡ hinge loss + L2 regularization with $\lambda = 1/C$
 - Tune $C$ (and $\gamma$ for RBF) jointly, on a log grid, with cross-validation
+
+## Further reading
+
+- [Support-Vector Networks](https://doi.org/10.1007/BF00994018) — Cortes & Vapnik, *Machine Learning* 1995; introduces slack variables and the $C$-parameter soft margin.
+- [Learning with Kernels](https://mitpress.mit.edu/9780262536578/learning-with-kernels/) — Schölkopf & Smola, MIT Press 2002; the regularized-risk / hinge-loss-plus-L2 view of the soft-margin SVM.
 
 ## Related concepts
 

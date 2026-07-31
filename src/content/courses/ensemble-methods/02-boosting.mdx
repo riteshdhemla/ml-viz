@@ -4,7 +4,7 @@ description: "Training weak learners sequentially to correct each other's mistak
 order: 2
 type: concept
 spineStages: [hypothesis-space, optimization]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # Boosting
@@ -33,7 +33,7 @@ where $\hat{f}_0$ is the initial constant prediction (e.g. the mean of $y$), $h_
 
 ## AdaBoost (1995)
 
-The original boosting algorithm:
+The original practical boosting algorithm, from [Freund & Schapire (1997)](https://doi.org/10.1006/jcss.1997.1504) (first presented at EuroCOLT 1995):
 
 1. Initialize equal weights $w_i = 1/n$ for all samples
 2. Train weak learner $h_b$
@@ -68,7 +68,7 @@ print(f"AdaBoost accuracy: {ada.score(X_test, y_test):.3f}")
 
 ## Gradient Boosting
 
-Generalizes boosting to any differentiable loss function. Each new tree fits the **negative gradient** (residuals) of the loss:
+[Friedman (2001)](https://doi.org/10.1214/aos/1013203451) generalized boosting to any differentiable loss function by casting it as gradient descent in function space. Each new tree fits the **negative gradient** (residuals) of the loss:
 
 $$
 r_i^{(b)} = -\frac{\partial \mathcal{L}(y_i, \hat{f}_{b-1}(\mathbf{x}_i))}{\partial \hat{f}_{b-1}(\mathbf{x}_i)}
@@ -111,7 +111,7 @@ print(f"GBM accuracy: {gbm.score(X_test, y_test):.3f}")
 
 ## From the idea to the engines
 
-Modern gradient boosting lives in three libraries — **XGBoost** (regularized objective, sparse-aware, GPU), **LightGBM** (histogram splits, leaf-wise growth, native categoricals), and **CatBoost**. What separates them from the plain algorithm above — the regularized objective, shrinkage tuning, and subsampling — is the [next lesson](/courses/ensemble-methods/03-xgboost).
+Modern gradient boosting lives in three libraries — **XGBoost** ([Chen & Guestrin, 2016](https://arxiv.org/abs/1603.02754): regularized objective, sparse-aware, GPU), **LightGBM** ([Ke et al., 2017](https://proceedings.neurips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html): histogram splits, leaf-wise growth, native categoricals), and **CatBoost**. What separates them from the plain algorithm above — the regularized objective, shrinkage tuning, and subsampling — is the [next lesson](/courses/ensemble-methods/03-xgboost).
 
 ## Boosting vs Bagging
 
@@ -161,6 +161,13 @@ Modern gradient boosting lives in three libraries — **XGBoost** (regularized o
 - **AdaBoost** reweights errors; **gradient boosting** fits residual gradients.
 - **XGBoost/LightGBM** are fast, regularized gradient boosting — top tabular performers.
 - Lower `learning_rate` + more trees generalizes better; boosting can overfit if unregularized.
+
+## Further reading
+
+- [A Decision-Theoretic Generalization of On-Line Learning and an Application to Boosting](https://doi.org/10.1006/jcss.1997.1504) — Freund & Schapire, *JCSS* 1997; the AdaBoost algorithm and its loss-bound analysis.
+- [Greedy Function Approximation: A Gradient Boosting Machine](https://doi.org/10.1214/aos/1013203451) — Friedman, *Annals of Statistics* 2001; boosting as gradient descent in function space.
+- [XGBoost: A Scalable Tree Boosting System](https://arxiv.org/abs/1603.02754) — Chen & Guestrin, KDD 2016; the regularized second-order gradient-boosting engine.
+- [LightGBM: A Highly Efficient Gradient Boosting Decision Tree](https://proceedings.neurips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html) — Ke et al., NeurIPS 2017; histogram-based, leaf-wise gradient boosting.
 
 ## Related concepts
 

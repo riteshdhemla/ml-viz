@@ -4,7 +4,7 @@ description: "Solving non-linear problems without leaving the original feature s
 order: 2
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 22
+estimatedMinutes: 23
 ---
 
 # The Kernel Trick
@@ -29,7 +29,7 @@ $$
 K(\mathbf{x}_i, \mathbf{x}_j) = \phi(\mathbf{x}_i)^T \phi(\mathbf{x}_j)
 $$
 
-where $\phi$ is the mapping to the higher-dimensional space. The key insight: the SVM optimization only needs dot products, so we can replace them with kernel evaluations.
+where $\phi$ is the mapping to the higher-dimensional space. The key insight: the SVM optimization only needs dot products, so we can replace them with kernel evaluations. The idea of computing inner products in a feature space through a kernel dates to the potential-function method of [Aizerman, Braverman & Rozonoer (1964)](https://www.mathnet.ru/eng/at11677); [Boser, Guyon & Vapnik (1992)](https://doi.org/10.1145/130385.130401) folded it into the margin classifier to make the "trick" practical.
 
 ## Common kernels
 
@@ -99,7 +99,7 @@ The visualization below shows both the original 2D space (left) and the implicit
 Same answer — but the kernel never built the 6-D vectors. For an RBF kernel the equivalent $\phi$ is **infinite-dimensional**: expanding via the Taylor series $e^u = \sum_{n=0}^\infty u^n/n!$ with $u = 2\gamma\,\mathbf{x}^\top\mathbf{z}$ shows that every monomial of every degree appears in the feature map — yet $K$ is still one cheap exponential.
 
 <Callout type="info" title="What makes a function a valid kernel?">
-  Not every $K$ corresponds to some $\phi$. **Mercer's condition:** $K$ is a valid kernel iff for every finite set of points the Gram matrix $K_{ij}=K(\mathbf x_i,\mathbf x_j)$ is symmetric **positive semi-definite** — roughly, the pairwise similarity scores must respect the geometry of a real inner product space (no "impossible" similarity configurations). Linear, polynomial, and RBF all satisfy this; the sigmoid kernel does *not* in general, which is why it can misbehave.
+  Not every $K$ corresponds to some $\phi$. **Mercer's condition:** $K$ is a valid kernel iff for every finite set of points the Gram matrix $K_{ij}=K(\mathbf x_i,\mathbf x_j)$ is symmetric **positive semi-definite** — roughly, the pairwise similarity scores must respect the geometry of a real inner product space (no "impossible" similarity configurations). Linear, polynomial, and RBF all satisfy this; the sigmoid kernel does *not* in general, which is why it can misbehave. See [Schölkopf & Smola (2002)](https://mitpress.mit.edu/9780262536578/learning-with-kernels/) for the full positive-definite-kernel theory.
 </Callout>
 
 Now a non-separable dataset where only a kernel can succeed:
@@ -202,6 +202,13 @@ print(f"Test accuracy: {grid.score(X_test, y_test):.3f}")
 - **RBF** is the go-to general kernel; polynomial and linear are alternatives.
 - `C` controls margin softness; `gamma` controls RBF reach — tune them together.
 - Large `gamma`/`C` overfits; always scale features before kernel SVMs.
+
+## Further reading
+
+- [Theoretical Foundations of the Potential Function Method in Pattern Recognition](https://www.mathnet.ru/eng/at11677) — Aizerman, Braverman & Rozonoer, *Automation and Remote Control* 1964; the origin of kernel-as-inner-product.
+- [A Training Algorithm for Optimal Margin Classifiers](https://doi.org/10.1145/130385.130401) — Boser, Guyon & Vapnik, COLT 1992; where the kernel trick enters the margin classifier.
+- [Learning with Kernels](https://mitpress.mit.edu/9780262536578/learning-with-kernels/) — Schölkopf & Smola, MIT Press 2002; positive-definite kernels, Mercer's theorem, and the RBF feature map.
+- [Support-Vector Networks](https://doi.org/10.1007/BF00994018) — Cortes & Vapnik, *Machine Learning* 1995; the dual form the kernel substitution acts on.
 
 ## Related concepts
 

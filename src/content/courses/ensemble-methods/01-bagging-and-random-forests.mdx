@@ -4,12 +4,12 @@ description: "Reducing variance by combining many unstable learners."
 order: 1
 type: concept
 spineStages: [hypothesis-space]
-estimatedMinutes: 22
+estimatedMinutes: 23
 ---
 
 # Bagging & Random Forests
 
-A single decision tree overfits easily — it's high-variance. **Bagging** (Bootstrap Aggregating) trains many trees on random subsets of data and averages their predictions, dramatically reducing variance. In [project-loop](/wiki/ml-project-loop) terms, an ensemble is a **hypothesis-space** move: instead of one model, your function family becomes *averages of many* — strictly more expressive, and much lower variance.
+A single decision tree overfits easily — it's high-variance. **Bagging** (Bootstrap Aggregating), introduced by [Breiman (1996)](https://doi.org/10.1007/BF00058655), trains many trees on random subsets of data and averages their predictions, dramatically reducing variance. In [project-loop](/wiki/ml-project-loop) terms, an ensemble is a **hypothesis-space** move: instead of one model, your function family becomes *averages of many* — strictly more expressive, and much lower variance.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -48,7 +48,7 @@ Two terms with very different behavior:
 - The second term $\frac{1-\rho}{B}\sigma^2$ vanishes as $B\to\infty$ — **adding more trees** kills it.
 - The first term $\rho\sigma^2$ is a **floor** that more trees cannot touch.
 
-This is the key insight behind random forests: once you have enough trees, the only way to reduce variance further is to **lower $\rho$**. Bagging alone leaves $\rho$ high (trees all latch onto the same dominant feature); random feature subsets at each split push $\rho$ down, lowering the floor. So RF attacks the term bagging can't.
+This is the key insight behind random forests: once you have enough trees, the only way to reduce variance further is to **lower $\rho$**. Bagging alone leaves $\rho$ high (trees all latch onto the same dominant feature); random feature subsets at each split push $\rho$ down, lowering the floor. So RF attacks the term bagging can't — this correlation-floor argument is exactly the motivation [Breiman (2001)](https://doi.org/10.1023/A:1010933404324) gives for random forests.
 
 ### Worked example
 
@@ -73,7 +73,7 @@ print(f"Bagging accuracy: {bag.score(X_test, y_test):.3f}")
 
 ## Random Forests
 
-Random Forests improve on bagging by adding **feature randomization**: at each split, only consider a random subset of $m$ features.
+[Random Forests](https://doi.org/10.1023/A:1010933404324) (Breiman, 2001) improve on bagging by adding **feature randomization**: at each split, only consider a random subset of $m$ features.
 
 This decorrelates the trees further — they can't all rely on the same dominant feature:
 
@@ -132,7 +132,7 @@ for i in np.argsort(result.importances_mean)[::-1][:5]:
 ```
 
 <Callout type="info" title="MDI vs Permutation importance">
-  MDI can be biased toward high-cardinality features (e.g., ID numbers). Permutation importance is more reliable but slower. Use permutation importance for final analysis, MDI for quick exploration.
+  MDI can be biased toward high-cardinality features (e.g., ID numbers) — a bias documented and dissected by [Strobl et al. (2007)](https://doi.org/10.1186/1471-2105-8-25). Permutation importance is more reliable but slower. Use permutation importance for final analysis, MDI for quick exploration.
 </Callout>
 
 ## Out-of-Bag (OOB) evaluation
@@ -184,6 +184,13 @@ print(f"OOB accuracy: {rf.oob_score_:.3f}")  # ~same as test accuracy
 - **Random forests** add per-split feature randomness to decorrelate the trees.
 - **Out-of-bag** rows give a built-in validation score.
 - Prefer **permutation importance** over impurity-based importance for reliability.
+
+## Further reading
+
+- [Bagging Predictors](https://doi.org/10.1007/BF00058655) — Breiman, *Machine Learning* 1996; introduces bootstrap aggregation and the instability argument.
+- [Random Forests](https://doi.org/10.1023/A:1010933404324) — Breiman, *Machine Learning* 2001; feature randomization, the strength/correlation bound, and OOB estimation.
+- [Bias in Random Forest Variable Importance Measures](https://doi.org/10.1186/1471-2105-8-25) — Strobl et al., *BMC Bioinformatics* 2007; why MDI favors high-cardinality features.
+- [The Elements of Statistical Learning](https://hastie.su.domains/ElemStatLearn/) — Hastie, Tibshirani & Friedman, 2nd ed. 2009; Ch. 15 derives the $\rho\sigma^2$ variance floor.
 
 ## Related concepts
 

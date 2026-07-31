@@ -4,12 +4,12 @@ description: "SVMs find the widest possible street between classes."
 order: 1
 type: concept
 spineStages: [objective]
-estimatedMinutes: 20
+estimatedMinutes: 21
 ---
 
 # Maximum Margin Classification (SVMs)
 
-Support Vector Machines find the separating hyperplane with the **widest possible margin** — the "street" between classes. Wider streets generalize better. That "maximize the margin" rule is the loop's **objective** slot made unusually vivid: it's a precise definition of what a good boundary is, and the whole method follows from it.
+Support Vector Machines find the separating hyperplane with the **widest possible margin** — the "street" between classes. Wider streets generalize better. That "maximize the margin" rule is the loop's **objective** slot made unusually vivid: it's a precise definition of what a good boundary is, and the whole method follows from it. The maximum-margin training algorithm was introduced by [Boser, Guyon & Vapnik (1992)](https://doi.org/10.1145/130385.130401), and the SVM as we use it today — margin objective plus support-vector solution — was set out by [Cortes & Vapnik (1995)](https://doi.org/10.1007/BF00994018).
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -83,7 +83,7 @@ print(f"Support vectors:\n{svm.support_vectors_}")        # (2,2) and (0,0)
 
 ## Support vectors
 
-Only the points closest to the boundary — the **support vectors** — define the decision boundary. All other points can be moved without changing the result.
+Only the points closest to the boundary — the **support vectors** — define the decision boundary. All other points can be moved without changing the result. That the optimal solution is a sparse linear combination of just these boundary points is the central result of [Cortes & Vapnik (1995)](https://doi.org/10.1007/BF00994018), and it falls out of the dual's KKT conditions.
 
 This makes SVMs memory-efficient: at prediction time, you only need the support vectors, not the entire training set.
 
@@ -93,7 +93,7 @@ This makes SVMs memory-efficient: at prediction time, you only need the support 
 
 ## When the data isn't separable
 
-Everything above assumed a **hard margin**: every point classified correctly, with room to spare. Real datasets have label noise and overlap — demand perfect separation and either no solution exists, or one mislabeled point swings the whole boundary. The fix is the **soft margin**: let points violate the margin, but charge a price $C$ per unit of violation. Written without constraints, that price becomes the **hinge loss** — zero for confidently-correct points, growing linearly for violators.
+Everything above assumed a **hard margin**: every point classified correctly, with room to spare. Real datasets have label noise and overlap — demand perfect separation and either no solution exists, or one mislabeled point swings the whole boundary. The fix is the **soft margin** — introduced alongside the SVM by [Cortes & Vapnik (1995)](https://doi.org/10.1007/BF00994018): let points violate the margin, but charge a price $C$ per unit of violation. Written without constraints, that price becomes the **hinge loss** — zero for confidently-correct points, growing linearly for violators.
 
 Slack variables, what $C$ really tunes, and why a soft-margin SVM is exactly hinge loss + L2 regularization with $\lambda = 1/C$ is the subject of [Soft Margins & Tuning C](/courses/svm/03-soft-margins).
 
@@ -128,6 +128,12 @@ Slack variables, what $C$ really tunes, and why a soft-margin SVM is exactly hin
 - Only the **support vectors** (points on the margin) define the boundary.
 - Real data isn't separable — the **soft margin** (next-next lesson) prices violations via $C$ and the hinge loss.
 - Standardize features first; SVMs live and die by distances.
+
+## Further reading
+
+- [A Training Algorithm for Optimal Margin Classifiers](https://doi.org/10.1145/130385.130401) — Boser, Guyon & Vapnik, COLT 1992; the original maximum-margin classifier.
+- [Support-Vector Networks](https://doi.org/10.1007/BF00994018) — Cortes & Vapnik, *Machine Learning* 1995; the SVM, support-vector solution, and soft margin.
+- [Learning with Kernels](https://mitpress.mit.edu/9780262536578/learning-with-kernels/) — Schölkopf & Smola, MIT Press 2002; the standard reference on the margin objective, duality, and generalization.
 
 ## Related concepts
 

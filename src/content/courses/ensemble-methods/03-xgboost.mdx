@@ -4,12 +4,12 @@ description: "From the boosting idea to the system that wins tabular-data compet
 order: 3
 type: concept
 spineStages: [optimization, objective]
-estimatedMinutes: 20
+estimatedMinutes: 21
 ---
 
 # Gradient Boosting in Practice: XGBoost
 
-[Boosting](/courses/ensemble-methods/02-boosting) gave us the recipe: fit each new tree to the gradient of the loss, nudging the ensemble downhill in function space. **XGBoost** (and its cousins LightGBM and CatBoost) turned that recipe into the engine that has dominated tabular-data machine learning for a decade. The difference is regularization — applied everywhere.
+[Boosting](/courses/ensemble-methods/02-boosting) gave us the recipe: fit each new tree to the gradient of the loss, nudging the ensemble downhill in function space. **XGBoost** ([Chen & Guestrin, 2016](https://arxiv.org/abs/1603.02754)) — and its cousins [LightGBM](https://proceedings.neurips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html) and CatBoost — turned that recipe into the engine that has dominated tabular-data machine learning for a decade. The difference is regularization — applied everywhere.
 
 ## The regularized objective
 
@@ -24,7 +24,7 @@ where $T$ is the number of leaves in a tree and $w_j$ are its leaf output values
 - $\gamma T$ — each leaf must justify its existence: a split happens only if it improves the loss by more than $\gamma$. Built-in pruning.
 - $\lambda \sum w_j^2$ — L2 shrinkage on leaf values, the same medicine as Ridge regression, applied inside every tree.
 
-XGBoost also uses the **second-order** Taylor expansion of the loss (gradients *and* Hessians), which gives a closed-form optimal leaf weight and split score instead of a heuristic.
+XGBoost also uses the **second-order** Taylor expansion of the loss (gradients *and* Hessians), which gives a closed-form optimal leaf weight and split score instead of a heuristic — the regularized objective and split-gain formula are derived in [Chen & Guestrin (2016)](https://arxiv.org/abs/1603.02754).
 
 ## Shrinkage: the learning rate
 
@@ -84,7 +84,7 @@ On heterogeneous tabular data — mixed scales, missing values, categorical feat
 - XGBoost handles missing values natively, learning a default direction per split
 - Trees capture sharp interactions and thresholds that smooth function approximators need many samples to find
 
-Deep learning wins when there's structure to exploit — images, text, audio, huge datasets. For a 50,000-row CSV, boosted trees are the bar to beat.
+Deep learning wins when there's structure to exploit — images, text, audio, huge datasets. For a 50,000-row CSV, boosted trees are the bar to beat — a finding [Grinsztajn et al. (2022)](https://arxiv.org/abs/2207.08815) confirm across a large benchmark of medium-sized tabular datasets.
 
 <Exercise id="ensemble-xgb-eta" />
 
@@ -96,6 +96,13 @@ Deep learning wins when there's structure to exploit — images, text, audio, hu
 - Second-order (gradient + Hessian) approximation gives principled split scores and leaf values
 - Lower learning rate + more trees + early stopping is the most dependable tuning move
 - For tabular data, gradient-boosted trees are still the default champion
+
+## Further reading
+
+- [XGBoost: A Scalable Tree Boosting System](https://arxiv.org/abs/1603.02754) — Chen & Guestrin, KDD 2016; the regularized objective, second-order split gain, and sparsity-aware splits.
+- [LightGBM: A Highly Efficient Gradient Boosting Decision Tree](https://proceedings.neurips.cc/paper/2017/hash/6449f44a102fde848669bdd9eb6b76fa-Abstract.html) — Ke et al., NeurIPS 2017; histogram splits, leaf-wise growth, GOSS and EFB.
+- [Greedy Function Approximation: A Gradient Boosting Machine](https://doi.org/10.1214/aos/1013203451) — Friedman, *Annals of Statistics* 2001; the shrinkage and subsampling foundations XGBoost builds on.
+- [Why Do Tree-Based Models Still Outperform Deep Learning on Tabular Data?](https://arxiv.org/abs/2207.08815) — Grinsztajn, Oyallon & Varoquaux, NeurIPS 2022; benchmark evidence for the tabular claim.
 
 ## Related concepts
 
