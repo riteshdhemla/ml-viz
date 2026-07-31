@@ -5363,6 +5363,51 @@ const allExercises: Exercise[] = [
     ],
   },
   {
+    id: "llm-rag-arch-hybrid",
+    type: "multiple-choice",
+    question:
+      "Users keep asking about specific error codes like `ORA-01555`, and your dense-embedding retriever returns generally-related database pages but never the page for that exact code. Which architecture change fixes this most directly?",
+    hint: "Ask what a rare literal string looks like to an embedding model versus to a keyword index.",
+    explanation:
+      "An embedding model smears a rare identifier into its semantic neighbourhood — 'ORA-01555' lands near 'Oracle error' generally, not near its own page. BM25 scores the literal token, so hybrid retrieval (BM25 + dense, fused by rank) recovers exactly the case dense retrieval loses. Bigger chunks or a larger k add noise without adding lexical precision, and a reranker can only re-order candidates the first stage already retrieved — if the right page was never in the shortlist, reranking cannot rescue it.",
+    options: [
+      { id: "a", label: "Add BM25 alongside the embeddings and fuse the two ranked lists", isCorrect: true },
+      { id: "b", label: "Increase k so more chunks reach the generator", isCorrect: false },
+      { id: "c", label: "Add a cross-encoder reranker over the same dense shortlist", isCorrect: false },
+      { id: "d", label: "Use larger chunks so each embedding covers more text", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-rag-arch-crag",
+    type: "multiple-choice",
+    question:
+      "You are calling a frozen API model (no fine-tuning possible) and need the system to stop generating confident answers from irrelevant retrieved context. Why is CRAG-style corrective RAG the practical choice over Self-RAG here?",
+    hint: "One approach changes the model; the other wraps it.",
+    explanation:
+      "Self-RAG trains reflection tokens ([Retrieve], [IsRel], [IsSup], [IsUse]) into the model's own vocabulary, so it requires supervised fine-tuning on reflection-labelled data — impossible with a frozen API model. CRAG instead runs a lightweight external evaluator that grades retrieved documents and branches (use as-is / augment with web search / discard and fall back), which wraps any LLM unchanged. The trade-off is an extra model and its latency, not accuracy of grading per se.",
+    options: [
+      { id: "a", label: "CRAG grades retrieval with an external evaluator, so it wraps any frozen LLM; Self-RAG needs fine-tuning", isCorrect: true },
+      { id: "b", label: "CRAG retrieves fewer chunks, so it is always cheaper per query", isCorrect: false },
+      { id: "c", label: "Self-RAG only works on multi-hop questions", isCorrect: false },
+      { id: "d", label: "CRAG removes the need to evaluate retrieval quality separately", isCorrect: false },
+    ],
+  },
+  {
+    id: "llm-rag-arch-routing",
+    type: "multiple-choice",
+    question:
+      "An internal assistant gets a mix of 'what does the security policy say about X?' and 'how many tickets did we close last quarter, by team?'. What should the architecture do?",
+    hint: "One of these answers lives in a passage; the other has to be computed over rows.",
+    explanation:
+      "Cosine similarity cannot count, sum, or group — no chunking strategy makes a vector index able to aggregate. The quantitative question needs schema retrieval plus generated SQL executed against the warehouse; the policy question needs the text index. A router that classifies the query and dispatches to the right subsystem (merging when a question needs both) is the architecture. Embedding serialised rows or raising k just produces confidently wrong arithmetic.",
+    options: [
+      { id: "a", label: "Route by query type: text index for the policy question, text-to-SQL for the aggregation", isCorrect: true },
+      { id: "b", label: "Serialise every database row to text and embed it into the same vector index", isCorrect: false },
+      { id: "c", label: "Raise k so enough ticket records reach the model for it to count them", isCorrect: false },
+      { id: "d", label: "Switch to GraphRAG global search, since aggregation is a corpus-wide question", isCorrect: false },
+    ],
+  },
+  {
     id: "llm-agent-react",
     type: "multiple-choice",
     question:

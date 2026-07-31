@@ -488,7 +488,7 @@ surface-border   — borders
 - [x] **Time Series** — stationarity/ACF, ARIMA/SARIMA, deep learning for forecasting, demand forecasting in production *(course + 4 lessons + quiz)*
 
 ### Applied & Production AI
-- [x] **Building with LLMs** — prompting & in-context learning, CoT & structured output, embeddings & semantic search, RAG, agents & tool use, AI-engineering architecture, reasoning models, LLM evaluation, observability, guardrails, code intelligence, voice & multimodal *(course + 13 lessons + quiz)*
+- [x] **Building with LLMs** — prompting & in-context learning, CoT & structured output, embeddings & semantic search, RAG, RAG architectures (hybrid/contextual, GraphRAG, self-correcting, agentic, multimodal, structured), agents & tool use, AI-engineering architecture, reasoning models, LLM evaluation, observability, guardrails, code intelligence, voice & multimodal *(course + 14 lessons + quiz)*
 - [x] **Fine-Tuning & Alignment** — SFT & instruction tuning, PEFT/LoRA/QLoRA, reward models, RLHF & DPO, model merging & quantization, knowledge distillation *(course + 6 lessons + quiz)*
 - [x] **ML Systems & MLOps** — data engineering, deployment patterns, model compression, continual learning & test-in-production, monitoring, MLOps infra, CI/CD & continuous training (maturity levels), feature stores, model registry & governance *(integrated into `ml-in-practice`: 21 lessons + quiz, incl. fraud-detection, content-moderation & LLM-inference-optimization case studies)*
 - [x] **LLMOps** — LLM evaluation & LLM-as-a-judge, observability/tracing & prompt management, guardrails & security (OWASP LLM Top 10) *(integrated into `building-with-llms` lessons 08–10)*
@@ -566,6 +566,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | NaiveBayesVotesViz | `visualizations/NaiveBayesVotes/` | probabilistic-models/03-naive-bayes | ✅ |
 | SamplingViz | `visualizations/Sampling/` | building-with-llms/01-prompt-engineering | ✅ |
 | RAGRetrievalViz | `visualizations/RAGRetrieval/` | building-with-llms/04-retrieval-augmented-generation | ✅ |
+| RAGArchitectureViz | `visualizations/RAGArchitecture/` | building-with-llms/14-rag-architectures | ✅ |
 | SamplingStrategiesViz | `visualizations/SamplingStrategies/` | ml-in-practice/06-training-data | ✅ |
 | LoRAViz | `visualizations/LoRA/` | fine-tuning-alignment/02-peft-lora-qlora | ✅ |
 | RewardModelViz | `visualizations/RewardModel/` | fine-tuning-alignment/03-reward-models | ✅ |
