@@ -666,11 +666,12 @@ and records frames.
 | `bptt-gradient-flow` | `algo-traces/bptt.ts` | wiki/bptt-algorithm | ✅ |
 | `paged-attention` | `algo-traces/paged-attention.ts` | wiki/paged-attention | ✅ |
 
-**Queue is empty** — every wiki page that was flagged as a procedure worth
-stepping through now has a trace. Candidates for a future round would be lesson
-pages rather than wiki pages (e.g. `optimization-ml/01-gradient-descent-variants`,
-`graphical-models/02-markov-random-fields`), or algorithms whose wiki page does
-not exist yet.
+**Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
+untraced pages under `src/content`. The strongest remaining candidates are in
+**lessons** rather than wiki pages (Viterbi, value iteration, beam search,
+Q-learning, backprop on a graph), plus a handful of wiki procedures that were
+missed first time round (isotonic/PAVA, ROC construction, continuous batching,
+power iteration, lasso coordinate descent).
 
 ---
 
