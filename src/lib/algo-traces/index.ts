@@ -10,6 +10,7 @@ import { emTrace } from "./em";
 import { hnswTrace } from "./hnsw";
 import { kmeansTrace } from "./kmeans";
 import { adaboostTrace } from "./adaboost";
+import { continuousBatchingTrace } from "./continuous-batching";
 import { dgimTrace } from "./dgim";
 import { hierarchicalTrace } from "./hierarchical";
 import { hyperloglogTrace } from "./hyperloglog";
@@ -63,6 +64,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   pagedAttentionTrace,
   viterbiTrace,
   valueIterationTrace,
+  continuousBatchingTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
