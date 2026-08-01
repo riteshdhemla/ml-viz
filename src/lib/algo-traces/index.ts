@@ -22,6 +22,7 @@ import { newtonTrace } from "./newton";
 import { nmsTrace } from "./nms";
 import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
+import { qLearningTrace } from "./q-learning";
 import { rocTrace } from "./roc";
 import { speculativeDecodingTrace } from "./speculative-decoding";
 import { valueIterationTrace } from "./value-iteration";
@@ -73,6 +74,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   bloomFilterTrace,
   isotonicTrace,
   beamSearchTrace,
+  qLearningTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
