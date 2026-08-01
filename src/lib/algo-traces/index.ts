@@ -2,6 +2,7 @@ import type { AlgoTrace } from "@/types/algo-trace";
 import { attentionTrace } from "./attention";
 import { bm25Trace } from "./bm25";
 import { baumWelchTrace } from "./baum-welch";
+import { bloomFilterTrace } from "./bloom-filter";
 import { bpeTrace } from "./bpe";
 import { bpttTrace } from "./bptt";
 import { dbscanTrace } from "./dbscan";
@@ -67,6 +68,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   valueIterationTrace,
   continuousBatchingTrace,
   rocTrace,
+  bloomFilterTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

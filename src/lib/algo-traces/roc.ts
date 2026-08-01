@@ -347,7 +347,7 @@ function build(): AlgoTrace {
     id: "roc-construction",
     title: "ROC — sweeping a threshold, and what class imbalance does to it",
     caption:
-      "The ROC curve built one example at a time on the five-point worked example above: a positive moves the curve up, a negative moves it right, and AUC is the trapezoid area — 5/6, cross-checked against the Wilcoxon concordant-pair count on the same data. The final step replicates every negative 100× without changing the ranking at all: AUC does not move a digit, while precision at full recall falls 25×.",
+      "The ROC curve built one example at a time on the five-point worked example above: a positive moves the curve up, a negative moves it right, and AUC is the trapezoid area — 5/6, cross-checked against the Wilcoxon concordant-pair count on the same data. The final step replicates every negative 100× without changing the ranking at all: AUC does not move a digit, while precision at full recall collapses by more than 25×.",
     code: CODE,
     lang: "python",
     frames,

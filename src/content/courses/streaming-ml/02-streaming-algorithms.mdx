@@ -57,6 +57,27 @@ $$
 More bits per element ($m/n$) shrinks the error exponentially; the optimal number of hashes is $k=\tfrac{m}{n}\ln 2$. A rule of thumb: **~10 bits per element with ~7 hashes** gives a false-positive rate under 1%. That is a few bits to remember whether you have ever seen an item — versus storing the item itself.
 </Callout>
 
+Step through a filter small enough to see every bit — 16 bits, 3 hashes, three
+inserted words — and then watch the false-positive formula get measured:
+
+<AlgorithmTrace id="bloom-filter" />
+
+What to notice as you step:
+
+- **Inserting only ever sets bits.** Nothing is ever cleared, which is why a
+  member's bits can never revert and false negatives are impossible — and, in
+  the same breath, why deletion is impossible too. Watch bit 12 get set by
+  "cat" and then re-set by "dog": the filter cannot tell, so it could never
+  safely unset it.
+- **One zero bit is a proof.** The "bird" query stops at the first unset bit,
+  and that answer is exact, not probabilistic.
+- **The false positive has no single culprit.** "dove" hits bits 11, 12 and 13,
+  set by "fish", "cat"/"dog", and "fish" respectively. Three unrelated
+  insertions covered a fourth element's fingerprint between them.
+- **The last step measures $(1 - e^{-kn/m})^k$** across twelve values of $k$ at
+  ~10 bits per element, and finds a bottom so flat that every $k$ from 5 to 12
+  lands under 1%. The rule of thumb above is a robust recipe, not a knife-edge.
+
 Bloom filters are everywhere in streaming ML pipelines: de-duplicating events, skipping cache/database lookups for keys that are definitely absent, and gating expensive feature computation.
 
 ## Flajolet-Martin: counting distinct elements
