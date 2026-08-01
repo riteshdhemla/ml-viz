@@ -55,7 +55,7 @@ not a second builder.
   - **Payoff:** measured false-positive rate against the (1 − e^(−kn/m))^k
     prediction, and the k that minimizes it.
 
-## Round 4 — strong candidates, need a worked example built
+## Round 4 — in progress (3 of 8 done)
 
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
@@ -63,7 +63,7 @@ not a second builder.
 - [x] **Beam search** — `courses/nlp/05-decoding-and-sampling`
   - Very algo-viz-shaped (a frontier of hypotheses, pruned each step).
   - Payoff: beam width vs greedy on the same logits; length-normalization bug.
-- [ ] **Q-learning** — `courses/reinforcement-learning/02-q-learning`
+- [x] **Q-learning** — `courses/reinforcement-learning/02-q-learning`
   - `QTableViz` exists but no trace. TD update loop over a grid.
   - Payoff: on-policy vs off-policy target, or ε decay.
 - [ ] **SGD / momentum / Adam side by side** — `courses/optimization-ml/01-gradient-descent-variants`

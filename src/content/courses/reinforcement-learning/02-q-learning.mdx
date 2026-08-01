@@ -71,6 +71,30 @@ $\alpha = 0.1$, $\gamma = 0.9$. Current $Q(s,a) = 5$. Agent takes $a$, gets $r =
 
 TD target $= 2 + 0.9 \cdot 10 = 11$. TD error $= 11 - 5 = 6$. New $Q(s,a) = 5 + 0.1 \cdot 6 = 5.6$.
 
+### Watch it learn
+
+That update, then the same rule run to convergence on a cliff world the agent
+knows nothing about:
+
+<AlgorithmTrace id="q-learning" />
+
+What to notice as you step:
+
+- **The agent learns the cliff exists by falling into it.** There is no model to
+  consult — the first −100 is the entire source of that knowledge, and $\alpha$
+  means one fall only moves the estimate halfway.
+- **Value propagates backwards from the goal**, exactly as in value iteration,
+  but every increment came from a sampled transition instead of a known $P$.
+- **The last step changes one expression** — `max Q(s', b)` becomes `Q(s', a')`,
+  the action actually about to be taken — and the same code is SARSA. On
+  identical experience the two learn *different routes*: Q-learning hugs the
+  cliff edge (optimal, because the max ignores its own exploration), SARSA
+  detours along the top (because its target feels every exploratory fall).
+- **The safer policy earns more while learning** — SARSA averages −18.5 per
+  episode against Q-learning's −22.5. Q-learning would win if you switched
+  exploration off at deployment. Which you want depends on whether falling off
+  the cliff during training is survivable.
+
 ```python
 import numpy as np
 import gymnasium as gym
