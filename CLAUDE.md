@@ -207,6 +207,52 @@ notebook JSON round-trips cleanly (source-as-string, `indent=1`). Colab runs Pyt
 
 **Template:** see `prompts/new-visualization.md`
 
+### Adding an algorithm trace (the steppable code player)
+
+Standard viz answer *"what does this concept look like?"*. An **algorithm trace**
+answers the different question *"what does this code actually do, line by
+line?"* — the approach borrowed from the sibling **algo-viz** project: source on
+the left with the executing line highlighted, live data structures on the right,
+and play / step / seek controls. Reach for it whenever a wiki page or lesson
+explains a **procedure** (a loop that transforms state) rather than a shape.
+
+```mdx
+<AlgorithmTrace id="bm25-scoring" />
+```
+
+Plain string `id` only — MDX runs with `blockJS: true`, same constraint as
+`<Exercise id>` and `<WikiLink slug>`.
+
+**To add one:**
+
+1. Create `src/lib/algo-traces/<name>.ts` exporting a built `AlgoTrace`.
+2. **Run the real algorithm and record frames** — never hand-write the numbers a
+   step produces. If the trace and the prose disagree, the reader learns the
+   wrong thing. Use `frameBuilder()` and `lineFinder()` from `./util`:
+   `lineFinder` maps code *fragments* to line numbers, so edits to the listing
+   never silently rot the highlights.
+3. Each frame is `push(description, ln("fragment"), ...components)`:
+   - `description` — one plain sentence saying what just happened, and *why it
+     matters*. This is the teaching surface; a bare "i = 3" wastes the frame.
+   - components — `tokens` / `kv` / `bars` / `matrix` / `table` / `graph` /
+     `note` (see `src/types/algo-trace.ts`). Use `NaN` for matrix cells the
+     algorithm has not filled in yet — they render as `·`, not a fake `0`.
+4. Register it in `allAlgoTraces` in `src/lib/algo-traces/index.ts`.
+5. Reference it from the MDX and write a short "what to notice" list under it.
+6. **Keep code lines under ~46 characters** — the code panel is half of a
+   two-column grid. Put comments on their own line rather than trailing. Longer
+   lines scroll horizontally, but scrolling to read defeats the point.
+7. **End with a payoff frame** that changes one thing and shows the consequence
+   (BM25 re-scored with `b = 0`; attention softmax saturating at `d_k = 64`).
+   That contrast is what makes the mechanism stick.
+
+Integrity rules enforced by `src/lib/__tests__/algo-trace-integrity.test.ts`:
+ids unique, every frame highlights an in-range code line and renders some state,
+≥ 6 frames, every `<AlgorithmTrace id>` in content resolves, and no registered
+trace is left unreferenced.
+
+**Template:** see `prompts/new-algorithm-trace.md`
+
 ### Adding an exercise
 
 Exercise **data** lives in the registry `src/lib/exercises.ts` (a typed
@@ -588,11 +634,33 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | LatencyCriticalPathViz | `visualizations/LatencyCriticalPath/` | wiki/agent-metrics-taxonomy | ✅ |
 | ProjectLoopViz | `visualizations/ProjectLoop/` | wiki/ml-project-loop + wiki/agentic-project-loop (`variant="ml"\|"agentic"`) | ✅ |
 
+## Algorithm Traces Built
+
+Steppable code players (`<AlgorithmTrace id="..." />`) — see "Adding an
+algorithm trace". The player is `visualizations/AlgoTrace/AlgorithmTrace.tsx`;
+each trace is a builder in `src/lib/algo-traces/` that runs the real algorithm
+and records frames.
+
+| Trace id | Builder | Wired into | Status |
+|----------|---------|------------|--------|
+| `bpe-merges` | `algo-traces/bpe.ts` | wiki/bpe-tokenization | ✅ |
+| `scaled-dot-product-attention` | `algo-traces/attention.ts` | wiki/scaled-dot-product-attention | ✅ |
+| `bm25-scoring` | `algo-traces/bm25.ts` | wiki/bm25-ranking | ✅ |
+| `hnsw-search` | `algo-traces/hnsw.ts` | wiki/hnsw | ✅ |
+
+**Queue — wiki pages whose procedures would benefit next:** `em-algorithm`,
+`baum-welch`, `variable-elimination`, `nms-algorithm`, `dbscan-algorithm`,
+`kmeans-algorithm`, `adaboost-algorithm`, `hierarchical-clustering`,
+`decision-tree-information-gain`, `perceptron-learning`, `newtons-method`,
+`speculative-decoding`, `paged-attention`, `hyperloglog`, `dgim-sliding-window`,
+`mcmc-sampling`, `bptt-algorithm`.
+
 ---
 
 ## Vibe Coding Tips for Claude Code
 
 - **New viz?** Copy `prompts/new-visualization.md` into chat
+- **New algorithm trace?** Copy `prompts/new-algorithm-trace.md` into chat
 - **New lesson?** Copy `prompts/new-lesson.md` into chat
 - **New exercise type?** Copy `prompts/new-exercise-type.md` into chat
 - **New course?** Copy `prompts/new-course.md` into chat

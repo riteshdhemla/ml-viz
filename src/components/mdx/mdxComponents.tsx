@@ -93,6 +93,7 @@ import { ReservoirSamplingViz } from "@/components/visualizations/ReservoirSampl
 import { OnlineRegretViz } from "@/components/visualizations/OnlineRegret/OnlineRegretViz";
 import { ConceptDriftViz } from "@/components/visualizations/ConceptDrift/ConceptDriftViz";
 import { ProjectLoopViz } from "@/components/visualizations/ProjectLoop/ProjectLoopViz";
+import { AlgorithmTrace } from "@/components/visualizations/AlgoTrace/AlgorithmTrace";
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -107,6 +108,9 @@ export const mdxComponents: MDXComponents = {
   Exercise,
   WikiLink,
   SystemDesignMeta,
+
+  // Steppable algorithm player — <AlgorithmTrace id="..." />, see lib/algo-traces/
+  AlgorithmTrace,
 
   // Visualizations (pure-SVG client components — see visualizations/viz-kit.tsx)
   GradientDescentViz,

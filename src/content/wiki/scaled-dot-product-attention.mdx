@@ -26,6 +26,20 @@ where $Q \in \mathbb{R}^{n \times d_k}$ (queries), $K \in \mathbb{R}^{n \times d
 3. **Softmax** — apply row-wise so each row sums to 1 (the attention weights).
 4. **Weighted sum** — multiply by $V$: each output is a blend of all values, weighted by relevance.
 
+## Watch it run
+
+Step through those four operations on three tokens with $d_k = 2$. The state
+panel shows each matrix as it is filled in, row by row; the arithmetic behind
+every number is worked out by hand further down this page, so you can check any
+step you don't believe.
+
+<AlgorithmTrace id="scaled-dot-product-attention" />
+
+The final step is the one worth sitting with: it re-runs row 1 at the score
+magnitude typical of $d_k = 64$ **without** the scale factor, and the softmax
+collapses to a one-hot lookup. That saturated distribution is the failure the
+$1/\sqrt{d_k}$ exists to prevent — the next section derives why.
+
 ## Why divide by $\sqrt{d_k}$
 
 Take query $\mathbf{q}$ and key $\mathbf{k}$ with components that are i.i.d. with mean 0 and variance 1. Their dot product is:

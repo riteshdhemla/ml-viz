@@ -142,13 +142,29 @@ Take 1-D points (so "distance" is just $|a-b|$) at positions
 - **Layer 1** (express lane): `{0, 24, 48}`, chained `0—24—48`.
 - **Layer 0** (all points): each linked to its immediate neighbours, e.g. `24—32—40`.
 
-Query $q = 34$, `efSearch = 1`, entry point `24` (top layer).
+Query $q = 34$, `efSearch = 2`, entry point `24` (top layer). Step through both
+phases — the greedy descent, then the beam — with the frontier, the capped
+result set, and the visited set all visible as they change:
 
-1. **Layer 1, greedy (ef=1).** At `24` ($d=10$). Neighbour `48` has $d=14$ (worse), `0` has $d=34$ (worse). No neighbour beats `24` → stop. Descend with `ep = 24`.
-2. **Layer 0, beam.** Start at `24` ($d=10$). Neighbours: `16` ($d=18$), `32` ($d=2$). Move to `32`. From `32`: neighbours `24` ($d=10$, visited-worse), `40` ($d=6$). `40` is worse than `32` ($d=2$) but we keep exploring the frontier; from `40`: `48` ($d=14$) worse. Nearest unexplored candidate now exceeds best result `32` → **stop**.
-3. **Return** `32`, the true nearest neighbour of `34`.
+<AlgorithmTrace id="hnsw-search" />
 
-The express lane let step 1 skip most of the line in one look; layer 0 only touched 4 of 8 nodes. At corpus scale that ratio is what turns $O(N)$ into roughly $O(\log N)$.
+The three moments worth pausing on:
+
+1. **Layer 1, greedy (`ef = 1`).** At `24` ($d = 10$), neighbours `48` ($d = 14$)
+   and `0` ($d = 34$) are both worse, so the walk stops immediately and descends
+   with `ep = 24`. One look at the express lane skipped most of the line.
+2. **Layer 0, beam (`ef = 2`).** Expanding `24` reaches `32` ($d = 2$), which
+   evicts `16` ($d = 18$) from the capped result set. Expanding `32` reaches
+   `40` ($d = 6$) — worse than `32`, but still kept, because the beam holds two
+   results and a worse node can still be a bridge to a better one. That is
+   precisely what `ef` buys you over a plain greedy walk.
+3. **The early exit.** The frontier still holds `16` ($d = 18$), but that is
+   already farther than the worst kept result `40` ($d = 6$), so nothing
+   reachable through it can improve the answer → `break`.
+
+**Return** `32`, the true nearest neighbour of `34`. Layer 0 touched 5 of 8
+nodes and never looked at `0`, `8` or `56`. At corpus scale that ratio is what
+turns $O(N)$ into roughly $O(\log N)$.
 
 ## Complexity & when to use it
 

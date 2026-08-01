@@ -23,25 +23,29 @@ BPE, used by GPT and many modern models, builds a subword vocabulary by iterativ
 
 The learned **merge list** (the ordered sequence of pairs) *is* the tokenizer: to tokenize new text, apply the same merges in the same order.
 
-## A worked trace of the merges
+## Watch it run
 
-Training corpus: "low"×5, "lower"×2, "newest"×6.
+Training corpus: "low"×5, "lower"×2, "newest"×6. Step through four merges being
+learned, then watch the learned merge list tokenize **"lowest"** — a word that
+never appears in the corpus. The code panel highlights the line executing at
+each step.
 
-```
-Initial vocab: l o w e r n s t </w>
+<AlgorithmTrace id="bpe-merges" />
 
-Pair counts:  l+o: 7  o+w: 7  w+</w>: 5  w+e: 8  ...
-Best pair: (w, e) count=8  → merge to "we"
+Three things to notice as you step:
 
-After merge 1 (w+e→we): l o w </w>  |  l o we r </w>  |  n e we s t </w>
-  ("low" has no w–e pair, so it stays unchanged)
-Pair counts:  l+o: 7  o+w: 5  e+we: 6  we+s: 6  we+r: 2  ...
-Best pair: (l, o) count=7  → merge to "lo"
+1. **Frequency is the entire selection rule.** The first merge is `(w, e)` with
+   count 8 — not because "we" is meaningful, but because that pair happens to be
+   the commonest. Meaningful subwords emerge as a *side effect* of frequency.
+2. **Words without the winning pair are untouched.** "low" sits out merge 1
+   entirely; each merge only rewrites the words that contain the pair.
+3. **The merge list is ordered, and the order is load-bearing.** At inference
+   the rules replay in the order they were learned — apply them in a different
+   order and you get different tokens for the same string.
 
-...continue until target vocabulary size
-```
-
-**Result:** the vocabulary learns meaningful subwords. "unhappiness" → `["un", "happi", "ness"]` — familiar subwords even if the full word was rare in training.
+**Result:** the vocabulary learns reusable subwords. "lowest" was never in the
+corpus, yet it tokenizes to `["lo", "we", "s", "t", "</w>"]` with no `[UNK]` —
+the same mechanism that turns "unhappiness" into `["un", "happi", "ness"]`.
 
 ## Implementation from scratch
 
