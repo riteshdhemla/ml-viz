@@ -652,11 +652,14 @@ and records frames.
 | `dbscan-clustering` | `algo-traces/dbscan.ts` | wiki/dbscan-algorithm | ✅ |
 | `decision-tree-split-search` | `algo-traces/decision-tree.ts` | wiki/decision-tree-information-gain | ✅ |
 | `perceptron-learning` | `algo-traces/perceptron.ts` | wiki/perceptron-learning | ✅ |
+| `em-gmm` | `algo-traces/em.ts` | wiki/em-algorithm | ✅ |
+| `baum-welch` | `algo-traces/baum-welch.ts` | wiki/baum-welch | ✅ |
+| `variable-elimination` | `algo-traces/variable-elimination.ts` | wiki/variable-elimination | ✅ |
+| `metropolis-hastings` | `algo-traces/mcmc.ts` | wiki/mcmc-sampling | ✅ |
 
-**Queue — wiki pages whose procedures would benefit next:** `em-algorithm`,
-`baum-welch`, `variable-elimination`, `nms-algorithm`, `adaboost-algorithm`,
-`hierarchical-clustering`, `newtons-method`, `speculative-decoding`,
-`paged-attention`, `hyperloglog`, `dgim-sliding-window`, `mcmc-sampling`,
+**Queue — wiki pages whose procedures would benefit next:** `nms-algorithm`,
+`adaboost-algorithm`, `hierarchical-clustering`, `newtons-method`,
+`speculative-decoding`, `paged-attention`, `hyperloglog`, `dgim-sliding-window`,
 `bptt-algorithm`.
 
 ---
