@@ -362,18 +362,18 @@ function Plot({ c }: { c: Extract<TraceComponent, { t: "plot" }> }) {
           fill="none"
           stroke="#2e3347"
         />
-        {[
+        {(c.ticks === false ? [] : [
           { v: x0, x: sx(x0), y: H - 10, anchor: "start" as const },
           { v: x1, x: sx(x1), y: H - 10, anchor: "end" as const },
-        ].map((t, i) => (
+        ]).map((t, i) => (
           <text key={`xt${i}`} x={t.x} y={t.y} textAnchor={t.anchor} fontSize={9} fill="#475569">
             {t.v}
           </text>
         ))}
-        {[
+        {(c.ticks === false ? [] : [
           { v: y1, y: sy(y1) + 4 },
           { v: y0, y: sy(y0) },
-        ].map((t, i) => (
+        ]).map((t, i) => (
           <text key={`yt${i}`} x={M.left - 4} y={t.y} textAnchor="end" fontSize={9} fill="#475569">
             {t.v}
           </text>

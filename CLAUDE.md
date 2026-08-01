@@ -665,6 +665,7 @@ and records frames.
 | `speculative-decoding` | `algo-traces/speculative-decoding.ts` | wiki/speculative-decoding | ✅ |
 | `bptt-gradient-flow` | `algo-traces/bptt.ts` | wiki/bptt-algorithm | ✅ |
 | `paged-attention` | `algo-traces/paged-attention.ts` | wiki/paged-attention | ✅ |
+| `viterbi-decoding` | `algo-traces/viterbi.ts` | graphical-models/03-hidden-markov-models | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. The strongest remaining candidates are in
