@@ -666,6 +666,7 @@ and records frames.
 | `bptt-gradient-flow` | `algo-traces/bptt.ts` | wiki/bptt-algorithm | ✅ |
 | `paged-attention` | `algo-traces/paged-attention.ts` | wiki/paged-attention | ✅ |
 | `viterbi-decoding` | `algo-traces/viterbi.ts` | graphical-models/03-hidden-markov-models | ✅ |
+| `value-iteration` | `algo-traces/value-iteration.ts` | reinforcement-learning/01-markov-decision-processes | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. The strongest remaining candidates are in
