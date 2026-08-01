@@ -45,6 +45,33 @@ When the proposal is symmetric ($q(\theta'\mid\theta) = q(\theta\mid\theta')$, a
   The acceptance rule is engineered so the chain satisfies **detailed balance**: $\pi(\theta)\,P(\theta \to \theta') = \pi(\theta')\,P(\theta' \to \theta)$. A chain in detailed balance with $\pi$ is reversible and has $\pi$ as its stationary distribution — so its long-run samples are distributed according to the target, whatever the (positive) proposal.
 </Callout>
 
+## Watch it run
+
+Metropolis sampling a target it is only allowed to see up to a constant. The
+target here is deliberately one we *can* solve exactly — the Beta(8, 4)
+posterior after 7 heads in 10 flips — so the sampler's answer can be checked
+against the truth instead of merely admired:
+
+<AlgorithmTrace id="metropolis-hastings" />
+
+What to notice as you step:
+
+- **The constant never appears.** Every decision is made from
+  $\pi(\theta')/\pi(\theta)$, and the normalizer cancels there. That single fact
+  is why MCMC works on posteriors nobody can integrate.
+- **Downhill moves are accepted on purpose.** A proposal with ratio $0.41$ is
+  taken 41% of the time. Reject those always and you have hill-climbing, which
+  converges to the mode and gets the *distribution* completely wrong.
+- **A rejection still emits a sample.** The current state is recorded again,
+  which is why trace plots have flat stretches — and why a high rejection rate
+  destroys the effective sample size without shortening the chain.
+- **The first steps are burn-in**, and they describe the starting point rather
+  than the target.
+- **The last step is the tuning lesson**: σ = 0.005 accepts 98% of proposals and
+  is nearly useless (ESS 6); σ = 5 rejects 97% and is nearly useless (ESS 55);
+  σ = 0.3 gets ESS 813 at a 46% acceptance rate — almost exactly the ~44% that
+  the next section recommends for a single parameter.
+
 ## Gibbs sampling
 
 When you can derive the **full conditional** distribution of each parameter given all the others, $p(\theta_j \mid \theta_{-j}, x)$, and sample from it directly, Gibbs sampling applies. Cycle through the parameters, updating one at a time from its full conditional:

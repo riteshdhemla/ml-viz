@@ -80,6 +80,31 @@ In words:
 - $\hat{A}_{ij}$ — expected number of $i \to j$ transitions, divided by expected number of times in state $i$
 - $\hat{b}_j(k)$ — expected number of times state $j$ emitted symbol $k$, divided by expected time in state $j$
 
+## Watch it run
+
+A two-state HMM (Rain / Sun) emitting umbrella-or-not over three days, small
+enough that every $\alpha$, $\beta$, $\gamma$ and $\xi$ fits on one screen:
+
+<AlgorithmTrace id="baum-welch" />
+
+What to notice as you step:
+
+- **Why there are two passes.** $\alpha_t(i)$ knows only the past,
+  $\beta_t(i)$ only the future. Neither is a posterior on its own; the product,
+  normalized, is. Watch $\gamma_3$ swing to Sun on the dry third day even though
+  the transition matrix prefers staying put — evidence from the *end* of the
+  sequence reaching backwards.
+- **Why $\xi$ exists at all.** $\gamma$ tells you where the chain was;
+  re-estimating $A$ needs to know where it *went*. That is a different posterior
+  and needs its own quantity.
+- **The M-step is just counting.** Every re-estimate is expected-count over
+  expected-total — precisely the maximum-likelihood estimator you would write
+  down if the hidden states had been observed.
+- **The final step iterates to convergence.** $\log P(\mathbf{x})$ rises every
+  time, and $A$ and $B$ sharpen toward 0/1 — a single 3-step sequence cannot
+  support a 2-state HMM, so the model overfits it exactly. Real training sums
+  expected counts across many sequences before normalizing.
+
 ## Connection to Gaussian Mixture Models
 
 <Callout type="tip" title="It's GMMs with a Markov chain">

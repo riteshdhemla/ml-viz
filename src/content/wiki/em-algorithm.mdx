@@ -83,6 +83,28 @@ The first $\ge$ is Jensen; the second is the M-step's maximization; the $=$ is t
   Every E-step makes the ELBO bound tight (zero gap). Every M-step pushes the bound up. Since the bound lower-bounds the true likelihood, the likelihood can only go up. This is why you never need to worry about EM diverging — the monotone guarantee is built into the algebra.
 </Callout>
 
+## Watch it run
+
+The argument above says the likelihood can never decrease. Here it is happening,
+on $X = \{1, 2, 4, 5\}$ with two components — the same data worked by hand in the
+next section, so every number is checkable:
+
+<AlgorithmTrace id="em-gmm" />
+
+What to notice as you step:
+
+- **Nothing is ever assigned.** $x = 2$ is 70.9% component 1 and 29.1%
+  component 2, and it stays fractional forever. K-Means is the hard-assignment
+  limit of this as $\sigma \to 0$; EM keeps the uncertainty and lets it decay.
+- **The M-step is the fully-observed estimator with $\gamma$ as counts.** Each
+  mean is a weighted average, each variance a weighted spread — exactly the
+  formulas you would use if the labels were known, with expected counts standing
+  in for real ones.
+- **The log-likelihood bars never go down.** Not once, over the whole run, with
+  no learning rate and no line search. That monotonicity is the ELBO argument
+  cashed out — and it is also why EM cannot tell you it has found the *global*
+  optimum.
+
 ## A worked EM iteration by hand
 
 Data $X = \{1, 2, 4, 5\}$, $K = 2$. Initialize $\mu = (2, 4)$, $\sigma = (1.5, 1.5)$, $\pi = (0.5, 0.5)$.

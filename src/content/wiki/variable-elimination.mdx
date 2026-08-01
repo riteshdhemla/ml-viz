@@ -50,6 +50,30 @@ $$
 
 **Step 4 — normalize.** Compute $g(\text{Wet=F}) = 0.01 \times 0.01 + 0.99 \times 0.20 = 0.1981$. These sum to $1.000$, so no further normalization is needed: $P(\text{Wet=T} \mid \text{Rain=T}) \approx 0.802$. Even with the sprinkler being off 99% of the time when it rains, the rain itself makes the grass likely wet.
 
+## Watch it run
+
+The example above has only one hidden variable, so there is no ordering to get
+wrong. Add a Slippery node (Wet → Slippery) and query $P(\text{Slippery})$ with
+nothing observed, and all three of Rain, Sprinkler and Wet must be summed out —
+now the order matters. The CPTs are the canonical sprinkler numbers, extended
+with $P(S{=}T \mid R{=}F) = 0.4$, $P(W{=}T \mid S{=}T, R{=}F) = 0.9$,
+$P(W{=}T \mid S{=}F, R{=}F) = 0$ and $P(L{=}T \mid W{=}T) = 0.7$:
+
+<AlgorithmTrace id="variable-elimination" />
+
+What to notice as you step:
+
+- **Only the factors mentioning the eliminated variable take part.** Everything
+  else is left alone. That locality is the whole saving over building the joint.
+- **Watch the row counts, not the probabilities.** The cost of the algorithm is
+  the size of the largest intermediate factor, and you can see it swell on the
+  multiply and shrink on the sum-out.
+- **The last step re-runs the same query in a worse order.** The answer is
+  identical to the last digit — variable elimination is exact under any
+  ordering — but the largest table doubles. On four binary variables that is a
+  shrug; the same effect on a real network is the difference between seconds and
+  never finishing, which is what the next section is about.
+
 ## Complexity and the elimination order
 
 The cost is exponential in the size of the *largest intermediate factor*, which depends on the elimination order. The best achievable maximum factor size (minus one) is the graph's **treewidth** — so variable elimination is tractable for tree-like networks and expensive for densely connected ones.
