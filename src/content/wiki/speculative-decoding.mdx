@@ -51,6 +51,28 @@ Vocabulary $\{\text{the}, \text{cat}, \text{sat}, \text{mat}\}$, lookahead $k = 
 
 Position 3 rejects, so we resample from the residual there. Suppose at position 3: $p = (0.10, 0.06, 0.14, 0.70)$ and $q = (0.05, 0.15, 0.70, 0.10)$ over (the, cat, sat, mat). Then $\max(0, p - q) = (0.05, 0, 0, 0.60)$, which normalizes to $p' = (0.077, 0, 0, 0.923)$ — the resample almost surely emits **mat**, the token the draft badly under-proposed. The cycle emits **the, cat, mat**: 3 tokens for one target pass instead of three.
 
+## Watch it run
+
+The cycle above, decision by decision — and then the check that matters:
+
+<AlgorithmTrace id="speculative-decoding" />
+
+What to notice as you step:
+
+- **Under-proposing is free.** At position 2 the target likes "cat" *more* than
+  the draft did, so $\min(1, p/q) = 1$ and no random number is even drawn. Only
+  over-confidence by the draft can cause a rejection.
+- **A rejection discards everything after it**, because those proposals were
+  conditioned on a token that will not be emitted. This is why acceptance rate
+  compounds, and why lookahead $k$ has diminishing returns.
+- **The residual is a correction, not a fallback.** $\max(0, p - q)$ puts its
+  mass exactly where the draft was under-confident, which is what makes the
+  emitted distribution come out equal to $p$ rather than merely close to it.
+- **The last step verifies that claim empirically** — 200 000 emissions under a
+  well-matched draft (94% acceptance) and a deliberately terrible one (26%),
+  both reproducing $p$ to four decimal places. A worse draft costs throughput
+  and nothing else.
+
 ## Expected speedup
 
 Let $\alpha$ be the average per-token acceptance probability (empirically $\alpha \approx$ 0.7–0.9 for a well-matched draft). The expected number of tokens emitted per cycle is the expectation of a truncated geometric plus the bonus token:

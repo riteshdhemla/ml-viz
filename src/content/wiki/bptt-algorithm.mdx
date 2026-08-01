@@ -58,6 +58,30 @@ $$
 
 **Each step back multiplies by one copy of $W_{hh}$ and one diagonal of $\tanh'$ values.**
 
+## Watch it run
+
+The backward recursion on a 2-unit tanh RNN unrolled over six steps, with the
+gradient norm reported at every hop:
+
+<AlgorithmTrace id="bptt-gradient-flow" />
+
+What to notice as you step:
+
+- **Every backward step is the same two multiplications.** One $W_{hh}^\top$ and
+  one diagonal of $\tanh'$ values — and because it is the *same* $W_{hh}$ each
+  time, the shrink factor is roughly constant, which makes the decay geometric
+  rather than incidental.
+- **$\tanh'$ can only make it worse.** It is at most 1, and strictly below 1
+  whenever a unit is saturated at all, so it never rescues a small $W_{hh}$.
+- **After six steps the gradient is 0.7% of what it started as.** The loss at
+  step 6 has essentially nothing to say about $\mathbf{h}_0$ — and that gradient
+  *is* the learning signal for the earliest timesteps.
+- **The final step sweeps the spectral radius** on a log axis. Below 1 the curve
+  is a straight line downward, above 1 a straight line upward, and the usable
+  region is a knife-edge. Clipping fixes the exploding side cheaply; nothing
+  fixes the vanishing side, which is why LSTMs introduced an additive cell path
+  with no repeated matrix on it.
+
 ## The full product over a gap
 
 Substituting the Jacobian into the product, the gap-$(T-k)$ gradient is:

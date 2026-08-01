@@ -3,17 +3,22 @@ import { attentionTrace } from "./attention";
 import { bm25Trace } from "./bm25";
 import { baumWelchTrace } from "./baum-welch";
 import { bpeTrace } from "./bpe";
+import { bpttTrace } from "./bptt";
 import { dbscanTrace } from "./dbscan";
 import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
 import { hnswTrace } from "./hnsw";
 import { kmeansTrace } from "./kmeans";
 import { adaboostTrace } from "./adaboost";
+import { dgimTrace } from "./dgim";
 import { hierarchicalTrace } from "./hierarchical";
+import { hyperloglogTrace } from "./hyperloglog";
 import { mcmcTrace } from "./mcmc";
 import { newtonTrace } from "./newton";
 import { nmsTrace } from "./nms";
+import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
+import { speculativeDecodingTrace } from "./speculative-decoding";
 import { variableEliminationTrace } from "./variable-elimination";
 
 /**
@@ -49,6 +54,11 @@ export const allAlgoTraces: AlgoTrace[] = [
   adaboostTrace,
   hierarchicalTrace,
   newtonTrace,
+  hyperloglogTrace,
+  dgimTrace,
+  speculativeDecodingTrace,
+  bpttTrace,
+  pagedAttentionTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

@@ -660,10 +660,17 @@ and records frames.
 | `adaboost-rounds` | `algo-traces/adaboost.ts` | wiki/adaboost-algorithm | ✅ |
 | `hierarchical-linkage` | `algo-traces/hierarchical.ts` | wiki/hierarchical-clustering | ✅ |
 | `newtons-method` | `algo-traces/newton.ts` | wiki/newtons-method | ✅ |
+| `hyperloglog` | `algo-traces/hyperloglog.ts` | wiki/hyperloglog | ✅ |
+| `dgim-window` | `algo-traces/dgim.ts` | wiki/dgim-sliding-window | ✅ |
+| `speculative-decoding` | `algo-traces/speculative-decoding.ts` | wiki/speculative-decoding | ✅ |
+| `bptt-gradient-flow` | `algo-traces/bptt.ts` | wiki/bptt-algorithm | ✅ |
+| `paged-attention` | `algo-traces/paged-attention.ts` | wiki/paged-attention | ✅ |
 
-**Queue — wiki pages whose procedures would benefit next:**
-`speculative-decoding`, `paged-attention`, `hyperloglog`, `dgim-sliding-window`,
-`bptt-algorithm`.
+**Queue is empty** — every wiki page that was flagged as a procedure worth
+stepping through now has a trace. Candidates for a future round would be lesson
+pages rather than wiki pages (e.g. `optimization-ml/01-gradient-descent-variants`,
+`graphical-models/02-markov-random-fields`), or algorithms whose wiki page does
+not exist yet.
 
 ---
 
