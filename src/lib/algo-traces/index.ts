@@ -9,6 +9,7 @@ import { dbscanTrace } from "./dbscan";
 import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
 import { hnswTrace } from "./hnsw";
+import { isotonicTrace } from "./isotonic";
 import { kmeansTrace } from "./kmeans";
 import { adaboostTrace } from "./adaboost";
 import { continuousBatchingTrace } from "./continuous-batching";
@@ -69,6 +70,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   continuousBatchingTrace,
   rocTrace,
   bloomFilterTrace,
+  isotonicTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
