@@ -4,7 +4,7 @@ description: "Incorporating prior knowledge into learning — Bayes' theorem, po
 order: 4
 type: concept
 spineStages: [objective]
-estimatedMinutes: 12
+estimatedMinutes: 13
 ---
 
 # Bayesian Inference
@@ -90,7 +90,7 @@ $$
 
 ## Conjugate priors
 
-A prior is **conjugate** to a likelihood if the posterior is in the same family as the prior — making the update analytical (no integral to evaluate).
+A prior is **conjugate** to a likelihood if the posterior is in the same family as the prior — making the update analytical (no integral to evaluate). The conjugate pairs used across ML are catalogued in [Bishop's PRML, ch. 2](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/).
 
 | Likelihood | Conjugate Prior | Posterior |
 |------------|----------------|-----------|
@@ -193,7 +193,7 @@ When the posterior has no conjugate form, MCMC samples it directly — knowing t
 <WikiLink slug="mcmc-sampling" title="MCMC Sampling: Metropolis–Hastings & Gibbs" />
 
 <Callout type="info" title="Bayesian deep learning">
-  Full Bayesian inference over neural network weights is computationally intractable. Practical approximations include: **dropout as approximate Bayes** (Gal & Ghahramani, 2016), **variational inference** (Bayes by Backprop), and **deep ensembles** (train multiple networks from different initializations).
+  Full Bayesian inference over neural network weights is computationally intractable. Practical approximations include: **dropout as approximate Bayes** ([Gal & Ghahramani, 2016](https://arxiv.org/abs/1506.02142)), **variational inference** ([Bayes by Backprop, Blundell et al., 2015](https://arxiv.org/abs/1505.05424)), and **deep ensembles** ([Lakshminarayanan et al., 2017](https://arxiv.org/abs/1612.01474) — train multiple networks from different initializations).
 </Callout>
 
 <Exercise id="bayes-posterior" />
@@ -212,6 +212,13 @@ When the posterior has no conjugate form, MCMC samples it directly — knowing t
 - The **posterior** = likelihood × prior (normalized) — it combines data evidence with prior beliefs.
 - **MAP** = MLE + log-prior; Gaussian prior → L2 regularization; Laplace prior → L1 regularization.
 - The predictive distribution averages over parameters, naturally capturing uncertainty.
+
+## Further reading
+
+- [Pattern Recognition and Machine Learning, ch. 2–3](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/) — Bishop (2006), conjugate priors, the posterior, and Bayesian linear regression.
+- [Dropout as a Bayesian Approximation](https://arxiv.org/abs/1506.02142) — Gal & Ghahramani (2016), casting dropout as approximate Bayesian inference.
+- [Weight Uncertainty in Neural Networks](https://arxiv.org/abs/1505.05424) — Blundell et al. (2015), Bayes by Backprop for variational posteriors over weights.
+- [Simple and Scalable Predictive Uncertainty Estimation Using Deep Ensembles](https://arxiv.org/abs/1612.01474) — Lakshminarayanan et al. (2017), a non-Bayesian baseline that captures uncertainty well.
 
 ## Related concepts
 

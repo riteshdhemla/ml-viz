@@ -4,7 +4,7 @@ description: "Lagrange multipliers, inequality constraints, KKT conditions, and 
 order: 3
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Constrained Optimization & KKT
@@ -94,7 +94,7 @@ This "on/off" behavior is captured by the **complementary slackness** condition.
 
 ## KKT conditions
 
-The **Karush-Kuhn-Tucker (KKT)** conditions are necessary (and under convexity, sufficient) for optimality. For the problem $\min_x f(x)$ s.t. $g_i(x) \leq 0$, $h_j(x) = 0$:
+The **Karush-Kuhn-Tucker (KKT)** conditions ([Kuhn & Tucker, 1951](https://projecteuclid.org/ebooks/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Second-Berkeley-Symposium-on-Mathematical-Statistics-and/chapter/Nonlinear-Programming/bsmsp/1200500249); anticipated in Karush's 1939 thesis) are necessary (and under convexity, sufficient) for optimality. For the problem $\min_x f(x)$ s.t. $g_i(x) \leq 0$, $h_j(x) = 0$:
 
 | # | Condition | Meaning |
 |---|-----------|---------|
@@ -127,7 +127,7 @@ The feasible region is a polygon, and a linear objective always attains its opti
 
 ## The SVM dual as KKT
 
-The hard-margin SVM primal:
+The hard-margin SVM ([Cortes & Vapnik, 1995](https://doi.org/10.1007/BF00994018)) primal:
 
 $$
 \min_{w, b} \frac{1}{2}\|w\|^2 \quad \text{s.t.} \quad y_i(w \cdot x_i + b) \geq 1 \quad \forall i
@@ -181,7 +181,7 @@ $$
 d^* \leq p^*
 $$
 
-**Strong duality** ($d^* = p^*$) holds when **Slater's condition** is satisfied: there exists a strictly feasible point ($g_i(x) < 0$ for all inequality constraints).
+**Strong duality** ($d^* = p^*$) holds when **Slater's condition** is satisfied: there exists a strictly feasible point ($g_i(x) < 0$ for all inequality constraints). Weak/strong duality and Slater's condition are developed rigorously in [Boyd & Vandenberghe, ch. 5](https://stanford.edu/~boyd/cvxbook/).
 
 The hard-margin SVM has $n$ constraints $g_i(x) = 1 - y_i(w \cdot x_i + b) \leq 0$. Slater's condition holds whenever the data is linearly separable — which is the problem's premise. Therefore:
 
@@ -217,6 +217,13 @@ Solving the dual is exactly equivalent to solving the primal. The dual is often 
 - KKT conditions (stationarity, primal feasibility, dual feasibility, slackness) are necessary + sufficient for convex problems.
 - The SVM dual follows directly from KKT: $w = \sum \alpha_i y_i x_i$; only support vectors ($\alpha_i > 0$) matter.
 - Strong duality (Slater's condition) guarantees solving the dual is equivalent to solving the primal.
+
+## Further reading
+
+- [Nonlinear Programming](https://projecteuclid.org/ebooks/berkeley-symposium-on-mathematical-statistics-and-probability/Proceedings-of-the-Second-Berkeley-Symposium-on-Mathematical-Statistics-and/chapter/Nonlinear-Programming/bsmsp/1200500249) — Kuhn & Tucker (1951), the original statement of the KKT conditions.
+- [Convex Optimization, ch. 5](https://stanford.edu/~boyd/cvxbook/) — Boyd & Vandenberghe, Lagrangian duality, KKT, and Slater's condition.
+- [Support-Vector Networks](https://doi.org/10.1007/BF00994018) — Cortes & Vapnik (1995), the SVM whose dual is a KKT problem.
+- [Pattern Recognition and Machine Learning, ch. 7](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/) — Bishop (2006), the SVM dual and the kernel trick.
 
 ## Related concepts
 

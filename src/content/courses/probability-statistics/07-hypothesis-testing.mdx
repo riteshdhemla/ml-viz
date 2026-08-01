@@ -4,7 +4,7 @@ description: "Deciding whether an effect is real — null and alternative hypoth
 order: 7
 type: concept
 spineStages: [evaluation]
-estimatedMinutes: 18
+estimatedMinutes: 19
 ---
 
 # Hypothesis Testing & p-values
@@ -15,7 +15,7 @@ Is the new model *actually* better, or did it just get lucky on the test set? Di
 
 ## Null and alternative hypotheses
 
-A test pits two hypotheses against each other:
+A test pits two hypotheses against each other — the framework of "most efficient tests" formalized by [Neyman & Pearson (1933)](https://royalsocietypublishing.org/doi/10.1098/rsta.1933.0009):
 
 - **Null hypothesis $H_0$** — the "boring" default: *no effect, no difference*. It's the claim you assume true for the sake of argument, because it pins down a specific distribution to compute with. Always an equality: $\mu_A = \mu_B$, or $p = 0.5$.
 - **Alternative hypothesis $H_1$** — the effect you actually care about: $\mu_A \ne \mu_B$ (two-sided) or $\mu_B > \mu_A$ (one-sided).
@@ -56,7 +56,7 @@ Equivalently, reject when $|z|$ exceeds the **critical value** $z^*$. The viz sh
 <HypothesisTestViz />
 
 <Callout type="warning" title="What a p-value is NOT">
-  $p$ is **not** the probability that $H_0$ is true, and $1-p$ is **not** the probability the effect is real — those require a prior (the Bayesian view). The p-value lives entirely inside the world where $H_0$ holds: $p = 0.03$ means "if there were truly no effect, data this extreme would arise 3% of the time," nothing more.
+  $p$ is **not** the probability that $H_0$ is true, and $1-p$ is **not** the probability the effect is real — those require a prior (the Bayesian view). The p-value lives entirely inside the world where $H_0$ holds: $p = 0.03$ means "if there were truly no effect, data this extreme would arise 3% of the time," nothing more. The American Statistical Association's official statement ([Wasserstein & Lazar, 2016](https://doi.org/10.1080/00031305.2016.1154108)) catalogs exactly these misinterpretations.
 </Callout>
 
 ```python
@@ -85,7 +85,7 @@ print("reject H0" if p < 0.05 else "fail to reject H0")
 
 - **Type I (false positive)** — claiming an effect that isn't there; its rate is the $\alpha$ you choose.
 - **Type II (false negative)** — missing a real effect; its rate $\beta$ falls as sample size or effect size grows.
-- **Power** $= 1-\beta$ — the chance of detecting a real effect. More data buys power without raising $\alpha$.
+- **Power** $= 1-\beta$ — the chance of detecting a real effect. More data buys power without raising $\alpha$. Trading off $\alpha$ against power to build the *most powerful* test is the core result of [Neyman & Pearson (1933)](https://royalsocietypublishing.org/doi/10.1098/rsta.1933.0009).
 
 This is exactly the precision/recall-style tension you tune in A/B tests: lowering $\alpha$ avoids false alarms but costs power.
 
@@ -111,6 +111,13 @@ For a fuller worked A/B-test trace and the "peeking problem," see the deep dive:
 - The **z-test** standardizes an estimate into $z = (\bar{x}-\mu_0)/\text{SE}$, which is standard-normal under $H_0$; use the **t-test** when $\sigma$ is unknown and $n$ is small.
 - The **p-value** is $P(\text{data this extreme}\mid H_0)$; reject when $p \le \alpha$. It is not the probability that $H_0$ is true.
 - Tests trade **Type I** ($\alpha$, false positive) against **Type II** ($\beta$, false negative); **power** $=1-\beta$ grows with sample and effect size.
+
+## Further reading
+
+- [On the Problem of the Most Efficient Tests of Statistical Hypotheses](https://royalsocietypublishing.org/doi/10.1098/rsta.1933.0009) — Neyman & Pearson (1933), the foundation of hypothesis testing, Type I/II errors, and power.
+- [The ASA Statement on p-Values: Context, Process, and Purpose](https://doi.org/10.1080/00031305.2016.1154108) — Wasserstein & Lazar (2016), what p-values do and do not mean.
+- [Introduction to Probability, ch. 10](http://probabilitybook.net) — Blitzstein & Hwang, the CLT and normal-based inference underpinning the z-test.
+- [Probabilistic Machine Learning: An Introduction, ch. 5](https://probml.github.io/pml-book/book1.html) — Murphy (2022), frequentist decision theory and significance testing.
 
 ## Related concepts
 

@@ -4,7 +4,7 @@ description: "Why convexity is the gold standard — Jensen's inequality, global
 order: 2
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 14
+estimatedMinutes: 15
 ---
 
 # Convex Optimization
@@ -13,7 +13,7 @@ Convexity is the single property that transforms an optimization problem from "h
 
 ## What is convexity?
 
-A function $f: \mathbb{R}^n \to \mathbb{R}$ is **convex** if, for every two points $x, y$ in its domain and every $\lambda \in [0, 1]$:
+A function $f: \mathbb{R}^n \to \mathbb{R}$ is **convex** if, for every two points $x, y$ in its domain and every $\lambda \in [0, 1]$ (the definitions and results in this lesson follow [Boyd & Vandenberghe, *Convex Optimization*](https://stanford.edu/~boyd/cvxbook/)):
 
 $$
 f(\lambda x + (1-\lambda)y) \leq \lambda f(x) + (1-\lambda)f(y)
@@ -54,7 +54,7 @@ print("softplus f'' range:", softplus_dd(x).min().round(4), "to", softplus_dd(x)
 
 ## Jensen's inequality
 
-If $f$ is convex and $X$ is a random variable, then:
+If $f$ is convex and $X$ is a random variable, then ([Boyd & Vandenberghe, §3.1.8](https://stanford.edu/~boyd/cvxbook/)):
 
 $$
 f\!\left(\mathbb{E}[X]\right) \leq \mathbb{E}[f(X)]
@@ -164,7 +164,7 @@ Despite non-convexity:
 
 - **Overparameterization:** modern networks have far more parameters than training examples. This creates a connected manifold of global minima, making it easier for GD to find one.
 - **Implicit bias:** SGD has a built-in preference for "flat" minima (low curvature), which tend to generalize better than sharp ones.
-- **Empirical observation:** in high dimensions, most critical points are saddle points, not local minima. Gradient descent tends to escape them.
+- **Empirical observation:** in high dimensions, most critical points are saddle points, not local minima ([Dauphin et al., 2014](https://arxiv.org/abs/1406.2572)). Gradient descent tends to escape them.
 
 <Callout type="warning" title="Non-convexity does not mean chaos">
   Deep networks are non-convex, but their landscapes are not random noise. Structured non-convexity — with benign saddle points and few poor local minima — is why training large networks works reliably in practice.
@@ -205,6 +205,12 @@ Together, $\mu$-SC + $L$-smooth gives the **condition number** $\kappa = L/\mu$;
 - For convex functions, every local minimum is a global minimum — gradient descent is provably correct.
 - Logistic regression is convex (Hessian = $\sigma(1-\sigma) x x^\top \succeq 0$); neural net losses are not.
 - Strong convexity ($\mu$-SC) + $L$-smoothness together give linear (exponential) convergence.
+
+## Further reading
+
+- [Convex Optimization](https://stanford.edu/~boyd/cvxbook/) — Boyd & Vandenberghe, the standard free reference for convexity, Jensen's inequality, and convergence rates.
+- [Identifying and Attacking the Saddle Point Problem](https://arxiv.org/abs/1406.2572) — Dauphin et al. (2014), why saddle points, not local minima, dominate deep loss surfaces.
+- [Deep Learning, ch. 4 & 8](https://www.deeplearningbook.org/) — Goodfellow, Bengio & Courville, numerical optimization and the non-convex landscapes of neural nets.
 
 ## Related concepts
 

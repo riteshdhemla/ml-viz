@@ -4,7 +4,7 @@ description: "SGD, momentum, RMSprop, and Adam — how the optimizer zoo evolved
 order: 1
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 15
+estimatedMinutes: 17
 ---
 
 # Gradient Descent Variants
@@ -25,7 +25,7 @@ What differs between variants is **how $\nabla_\theta L$ is estimated** and **ho
 
 ### Full-batch, stochastic, and mini-batch
 
-With $n$ training examples, the true loss gradient is the average over the whole dataset. But computing that average requires a forward and backward pass through all $n$ examples — expensive when $n$ is in the millions.
+With $n$ training examples, the true loss gradient is the average over the whole dataset. But computing that average requires a forward and backward pass through all $n$ examples — expensive when $n$ is in the millions. Replacing the full average with a noisy estimate from a subsample is the **stochastic approximation** idea of [Robbins & Monro (1951)](https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-22/issue-3/A-Stochastic-Approximation-Method/10.1214/aoms/1177729586.full).
 
 | Variant | Examples per step | Gradient quality | Practical cost |
 |---------|-------------------|-----------------|----------------|
@@ -46,7 +46,7 @@ Mini-batch is the practical sweet spot for two reasons:
 
 ## SGD with momentum
 
-Plain mini-batch SGD bounces back and forth across the walls of narrow ravines — directions where the loss curvature is large — while advancing slowly along the floor where curvature is small. Momentum fixes this by keeping a running **velocity** that accumulates past gradients.
+Plain mini-batch SGD bounces back and forth across the walls of narrow ravines — directions where the loss curvature is large — while advancing slowly along the floor where curvature is small. Momentum fixes this by keeping a running **velocity** that accumulates past gradients (the heavy-ball idea, shown to matter greatly for deep nets by [Sutskever et al., 2013](https://proceedings.mlr.press/v28/sutskever13.html)).
 
 ### The update rule
 
@@ -152,7 +152,7 @@ Here $\rho \approx 0.9$ and $\varepsilon \approx 10^{-8}$ (prevents division by 
 This is exactly what you want for sparse inputs: infrequent updates arrive with larger effective learning rates and can catch up.
 
 <Callout type="info" title="RMSprop vs. AdaGrad">
-  AdaGrad accumulates squared gradients without discounting, so the effective
+  AdaGrad ([Duchi et al., 2011](https://jmlr.org/papers/v12/duchi11a.html)) accumulates squared gradients without discounting, so the effective
   learning rate shrinks to near zero over long training runs. RMSprop replaces
   the cumulative sum with an EMA (controlled by $\rho$), keeping the effective
   learning rate from decaying to zero.
@@ -160,7 +160,7 @@ This is exactly what you want for sparse inputs: infrequent updates arrive with 
 
 ## Adam
 
-Adam (*Adaptive Moment Estimation*) combines momentum's first moment with RMSprop's second moment, and adds **bias correction** to fix the underestimation at early timesteps.
+Adam (*Adaptive Moment Estimation*, [Kingma & Ba, 2014](https://arxiv.org/abs/1412.6980)) combines momentum's first moment with RMSprop's second moment, and adds **bias correction** to fix the underestimation at early timesteps.
 
 ### The full update
 
@@ -271,7 +271,8 @@ For the full family tree — AdaGrad, AdamW's decoupled weight decay, Nadam — 
 
 <Callout type="warning" title="Adam does not always generalize best">
   Adam converges faster than SGD in most settings, but on image classification
-  benchmarks, well-tuned SGD + momentum often achieves 1–2% lower test error.
+  benchmarks, well-tuned SGD + momentum often achieves 1–2% lower test error
+  ([Wilson et al., 2017](https://arxiv.org/abs/1705.08292)).
   The hypothesis: Adam's adaptive step sizes let it memorize training data more
   effectively, including noise. When generalization is the top priority and you
   have compute budget to tune, try both.
@@ -301,7 +302,7 @@ $$
 
 At $t = 0$: $\eta_t = \eta_\text{max}$ (cosine = 1). At $t = T$: $\eta_t = \eta_\text{min}$ (cosine = −1). The cosine shape naturally slows the decay near the minimum, giving the optimizer time to settle.
 
-**Warm restarts** (SGDR) periodically reset $t \leftarrow 0$, restarting the cosine from $\eta_\text{max}$. Each restart can escape a local minimum and explore a new region of the loss surface. Restart intervals are typically doubled after each cycle.
+**Warm restarts** (SGDR, [Loshchilov & Hutter, 2016](https://arxiv.org/abs/1608.03983)) periodically reset $t \leftarrow 0$, restarting the cosine from $\eta_\text{max}$. Each restart can escape a local minimum and explore a new region of the loss surface. Restart intervals are typically doubled after each cycle.
 
 ### Warm-up phase
 
@@ -318,7 +319,7 @@ For schedule shapes beyond these — one-cycle, inverse square root, and how to 
 <WikiLink slug="learning-rate-schedules" title="Learning Rate Schedules: Warmup, Decay & Restarts" />
 
 <Callout type="info" title="Adam + cosine is the standard transformer recipe">
-  The original Transformer paper used Adam with $\beta_1=0.9$, $\beta_2=0.98$,
+  The original Transformer paper ([Vaswani et al., 2017](https://arxiv.org/abs/1706.03762)) used Adam with $\beta_1=0.9$, $\beta_2=0.98$,
   and a warm-up over $4{,}000$ steps followed by decay proportional to
   $t^{-0.5}$. Most modern LLM recipes use Adam (or AdamW) with linear warm-up
   followed by cosine annealing to $\sim 10\%$ of $\eta_\text{max}$.
@@ -349,7 +350,7 @@ For schedule shapes beyond these — one-cycle, inverse square root, and how to 
 
 1. **Not decaying the learning rate.** Keeping a constant $\eta$ throughout training leaves the optimizer bouncing around the minimum. Add a schedule — even simple step decay helps.
 2. **Using Adam's default $\varepsilon$ for mixed-precision training.** With float16, gradients are small and $\varepsilon = 10^{-8}$ can dominate the denominator. Increase $\varepsilon$ to $10^{-6}$ or $10^{-7}$ for mixed-precision.
-3. **Forgetting weight decay with Adam.** The standard Adam formulation applies weight decay *inside* the adaptive denominator, which distorts the regularization. Use **AdamW** (`weight_decay` as a separate hyperparameter) whenever you want L2 regularization.
+3. **Forgetting weight decay with Adam.** The standard Adam formulation applies weight decay *inside* the adaptive denominator, which distorts the regularization. Use **AdamW** ([Loshchilov & Hutter, 2017](https://arxiv.org/abs/1711.05101) — `weight_decay` as a separate, decoupled hyperparameter) whenever you want L2 regularization.
 4. **Tuning momentum when Adam stalls.** Adam stalls are usually a learning rate problem, not a $\beta_1$ problem. Diagnose by plotting the gradient norm: if it explodes, lower $\eta$; if it vanishes, raise $\eta$ or check for dead activations.
 5. **Skipping warm-up for transformers.** Even a 500-step linear warm-up prevents the early instability that causes NaN losses in large models.
 
@@ -361,6 +362,15 @@ For schedule shapes beyond these — one-cycle, inverse square root, and how to 
 - **Adam** combines both: first-moment EMA (momentum) and second-moment EMA (RMSprop), with bias correction that compensates for zero initialization in the first few steps.
 - **Learning rate schedules** — especially cosine annealing and warm-up — matter as much as the choice of optimizer; a well-scheduled SGD often beats a poorly-scheduled Adam.
 - Default recipe: **Adam** at $\eta = 10^{-3}$ for fast convergence; **SGD + momentum + cosine** when you need the best generalization on vision tasks.
+
+## Further reading
+
+- [A Stochastic Approximation Method](https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-22/issue-3/A-Stochastic-Approximation-Method/10.1214/aoms/1177729586.full) — Robbins & Monro (1951), the origin of stochastic (mini-batch) optimization.
+- [On the Importance of Initialization and Momentum in Deep Learning](https://proceedings.mlr.press/v28/sutskever13.html) — Sutskever et al. (2013), why momentum matters for deep nets.
+- [Adaptive Subgradient Methods (AdaGrad)](https://jmlr.org/papers/v12/duchi11a.html) — Duchi et al. (2011), per-parameter adaptive learning rates.
+- [Adam: A Method for Stochastic Optimization](https://arxiv.org/abs/1412.6980) — Kingma & Ba (2014), the first- and second-moment optimizer with bias correction.
+- [Decoupled Weight Decay Regularization (AdamW)](https://arxiv.org/abs/1711.05101) — Loshchilov & Hutter (2017), fixing weight decay under adaptivity.
+- [SGDR: Stochastic Gradient Descent with Warm Restarts](https://arxiv.org/abs/1608.03983) — Loshchilov & Hutter (2016), cosine annealing with restarts.
 
 ## Related concepts
 

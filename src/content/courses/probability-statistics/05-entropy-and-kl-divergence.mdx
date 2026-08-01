@@ -4,7 +4,7 @@ description: "Measuring surprise, comparing distributions, and why cross-entropy
 order: 5
 type: concept
 spineStages: [objective]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Entropy & KL Divergence
@@ -15,7 +15,7 @@ Every classifier you will ever train with cross-entropy loss is secretly doing i
 
 If an event has probability $p$, define its surprise as $-\log p$. Rare events are very surprising ($-\log 0.01 \approx 4.6$ nats); certain events aren't surprising at all ($-\log 1 = 0$). The log makes surprise *additive*: the surprise of two independent events is the sum of their surprises.
 
-**Entropy** is the expected surprise of a distribution:
+**Entropy** is the expected surprise of a distribution, the central quantity introduced by [Shannon (1948)](https://onlinelibrary.wiley.com/doi/10.1002/j.1538-7305.1948.tb01338.x):
 
 $$
 H(p) = -\sum_x p(x) \log p(x)
@@ -27,7 +27,7 @@ It measures how unpredictable a source is:
 - A coin with $p(\text{heads}) = 0.99$: $H \approx 0.056$ nats — almost no uncertainty
 - A uniform die: $\log 6$ — uniform distributions maximize entropy, certainty minimizes it
 
-Entropy is also a *compression limit*: you cannot losslessly encode samples from $p$ in fewer than $H(p)$ nats per symbol on average. You met entropy already as a split criterion in [decision trees](/courses/knn-decision-trees/02-decision-trees) — information gain is just entropy reduction.
+Entropy is also a *compression limit*: you cannot losslessly encode samples from $p$ in fewer than $H(p)$ nats per symbol on average — Shannon's source-coding theorem ([Shannon, 1948](https://onlinelibrary.wiley.com/doi/10.1002/j.1538-7305.1948.tb01338.x)). You met entropy already as a split criterion in [decision trees](/courses/knn-decision-trees/02-decision-trees) — information gain is just entropy reduction.
 
 ## Cross-entropy: paying for the wrong codebook
 
@@ -51,7 +51,7 @@ $$
 D_{\mathrm{KL}}(p \,\|\, q) = \sum_x p(x) \log \frac{p(x)}{q(x)}
 $$
 
-KL divergence is the *extra* surprise you suffer for using $q$ when the truth is $p$. Three properties to internalize:
+KL divergence — introduced by [Kullback & Leibler (1951)](https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-22/issue-1/On-Information-and-Sufficiency/10.1214/aoms/1177729694.full) — is the *extra* surprise you suffer for using $q$ when the truth is $p$. Three properties to internalize:
 
 1. $D_{\mathrm{KL}} \ge 0$, with equality only when $p = q$ — it behaves like a distance from the truth
 2. It is **not symmetric**: $D_{\mathrm{KL}}(p\|q) \ne D_{\mathrm{KL}}(q\|p)$, and the difference matters
@@ -95,6 +95,13 @@ Steer the single-Gaussian model $q$ below, then let each button find its own bes
 - Cross-entropy = entropy + KL: training on log-loss minimizes the KL between data and model
 - KL is non-negative, zero only at equality, asymmetric, and infinite when the model says "impossible" about something real
 - Forward KL covers all modes; reverse KL picks one — the choice shapes generative models
+
+## Further reading
+
+- [A Mathematical Theory of Communication](https://onlinelibrary.wiley.com/doi/10.1002/j.1538-7305.1948.tb01338.x) — Shannon (1948), the founding paper on entropy and source coding.
+- [On Information and Sufficiency](https://projecteuclid.org/journals/annals-of-mathematical-statistics/volume-22/issue-1/On-Information-and-Sufficiency/10.1214/aoms/1177729694.full) — Kullback & Leibler (1951), the original definition of the divergence.
+- [Elements of Information Theory](https://onlinelibrary.wiley.com/doi/book/10.1002/0471200611) — Cover & Thomas, the standard reference on entropy, cross-entropy, and KL.
+- [Information Theory, Inference, and Learning Algorithms](http://www.inference.org.uk/mackay/itila/book.html) — MacKay, a free text linking information theory to inference and ML.
 
 ## Related concepts
 

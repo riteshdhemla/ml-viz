@@ -4,14 +4,14 @@ description: "How to fit distributions to data — MLE, log-likelihood, and the 
 order: 3
 type: concept
 spineStages: [objective]
-estimatedMinutes: 12
+estimatedMinutes: 13
 ---
 
 # Maximum Likelihood Estimation
 
 You flip a bent coin 10 times and get 7 heads. What is the coin's true probability of heads? Your gut says $0.7$ — but *why* is that the best answer, and not $0.6$ or $0.8$?
 
-**Maximum Likelihood Estimation (MLE)** turns that gut feeling into a principle: out of every possible coin (every value of $p$), pick the one that makes the data you actually saw as probable as possible. The same idea fits a Gaussian to measurements, fits a logistic regression to labels, and underlies almost every loss function in machine learning — this is where the loop's **objective** stage comes from: a loss is usually just a negative log-likelihood in disguise.
+**Maximum Likelihood Estimation (MLE)** turns that gut feeling into a principle, given its modern form by [Fisher (1922)](https://royalsocietypublishing.org/doi/10.1098/rsta.1922.0009): out of every possible coin (every value of $p$), pick the one that makes the data you actually saw as probable as possible. The same idea fits a Gaussian to measurements, fits a logistic regression to labels, and underlies almost every loss function in machine learning — this is where the loop's **objective** stage comes from: a loss is usually just a negative log-likelihood in disguise.
 
 **Real-world examples:** Fitting a linear regression model, training a logistic classifier, and learning the parameters of a Gaussian mixture — all minimize the negative log-likelihood, i.e. maximize the likelihood of the data.
 
@@ -121,7 +121,7 @@ $$
 \mathcal{L}_\text{CE} = -\frac{1}{n}\,\ell(\theta)
 $$
 
-Therefore **minimizing cross-entropy is exactly maximizing the Bernoulli log-likelihood of the labels.** Every time you train a classifier with cross-entropy, you are doing MLE. For more than two classes, the same argument with a categorical distribution gives **categorical cross-entropy**.
+Therefore **minimizing cross-entropy is exactly maximizing the Bernoulli log-likelihood of the labels.** Every time you train a classifier with cross-entropy, you are doing MLE. For more than two classes, the same argument with a categorical distribution gives **categorical cross-entropy**. This likelihood view of loss functions is developed throughout [Bishop's PRML, ch. 4](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/).
 
 <Callout type="info" title="Loss functions are MLE objectives in disguise">
   Pick a noise/label distribution, write its negative log-likelihood, and you recover a familiar loss:
@@ -155,7 +155,7 @@ print("Closed-form k/n:  p = {:.3f}".format(data.mean()))  # 0.700 — same!
 | Property | Description |
 |----------|-------------|
 | **Consistent** | $\hat{\theta} \to \theta^*$ as $n \to \infty$ |
-| **Asymptotically efficient** | Achieves the Cramér–Rao lower bound for large $n$ |
+| **Asymptotically efficient** | Achieves the Cramér–Rao lower bound for large $n$ (asymptotic efficiency traces to [Fisher, 1922](https://royalsocietypublishing.org/doi/10.1098/rsta.1922.0009)) |
 | **Invariant** | $\widehat{f(\theta)} = f(\hat{\theta})$ for any invertible transform |
 | **Biased** | May be biased in finite samples (e.g., Gaussian variance) |
 
@@ -183,6 +183,12 @@ The information-theoretic view of the same objects — entropy, KL divergence, a
 - Bernoulli MLE → $\hat p = k/n$, the empirical success rate.
 - Maximizing log-likelihood = minimizing NLL; for a Bernoulli that NLL *is* cross-entropy, so MSE and cross-entropy are MLE objectives in disguise.
 - MLE is consistent and asymptotically efficient, but says nothing about parameter uncertainty.
+
+## Further reading
+
+- [On the Mathematical Foundations of Theoretical Statistics](https://royalsocietypublishing.org/doi/10.1098/rsta.1922.0009) — Fisher (1922), the paper that formalized likelihood, consistency, and efficiency.
+- [Pattern Recognition and Machine Learning, ch. 4](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/) — Bishop (2006), maximum likelihood for classification and its link to cross-entropy.
+- [Probabilistic Machine Learning: An Introduction, ch. 4](https://probml.github.io/pml-book/book1.html) — Murphy (2022), MLE, MAP, and the negative-log-likelihood view of losses.
 
 ## Related concepts
 

@@ -4,7 +4,7 @@ description: "From a sample to a claim about the world — sampling distribution
 order: 6
 type: concept
 spineStages: [evaluation]
-estimatedMinutes: 16
+estimatedMinutes: 17
 ---
 
 # Statistical Inference & Confidence Intervals
@@ -39,7 +39,7 @@ The $\sqrt{n}$ is the central fact of inference: **to halve your uncertainty you
 
 ## The Central Limit Theorem
 
-Why is the normal distribution everywhere in statistics? The **Central Limit Theorem (CLT)**: the sampling distribution of the mean approaches a normal distribution as $n$ grows, **regardless of the population's shape**.
+Why is the normal distribution everywhere in statistics? The **Central Limit Theorem (CLT)**: the sampling distribution of the mean approaches a normal distribution as $n$ grows, **regardless of the population's shape** ([Blitzstein & Hwang, *Introduction to Probability*, ch. 10](http://probabilitybook.net)).
 
 $$
 \bar{x} \;\xrightarrow{\;n\to\infty\;}\; \mathcal{N}\!\left(\mu,\; \frac{\sigma^2}{n}\right)
@@ -53,7 +53,7 @@ This is what licenses using normal-based tools (z-scores, confidence intervals, 
 
 ## Confidence intervals
 
-A point estimate ("accuracy = 92%") hides its uncertainty. A **confidence interval (CI)** reports a *range* of plausible values. Using the CLT, a $95\%$ CI for the mean is:
+A point estimate ("accuracy = 92%") hides its uncertainty. A **confidence interval (CI)** reports a *range* of plausible values — the frequentist construction introduced by [Neyman (1937)](https://royalsocietypublishing.org/doi/10.1098/rsta.1937.0005). Using the CLT, a $95\%$ CI for the mean is:
 
 $$
 \bar{x} \;\pm\; z^{*}\cdot \text{SE}, \qquad z^{*} = 1.96 \text{ for } 95\%
@@ -80,7 +80,7 @@ print(f"accuracy {p_hat:.3f}, 95% CI [{lo:.3f}, {hi:.3f}]")   # [0.848, 0.912]
 # A model reporting 0.90 sits inside this interval — not clearly better.
 ```
 
-When the statistic has no clean standard-error formula — the median, AUC, a correlation — you can still get a confidence interval by **resampling** the data itself:
+When the statistic has no clean standard-error formula — the median, AUC, a correlation — you can still get a confidence interval by **resampling** the data itself — the bootstrap of [Efron (1979)](https://projecteuclid.org/journals/annals-of-statistics/volume-7/issue-1/Bootstrap-Methods-Another-Look-at-the-Jackknife/10.1214/aos/1176344552.full):
 
 <WikiLink slug="bootstrap-resampling" title="The Bootstrap: Resampling for Standard Errors & Confidence Intervals" />
 
@@ -101,6 +101,13 @@ When the statistic has no clean standard-error formula — the median, AUC, a co
 - Uncertainty shrinks only as $\sqrt{n}$ — **4× the data for half the error**.
 - The **Central Limit Theorem** makes the sampling distribution of the mean approximately normal regardless of the population's shape, which justifies normal-based inference.
 - A **confidence interval** $\bar{x} \pm z^{*}\,\text{SE}$ reports a plausible range; "95% confidence" describes the procedure's long-run coverage, not a single interval.
+
+## Further reading
+
+- [Outline of a Theory of Statistical Estimation](https://royalsocietypublishing.org/doi/10.1098/rsta.1937.0005) — Neyman (1937), the paper that defined the confidence interval and its coverage interpretation.
+- [Bootstrap Methods: Another Look at the Jackknife](https://projecteuclid.org/journals/annals-of-statistics/volume-7/issue-1/Bootstrap-Methods-Another-Look-at-the-Jackknife/10.1214/aos/1176344552.full) — Efron (1979), resampling for standard errors when no formula exists.
+- [Introduction to Probability, ch. 10](http://probabilitybook.net) — Blitzstein & Hwang, the law of large numbers and the Central Limit Theorem.
+- [Probabilistic Machine Learning: An Introduction, ch. 3–4](https://probml.github.io/pml-book/book1.html) — Murphy (2022), estimators, sampling distributions, and interval estimation.
 
 ## Related concepts
 

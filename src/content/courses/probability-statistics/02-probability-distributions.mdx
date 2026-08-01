@@ -4,12 +4,12 @@ description: "Random variables, expectation, variance, and the key distributions
 order: 2
 type: concept
 spineStages: [data]
-estimatedMinutes: 14
+estimatedMinutes: 15
 ---
 
 # Probability Distributions
 
-Machine learning is fundamentally about uncertainty — uncertain data, uncertain labels, uncertain predictions. Probability theory gives us the language to reason precisely about uncertainty. Most ML models are probability distributions in disguise.
+Machine learning is fundamentally about uncertainty — uncertain data, uncertain labels, uncertain predictions. Probability theory gives us the language to reason precisely about uncertainty. Most ML models are probability distributions in disguise ([Murphy, *Probabilistic Machine Learning*, ch. 2](https://probml.github.io/pml-book/book1.html)).
 
 **Real-world examples:** Classification models output probability distributions over classes; generative models (VAEs, diffusion) model data as distributions; A/B testing uses hypothesis tests grounded in statistical distributions.
 
@@ -111,7 +111,7 @@ with $\mathbb{E}[X] = \mu$ and $\text{Var}(X) = \sigma^2$. The normalization con
 <WikiLink slug="gaussian-integral" title="The Gaussian Integral (Normalization Constant)" />
 
 <Callout type="tip" title="Why Gaussian is everywhere">
-  The **Central Limit Theorem**: the mean of many independent random variables converges to a Gaussian, regardless of the original distribution. Features in real datasets are often (approximately) Gaussian — gradients of large neural networks are too.
+  The **Central Limit Theorem**: the mean of many independent random variables converges to a Gaussian, regardless of the original distribution ([Blitzstein & Hwang, *Introduction to Probability*, ch. 10](http://probabilitybook.net)). Features in real datasets are often (approximately) Gaussian — gradients of large neural networks are too.
 </Callout>
 
 ```python
@@ -138,7 +138,7 @@ $$
 p(\mathbf{x}) = \frac{1}{(2\pi)^{n/2}|\boldsymbol{\Sigma}|^{1/2}} \exp\!\left(-\frac{1}{2}(\mathbf{x}-\boldsymbol{\mu})^\top \boldsymbol{\Sigma}^{-1} (\mathbf{x}-\boldsymbol{\mu})\right)
 $$
 
-The covariance matrix $\boldsymbol{\Sigma}$ captures both variance (diagonal) and correlations (off-diagonal). It's always symmetric positive semi-definite.
+The covariance matrix $\boldsymbol{\Sigma}$ captures both variance (diagonal) and correlations (off-diagonal). It's always symmetric positive semi-definite. The Gaussian and the other exponential-family distributions are treated in depth in [Bishop's PRML, ch. 2](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/).
 
 **Where:** Gaussian Mixture Models, Kalman filters, Gaussian Processes, VAEs.
 
@@ -214,6 +214,12 @@ $$
 - **Expectation** = mean; **variance** = spread; the Gaussian is determined by just two numbers ($\mu, \sigma^2$).
 - **Conditional probability** is the foundation of Bayes' theorem and most probabilistic inference.
 - **Independence** means knowing one variable tells you nothing about the other — rare in real data.
+
+## Further reading
+
+- [Pattern Recognition and Machine Learning, ch. 2](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/) — Bishop (2006), the distributions catalog and the exponential family from an ML angle.
+- [Probabilistic Machine Learning: An Introduction, ch. 2–3](https://probml.github.io/pml-book/book1.html) — Murphy (2022), a modern, free treatment of probability distributions for ML.
+- [Introduction to Probability](http://probabilitybook.net) — Blitzstein & Hwang, expectation, variance, the Central Limit Theorem, and named distributions.
 
 ## Related concepts
 

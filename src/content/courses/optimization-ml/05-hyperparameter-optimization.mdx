@@ -4,7 +4,7 @@ description: "Tuning the knobs you don't learn by gradient descent — grid, ran
 order: 5
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 15
+estimatedMinutes: 16
 ---
 
 # Hyperparameter Optimization & AutoML
@@ -27,27 +27,27 @@ Each evaluation of the objective is a complete training run, so the whole game i
 
 **Grid search.** Try every combination on a predefined grid. Exhaustive and simple, but it scales **exponentially** with the number of hyperparameters (the curse of dimensionality) and wastes trials on dimensions that don't matter.
 
-**Random search.** Sample configurations at random. Surprisingly, it usually **beats grid search** for the same budget: most hyperparameters barely matter, so random sampling explores the *important* ones more finely instead of wasting trials on a fine grid over irrelevant ones (Bergstra & Bengio).
+**Random search.** Sample configurations at random. Surprisingly, it usually **beats grid search** for the same budget: most hyperparameters barely matter, so random sampling explores the *important* ones more finely instead of wasting trials on a fine grid over irrelevant ones ([Bergstra & Bengio, 2012](https://jmlr.org/papers/v13/bergstra12a.html)).
 
 <Callout type="info" title="Why random beats grid">
   A grid spends its budget evenly across all dimensions, including useless ones — so it only tries a few distinct values of the *one* hyperparameter that matters. Random search tries a different value of every hyperparameter on every trial, effectively giving the important dimension many more distinct samples for the same number of runs.
 </Callout>
 
-**Bayesian optimization.** Both grid and random are **non-adaptive** — they ignore everything learned from past trials. Bayesian optimization (from the Bayesian Methods course) fits a surrogate to past results and picks the most promising next configuration, finding good hyperparameters in far fewer trials. The catch: it's **sequential**, so it parallelizes less easily than random search.
+**Bayesian optimization.** Both grid and random are **non-adaptive** — they ignore everything learned from past trials. Bayesian optimization (from the Bayesian Methods course) fits a surrogate to past results and picks the most promising next configuration, finding good hyperparameters in far fewer trials ([Snoek et al., 2012](https://arxiv.org/abs/1206.2944)). The catch: it's **sequential**, so it parallelizes less easily than random search.
 
 ## Early-stopping methods: spend compute where it counts
 
 The newest idea: don't run every configuration to completion. Bad configs usually reveal themselves early, so **stop the losers and reallocate their budget to promising configs**.
 
 - **Successive Halving** — start many configs with a small budget (few epochs), keep the top half, double their budget, repeat. Most configs die cheap; the survivors get the compute.
-- **Hyperband** — runs Successive Halving at several "aggressiveness" levels to hedge between trying *many* configs briefly and *few* configs thoroughly.
-- **ASHA** — an asynchronous, parallel-friendly version of Successive Halving, the practical default at scale.
+- **Hyperband** ([Li et al., 2017](https://arxiv.org/abs/1603.06560)) — runs Successive Halving at several "aggressiveness" levels to hedge between trying *many* configs briefly and *few* configs thoroughly.
+- **ASHA** ([Li et al., 2018](https://arxiv.org/abs/1810.05934)) — an asynchronous, parallel-friendly version of Successive Halving, the practical default at scale.
 
 These combine naturally with random search (random configs, halving allocation) and dramatically cut total compute.
 
 ## AutoML and neural architecture search
 
-**AutoML** aims to automate the whole pipeline — feature preprocessing, model choice, and hyperparameters — so a non-expert can get a strong model. **Neural Architecture Search (NAS)** is the most ambitious slice: *search the model architecture itself* (which layers, connections, sizes). Early NAS cost thousands of GPU-days; modern weight-sharing and gradient-based NAS made it far cheaper, though for most practitioners a good search over a sensible space still beats fully automated design.
+**AutoML** aims to automate the whole pipeline — feature preprocessing, model choice, and hyperparameters — so a non-expert can get a strong model. **Neural Architecture Search (NAS)** is the most ambitious slice: *search the model architecture itself* (which layers, connections, sizes). Early NAS ([Zoph & Le, 2016](https://arxiv.org/abs/1611.01578)) cost thousands of GPU-days; modern weight-sharing and gradient-based NAS made it far cheaper, though for most practitioners a good search over a sensible space still beats fully automated design.
 
 <Callout type="warning" title="Don't tune on the test set">
   Hyperparameter search optimizes the **validation** score; if you tune against the test set you'll overfit it and your reported numbers will be optimistic. With heavy searching even the validation set can be overfit — use **nested cross-validation** or a held-out final test set touched only once.
@@ -70,6 +70,14 @@ These combine naturally with random search (random configs, halving allocation) 
 - **Random search** usually beats **grid search** for a fixed budget (it samples the important dimensions more finely); **Bayesian optimization** is more sample-efficient but sequential.
 - **Early-stopping methods** (Successive Halving, **Hyperband**, **ASHA**) kill bad configs early and reallocate compute, slashing total cost.
 - **AutoML/NAS** automate model and architecture choice; always tune on **validation** (use nested CV) and evaluate on a held-out test set once.
+
+## Further reading
+
+- [Random Search for Hyper-Parameter Optimization](https://jmlr.org/papers/v13/bergstra12a.html) — Bergstra & Bengio (2012), why random beats grid search.
+- [Practical Bayesian Optimization of Machine Learning Algorithms](https://arxiv.org/abs/1206.2944) — Snoek et al. (2012), Gaussian-process surrogates for sample-efficient tuning.
+- [Hyperband: A Novel Bandit-Based Approach to Hyperparameter Optimization](https://arxiv.org/abs/1603.06560) — Li et al. (2017), early-stopping via successive halving.
+- [A System for Massively Parallel Hyperparameter Tuning (ASHA)](https://arxiv.org/abs/1810.05934) — Li et al. (2018), asynchronous successive halving at scale.
+- [Neural Architecture Search with Reinforcement Learning](https://arxiv.org/abs/1611.01578) — Zoph & Le (2016), searching the architecture itself.
 
 ## Related concepts
 

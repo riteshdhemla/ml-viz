@@ -4,7 +4,7 @@ description: "Sample spaces, events, random variables, and expectation — the v
 order: 1
 type: concept
 spineStages: [data]
-estimatedMinutes: 14
+estimatedMinutes: 15
 ---
 
 # Thinking in Probabilities
@@ -21,7 +21,7 @@ A **sample space** $\Omega$ is the set of everything that could happen in one ru
 - One die roll: $\Omega = \{1, 2, 3, 4, 5, 6\}$
 - Tomorrow's temperature: $\Omega = \mathbb{R}$ (uncountably many outcomes!)
 
-An **event** is any subset of outcomes you might care about: "the roll is even" is the event $A = \{2, 4, 6\}$. A probability function $P$ assigns each event a number, subject to three rules (the Kolmogorov axioms):
+An **event** is any subset of outcomes you might care about: "the roll is even" is the event $A = \{2, 4, 6\}$. A probability function $P$ assigns each event a number, subject to three rules (the Kolmogorov axioms, set down in his 1933 *Grundbegriffe* — [Kolmogorov, 1933](https://archive.org/details/kolmogorov_202112)):
 
 1. $P(A) \ge 0$ — no negative beliefs
 2. $P(\Omega) = 1$ — *something* happens
@@ -30,7 +30,7 @@ An **event** is any subset of outcomes you might care about: "the roll is even" 
 That's the entire rulebook. Everything else — Bayes' theorem, likelihoods, expectation — is a consequence.
 
 <Callout type="info" title="Two readings of the same number">
-  What does $P(\text{rain}) = 0.3$ *mean*? The **frequentist** reading: in many repeats of days like this one, 30% are rainy. The **Bayesian** reading: 0.3 is a degree of belief, which new evidence should update. The axioms above don't care which story you tell — both readings obey the same math, and ML uses each where it fits ([Bayesian inference](/courses/probability-statistics/04-bayesian-inference) leans on the second).
+  What does $P(\text{rain}) = 0.3$ *mean*? The **frequentist** reading: in many repeats of days like this one, 30% are rainy. The **Bayesian** reading: 0.3 is a degree of belief, which new evidence should update. The axioms above don't care which story you tell — both readings obey the same math, and ML uses each where it fits ([Bayesian inference](/courses/probability-statistics/04-bayesian-inference) leans on the second). The two readings and the shared rules of probability are developed carefully in [Bishop's *Pattern Recognition and Machine Learning*, ch. 1](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/).
 </Callout>
 
 ## Conditional probability — the comma and the bar
@@ -70,7 +70,7 @@ $$
 \mathbb{E}[X] = \sum_k k \, P(X = k) \qquad \text{or} \qquad \mathbb{E}[X] = \int x \, p(x) \, dx
 $$
 
-Roll a fair die forever and your average roll converges to $\mathbb{E}[X] = 3.5$ — a value the die never actually shows. Expectation is the center of mass of belief, not a prediction of any single outcome.
+Roll a fair die forever and your average roll converges to $\mathbb{E}[X] = 3.5$ — a value the die never actually shows. This convergence of the sample mean to the expectation is the **law of large numbers** ([Blitzstein & Hwang, *Introduction to Probability*, ch. 10](http://probabilitybook.net)). Expectation is the center of mass of belief, not a prediction of any single outcome.
 
 **Variance** measures spread around that center: $\mathrm{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2]$.
 
@@ -99,6 +99,12 @@ print(running_mean[[9, 99, 999, 9999 - 1]])
 - The product rule $P(A,B) = P(A \mid B)P(B)$ links joint and conditional probability; independence means conditioning changes nothing
 - Random variables turn outcomes into numbers; discrete ones have mass functions, continuous ones have densities (areas = probabilities)
 - Expectation is the probability-weighted average — the quantity nearly every ML loss function is secretly approximating
+
+## Further reading
+
+- [Foundations of the Theory of Probability](https://archive.org/details/kolmogorov_202112) — Kolmogorov (1933), the monograph that put probability on its three-axiom footing.
+- [Introduction to Probability](http://probabilitybook.net) — Blitzstein & Hwang, a free undergraduate text covering sample spaces, conditioning, expectation, and the law of large numbers.
+- [Pattern Recognition and Machine Learning, ch. 1](https://www.microsoft.com/en-us/research/publication/pattern-recognition-machine-learning/) — Bishop (2006), the rules of probability from an ML modeling standpoint.
 
 ## Related concepts
 
