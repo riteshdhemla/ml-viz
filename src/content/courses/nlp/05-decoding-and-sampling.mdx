@@ -37,6 +37,24 @@ Beam search keeps not one but $k$ partial sequences ("beams"). At each step:
 
 This catches the *Canberra* / *Sydney* case: even if "Sydney" wins step 1, both beams are kept; whichever has the higher *cumulative* log-prob after a few more tokens wins. Beam search dominates greedy on tasks with a single right answer that can only be identified a few tokens later — **machine translation**, **extractive summarisation**, **structured generation** with a known target format.
 
+Step through exactly the Canberra/Sydney case — greedy first, so you can watch
+it lose, then a width-2 beam recovering the answer:
+
+<AlgorithmTrace id="beam-search" />
+
+What to notice as you step:
+
+- **Greedy loses on the first token and never gets another chance.** Sydney wins
+  by 0.01, and the branch behind it turns out to be worth far less. The final
+  sequence probability is 0.138 against the beam's 0.279 — the model always knew,
+  the decoder threw it away.
+- **The beam does not have to choose yet.** That is the entire mechanism: keep
+  $k$ hypotheses alive until the evidence that separates them arrives.
+- **Most beam steps do no work.** The trace collapses a five-step stretch where
+  the surviving branch had a single continuation — beam search still pays
+  $k \cdot |V|$ scoring operations for each of them.
+- **The last step is the length bias**, which the next section fixes.
+
 ### Length normalisation
 
 Naïve beam search is biased toward short sequences. Each extra token multiplies the joint probability by $p < 1$, so longer beams accumulate larger (more negative) log-prob and lose. The standard fix is **length-normalised** scoring:
