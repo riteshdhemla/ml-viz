@@ -40,6 +40,29 @@ $$
 
 Blocks need not be contiguous — the attention kernel gathers K/V through the block table (one extra indirection, a few percent kernel overhead). Waste collapses to *at most $B - 1$ slots per sequence* (the unfilled tail of the last block): for $B = 16$ against a 4096-token reservation, worst-case waste drops from ~90% to under 0.4%.
 
+## Watch it run
+
+The allocator on the trace below, block by block — admission, on-demand growth,
+a shared prefix, and the copy-on-write that keeps it safe:
+
+<AlgorithmTrace id="paged-attention" />
+
+What to notice as you step:
+
+- **Growth is one block, on demand.** A decode step that lands in an existing
+  block's spare slot allocates nothing at all; only a full tail block triggers a
+  single pop from the free list. There is never a re-reservation or a copy of
+  the sequence.
+- **Only full blocks can be shared.** A partially-filled block has no stable
+  content hash — the next token would change it — so prefix sharing operates at
+  block granularity, which is one reason $B$ is small.
+- **Copy-on-write copies exactly one block**, not the prefix and not the
+  sequence. That is what makes parallel sampling branches cheap.
+- **The final step measures the motivation**: 256 requests with a realistic
+  length mix, allocated both ways. Contiguous reservation leaves 72% of the
+  cache reserved-and-untouched; paged allocation reaches 99.4% utilization and
+  3.5× the concurrent capacity on the same GPU.
+
 ## Prefix sharing and copy-on-write
 
 Because blocks are content-addressable units, identical prefixes can share physical blocks:

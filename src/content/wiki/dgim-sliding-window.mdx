@@ -77,6 +77,26 @@ $$
 
 The **true** count of 1s in positions 1–8 is $1+1+1+1+1+1 = 6$. The estimate 5 is within the 50% guarantee (here ~17% low). As the window slides past position 3, the `(2@3)` bucket is dropped and the estimate tightens.
 
+## Watch it run
+
+The worked stream above, bit by bit, with the merge cascade and the
+half-counted oldest bucket visible at every step:
+
+<AlgorithmTrace id="dgim-window" />
+
+What to notice as you step:
+
+- **Zeros cost nothing.** DGIM only ever records 1s; a 0 changes no bucket and
+  consumes no memory.
+- **A merge loses information deliberately.** Combining two size-1 buckets into
+  a size-2 discards *which* positions held the 1s, keeping only the newer
+  timestamp. That erasure is the whole memory saving.
+- **The error lives entirely in one bucket.** Every bucket but the oldest counts
+  in full and is exact; only the oldest is halved, so it is the sole source of
+  error and the sole reason for the ≤50% bound.
+- **The estimate is biased low, always**, and the final step queries at every
+  position to show the real error staying far inside the guarantee.
+
 ## Gotchas & extensions
 
 - **Error is one-sided in structure, not sign.** The halving of the oldest bucket can make the estimate high or low, but always within 50%. Keeping $r$ buckets per size (instead of 2) tightens the bound to $O(1/r)$ at higher memory cost.

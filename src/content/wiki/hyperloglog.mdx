@@ -71,6 +71,27 @@ Take $m = 4$ registers ($p = 2$ bits), all initialised to 0, and stream four **d
 
 One register is still 0, so $V = 1$ and the small-range rule applies: $\widehat n = m\ln(m/V) = 4\ln 4 \approx 5.5$. The raw harmonic-mean formula would instead give $\alpha_4 \cdot 16 / (2^{-1} + 2^{-4} + 2^{0} + 2^{-2}) = 0.673\cdot 16 / 1.8125 \approx 5.9$ — both near the true count of 4, and the corrections keep them honest as the register array fills. (See the notebook for the full estimator run to millions of distinct items.)
 
+## Watch it run
+
+The same four hashes, bit by bit, then a check of the error formula the whole
+design rests on:
+
+<AlgorithmTrace id="hyperloglog" />
+
+What to notice as you step:
+
+- **The duplicate changes nothing.** The third hash lands on register 1 with the
+  same $\rho$ it already holds, so `max` is a no-op. That is the entire reason
+  this counts *distinct* elements: re-seeing a value can never move a register.
+- **Only the maximum is kept per register**, never a count. The sketch has no
+  idea how many elements it has seen — just how rare the rarest hash was.
+- **The small-range rule fires here**, because one register is still zero. The
+  raw harmonic estimator and linear counting disagree (5.9 vs 5.5) and the
+  correction picks the one that is trustworthy in this regime.
+- **The last step measures $1.04/\sqrt{m}$** across replicate sketches, because
+  it is a standard error — one sketch at $m = 16$ can beat one at $m = 1024$ by
+  luck, and only averaging shows the trend.
+
 ## Gotchas
 
 - **Hash quality is everything.** Bits must be uniform and independent; a weak hash biases $\rho$ and wrecks the estimate.
