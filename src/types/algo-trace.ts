@@ -106,6 +106,8 @@ export type TraceComponent =
       circles?: { x: number; y: number; r: number; cls?: TraceCls }[];
       xLabel?: string;
       yLabel?: string;
+      /** Draw numeric min/max ticks. Set false for categorical axes (a trellis). */
+      ticks?: boolean;
     }
   /** A free-text aside shown inside the state panel. */
   | { t: "note"; text: string; cls?: TraceCls };

@@ -92,6 +92,29 @@ The highest score at $t=2$ is $\delta_2(S)=0.0432$, so we start back-tracking fr
 
 To reconstruct the path in code, store $\psi_t(j) = \arg\max_i [\delta_{t-1}(i)\,A_{ij}]$ at every step. At the end, find $q_T^* = \arg\max_j \delta_T(j)$, then follow the back-pointers: $q_{t-1}^* = \psi_t(q_t^*)$. This single backward pass recovers the complete optimal sequence in $O(KT)$ time — no additional computation beyond what the forward pass already stored.
 
+### Step through the decoder
+
+The same numbers as the table above, one lattice cell at a time — every incoming
+candidate scored, the max taken, the loser discarded, and a backpointer stored:
+
+<AlgorithmTrace id="viterbi-decoding" />
+
+What to notice as you step:
+
+- **The loser is discarded permanently.** When $\delta_2(\text{Rainy})$ picks the
+  Sunny predecessor, the Rainy-to-Rainy path is gone for good. That pruning is
+  what makes the recursion $O(K^2T)$ instead of $O(K^T)$ — and it is only valid
+  because the Markov property guarantees no discarded prefix could ever be
+  rescued by a later observation.
+- **$\delta$ is not a probability of a state.** It is the score of one complete
+  best-path-so-far. The brute-force enumeration step confirms it: $\delta_2$
+  equals the joint probability of the single best path, not the marginal.
+- **The final step swaps `max` for `sum`** — that one change is the forward
+  algorithm — and the answers diverge on identical numbers. $\alpha_2$ says Rainy
+  is the more likely state at $t = 2$; $\delta_2$ says the best path ends in
+  Sunny. Per-step argmax and best-whole-path are genuinely different questions,
+  which is why Viterbi bothers with backpointers at all.
+
 <HMMViterbiViz />
 
 ```python

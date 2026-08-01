@@ -20,6 +20,7 @@ import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
 import { speculativeDecodingTrace } from "./speculative-decoding";
 import { variableEliminationTrace } from "./variable-elimination";
+import { viterbiTrace } from "./viterbi";
 
 /**
  * Registry of **algorithm traces** — the algo-viz-style steppable explainers.
@@ -59,6 +60,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   speculativeDecodingTrace,
   bpttTrace,
   pagedAttentionTrace,
+  viterbiTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
