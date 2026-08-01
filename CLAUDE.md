@@ -671,6 +671,7 @@ and records frames.
 | `roc-construction` | `algo-traces/roc.ts` | wiki/roc-auc | ✅ |
 | `bloom-filter` | `algo-traces/bloom-filter.ts` | streaming-ml/02-streaming-algorithms | ✅ |
 | `pav-isotonic` | `algo-traces/isotonic.ts` | wiki/platt-scaling-and-isotonic-regression | ✅ |
+| `beam-search` | `algo-traces/beam-search.ts` | nlp/05-decoding-and-sampling | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. The strongest remaining candidates are in

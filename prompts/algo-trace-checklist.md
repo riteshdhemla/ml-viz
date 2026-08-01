@@ -60,7 +60,7 @@ not a second builder.
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
   - Payoff: against Platt scaling on the same miscalibrated scores.
-- [ ] **Beam search** — `courses/nlp/05-decoding-and-sampling`
+- [x] **Beam search** — `courses/nlp/05-decoding-and-sampling`
   - Very algo-viz-shaped (a frontier of hypotheses, pruned each step).
   - Payoff: beam width vs greedy on the same logits; length-normalization bug.
 - [ ] **Q-learning** — `courses/reinforcement-learning/02-q-learning`
