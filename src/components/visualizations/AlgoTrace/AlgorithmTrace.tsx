@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { AlgoTrace, TraceCls, TraceComponent, TraceFrame } from "@/types/algo-trace";
 import { getAlgoTrace } from "@/lib/algo-traces";
-import { VizFrame } from "../viz-kit";
+import { VizFrame, scale } from "../viz-kit";
 import { cn } from "@/lib/utils";
 
 /**
@@ -325,6 +325,154 @@ function LayerGraph({ c }: { c: Extract<TraceComponent, { t: "graph" }> }) {
   );
 }
 
+function Plot({ c }: { c: Extract<TraceComponent, { t: "plot" }> }) {
+  // The plot sits in one half of a two-column grid, so the viewBox is kept close
+  // to its rendered size — a wider box would shrink dots and labels past legibility.
+  const W = 420;
+  const H = 290;
+  const M = { top: 12, right: 14, bottom: 24, left: 30 };
+  const [x0, x1, y0, y1] = c.domain;
+  const sx = scale(x0, x1, M.left, W - M.right);
+  const sy = scale(y0, y1, H - M.bottom, M.top);
+  // Radii are in data units — x and y scales share a factor here, so use x.
+  const sr = (r: number) => Math.abs(sx(x0 + r) - sx(x0));
+  const stroke = (cls?: TraceCls) => DOT[cls ?? "dim"].fill;
+  // Circles and curves are clipped to the axes so an ε-radius larger than the
+  // view spills off the edge instead of bleeding over the surrounding card.
+  const clipId = useId().replace(/:/g, "");
+
+  return (
+    <Panel label={c.label}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={c.label}>
+        <defs>
+          <clipPath id={clipId}>
+            <rect
+              x={M.left}
+              y={M.top}
+              width={W - M.left - M.right}
+              height={H - M.top - M.bottom}
+            />
+          </clipPath>
+        </defs>
+        <rect
+          x={M.left}
+          y={M.top}
+          width={W - M.left - M.right}
+          height={H - M.top - M.bottom}
+          fill="none"
+          stroke="#2e3347"
+        />
+        {[
+          { v: x0, x: sx(x0), y: H - 10, anchor: "start" as const },
+          { v: x1, x: sx(x1), y: H - 10, anchor: "end" as const },
+        ].map((t, i) => (
+          <text key={`xt${i}`} x={t.x} y={t.y} textAnchor={t.anchor} fontSize={9} fill="#475569">
+            {t.v}
+          </text>
+        ))}
+        {[
+          { v: y1, y: sy(y1) + 4 },
+          { v: y0, y: sy(y0) },
+        ].map((t, i) => (
+          <text key={`yt${i}`} x={M.left - 4} y={t.y} textAnchor="end" fontSize={9} fill="#475569">
+            {t.v}
+          </text>
+        ))}
+        <g clipPath={`url(#${clipId})`}>
+        {c.circles?.map((circle, i) => (
+          <circle
+            key={`c${i}`}
+            cx={sx(circle.x)}
+            cy={sy(circle.y)}
+            r={sr(circle.r)}
+            fill={stroke(circle.cls)}
+            fillOpacity={0.07}
+            stroke={stroke(circle.cls)}
+            strokeOpacity={0.5}
+            strokeDasharray="3 3"
+          />
+        ))}
+        {c.segments?.map((s, i) => (
+          <line
+            key={`s${i}`}
+            x1={sx(s.x1)}
+            y1={sy(s.y1)}
+            x2={sx(s.x2)}
+            y2={sy(s.y2)}
+            stroke={stroke(s.cls)}
+            strokeWidth={1.75}
+            strokeDasharray={s.dashed ? "4 3" : undefined}
+          />
+        ))}
+        {c.curves?.map((curve, i) => (
+          <path
+            key={`p${i}`}
+            d={curve.pts.map((p, j) => `${j === 0 ? "M" : "L"}${sx(p.x)},${sy(p.y)}`).join(" ")}
+            fill="none"
+            stroke={stroke(curve.cls)}
+            strokeWidth={2}
+            strokeDasharray={curve.dashed ? "4 3" : undefined}
+          />
+        ))}
+        </g>
+        {c.points?.map((p, i) => {
+          const col = DOT[p.cls ?? "dim"];
+          const cx = sx(p.x);
+          const cy = sy(p.y);
+          return (
+            <g key={`pt${i}`} className="transition-all duration-300">
+              {p.shape === "cross" ? (
+                <path
+                  d={`M${cx - 7},${cy - 7} L${cx + 7},${cy + 7} M${cx + 7},${cy - 7} L${cx - 7},${cy + 7}`}
+                  stroke={col.fill}
+                  strokeWidth={3}
+                />
+              ) : (
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={p.shape === "ring" ? 8 : 6}
+                  fill={p.shape === "ring" ? "none" : col.fill}
+                  stroke={col.stroke}
+                  strokeWidth={p.shape === "ring" ? 3 : 1.5}
+                />
+              )}
+              {p.id && (
+                <text
+                  x={cx + 9}
+                  y={cy - 7}
+                  fontSize={11}
+                  fontFamily="monospace"
+                  fill={p.cls && p.cls !== "dim" ? col.stroke : "#64748b"}
+                >
+                  {p.id}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {c.xLabel && (
+          <text x={W / 2} y={H - 6} textAnchor="middle" fontSize={9} fill="#64748b">
+            {c.xLabel}
+          </text>
+        )}
+        {c.yLabel && (
+          <text
+            x={10}
+            y={H / 2}
+            textAnchor="middle"
+            fontSize={9}
+            fill="#64748b"
+            transform={`rotate(-90 10 ${H / 2})`}
+          >
+            {c.yLabel}
+          </text>
+        )}
+      </svg>
+    </Panel>
+  );
+}
+
 function Note({ c }: { c: Extract<TraceComponent, { t: "note" }> }) {
   return (
     <p
@@ -358,6 +506,8 @@ function StateComponent({ c }: { c: TraceComponent }) {
       return <TraceTable c={c} />;
     case "graph":
       return <LayerGraph c={c} />;
+    case "plot":
+      return <Plot c={c} />;
     case "note":
       return <Note c={c} />;
   }

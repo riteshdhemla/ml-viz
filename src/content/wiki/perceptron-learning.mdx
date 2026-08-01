@@ -47,6 +47,26 @@ With $\eta = 1$: OR is linearly separable (output 1 when at least one input is 1
 
 After step 4, $\mathbf{w} = (1,1)$, $b = 0$ — boundary $x_1 + x_2 = 0$. Verify: $(0,0)\to 0$ ✓, $(1,0)\to 1$ ✓, $(0,1)\to 1$ ✓, $(1,1)\to 2$ ✓. Step 5 confirms one clean pass; two more correct passes complete the convergence check. The algorithm has converged in exactly **2 mistakes**.
 
+## Watch it run — and watch it fail
+
+The same code on both datasets, with the decision boundary redrawn after every
+update:
+
+<AlgorithmTrace id="perceptron-learning" />
+
+What to notice as you step:
+
+- **The boundary only moves on a mistake.** Steps 2–4 and 6–9 change nothing —
+  the perceptron is not doing gradient descent on a loss, it is patching
+  counterexamples.
+- **The update direction is the input itself.** On a false negative, $\mathbf{w}$
+  gains $\mathbf{x}$, which raises $\mathbf{w}^\top\mathbf{x}$ for that exact
+  point. The rule is the shortest possible fix for the mistake in front of it.
+- **On XOR the weights cycle rather than converge.** The algorithm is not stuck
+  or badly tuned — the four constraints below are mutually contradictory, so
+  there is nothing to find. That distinction, between a hard problem and an
+  impossible one, is what the next section proves.
+
 ## Why XOR is impossible for a single perceptron
 
 XOR outputs 1 when exactly one input is 1:

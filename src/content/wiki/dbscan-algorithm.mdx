@@ -39,6 +39,28 @@ For a point $p$, let $N_\varepsilon(p) = \{q : d(p,q) \le \varepsilon\}$ be its 
 5. Continue expanding until no more points can be added; then restart from step 1.
 6. Any point initially labeled noise that was added to a cluster during expansion becomes a **border** point.
 
+## Watch it run
+
+Nine points, $\varepsilon = 2$, min\_samples = 3. Each point's
+$\varepsilon$-neighbourhood is drawn as it is visited, so you can see the radius
+that decides core-versus-noise rather than just reading the count:
+
+<AlgorithmTrace id="dbscan-clustering" />
+
+What to notice as you step:
+
+- **Expansion only continues through core points.** Every point in a cluster gets
+  labelled, but only core points put *their* neighbours back on the queue. A
+  border point joins and the frontier stops there.
+- **Noise is provisional.** $I$ is labelled noise the moment it is visited, but
+  that label could still be overwritten if a later expansion reached it. Nothing
+  does, so it stays $-1$.
+- **The last step raises $\varepsilon$ to 5 and changes nothing else.** $I$ gains
+  enough neighbours to become core, and a core point is a *bridge* — the
+  expansion walks straight through it and the two blobs merge into one cluster.
+  That chaining effect, not a few stray points, is the real risk of an
+  $\varepsilon$ set slightly too high.
+
 ## A 9-point worked example
 
 Here $\varepsilon = 2$ and min\_samples = 3.

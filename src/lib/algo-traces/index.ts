@@ -2,7 +2,11 @@ import type { AlgoTrace } from "@/types/algo-trace";
 import { attentionTrace } from "./attention";
 import { bm25Trace } from "./bm25";
 import { bpeTrace } from "./bpe";
+import { dbscanTrace } from "./dbscan";
+import { decisionTreeTrace } from "./decision-tree";
 import { hnswTrace } from "./hnsw";
+import { kmeansTrace } from "./kmeans";
+import { perceptronTrace } from "./perceptron";
 
 /**
  * Registry of **algorithm traces** — the algo-viz-style steppable explainers.
@@ -20,7 +24,16 @@ import { hnswTrace } from "./hnsw";
  * checks ids are unique, code-line references are in range, and every
  * `<AlgorithmTrace id>` used in content resolves.
  */
-export const allAlgoTraces: AlgoTrace[] = [bpeTrace, attentionTrace, bm25Trace, hnswTrace];
+export const allAlgoTraces: AlgoTrace[] = [
+  bpeTrace,
+  attentionTrace,
+  bm25Trace,
+  hnswTrace,
+  kmeansTrace,
+  dbscanTrace,
+  decisionTreeTrace,
+  perceptronTrace,
+];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
 
