@@ -21,7 +21,7 @@ not a second builder.
 
 ---
 
-## Round 3 — ready now (page already carries a hand-worked example to match)
+## Round 3 — done (all five shipped)
 
 - [x] **Viterbi decoding** — `courses/graphical-models/03-hidden-markov-models`
   - Has "Worked example — Viterbi by hand" + a backpointer table: δ₁ = (0.06, 0.24),
