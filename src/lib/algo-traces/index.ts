@@ -19,6 +19,7 @@ import { nmsTrace } from "./nms";
 import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
 import { speculativeDecodingTrace } from "./speculative-decoding";
+import { valueIterationTrace } from "./value-iteration";
 import { variableEliminationTrace } from "./variable-elimination";
 import { viterbiTrace } from "./viterbi";
 
@@ -61,6 +62,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   bpttTrace,
   pagedAttentionTrace,
   viterbiTrace,
+  valueIterationTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

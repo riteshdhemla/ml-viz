@@ -114,7 +114,7 @@ P = {  # P[s][a] -> list of (prob, next_state, reward)
 gamma, n_states, n_actions = 0.9, 3, 2
 V = np.zeros(n_states)
 
-for it in range(100):
+for it in range(500):   # 131 sweeps needed at gamma=0.9
     V_new = np.zeros(n_states)
     for s in range(n_states):
         V_new[s] = max(
@@ -130,6 +130,28 @@ policy = [int(np.argmax([sum(p*(r+gamma*V[s2]) for p,s2,r in P[s][a])
                          for a in range(n_actions)])) for s in range(n_states)]
 print("optimal actions:", policy)
 ```
+
+Step through the loop on the MDP above — every action evaluated, every
+Bellman backup taken, and the sweep count that γ decides:
+
+<AlgorithmTrace id="value-iteration" />
+
+What to notice as you step:
+
+- **Reward travels backwards, one state per sweep.** After sweep 1 only the
+  goal has value; after sweep 2, $s_1$; after sweep 3, $s_0$. The number of
+  sweeps needed scales with the distance from reward, which is exactly why
+  sparse-reward problems are hard.
+- **No policy exists until the end.** Value iteration optimizes $V$ and reads
+  the policy off with a one-step lookahead once $V$ has settled — unlike policy
+  iteration, which maintains and improves an explicit policy throughout.
+- **γ sets the contraction rate.** Each sweep shrinks the error by a factor of
+  γ, so convergence takes 20 sweeps at γ = 0.5 and 1375 at γ = 0.99. Caring
+  about the far future is not free.
+- **The last step changes one reward and lowers γ, and the optimal policy
+  reverses.** A myopic agent has not converged badly — it has correctly solved a
+  different problem. γ belongs in the problem specification, not the
+  hyperparameter sweep.
 
 Watch value iteration converge on a 4×4 gridworld — each step is one full sweep, and the arrows show the greedy policy extracted from $V$:
 
