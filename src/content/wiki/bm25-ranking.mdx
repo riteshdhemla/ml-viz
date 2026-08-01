@@ -82,6 +82,27 @@ $$
 
 Notice the single-occurrence rare term ("retrieval") contributes *more* than three occurrences of the commoner one ("neural") — saturation plus IDF working together. That is the behavior a linear TF-IDF would get wrong.
 
+## Watch it rank
+
+One document scored by hand shows the formula; ranking a corpus shows what the
+formula is *for*. Step through BM25 scoring five documents for the query
+"neural retrieval" — IDF first, then each document term by term, then the final
+ordering. (This corpus is its own worked example, so its $N$, $\text{avgdl}$ and
+IDFs differ from the hand-worked numbers above.)
+
+<AlgorithmTrace id="bm25-scoring" />
+
+Both of BM25's corrections change the answer here, and you can watch each one do it:
+
+- **IDF.** "neural" appears in 4 of 5 documents and "retrieval" in 2, so one
+  match on "retrieval" is worth roughly 3× one match on "neural". `d1`'s single
+  rare match beats `d2`'s two common ones.
+- **Length normalization.** `d3` contains *more* query-term occurrences than
+  `d1` but is 2.6× longer, so its length factor exceeds 1 and shrinks every
+  contribution — it lands second. The final step re-scores the same corpus with
+  $b = 0$ and `d3` jumps to first, which is exactly the keyword-stuffing failure
+  $b$ is there to prevent.
+
 ## BM25 vs dense embeddings
 
 | | BM25 (lexical / sparse) | Embeddings (semantic / dense) |
