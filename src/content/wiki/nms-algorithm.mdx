@@ -53,6 +53,25 @@ Four candidate boxes for a single "cat" object, sorted by confidence. NMS thresh
 
 **Interpretation of suppression:** the 0.87 box had a high score but was essentially a duplicate of the 0.92 box — probably an adjacent anchor slightly shifted over the same cat. The 0.61 and 0.55 boxes had low mutual IoU (0.28), so they represent distinct spatial locations (perhaps two different objects or the same object seen from very different anchors).
 
+## Watch it run
+
+The same four boxes, with the geometry behind every IoU drawn out rather than
+tabulated:
+
+<AlgorithmTrace id="nms-suppression" />
+
+What to notice as you step:
+
+- **The top box is never questioned.** NMS is greedy and non-recoverable: if the
+  highest-confidence box is slightly misplaced, every better-placed box
+  overlapping it is deleted, and nothing later can undo that.
+- **Suppression is transitive by accident.** A box is only compared against
+  boxes *kept so far*, not against everything — which is why the 0.55 box gets
+  its own comparison round against 0.61 rather than being judged against 0.92.
+- **The last step runs τ = 0.8 and τ = 0.25 on the same four boxes** and produces
+  both failure modes: a duplicate surviving, and a genuinely distinct object
+  deleted. That is what the warning below is about.
+
 <Callout type="warning" title="NMS threshold sensitivity">
   A threshold too high (e.g. 0.7) lets heavily overlapping duplicates survive. A threshold too low (e.g. 0.3) suppresses genuinely distinct nearby objects. The range 0.45–0.5 is the standard starting point; tune it on your validation set, especially for crowded scenes.
 </Callout>

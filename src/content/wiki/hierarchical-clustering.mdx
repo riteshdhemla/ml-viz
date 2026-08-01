@@ -24,6 +24,25 @@ Agglomerative hierarchical clustering starts with every point in its own cluster
   Ward linkage minimizes within-cluster variance at every merge, so it produces the most compact and evenly-sized clusters. It is the best default for spherical, roughly equal-sized blobs. Single linkage is the only method that can detect elongated "chain" shapes, but it suffers from chaining: one bridge point between two distant blobs can pull them together early. Complete linkage is robust to this but can split large, elongated natural clusters.
 </Callout>
 
+## Watch it run
+
+Merge by merge on the four points below, with the cross-pair distances that each
+linkage rule reduces to a single number drawn in:
+
+<AlgorithmTrace id="hierarchical-linkage" />
+
+What to notice as you step:
+
+- **The first merges are linkage-independent.** While both clusters are
+  singletons there is only one cross-pair distance, so min, max and mean are the
+  same number. Linkage cannot matter until a cluster has two members.
+- **The choice is a reduction, not a metric.** Every rule sees the same set of
+  cross-pair distances and differs only in how it collapses them to one.
+- **The last step adds one bridge point** halfway between the blobs, and single
+  and complete linkage now return *different clusters* at $k = 2$, not merely
+  different heights. That is chaining — and it is the same property that lets
+  single linkage follow an elongated cluster no other rule can.
+
 ## Comparing the linkages on a 4-point worked example
 
 Here we trace 4 points across 3 linkages.

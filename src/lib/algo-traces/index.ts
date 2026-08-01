@@ -8,7 +8,11 @@ import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
 import { hnswTrace } from "./hnsw";
 import { kmeansTrace } from "./kmeans";
+import { adaboostTrace } from "./adaboost";
+import { hierarchicalTrace } from "./hierarchical";
 import { mcmcTrace } from "./mcmc";
+import { newtonTrace } from "./newton";
+import { nmsTrace } from "./nms";
 import { perceptronTrace } from "./perceptron";
 import { variableEliminationTrace } from "./variable-elimination";
 
@@ -41,6 +45,10 @@ export const allAlgoTraces: AlgoTrace[] = [
   baumWelchTrace,
   variableEliminationTrace,
   mcmcTrace,
+  nmsTrace,
+  adaboostTrace,
+  hierarchicalTrace,
+  newtonTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
