@@ -65,6 +65,31 @@ The exact solution is computed by the **Pool-Adjacent-Violators Algorithm (PAV)*
 
 The five distinct labels collapse to a monotone staircase $[0,\ 0.33,\ 0.33,\ 0.33,\ 1,\ 1]$ — the unique least-squares monotone fit.
 
+Step through that pooling, then watch the two calibrators compete on the same
+scores:
+
+<AlgorithmTrace id="pav-isotonic" />
+
+What to notice as you step:
+
+- **Every move is local, but the answer is global.** PAV only ever compares
+  adjacent blocks and only ever merges — it never looks ahead and never moves a
+  block down. Yet the staircase it lands on is the *exact* least-squares
+  monotone fit, which is what makes it $O(n)$ after the sort.
+- **Backing up is not an optimization, it is required.** Pooling `{1, 0}` into
+  0.5 immediately creates the possibility of a new violation to its left, and at
+  the next step exactly that happens. Skip the back-up and the output is not
+  monotone.
+- **Pooling is the algorithm admitting ignorance.** Three points collapse to a
+  single block at $\tfrac13$ — the data cannot justify separating them, so it
+  averages rather than inventing structure.
+- **The last step is the practical choice.** On a miscalibration a sigmoid
+  cannot express (three flat shelves), Platt wins at $n = 50$ where isotonic is
+  fitting noise across ~17 blocks; isotonic pulls ahead by $n = 500$ and nearly
+  reaches the oracle floor at $n = 1500$. Meanwhile Platt improves by almost
+  nothing across a 30× increase in data — that residual is bias, not variance,
+  and no amount of calibration data buys it off.
+
 **When it wins:** enough calibration data (rule of thumb $\gtrsim 1000$ points) and a miscalibration shape a sigmoid can't capture. **When it fails:** small calibration sets — with too few points it **overfits**, producing a jagged staircase and, because it is piecewise-constant, sharp jumps and flat plateaus. It also can't extrapolate beyond the score range it saw.
 
 ## Platt vs. isotonic vs. temperature scaling
