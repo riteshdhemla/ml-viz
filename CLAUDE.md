@@ -655,9 +655,12 @@ and records frames.
 | `baum-welch` | `algo-traces/baum-welch.ts` | wiki/baum-welch | ✅ |
 | `variable-elimination` | `algo-traces/variable-elimination.ts` | wiki/variable-elimination | ✅ |
 | `metropolis-hastings` | `algo-traces/mcmc.ts` | wiki/mcmc-sampling | ✅ |
+| `nms-suppression` | `algo-traces/nms.ts` | wiki/nms-algorithm | ✅ |
+| `adaboost-rounds` | `algo-traces/adaboost.ts` | wiki/adaboost-algorithm | ✅ |
+| `hierarchical-linkage` | `algo-traces/hierarchical.ts` | wiki/hierarchical-clustering | ✅ |
+| `newtons-method` | `algo-traces/newton.ts` | wiki/newtons-method | ✅ |
 
-**Queue — wiki pages whose procedures would benefit next:** `nms-algorithm`,
-`adaboost-algorithm`, `hierarchical-clustering`, `newtons-method`,
+**Queue — wiki pages whose procedures would benefit next:**
 `speculative-decoding`, `paged-attention`, `hyperloglog`, `dgim-sliding-window`,
 `bptt-algorithm`.
 

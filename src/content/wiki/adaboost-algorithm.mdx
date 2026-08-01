@@ -30,6 +30,26 @@ $$
   AdaBoost requires $y_i \in \{-1, +1\}$, not $\{0, 1\}$. The sign in the update rule $\exp(-\alpha_b y_i h_b(\mathbf{x}_i))$ flips between shrinking (correct: $y_i h_b = +1$) and growing (wrong: $y_i h_b = -1$) the weight.
 </Callout>
 
+## Watch it run
+
+Three rounds on ten points whose labels no single stump can capture — the first
+round reproduces the $\epsilon = 0.2$, $\alpha = 0.693$ worked by hand below:
+
+<AlgorithmTrace id="adaboost-rounds" />
+
+What to notice as you step:
+
+- **The re-weighting is the algorithm.** After round 1 the two missed points
+  carry 50% of the total weight — and they carry exactly 50% after every round,
+  which is not a coincidence: the $\alpha$ that minimizes exponential loss is
+  precisely the one that equalizes the weight on hits and misses.
+- **Each stump is worse than the last, by raw accuracy.** Rounds 2 and 3 miss 3
+  and 5 points. They are not meant to be good — they are meant to be good *on
+  the part of the data the ensemble still gets wrong*.
+- **The vote gets everything right.** Three learners that individually fail, in
+  weighted combination, classify all ten points. Their errors do not overlap,
+  which is the whole return on re-weighting.
+
 ## Deriving the model weight α
 
 $\alpha_b$ is not arbitrary — it is the exact minimizer of the **exponential loss** after the current stump is fixed. The objective at round $b$ is:
