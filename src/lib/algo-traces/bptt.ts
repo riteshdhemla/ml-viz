@@ -208,7 +208,7 @@ function build(): AlgoTrace {
     {
       t: "plot",
       label: "‖∂L/∂h_t‖ vs how far back the gradient has travelled",
-      domain: [0, T, -6, 2],
+      domain: [0, T, -2.5, 0.5],
       xLabel: "steps back",
       yLabel: "log₁₀ ‖dh‖",
       curves: runs.map((run_, i) => ({
