@@ -126,6 +126,26 @@ The tree checks every midpoint between consecutive sorted ages. The best split i
 
 The gain is largest here because the left child is perfectly pure — all denials — while the right child is nearly pure (5 approvals, 1 denial). The gain decreases when the threshold moves away from 31.5 because either the pure side starts picking up mixed labels (going lower) or the mix on the right worsens (going higher).
 
+## Watch the scan run
+
+Every row of that table, computed one at a time, with the running leader tracked
+as the scan proceeds:
+
+<AlgorithmTrace id="decision-tree-split-search" />
+
+What to notice as you step:
+
+- **The gain is not monotone in the threshold.** It climbs to 31.5, drops at
+  34.5, rises again at 42.5. There is no shortcut — a greedy tree finds the peak
+  by brute force at every node, which is why training cost scales with the number
+  of distinct feature values.
+- **Weighting is what makes the criterion work.** At Age ≤ 55 the right child is
+  perfectly pure (Gini 0), but it holds one row out of ten, so it barely moves
+  the weighted average. Purity in a tiny child is nearly worthless.
+- **The last step swaps Gini for entropy** and re-scores all nine thresholds. The
+  numbers change, the winner does not — the practical reason nobody agonizes over
+  which impurity measure to use.
+
 ## Implementing the split search in code
 
 ```python

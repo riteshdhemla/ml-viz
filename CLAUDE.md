@@ -648,13 +648,16 @@ and records frames.
 | `scaled-dot-product-attention` | `algo-traces/attention.ts` | wiki/scaled-dot-product-attention | ✅ |
 | `bm25-scoring` | `algo-traces/bm25.ts` | wiki/bm25-ranking | ✅ |
 | `hnsw-search` | `algo-traces/hnsw.ts` | wiki/hnsw | ✅ |
+| `kmeans-iterations` | `algo-traces/kmeans.ts` | wiki/kmeans-algorithm | ✅ |
+| `dbscan-clustering` | `algo-traces/dbscan.ts` | wiki/dbscan-algorithm | ✅ |
+| `decision-tree-split-search` | `algo-traces/decision-tree.ts` | wiki/decision-tree-information-gain | ✅ |
+| `perceptron-learning` | `algo-traces/perceptron.ts` | wiki/perceptron-learning | ✅ |
 
 **Queue — wiki pages whose procedures would benefit next:** `em-algorithm`,
-`baum-welch`, `variable-elimination`, `nms-algorithm`, `dbscan-algorithm`,
-`kmeans-algorithm`, `adaboost-algorithm`, `hierarchical-clustering`,
-`decision-tree-information-gain`, `perceptron-learning`, `newtons-method`,
-`speculative-decoding`, `paged-attention`, `hyperloglog`, `dgim-sliding-window`,
-`mcmc-sampling`, `bptt-algorithm`.
+`baum-welch`, `variable-elimination`, `nms-algorithm`, `adaboost-algorithm`,
+`hierarchical-clustering`, `newtons-method`, `speculative-decoding`,
+`paged-attention`, `hyperloglog`, `dgim-sliding-window`, `mcmc-sampling`,
+`bptt-algorithm`.
 
 ---
 

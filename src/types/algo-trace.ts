@@ -82,6 +82,31 @@ export type TraceComponent =
       /** Node id to mark with a "descend to next layer" arrow. */
       drop?: string;
     }
+  /**
+   * A 2-D plot — scatter points, function curves, boundaries and radii.
+   * One renderer covers clustering scatters, decision boundaries, tangent
+   * lines and sampled densities. `domain` is fixed by the builder so the view
+   * never jumps between frames.
+   */
+  | {
+      t: "plot";
+      label: string;
+      /** [xMin, xMax, yMin, yMax] — fixed across all frames of a trace. */
+      domain: [number, number, number, number];
+      curves?: { pts: { x: number; y: number }[]; cls?: TraceCls; dashed?: boolean }[];
+      points?: {
+        x: number;
+        y: number;
+        id?: string;
+        cls?: TraceCls;
+        shape?: "dot" | "cross" | "ring";
+      }[];
+      segments?: { x1: number; y1: number; x2: number; y2: number; cls?: TraceCls; dashed?: boolean }[];
+      /** Radii in data units — e.g. a DBSCAN ε-neighbourhood. */
+      circles?: { x: number; y: number; r: number; cls?: TraceCls }[];
+      xLabel?: string;
+      yLabel?: string;
+    }
   /** A free-text aside shown inside the state panel. */
   | { t: "note"; text: string; cls?: TraceCls };
 

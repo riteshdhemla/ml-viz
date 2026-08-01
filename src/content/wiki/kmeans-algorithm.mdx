@@ -50,6 +50,28 @@ The mean is the unique minimizer of within-cluster squared distance — that is 
   Both steps only decrease $J$, and there are finitely many possible assignment configurations, so K-Means must terminate. But it converges to a local minimum — different initializations can give different final clusters. Use K-Means++ and `n_init ≥ 10` in practice.
 </Callout>
 
+## Watch it run
+
+Step through the loop on five points with $K = 2$ — every distance calculation
+as each point picks its centroid, and $J$ reported before and after each update
+so you can watch both steps drive it down. The arithmetic is worked out by hand
+in the section below if you want to check any number.
+
+<AlgorithmTrace id="kmeans-iterations" />
+
+What to notice as you step:
+
+- **The update never changes an assignment, and the assignment never moves a
+  centroid.** That strict alternation is why each step can be proved to decrease
+  $J$ separately — and why the proof is so short.
+- **Convergence is detected by *nothing happening*.** The loop ends when the
+  recomputed centroids equal the old ones, which happens exactly when no point
+  changed cluster.
+- **The final step re-runs the identical code from a different initialization**
+  and converges just as confidently to a worse partition ($J = 9.96$ against
+  $7.46$). Nothing went wrong — $J$ simply has more than one basin, and the
+  starting point decides which one you fall into.
+
 ## A full worked iteration on 5 points
 
 Here $K = 2$.
