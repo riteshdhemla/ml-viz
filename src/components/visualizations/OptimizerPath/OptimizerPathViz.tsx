@@ -110,8 +110,13 @@ export function OptimizerPathViz({ className }: { className?: string }) {
     }
   }, playing);
 
-  const px = (x: number) => M.left + ((x + X_DOM) / (2 * X_DOM)) * (W - M.left - M.right);
-  const py = (y: number) => M.top + ((Y_DOM - y) / (2 * Y_DOM)) * (H - M.top - M.bottom);
+  // Rounded to 1/100 px. The optimizer paths are accumulated float arithmetic,
+  // which is not required to agree to the last bit between the engine that
+  // renders on the server and the one in the browser; full-precision
+  // coordinates therefore trip a hydration mismatch. Sub-pixel either way.
+  const round = (v: number) => Math.round(v * 100) / 100;
+  const px = (x: number) => round(M.left + ((x + X_DOM) / (2 * X_DOM)) * (W - M.left - M.right));
+  const py = (y: number) => round(M.top + ((Y_DOM - y) / (2 * Y_DOM)) * (H - M.top - M.bottom));
 
   const loss = (p: [number, number]) => 0.5 * (p[0] * p[0] + kappa * p[1] * p[1]);
 

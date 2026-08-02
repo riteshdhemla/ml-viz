@@ -11,7 +11,9 @@ estimatedMinutes: 15
 
 Every neural network you have ever used was trained with gradient descent — or, more accurately, with one of its modern descendants. This whole course is the loop's **optimization** stage in depth: given a fixed model and objective, how do you actually find good parameters? The core idea is simple: follow the negative gradient downhill. The subtleties in *how* you follow it gave rise to the optimizer zoo: SGD, Momentum, RMSprop, Adam, and a dozen others — each one is a change to this single slot, nothing else.
 
-<WikiLink slug="ml-project-loop" title="The ML Project Loop" /> This lesson traces the lineage, derives each update rule from scratch, and ends with practical guidance on when to reach for each one.
+This lesson traces the lineage, derives each update rule from scratch, and ends with practical guidance on when to reach for each one.
+
+<WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 ## The gradient descent family
 
@@ -108,7 +110,9 @@ $$
 \theta_2 = 2.4 - 0.1 \cdot 10.2 = 1.38
 $$
 
-Plain SGD (no momentum) gives $\theta_1 = 2.4$ (identical on step 1 — no accumulated velocity yet) and $\theta_2 = 2.4 - 0.1 \cdot 4.8 = 1.92$. By step 2, momentum's accumulated velocity takes a larger step ($\theta_2 = 1.38$ vs $1.92$), converging faster. On a ravine with oscillating gradients, the cross-valley velocity components cancel while the consistent downhill component accumulates — that is where momentum's advantage is most visible.
+Plain SGD (no momentum) gives $\theta_1 = 2.4$ (identical on step 1 — no accumulated velocity yet) and $\theta_2 = 2.4 - 0.1 \cdot 4.8 = 1.92$. By step 2, momentum's accumulated velocity has taken a larger step and sits closer to the minimum ($\theta_2 = 1.38$ vs $1.92$).
+
+Do not over-read those two steps, though. Keep this exact run going and momentum sails *past* zero at step 4 and needs 51 steps to settle inside $|\theta| < 0.01$ against SGD's 26 — on a 1-D bowl there is no cross-valley oscillation for it to cancel, so all the velocity buys you is overshoot. Momentum earns its keep on a **ravine**, where the cross-valley velocity components cancel while the consistent downhill component accumulates. The trace below steps through both cases.
 
 ### Why momentum helps: the Rosenbrock function
 
@@ -264,6 +268,31 @@ for t in range(1, 6):
     v_hat = v / (1 - 0.999**t)
     print(f"t={t}: θ={theta:.6f}  m={m:.6f}  v={v:.8f}  m̂={m_hat:.4f}  v̂={v_hat:.4f}")
 ```
+
+### Watch them run
+
+The equations above tell you what each optimizer computes. What they do not show is
+what each one *carries* between steps, and how differently that state behaves on an
+easy problem versus a hard one. Step through all four update rules — first on the
+$L(\theta) = \theta^2$ bowl worked above, then on the Rosenbrock valley:
+
+<AlgorithmTrace id="optimizer-comparison" />
+
+What to notice:
+
+- **Momentum is identical to SGD on step 1**, and it has to be — the velocity starts
+  at zero, so there is nothing accumulated to differ by.
+- **On the 1-D bowl momentum loses.** It crosses the minimum at step 4 and takes
+  nearly twice as many steps as SGD to settle. The worked example above stops at
+  step 2, where momentum happens to be ahead.
+- **Deleting Adam's bias correction makes the first step 3× *bigger*, not smaller.**
+  Both moments start biased low, but $\sqrt{v}$ is biased ~31× and $m$ only 10×, and
+  it is their ratio that reaches the update.
+- **On Rosenbrock the ordering flips.** SGD spends 88% of its motion bouncing between
+  the walls; momentum's cross-valley components cancel and it covers 7× more ground.
+- **Adam's advantage is not speed, it is the width of the target.** Momentum's best
+  run here beats Adam's, but Adam converges over ~4 decades of learning rate against
+  SGD's 0.7.
 
 For the full family tree — AdaGrad, AdamW's decoupled weight decay, Nadam — with every update rule derived and compared on the same problem:
 

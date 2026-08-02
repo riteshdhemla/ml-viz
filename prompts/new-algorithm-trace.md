@@ -57,14 +57,40 @@ bridge to a better one" earns it.
 - Keep the state panel to ~4 components; more than that and no single step reads
   clearly.
 
-**Keep code lines under ~46 characters.** The code panel is half a two-column
-grid. Put comments on their own line above the statement rather than trailing.
-Long lines scroll horizontally, but needing to scroll to read defeats the point.
+**Keep code lines under ~40 characters.** The code panel is half a two-column
+grid, and it clips at roughly 41 characters at the default width. Put comments
+on their own line above the statement rather than trailing. Long lines scroll
+horizontally, but needing to scroll to read defeats the point. Screenshot the
+rendered page before believing a listing fits.
 
 **End with a payoff frame.** Change one thing and show the consequence — BM25
 re-scored with `b = 0` so the long document wins; attention's softmax saturating
 at `d_k = 64` without the scale factor. That contrast is what makes the
 mechanism stick, and it is the difference between a trace and an animation.
+
+**Measure the payoff before you write its narrative — and make sure the thing
+you measured is stable.** Draft the sentence after the numbers exist, never
+before. Four traces so far had to be rewritten because the data contradicted a
+plausible-sounding story, and every one failed the same way: *a single draw was
+treated as evidence*.
+
+- HyperLogLog compared **one sketch** per size; m = 16 beat m = 4096 by luck.
+  1.04/√m is a standard error — fixed by taking the RMS over 16 replicates.
+- Isotonic vs Platt was ranked from **one calibration sample**, which produced
+  the opposite winner from the one in the prose. Fixed by averaging 12
+  replicates per size.
+- MCMC assumed σ = 0.1 would win; measuring put the peak at σ = 0.3.
+- The optimizer comparison hit both variants at once. Its first test problem was
+  an axis-aligned quadratic, where Adam's per-coordinate step is exactly ±η, so
+  η = 1 from (1, 1) "solves" it in one step — a tuning artifact. Its second was
+  ranking optimizers by best-case step count, which swings 15× between adjacent
+  learning rates because landing inside the tolerance is a coin flip.
+
+The general rule: before reporting a comparison, **perturb it**. Re-run with
+another seed, another grid point, another starting value. If the ordering moves,
+you have measured noise — report a statistic that survives instead (an average
+over replicates, the width of a working range, a rate rather than a count), and
+say in the frame why that is the honest number.
 
 **Minimum bar:** ≥ 6 frames, every frame highlights a code line and renders
 state, caption > 80 chars explaining what to watch for.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AlgoTrace, TraceCls, TraceComponent, TraceFrame } from "@/types/algo-trace";
 import { getAlgoTrace } from "@/lib/algo-traces";
 import { VizFrame, scale } from "../viz-kit";
@@ -339,7 +339,18 @@ function Plot({ c }: { c: Extract<TraceComponent, { t: "plot" }> }) {
   const stroke = (cls?: TraceCls) => DOT[cls ?? "dim"].fill;
   // Circles and curves are clipped to the axes so an ε-radius larger than the
   // view spills off the edge instead of bleeding over the surrounding card.
-  const clipId = useId().replace(/:/g, "");
+  // Derived from the plot's own content rather than `useId()`: React's generated
+  // ids depend on tree position, which differs between the server render of the
+  // surrounding MDX and the client render, and the mismatch trips hydration.
+  // Two plots that collide here would share an identical clip rect anyway.
+  const clipId = useMemo(() => {
+    const key = `${c.label}|${c.domain.join(",")}`;
+    let h = 2166136261;
+    for (let i = 0; i < key.length; i++) {
+      h = Math.imul(h ^ key.charCodeAt(i), 16777619);
+    }
+    return `algoclip${(h >>> 0).toString(36)}`;
+  }, [c.label, c.domain]);
 
   return (
     <Panel label={c.label}>
@@ -407,7 +418,13 @@ function Plot({ c }: { c: Extract<TraceComponent, { t: "plot" }> }) {
         {c.curves?.map((curve, i) => (
           <path
             key={`p${i}`}
-            d={curve.pts.map((p, j) => `${j === 0 ? "M" : "L"}${sx(p.x)},${sy(p.y)}`).join(" ")}
+            // Rounded to 1/100 px: `Math.sin`/`cos`/`sqrt` are not required to
+            // agree to the last bit across engines, so full-precision
+            // coordinates make the server and client render differing `d`
+            // strings and trip hydration. Two decimals is well below one pixel.
+            d={curve.pts
+              .map((p, j) => `${j === 0 ? "M" : "L"}${sx(p.x).toFixed(2)},${sy(p.y).toFixed(2)}`)
+              .join(" ")}
             fill="none"
             stroke={stroke(curve.cls)}
             strokeWidth={2}

@@ -55,7 +55,7 @@ not a second builder.
   - **Payoff:** measured false-positive rate against the (1 − e^(−kn/m))^k
     prediction, and the k that minimizes it.
 
-## Round 4 — in progress (3 of 8 done)
+## Round 4 — in progress (4 of 8 done)
 
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
@@ -66,8 +66,22 @@ not a second builder.
 - [x] **Q-learning** — `courses/reinforcement-learning/02-q-learning`
   - `QTableViz` exists but no trace. TD update loop over a grid.
   - Payoff: on-policy vs off-policy target, or ε decay.
-- [ ] **SGD / momentum / Adam side by side** — `courses/optimization-ml/01-gradient-descent-variants`
-  - Payoff: the same ill-conditioned surface, three optimizers, step counts.
+- [x] **SGD / momentum / Adam side by side** — `courses/optimization-ml/01-gradient-descent-variants`
+  - The planned payoff ("same ill-conditioned surface, three optimizers, step
+    counts") did not survive measurement twice over, and both failures are worth
+    remembering:
+    1. On an **axis-aligned** quadratic, Adam and RMSprop solve it in one step
+       from (1, 1) — their per-coordinate step is exactly ±η, so η = 1 lands on
+       the optimum. A tuning artifact, not a result. Switched to Rosenbrock,
+       which the lesson already names as the stress test.
+    2. **Best-case step counts are luck.** Adam finishes in 18 steps at η = 0.861
+       and 262 at η = 0.871 — whether an iterate lands inside the tolerance is a
+       coin flip. Reported the *width of the η band that converges at all*
+       instead (SGD 0.7 decades, momentum 2.0, Adam 4.0), which is both stable
+       under re-measurement and the thing practitioners actually mean.
+  - It also turned up a wrong claim in the lesson: momentum is ahead at step 2,
+    as the worked example says, but takes 51 steps against SGD's 26 to settle on
+    that 1-D bowl. Prose corrected.
 - [ ] **Power iteration** — `wiki/eigenvalue-computation` (+ `linear-algebra/03`)
   - Payoff: convergence rate governed by |λ₂/λ₁|; fails on equal-magnitude eigenvalues.
 - [ ] **Gradient boosting** — `courses/ensemble-methods/03-xgboost`
