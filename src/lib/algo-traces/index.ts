@@ -15,6 +15,7 @@ import { kmeansTrace } from "./kmeans";
 import { adaboostTrace } from "./adaboost";
 import { continuousBatchingTrace } from "./continuous-batching";
 import { dgimTrace } from "./dgim";
+import { gradientBoostingTrace } from "./gradient-boosting";
 import { hierarchicalTrace } from "./hierarchical";
 import { hyperloglogTrace } from "./hyperloglog";
 import { mcmcTrace } from "./mcmc";
@@ -79,6 +80,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   qLearningTrace,
   optimizersTrace,
   powerIterationTrace,
+  gradientBoostingTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

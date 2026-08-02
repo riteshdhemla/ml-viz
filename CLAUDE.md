@@ -675,6 +675,7 @@ and records frames.
 | `q-learning` | `algo-traces/q-learning.ts` | reinforcement-learning/02-q-learning | ✅ |
 | `optimizer-comparison` | `algo-traces/optimizers.ts` | optimization-ml/01-gradient-descent-variants | ✅ |
 | `power-iteration` | `algo-traces/power-iteration.ts` | wiki/eigenvalue-computation | ✅ |
+| `gradient-boosting-splits` | `algo-traces/gradient-boosting.ts` | ensemble-methods/03-xgboost | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. The strongest remaining candidates are in
