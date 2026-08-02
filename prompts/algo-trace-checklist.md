@@ -55,7 +55,7 @@ not a second builder.
   - **Payoff:** measured false-positive rate against the (1 − e^(−kn/m))^k
     prediction, and the k that minimizes it.
 
-## Round 4 — in progress (6 of 8 done)
+## Round 4 — in progress (7 of 8 done)
 
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
@@ -113,8 +113,21 @@ not a second builder.
   - A dataset caveat worth reusing: the first label vector chosen was
     accidentally antisymmetric, which made two thresholds tie exactly on gain.
     Enumerate candidate datasets and require a unique argmax before building.
-- [ ] **Lasso coordinate descent** — `wiki/ridge-lasso-paths`
-  - Payoff: coefficients hitting exactly zero vs ridge only shrinking.
+- [x] **Lasso coordinate descent** — `wiki/ridge-lasso-paths`
+  - The page derives the condition that keeps a weight at zero but never runs
+    the algorithm that enforces it, so the trace fills the actual gap.
+  - Payoff landed as planned (exact zeros vs ridge's 0 zeros in 396 path
+    points), but two *unplanned* measured results turned out stronger:
+    1. Both noise columns have **marginal** correlations above λ (0.51, 0.70)
+       and are killed only by the partial residual, which collapses them to
+       ~0.08. That is precisely why the loop recomputes r.
+    2. The correlated echo has a true weight of **zero** yet outlives both
+       genuinely relevant features — so the page's "features drop in order of
+       decreasing relevance" needed qualifying. Lasso ranks by correlation
+       with the residual, not relevance to the target.
+  - Also measured: 267 sweeps to converge with the echo, 5 without it, using a
+    controlled A/B (the echo column is always drawn so the RNG state, and
+    therefore y, is identical between variants).
 - [ ] **Backprop on a computational graph** — `courses/calculus-for-ml/02-chain-rule-and-backpropagation`
   - Forward then backward through a small graph; `ComputationalGraphViz` exists.
 
