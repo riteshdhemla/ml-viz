@@ -50,7 +50,6 @@ const OBS = [0, 1]; // Walk, Shop
 const T = OBS.length;
 const N = STATES.length;
 
-const fmt = (x: number, d = 4) => x.toFixed(d);
 const short = (x: number) => Number(x.toFixed(6)).toString();
 
 /** Viterbi: δ, backpointers, and the decoded path. */
