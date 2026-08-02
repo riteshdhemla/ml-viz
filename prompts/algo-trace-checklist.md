@@ -55,7 +55,7 @@ not a second builder.
   - **Payoff:** measured false-positive rate against the (1 − e^(−kn/m))^k
     prediction, and the k that minimizes it.
 
-## Round 4 — in progress (4 of 8 done)
+## Round 4 — in progress (5 of 8 done)
 
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
@@ -82,8 +82,19 @@ not a second builder.
   - It also turned up a wrong claim in the lesson: momentum is ahead at step 2,
     as the worked example says, but takes 51 steps against SGD's 26 to settle on
     that 1-D bowl. Prose corrected.
-- [ ] **Power iteration** — `wiki/eigenvalue-computation` (+ `linear-algebra/03`)
-  - Payoff: convergence rate governed by |λ₂/λ₁|; fails on equal-magnitude eigenvalues.
+- [x] **Power iteration** — `wiki/eigenvalue-computation`
+  - Runs on the page's own A = [[4, 1], [2, 3]], so it lands on the λ₁ = 5,
+    v₁ = (1, 1) the reader just derived by hand.
+  - Both payoffs held up under measurement, which is worth noting after the
+    optimizer trace: the variants are built as **VΛV⁻¹ with V held fixed**, so
+    the target eigenvector never moves and |λ₂/λ₁| is the only thing that
+    changes. The measured per-step error ratio lands on 0.4000 and 0.9000 —
+    exactly |λ₂/λ₁| — and step counts match log(tol)/log(ratio) to within 1.
+  - It also surfaced a real defect in the page's listing: at λ = (5, −5) the
+    iteration cycles with period 2 forever, and `norm(b_new - b) < tol` can
+    never fire, so the function returns a meaningless λ with no error. Called
+    out in the trace and in the page's "what to notice".
+  - `linear-algebra/03` needs nothing — it already links out to this wiki page.
 - [ ] **Gradient boosting** — `courses/ensemble-methods/03-xgboost`
   - Fitting residuals; a deliberate contrast against the existing `adaboost-rounds`.
 - [ ] **Lasso coordinate descent** — `wiki/ridge-lasso-paths`

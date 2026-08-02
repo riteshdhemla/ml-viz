@@ -150,8 +150,10 @@ function Matrix({ c }: { c: Extract<TraceComponent, { t: "matrix" }> }) {
           <thead>
             <tr>
               <th />
-              {c.cols.map((col) => (
-                <th key={col} className="px-1 pb-0.5 font-normal text-slate-500">
+              {/* Keyed by index: column headers are not required to be unique
+                  (a bare matrix may label none of them). */}
+              {c.cols.map((col, j) => (
+                <th key={j} className="px-1 pb-0.5 font-normal text-slate-500">
                   {col}
                 </th>
               ))}

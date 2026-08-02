@@ -171,6 +171,34 @@ print(f"Dominant eigenvector: {(v1/v1[0]).round(4)} (true: [1, 1])")
 
 Power iteration converges at rate $|\lambda_2/\lambda_1|^k$ — the larger the gap between eigenvalues, the faster it converges.
 
+### Watch it run
+
+Stepped on the same $\mathbf{A}$ worked by hand above, so it converges on the
+$\lambda_1 = 5$, $\mathbf{v}_1 = (1,1)$ you just derived — then re-run twice with
+the eigenvectors held fixed and only the spectrum changed:
+
+<AlgorithmTrace id="power-iteration" />
+
+What to notice:
+
+- **Nothing is solved.** No determinant, no polynomial, no null space — just
+  multiply and normalise. The dominant direction wins by attrition.
+- **The angle error is multiplied by a constant each iteration**, and that
+  constant measures out to exactly $|\lambda_2/\lambda_1| = 0.4$. This is the
+  rate claim above, checked rather than asserted.
+- **The estimate approaches 5 from above.** For a *symmetric* matrix the
+  Rayleigh quotient can never exceed $\lambda_1$; this $\mathbf{A}$ is not
+  symmetric, so it can and does.
+- **Raising $\lambda_2$ to 4.5 costs 129 iterations instead of 15** for the same
+  accuracy, with the target eigenvector unchanged. The matrix does not look any
+  harder — the eigenvalues are just closer together.
+- **At $\lambda_2 = -5$ it never converges at all**, falling into an exact
+  period-2 cycle. Worse, the `norm(b_new - b) < tol` test above cannot detect
+  that: consecutive iterates stay far apart, so it runs out the loop and returns
+  a meaningless $\lambda$ with no error. A convergence test that can only report
+  success is not a convergence test — check the residual $\|\mathbf{Ab} -
+  \lambda\mathbf{b}\|$ instead.
+
 ## Related concepts
 
 - [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — intuition, PCA connection, SVD generalization

@@ -23,6 +23,7 @@ import { nmsTrace } from "./nms";
 import { optimizersTrace } from "./optimizers";
 import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
+import { powerIterationTrace } from "./power-iteration";
 import { qLearningTrace } from "./q-learning";
 import { rocTrace } from "./roc";
 import { speculativeDecodingTrace } from "./speculative-decoding";
@@ -77,6 +78,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   beamSearchTrace,
   qLearningTrace,
   optimizersTrace,
+  powerIterationTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
