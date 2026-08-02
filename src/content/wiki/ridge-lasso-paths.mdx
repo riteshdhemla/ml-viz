@@ -75,6 +75,35 @@ The second condition is the key: if the gradient of the data-fit term is small e
 
 **Why L2 doesn't zero things out:** Ridge applies a force of magnitude $2\lambda |w_j|$ — proportional to the weight. As $|w_j| \to 0$, the force also goes to zero, so the weight asymptotically approaches but never reaches zero.
 
+### Watch the zeros happen
+
+The conditions above say *when* a weight stays at zero. **Coordinate descent** is
+what actually enforces them, and it is one line — cycle over the coordinates,
+and set each to $\mathrm{soft}(\rho_j, \lambda) = \mathrm{sign}(\rho_j)\max(|\rho_j| - \lambda, 0)$
+where $\rho_j$ is that feature's correlation with the *partial* residual:
+
+<AlgorithmTrace id="lasso-coordinate-descent" />
+
+What to notice:
+
+- **The `max(·, 0)` is the entire source of sparsity.** Nothing else in the
+  procedure can produce a zero. Compare it against Ridge's coordinate update
+  $\rho/(1+\lambda)$ in the same plot: a straight line, never flat, never zero.
+- **Marginal correlation is not what kills a feature.** Both noise columns
+  correlate 0.51 and 0.70 with $y$ — well above $\lambda = 0.25$ — and would
+  survive on that alone. They die because by the time the loop reaches them, the
+  features already fitted have absorbed the signal and their *partial-residual*
+  $\rho$ has collapsed to ~0.08.
+- **"Weakest features die first" is not quite right.** The correlated echo
+  $x_5$ has a true weight of **zero** yet outlives both genuinely relevant
+  features, because Lasso ranks by correlation with the residual, not relevance
+  to the target. A zero from Lasso means *"added nothing given the others"*, not
+  *"irrelevant"* — which is the argument for elastic net, and why Lasso's
+  selections are unstable across bootstrap resamples.
+- **Correlation is expensive.** The same data converges in 267 sweeps with the
+  echo present and 5 without it: the correlated pair passes the shared signal
+  back and forth one small step at a time.
+
 ## The geometric picture of L1 vs L2
 
 Picture the constraint region in weight space:

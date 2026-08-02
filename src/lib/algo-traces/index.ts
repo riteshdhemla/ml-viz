@@ -18,6 +18,7 @@ import { dgimTrace } from "./dgim";
 import { gradientBoostingTrace } from "./gradient-boosting";
 import { hierarchicalTrace } from "./hierarchical";
 import { hyperloglogTrace } from "./hyperloglog";
+import { lassoCdTrace } from "./lasso-cd";
 import { mcmcTrace } from "./mcmc";
 import { newtonTrace } from "./newton";
 import { nmsTrace } from "./nms";
@@ -81,6 +82,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   optimizersTrace,
   powerIterationTrace,
   gradientBoostingTrace,
+  lassoCdTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
