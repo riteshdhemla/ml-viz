@@ -674,6 +674,7 @@ and records frames.
 | `beam-search` | `algo-traces/beam-search.ts` | nlp/05-decoding-and-sampling | ✅ |
 | `q-learning` | `algo-traces/q-learning.ts` | reinforcement-learning/02-q-learning | ✅ |
 | `optimizer-comparison` | `algo-traces/optimizers.ts` | optimization-ml/01-gradient-descent-variants | ✅ |
+| `power-iteration` | `algo-traces/power-iteration.ts` | wiki/eigenvalue-computation | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. The strongest remaining candidates are in
