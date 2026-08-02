@@ -1,6 +1,7 @@
 import type { AlgoTrace } from "@/types/algo-trace";
 import { attentionTrace } from "./attention";
 import { bm25Trace } from "./bm25";
+import { backpropGraphTrace } from "./backprop-graph";
 import { baumWelchTrace } from "./baum-welch";
 import { beamSearchTrace } from "./beam-search";
 import { bloomFilterTrace } from "./bloom-filter";
@@ -83,6 +84,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   powerIterationTrace,
   gradientBoostingTrace,
   lassoCdTrace,
+  backpropGraphTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

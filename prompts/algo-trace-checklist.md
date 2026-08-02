@@ -55,7 +55,7 @@ not a second builder.
   - **Payoff:** measured false-positive rate against the (1 − e^(−kn/m))^k
     prediction, and the k that minimizes it.
 
-## Round 4 — in progress (7 of 8 done)
+## Round 4 — done (all eight shipped)
 
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
@@ -128,8 +128,19 @@ not a second builder.
   - Also measured: 267 sweeps to converge with the echo, 5 without it, using a
     controlled A/B (the echo column is always drawn so the RNG state, and
     therefore y, is identical between variants).
-- [ ] **Backprop on a computational graph** — `courses/calculus-for-ml/02-chain-rule-and-backpropagation`
-  - Forward then backward through a small graph; `ComputationalGraphViz` exists.
+- [x] **Backprop on a computational graph** — `courses/calculus-for-ml/02-chain-rule-and-backpropagation`
+  - `ComputationalGraphViz` already draws the DAG, so the trace deliberately
+    does not: it moves the *numbers* through it. Runs the lesson's scalar
+    example (w=2, x=3, y=5 → ∂L/∂w = 6) then the same procedure on the MLP.
+  - Weights are small explicit constants rather than a seeded draw, chosen so
+    one hidden unit lands at z₁ = −0.1 and is gated off. The sharpest frame in
+    the set: ∂L/∂a₁ = 0.1215 (non-zero — the loss *is* sensitive to that
+    activation) while ∂L/∂z₁ = 0 exactly. Different quantities, and the gate is
+    what separates them; that is dying ReLU in one table.
+  - Payoffs: every gradient checked against a central finite difference (worst
+    relative error 3.9e-11, and the five zero gradients come back as exact
+    numerical zeros), and the cost of that check counted — 22 forward passes
+    against backprop's single backward pass.
 
 ## Round 5 — plausible, lower priority
 

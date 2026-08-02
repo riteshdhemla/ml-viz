@@ -677,13 +677,12 @@ and records frames.
 | `power-iteration` | `algo-traces/power-iteration.ts` | wiki/eigenvalue-computation | ✅ |
 | `gradient-boosting-splits` | `algo-traces/gradient-boosting.ts` | ensemble-methods/03-xgboost | ✅ |
 | `lasso-coordinate-descent` | `algo-traces/lasso-cd.ts` | wiki/ridge-lasso-paths | ✅ |
+| `backprop-computational-graph` | `algo-traces/backprop-graph.ts` | calculus-for-ml/02-chain-rule-and-backpropagation | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
-untraced pages under `src/content`. The strongest remaining candidates are in
-**lessons** rather than wiki pages (Viterbi, value iteration, beam search,
-Q-learning, backprop on a graph), plus a handful of wiki procedures that were
-missed first time round (isotonic/PAVA, ROC construction, continuous batching,
-power iteration, lasso coordinate descent).
+untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is
+**round 5**, a lower-priority list (DAgger, IVF search, walk-forward validation,
+ARIMA order selection, FastICA, ADWIN, reservoir sampling, DDIM, Gibbs/ICM).
 
 ---
 
