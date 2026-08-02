@@ -55,7 +55,7 @@ not a second builder.
   - **Payoff:** measured false-positive rate against the (1 − e^(−kn/m))^k
     prediction, and the k that minimizes it.
 
-## Round 4 — in progress (5 of 8 done)
+## Round 4 — in progress (6 of 8 done)
 
 - [x] **Isotonic regression (PAVA)** — `wiki/platt-scaling-and-isotonic-regression`
   - Pool-adjacent-violators is a merge loop, exactly the algo-viz shape.
@@ -95,8 +95,24 @@ not a second builder.
     never fire, so the function returns a meaningless λ with no error. Called
     out in the trace and in the page's "what to notice".
   - `linear-algebra/03` needs nothing — it already links out to this wiki page.
-- [ ] **Gradient boosting** — `courses/ensemble-methods/03-xgboost`
-  - Fitting residuals; a deliberate contrast against the existing `adaboost-rounds`.
+- [x] **Gradient boosting** — `courses/ensemble-methods/03-xgboost`
+  - Traces XGBoost's *actual* inner loop rather than generic residual fitting:
+    the second-order split score, the closed-form leaf weight −G/(H+λ), and both
+    regularizers. That is what this lesson teaches, so a plain residual-fitting
+    trace would have missed the page.
+  - The AdaBoost contrast lands in frame 5 and is the sharpest framing found so
+    far: gradient boosting **never touches a sample weight**. The misfit point's
+    gradient simply grows on its own, and the split score is built from
+    gradients, so attention reallocates itself.
+  - Payoffs, both measured: λ shrinks leaf weights 100× across the sweep and
+    (at round 6, λ ≥ 100) can reorder the candidates, because as λ dwarfs every
+    leaf Hessian the score collapses to G² alone — verified against the
+    G_L²+G_R² ranking. γ has a computable hard edge: the best gain in round 1
+    is 1.083, so at γ = 1.09 *no* split ever clears the bar and 50 rounds leave
+    the loss at exactly ln 2.
+  - A dataset caveat worth reusing: the first label vector chosen was
+    accidentally antisymmetric, which made two thresholds tie exactly on gain.
+    Enumerate candidate datasets and require a unique argmax before building.
 - [ ] **Lasso coordinate descent** — `wiki/ridge-lasso-paths`
   - Payoff: coefficients hitting exactly zero vs ridge only shrinking.
 - [ ] **Backprop on a computational graph** — `courses/calculus-for-ml/02-chain-rule-and-backpropagation`

@@ -40,6 +40,37 @@ Try the trade yourself — drag η down and watch how many more trees it takes t
 
 <BoostingShrinkageViz />
 
+### Watch a tree get built
+
+Everything above — the second-order gain, the closed-form leaf weight, $\lambda$,
+$\gamma$ and $\eta$ — is one loop over eight points. Step through it:
+
+<AlgorithmTrace id="gradient-boosting-splits" />
+
+What to notice:
+
+- **The split score is not a heuristic.** Unlike information gain in a plain
+  decision tree, $\frac{1}{2}\left[\frac{G_L^2}{H_L+\lambda} +
+  \frac{G_R^2}{H_R+\lambda} - \frac{G^2}{H+\lambda}\right] - \gamma$ is the exact
+  loss reduction under the second-order expansion — which is *why* the Hessians
+  are needed. The leaf value $w^* = -G/(H+\lambda)$ is closed-form too.
+- **Gradient boosting never re-weights a sample.** Compare
+  [AdaBoost](/courses/ensemble-methods/02-boosting), which multiplies the weight
+  of every misclassified point. Here nothing is weighted: a badly-fit point's
+  gradient simply *is* larger next round, and the split score is built from
+  gradients, so the next tree goes after it on its own.
+- **$\lambda$ does more than shrink leaves.** One split scores *negative* at
+  $\lambda = 1$ before $\gamma$ is even applied, because it would isolate a single
+  point in a leaf with a tiny Hessian — the same conservatism `min_child_weight`
+  enforces explicitly.
+- **The Hessians only start mattering later.** At round 1 every $h = 0.25$; by
+  round 40 they span nearly 5×, and the confidently-predicted points have
+  $h \to 0$ and drop out of the split score entirely.
+- **$\gamma$ has a hard threshold you can compute.** The best gain available in
+  round 1 is 1.083, so at $\gamma = 1.09$ *no* split ever clears the bar, no tree
+  is ever built, and 50 rounds of boosting leave the loss at exactly $\ln 2$. The
+  ensemble is a silent no-op.
+
 ## Row and column subsampling
 
 Borrowing from [Random Forests](/courses/ensemble-methods/01-bagging-and-random-forests), each tree (or each split) sees only a random fraction of rows (`subsample`) and columns (`colsample_bytree`). Decorrelating the trees reduces variance — and as a bonus makes training faster.
