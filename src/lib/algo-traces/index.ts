@@ -20,6 +20,7 @@ import { hyperloglogTrace } from "./hyperloglog";
 import { mcmcTrace } from "./mcmc";
 import { newtonTrace } from "./newton";
 import { nmsTrace } from "./nms";
+import { optimizersTrace } from "./optimizers";
 import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
 import { qLearningTrace } from "./q-learning";
@@ -75,6 +76,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   isotonicTrace,
   beamSearchTrace,
   qLearningTrace,
+  optimizersTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
