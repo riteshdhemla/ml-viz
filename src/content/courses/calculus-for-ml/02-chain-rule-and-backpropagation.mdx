@@ -193,6 +193,36 @@ dL_dW1 = np.outer(dL_dz1, x)                # × xᵀ
 dL_db1 = dL_dz1                             # × 1
 ```
 
+### Watch both passes run
+
+The graph above shows the *shape*; this steps the *numbers* through it — first
+the scalar graph worked by hand, then the same procedure on this network, with
+every gradient checked against a finite difference at the end:
+
+<AlgorithmTrace id="backprop-computational-graph" />
+
+What to notice:
+
+- **The cache is the whole trick.** Every local gradient is a function of a value
+  the forward pass already computed — $2r$ needs $r$, $\partial L/\partial
+  \mathbf{w}_2$ needs $\mathbf{a}_1$, $\partial L/\partial \mathbf{W}_1$ needs
+  $\mathbf{x}$. Nothing is recomputed.
+- **The BCE + sigmoid collapse is exact.** Separately the two factors are
+  $-1.436$ and $0.211$; their product is $\hat{y} - y$ to the last digit. That is
+  why frameworks fuse the two ops — the fused form also avoids dividing by
+  $\hat{y}(1-\hat{y}) \to 0$.
+- **Non-zero $\partial L/\partial \mathbf{a}_1$, zero $\partial L/\partial
+  \mathbf{z}_1$.** The trace's second hidden unit sits at $z_1 = -0.1$. The loss
+  is genuinely sensitive to its *activation* ($0.121$), but the ReLU gate zeroes
+  the gradient to its *pre-activation* — and those are different quantities. This
+  is the mechanism behind dying ReLU: the gradient that would revive the unit is
+  precisely the one being switched off.
+- **One dead unit zeroes 5 of the 11 parameter gradients** — the whole second row
+  of $\mathbf{W}_1$, its bias, and the output weight reading from it.
+- **The efficiency claim, counted.** Verifying those 11 gradients by finite
+  differences takes 22 forward passes; backprop produces all of them in one
+  backward pass. At $10^9$ parameters that ratio is $2\times10^9 : 1$.
+
 ## Why backprop is efficient
 
 Naively computing $\frac{\partial L}{\partial w_i}$ by finite differences requires two forward passes **per parameter**. A network with millions of parameters would be intractable.
