@@ -77,6 +77,8 @@ import { GraphRAGViz } from "@/components/visualizations/GraphRAG/GraphRAGViz";
 import { AudioFeaturesViz } from "@/components/visualizations/AudioFeatures/AudioFeaturesViz";
 import { BoxJenkinsViz } from "@/components/visualizations/BoxJenkins/BoxJenkinsViz";
 import { ContextAssemblyViz } from "@/components/visualizations/ContextAssembly/ContextAssemblyViz";
+import { HierarchicalForecastViz } from "@/components/visualizations/HierarchicalForecast/HierarchicalForecastViz";
+import { AgentEvalViz } from "@/components/visualizations/AgentEval/AgentEvalViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -185,6 +187,8 @@ export const mdxComponents: MDXComponents = {
   AudioFeaturesViz,
   BoxJenkinsViz,
   ContextAssemblyViz,
+  HierarchicalForecastViz,
+  AgentEvalViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,
