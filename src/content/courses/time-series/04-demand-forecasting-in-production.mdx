@@ -4,7 +4,7 @@ description: "From ARIMA to production-grade forecasting — hierarchical time s
 order: 4
 type: concept
 spineStages: [feedback, data]
-estimatedMinutes: 20
+estimatedMinutes: 24
 ---
 
 # Demand Forecasting in Production
@@ -48,6 +48,10 @@ $$
 $$
 
 where $S$ is the summing matrix encoding the hierarchy, $\hat{\mathbf{y}}$ are base forecasts, and $W$ is the covariance matrix of forecast errors. The result is a coherent set of forecasts that minimize total mean squared error across all levels.
+
+The formula is short; the reason you need it is not. Walk the pipeline below on a simulated five-store hierarchy — forecast every node independently, watch the numbers fail to add up, then apply each reconciliation method as the *same* projection with a different $G$. The method control re-runs everything, and the accuracy table averages over 200 draws of the future rather than one test window, because on a single window these methods differ by less than the noise.
+
+<HierarchicalForecastViz />
 
 <WikiLink slug="hierarchical-forecasting" title="Hierarchical Forecasting & Reconciliation" />
 
