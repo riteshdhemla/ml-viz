@@ -207,6 +207,57 @@ notebook JSON round-trips cleanly (source-as-string, `indent=1`). Colab runs Pyt
 
 **Template:** see `prompts/new-visualization.md`
 
+### Adding a guided walkthrough (the narrated pipeline)
+
+The third teaching format, alongside the plain viz and the algorithm trace. A
+plain viz answers *"what does this look like?"*; a trace answers *"what does this
+code do, line by line?"*; a **guided walkthrough** answers *"what are the stages
+of this pipeline, and why does each one exist?"* — by replacing the bag of
+sliders with a narrated sequence: a stepper across the top, an explain panel that
+changes with the step, and a **hint** telling the reader what to do or notice
+right now.
+
+Reach for it when a concept is a **sequence of stages that build on each other**
+and one static picture would have to show all of them at once. Don't force it
+onto a parameter explorer.
+
+The shell is `src/components/visualizations/GuidedViz/GuidedViz.tsx`; a guided
+viz is still one self-contained component that hands it render props:
+
+```tsx
+<GuidedViz
+  title="…" caption="…"
+  phases={PHASES}                 // named parts of the pipeline; own colour + numbering
+  steps={STEPS}                   // phase, label, title, body, hint
+  controls={…}                    // optional, applies to every step
+  stage={(i) => <svg … />}
+  stageNote={(i) => "…"} panel={(i) => …} legend={(i) => …}
+  onStepChange={setStep}
+/>
+```
+
+Rules that make it teach rather than just animate:
+
+1. Every `body` says what the stage does **and what was broken without it**.
+2. Every step carries a `hint` — the one line that turns a diagram into a
+   walkthrough.
+3. The `panel` **accumulates**: it shows the state the pipeline has produced so
+   far (`GuidedCard`), not six unrelated pictures.
+4. **End with a payoff step** — state in a `<GuidedPayoff>` what the pipeline
+   bought that the naive approach cannot reach.
+5. Make one step genuinely interactive where you can, so the reader tests the
+   claim instead of reading it.
+6. **Derive every number in the panel** from the constants in the file, same
+   integrity rule as algorithm traces.
+7. `useStagger(n, ms, key)` reveals cards in sequence (map-reduce, fan-out) and
+   honours `prefers-reduced-motion`.
+
+**Template:** see `prompts/new-guided-viz.md`.
+**Reference:** `visualizations/GraphRAG/GraphRAGViz.tsx` (two phases, one
+interactive step, one animated step) and
+`visualizations/TransformerBlock/TransformerBlockViz.tsx` (single phase, plus an
+orthogonal mode toggle in `controls`).
+
 ### Adding an algorithm trace (the steppable code player)
 
 Standard viz answer *"what does this concept look like?"*. An **algorithm trace**
@@ -600,7 +651,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | HMMViterbiViz | `visualizations/HMMViterbi/` | graphical-models/03-hidden-markov-models | ✅ |
 | DendrogramViz | `visualizations/Dendrogram/` | clustering/02-hierarchical-and-dbscan | ✅ |
 | GANTrainingViz | `visualizations/GANTraining/` | generative-models/04-generative-adversarial-networks | ✅ |
-| TransformerBlockViz | `visualizations/TransformerBlock/` | transformers/03-transformer-architecture | ✅ |
+| TransformerBlockViz | `visualizations/TransformerBlock/` | transformers/03-transformer-architecture | ✅ **guided** |
 | PerplexityViz | `visualizations/Perplexity/` | pca-dimensionality/02-t-sne-and-umap | ✅ |
 | PolicyGradientViz | `visualizations/PolicyGradient/` | reinforcement-learning/04-policy-gradient | ✅ |
 | BiasVarianceViz | `visualizations/BiasVariance/` | knn-decision-trees/03-bias-variance | ✅ |
@@ -613,6 +664,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | SamplingViz | `visualizations/Sampling/` | building-with-llms/01-prompt-engineering | ✅ |
 | RAGRetrievalViz | `visualizations/RAGRetrieval/` | building-with-llms/04-retrieval-augmented-generation | ✅ |
 | RAGArchitectureViz | `visualizations/RAGArchitecture/` | building-with-llms/14-rag-architectures | ✅ |
+| GraphRAGViz | `visualizations/GraphRAG/` | building-with-llms/14-rag-architectures | ✅ **guided** |
 | SamplingStrategiesViz | `visualizations/SamplingStrategies/` | ml-in-practice/06-training-data | ✅ |
 | LoRAViz | `visualizations/LoRA/` | fine-tuning-alignment/02-peft-lora-qlora | ✅ |
 | RewardModelViz | `visualizations/RewardModel/` | fine-tuning-alignment/03-reward-models | ✅ |
@@ -689,6 +741,7 @@ ARIMA order selection, FastICA, ADWIN, reservoir sampling, DDIM, Gibbs/ICM).
 ## Vibe Coding Tips for Claude Code
 
 - **New viz?** Copy `prompts/new-visualization.md` into chat
+- **New guided walkthrough?** Copy `prompts/new-guided-viz.md` into chat
 - **New algorithm trace?** Copy `prompts/new-algorithm-trace.md` into chat
 - **New lesson?** Copy `prompts/new-lesson.md` into chat
 - **New exercise type?** Copy `prompts/new-exercise-type.md` into chat

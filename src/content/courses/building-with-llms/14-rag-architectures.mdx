@@ -119,6 +119,10 @@ Query time offers two modes, and picking the wrong one is the most common GraphR
 - **Global search** — map-reduce over community reports. For "what are the recurring themes." No amount of top-$k$ over chunks answers this, because the answer is a property of the distribution, not of any passage.
 - **DRIFT search** — a later hybrid that seeds a global-style query with local context, then follows up, to get global coverage at lower cost.
 
+Walk the whole pipeline below. The four indexing steps are offline and expensive; the two query steps are what they buy you. On local search, click around the graph — the number to watch is how many *communities* a neighbourhood spans, because cross-community links are precisely the ones that never co-occur inside a single chunk.
+
+<GraphRAGViz />
+
 The production evidence is real: LinkedIn built a knowledge graph over historical support tickets (preserving intra-ticket structure and inter-ticket links rather than flattening them to text) and reported **+77.6% MRR on retrieval and a 28.6% reduction in median issue resolution time** over six months in production ([Xu et al., 2024](https://arxiv.org/abs/2404.17723)).
 
 <Callout type="warning" title="GraphRAG's real cost is the index">
