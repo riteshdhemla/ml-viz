@@ -690,6 +690,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | LatencyCriticalPathViz | `visualizations/LatencyCriticalPath/` | wiki/agent-metrics-taxonomy | ✅ |
 | ProjectLoopViz | `visualizations/ProjectLoop/` | wiki/ml-project-loop + wiki/agentic-project-loop (`variant="ml"\|"agentic"`) | ✅ |
 | AudioFeaturesViz | `visualizations/AudioFeatures/` | speech-audio/01-audio-representations | ✅ **guided** |
+| BoxJenkinsViz | `visualizations/BoxJenkins/` | time-series/02-arima-models | ✅ **guided** |
+| ContextAssemblyViz | `visualizations/ContextAssembly/` | agent-design-patterns/03-context-and-knowledge-patterns | ✅ **guided** |
 
 ## Algorithm Traces Built
 

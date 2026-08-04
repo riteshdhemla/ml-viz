@@ -4,7 +4,7 @@ description: "The Prompt/Response Optimiser refines how the agent talks to the m
 order: 3
 type: concept
 spineStages: [context]
-estimatedMinutes: 18
+estimatedMinutes: 22
 ---
 
 # Context & Knowledge Patterns
@@ -170,6 +170,10 @@ Structured action / answer
 ```
 
 This pipeline is the basis for most production agent backends. Every step can fail independently, so each boundary should have error handling and logging.
+
+The diagram above shows the boxes but hides the thing that makes the pipeline hard: **it is a packing problem under a fixed budget**. Walk one concrete subgoal through every stage below. Retrieval is a real TF-IDF cosine over the chunk texts and token counts are measured from them, so the query rewrite is shown to help rather than claimed to — and the window-size and top-k controls re-run the whole pipeline, which is where you can watch retrieved facts and remembered conversation compete for the same tokens.
+
+<ContextAssemblyViz />
 
 <Exercise id="agent-rag-retrieval-strategy" />
 

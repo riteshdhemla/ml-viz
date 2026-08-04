@@ -75,6 +75,8 @@ import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRet
 import { RAGArchitectureViz } from "@/components/visualizations/RAGArchitecture/RAGArchitectureViz";
 import { GraphRAGViz } from "@/components/visualizations/GraphRAG/GraphRAGViz";
 import { AudioFeaturesViz } from "@/components/visualizations/AudioFeatures/AudioFeaturesViz";
+import { BoxJenkinsViz } from "@/components/visualizations/BoxJenkins/BoxJenkinsViz";
+import { ContextAssemblyViz } from "@/components/visualizations/ContextAssembly/ContextAssemblyViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -181,6 +183,8 @@ export const mdxComponents: MDXComponents = {
   RAGArchitectureViz,
   GraphRAGViz,
   AudioFeaturesViz,
+  BoxJenkinsViz,
+  ContextAssemblyViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,
