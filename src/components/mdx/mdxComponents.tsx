@@ -74,6 +74,7 @@ import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
 import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
 import { RAGArchitectureViz } from "@/components/visualizations/RAGArchitecture/RAGArchitectureViz";
 import { GraphRAGViz } from "@/components/visualizations/GraphRAG/GraphRAGViz";
+import { AudioFeaturesViz } from "@/components/visualizations/AudioFeatures/AudioFeaturesViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -179,6 +180,7 @@ export const mdxComponents: MDXComponents = {
   RAGRetrievalViz,
   RAGArchitectureViz,
   GraphRAGViz,
+  AudioFeaturesViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,

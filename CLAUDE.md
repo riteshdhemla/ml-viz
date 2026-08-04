@@ -254,9 +254,12 @@ Rules that make it teach rather than just animate:
 
 **Template:** see `prompts/new-guided-viz.md`.
 **Reference:** `visualizations/GraphRAG/GraphRAGViz.tsx` (two phases, one
-interactive step, one animated step) and
+interactive step, one animated step),
 `visualizations/TransformerBlock/TransformerBlockViz.tsx` (single phase, plus an
-orthogonal mode toggle in `controls`).
+orthogonal mode toggle in `controls`), and
+`visualizations/AudioFeatures/AudioFeaturesViz.tsx` (real DSP computed in the
+browser; a `controls` toggle re-runs the whole pipeline so the trade-off it
+teaches is testable rather than asserted).
 
 ### Adding an algorithm trace (the steppable code player)
 
@@ -686,6 +689,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | DistributedTrainingViz | `visualizations/DistributedTraining/` | gpu-programming/05-distributed-training-at-scale | ✅ |
 | LatencyCriticalPathViz | `visualizations/LatencyCriticalPath/` | wiki/agent-metrics-taxonomy | ✅ |
 | ProjectLoopViz | `visualizations/ProjectLoop/` | wiki/ml-project-loop + wiki/agentic-project-loop (`variant="ml"\|"agentic"`) | ✅ |
+| AudioFeaturesViz | `visualizations/AudioFeatures/` | speech-audio/01-audio-representations | ✅ **guided** |
 
 ## Algorithm Traces Built
 
