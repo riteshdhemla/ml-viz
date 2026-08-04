@@ -109,3 +109,8 @@ adjacency — the reader tests the claim instead of reading it.
 phases, an interactive step and an animated map-reduce step.
 `src/components/visualizations/TransformerBlock/TransformerBlockViz.tsx` — a
 single-phase walk down a stack, with an orthogonal mode toggle in `controls`.
+`src/components/visualizations/AudioFeatures/AudioFeaturesViz.tsx` — a real
+computation (FFT, mel filterbank, DCT) run in the browser, with a `controls`
+toggle that **re-runs the whole pipeline**: the STFT window length changes every
+downstream picture *and* every derived number, which is what turns "there is a
+time–frequency trade-off" from an assertion into something the reader tests.
