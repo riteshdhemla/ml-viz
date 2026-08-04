@@ -114,3 +114,14 @@ computation (FFT, mel filterbank, DCT) run in the browser, with a `controls`
 toggle that **re-runs the whole pipeline**: the STFT window length changes every
 downstream picture *and* every derived number, which is what turns "there is a
 time–frequency trade-off" from an assertion into something the reader tests.
+`src/components/visualizations/BoxJenkins/BoxJenkinsViz.tsx` — a statistical
+procedure (ADF, ACF/PACF, ARMA fits, Ljung–Box, forecast intervals) where the
+interactive choice is **deliberately allowed to be wrong**: pick a bad model
+order and the later steps show the diagnostics catching it.
+
+**Verify the story before you write it.** Two of these needed their data changed
+after prototyping: the audio clip and the ARIMA series were re-seeded until the
+procedure actually produced the result the prose claims, and `ContextAssembly`'s
+rewritten query was rewritten again after measurement showed the first version
+*lowered* recall. If a step asserts an improvement, compute both sides and read
+the number before committing to the sentence.
