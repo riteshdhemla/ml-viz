@@ -259,7 +259,11 @@ interactive step, one animated step),
 orthogonal mode toggle in `controls`), and
 `visualizations/AudioFeatures/AudioFeaturesViz.tsx` (real DSP computed in the
 browser; a `controls` toggle re-runs the whole pipeline so the trade-off it
-teaches is testable rather than asserted).
+teaches is testable rather than asserted), and
+`visualizations/PreferenceTuning/PreferenceTuningViz.tsx` (two pipelines that
+converge on one formula; the controls isolate *why* they differ, and the
+component's doc comment records the 12-sample robustness check behind each
+claim in the prose).
 
 ### Adding an algorithm trace (the steppable code player)
 
@@ -694,6 +698,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ContextAssemblyViz | `visualizations/ContextAssembly/` | agent-design-patterns/03-context-and-knowledge-patterns | ✅ **guided** |
 | HierarchicalForecastViz | `visualizations/HierarchicalForecast/` | time-series/04-demand-forecasting-in-production | ✅ **guided** |
 | AgentEvalViz | `visualizations/AgentEval/` | agent-design-patterns/10-evaluating-agents | ✅ **guided** |
+| PreferenceTuningViz | `visualizations/PreferenceTuning/` | fine-tuning-alignment/04-rlhf-and-dpo | ✅ **guided** |
 
 ## Algorithm Traces Built
 

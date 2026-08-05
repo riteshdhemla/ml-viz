@@ -79,6 +79,7 @@ import { BoxJenkinsViz } from "@/components/visualizations/BoxJenkins/BoxJenkins
 import { ContextAssemblyViz } from "@/components/visualizations/ContextAssembly/ContextAssemblyViz";
 import { HierarchicalForecastViz } from "@/components/visualizations/HierarchicalForecast/HierarchicalForecastViz";
 import { AgentEvalViz } from "@/components/visualizations/AgentEval/AgentEvalViz";
+import { PreferenceTuningViz } from "@/components/visualizations/PreferenceTuning/PreferenceTuningViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -189,6 +190,7 @@ export const mdxComponents: MDXComponents = {
   ContextAssemblyViz,
   HierarchicalForecastViz,
   AgentEvalViz,
+  PreferenceTuningViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,
