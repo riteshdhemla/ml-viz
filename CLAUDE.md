@@ -699,6 +699,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | HierarchicalForecastViz | `visualizations/HierarchicalForecast/` | time-series/04-demand-forecasting-in-production | ✅ **guided** |
 | AgentEvalViz | `visualizations/AgentEval/` | agent-design-patterns/10-evaluating-agents | ✅ **guided** |
 | PreferenceTuningViz | `visualizations/PreferenceTuning/` | fine-tuning-alignment/04-rlhf-and-dpo | ✅ **guided** |
+| ContinuousTrainingViz | `visualizations/ContinuousTraining/` | ml-in-practice/16-cicd-and-continuous-training | ✅ **guided** |
 
 ## Algorithm Traces Built
 
