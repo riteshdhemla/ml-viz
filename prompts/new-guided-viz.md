@@ -119,9 +119,38 @@ procedure (ADF, ACF/PACF, ARMA fits, Ljung–Box, forecast intervals) where the
 interactive choice is **deliberately allowed to be wrong**: pick a bad model
 order and the later steps show the diagnostics catching it.
 
-**Verify the story before you write it.** Two of these needed their data changed
-after prototyping: the audio clip and the ARIMA series were re-seeded until the
-procedure actually produced the result the prose claims, and `ContextAssembly`'s
-rewritten query was rewritten again after measurement showed the first version
-*lowered* recall. If a step asserts an improvement, compute both sides and read
-the number before committing to the sentence.
+`src/components/visualizations/PreferenceTuning/PreferenceTuningViz.tsx` — two
+pipelines that provably reach the *same* formula, so the controls isolate the
+one thing that actually differs between them.
+`src/components/visualizations/ContinuousTraining/ContinuousTrainingViz.tsx` — a
+loop that gains a stage per step, where the step index itself switches the
+pipeline's gates on, and a world control that can make the whole pipeline
+pointless.
+
+**Verify the story before you write it.** Prototype the data and the algorithm in
+node *first*, then write the prose against the numbers you actually measured —
+never the other way round. Extract the model region from the `.tsx`, transpile it
+with the project's own `typescript` (`ts.transpileModule`), and run it, so you are
+checking the code that ships rather than a stand-in (the RNG differs: `viz-kit`'s
+`seededRandom` is mulberry32).
+
+Every walkthrough so far has needed data changed after prototyping. The audio clip
+and the ARIMA series were re-seeded until the procedure produced the result the
+prose claims; `ContextAssembly`'s rewritten query was rewritten again after
+measurement showed the first version *lowered* recall; `AgentEval`'s two agents
+were re-tuned because the Wilson intervals overlapped at every sample size, so the
+central control demonstrated nothing.
+
+**If a claim is statistical, check it across samples, not once.** For
+`PreferenceTuning` a 12-seed sweep killed two framings that looked convincing on
+the first seed: "curated data lifts DPO's ceiling" held in 5/12 samples until the
+margin was widened, and "PPO wins once coverage is there" was a 6/12 coin flip and
+is not claimed at all. Record the surviving counts in the component's doc comment
+so the next person can tell which sentences are load-bearing.
+
+**Prose that is only true at the default control setting is a bug.** Guided-viz
+`body` text is static while the controls re-run the simulation, so a sentence like
+"the top-scored answer is the 460-token one" quietly becomes false two clicks
+later. Either scope it explicitly ("while only SFT samples are annotated…") or
+move the claim into a `panel`/`GuidedPayoff` that is computed from the current
+state — both components above do the latter for their payoffs.

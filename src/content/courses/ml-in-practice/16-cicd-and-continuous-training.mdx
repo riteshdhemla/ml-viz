@@ -4,7 +4,7 @@ description: "How ML pipelines automate themselves: Google's MLOps maturity leve
 order: 16
 type: concept
 spineStages: [feedback]
-estimatedMinutes: 20
+estimatedMinutes: 24
 ---
 
 # CI/CD, Continuous Training & MLOps Maturity
@@ -52,6 +52,10 @@ $$\text{retrain when} \;\in\; \{\text{schedule (e.g. nightly)},\; \text{new data
 <Callout type="warning" title="Automated retraining needs automated gates">
   CT without **model validation** is a loop that can silently push a worse model to production. Every retraining run must clear an evaluation gate — better than the current production model on a held-out set and above an absolute floor — *before* it is registered for deployment. Automate the promotion decision, don't automate around it.
 </Callout>
+
+Each of those pieces sounds obviously worth having, which is exactly why they are easy to skip. Build the loop below one stage at a time on 180 simulated days of a model in production — deploy it and watch it rot, add monitoring and find out how late it tells you, add a trigger and find out what that trigger cannot see, then add the two validation gates against two faults that break in completely different ways. The **world** control is the one that argues with the maturity ladder: on a steady world every trigger lands on the same accuracy, and all the automation buys nothing.
+
+<ContinuousTrainingViz />
 
 <Exercise id="mlp-maturity-levels" />
 
