@@ -4,7 +4,7 @@ description: "Two ways to turn a reward signal into an aligned policy: classical
 order: 4
 type: concept
 spineStages: [optimization, objective]
-estimatedMinutes: 24
+estimatedMinutes: 28
 ---
 
 # Preference Tuning: RLHF & DPO
@@ -100,6 +100,10 @@ The reference model is queried but never updated; it's typically the SFT checkpo
 | **Stability** | Notoriously fiddly; needs careful $\beta$ + clip tuning | Stable; closer to standard supervised fine-tuning |
 | **Ceiling** | Sometimes higher — can explore beyond preference data | Bounded by the preference dataset's coverage |
 | **Compute** | 4–10× a fine-tuning run | ≈ 1× a fine-tuning run |
+
+Every row in that table is easy to state and hard to feel. Walk the pipeline below on one prompt with nine candidate answers: fit a reward model on 240 sampled comparisons, watch the KL-regularised optimum form, then turn $\beta$ down until the policy collapses onto a response the reward model only ever *extrapolated* a score for. Then take the same comparisons down the DPO branch and watch it land on the identical formula with a different reward inside it. The **annotation** control is the one to spend time on — it changes only which responses got compared, and each round repairs exactly one of the two pipelines.
+
+<PreferenceTuningViz />
 
 When does each win? **DPO** is the right default — same objective, far less infrastructure. **RLHF/PPO** still pays off when you have an excellent RM, plenty of compute, and want the policy to discover behaviours that aren't in the preference dataset (the on-policy rollouts let it explore). Most production open-weight chat models from 2024 onward are DPO; the largest closed-frontier models still use full RLHF (and beyond — rejection sampling, iterative DPO, RLAIF, online DPO variants).
 
