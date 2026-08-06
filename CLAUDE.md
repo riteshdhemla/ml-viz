@@ -700,6 +700,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | AgentEvalViz | `visualizations/AgentEval/` | agent-design-patterns/10-evaluating-agents | ✅ **guided** |
 | PreferenceTuningViz | `visualizations/PreferenceTuning/` | fine-tuning-alignment/04-rlhf-and-dpo | ✅ **guided** |
 | ContinuousTrainingViz | `visualizations/ContinuousTraining/` | ml-in-practice/16-cicd-and-continuous-training | ✅ **guided** |
+| CTCDecodingViz | `visualizations/CTCDecoding/` | speech-audio/02-speech-recognition | ✅ **guided** |
 
 ## Algorithm Traces Built
 

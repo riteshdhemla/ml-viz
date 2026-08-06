@@ -4,7 +4,7 @@ description: "Turning audio into text — the alignment problem, Connectionist T
 order: 2
 type: concept
 spineStages: [hypothesis-space, objective]
-estimatedMinutes: 18
+estimatedMinutes: 23
 ---
 
 # Speech Recognition
@@ -82,6 +82,10 @@ $$
 $$
 
 **Character Error Rate (CER)** is the same metric computed at the character level — preferred for languages without clear word boundaries (Chinese, Japanese, Thai) or for measuring fine-grained accuracy in morphologically complex languages.
+
+Every piece above — blank, collapse, the sum over alignments, then WER — is easy to state and hard to feel working together. Walk the whole pipeline below on one utterance of 102 frames: edit a frame labelling and watch it collapse, see the forward DP's probability mass (checked against brute-force enumeration of every labelling), then decode the same acoustic model three ways. Two characters are deliberately barely voiced, and the two errors that causes turn out to need completely different fixes — one is the decoder's fault and one is the model's.
+
+<CTCDecodingViz />
 
 <Exercise id="audio-alignment" />
 

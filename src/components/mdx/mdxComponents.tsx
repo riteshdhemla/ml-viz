@@ -81,6 +81,7 @@ import { HierarchicalForecastViz } from "@/components/visualizations/Hierarchica
 import { AgentEvalViz } from "@/components/visualizations/AgentEval/AgentEvalViz";
 import { PreferenceTuningViz } from "@/components/visualizations/PreferenceTuning/PreferenceTuningViz";
 import { ContinuousTrainingViz } from "@/components/visualizations/ContinuousTraining/ContinuousTrainingViz";
+import { CTCDecodingViz } from "@/components/visualizations/CTCDecoding/CTCDecodingViz";
 import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
 import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
 import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
@@ -193,6 +194,7 @@ export const mdxComponents: MDXComponents = {
   AgentEvalViz,
   PreferenceTuningViz,
   ContinuousTrainingViz,
+  CTCDecodingViz,
   LoRAViz,
   RewardModelViz,
   QuantizationViz,
