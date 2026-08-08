@@ -384,10 +384,28 @@ Genuine candidates:
     never crossed the ceiling, so `firstFail` was undefined and the builder
     threw. It now asserts that the sweep straddles the ceiling rather than
     silently reporting whatever it found.
-- [ ] **IRLS for GLMs** — `courses/linear-regression/04-generalized-linear-models`
-  - Iteratively reweighted least squares is a genuine Newton procedure with
-    quadratic convergence. Payoff: separation, where the likelihood has no
-    finite maximum and the weights collapse — a real failure practitioners hit.
+- [x] **IRLS for GLMs** — `courses/linear-regression/04-generalized-linear-models`
+  - The lesson's callout says GLMs share the gradient; the loop shows they
+    share the *whole fitting algorithm*, with only the inverse link and the
+    variance function differing. Gaussian converges in exactly 1 iteration
+    (identity link ⇒ weights all 1, z = y, so the first weighted least-squares
+    solve is OLS), Bernoulli in 7, Poisson in 10 — same code.
+  - **Two drafted claims were contradicted by the numbers.**
+    1. "Quadratic convergence" is only true of the *second half*: the Poisson
+       run crawls for five steps (2.25 → 0.28, a factor of 8 total) and then
+       squares the error five times (9e-2 → 1e-2 → 1e-4 → 1e-8 → 1e-15).
+       Newton's guarantee is local, and the frame now shows both halves rather
+       than quoting the headline rate.
+    2. "Gradient descent needs thousands of iterations" is false — 83 at its
+       best learning rate against IRLS's 10. The honest cost is the 18× spread
+       across learning rates plus outright non-convergence at 0.5, just past
+       the best one: a hyperparameter on a narrow range that IRLS lacks
+       entirely.
+  - Separation payoff landed as planned and is the sharpest frame: the MLE does
+    not exist, and the loop cannot say so. ‖θ‖ climbs to 110, weights μ(1−μ)
+    collapse to 1e-12, det(XᵀWX) falls 140 → 1e-6. No error, no failure to
+    converge — just enormous coefficients with enormous standard errors, which
+    come from inverting exactly that collapsing matrix.
 - [ ] **BatchNorm** — `wiki/batchnorm-algorithm`
   - Batch statistics, normalise, scale/shift, EMA the running stats. Payoff:
     the train/eval discrepancy the page's callout warns about, measured, plus
