@@ -236,7 +236,31 @@ not a second builder.
     the simpler nested model by more than 2 per parameter**. BIC's ln T = 3.56
     makes the same call 1.8× more decisively. A 2-point AIC win is weak evidence
     by construction.
-- [ ] **FastICA** — `wiki/independent-component-analysis`
+- [x] **FastICA** — `wiki/independent-component-analysis`
+  - Payoff is the page's own central claim, measured: on Gaussian sources the
+    identical pipeline converges confidently to a different arbitrary direction
+    every run (spread 82.7 deg of an available 90, against 0.36 deg for
+    non-Gaussian sources). It does not error or fail to converge, which is what
+    makes the failure dangerous.
+  - **Two metric choices were wrong on the first attempt; both are worth
+    remembering because both looked fine until printed.**
+    1. Comparing raw recovered angles conflated instability with the
+       *permutation* indeterminacy — the two components sit 90 deg apart, so
+       returning them in either order registered as a 90 deg "spread" and made
+       the good case look as unstable as the bad one. Folding into [0, 90)
+       isolates what is actually being measured.
+    2. Any "how well did it match the right source" score is useless here: a
+       recovered basis is *some* rotation of the true one, so the matched
+       correlation is |cos t| and cannot fall below 0.71 however arbitrary t
+       is. A random rotation scored ~0.92 and looked like success. **Cross-talk**
+       — the leakage of the *other* source, |sin t| — discriminates: 0.011
+       against 0.328. Aggregating differently (worst-of-two rather than
+       best-of-two) did not help, because both matched correlations are equal
+       by symmetry; the metric itself had to change.
+  - Also caught by printing: the iteration table recorded only post-update
+    state, so with cubic convergence row 1 already showed the answer and nothing
+    appeared to move. Seeding row 0 with the starting direction and starting 47
+    deg away from the solution makes the swing visible.
 - [x] **ADWIN** — `wiki/adwin` (window shrinking on drift)
   - The page's worked cut arithmetic checks out exactly (m = 50,
     ε_cut = 0.3111) and the trace reproduces it before moving on.

@@ -12,6 +12,7 @@ import { bpttTrace } from "./bptt";
 import { dbscanTrace } from "./dbscan";
 import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
+import { fastIcaTrace } from "./fastica";
 import { hnswTrace } from "./hnsw";
 import { isotonicTrace } from "./isotonic";
 import { ivfTrace } from "./ivf";
@@ -97,6 +98,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   arimaOrderTrace,
   adwinTrace,
   reservoirTrace,
+  fastIcaTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
