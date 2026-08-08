@@ -75,6 +75,21 @@ $$
 
 The observed gap $|\,0.08 - 0.42\,| = 0.34 > 0.311$, so the test **fires**: ADWIN drops $W_0$ and reports drift. Had the gap been the stationary-noise level (say $0.03$), no split would exceed $\epsilon_{\text{cut}}$ and the window would keep growing. Note the threshold falls as the window grows ($m$ rises), so a change too subtle to catch now becomes detectable once more post-change data accumulates.
 
+### Watch it run
+
+The trace reproduces the arithmetic above, then runs ADWIN on a stream with two changes of different sizes.
+
+<AlgorithmTrace id="adwin" />
+
+**What to notice:**
+
+- **Frame 2 — the threshold is a U.** Plotting $\epsilon_{\text{cut}}$ against every candidate split shows why the harmonic mean matters: the threshold is enormous at both ends, where one sub-window is a handful of bits, and lowest in the middle. A change near the edge of the window is structurally harder to see than one in the middle.
+- **Frames 3–4 — delay is evidence accumulation, not sluggishness.** ADWIN cannot fire right after the change because the newer sub-window is small, so $m$ is small and its threshold is huge. The larger jump (0.10 → 0.45) is caught in 56 steps and the smaller one (0.45 → 0.18) in 66.
+- **Frame 5 — the honest version of "no hyperparameter".** ADWIN does *not* beat every fixed window: a fixed $W=100$ scores marginally better on this stream. What ADWIN does is land within 4% of the best fixed width without being told what it is, while the spread across plausible widths is 2×. On a live stream you cannot identify the best width — that requires the ground truth you are estimating.
+- **Frame 6 — the δ trade-off is one-sided.** Sweeping δ over five orders of magnitude, detection delay grows 2.4× while false alarms stay at **zero across 300,000 stationary steps, even at δ = 0.5**. δ sits inside a logarithm inside a square root, so the Hoeffding threshold is far more conservative than the nominal δ implies.
+
+That last point qualifies the "larger δ ⟹ faster detection but more false alarms" rule above. The direction is right, but on streams of this length the false-alarm half is unobservable, so the practical advice inverts: **pick δ loose**, because tightening it buys a reduction you cannot measure and costs detection delay you can. δ is an *upper* bound on the false-alarm probability, and nothing promises it is tight.
+
 ## Gotchas
 
 - **δ is a rate, not a magnitude.** It controls false-alarm probability, not the size of change you care about; pick it for your tolerance to spurious resets.

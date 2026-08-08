@@ -237,7 +237,28 @@ not a second builder.
     makes the same call 1.8× more decisively. A 2-point AIC win is weak evidence
     by construction.
 - [ ] **FastICA** — `wiki/independent-component-analysis`
-- [ ] **ADWIN** — `wiki/adwin` (window shrinking on drift)
+- [x] **ADWIN** — `wiki/adwin` (window shrinking on drift)
+  - The page's worked cut arithmetic checks out exactly (m = 50,
+    ε_cut = 0.3111) and the trace reproduces it before moving on.
+  - **Both payoffs contradicted the draft prose and were rewritten from the
+    measurements. Both corrections are better than what they replaced.**
+    1. "ADWIN beats every fixed window" is **false**: a fixed W = 100 scores
+       0.0526 against ADWIN's 0.0545. The true claim is the page's own — ADWIN
+       lands within 4% of the best fixed width *without being told what it is*,
+       while the spread across plausible widths is 2×, and on a live stream the
+       best width is unidentifiable because finding it needs the ground truth.
+    2. The famous δ trade-off is **one-sided** at these stream lengths: delay
+       grows 2.4× across five orders of magnitude while false alarms stay at
+       zero across 300,000 stationary steps even at δ = 0.5. δ sits inside a
+       log inside a square root, so the Hoeffding threshold is far looser than
+       the nominal δ. Practical advice inverts: pick δ loose. The page now says
+       so, qualifying its own "larger δ ⟹ more false alarms" rule.
+  - **Performance note for future traces:** the first version tested all |W|−1
+    splits with freshly computed means and took **72 seconds** to load, which
+    would have made the whole integrity suite unusable (every trace builds at
+    module load). Prefix sums plus ADWIN2's geometric bucket-boundary splits
+    brought it to 2.7s *and* made it closer to the published algorithm. Check
+    module build time whenever a trace loops over a stream.
 - [ ] **Reservoir sampling** — `courses/streaming-ml/02` (payoff: measured uniformity over replicates)
 - [ ] **DDIM sampling** — `wiki/ddim-sampling`
 - [ ] **Gibbs sampling / ICM** — `courses/graphical-models/02-markov-random-fields`

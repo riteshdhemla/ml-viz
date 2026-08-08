@@ -1,4 +1,5 @@
 import type { AlgoTrace } from "@/types/algo-trace";
+import { adwinTrace } from "./adwin";
 import { arimaOrderTrace } from "./arima-order";
 import { attentionTrace } from "./attention";
 import { bm25Trace } from "./bm25";
@@ -93,6 +94,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   ivfTrace,
   walkForwardTrace,
   arimaOrderTrace,
+  adwinTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
