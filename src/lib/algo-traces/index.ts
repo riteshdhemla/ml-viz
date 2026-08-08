@@ -17,6 +17,7 @@ import { flashAttentionTrace } from "./flash-attention";
 import { fastIcaTrace } from "./fastica";
 import { hnswTrace } from "./hnsw";
 import { icmGibbsTrace } from "./icm-gibbs";
+import { irlsTrace } from "./irls";
 import { isotonicTrace } from "./isotonic";
 import { ivfTrace } from "./ivf";
 import { kmeansTrace } from "./kmeans";
@@ -105,6 +106,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   ddimTrace,
   icmGibbsTrace,
   flashAttentionTrace,
+  irlsTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

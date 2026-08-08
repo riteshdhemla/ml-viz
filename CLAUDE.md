@@ -755,6 +755,7 @@ and records frames.
 | `ddim-sampling` | `algo-traces/ddim.ts` | wiki/ddim-sampling | ✅ |
 | `icm-gibbs` | `algo-traces/icm-gibbs.ts` | graphical-models/02-markov-random-fields | ✅ |
 | `flash-attention` | `algo-traces/flash-attention.ts` | transformers/04-modern-attention | ✅ |
+| `irls` | `algo-traces/irls.ts` | linear-regression/04-generalized-linear-models | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is
