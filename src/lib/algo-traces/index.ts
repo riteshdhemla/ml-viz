@@ -15,6 +15,7 @@ import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
 import { fastIcaTrace } from "./fastica";
 import { hnswTrace } from "./hnsw";
+import { icmGibbsTrace } from "./icm-gibbs";
 import { isotonicTrace } from "./isotonic";
 import { ivfTrace } from "./ivf";
 import { kmeansTrace } from "./kmeans";
@@ -101,6 +102,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   reservoirTrace,
   fastIcaTrace,
   ddimTrace,
+  icmGibbsTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

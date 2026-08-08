@@ -99,6 +99,18 @@ $$
 
 The denoised image is $\arg\min_\mathbf{x} E(\mathbf{x})$. Work out when flipping one pixel pays: if $d$ of its 4 neighbours disagree with the observation $y_i$, flipping $x_i$ away from $y_i$ changes the energy by $\Delta E = 2\eta(4 - 2d) + 2\beta$. With $\eta=1.0, \beta=2.0$ that is $\Delta E = 12 - 4d$: at $d = 3$ the smoothness and data terms exactly tie ($\Delta E = 0$), and only a pixel contradicted by **all four** neighbours ($d = 4$, $\Delta E = -4$) is strictly corrected — otherwise the data term wins.
 
+Step through both the greedy and the sampling version:
+
+<AlgorithmTrace id="icm-gibbs" />
+
+**What to notice:**
+
+- **Frame 3 — the $d=3$ tie is a live defect, not a boundary case.** ICM reaches its final energy after one sweep and never moves again, yet the error keeps drifting 4.5% → 5.5% over later sweeps. $\Delta E$ is exactly zero for those pixels, so the tie-break flips them back and forth for free: converged in energy, still wandering in image space, and getting slightly worse.
+- **Frame 4 — the parameters above are not the good ones.** Sweeping $\eta/\beta$ (with $\beta$ fixed), $\eta/\beta = 0.5$ gives 5.8% error against 2.3% at $\eta/\beta \ge 1$. The $\Delta E = 12 - 4d$ derivation is correct; what it hides is that "only $d=4$ corrects" describes a model tuned almost entirely toward the data term.
+- **Frame 6 — sampling and optimization are different jobs.** Gibbs at $T=1$ reaches *worse* energy and error than greedy ICM. That is not a failure: Gibbs draws from $\exp(-E)$, and a typical draw from a distribution is not its mode. Annealing narrows the gap but, on this landscape, still does not beat ICM.
+
+One expected result the trace could not reproduce: there is no over-smoothing arm. Error plateaus at 2.3% and stays flat out to $\eta/\beta = 40$, because this test image is genuinely piecewise-constant with thick regions — the prior's assumption is *true*, so more of it never costs anything. An image with one-pixel-wide detail would show the other side of that curve.
+
 Exact minimization is NP-hard for general graphs. **Graph cuts** find the global optimum in polynomial time for binary MRFs with submodular pairwise potentials (the image denoising case qualifies). **Loopy belief propagation** is an approximate iterative method for higher-order or non-submodular cases.
 
 ## Conditional Random Fields (CRFs)
