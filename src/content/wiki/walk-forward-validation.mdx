@@ -75,6 +75,20 @@ $$
 
 This is the walk-forward estimate of the model's one-step-ahead MAE. Compare to, say, a linear trend predictor to decide which model to deploy.
 
+### Step through it
+
+The trace runs exactly the table above, fold by fold, then shows what random k-fold does to the model *choice*.
+
+<AlgorithmTrace id="walk-forward-validation" />
+
+**What to notice:**
+
+- **Frames 2–7 — the error pattern the average destroys.** The per-fold errors are 1, 2, 3, 1, 2, 3. That is not noise: a backward-looking average lags a rising series and falls further behind each step the trend continues, then recovers at the dip on $t_{10}$. The single number 2.00 hides a systematic bias that a residual plot would have caught immediately.
+- **Frame 9 — expanding vs sliding needs a predictor that can tell the difference.** The mean-of-3 predictor above reads three points regardless of window size, so both schemes give the same answer. Swap in a predictor that uses its whole window and sliding ($W=6$, MAE 3.50) beats expanding (4.83) — on a trending series old observations do not just fail to help, they drag the average down.
+- **Frame 10 — the payoff.** Score eight polynomial trends with random 5-fold and with walk-forward: k-fold's error *falls* with degree (1.97 → 1.55) while walk-forward's *rises* (2.15 → 3.53). The curves run in opposite directions because random folds ask the model to interpolate between neighbouring points, which rewards wiggle, and walk-forward asks it to extrapolate, which punishes it. Across 20 seeds k-fold picks degree 6–8 every time, walk-forward picks 1–2 every time, and on a genuinely held-out future k-fold's choice loses 20/20 — by 33× to 849×.
+
+The last point is worth stating precisely, because "k-fold is wrong here" is not quite it: k-fold's numbers are correctly computed and are a valid estimate of *interpolation* error. That is simply not the quantity a deployed forecaster is judged on.
+
 <Callout type="info" title="Overlap and independence">
   When the forecast horizon $h = 1$, each validation window touches a different time point — the folds are non-overlapping and the errors are approximately independent. When $h > 1$, adjacent windows share observations (window 1 predicts $t=7$; window 2 predicts $t=7$ and $t=8$), introducing correlation between fold errors. Report the average anyway, but interpret the standard error of CV error cautiously.
 </Callout>
