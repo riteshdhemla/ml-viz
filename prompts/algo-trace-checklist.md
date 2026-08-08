@@ -204,7 +204,38 @@ not a second builder.
     a mean of 290.0 here, pure coincidence — the ratios are bimodal (33–119,
     then 290–849). Fixed to a two-sided median and the full range is quoted, so
     no single number implies a concentration the data does not have.
-- [ ] **ARIMA order selection** — `wiki/arima-order-selection` (AIC grid search)
+- [x] **ARIMA order selection** — `wiki/arima-order-selection` (AIC grid search)
+  - **Building this trace showed the page's worked example was fabricated**, and
+    the fix was to replace the series, not to patch numbers. The old series was
+    exactly periodic with period 6, so it was not an ARIMA realisation at all.
+    Running the page's own Python against it gave: ACF ρ₂ = −0.479, ρ₃ = +0.875
+    against the claimed 0.08 and 0.04 and an assertion that it "cuts off after
+    lag 1"; an ADF statistic of −8.3e13 (degenerate — a deterministic series has
+    no unit root to test); |φ₄₄| = 1.31, impossible for a real PACF; AIC 190.8
+    for the declared winner against the claimed 142.3; and a true grid winner of
+    ARIMA(2,1,2) at 138.3 — the page's winner was among the *worst* models.
+  - The forecast was wrong in the most instructive way: statsmodels returns a
+    **flat** 109.49 at every horizon because `ARIMA(order=(0,1,1))` carries no
+    constant when d ≥ 1, while the page reported a series rising 2.0 a step.
+    That trap is now a Callout on the page.
+  - New series drawn from a genuine ARIMA(0,1,1)-with-drift process and screened
+    over 400 seeds for the textbook signature the page teaches (raw
+    non-stationary, differenced stationary, ACF cutting at 1, PACF tailing, AIC
+    grid selecting (0,1,1), Ljung-Box passing).
+  - **Estimator choice worth reusing:** conditional sum of squares with
+    coordinate descent, rather than exact MLE, is implementable from scratch and
+    was validated against statsmodels on all nine candidates — identical ranking
+    across the whole grid, AIC agreeing within 0.9. Prototype the estimator in
+    Python against the real library *before* porting to TypeScript.
+  - Payoff 1: over-differencing triples the variance (11.85 → 35.22) and pushes
+    θ̂ from −0.84 to −0.99, i.e. onto the unit MA root that differencing itself
+    introduced. Makes the page's existing Callout concrete.
+  - Payoff 2, the better one: every model nesting the winner comes in at +1.96,
+    +3.92, +5.61 AIC ≈ 2k. When the extra parameter is useless the likelihood
+    does not move, so the whole gap *is* the penalty — **AIC can never prefer
+    the simpler nested model by more than 2 per parameter**. BIC's ln T = 3.56
+    makes the same call 1.8× more decisively. A 2-point AIC win is weak evidence
+    by construction.
 - [ ] **FastICA** — `wiki/independent-component-analysis`
 - [ ] **ADWIN** — `wiki/adwin` (window shrinking on drift)
 - [ ] **Reservoir sampling** — `courses/streaming-ml/02` (payoff: measured uniformity over replicates)
