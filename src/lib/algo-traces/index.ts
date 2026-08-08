@@ -13,6 +13,7 @@ import { dbscanTrace } from "./dbscan";
 import { ddimTrace } from "./ddim";
 import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
+import { flashAttentionTrace } from "./flash-attention";
 import { fastIcaTrace } from "./fastica";
 import { hnswTrace } from "./hnsw";
 import { icmGibbsTrace } from "./icm-gibbs";
@@ -103,6 +104,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   fastIcaTrace,
   ddimTrace,
   icmGibbsTrace,
+  flashAttentionTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
