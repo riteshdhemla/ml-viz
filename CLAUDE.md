@@ -747,6 +747,7 @@ and records frames.
 | `backprop-computational-graph` | `algo-traces/backprop-graph.ts` | calculus-for-ml/02-chain-rule-and-backpropagation | ✅ |
 | `dagger` | `algo-traces/dagger.ts` | wiki/imitation-learning | ✅ |
 | `ivf-search` | `algo-traces/ivf.ts` | wiki/vector-databases | ✅ |
+| `walk-forward-validation` | `algo-traces/walk-forward.ts` | wiki/walk-forward-validation | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is

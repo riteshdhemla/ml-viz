@@ -184,7 +184,26 @@ not a second builder.
   - Note for future traces: the player numbers frames **1-indexed**
     (`{i + 1}/{total}`), so "what to notice" bullets must offset from the
     builder's array index.
-- [ ] **Walk-forward validation** — `wiki/walk-forward-validation` (fold construction; payoff = leakage under random K-fold)
+- [x] **Walk-forward validation** — `wiki/walk-forward-validation` (fold construction; payoff = leakage under random K-fold)
+  - Frames 1–8 reproduce the page's hand-worked table exactly (MAE 2.00), so
+    trace and prose cannot drift. The per-fold errors are 1,2,3,1,2,3 — a
+    systematic lag against the trend that the average CV number destroys, and
+    worth a frame of its own.
+  - The page's predictor **cannot show expanding vs sliding**: mean-of-3 reads
+    three points regardless of window size, so both schemes tie. Added a frame
+    with two predictors that use the whole window, where sliding (3.50) beats
+    expanding (4.83) because old data drags a trending average down.
+  - Payoff framed as a **model-selection** failure rather than a single wrong
+    number, which is what makes it bite: scoring 8 polynomial degrees, random
+    5-fold's error *falls* with degree (1.97 → 1.55) while walk-forward's
+    *rises* (2.15 → 3.53). Opposite directions, because random folds reward
+    interpolation and walk-forward punishes extrapolation. k-fold picks degree
+    6–8 in 20/20 seeds, walk-forward 1–2 in 20/20, and k-fold's pick loses on a
+    held-out future 20/20 (33× to 849×, median 204×).
+  - **Statistic caught mid-build:** the one-sided median lands on 289.9 against
+    a mean of 290.0 here, pure coincidence — the ratios are bimodal (33–119,
+    then 290–849). Fixed to a two-sided median and the full range is quoted, so
+    no single number implies a concentration the data does not have.
 - [ ] **ARIMA order selection** — `wiki/arima-order-selection` (AIC grid search)
 - [ ] **FastICA** — `wiki/independent-component-analysis`
 - [ ] **ADWIN** — `wiki/adwin` (window shrinking on drift)

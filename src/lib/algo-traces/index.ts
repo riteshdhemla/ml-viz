@@ -35,6 +35,7 @@ import { speculativeDecodingTrace } from "./speculative-decoding";
 import { valueIterationTrace } from "./value-iteration";
 import { variableEliminationTrace } from "./variable-elimination";
 import { viterbiTrace } from "./viterbi";
+import { walkForwardTrace } from "./walk-forward";
 
 /**
  * Registry of **algorithm traces** — the algo-viz-style steppable explainers.
@@ -89,6 +90,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   backpropGraphTrace,
   daggerTrace,
   ivfTrace,
+  walkForwardTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
