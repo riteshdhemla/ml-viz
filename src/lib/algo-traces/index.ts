@@ -10,6 +10,7 @@ import { bloomFilterTrace } from "./bloom-filter";
 import { bpeTrace } from "./bpe";
 import { bpttTrace } from "./bptt";
 import { dbscanTrace } from "./dbscan";
+import { ddimTrace } from "./ddim";
 import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
 import { fastIcaTrace } from "./fastica";
@@ -99,6 +100,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   adwinTrace,
   reservoirTrace,
   fastIcaTrace,
+  ddimTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

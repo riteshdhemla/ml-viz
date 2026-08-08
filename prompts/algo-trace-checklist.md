@@ -300,5 +300,25 @@ not a second builder.
     caught as self-contradicting** — they always sum to k, since the reservoir
     always holds exactly k elements. Printing every frame's rendered numbers
     before writing the prose catches this class of error.
-- [ ] **DDIM sampling** — `wiki/ddim-sampling`
+- [x] **DDIM sampling** — `wiki/ddim-sampling`
+  - **Technique worth reusing for any sampler trace:** a sampler needs a noise
+    predictor and training one is out of scope, so pick a data distribution
+    whose *optimal* predictor is closed-form. For a Gaussian mixture the
+    marginal at every noise level is itself a mixture, so eps* is exact — which
+    also isolates the sampler's discretisation error from model error, and that
+    is precisely what the "~20x speedup" claim is about.
+  - Main payoff: endpoint error against a 1000-step reference from the same
+    start falls 1.651 (2 steps) to 0.027 (50), monotonically.
+  - **The eta payoff's first version measured something meaningless** and was
+    replaced. It scored samples by distance to the nearest mode and concluded
+    eta=1 beat DDIM (0.166 vs 0.228) — but a correct draw from this mixture
+    sits ~sigma = 0.18 from a mode centre, so "closer" is just
+    "under-dispersed", not better. With a perfect eps both samplers target the
+    right distribution. The well-posed measurement is that eta > 0 destroys the
+    endpoint's *dependence on the input*: two runs from an identical start land
+    2.14 apart at 50 steps. That is what breaks interpolation and seeds.
+  - Added a schedule frame after the integrity test caught a 5-frame trace
+    (minimum is 6), and it earned its place: tau is evenly spaced in t but
+    **not** in sqrt(alpha-bar), with the first half of the schedule buying only
+    20% of the signal. That is the argument for non-uniform step schedules.
 - [ ] **Gibbs sampling / ICM** — `courses/graphical-models/02-markov-random-fields`
