@@ -46,6 +46,20 @@ $$
 
 where $\nu \sim \mathcal{N}(0,1)$. Common choices: $G(u) = \log \cosh(u)$ (general) or $G(u) = -e^{-u^2/2}$ (sparse sources).
 
+### Watch FastICA run
+
+<AlgorithmTrace id="fastica" />
+
+**What to notice:**
+
+- **Frame 1 — the strategy in one column.** The sources have excess kurtosis −1.19 and −2.00; the mixtures sit at −0.77 and −1.54, measurably closer to Gaussian. That gap is the entire signal FastICA exploits.
+- **Frame 2 — whitening does not solve it.** Covariance goes from an off-diagonal of 0.79 to 0.0000, and the data is still mixed. Whitening removes second-order dependence only, and independence is a statement about all orders. What it buys is that the remaining unmixing is a pure rotation, so the search is over one angle.
+- **Frame 3 — cubic convergence.** From 85° the direction reaches 38.1° in four iterations while the projection's |kurtosis| climbs 0.758 → 2.000, and the update size falls 4.6e-2 → 1.5e-1 → 6.2e-4 → 8.5e-14.
+- **Frame 5 — the payoff.** With Gaussian sources the identical pipeline converges confidently to a *different arbitrary direction every run* — spread 82.7° of an available 90°, against 0.36° for non-Gaussian sources. It does not error or fail to converge, which is what makes the failure dangerous: there is simply no maximum to find, so the answer is wherever the search started.
+- **Frame 6 — the indeterminacies cost only bookkeeping.** Across 12 runs the components match the true sources with |correlation| 1.000 every time, while the output order and signs vary. Match components by correlation, never by index.
+
+One measurement note carried in the trace: separation quality there is reported as **cross-talk** (how much of the *other* source leaks in), not as match quality. A recovered basis is some rotation of the true one, so the matched correlation is $|\cos\theta|$ and cannot fall below 0.71 however arbitrary $\theta$ is — a completely random direction scores ~0.92 and looks like success.
+
 ## Bell-Sejnowski algorithm (MLE ICA)
 
 Model each source $s_i$ as having a known, non-Gaussian density $p_{s_i}$. The log-likelihood of $W$ given observations $x^{(1)}, \ldots, x^{(m)}$:

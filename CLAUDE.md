@@ -751,6 +751,7 @@ and records frames.
 | `arima-order-selection` | `algo-traces/arima-order.ts` | wiki/arima-order-selection | ✅ |
 | `adwin` | `algo-traces/adwin.ts` | wiki/adwin | ✅ |
 | `reservoir-sampling` | `algo-traces/reservoir.ts` | streaming-ml/02-streaming-algorithms | ✅ |
+| `fastica` | `algo-traces/fastica.ts` | wiki/independent-component-analysis | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is
