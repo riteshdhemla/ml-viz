@@ -33,6 +33,15 @@ $$
 
 Every element, old or new, ends at $\frac{k}{t+1}$ — a uniform sample, in $O(k)$ space and $O(1)$ work per element.
 
+The proof is short enough to believe and subtle enough to get wrong in code. Step through one run, then watch 200,000 of them audit it:
+
+<AlgorithmTrace id="reservoir-sampling" />
+
+**What to notice:**
+
+- **Frame 6 — the proof, measured.** Across 200,000 runs every element's survival rate lands within 2.5 standard errors of $k/n = 0.25$. Element 1 had to survive nine chances to be evicted and element 12 only had to be accepted once, and they come out equally likely.
+- **Frame 7 — two wrong versions that keep the acceptance rule.** *Evict the oldest slot* rather than a uniformly chosen one and element 1 survives 55× less often than it should. *Accept with probability $1/t$* instead of $k/t$ and the reservoir goes stale, holding its first three elements 65% of the time. Both biases are invisible in any single run — the reservoir is always the right size and always holds plausible elements. Only the frequencies reveal them, which is exactly why the induction above is the real deliverable.
+
 ## Bloom filters: approximate set membership
 
 **Problem.** Test whether an element has been seen, using far less space than storing the set. Tolerate false positives but **never** false negatives.

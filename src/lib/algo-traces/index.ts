@@ -32,6 +32,7 @@ import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
 import { powerIterationTrace } from "./power-iteration";
 import { qLearningTrace } from "./q-learning";
+import { reservoirTrace } from "./reservoir";
 import { rocTrace } from "./roc";
 import { speculativeDecodingTrace } from "./speculative-decoding";
 import { valueIterationTrace } from "./value-iteration";
@@ -95,6 +96,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   walkForwardTrace,
   arimaOrderTrace,
   adwinTrace,
+  reservoirTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

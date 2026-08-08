@@ -259,6 +259,22 @@ not a second builder.
     module load). Prefix sums plus ADWIN2's geometric bucket-boundary splits
     brought it to 2.7s *and* made it closer to the published algorithm. Check
     module build time whenever a trace loops over a stream.
-- [ ] **Reservoir sampling** — `courses/streaming-ml/02` (payoff: measured uniformity over replicates)
+- [x] **Reservoir sampling** — `courses/streaming-ml/02` (payoff: measured uniformity over replicates)
+  - The lesson already has `ReservoirSamplingViz` animating the acceptance rule
+    and proves uniformity by induction, so the trace does neither again. It
+    walks one run to make the *eviction* step visible, then audits the proof:
+    200,000 runs, every element's survival rate within 2.5 standard errors of
+    k/n = 0.25.
+  - Payoff is the contrast with two wrong versions that both keep the k/t
+    acceptance rule the lesson states. Evict the oldest slot instead of a
+    uniformly chosen one and element 1 survives 55x less often than it should;
+    accept with 1/t instead of k/t and the reservoir goes stale, holding its
+    first three elements 65% of the time. The biases point opposite ways and
+    neither is visible in a single run — the reservoir is always the right size
+    and always plausible. Only the frequencies show it.
+  - A draft claim ("the survival rates no longer sum to k") was **printed and
+    caught as self-contradicting** — they always sum to k, since the reservoir
+    always holds exactly k elements. Printing every frame's rendered numbers
+    before writing the prose catches this class of error.
 - [ ] **DDIM sampling** — `wiki/ddim-sampling`
 - [ ] **Gibbs sampling / ICM** — `courses/graphical-models/02-markov-random-fields`
