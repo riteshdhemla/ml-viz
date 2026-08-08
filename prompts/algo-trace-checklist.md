@@ -321,4 +321,28 @@ not a second builder.
     (minimum is 6), and it earned its place: tau is evenly spaced in t but
     **not** in sqrt(alpha-bar), with the first half of the schedule buying only
     20% of the signal. That is the argument for non-uniform step schedules.
-- [ ] **Gibbs sampling / ICM** — `courses/graphical-models/02-markov-random-fields`
+- [x] **Gibbs sampling / ICM** — `courses/graphical-models/02-markov-random-fields`
+  - The lesson's dE = 12 - 4d derivation is confirmed exactly, and then two
+    consequences it does not mention get measured.
+    1. The **d = 3 tie is a live defect**, not a boundary case. ICM reaches its
+       final energy after one sweep and never moves again, while the error
+       keeps drifting 4.5% -> 5.5%: dE is exactly 0 for those pixels, so the
+       tie-break flips them back and forth for free. Converged in energy, still
+       wandering in image space, and getting worse.
+    2. The lesson's eta/beta = 0.5 gives 5.8% error against 2.3% at eta/beta
+       >= 1.
+  - **Two drafted claims died to the measurement, and the page now says so.**
+    The over-smoothing arm of the eta/beta curve does not exist — error
+    plateaus at 2.3% out to eta/beta = 40, because this test image is genuinely
+    piecewise-constant with thick regions, so the prior's assumption is true and
+    more of it never costs anything. And annealed Gibbs does **not** beat greedy
+    ICM here (-945 against -947), so the frame makes the honest point instead:
+    Gibbs at T=1 is worse on both energy and error because drawing from exp(-E)
+    is a different job from minimising E.
+
+## Round 5 — complete (all nine shipped)
+
+Every item above is done. The next round would have to come from a fresh audit;
+the pages that scored high in the original one and are still untraced were
+excluded deliberately (architectures and taxonomies, where a trace would be
+forced).

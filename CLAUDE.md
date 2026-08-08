@@ -753,6 +753,7 @@ and records frames.
 | `reservoir-sampling` | `algo-traces/reservoir.ts` | streaming-ml/02-streaming-algorithms | ✅ |
 | `fastica` | `algo-traces/fastica.ts` | wiki/independent-component-analysis | ✅ |
 | `ddim-sampling` | `algo-traces/ddim.ts` | wiki/ddim-sampling | ✅ |
+| `icm-gibbs` | `algo-traces/icm-gibbs.ts` | graphical-models/02-markov-random-fields | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is
