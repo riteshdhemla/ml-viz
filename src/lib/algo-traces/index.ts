@@ -12,9 +12,11 @@ import { decisionTreeTrace } from "./decision-tree";
 import { emTrace } from "./em";
 import { hnswTrace } from "./hnsw";
 import { isotonicTrace } from "./isotonic";
+import { ivfTrace } from "./ivf";
 import { kmeansTrace } from "./kmeans";
 import { adaboostTrace } from "./adaboost";
 import { continuousBatchingTrace } from "./continuous-batching";
+import { daggerTrace } from "./dagger";
 import { dgimTrace } from "./dgim";
 import { gradientBoostingTrace } from "./gradient-boosting";
 import { hierarchicalTrace } from "./hierarchical";
@@ -85,6 +87,8 @@ export const allAlgoTraces: AlgoTrace[] = [
   gradientBoostingTrace,
   lassoCdTrace,
   backpropGraphTrace,
+  daggerTrace,
+  ivfTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

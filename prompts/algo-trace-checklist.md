@@ -144,8 +144,46 @@ not a second builder.
 
 ## Round 5 — plausible, lower priority
 
-- [ ] **DAgger** — `wiki/imitation-learning` (aggregate, retrain, repeat)
-- [ ] **IVF search** — `wiki/vector-databases` (probe the nearest centroids; pairs with `hnsw-search`)
+- [x] **DAgger** — `wiki/imitation-learning` (aggregate, retrain, repeat)
+  - **The first build produced a clean negative result and it reshaped the
+    trace.** The learner was a linear controller fitted against a linear PD
+    expert — the same hypothesis class — and behavioural cloning then worked
+    fine in 12 seeds across 7 gain settings, with DAgger winning only 3–8/12,
+    i.e. noise. When the hypothesis class is globally correct, extrapolation is
+    exact and covariate shift costs nothing. Compounding error needs a learner
+    that *cannot* extrapolate, so the shipped trace uses a k-NN clone.
+  - Payoffs, both measured over replicates with the evaluation world held fixed:
+    1. A **steadier expert makes a worse clone**, monotone across all seven
+       noise levels (BC cost 9.48 → 0.090, a 105× swing) while DAgger stays in
+       0.056–0.124. The clone cannot output a correction larger than the largest
+       one in its data, and expert competence is what keeps that number small.
+    2. The **validation metric is blind**: on held-out expert states the clone
+       and the DAgger policy are identical (0.019 vs 0.019); on the states they
+       each visit they are 62.4 vs 1.25, DAgger winning 24/24 seeds.
+  - Reported as **medians**: own-state error is heavy-tailed (22.7 to 712.9
+    across 24 seeds) and two runaway seeds pull the mean 2.2× above typical.
+  - The page's O(εT²) bound is **not** claimed by the trace — measured growth
+    exponents are 0.44 (BC) and 0.29 (DAgger), because both policies stabilise.
+    What holds is that BC's disadvantage widens with horizon (1.8× at T=10 to
+    3.7× at T=200), and the page now says exactly that.
+- [x] **IVF search** — `wiki/vector-databases` (probe the nearest centroids; pairs with `hnsw-search`)
+  - The walkthrough query is **selected, not placed**: the first query in a
+    seeded 400-query evaluation set whose true nearest neighbour `nprobe = 1`
+    fails to return. Both miss rates are reported (44% lose some true
+    neighbour, 12% lose the nearest one) so one example is never passed off as
+    typical.
+  - Payoff 1: the measured candidate count tracks the page's own
+    N·nprobe/nlist estimate to within a few percent across the whole sweep, so
+    the back-of-envelope is a real planning tool. Recall saturates at 3/16
+    cells (99.7%) — the other 13 are pure cost.
+  - Payoff 2, the one worth having: **recall at nprobe = 1 is barely a property
+    of the index.** Split 400 queries into quartiles by how close their two
+    nearest centroids are and recall runs 100.0% (deep inside a cell) to 55.6%
+    (on a boundary) at the same setting; nprobe = 3 converges them to 100.0%
+    vs 98.6%. What nprobe buys is recall for the *unlucky* queries.
+  - Note for future traces: the player numbers frames **1-indexed**
+    (`{i + 1}/{total}`), so "what to notice" bullets must offset from the
+    builder's array index.
 - [ ] **Walk-forward validation** — `wiki/walk-forward-validation` (fold construction; payoff = leakage under random K-fold)
 - [ ] **ARIMA order selection** — `wiki/arima-order-selection` (AIC grid search)
 - [ ] **FastICA** — `wiki/independent-component-analysis`

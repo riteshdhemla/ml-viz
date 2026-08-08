@@ -77,6 +77,19 @@ $$
 
 You score 10k vectors instead of 1M — a **100× speedup** — at the cost of missing any true neighbour whose vector landed in one of the 990 un-probed cells. Raising `nprobe` to 50 scores 50k vectors and recovers most of that lost recall.
 
+### Watch a probe run
+
+600 vectors, 16 cells, and one query that `nprobe = 1` gets wrong.
+
+<AlgorithmTrace id="ivf-search" />
+
+**What to notice:**
+
+- **Frame 3 — what "approximate" actually means.** Everything dim on the plot is not ranked lower; its distance is never computed. IVF's error mode is not mis-ranking, it is non-consideration.
+- **Frame 4 — the miss, in full.** Recall@5 collapses to 20%, and the true nearest neighbour — 0.16 away — is among the losses. It lives one cell over, and that cell's list was never opened. The query was not unlucky in any deep sense: its two nearest centroids are 0.90 and 0.96 away.
+- **Frame 6 — the estimate holds.** Measured candidate counts track $N \cdot n_{\text{probe}}/n_{\text{list}}$ to within a few percent across the whole sweep, so the back-of-envelope above is a real planning tool. Note also where recall saturates: 3 of 16 cells (19%) recovers 99.7% of exact search's answers, and the remaining 13 cells are pure cost.
+- **Frame 7 — the payoff, and the reason `nprobe` exists.** Recall at `nprobe = 1` is barely a property of the index. Split the queries by how close they sit to a cell boundary and the top quartile gets 100% while the bottom gets 55.6% — from the *same index at the same setting*. Raising `nprobe` to 3 converges them. What you buy with `nprobe` is not average recall, it is recall for the unlucky queries.
+
 ## Common mistakes
 
 1. **Treating ANN as exact.** Always measure recall@k against a flat-index ground truth on a sample before trusting it.

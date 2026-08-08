@@ -745,6 +745,8 @@ and records frames.
 | `gradient-boosting-splits` | `algo-traces/gradient-boosting.ts` | ensemble-methods/03-xgboost | ✅ |
 | `lasso-coordinate-descent` | `algo-traces/lasso-cd.ts` | wiki/ridge-lasso-paths | ✅ |
 | `backprop-computational-graph` | `algo-traces/backprop-graph.ts` | calculus-for-ml/02-chain-rule-and-backpropagation | ✅ |
+| `dagger` | `algo-traces/dagger.ts` | wiki/imitation-learning | ✅ |
+| `ivf-search` | `algo-traces/ivf.ts` | wiki/vector-databases | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is

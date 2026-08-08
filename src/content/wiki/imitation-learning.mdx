@@ -45,6 +45,21 @@ for i = 1, 2, 3, ...:
 
 **Limitation:** requires querying the expert at every training iteration, which is expensive if the expert is a human. Impractical when the expert is not queryable (e.g., learning from fixed offline video demonstrations).
 
+### Watch the loop run
+
+Lane keeping with a PD expert and a nearest-neighbour clone. The demonstrations are excellent, the clone fits them almost perfectly — and it still leaves the road.
+
+<AlgorithmTrace id="dagger" />
+
+**What to notice:**
+
+- **Frame 2 vs frame 3.** The clone's action error on held-out expert states is 0.014, and at a state the expert never visited it under-corrects by 19×. Both are true of the same model at the same time. The supervised score is not wrong, it is answering a different question.
+- **Frame 3 — the structural bound.** A clone can never output a correction larger than the largest one in its data, and the expert's competence is exactly what keeps that number small. The largest steering action anywhere in these demonstrations is 0.84; recovering from the gust needs 7.20.
+- **Frame 7 — same model class, same $k$, same code.** Aggregation changes only the state distribution, and tracking cost falls 24×. Nothing was learned about control that behavioral cloning could not already represent.
+- **Frame 9 — the payoff, and the counterintuitive one.** Sweeping how steadily the expert drives, BC's cost gets monotonically *worse* as the expert gets *better* (105× across seven levels), while DAgger stays flat. This is why "collect more expert demonstrations" is the wrong instinct: more data from a good expert is more of the same sliver.
+
+Two caveats the trace makes explicit rather than hiding. First, the $O(\epsilon T^2)$ bound above is worst-case: measured on this environment, cumulative deviation grows with exponent 0.44 for BC and 0.29 for DAgger, because both policies eventually stabilize — BC produces a large *bounded* transient here rather than a quadratic blow-up. What does hold is that BC's disadvantage widens with the horizon (1.8× at $T=10$, 3.7× at $T=200$). Second, an earlier version of this trace used a *linear* learner against the linear expert and behavioral cloning never failed at all — when the hypothesis class is globally correct, extrapolation is exact and covariate shift costs nothing. Compounding error needs a learner that cannot extrapolate, which is every real policy network.
+
 ## 3. GAIL — Generative Adversarial Imitation Learning
 
 GAIL (Ho & Ermon, 2016) reframes imitation as: *find a policy whose state-action occupancy measure matches the expert's*. It uses a GAN-style discriminator:
