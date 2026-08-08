@@ -192,6 +192,19 @@ FlashAttention (Dao et al., 2022) reorders the computation to never store the fu
   On modern GPUs, compute (FLOPs) is cheap; bandwidth (reading/writing HBM) is expensive. Standard attention is **memory-bandwidth bound**, not compute bound. FlashAttention reads each element of $Q$, $K$, $V$ only once per pass, replacing many slow HBM accesses with fast SRAM operations — that is where the 2–4× wall-clock speedup comes from.
 </Callout>
 
+### Watch the online softmax run
+
+<AlgorithmTrace id="flash-attention" />
+
+**What to notice:**
+
+- **Frame 4 — the rescale is the whole trick.** Block 1 contains a score larger than anything seen so far, so the running maximum moves from 0.634 to 0.862. Everything accumulated from block 0 was exponentiated against the *old* maximum and is now wrong by exactly $\exp(m_{\text{old}} - m_{\text{new}}) = 0.7957$. One scalar repairs an arbitrary amount of history — that is what lets a softmax be computed without ever seeing all its inputs.
+- **Frame 5 — a rescale of exactly 1.** The last block's maximum is *below* the running one, so nothing needs correcting. The rescale is not a per-block cost; it fires only when the maximum actually moves.
+- **Frame 6 — "exactly equivalent" is testable, and it passes.** Across all 48 output components the largest difference from standard attention is $2.2\times10^{-16}$, i.e. float64 rounding. FlashAttention is not a fast approximation like sparse or low-rank attention — it computes the same function by a different association of the same arithmetic. **Any output difference is a bug, never a tuning knob.**
+- **Frame 7 — why step 3 says "numerically stable".** Delete the running max and the method is algebraically identical and practically dead: finite at a max score of 704.1, NaN at 751.0. The threshold is not empirical — $\ln(\text{MAX\_FLOAT64}) = 709.78$ falls exactly between those rows. Above it $\exp$ returns Inf, and Inf/Inf is NaN.
+
+That last failure is worth remembering because it hides well: trained networks rarely produce scores near 709, so the bug survives review and then surfaces on a long context, an untrained model, or a lower-precision format — as NaN rather than as a slightly wrong number.
+
 FlashAttention-2 (2023) and FlashAttention-3 (2024) push further with better work partitioning across thread blocks and tensor-core utilization, but the core idea — tile and keep data in SRAM — is unchanged.
 
 ## Sliding-window and sparse attention

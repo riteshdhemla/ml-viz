@@ -342,7 +342,62 @@ not a second builder.
 
 ## Round 5 — complete (all nine shipped)
 
-Every item above is done. The next round would have to come from a fresh audit;
-the pages that scored high in the original one and are still untraced were
-excluded deliberately (architectures and taxonomies, where a trace would be
-forced).
+## Round 6 — from a fresh audit (42 pages now carry a trace)
+
+Re-scored every untraced `.mdx` on the original criteria (loops in fenced code,
+numbered procedure steps, worked examples, iterative language), then applied the
+selection rule by hand. 47 pages scored >= 5; most were correctly rejected.
+
+**Rejected despite scoring high** — architectures and taxonomies, where a trace
+would be forced: `cnns/04-transfer-learning` (a workflow, not a loop),
+`generative-models/06-vit-and-modern-genai`, `building-with-llms/01`, `/02` and
+`/07` (prompting taxonomies), `agent-design-patterns/05`,
+`streaming-ml/01-batch-to-streaming`, `model-evaluation/03-training-techniques`,
+`wiki/vc-dimension` (a concept with a viz already).
+
+**Rejected as duplicates** — the concept is already traced on the corresponding
+wiki page, so these want a *link*: `probabilistic-models/02-em-algorithm`
+(`em-gmm`), `rnns/01` (`bptt-gradient-flow`), `transformers/01-self-attention`
+(`scaled-dot-product-attention`), `neural-networks/02-gradient-descent`
+(`optimizer-comparison`), `time-series/02-arima-models`
+(`arima-order-selection`), `speech-audio/02` (has the CTC guided walkthrough).
+
+Genuine candidates:
+
+- [x] **FlashAttention online softmax** — `courses/transformers/04-modern-attention`
+  - Both of the page's unshowable claims measured. Exactness holds to float64
+    rounding: max |standard − tiled| is 2.22e-16 across all 48 output
+    components. Worth stating explicitly on the page, because it makes
+    FlashAttention categorically unlike sparse or low-rank attention — any
+    output difference is a bug, not a knob.
+  - The **rescale** is the frame that earns the trace. When block 1 raises the
+    running max from 0.634 to 0.862, every partial result accumulated before
+    that moment is wrong by exactly exp(m_old − m_new) = 0.7957, and one scalar
+    repairs all of it. Block 2's rescale is exactly 1.0000 — the correction
+    fires only when the max actually moves, which is easy to miss in prose.
+  - Payoff: deleting the running max fails **completely, not gradually**, and
+    the sweep brackets the threshold — finite at a max score of 704.1, NaN at
+    751.0, with ln(MAX_FLOAT64) = 709.78 between them. Not a precision
+    trade-off; both compute the same real number and only one can represent the
+    intermediates.
+  - Build note: the first overflow sweep topped out at a max score of 188 and
+    never crossed the ceiling, so `firstFail` was undefined and the builder
+    threw. It now asserts that the sweep straddles the ceiling rather than
+    silently reporting whatever it found.
+- [ ] **IRLS for GLMs** — `courses/linear-regression/04-generalized-linear-models`
+  - Iteratively reweighted least squares is a genuine Newton procedure with
+    quadratic convergence. Payoff: separation, where the likelihood has no
+    finite maximum and the weights collapse — a real failure practitioners hit.
+- [ ] **BatchNorm** — `wiki/batchnorm-algorithm`
+  - Batch statistics, normalise, scale/shift, EMA the running stats. Payoff:
+    the train/eval discrepancy the page's callout warns about, measured, plus
+    what happens at batch size 1.
+- [ ] **Durbin-Levinson / PACF** — `wiki/acf-pacf-interpretation`
+  - The recursion that turns an ACF into a PACF; already implemented inside the
+    `arima-order-selection` builder, so it is proven. Pairs with that trace.
+- [ ] **REINFORCE** — `courses/reinforcement-learning/04-policy-gradient`
+  - `PolicyGradientViz` exists but no trace. Payoff: measured variance
+    reduction from a baseline, which is the lesson's central claim.
+- [ ] **Bagging / OOB** — `courses/ensemble-methods/01-bagging-and-random-forests`
+  - Payoff: the out-of-bag error estimate against a held-out test set, and the
+    1/B variance reduction hitting its correlation floor.
