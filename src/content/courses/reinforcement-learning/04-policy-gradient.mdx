@@ -84,6 +84,18 @@ Combine both and you get **actor-critic**.
 
 <PolicyGradientViz />
 
+### Watch the baseline work
+
+<AlgorithmTrace id="reinforce-baseline" />
+
+**What to notice:**
+
+- **Frame 2 — where the variance comes from.** A single episode returns $G \approx 10.5$, so the update scales the score by ten, even though the *informative* part — how much better than average that action is — is only 0.38. The absolute level of $G$ carries none of the signal and all of the variance.
+- **Frame 5 — "doesn't bias the gradient" does not depend on choosing well.** Four baselines, including two deliberately wrong ones, all recover the exact gradient; only the variance changes (64.5 → 0.70 at $V$, 1.49 one unit away). Unbiasedness is free because $\mathbb{E}[\nabla\log\pi] = 0$ identically, so $\mathbb{E}[\nabla\log\pi \cdot b] = 0$ for *any* action-independent $b$.
+- **Frame 6 — $V$ is not actually the optimal baseline.** The variance-minimizing choice is $b^\star = \mathbb{E}[\lVert g\rVert^2 G]/\mathbb{E}[\lVert g\rVert^2]$, a gradient-weighted average of returns rather than the plain mean. It beats $V$ by only **1.3%**, though, against the 93× that $V$ already bought — which is why every textbook says $V$ and is right to.
+
+The failure that does matter is different: a baseline depending on the **action** rather than the state. Setting $b(a) = \mathbb{E}[G \mid a]$ drives the expected gradient to essentially zero (norm $1.8\times10^{-3}$ against a true 0.229) — learning stops dead with no error raised. That is why the baseline above is written $b(s)$ and not $b(s,a)$, and why the actor-critic advantage below stays legitimate: $V$ is a function of the state alone.
+
 ## Actor-Critic
 
 Two cooperating networks:

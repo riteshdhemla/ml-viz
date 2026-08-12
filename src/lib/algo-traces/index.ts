@@ -39,6 +39,7 @@ import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
 import { powerIterationTrace } from "./power-iteration";
 import { qLearningTrace } from "./q-learning";
+import { reinforceTrace } from "./reinforce";
 import { reservoirTrace } from "./reservoir";
 import { rocTrace } from "./roc";
 import { speculativeDecodingTrace } from "./speculative-decoding";
@@ -111,6 +112,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   irlsTrace,
   batchnormTrace,
   pacfTrace,
+  reinforceTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
