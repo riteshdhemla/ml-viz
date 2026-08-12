@@ -406,10 +406,23 @@ Genuine candidates:
     collapse to 1e-12, det(XᵀWX) falls 140 → 1e-6. No error, no failure to
     converge — just enormous coefficients with enormous standard errors, which
     come from inverting exactly that collapsing matrix.
-- [ ] **BatchNorm** — `wiki/batchnorm-algorithm`
-  - Batch statistics, normalise, scale/shift, EMA the running stats. Payoff:
-    the train/eval discrepancy the page's callout warns about, measured, plus
-    what happens at batch size 1.
+- [x] **BatchNorm** — `wiki/batchnorm-algorithm`
+  - Reproduces the page's worked example exactly (x = 2,4,6,8 -> y = -1.683,
+    0.106, 1.894, 3.683) and confirms both stated identities, mean(y) = beta
+    and var(y) = gamma^2. Also shows the layer contains the identity function:
+    gamma = sqrt(var_B), beta = mu_B returns the input with error exactly 0.
+  - **The page's own EMA code comment was wrong and is corrected.** It claimed
+    the running mean "converges toward 5" after five batches; it reaches
+    2.0392, a 59% error, and needs 44 batches at alpha=0.1 to come within 1%.
+    That warm-up bias is a commoner cause of "eval mode is broken" than
+    forgetting model.eval() — for a fixed input the eval output drifts
+    11.99 -> 2.79 as the EMA warms up.
+  - Second payoff is exact rather than statistical: at m = 1 the variance is
+    not "undefined" as the page's callout says, it is exactly **zero**, so
+    x_hat = 0/sqrt(eps) = 0 and y = beta for every input. 2, 40 and -1000 all
+    return 1.0. The batch-size sweep shows m=1 is not the endpoint of the
+    small-batch noise trend (sd 1.771 at m=2 down to 0.278 at m=64) but a
+    different failure entirely.
 - [ ] **Durbin-Levinson / PACF** — `wiki/acf-pacf-interpretation`
   - The recursion that turns an ACF into a PACF; already implemented inside the
     `arima-order-selection` builder, so it is proven. Pairs with that trace.
