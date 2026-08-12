@@ -442,9 +442,28 @@ Genuine candidates:
     5.6pp gap to the ceiling, which was noise, not a systematic deviation. The
     measurement costs 0.7s, so it runs 600. Check the standard error before
     reporting a gap as a finding.
-- [ ] **REINFORCE** — `courses/reinforcement-learning/04-policy-gradient`
-  - `PolicyGradientViz` exists but no trace. Payoff: measured variance
-    reduction from a baseline, which is the lesson's central claim.
+- [x] **REINFORCE** — `courses/reinforcement-learning/04-policy-gradient`
+  - Environment is a **one-step episode** (3-armed bandit, softmax policy),
+    chosen so the exact gradient, the exact variance under any baseline, and
+    the exact variance-minimising baseline are all closed-form. Worth reusing:
+    pick the smallest setting where nothing has to be estimated that could
+    have been derived.
+  - Payoff 1 measures both halves of the lesson's claim. "Doesn't bias the
+    gradient" is exact and does **not** depend on choosing well — four
+    baselines including two deliberately wrong ones all recover the exact
+    gradient, because E[grad log pi] = 0 identically. Only variance moves:
+    64.5 with none, 0.697 at V (93x), 1.49 one unit away from V.
+  - Payoff 2 qualifies "the best baseline is the value function". The
+    variance-minimising baseline is b* = E[||g||^2 G]/E[||g||^2], a
+    gradient-weighted average of returns, **not** V — but it beats V by only
+    1.3% against the 93x V already bought, so the textbook shortcut is well
+    justified rather than wrong.
+  - The failure that does matter is a baseline depending on the **action**:
+    b(a) = E[G|a] drives the expected gradient to norm 1.8e-3 against a true
+    0.229. Learning stops dead with no error raised. That is why the lesson
+    writes b(s) and not b(s,a), and why the actor-critic advantage stays legal.
+  - `npx next lint` caught two `prefer-const` **errors** (not warnings) here,
+    which would have failed CI. Run lint, not just type-check and tests.
 - [ ] **Bagging / OOB** — `courses/ensemble-methods/01-bagging-and-random-forests`
   - Payoff: the out-of-bag error estimate against a held-out test set, and the
     1/B variance reduction hitting its correlation floor.

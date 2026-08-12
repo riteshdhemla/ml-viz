@@ -758,6 +758,7 @@ and records frames.
 | `irls` | `algo-traces/irls.ts` | linear-regression/04-generalized-linear-models | ✅ |
 | `batchnorm` | `algo-traces/batchnorm.ts` | wiki/batchnorm-algorithm | ✅ |
 | `pacf-durbin-levinson` | `algo-traces/pacf.ts` | wiki/acf-pacf-interpretation | ✅ |
+| `reinforce-baseline` | `algo-traces/reinforce.ts` | reinforcement-learning/04-policy-gradient | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is
