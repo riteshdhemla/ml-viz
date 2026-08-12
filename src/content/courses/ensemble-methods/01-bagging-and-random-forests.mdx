@@ -151,6 +151,19 @@ rf.fit(X_train, y_train)
 print(f"OOB accuracy: {rf.oob_score_:.3f}")  # ~same as test accuracy
 ```
 
+### Watch it run
+
+The trace fits real CART regression trees over 50 independent training sets, so the variance formula above can be checked rather than restated.
+
+<AlgorithmTrace id="bagging-oob" />
+
+**What to notice:**
+
+- **Frame 3 — the formula holds, and the floor is visible.** Measured ensemble variance tracks $\rho\sigma^2 + \frac{1-\rho}{B}\sigma^2$ across a sweep of $B$. By $B = 40$ the second term is down to 0.02 while the first sits immovably at 0.18, so more trees buy essentially nothing.
+- **Frame 4 — averaging does not touch the bias.** Single tree and 40-tree ensemble have the *same* bias at the probe point; only the variance collapses. Averaging is linear, so bagging cannot fix a systematically wrong model — only an unstable one. That is the gap boosting exists to attack.
+- **Frame 5 — what random forests actually trade.** Sampling 2 of 5 features drops $\rho$ from 0.172 to 0.072 as promised, but per-tree variance $\sigma^2$ *rises* from 1.05 to 1.83, because a tree denied the best split is a worse estimator. The floor $\rho\sigma^2$ falls 28% anyway. RF deliberately accepts a worse individual model to buy decorrelation that more trees can exploit.
+- **Frame 6 — OOB against a real test set.** Over 45 datasets the OOB error is +0.186 ± 0.111 above the held-out test error, about 6% — close enough to use, and biased in the conservative direction because an OOB prediction averages only the ~22 trees that excluded that row.
+
 ## Strengths and weaknesses
 
 | ✅ Strengths | ❌ Weaknesses |

@@ -464,6 +464,29 @@ Genuine candidates:
     writes b(s) and not b(s,a), and why the actor-critic advantage stays legal.
   - `npx next lint` caught two `prefer-const` **errors** (not warnings) here,
     which would have failed CI. Run lint, not just type-check and tests.
-- [ ] **Bagging / OOB** — `courses/ensemble-methods/01-bagging-and-random-forests`
-  - Payoff: the out-of-bag error estimate against a held-out test set, and the
-    1/B variance reduction hitting its correlation floor.
+- [x] **Bagging / OOB** — `courses/ensemble-methods/01-bagging-and-random-forests`
+  - Fits **real CART regression trees** over 50 independent training sets so the
+    lesson's Var = rho*sigma^2 + (1-rho)*sigma^2/B can be checked rather than
+    restated. It holds, and the floor is visible: by B=40 the second term is
+    0.02 while the first sits at 0.18.
+  - Best frame is the RF trade, which is sharper than "RF is better": sampling
+    2 of 5 features drops rho 0.172 -> 0.072 as the lesson says, but per-tree
+    sigma^2 **rises** 1.05 -> 1.83, because a tree denied the best split is a
+    worse estimator. The floor falls 28% anyway. RF deliberately buys a worse
+    individual model to get decorrelation more trees can exploit.
+  - Also checks "reduces variance without increasing bias" — bias is identical
+    between one tree and the 40-tree ensemble, since averaging is linear. Which
+    says what bagging is *not* for, and why boosting exists.
+  - **The OOB frame reported a single run first and contradicted itself**: that
+    draw had OOB *below* test while the prose argued OOB errs conservative. The
+    per-run gap has sd 0.73 against a mean of 0.19, so one dataset flips the
+    sign a third of the time. Replicated over 45 datasets the gap is
+    +0.186 +/- 0.111 — magnitude only 1.7 SE from zero, direction better
+    resolved at 30/45 — and the frame now states both rather than picking the
+    tidier reading.
+
+## Round 6 — complete (all six shipped)
+
+Rounds 3 through 6 are done: 48 traces. A further round needs a fresh audit;
+the rejected-page reasoning above is worth re-reading first so it is not
+re-derived.
