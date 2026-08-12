@@ -757,6 +757,7 @@ and records frames.
 | `flash-attention` | `algo-traces/flash-attention.ts` | transformers/04-modern-attention | ✅ |
 | `irls` | `algo-traces/irls.ts` | linear-regression/04-generalized-linear-models | ✅ |
 | `batchnorm` | `algo-traces/batchnorm.ts` | wiki/batchnorm-algorithm | ✅ |
+| `pacf-durbin-levinson` | `algo-traces/pacf.ts` | wiki/acf-pacf-interpretation | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is

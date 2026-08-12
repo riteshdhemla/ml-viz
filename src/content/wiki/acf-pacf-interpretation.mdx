@@ -151,6 +151,21 @@ $$\rho_3 = \frac{-4}{10} = -0.40$$
 
 **Significance bands:** $\pm 1.96 / \sqrt{6} \approx \pm 0.80$. All three lags fall inside the bands — for this tiny $T = 6$ sample, none are significant. With more data, the alternating positive-negative pattern might suggest an MA(1) or AR(1) with a negative coefficient.
 
+### Step through the recursion
+
+The worked example above stops at the ACF. The trace carries it into the PACF via Durbin-Levinson, then measures how reliable the pattern table actually is.
+
+<AlgorithmTrace id="pacf-durbin-levinson" />
+
+**What to notice:**
+
+- **Frame 2 — what the PACF subtracts.** At lag 2 the numerator is $\hat\rho_2 - \hat\rho_1^2$: the total correlation minus the part already explained by routing through lag 1. On this series $\hat\rho_1^2 = 0.01$, so the indirect path is negligible and $\phi_{22} \approx \hat\rho_2$.
+- **Frame 3 — past where the formulas stop.** The recursion reaches $\phi_{33} = -0.4022$ without building or inverting the $3\times3$ system, and agrees with a direct solve to $10^{-16}$. It also carries the shorter model's coefficients forward, which is why the whole PACF costs $O(K^2)$ rather than a fresh $O(k^3)$ solve per lag.
+- **Frame 5 — the payoff, and it is a caution.** Over 600 replicates the AR(2) PACF satisfies "cuts off at lag 2" **68.7%** of the time when 10 lags are inspected, and **38.5%** at 20. More data does not help: the ceiling is $0.95^{L-2}$, because "inside the band at every later lag" is $L-2$ independent 5% tests. **Inspecting more lags makes the diagnosis less reliable, not more.**
+- **Frame 6 — why the band matters.** With the naive $\pm 1.96/\sqrt{T}$ band the MA(2) ACF reads correctly only 55.3% of the time, below even that ceiling, because the band assumes white noise while the significant $\rho_1, \rho_2$ inflate the true standard error at later lags. Bartlett's SE recovers it to 67.8%.
+
+So the correlogram *proposes* an order; it does not confirm one. Inspect few lags, expect a stray spike, and let the information criteria and residual checks decide — which is exactly the workflow the [Box-Jenkins page](/wiki/arima-order-selection) lays out.
+
 ## Seasonal patterns in the correlogram
 
 When the series has a seasonal period $m$ (e.g. $m = 12$ for monthly data), the ACF shows **spikes at multiples of the seasonal lag**: significant $\hat{\rho}_{12}$, $\hat{\rho}_{24}$, $\hat{\rho}_{36}$, and so on. The PACF typically shows a single large spike at lag $m$ with smaller spikes at $2m$.
