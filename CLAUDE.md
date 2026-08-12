@@ -759,6 +759,7 @@ and records frames.
 | `batchnorm` | `algo-traces/batchnorm.ts` | wiki/batchnorm-algorithm | ✅ |
 | `pacf-durbin-levinson` | `algo-traces/pacf.ts` | wiki/acf-pacf-interpretation | ✅ |
 | `reinforce-baseline` | `algo-traces/reinforce.ts` | reinforcement-learning/04-policy-gradient | ✅ |
+| `bagging-oob` | `algo-traces/bagging.ts` | ensemble-methods/01-bagging-and-random-forests | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is
