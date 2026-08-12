@@ -423,9 +423,25 @@ Genuine candidates:
     return 1.0. The batch-size sweep shows m=1 is not the endpoint of the
     small-batch noise trend (sd 1.771 at m=2 down to 0.278 at m=64) but a
     different failure entirely.
-- [ ] **Durbin-Levinson / PACF** — `wiki/acf-pacf-interpretation`
-  - The recursion that turns an ACF into a PACF; already implemented inside the
-    `arima-order-selection` builder, so it is proven. Pairs with that trace.
+- [x] **Durbin-Levinson / PACF** — `wiki/acf-pacf-interpretation`
+  - Reproduces the page's hand-worked ACF exactly, then carries the recursion
+    past lag 2 where the page stops giving formulas, cross-checking every phi_kk
+    against a direct solve of the k x k Yule-Walker system (agreement 1e-16).
+  - Payoff is a caution about the page's own pattern table: over 600 replicates
+    the AR(2) PACF satisfies "cuts off at lag 2" only 68.7% of the time at ten
+    lags and 38.5% at twenty, and **more data does not help**. The ceiling is
+    0.95^(L-2) — "inside the band at every later lag" is L-2 independent
+    5%-level tests — so inspecting more lags makes the diagnosis *less*
+    reliable. Largest gap to prediction 2.4pp against a +/-1.9pp standard error.
+  - Second half explains the page's own Bartlett remark, which it frames as a
+    refinement: with the naive band the MA(2) ACF reads correctly only 55.3% of
+    the time, below even that ceiling, because the band assumes white noise
+    while the significant rho1, rho2 inflate the true SE at later lags.
+    Bartlett recovers it to 67.8%.
+  - **Sample-size note:** a first version used 150 replicates and reported a
+    5.6pp gap to the ceiling, which was noise, not a systematic deviation. The
+    measurement costs 0.7s, so it runs 600. Check the standard error before
+    reporting a gap as a finding.
 - [ ] **REINFORCE** — `courses/reinforcement-learning/04-policy-gradient`
   - `PolicyGradientViz` exists but no trace. Payoff: measured variance
     reduction from a baseline, which is the lesson's central claim.

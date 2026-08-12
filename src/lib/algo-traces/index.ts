@@ -34,6 +34,7 @@ import { mcmcTrace } from "./mcmc";
 import { newtonTrace } from "./newton";
 import { nmsTrace } from "./nms";
 import { optimizersTrace } from "./optimizers";
+import { pacfTrace } from "./pacf";
 import { pagedAttentionTrace } from "./paged-attention";
 import { perceptronTrace } from "./perceptron";
 import { powerIterationTrace } from "./power-iteration";
@@ -109,6 +110,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   flashAttentionTrace,
   irlsTrace,
   batchnormTrace,
+  pacfTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));
