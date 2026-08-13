@@ -133,6 +133,7 @@ export const mdxComponents: MDXComponents = {
   SamplingViz: viz("SamplingViz"),
   ScalingLawViz: viz("ScalingLawViz"),
   SilhouetteViz: viz("SilhouetteViz"),
+  SimpsonsParadoxViz: viz("SimpsonsParadoxViz"),
   SoftMarginViz: viz("SoftMarginViz"),
   TraceWaterfallViz: viz("TraceWaterfallViz"),
   TransferLearningViz: viz("TransferLearningViz"),
