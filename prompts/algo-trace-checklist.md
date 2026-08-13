@@ -487,6 +487,69 @@ Genuine candidates:
 
 ## Round 6 — complete (all six shipped)
 
-Rounds 3 through 6 are done: 48 traces. A further round needs a fresh audit;
+## Round 7 — from a fresh audit (48 traces in place)
+
+The audit turned up 14 untraced pages scoring >= 6, but 11 were already
+rejected by hand during the Round 6 pass (architecture/taxonomy pages with no
+state-transforming loop, or lesson-side duplicates of a procedure already
+traced on its wiki page). Of the three genuinely unexamined:
+
+- **rejected** `courses/optimization-ml/02-convex-optimization` — definitions
+  and theorems (Jensen, KKT conditions), no loop that transforms state.
+- **rejected** `courses/time-series/03-deep-learning-for-time-series` —
+  architectures, plus walk-forward validation which `walk-forward` already
+  traces.
+- [x] **Random walk** — `wiki/random-walk`
+
+### The cross-link claim in this file was wrong
+
+Rounds 3-6 recorded eight lesson pages as "duplicate — should link to the
+existing trace instead". A per-file check found **seven of the eight links
+already present**: `em-algorithm` (probabilistic-models/02 line 107),
+`scaled-dot-product-attention` (transformers/01 line 63), `kmeans-algorithm`
+(clustering/01 line 39), `decision-tree-information-gain`
+(knn-decision-trees/02 line 51), `adaboost-algorithm` (ensemble-methods/02
+line 53), `arima-order-selection` (time-series/02 line 88), and
+`bptt-algorithm` on **rnns/02** — the lesson that actually teaches BPTT, not
+rnns/01 where the checklist expected it.
+
+Only `neural-networks/02-gradient-descent` had no route to
+`optimization-ml/01-gradient-descent-variants` and its `optimizer-comparison`
+trace. That link is now in place. Verify before scheduling work from a stale
+note in this file.
+
+### Round 7 findings
+
+- **Random walk** — `wiki/random-walk`
+  - The trace is an **exhaustive** forward DP over the joint law of
+    (position, running max), not a simulation, so there is no sampling error:
+    Var(S_t) = t to six decimals at t = 1, 4, 9, 16, 36, 100, and the
+    reflection principle can be *checked* rather than asserted.
+  - **The page stated the Brownian form of the reflection principle as if it
+    were exact on the lattice.** `P(max >= a) = 2 P(S_t >= a)` over-counts by
+    exactly `P(S_t = a)` whenever a and t share parity — at t = 12, a = 2 it
+    claims 0.7744 against the true 0.5811, a 33% overstatement. The exact
+    discrete form is `2 P(S_t > a) + P(S_t = a)`, which matched the
+    enumeration for every a in 1..6 (verified independently in Python with
+    `fractions.Fraction`, so the equality is exact and not float luck). The
+    page now states the lattice form and explains why the shortcut is the
+    continuum one. The notebook's Exercise 1 was already correct — it is
+    explicitly posed for a *Gaussian*-increment walk, where the boundary term
+    genuinely vanishes.
+  - Absorbing at a = 1 reproduces `(a/t) P(S_t = a)` exactly and makes
+    E[T_a] = infinity legible: 17.6% of paths have not touched +1 after 20
+    steps and 12.5% still have not after 40 — a ratio of 0.712 against
+    sqrt(1/2) = 0.707, the t^(-1/2) tail that is exactly slow enough to
+    diverge.
+  - **The payoff frame's first draft misattributed its own finding.** It
+    reported k = 10 only and called the +-1% ruin asymmetry (0.091 up vs
+    0.236 down, 2.6x) a property of the edge. Adding k = 50 showed the
+    asymmetry is a property of the *starting stack*: at the half-target the
+    same edge is exactly symmetric (0.8808 / 0.5000 / 0.1192), because
+    R_k(p) + R_{N-k}(1-p) = 1. Both rows are now in the table.
+
+## Round 7 — complete
+
+Rounds 3 through 7 are done: 49 traces. A further round needs a fresh audit;
 the rejected-page reasoning above is worth re-reading first so it is not
 re-derived.
