@@ -75,13 +75,13 @@ For a random walk this is immediate: $S_{t+1} = S_t + \varepsilon_{t+1}$, and $\
 
 A powerful tool for symmetric random walks is the **reflection principle**: any path that reaches level $a > 0$ by time $t$ can be reflected about $a$ after the first hitting time to produce a bijection with paths above $a$ at time $t$.
 
-This gives the probability of ever reaching $a$ by step $t$:
+Split the paths that touch $a$ by where they *finish*. Those ending strictly above $a$ must have touched it, contributing $P(S_t > a)$. Those ending strictly below $a$ reflect — mirror the path about $a$ after its first hitting time — onto exactly the paths ending above $a$, contributing another $P(S_t > a)$. Those ending *exactly* at $a$ are their own mirror image, so they contribute $P(S_t = a)$ once, not twice. The exact lattice statement is therefore:
 
 $$
-P\!\left(\max_{0 \le s \le t} S_s \ge a\right) = 2\,P(S_t \ge a),
+P\!\left(\max_{0 \le s \le t} S_s \ge a\right) = 2\,P(S_t > a) + P(S_t = a).
 $$
 
-which holds because paths that end above $a$ are a subset, and the reflection makes the count exact.
+The form usually quoted, $2\,P(S_t \ge a)$, is the **Brownian motion** version: for a continuous process $P(W_t = a) = 0$, so the boundary term vanishes. On the integer lattice it does not. When $a$ and $t$ share parity the shortcut overstates the hitting probability badly — at $t = 12,\ a = 2$ it claims $0.774$ against the true $0.581$. The trace below enumerates the full joint law of (position, running max) and checks both forms against it.
 
 The **first-passage time** $T_a = \min\{t : S_t = a\}$ for a symmetric walk satisfies:
 
@@ -200,6 +200,21 @@ $$
 | 10 | −1 | 2 |
 
 Net displacement $S_{10} = 2$. Actual $\mathrm{SD}$ at $t = 10$ is $\sqrt{10} \approx 3.16$, so ending at $2$ is unremarkable — the walk could plausibly end anywhere from roughly $-6$ to $+6$.
+
+## Stepping the whole distribution at once
+
+A single path tells you what *one* walk did. The trace below steps the **entire law** forward instead: it carries the joint distribution of $(S_t,\ \max_{s \le t} S_s)$ and pushes every state through the same two-branch update. Because it enumerates rather than samples, every number below is exact — there is no Monte Carlo error to hide behind.
+
+<AlgorithmTrace id="random-walk-law" />
+
+**What to notice:**
+
+- **Frame 2** replays the ten hand-worked flips above through the update rule, and shows why the running max rides along for free: it is just a second coordinate of the state.
+- **Frames 3–5** show the parity constraint. At even $t$ only even sites carry mass, at odd $t$ only odd ones — the lattice walk can never be found at an unreachable site, a feature Brownian motion loses in the continuum limit.
+- **Frame 7** reads $\mathrm{Var}(S_t)$ off the exact law at $t = 1, 4, 9, 16, 36, 100$: it equals $t$ to six decimals every time, and $\mathrm{SD} = \sqrt{t}$. This is the variance table above, verified rather than derived.
+- **Frame 8** is the reflection-principle check. The exact $P(\max \ge a)$ from the joint law matches $2P(S_t > a) + P(S_t = a)$ for every $a$, while the Brownian shortcut $2P(S_t \ge a)$ overstates it by up to $0.193$ — precisely $P(S_t = a)$, and only when $a$ and $t$ share parity.
+- **Frame 9** absorbs at $a = 1$ to get the first-passage law. It reproduces $\frac{a}{t}P(S_t = a)$ exactly, and the cumulative column shows why $\mathrm{E}[T_a] = \infty$: after 20 steps 17.6% of paths still have not touched $+1$, and after 40 steps 12.5% still have not — the tail only shrinks by a factor of $\sqrt{2}$ when the horizon doubles, which is exactly slow enough to make the mean diverge.
+- **Frame 10** is the payoff. Absorb at both $0$ and $N = 100$ and the same loop becomes Gambler's Ruin, matching the closed form to six decimals — and showing that the same edge is not worth the same to every bankroll. From $k = 50$ a $\pm 1\%$ edge is exactly symmetric ($0.881$ vs $0.119$ around $0.500$), because $R_k(p) + R_{N-k}(1-p) = 1$ makes the half-target case self-symmetric. From $k = 10$ it is not: losing $1\%$ adds only $0.091$ to a ruin probability already at $0.90$, while gaining $1\%$ removes $0.236$ — a $2.6\times$ larger move. The short stack has no headroom left to lose, and a favourable edge is precisely what buys it the runway to build some.
 
 ## Applications in machine learning
 
