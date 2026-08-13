@@ -55,6 +55,7 @@ export const mdxComponents: MDXComponents = {
   AttentionViz: viz("AttentionViz"),
   AudioFeaturesViz: viz("AudioFeaturesViz"),
   BaggingViz: viz("BaggingViz"),
+  BanditExplorationViz: viz("BanditExplorationViz"),
   BayesViz: viz("BayesViz"),
   BiasVarianceViz: viz("BiasVarianceViz"),
   BoostingShrinkageViz: viz("BoostingShrinkageViz"),
