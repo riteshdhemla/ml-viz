@@ -27,10 +27,9 @@ Ordered by how much the lesson is currently carrying in prose that a picture
 would carry better.
 
 - [x] **causal-inference/01** — Simpson's paradox. `SimpsonsParadoxViz`.
-- [ ] **model-evaluation/01-classification-metrics** — one threshold slider
+- [x] **model-evaluation/01-classification-metrics** — one threshold slider
       driving the confusion matrix, precision/recall, and the moving point on
-      both the ROC and PR curves. The lesson explains all four separately; they
-      are one object.
+      both the ROC and PR curves. `ThresholdSweepViz`.
 - [ ] **reinforcement-learning/05-exploration-and-model-based** — ε-greedy vs
       UCB vs Thompson on the same bandit, with cumulative regret. Four
       strategies described in prose, no way to see them diverge.
@@ -176,3 +175,29 @@ the Tier 3 entry, not both.
     rather than as the real effect it is. Recorded in the component's doc
     comment so the cap is not "tidied up" later.
   - Verified by screenshot in both states rather than by reading the JSX.
+
+- [x] **The threshold sweep** — `model-evaluation/01-classification-metrics`
+  - `ThresholdSweepViz`: 900 positives and 900 negatives scored once from two
+    fixed Gaussians through a sigmoid (means -0.8 / +0.8, separation 1.6,
+    achievable AUC 0.873). The lesson explained the confusion matrix,
+    precision/recall, F1, ROC and PR in five separate sections; they are five
+    readings of one decision, so the viz puts them on one screen with one
+    slider.
+  - TPR and FPR are functions of the two score distributions alone, so they are
+    precomputed for all 201 thresholds and prevalence enters only through
+    `P = pi*TPR / (pi*TPR + (1-pi)*FPR)`. That structure *is* the lesson's
+    imbalance warning: AUC-ROC comes out **identical to four decimals**
+    (0.8727) at 50%, 10% and 1% prevalence, while PR-AUC falls
+    0.8699 -> 0.5247 -> 0.1905. Not "similar" — identical, because neither TPR
+    nor FPR ever touches the class mix.
+  - At 1% prevalence and threshold 0.5 the model flags 2,079 false positives to
+    catch 79 true ones (precision 0.037) while accuracy reads 0.790 against
+    0.792 on balanced data. Two of the three headline numbers report that
+    nothing is wrong.
+  - Both histograms are normalised to their own peak — at 1% the positive class
+    is otherwise one invisible pixel. The real mix is in the confusion-matrix
+    counts, which is the honest place for it; the caption says so rather than
+    letting the reader infer a 50/50 split from the picture.
+  - First layout put each AUC inside its own plot; at 50% prevalence the PR-AUC
+    label sat on top of the curve. Both moved to the stats row, which also puts
+    the two numbers side by side — the comparison the frame exists to make.

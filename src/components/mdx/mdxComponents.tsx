@@ -135,6 +135,7 @@ export const mdxComponents: MDXComponents = {
   SilhouetteViz: viz("SilhouetteViz"),
   SimpsonsParadoxViz: viz("SimpsonsParadoxViz"),
   SoftMarginViz: viz("SoftMarginViz"),
+  ThresholdSweepViz: viz("ThresholdSweepViz"),
   TraceWaterfallViz: viz("TraceWaterfallViz"),
   TransferLearningViz: viz("TransferLearningViz"),
   TransformerBlockViz: viz("TransformerBlockViz"),
