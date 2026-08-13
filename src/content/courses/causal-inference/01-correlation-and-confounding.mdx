@@ -53,6 +53,16 @@ $$
 
 The aggregate and the stratified analyses disagree, and *which one is correct depends on the causal structure* — whether the grouping variable is a confounder (adjust for it) or a mediator (don't). Statistics alone can't tell you; causal reasoning can.
 
+<SimpsonsParadoxViz />
+
+The generating process here is fixed and known: the dose helps **every** patient by exactly $+0.90$ recovery points per unit, and severity independently costs $2.5$ points. The slider changes one thing only — how strongly severity decides *who gets which dose*. Three things are worth doing with it:
+
+1. **Start at 0.** Nothing is confounded yet, and the pooled fit reports $+0.898$ against a true $+0.90$. The naive analysis is not wrong in principle; it is wrong under a particular structure.
+2. **Drag it up.** Near $0.35$ the pooled slope crosses zero, and past that the aggregate says the drug *harms* patients while all three stratum lines still slope up. The three within-stratum estimates never move — they sit at $+0.896$ the entire time. Nothing about the treatment changed; only who received it.
+3. **Press "randomise the dose".** The strata still differ in recovery, and the slider still reads whatever you left it at — but the pooled fit snaps back to the truth. Randomisation doesn't measure the confounder or adjust for it. It deletes the arrow that made adjustment necessary.
+
+The third point is the one worth carrying: adjustment recovers the effect *if* you knew to adjust, and randomisation recovers it *without* you knowing anything. That asymmetry is why the RCT is the gold standard and not merely a convenience.
+
 ## Why ML cares
 
 - **Actionability.** A feature can be highly predictive yet useless to act on (it's an effect, not a cause, or it's confounded). Deciding *what to change* is causal.
