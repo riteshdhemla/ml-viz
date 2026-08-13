@@ -739,6 +739,9 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | PreferenceTuningViz | `visualizations/PreferenceTuning/` | fine-tuning-alignment/04-rlhf-and-dpo | ✅ **guided** |
 | ContinuousTrainingViz | `visualizations/ContinuousTraining/` | ml-in-practice/16-cicd-and-continuous-training | ✅ **guided** |
 | CTCDecodingViz | `visualizations/CTCDecoding/` | speech-audio/02-speech-recognition | ✅ **guided** |
+| SimpsonsParadoxViz | `visualizations/SimpsonsParadox/` | causal-inference/01-correlation-and-confounding | ✅ |
+| ThresholdSweepViz | `visualizations/ThresholdSweep/` | model-evaluation/01-classification-metrics | ✅ |
+| BanditExplorationViz | `visualizations/BanditExploration/` | reinforcement-learning/05-exploration-and-model-based | ✅ |
 
 ## Algorithm Traces Built
 

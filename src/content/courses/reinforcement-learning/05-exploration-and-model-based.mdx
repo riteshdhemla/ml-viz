@@ -90,6 +90,55 @@ Thompson Sampling is **Bayes-optimal** for many bandit problems and often outper
 
 ---
 
+## Watching the three of them diverge
+
+Three strategies described separately are three sets of rules. Put them on the *same* five arms with the *same* random seeds and the difference stops being a claim about regret bounds and becomes a shape you can see.
+
+<BanditExplorationViz />
+
+The right quantity to plot is **cumulative regret** — reward given up against an oracle that always pulls the best arm. Average reward would show all three converging on a flat line just under $0.70$ and hide everything interesting; regret keeps the history, so a strategy that never stops exploring at a fixed rate leaves a permanently rising line behind it.
+
+### ε-greedy pays a tax you can compute in advance
+
+Once ε-greedy has actually identified the best arm, its behaviour is fully determined: it pulls the best arm $1 - \epsilon + \epsilon/K$ of the time and each other arm $\epsilon/K$ of the time, forever. So its regret per step settles at
+
+$$
+\text{slope} = \frac{\epsilon}{K}\sum_a \Delta_a = \epsilon \cdot \bar\Delta = 0.214\,\epsilon
+$$
+
+for these arms. That is the dashed line in the plot, and it is not an approximation. Measured over the last quarter of the run:
+
+| ε | measured late slope | $\epsilon\bar\Delta$ | final regret |
+|---|---|---|---|
+| 0.05 | 0.0170 | 0.0107 | 86.1 |
+| 0.10 | 0.0223 | 0.0214 | 87.7 |
+| 0.20 | 0.0429 | 0.0428 | 143.9 |
+| 0.30 | 0.0642 | 0.0642 | 203.1 |
+
+At $\epsilon = 0.20$ and $0.30$ the prediction is exact. Below that the measured slope runs *above* it — and the gap is the interesting part, because it means the premise has failed: at 3000 pulls with $\epsilon = 0.05$ the agent still has not reliably found the best arm, so it is losing reward to **misidentification** on top of the exploration tax. Those are the two costs ε-greedy trades between, and the slider moves you along the tradeoff: regret is $253$ at $\epsilon = 0$ (pure greedy locks onto the wrong arm in nearly half of all runs), bottoms out around $81$ near $\epsilon = 0.08$, and climbs back to $203$ at $\epsilon = 0.30$. Both ends are bad for opposite reasons.
+
+Press **decay ε as 1/t** and the tax stops accruing: starting from $\epsilon_0 = 0.30$, regret falls from $203$ to $66$ — better than *any* fixed ε, which is exactly the argument for annealing.
+
+### The constant matters more than the algorithm
+
+UCB and Thompson both bend. Compare each curve's slope over its last quarter against its first quarter: ε-greedy at $\epsilon = 0.30$ scores $0.98$ — a straight line — while UCB scores $0.46$ and Thompson $0.41$. They are still exploring, but less and less.
+
+The uncomfortable part is the `c` slider:
+
+| | final regret |
+|---|---|
+| UCB, $c = 0.45$ (tuned) | **26.3** |
+| Thompson (nothing to tune) | 34.2 |
+| UCB, $c = 1.0$ | 87.6 |
+| ε-greedy, $\epsilon = 0.10$ | 87.7 |
+| UCB, $c = 1.5$ | 155.6 |
+
+Tuned UCB is genuinely the best thing here. But UCB at a perfectly plausible $c = 1.0$ ties with the ε-greedy baseline it is supposed to dominate, and the textbook $c = \sqrt2$ is worse than that. Thompson Sampling gets within $30\%$ of the tuned optimum **with no hyperparameter at all** — that, and not the regret bound, is why it is the default in practice. A provable guarantee about the shape of a curve says nothing about the constant in front of it, and the constant is what you have to live with at $T = 3000$.
+
+Push `c` down to $0.20$ and watch UCB's ratio jump to $0.93$: with too small a bonus it stops exploring early and degenerates into greedy, straight line and all.
+
+---
+
 ## Count-based exploration
 
 Give the agent a **bonus reward** for visiting rarely-seen states:

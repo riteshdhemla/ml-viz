@@ -30,9 +30,9 @@ would carry better.
 - [x] **model-evaluation/01-classification-metrics** — one threshold slider
       driving the confusion matrix, precision/recall, and the moving point on
       both the ROC and PR curves. `ThresholdSweepViz`.
-- [ ] **reinforcement-learning/05-exploration-and-model-based** — ε-greedy vs
-      UCB vs Thompson on the same bandit, with cumulative regret. Four
-      strategies described in prose, no way to see them diverge.
+- [x] **reinforcement-learning/05-exploration-and-model-based** — ε-greedy vs
+      UCB vs Thompson on the same bandit, with cumulative regret.
+      `BanditExplorationViz`.
 - [ ] **optimization-ml/02-convex-optimization** — the chord-above-the-graph
       definition and Jensen's inequality. Rejected for a *trace* (no loop that
       transforms state) and exactly right for a viz.
@@ -201,3 +201,41 @@ the Tier 3 entry, not both.
   - First layout put each AUC inside its own plot; at 50% prevalence the PR-AUC
     label sat on top of the curve. Both moved to the stats row, which also puts
     the two numbers side by side — the comparison the frame exists to make.
+
+## Round 2
+
+- [x] **Three strategies on one bandit** — `reinforcement-learning/05`
+  - `BanditExplorationViz`: five Bernoulli arms (0.25 … 0.70), 200 runs of 3000
+    pulls per strategy on shared seeds, all simulated in the browser. Plotted as
+    **cumulative regret**, not average reward — reward curves for all three sit
+    just under 0.70 and the whole distinction is invisible; regret keeps the
+    history, so "never stops exploring" shows up as a permanently rising line.
+  - The payoff is a number the reader can predict before looking. Once ε-greedy
+    has found the best arm it pulls a uniformly random arm ε of the time
+    forever, so its regret slope settles at exactly ε·(ΣΔ)/K = 0.214ε. Measured
+    over the last quarter: **0.0642 against 0.0642 predicted at ε = 0.30**, and
+    0.0429 against 0.0428 at ε = 0.20 — inside one SE both times, so the dashed
+    asymptote lies on the curve.
+  - Below ε ≈ 0.15 the measured slope runs *above* the prediction (z = 2.9 at
+    ε = 0.10, z = 4.3 at ε = 0.05). That is not noise and not a bug — the
+    premise fails, because at 3000 pulls the agent has not reliably identified
+    the best arm and the excess is misidentification rather than the
+    exploration tax. Keeping both halves is what makes the ε slider teach
+    something: regret is 253 at ε = 0, bottoms out near 81 at ε = 0.08, and
+    climbs to 203 at ε = 0.30, bad at both ends for opposite reasons.
+  - **The finding worth carrying is about the constant, not the algorithm.**
+    Tuned UCB (c = 0.45) reaches 26.3 and genuinely beats Thompson's 34.2. But
+    UCB at a plausible c = 1.0 scores 87.6 — a dead tie with ε-greedy at
+    ε = 0.10 (87.7), the baseline it is supposed to dominate — and the textbook
+    c = √2 is worse still (~156). Thompson lands within 30% of the tuned
+    optimum with no hyperparameter at all. The regret bound says nothing about
+    the constant in front of it, and at T = 3000 the constant is all you have.
+    Default is therefore c = 1.0, not the flattering 0.45.
+  - Arm means are spread 0.25–0.70 deliberately. Realistically close arms
+    (gaps ~0.07) need ~10× the horizon before any of this is visible, which is
+    a slower viz that teaches strictly less.
+  - Two layout collisions caught by screenshot, not by reading the JSX: the
+    bottom-right legend sat exactly where the Thompson curve ends (moved to the
+    top-left, the one corner a cumulative curve starting at 0 cannot reach at
+    any slider setting), and the pull-share percentages were clipped off the top
+    of the mini-bar viewBox for the best arm — i.e. on the one bar that matters.
