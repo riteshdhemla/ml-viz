@@ -116,6 +116,28 @@ The **PR curve** plots **Precision vs Recall** at every threshold, with no invol
 
 For **imbalanced datasets** (rare diseases, fraud), PR-AUC is the preferred summary: it directly measures whether predicted positives are real (precision) and whether real positives are found (recall).
 
+## Everything above is one object
+
+The confusion matrix, precision, recall, F1, the ROC curve and the PR curve are not six things to memorise. They are six readings of a single decision — where you put the threshold — taken on a single model.
+
+<ThresholdSweepViz />
+
+The model never changes: 900 positives and 900 negatives, scored once, separated well enough to reach an AUC of $0.873$. Only the threshold and the class mix move.
+
+Slide the threshold first. The teal point walks along **both** curves simultaneously, and precision and recall trade against each other exactly as described above — that tradeoff is not a property of your model, it is a property of the cut you chose in it.
+
+Then press **1%** and change nothing else. This is the imbalance warning above, made checkable:
+
+| prevalence | AUC-ROC | PR-AUC | no-skill floor |
+|---|---|---|---|
+| 50% | 0.8727 | 0.8699 | 0.50 |
+| 10% | 0.8727 | 0.5247 | 0.10 |
+| 1% | 0.8727 | 0.1905 | 0.01 |
+
+AUC-ROC is not *similar* across those rows — it is **identical to four decimals**, because TPR and FPR are both computed within a class and neither one ever sees the class mix. The PR curve collapses over the same three rows, because precision is the one metric that asks "of the things I flagged, how many were real?"
+
+At 1% prevalence and a threshold of $0.5$, this model flags **2,079 false positives to catch 79 true ones** — precision $0.037$. Accuracy still reads $0.790$ — all but unchanged from the $0.792$ it reported on balanced data — and the ROC curve does not move at all. Two of the three headline numbers are telling you nothing is wrong.
+
 ```python
 from sklearn.metrics import roc_auc_score, average_precision_score
 
