@@ -744,6 +744,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | BanditExplorationViz | `visualizations/BanditExploration/` | reinforcement-learning/05-exploration-and-model-based | ✅ |
 | ConvexityViz | `visualizations/Convexity/` | optimization-ml/02-convex-optimization | ✅ |
 | ValidationSplitViz | `visualizations/ValidationSplit/` | model-evaluation/02-validation-strategies | ✅ |
+| StorageLayoutViz | `visualizations/StorageLayout/` | ml-in-practice/05-data-engineering-fundamentals | ✅ |
+| OverSmoothingViz | `visualizations/OverSmoothing/` | graph-neural-networks/03-graph-attention-and-pooling | ✅ |
 
 ## Algorithm Traces Built
 

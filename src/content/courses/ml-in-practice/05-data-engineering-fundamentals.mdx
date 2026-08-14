@@ -53,6 +53,30 @@ You have a 100-million-row events table with 10 columns of roughly equal width. 
 
 This is the single most important reason ML training pipelines store features in Parquet on S3 instead of CSV. A 50x reduction in disk I/O is a 50x reduction in training-data-load time on the same hardware.
 
+### The same query, on a disk you can see
+
+<StorageLayoutViz />
+
+The ribbon is disk in byte order, which is the only view in which the two layouts differ at all — as tables they are identical. Pick different columns and two separate effects move independently.
+
+**Locality, which is about blocks and not bytes.** Disk is read a block at a time. Under row-major every column's cells are strided across *every* block, so projecting 2 of 8 columns still fetches **100% of blocks** — and the block-size slider does not rescue it, at 4, 8, 16 or 32 cells per read. The grey cells are the ones dragged in for free: 4 bytes wasted for every 1 wanted. Column-major fetches ~25%, the fraction of columns asked for, and nothing else.
+
+**Compressibility, which only column-major can use at all.** Dictionary and run-length encoding need neighbours drawn from the same domain, and row-major never has any. Encoding each column the way Parquet actually does — best of plain, dictionary + bit-packing, dictionary + RLE — the measured per-column ratios on this table span a factor of thirty:
+
+| column | encoded as | ratio |
+|---|---|---|
+| `device` (4 values, 8-byte string) | dict + bit-packing | **31.2×** |
+| `event` (9 values, 12-byte string) | dict + bit-packing | 23.0× |
+| `ab_bucket` (2 values) | dict + bit-packing | 8.0× |
+| `user_id` (one per session) | dict + RLE | 5.8× |
+| `country` (14 values, 2-byte code) | dict + bit-packing | 4.0× |
+| `ts` (near-sorted) | dict + bit-packing | 1.2× |
+| `price` (random floats) | plain | **1.0×** |
+
+<Callout type="warning" title="The 50× is not a property of the format">
+  Those two effects multiply, and the result depends on *which* columns you ask for. On this identical file, projecting `ts` + `user_id` reads **6.7× less** than the row store, while projecting `event` + `ab_bucket` reads **85× less**. Same format, same data, a thirteen-fold difference — because `price` and `ts` carry real entropy and `device` carries two bits pretending to be eight bytes. "Parquet gives 10–30×" is a statement about typical telemetry schemas, not about Parquet. The actionable version: a wide low-cardinality column is nearly free to store and nearly free to read, so denormalising enum-like features into your training table costs far less than the row count suggests.
+</Callout>
+
 <Callout type="tip" title="Why column stores dominate ML training">
 ML training workloads are *the* archetypal columnar workload: scan billions of rows, project a small set of columns, aggregate or shuffle, repeat for many epochs. The disk pattern is exactly what Parquet, ORC, and warehouses are built for. The day a team switches their training reads from CSV to Parquet is usually the day their epochs go from hours to minutes. The flip side: if your workload is single-row updates (a CRUD app), columnar is the wrong tool — every update rewrites a chunk and write throughput collapses.
 </Callout>

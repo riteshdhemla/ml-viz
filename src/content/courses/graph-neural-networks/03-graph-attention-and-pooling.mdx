@@ -51,9 +51,27 @@ $$
 \text{as } k \to \infty:\quad \mathbf{h}_v^{(k)} \to \text{(nearly) the same vector for all } v
 $$
 
+### It is the operator, not the training
+
+<OverSmoothingViz />
+
+Strip a GCN of its weights and nonlinearities and one layer is just multiplication by $P = D^{-1/2}(A+I)D^{-1/2}$. That operator has $\lambda_1 = 1$ **exactly**, and its eigenvector is $D^{1/2}\mathbf{1}$ — the direction in which every node holds the same value. Every other component is multiplied by its own $\lambda_i < 1$ at every layer. Over-smoothing is not something that goes wrong during training; it is what repeated averaging *is*.
+
+That also fixes the **rate**. Dirichlet energy $E(H) = \sum_{(u,v)\in E}\lVert h_u/\sqrt{d_u} - h_v/\sqrt{d_v}\rVert^2$ measures how much node-to-node variation survives, and it shrinks by $\lambda_2^2$ per layer. On the default graph the measured ratio walks straight onto the prediction:
+
+| depth $k$ | measured $E_{k+1}/E_k$ | $\lambda_2^2$ |
+|---|---|---|
+| 5 | 0.81372 | 0.82637 |
+| 10 | 0.82150 | 0.82637 |
+| 20 | 0.82448 | 0.82637 |
+| 40 | 0.82608 | 0.82637 |
+| 78 | 0.82636 | 0.82637 |
+
+**Now drag the bridge slider, because it runs against the obvious intuition.** Adding edges *between* the two communities makes the graph mix better, which lowers $\lambda_2$ — so a better-connected graph over-smooths **faster**. At depth 20 the surviving energy is $0.504$ with one bridge and $0.0088$ with twelve: a 57× difference from adding eleven edges, with the node features untouched. More connectivity is not more information here; it is a shorter fuse.
+
 Mitigations:
 
-- **Residual / skip connections** — add the previous layer's representation back, preserving node identity.
+- **Residual / skip connections** — add the previous layer's representation back, preserving node identity. This is the α slider: APPNP's $H \leftarrow (1-\alpha)PH + \alpha H_0$ has a **nonzero fixed point**, so the energy plateaus instead of decaying. At $\alpha = 0$, $E_{30}/E_0 = 9.6\times10^{-4}$; at $\alpha = 0.1$ it is $1.1\times10^{-1}$ and flat from about layer 10. One term converts geometric decay into a floor.
 - **Jumping knowledge** — combine representations from *all* layers (not just the last) per node.
 - **Fewer layers** — often the simplest, most effective fix.
 - **Normalization** (PairNorm, etc.) — explicitly keep node embeddings from collapsing together.
