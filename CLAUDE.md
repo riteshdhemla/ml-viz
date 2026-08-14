@@ -760,6 +760,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | BottleneckViz | `visualizations/Bottleneck/` | generative-models/02-autoencoders | ✅ |
 | ExperienceReplayViz | `visualizations/ExperienceReplay/` | reinforcement-learning/03-deep-q-networks | ✅ |
 | BackdoorAdjustmentViz | `visualizations/BackdoorAdjustment/` | causal-inference/02-interventions-and-potential-outcomes | ✅ |
+| AnomalyThresholdViz | `visualizations/AnomalyThreshold/` | ml-in-practice/14-anomaly-detection | ✅ |
+| ConstrainedOptViz | `visualizations/ConstrainedOpt/` | optimization-ml/03-constrained-optimization | ✅ |
 
 ## Algorithm Traces Built
 

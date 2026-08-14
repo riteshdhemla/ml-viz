@@ -47,10 +47,10 @@ would carry better.
       `RooflineViz`. Also serves `ml-in-practice/12` and `22`.
 - [x] **computer-vision/01-object-detection** — IoU and anchor matching.
       `AnchorMatchingViz`.
-- [ ] **ml-in-practice/14-anomaly-detection** — the threshold problem: two
-      overlapping score distributions and what moving the cut costs.
-- [ ] **optimization-ml/03-constrained-optimization** — feasible region, level
-      sets, and which constraints are active at the optimum.
+- [x] **ml-in-practice/14-anomaly-detection** — the threshold problem.
+      `AnomalyThresholdViz`.
+- [x] **optimization-ml/03-constrained-optimization** — feasible region, level
+      sets, active constraints. `ConstrainedOptViz`.
 - [x] **nlp/02-word-embeddings** — embedding space with analogy arithmetic. `WordAnalogyViz`.
 - [x] **generative-models/01-what-are-generative-models** — a discriminative
       boundary and a generative density fit to the same points.
@@ -559,3 +559,34 @@ the Tier 3 entry, not both.
   - First layout put M on the straight line between X and Y, so the causal edge
     was drawn *through* it and read as mediation — precisely the structure the
     viz exists to distinguish. Caught by screenshot; M now hangs below X.
+
+## Round 5
+
+- [x] **The threshold problem, priced** — `ml-in-practice/14`
+  (`AnomalyThresholdViz`)
+  - Tails are evaluated **analytically** rather than sampled. A first pass used
+    4000 samples per class and reported precision exactly 1.0000 at the
+    F1-optimal cut — a finite-sample zero in the far tail, not a real result.
+    Every interesting threshold in anomaly detection lives out there.
+  - At 0.1% prevalence over 1M events/day the cost-optimal threshold moves from
+    3.93 to 1.28 as miss/alarm goes 1 → 1000 (recall 0.11 → 0.88, alerts 156 →
+    101,057). **F1's threshold is 2% off at a ratio of 10, 50% off at 100 and
+    244% off at 1000** — so "maximise F1" is not a neutral default, it asserts
+    a miss costs about ten false alarms.
+  - The second half is what imbalance forces regardless of the cut: catching
+    88% means 101,057 alerts of which **99.1% are false**. Model quality is not
+    the variable — prevalence is — which is why the fix is triage or a better
+    score, never a better threshold.
+
+- [x] **The multiplier as a price** — `optimization-ml/03` (`ConstrainedOptViz`)
+  - λ checked against a numerical −d(f*)/db at every budget: 3.00000 / 2.00000 /
+    1.00000 / 0.50000 at b = 2 / 3 / 4 / 4.5, **exact each time**, and 0 the
+    moment the unconstrained optimum becomes feasible.
+  - That makes complementary slackness something you watch rather than read:
+    a non-binding constraint has no price. The panel also shows ∇f staying
+    perpendicular to the active constraint, which is stationarity doing its
+    work.
+  - Two syntax/rendering traps worth remembering: `−df*/db` inside a block
+    comment contains `*/` and **closes the comment**, and `VizStat` uppercases
+    its label so λ renders as Λ — a different symbol. Greek belongs in SVG text
+    and prose, not in stat labels.

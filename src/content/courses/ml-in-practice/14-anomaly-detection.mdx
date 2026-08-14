@@ -52,6 +52,23 @@ Every method produces a score; you must pick a cutoff. This is a precision/recal
 
 Set the threshold from a **target alert budget** ("we can investigate 50/day") or a **target recall** on known past anomalies. Because anomalies are rare, **accuracy is a useless metric** (a "always normal" detector is 99.9% accurate) — evaluate with **precision-recall AUC**, recall at a fixed alert rate, or precision@k.
 
+### The cutoff you didn't know you'd chosen
+
+<AnomalyThresholdViz />
+
+"Precision/recall trade-off" understates it. Every threshold *is* a statement about what a miss is worth relative to a false alarm, and picking one by maximising F1 makes that statement silently. At 0.1% prevalence over 1M events a day:
+
+| cost(miss) ÷ cost(alarm) | threshold | recall | precision | alerts/day |
+|---|---|---|---|---|
+| 1 | 3.93 | 0.1133 | 0.7275 | 156 |
+| 10 | 3.10 | 0.3247 | 0.2514 | 1,291 |
+| 100 | 2.22 | 0.6351 | 0.0459 | 13,831 |
+| 1000 | 1.28 | 0.8849 | 0.0088 | 101,057 |
+
+The F1-optimal threshold is $3.31$ — recall $0.2593$, precision $0.3575$, 725 alerts. It is a defensible operating point, and it is **2% off at a ratio of 10, 50% off at 100, and 244% off at 1000**. F1 is not a neutral default; it encodes an assumption that a missed anomaly costs roughly ten false alarms. If fraud costs you £5,000 and an analyst's review costs £5, your ratio is 1000 and F1 is choosing a threshold nearly four times worse than the one you want.
+
+**And then the arithmetic imbalance forces.** At ratio 1000, catching 88% of anomalies means accepting **101,057 alerts a day of which 99.1% are false**. That is not a bad detector — the model is unchanged — it is what 0.1% prevalence costs, and no choice of cutoff escapes it. Drag prevalence up to 1% and the same recall becomes affordable. This is why the real fixes are triage, enrichment and a better score rather than a better threshold, and why "we can investigate 50/day" is a more honest starting point than any metric.
+
 <Callout type="warning" title="Contamination and drift">
   Two traps: (1) your "normal" training data is often **contaminated** with undetected anomalies, which the model then learns as normal — use robust methods or clean iteratively. (2) Normal **drifts** over time (seasonality, new user behavior), so a static threshold goes stale; monitor and re-fit, tying back to production monitoring.
 </Callout>
