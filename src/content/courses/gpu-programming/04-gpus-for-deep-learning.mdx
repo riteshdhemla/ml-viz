@@ -74,6 +74,33 @@ For memory-bound chains this is a near-$k\times$ speedup. This is exactly what `
   Generating one token at a time with batch size 1 re-reads the entire weight matrix to produce a single column of output — tiny arithmetic intensity, so it's bandwidth-limited and leaves the compute units idle. **Batching** many requests reuses each loaded weight across many tokens, pushing the operation toward compute-bound and dramatically raising throughput. This is the core reason inference servers batch.
 </Callout>
 
+### Putting that table on one diagram
+
+<RooflineViz />
+
+Every row of the table above is a point on this plot, and where it sits relative to the **ridge point** — peak FLOP/s ÷ bandwidth — is the whole diagnosis. Left of the ridge you are waiting on memory and faster arithmetic buys nothing; right of it you are actually using the machine.
+
+**Toggle FP32 to tensor cores and watch the ridge move.** On an A100 it goes from $19.5/1555 = 12.5$ FLOP/byte to $312/1555 = 200.6$ — **16× further to the right**. This is the part that trips people up: making the arithmetic 16× faster did not make more kernels compute-bound, it made *more of them memory-bound*. `GEMM n=256` at 85 FLOP/byte is comfortably compute-bound in FP32 and firmly bandwidth-bound in FP16. Every generation of faster tensor cores raises the intensity bar your kernels have to clear.
+
+**Then drag the batch slider**, because for LLM decode the arithmetic intensity *is* the batch size. Reading an $N \times N$ weight matrix costs $2N^2$ bytes in FP16 and does $2BN^2$ FLOPs for a batch of $B$, so
+
+$$
+\text{AI} = \frac{2BN^2}{2N^2} = B \quad \text{exactly.}
+$$
+
+That converts "batch your inference server" from advice into a target:
+
+| batch | attainable on A100 tensor cores | % of peak |
+|---|---|---|
+| 1 | 1.6 TFLOP/s | 0.5% |
+| 8 | 12.4 TFLOP/s | 4.0% |
+| 64 | 99.5 TFLOP/s | 31.9% |
+| 201 | 312 TFLOP/s | 100% |
+
+Batch 1 decode runs a $312$ TFLOP/s machine at **1.6**. You need $B \ge 201$ on an A100 — $296$ on an H100 — before the weights you dragged out of HBM are being reused enough to leave the memory roof. That single number is why continuous batching exists.
+
+Note what the fusion rows show, too: fusing three element-wise ops moves them from $0.167$ to $0.5$ FLOP/byte — a genuine 3× less traffic, and still nowhere near the ridge. Fusion does not make a memory-bound kernel compute-bound; it just makes you do the memory-bound thing fewer times.
+
 <Exercise id="gpu-dl-matmul-flops" />
 
 <Exercise id="gpu-dl-mixed-precision" />

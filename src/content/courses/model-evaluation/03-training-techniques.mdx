@@ -50,6 +50,24 @@ restore_weights(model, best_weights)
 
 **Regularization equivalence:** for gradient descent on quadratic loss, early stopping is exactly equivalent to L2 regularization — the number of training steps plays the role of $1/\lambda$.
 
+### Patience, priced
+
+<EarlyStoppingViz />
+
+Run the rule 800 times against the same underlying curve with fresh noise and the advice becomes a table. The best achievable validation loss here is $0.4058$, at epoch 33:
+
+| patience | epochs run | restored loss | regret |
+|---|---|---|---|
+| 1 | 13.2 | 0.6388 | 0.2329 |
+| 2 | 21.0 | 0.4900 | 0.0841 |
+| 3 | 26.2 | 0.4470 | 0.0412 |
+| 5 | 33.4 | 0.4196 | 0.0138 |
+| 8 | 40.1 | 0.4121 | 0.0062 |
+| 12 | 46.2 | 0.4105 | 0.0047 |
+| 20 | 54.6 | 0.4107 | 0.0048 |
+
+Patience 1 is a disaster — a single noisy uptick ends the run 20 epochs early and costs $0.23$ of loss. But look at the other end: past patience 8 the regret is flat at noise level, and the only thing more patience buys is more epochs. **That asymmetry is the actual rule.** Because early stopping restores the *best* checkpoint rather than the last one, over-large patience wastes compute and nothing else, while too-small patience loses quality you cannot get back. When in doubt, err large.
+
 <Callout type="tip" title="Setting patience">
   Patience of 5–20 epochs is typical. Too small → stop before the model has converged past a plateau. Too large → waste compute waiting for a recovery that won't come. For transformers, 3–5 validations is often enough; for CNNs, 10–20 epochs.
 </Callout>
