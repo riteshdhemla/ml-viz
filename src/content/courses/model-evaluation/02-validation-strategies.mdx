@@ -106,6 +106,30 @@ Train [────────────]  Val [──]
   Random k-fold on time-series data produces optimistic estimates because models see future information during training. A model predicting stock prices using tomorrow's prices as a feature would look great on shuffled CV but fail catastrophically in production.
 </Callout>
 
+## All of them, on the same forty rows
+
+Every scheme above is a rule for colouring one table: which rows this fit trains on, which it is scored on, which it ignores. Put them on the same 40 rows and the differences stop being descriptions.
+
+<ValidationSplitViz />
+
+The columns are always **time order**, never fold order — which is what makes shuffled k-fold render as speckle and walk-forward render as a staircase. The counts underneath are read off the layout on screen, not quoted.
+
+**The bias/variance table, as pictures.** Move `k` from 2 to 10 on k-fold: the grey area per row grows from 50% to 90% (less bias — each fit sees more data) and the teal area shrinks from 20 rows to 4 (more variance — each score is an average over fewer examples). Switch to leave-one-out and the grid becomes 40 rows of one teal cell each: 97.5% training data, and 40 fits to get it. The panel also makes LOO's variance problem concrete rather than abstract — **35 of its 40 folds contain no positive**, because there are only 5 in the dataset. Each fold's score is a single $0$ or $1$, so precision and recall are undefined almost everywhere and only the *average* means anything. That is what "nearly unbiased, high variance" looks like on a classification task.
+
+**Why stratification is not optional.** Five of the forty rows are positive, marked in yellow. At `k = 5`, stratified k-fold puts exactly one in every fold, always. Plain k-fold does not — the shuffle on screen leaves one fold empty, and across 4000 random shuffles **30.9% of folds contained no positive on average, with 95.3% of shuffles producing at least one such fold**. A fold with no positive has undefined precision and recall, so the CV mean becomes an average over a metric that did not exist for some of its terms. This is the case scikit-learn warns about, and it is the common outcome rather than the unlucky one.
+
+**Where the leakage counter bites.** A validation row is contaminated if the same fit trained on any row *later in time*. Shuffled 5-fold contaminates **39 of 40 rows**. The obvious repair — press "keep time order" so folds are contiguous blocks — only gets to **32 of 40**, and that is not bad luck:
+
+$$
+\#\{(v,t) : t > v,\; \text{different folds}\} \;=\; \binom{40}{2} - k\binom{40/k}{2}
+$$
+
+which is $640$ at $k = 5$ **whichever order the rows are in**. Ordering the folds does not remove leakage; it concentrates it into the early folds and leaves the last one clean. Only walk-forward reaches $0$ of $40$, and that is the entire reason it exists.
+
+Walk-forward pays for it, and the same panel shows the bill: it fits on $43.8\%$ of the data on average instead of $80\%$, discards everything after each validation window, and — because its horizon here is 5 rows against 5 positives in the whole dataset — leaves **3 of its 6 windows with no positive in them**. Rare events on short horizons are the standard failure of walk-forward, and the fix is a longer horizon or pooling the predictions across splits before scoring, not a return to shuffling.
+
+**Bootstrap's 36.8% is a limit, not a number.** The out-of-bag share is $(1 - 1/n)^n$, which is $36.32\%$ at $n = 40$ and only approaches $1/e = 36.79\%$ as $n \to \infty$ — verified over 20,000 simulated resamples ($0.3632$ at $n=40$, $0.3668$ at $n=200$, $0.3676$ at $n=1000$). Both numbers are on the panel, and the honest lesson is in the gap between them: with only six resamples drawn the measured share reads $37.1\%$, which is roughly one standard error from either candidate. Six draws cannot resolve a half-point difference, and the readout is not asking you to pretend otherwise.
+
 ## Data leakage
 
 Data leakage is any process that allows information from the validation or test set to influence the training pipeline. It produces optimistic estimates that fail in production.

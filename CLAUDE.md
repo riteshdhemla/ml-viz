@@ -742,6 +742,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | SimpsonsParadoxViz | `visualizations/SimpsonsParadox/` | causal-inference/01-correlation-and-confounding | ✅ |
 | ThresholdSweepViz | `visualizations/ThresholdSweep/` | model-evaluation/01-classification-metrics | ✅ |
 | BanditExplorationViz | `visualizations/BanditExploration/` | reinforcement-learning/05-exploration-and-model-based | ✅ |
+| ConvexityViz | `visualizations/Convexity/` | optimization-ml/02-convex-optimization | ✅ |
+| ValidationSplitViz | `visualizations/ValidationSplit/` | model-evaluation/02-validation-strategies | ✅ |
 
 ## Algorithm Traces Built
 
