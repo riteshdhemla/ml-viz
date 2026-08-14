@@ -97,6 +97,7 @@ export const mdxComponents: MDXComponents = {
   GridWorldViz: viz("GridWorldViz"),
   HierarchicalForecastViz: viz("HierarchicalForecastViz"),
   HMMViterbiViz: viz("HMMViterbiViz"),
+  HyperparamSearchViz: viz("HyperparamSearchViz"),
   HypothesisTestViz: viz("HypothesisTestViz"),
   KernelViz: viz("KernelViz"),
   KLDivergenceViz: viz("KLDivergenceViz"),
@@ -131,6 +132,7 @@ export const mdxComponents: MDXComponents = {
   QuantizationViz: viz("QuantizationViz"),
   RAGArchitectureViz: viz("RAGArchitectureViz"),
   RAGRetrievalViz: viz("RAGRetrievalViz"),
+  RankingMetricsViz: viz("RankingMetricsViz"),
   RegularizationPathViz: viz("RegularizationPathViz"),
   ReservoirSamplingViz: viz("ReservoirSamplingViz"),
   RewardModelViz: viz("RewardModelViz"),
@@ -153,4 +155,5 @@ export const mdxComponents: MDXComponents = {
   VanishingGradientViz: viz("VanishingGradientViz"),
   VCDimensionViz: viz("VCDimensionViz"),
   VectorViz: viz("VectorViz"),
+  WordAnalogyViz: viz("WordAnalogyViz"),
 };

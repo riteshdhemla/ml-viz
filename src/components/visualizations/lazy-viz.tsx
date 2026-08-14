@@ -77,6 +77,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   GridWorldViz: dynamic(() => import("@/components/visualizations/GridWorld/GridWorldViz").then((m) => m.GridWorldViz)) as ComponentType<VizProps>,
   HierarchicalForecastViz: dynamic(() => import("@/components/visualizations/HierarchicalForecast/HierarchicalForecastViz").then((m) => m.HierarchicalForecastViz)) as ComponentType<VizProps>,
   HMMViterbiViz: dynamic(() => import("@/components/visualizations/HMMViterbi/HMMViterbiViz").then((m) => m.HMMViterbiViz)) as ComponentType<VizProps>,
+  HyperparamSearchViz: dynamic(() => import("@/components/visualizations/HyperparamSearch/HyperparamSearchViz").then((m) => m.HyperparamSearchViz)) as ComponentType<VizProps>,
   HypothesisTestViz: dynamic(() => import("@/components/visualizations/HypothesisTest/HypothesisTestViz").then((m) => m.HypothesisTestViz)) as ComponentType<VizProps>,
   KernelViz: dynamic(() => import("@/components/visualizations/KernelViz/KernelViz").then((m) => m.KernelViz)) as ComponentType<VizProps>,
   KLDivergenceViz: dynamic(() => import("@/components/visualizations/KLDivergence/KLDivergenceViz").then((m) => m.KLDivergenceViz)) as ComponentType<VizProps>,
@@ -111,6 +112,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   QuantizationViz: dynamic(() => import("@/components/visualizations/Quantization/QuantizationViz").then((m) => m.QuantizationViz)) as ComponentType<VizProps>,
   RAGArchitectureViz: dynamic(() => import("@/components/visualizations/RAGArchitecture/RAGArchitectureViz").then((m) => m.RAGArchitectureViz)) as ComponentType<VizProps>,
   RAGRetrievalViz: dynamic(() => import("@/components/visualizations/RAGRetrieval/RAGRetrievalViz").then((m) => m.RAGRetrievalViz)) as ComponentType<VizProps>,
+  RankingMetricsViz: dynamic(() => import("@/components/visualizations/RankingMetrics/RankingMetricsViz").then((m) => m.RankingMetricsViz)) as ComponentType<VizProps>,
   RegularizationPathViz: dynamic(() => import("@/components/visualizations/RegularizationPath/RegularizationPathViz").then((m) => m.RegularizationPathViz)) as ComponentType<VizProps>,
   ReservoirSamplingViz: dynamic(() => import("@/components/visualizations/ReservoirSampling/ReservoirSamplingViz").then((m) => m.ReservoirSamplingViz)) as ComponentType<VizProps>,
   RewardModelViz: dynamic(() => import("@/components/visualizations/RewardModel/RewardModelViz").then((m) => m.RewardModelViz)) as ComponentType<VizProps>,
@@ -133,6 +135,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   VanishingGradientViz: dynamic(() => import("@/components/visualizations/VanishingGradient/VanishingGradientViz").then((m) => m.VanishingGradientViz)) as ComponentType<VizProps>,
   VCDimensionViz: dynamic(() => import("@/components/visualizations/VCDimension/VCDimensionViz").then((m) => m.VCDimensionViz)) as ComponentType<VizProps>,
   VectorViz: dynamic(() => import("@/components/visualizations/Vector/VectorViz").then((m) => m.VectorViz)) as ComponentType<VizProps>,
+  WordAnalogyViz: dynamic(() => import("@/components/visualizations/WordAnalogy/WordAnalogyViz").then((m) => m.WordAnalogyViz)) as ComponentType<VizProps>,
 };
 
 export function LazyViz({ name, ...props }: { name: string } & VizProps) {

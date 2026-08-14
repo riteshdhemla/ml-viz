@@ -51,14 +51,14 @@ would carry better.
       overlapping score distributions and what moving the cut costs.
 - [ ] **optimization-ml/03-constrained-optimization** — feasible region, level
       sets, and which constraints are active at the optimum.
-- [ ] **nlp/02-word-embeddings** — embedding space with analogy arithmetic.
+- [x] **nlp/02-word-embeddings** — embedding space with analogy arithmetic. `WordAnalogyViz`.
 - [x] **generative-models/01-what-are-generative-models** — a discriminative
       boundary and a generative density fit to the same points.
       `GenerativeVsDiscriminativeViz`.
-- [ ] **recommender-systems/01-the-recommendation-problem** — ranking metrics
-      (precision@k, NDCG) computed live on a re-orderable ranked list.
-- [ ] **optimization-ml/05-hyperparameter-optimization** — grid vs random vs
-      successive halving over the same budget.
+- [x] **recommender-systems/01-the-recommendation-problem** — ranking metrics
+      computed live on a re-orderable list. `RankingMetricsViz`.
+- [x] **optimization-ml/05-hyperparameter-optimization** — grid vs random over
+      the same budget. `HyperparamSearchViz`.
 - [ ] **streaming-ml/01-batch-to-streaming** — tumbling / sliding / session
       windows, and event time vs processing time on the same event stream.
 - [x] **model-evaluation/03-training-techniques** — early stopping: train and
@@ -451,3 +451,44 @@ the Tier 3 entry, not both.
     OOD detection, anomaly detection and calibration under shift.
   - The fitted boundary is an infinite line and escaped the plot frame until it
     was clipped — caught by screenshot, invisible in the JSX.
+
+## Round 4
+
+- [x] **Word analogies** — `nlp/02` (`WordAnalogyViz`)
+  - The space is **constructed, not downloaded**: seven random attribute axes,
+    each word a weighted sum of its attributes plus noise. That removes the
+    question of whether the structure exists — it does, by construction — so
+    the only question left is whether the offset survives.
+  - **The finding is about the protocol, not the embeddings.** Every standard
+    analogy benchmark removes the three query words from the candidate set
+    before scoring. Sweeping the noise: at 0.40 the benchmark still reports a
+    perfect 7/7 while the honest nearest neighbour to a − b + c is one of the
+    query words in **4/7** cases; at 0.60 it is 6/7. The offset points the right
+    way but is shorter than the distance back to `king`. Reproduces Linzen's and
+    Nissim et al.'s critique instead of citing it.
+
+- [x] **Ranking metrics** — `recommender-systems/01` (`RankingMetricsViz`)
+  - Ten rows, click to cycle the relevance grade, five metrics recomputed live.
+    The preset pair is the argument: the same three documents at the top versus
+    at the bottom give **identical P@10 = 0.300** while NDCG falls 1.0000 →
+    0.3452 (2.90×) and MRR 1.0000 → 0.1250 (8×).
+  - A metric that counts a *set* is blind to the only thing a ranker controls,
+    which is why "we improved recall@100" is not evidence anyone's feed got
+    better. The lesson asserted this in a callout; it is now two clicks.
+
+- [x] **Grid vs random search** — `optimization-ml/05` (`HyperparamSearchViz`)
+  - Bergstra & Bengio's setup run rather than described: only x matters, so a
+    k×k grid spends k² evaluations to buy **k distinct values of x** while n
+    random points buy n. The yellow ticks under each panel are the x
+    coordinates actually tried.
+  - **The headline is not "random wins" — at budget 16 the grid wins outright**
+    (1.0472 vs 0.9402), because one of its lines happens to land near the peak.
+    The real indictment is that grid is **not monotone in budget**: 0.5171 at 9,
+    1.0472 at 16, **0.7565 at 25**, 0.9843 at 36. Nine more evaluations made it
+    worse, because a finer grid can straddle a peak the coarser one hit. Random
+    goes 0.8554 → 0.9402 → 0.9797 → 0.9985. Paying more and getting less is a
+    worse property than losing on average, and it is only visible if you sweep
+    the budget instead of fixing it.
+  - Two slips caught by screenshot: literal `**markdown**` asterisks rendered
+    verbatim inside a JSX string, and the on-screen mean used 400 seeds while
+    the prose quoted 2000. Both now agree.
