@@ -49,6 +49,24 @@ $$
 
 Conditioning is *zooming in*: $P(A \mid B)$ throws away every world where $B$ didn't happen and renormalizes what's left. When the zoom changes nothing — $P(A \mid B) = P(A)$ — the events are **independent**, and the product rule collapses to $P(A,B) = P(A)P(B)$. (Naive Bayes builds an entire classifier from pretending this collapse holds.)
 
+### Both of them, as areas of one square
+
+<ConditionalAreaViz />
+
+Every quantity above is a region of the same unit square, which is the cheapest way to keep them apart. The width splits by $B$; inside each column the height splits by $A$. Then $P(A,B)$ is an **area**, and each conditional is that area divided by a different denominator — $P(A\mid B)$ by its own column, $P(B\mid A)$ by everything shaded.
+
+The comma is symmetric. The bars are not, and the default preset shows how badly. Base rate $P(B) = 0.01$, sensitivity $P(A\mid B) = 0.99$, false positives $P(A\mid\lnot B) = 0.05$:
+
+$$
+P(A) = 0.01(0.99) + 0.99(0.05) = 0.0594
+\qquad
+P(B\mid A) = \frac{0.0099}{0.0594} = 0.1667
+$$
+
+A test that is right 99% of the time when you are ill leaves you **16.7%** likely to be ill when it fires — a factor of 5.9 between the two conditionals. You do not need Bayes' rule to see why: the square is drawn to scale, and the sliver of true positives is simply dwarfed by a false-positive band that starts out 99× wider. Swapping $P(A\mid B)$ for $P(B\mid A)$ is the single most common probability error in applied work, and it is this picture read in the wrong direction.
+
+Drag $P(B)$ up and the two bars converge; press **independent** and the split stops mattering at all — $P(A\mid B) = P(A\mid \lnot B) = P(A)$, and the vertical line no longer changes any height.
+
 ## Random variables
 
 A **random variable** $X$ attaches a number to each outcome — the die's face value, a pixel's brightness, tomorrow's temperature. This is the bridge from raw outcomes to arithmetic: once outcomes are numbers, you can average them, weight them, and feed them to models.
