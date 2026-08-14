@@ -52,8 +52,9 @@ would carry better.
 - [ ] **optimization-ml/03-constrained-optimization** — feasible region, level
       sets, and which constraints are active at the optimum.
 - [ ] **nlp/02-word-embeddings** — embedding space with analogy arithmetic.
-- [ ] **generative-models/01-what-are-generative-models** — a discriminative
+- [x] **generative-models/01-what-are-generative-models** — a discriminative
       boundary and a generative density fit to the same points.
+      `GenerativeVsDiscriminativeViz`.
 - [ ] **recommender-systems/01-the-recommendation-problem** — ranking metrics
       (precision@k, NDCG) computed live on a re-orderable ranked list.
 - [ ] **optimization-ml/05-hyperparameter-optimization** — grid vs random vs
@@ -434,3 +435,19 @@ the Tier 3 entry, not both.
     Adversarial fragility is a property of input dimension, not of images or of
     depth — which is Goodfellow's original argument, and is much harder to
     misremember once it is a slider.
+
+- [x] **Discriminative vs generative** — `generative-models/01`
+  (`GenerativeVsDiscriminativeViz`). Both models are fitted live and draw almost
+  the same boundary, which is the setup: the difference is not the decision.
+  - Test error on 4000 held-out points by training size — logreg
+    4.05 / 2.80 / 2.65 / 1.85 % against GDA 2.08 / 1.93 / 2.00 / 2.02 % at
+    n = 8 / 16 / 30 / 60. **Structure substitutes for data and then stops
+    mattering**, which is Ng & Jordan made draggable. Default is n = 16, where
+    the gap is real; n = 60 shows it gone.
+  - The stronger half: **a discriminative model has no vocabulary for doubt.**
+    Off the edge of the data it reports P = 1.0000 while the density reports
+    p(x) ~ 1e-8, and further out P = 0.0000 against ~1e-24. Both confident
+    answers are about regions never seen. This is the argument for a density in
+    OOD detection, anomaly detection and calibration under shift.
+  - The fitted boundary is an infinite line and escaped the plot frame until it
+    was clipped — caught by screenshot, invisible in the JSX.

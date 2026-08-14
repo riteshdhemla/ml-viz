@@ -28,6 +28,26 @@ Generative models flip the goal. They learn the **distribution of the data itsel
   A discriminative model learns to tell real from fake. A generative model learns to *be the forger* — it creates data so realistic that the discriminative model can't tell the difference.
 </Callout>
 
+### Fit both to the same points
+
+<GenerativeVsDiscriminativeViz />
+
+Both models are fitted live on the sampled points, and on this data they draw **almost the same boundary**. That is the useful surprise: the difference between the paradigms is not the decision, it is everything else the model knows.
+
+**Structure substitutes for data.** Test error on 4000 held-out points, by training size:
+
+| n | logistic regression | class-conditional Gaussians |
+|---|---|---|
+| 8 | 4.05% | **2.08%** |
+| 16 | 2.80% | 1.93% |
+| 30 | 2.65% | 2.00% |
+| 60 | 1.85% | 2.02% |
+| 400 | 1.82% | 1.90% |
+
+With eight labels the generative model is nearly twice as accurate; by sixty they have converged and the advantage is gone. Modelling $P(x,y)$ commits you to an assumption about the data's shape, and that assumption pays exactly while you have too little data to learn the shape from scratch — the classic Ng & Jordan result.
+
+**And only one of them can say "I have never seen this."** Move the probe off the edge of the data. At $(4.5, 3.2)$ the logistic regression reports $P(\text{orange}) = 1.0000$ — total certainty — while the generative model reports $p(x)$ on the order of $10^{-8}$. Push the probe to $(-6, 5)$ and it is $P = 0.0000$ against $p(x) \approx 10^{-24}$. A discriminative model has no vocabulary for doubt: it knows which side of a line you are on and literally nothing else, and a point a thousand miles from any training example is simply very far on one side. This is why out-of-distribution detection, anomaly detection and calibration under shift all reach for a density.
+
 ## Why generate data?
 
 1. **Creative AI:** Image synthesis, music composition, text generation
