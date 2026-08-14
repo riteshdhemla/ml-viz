@@ -25,14 +25,28 @@ Add an interactive visualization for **[CONCEPT NAME]** to the ml-viz website.
   `VizSlider` / `VizButton` / `VizStat` for controls (all from
   `@/components/visualizations/viz-kit`)
 - Use the `VIZ` colour tokens (they mirror tailwind.config.ts: brand, teal, rose…)
-- Export the component and add it to `src/components/mdx/mdxComponents.tsx`
+- Use a named export matching the filename (`export function KMeansViz`)
 
 **After creating the file, also:**
-1. Import it in `src/components/mdx/mdxComponents.tsx` and add it to the
-   `mdxComponents` object
+1. Register it in **two** places. Both are required, and the split is what keeps
+   the viz out of every other page's bundle (see "Bundle rules" in `CLAUDE.md`):
+   - `src/components/visualizations/lazy-viz.tsx` — a `dynamic()` loader:
+     ```ts
+     KMeansViz: dynamic(() => import("@/components/visualizations/KMeans/KMeansViz").then((m) => m.KMeansViz)) as ComponentType<VizProps>,
+     ```
+   - `src/components/mdx/mdxComponents.tsx` — the tag binding:
+     `KMeansViz: viz("KMeansViz"),`
+
+   **Never import a viz directly into `mdxComponents.tsx`.** It is a server
+   module reachable from all 331 content pages, so a direct import — or even
+   `next/dynamic` used *there* — puts the component in the shared client graph
+   of every lesson, wiki page and case study. The `import()` has to live in
+   `lazy-viz.tsx`, which is a client module, for webpack to split it out.
 2. Reference it from the relevant lesson MDX with a self-closing tag,
    e.g. `<KMeansViz />`
 3. Update the "Visualization Components Built" table in `CLAUDE.md`
+4. Run `npx vitest run viz-registry-integrity` — it fails if the two registries
+   drift or if content references a viz that is not registered
 
 See `src/components/visualizations/KMeans/KMeansViz.tsx` (animated, stepped) or
 `src/components/visualizations/ActivationFunction/ActivationFunctionViz.tsx`
