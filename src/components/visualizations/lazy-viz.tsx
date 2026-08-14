@@ -69,6 +69,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   FunctionTangentViz: dynamic(() => import("@/components/visualizations/FunctionTangent/FunctionTangentViz").then((m) => m.FunctionTangentViz)) as ComponentType<VizProps>,
   GANTrainingViz: dynamic(() => import("@/components/visualizations/GANTraining/GANTrainingViz").then((m) => m.GANTrainingViz)) as ComponentType<VizProps>,
   GaussianProcessViz: dynamic(() => import("@/components/visualizations/GaussianProcess/GaussianProcessViz").then((m) => m.GaussianProcessViz)) as ComponentType<VizProps>,
+  GenerativeVsDiscriminativeViz: dynamic(() => import("@/components/visualizations/GenerativeVsDiscriminative/GenerativeVsDiscriminativeViz").then((m) => m.GenerativeVsDiscriminativeViz)) as ComponentType<VizProps>,
   GMMResponsibilityViz: dynamic(() => import("@/components/visualizations/GMM/GMMResponsibilityViz").then((m) => m.GMMResponsibilityViz)) as ComponentType<VizProps>,
   GradientDescentViz: dynamic(() => import("@/components/visualizations/GradientDescent/GradientDescentViz").then((m) => m.GradientDescentViz)) as ComponentType<VizProps>,
   GradientFieldViz: dynamic(() => import("@/components/visualizations/GradientField/GradientFieldViz").then((m) => m.GradientFieldViz)) as ComponentType<VizProps>,

@@ -751,6 +751,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | DistillationViz | `visualizations/Distillation/` | fine-tuning-alignment/06-knowledge-distillation | ✅ |
 | ConditionalAreaViz | `visualizations/ConditionalArea/` | probability-statistics/01-thinking-in-probabilities | ✅ |
 | FGSMViz | `visualizations/FGSM/` | cnns/03-cnn-visualization-and-attacks | ✅ |
+| GenerativeVsDiscriminativeViz | `visualizations/GenerativeVsDiscriminative/` | generative-models/01-what-are-generative-models | ✅ |
 
 ## Algorithm Traces Built
 

@@ -89,6 +89,7 @@ export const mdxComponents: MDXComponents = {
   FunctionTangentViz: viz("FunctionTangentViz"),
   GANTrainingViz: viz("GANTrainingViz"),
   GaussianProcessViz: viz("GaussianProcessViz"),
+  GenerativeVsDiscriminativeViz: viz("GenerativeVsDiscriminativeViz"),
   GMMResponsibilityViz: viz("GMMResponsibilityViz"),
   GradientDescentViz: viz("GradientDescentViz"),
   GradientFieldViz: viz("GradientFieldViz"),
