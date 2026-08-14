@@ -70,8 +70,8 @@ would carry better.
       front and compound scaling.
 - [x] **graph-neural-networks/01-graphs-as-data** — receptive field growth per
       message-passing layer. `ReceptiveFieldViz`.
-- [ ] **causal-inference/02-interventions-and-potential-outcomes** — backdoor
-      adjustment on the graph from lesson 01.
+- [x] **causal-inference/02-interventions-and-potential-outcomes** — backdoor
+      adjustment. `BackdoorAdjustmentViz`.
 - [x] **probability-statistics/01-thinking-in-probabilities** — conditional
       probability as areas; the comma vs the bar. `ConditionalAreaViz`.
 - [x] **generative-models/02-autoencoders** — reconstruction quality against
@@ -541,3 +541,21 @@ the Tier 3 entry, not both.
     order is what is broken.
   - The on-screen mean used 200 trajectories while the prose quoted 400; raised
     the component to 400 so the two agree exactly rather than approximately.
+
+- [x] **Backdoor adjustment** — `causal-inference/02` (`BackdoorAdjustmentViz`)
+  - An SCM with every role present (confounder Z, descendant M, collider C) and
+    a known direct effect β = 0.9; the estimate is a closed-form OLS
+    coefficient, so there is no fitting loop to doubt. Adjusting for nothing
+    gives 1.6502; for Z alone, **0.9078** — the backdoor criterion delivering
+    exactly what it promises.
+  - **The row that earns the build is `Z and C`.** Having recovered 0.9078,
+    adding one more measured variable collapses the estimate to **0.0684** —
+    worse than adjusting for nothing. Conditioning on a collider opens a path
+    rather than closing one, so "throw every covariate in" is not the
+    conservative choice; it is a causal assumption made silently.
+  - All six regressions run without complaint and produce tidy coefficients with
+    small standard errors. Nothing in the data separates them — only the graph
+    does, which is the lesson's point turned into something checkable.
+  - First layout put M on the straight line between X and Y, so the causal edge
+    was drawn *through* it and read as mediation — precisely the structure the
+    viz exists to distinguish. Caught by screenshot; M now hangs below X.

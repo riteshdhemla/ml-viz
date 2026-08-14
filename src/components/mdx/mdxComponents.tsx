@@ -55,6 +55,7 @@ export const mdxComponents: MDXComponents = {
   ARIMAForecastViz: viz("ARIMAForecastViz"),
   AttentionViz: viz("AttentionViz"),
   AudioFeaturesViz: viz("AudioFeaturesViz"),
+  BackdoorAdjustmentViz: viz("BackdoorAdjustmentViz"),
   BaggingViz: viz("BaggingViz"),
   BanditExplorationViz: viz("BanditExplorationViz"),
   BayesViz: viz("BayesViz"),

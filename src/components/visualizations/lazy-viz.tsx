@@ -35,6 +35,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   ARIMAForecastViz: dynamic(() => import("@/components/visualizations/ARIMAForecast/ARIMAForecastViz").then((m) => m.default)) as ComponentType<VizProps>,
   AttentionViz: dynamic(() => import("@/components/visualizations/Attention/AttentionViz").then((m) => m.AttentionViz)) as ComponentType<VizProps>,
   AudioFeaturesViz: dynamic(() => import("@/components/visualizations/AudioFeatures/AudioFeaturesViz").then((m) => m.AudioFeaturesViz)) as ComponentType<VizProps>,
+  BackdoorAdjustmentViz: dynamic(() => import("@/components/visualizations/BackdoorAdjustment/BackdoorAdjustmentViz").then((m) => m.BackdoorAdjustmentViz)) as ComponentType<VizProps>,
   BaggingViz: dynamic(() => import("@/components/visualizations/Bagging/BaggingViz").then((m) => m.BaggingViz)) as ComponentType<VizProps>,
   BanditExplorationViz: dynamic(() => import("@/components/visualizations/BanditExploration/BanditExplorationViz").then((m) => m.BanditExplorationViz)) as ComponentType<VizProps>,
   BayesViz: dynamic(() => import("@/components/visualizations/Bayes/BayesViz").then((m) => m.BayesViz)) as ComponentType<VizProps>,

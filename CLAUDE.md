@@ -759,6 +759,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ReceptiveFieldViz | `visualizations/ReceptiveField/` | graph-neural-networks/01-graphs-as-data | ✅ |
 | BottleneckViz | `visualizations/Bottleneck/` | generative-models/02-autoencoders | ✅ |
 | ExperienceReplayViz | `visualizations/ExperienceReplay/` | reinforcement-learning/03-deep-q-networks | ✅ |
+| BackdoorAdjustmentViz | `visualizations/BackdoorAdjustment/` | causal-inference/02-interventions-and-potential-outcomes | ✅ |
 
 ## Algorithm Traces Built
 
