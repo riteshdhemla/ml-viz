@@ -61,6 +61,20 @@ $$
 
 After **one** message-passing layer, each node knows about its immediate neighbors. After $k$ layers, information has propagated from up to $k$ hops away — the node's **receptive field** is its $k$-hop neighborhood. This is the graph analogue of stacking convolutions to grow a CNN's receptive field.
 
+<ReceptiveFieldViz />
+
+"Up to $k$ hops away" sounds like a slow, controllable growth. On a bare ring it is — two new nodes per layer, so 6 layers reach 13 of 60 nodes and a 3-layer GNN really is local. Then add shortcut edges:
+
+| shortcuts | mean degree | nodes reached after 1…6 layers |
+|---|---|---|
+| 0 | 2.00 | 3, 5, 7, 9, 11, 13 |
+| 12 | 2.40 | 4, 9, 15, 22, 33, 40 |
+| 30 | 2.97 | 5, 14, 27, 46, 59, **60** |
+
+Thirty extra edges — less than a 50% increase in mean degree — take the 5-hop reach from 11 nodes to 59 of 60. Receptive field growth is **exponential in the degree**, and real graphs (citation networks, social graphs, molecules with rings) all have the shortcuts.
+
+That is the whole depth problem in one plot, and it runs the opposite way from CNNs. There, depth is how you afford a wide receptive field. Here, the receptive field arrives almost immediately and the danger is that it arrives *completely* — once every node aggregates the same set of nodes, every node computes the same thing.
+
 <Callout type="warning" title="More layers is not always better (over-smoothing)">
   Unlike CNNs, stacking many GNN layers often *hurts*: after too many rounds every node has aggregated nearly the whole graph and all node embeddings converge to the same vector — **over-smoothing**. Most GNNs use only 2–4 layers. (Covered in Lesson 3.)
 </Callout>
