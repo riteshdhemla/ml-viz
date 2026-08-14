@@ -45,8 +45,8 @@ would carry better.
       toward each other as depth grows. `OverSmoothingViz`.
 - [x] **gpu-programming/04-gpus-for-deep-learning** — the roofline.
       `RooflineViz`. Also serves `ml-in-practice/12` and `22`.
-- [ ] **computer-vision/01-object-detection** — IoU and anchor matching (NMS
-      itself is already traced on `wiki/nms-algorithm`).
+- [x] **computer-vision/01-object-detection** — IoU and anchor matching.
+      `AnchorMatchingViz`.
 - [ ] **ml-in-practice/14-anomaly-detection** — the threshold problem: two
       overlapping score distributions and what moving the cut costs.
 - [ ] **optimization-ml/03-constrained-optimization** — feasible region, level
@@ -68,8 +68,8 @@ would carry better.
       softening a logit vector. `DistillationViz`.
 - [ ] **computer-vision/03-backbones-in-practice** — the accuracy/FLOPs Pareto
       front and compound scaling.
-- [ ] **graph-neural-networks/01-graphs-as-data** — receptive field growth per
-      message-passing layer.
+- [x] **graph-neural-networks/01-graphs-as-data** — receptive field growth per
+      message-passing layer. `ReceptiveFieldViz`.
 - [ ] **causal-inference/02-interventions-and-potential-outcomes** — backdoor
       adjustment on the graph from lesson 01.
 - [x] **probability-statistics/01-thinking-in-probabilities** — conditional
@@ -492,3 +492,28 @@ the Tier 3 entry, not both.
   - Two slips caught by screenshot: literal `**markdown**` asterisks rendered
     verbatim inside a JSX string, and the on-screen mean used 400 seeds while
     the prose quoted 2000. Both now agree.
+
+- [x] **Anchor matching** — `computer-vision/01` (`AnchorMatchingViz`)
+  - The assignment rule run over all 3072 anchors against one object:
+    **7 positive, 12 ignored, 3053 negative — 1:436**. That single count is why
+    detection has a sub-literature on class imbalance; focal loss and 1:3
+    sampling exist to stop 3053 easy negatives drowning 7 real examples.
+  - Raising the positive threshold to 0.7 yields **zero** positives, because the
+    best IoU any anchor reaches on this box is 0.635. A stricter rule does not
+    give cleaner labels, it deletes the object — which is why the convention is
+    0.5 and why detectors add a best-anchor-per-object fallback.
+  - **Some objects are invisible to the anchor set outright**: best achievable
+    IoU is 0.368 for a thin 60×400 box and 0.250 for a 32×32 one. No training
+    finds them. Anchor scales and ratios are a dataset decision, and this is the
+    failure mode anchor-free detectors were built to remove.
+
+- [x] **Receptive field growth** — `graph-neural-networks/01`
+  (`ReceptiveFieldViz`)
+  - "Up to k hops away" sounds gradual. Measured by BFS on a 60-node ring:
+    bare ring gives 3, 5, 7, 9, 11, 13 — linear, two new nodes per layer. Add
+    **30 shortcuts (mean degree 2.00 → 2.97)** and it becomes 5, 14, 27, 46, 59,
+    **60**: the whole graph by layer 6, 59 of 60 by layer 5.
+  - Growth is exponential in the degree and every real graph has the shortcuts,
+    so the receptive field does not merely widen with depth — it saturates. That
+    is over-smoothing (lesson 03) seen from the other side, and it inverts the
+    CNN intuition that depth is how you afford a wide field.

@@ -755,6 +755,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | WordAnalogyViz | `visualizations/WordAnalogy/` | nlp/02-word-embeddings | ✅ |
 | RankingMetricsViz | `visualizations/RankingMetrics/` | recommender-systems/01-the-recommendation-problem | ✅ |
 | HyperparamSearchViz | `visualizations/HyperparamSearch/` | optimization-ml/05-hyperparameter-optimization | ✅ |
+| AnchorMatchingViz | `visualizations/AnchorMatching/` | computer-vision/01-object-detection | ✅ |
+| ReceptiveFieldViz | `visualizations/ReceptiveField/` | graph-neural-networks/01-graphs-as-data | ✅ |
 
 ## Algorithm Traces Built
 
