@@ -45,6 +45,22 @@ $$
 
 The $\tau^2$ factor compensates for the gradient scaling introduced by temperature (gradients are divided by $\tau$ twice through the softmax). Common choices: $\alpha = 0.5\text{–}0.9$, $\tau = 2\text{–}10$.
 
+<DistillationViz />
+
+Three things are worth checking against the slider.
+
+**Softening reveals mass, never order.** At $\tau = 1$ the top class holds $0.8521$ and everything else rounds to nothing; at $\tau = 10$ it holds $0.1685$ and the mass outside the argmax has gone from $0.148$ to $0.832$ (entropy $0.561 \to 2.255$ nats). The *ranking* is identical at every temperature — softmax is monotone in the logits — so temperature cannot change what the teacher believes, only how much of it survives into a loss.
+
+**What compresses is the ratios, exactly.** For any two classes,
+
+$$
+\frac{p_i}{p_j} = \exp\!\left(\frac{z_i - z_j}{\tau}\right)
+$$
+
+The panel prints `p(lynx)/p(tiger)` next to $\exp(0.5/\tau)$ and they agree to six decimals: $1.648721$ at $\tau=1$, $1.133148$ at $\tau=4$, $1.051271$ at $\tau=10$. "Dark knowledge" is not a metaphor — it is those ratios being lifted out of floating-point irrelevance so a cross-entropy can see them.
+
+**And the $\tau^2$ is not a fudge factor.** The KD gradient with respect to the student's logits is $(p_{\text{student}} - p_{\text{teacher}})/\tau$; both the difference and the $1/\tau$ shrink as you soften, so the raw gradient norm falls **118×** across $\tau = 1 \to 10$ (0.383 to 0.0032). Without the correction, raising the temperature would quietly turn the distillation term off. With it, the norm holds at 0.383 → 0.324 and $\alpha$ keeps meaning what you set it to.
+
 <Callout type="info" title="Why not just use a lower temperature for the teacher?">
   You could. The standard choice $\tau = 1$ recovers hard labels in the limit. Using $\tau > 1$ spreads the teacher's distribution, making near-misses more visible to the student. Too high ($\tau \gg 10$) and the distribution becomes nearly uniform — no signal. The sweet spot depends on the model and task and is usually found by validation.
 </Callout>

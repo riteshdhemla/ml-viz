@@ -746,6 +746,9 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ValidationSplitViz | `visualizations/ValidationSplit/` | model-evaluation/02-validation-strategies | ✅ |
 | StorageLayoutViz | `visualizations/StorageLayout/` | ml-in-practice/05-data-engineering-fundamentals | ✅ |
 | OverSmoothingViz | `visualizations/OverSmoothing/` | graph-neural-networks/03-graph-attention-and-pooling | ✅ |
+| RooflineViz | `visualizations/Roofline/` | gpu-programming/04-gpus-for-deep-learning | ✅ |
+| EarlyStoppingViz | `visualizations/EarlyStopping/` | model-evaluation/03-training-techniques | ✅ |
+| DistillationViz | `visualizations/Distillation/` | fine-tuning-alignment/06-knowledge-distillation | ✅ |
 
 ## Algorithm Traces Built
 

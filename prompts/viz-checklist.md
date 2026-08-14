@@ -43,8 +43,8 @@ would carry better.
       storage. `StorageLayoutViz`.
 - [x] **graph-neural-networks/03** — over-smoothing: node features collapsing
       toward each other as depth grows. `OverSmoothingViz`.
-- [ ] **gpu-programming/04-gpus-for-deep-learning** — the roofline. Also serves
-      `ml-in-practice/12` and `22`, which both lean on it.
+- [x] **gpu-programming/04-gpus-for-deep-learning** — the roofline.
+      `RooflineViz`. Also serves `ml-in-practice/12` and `22`.
 - [ ] **computer-vision/01-object-detection** — IoU and anchor matching (NMS
       itself is already traced on `wiki/nms-algorithm`).
 - [ ] **ml-in-practice/14-anomaly-detection** — the threshold problem: two
@@ -60,11 +60,11 @@ would carry better.
       successive halving over the same budget.
 - [ ] **streaming-ml/01-batch-to-streaming** — tumbling / sliding / session
       windows, and event time vs processing time on the same event stream.
-- [ ] **model-evaluation/03-training-techniques** — early stopping: train and
-      validation curves with the patience window.
+- [x] **model-evaluation/03-training-techniques** — early stopping: train and
+      validation curves with the patience window. `EarlyStoppingViz`.
 - [ ] **cnns/03-cnn-visualization-and-attacks** — the FGSM ε sweep.
-- [ ] **fine-tuning-alignment/06-knowledge-distillation** — temperature
-      softening a logit vector, and what soft labels carry that hard ones do not.
+- [x] **fine-tuning-alignment/06-knowledge-distillation** — temperature
+      softening a logit vector. `DistillationViz`.
 - [ ] **computer-vision/03-backbones-in-practice** — the accuracy/FLOPs Pareto
       front and compound scaling.
 - [ ] **graph-neural-networks/01-graphs-as-data** — receptive field growth per
@@ -370,3 +370,42 @@ the Tier 3 entry, not both.
     through **dictionary + bit-packing**, not RLE — 14 levels is 4 bits against
     a 2-byte raw width. Caught by printing per-column ratios and finding them
     all 1.00×, which is not a plausible answer.
+
+## Round 3
+
+- [x] **The roofline** — `gpu-programming/04` (`RooflineViz`)
+  - Two exact results carry it. **Tensor cores move the ridge point right by
+    16×** on an A100 (12.5 → 200.6 FLOP/byte): making arithmetic faster does not
+    make kernels compute-bound, it makes more of them memory-bound. GEMM at
+    n = 256 is compute-bound in FP32 and bandwidth-bound in FP16, same kernel.
+  - **For LLM decode, arithmetic intensity equals the batch size exactly**
+    (2BN² FLOPs over 2N² bytes). That turns "batch your server" into a target:
+    B ≥ 201 on A100 tensor cores, 296 on H100. At B = 1 the kernel can reach
+    0.5% of a 312 TFLOP/s machine; at B = 64, 31.9%.
+  - Dropped the separate "3 ops unfused" point after drawing it: fusion does not
+    move a kernel along this axis at all — three unfused ops sit at the *same*
+    0.167 FLOP/byte and pay it three times. Two dots on one spot said the
+    opposite of the truth.
+
+- [x] **Patience, priced** — `model-evaluation/03` (`EarlyStoppingViz`)
+  - The lesson's "setting patience" tip is qualitative; running the rule 800
+    times against fresh noise makes it a table. Regret against the noiseless
+    optimum (0.4058 at epoch 33): 0.2329 at patience 1, 0.0841 at 2, 0.0138 at
+    5, 0.0062 at 8, then flat at noise level.
+  - **The asymmetry is the finding.** Because early stopping restores the *best*
+    checkpoint and not the last one, too-large patience costs only compute while
+    too-small patience loses quality permanently. "When in doubt, err large" is
+    now derived rather than asserted.
+
+- [x] **Temperature and the τ²** — `fine-tuning-alignment/06` (`DistillationViz`)
+  - Softening reveals mass, never order: p(top) 0.8521 → 0.1685 over τ = 1…10,
+    mass outside the argmax 0.148 → 0.832, and the ranking identical throughout
+    because softmax is monotone in the logits.
+  - What compresses is the ratios, exactly: p_i/p_j = exp((z_i−z_j)/τ), and the
+    panel prints the measured ratio beside exp(0.5/τ) — agreeing to six
+    decimals. "Dark knowledge" is those ratios being lifted out of
+    floating-point irrelevance, not a metaphor.
+  - **The τ² earns its own plot.** The KD gradient is (p_s − p_t)/τ, so the raw
+    norm falls 118× across τ = 1→10 and the distillation term would silently
+    switch itself off. With the correction it holds 0.383 → 0.324. The lesson
+    called τ² a compensation factor; now it is a measured curve.
