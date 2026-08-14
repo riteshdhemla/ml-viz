@@ -749,6 +749,8 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | RooflineViz | `visualizations/Roofline/` | gpu-programming/04-gpus-for-deep-learning | ✅ |
 | EarlyStoppingViz | `visualizations/EarlyStopping/` | model-evaluation/03-training-techniques | ✅ |
 | DistillationViz | `visualizations/Distillation/` | fine-tuning-alignment/06-knowledge-distillation | ✅ |
+| ConditionalAreaViz | `visualizations/ConditionalArea/` | probability-statistics/01-thinking-in-probabilities | ✅ |
+| FGSMViz | `visualizations/FGSM/` | cnns/03-cnn-visualization-and-attacks | ✅ |
 
 ## Algorithm Traces Built
 

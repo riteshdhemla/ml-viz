@@ -62,7 +62,7 @@ would carry better.
       windows, and event time vs processing time on the same event stream.
 - [x] **model-evaluation/03-training-techniques** — early stopping: train and
       validation curves with the patience window. `EarlyStoppingViz`.
-- [ ] **cnns/03-cnn-visualization-and-attacks** — the FGSM ε sweep.
+- [x] **cnns/03-cnn-visualization-and-attacks** — the FGSM ε sweep. `FGSMViz`.
 - [x] **fine-tuning-alignment/06-knowledge-distillation** — temperature
       softening a logit vector. `DistillationViz`.
 - [ ] **computer-vision/03-backbones-in-practice** — the accuracy/FLOPs Pareto
@@ -71,8 +71,8 @@ would carry better.
       message-passing layer.
 - [ ] **causal-inference/02-interventions-and-potential-outcomes** — backdoor
       adjustment on the graph from lesson 01.
-- [ ] **probability-statistics/01-thinking-in-probabilities** — conditional
-      probability as areas; the comma vs the bar.
+- [x] **probability-statistics/01-thinking-in-probabilities** — conditional
+      probability as areas; the comma vs the bar. `ConditionalAreaViz`.
 - [ ] **generative-models/02-autoencoders** — reconstruction quality against
       code size, showing why the bottleneck is the point.
 - [ ] **reinforcement-learning/03-deep-q-networks** — why correlated
@@ -409,3 +409,28 @@ the Tier 3 entry, not both.
     norm falls 118× across τ = 1→10 and the distillation term would silently
     switch itself off. With the correction it holds 0.383 → 0.324. The lesson
     called τ² a compensation factor; now it is a measured curve.
+
+- [x] **The comma and the bar** — `probability-statistics/01`
+  (`ConditionalAreaViz`). Every quantity is a region of one unit square drawn to
+  scale, so the medical-test asymmetry needs no algebra: prevalence 0.01,
+  sensitivity 0.99, false positives 0.05 gives P(A) = 0.0594 and
+  P(B|A) = 0.1667 — a **5.94× gap between the two bars** from one 99% number,
+  visible as a teal sliver against a rose band that starts 99× wider.
+
+- [x] **FGSM** — `cnns/03` (`FGSMViz`)
+  - A logistic regression is *trained in the browser* on 300 synthetic 12×12
+    images (400 steps, 100% train accuracy); w, the margin and ‖w‖₁ are all
+    measured from that fit rather than hand-set. Being linear makes FGSM exactly
+    analysable: the logit moves by ε‖w‖₁, checked against the measured shift on
+    every frame (they part only when pixel clipping bites).
+  - **The honest result is the interesting one: ε* = 43/255 on this model, so
+    the canonical 8/255 flips nothing.** A first attempt tried to manufacture
+    vulnerability by tuning templates until the margin was small; that would
+    have taught a false mechanism. A 144-pixel model genuinely is not
+    vulnerable to an imperceptible attack.
+  - What makes real models fragile is the denominator. ‖w‖₁ grows ~linearly
+    with input count at fixed mean weight, so the dimension slider extrapolates:
+    at 224×224×3 the same model shape has ‖w‖₁ ≈ 50,000 and ε* ≈ 0.035/255.
+    Adversarial fragility is a property of input dimension, not of images or of
+    depth — which is Goodfellow's original argument, and is much harder to
+    misremember once it is a slider.

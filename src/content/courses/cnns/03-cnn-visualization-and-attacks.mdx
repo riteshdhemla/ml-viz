@@ -129,6 +129,22 @@ Minimize loss toward the target class instead of maximizing loss away from the t
 
 ---
 
+### The attack, on a model small enough to check
+
+<FGSMViz />
+
+For a **linear** model the whole attack is exactly solvable, which is why Goodfellow's original paper argued from one. The perturbation $\eta = \epsilon\,\text{sign}(w)$ moves the logit by
+
+$$
+w \cdot \eta = \epsilon \sum_i |w_i| = \epsilon \lVert w \rVert_1
+$$
+
+and the panel checks that measured shift against the prediction on every step. So the budget needed to flip a decision is $\epsilon^* = |\text{margin}| / \lVert w \rVert_1$.
+
+**On this 144-pixel model that comes out at 43/255 — the canonical $8/255$ flips nothing.** That is the honest result, and it is the one worth having: a low-dimensional model is *not* meaningfully vulnerable to an imperceptible attack. Adversarial fragility does not come from images, or from deep networks, or from nonlinearity. It comes from the denominator.
+
+$\lVert w \rVert_1$ grows roughly linearly with the number of inputs at fixed mean weight, so drag the dimension slider: at $224\times224\times3$ the same model shape has $\lVert w \rVert_1 \approx 50{,}000$ and $\epsilon^* \approx 0.035/255$ — a *thousandth* of a pixel level. Each pixel still moves by an imperceptible $\epsilon$; there are simply 150,000 of them, all pushing the same way. That is the entire phenomenon.
+
 ## 7. PGD — iterative FGSM
 
 **Projected Gradient Descent (PGD)** extends FGSM to $k$ steps with a smaller per-step size $\alpha$, projecting back to the $\epsilon$-ball after each step:
