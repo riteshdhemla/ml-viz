@@ -752,6 +752,9 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ConditionalAreaViz | `visualizations/ConditionalArea/` | probability-statistics/01-thinking-in-probabilities | ✅ |
 | FGSMViz | `visualizations/FGSM/` | cnns/03-cnn-visualization-and-attacks | ✅ |
 | GenerativeVsDiscriminativeViz | `visualizations/GenerativeVsDiscriminative/` | generative-models/01-what-are-generative-models | ✅ |
+| WordAnalogyViz | `visualizations/WordAnalogy/` | nlp/02-word-embeddings | ✅ |
+| RankingMetricsViz | `visualizations/RankingMetrics/` | recommender-systems/01-the-recommendation-problem | ✅ |
+| HyperparamSearchViz | `visualizations/HyperparamSearch/` | optimization-ml/05-hyperparameter-optimization | ✅ |
 
 ## Algorithm Traces Built
 

@@ -79,6 +79,21 @@ where $\text{IDCG}$ is the DCG of the ideal (perfectly sorted) ranking, so NDCG 
   Two recommenders can have identical recall@10 yet very different user experience if one puts the relevant item at rank 1 and the other at rank 10. NDCG and MRR capture that the *order* within the list matters — the top slot is worth far more than the tenth.
 </Callout>
 
+<RankingMetricsViz />
+
+That callout is a claim you can make numeric in two clicks. Press **relevant at the top**, then **same items, at the bottom** — the list contains exactly the same three documents, so precision and recall cannot tell them apart:
+
+| | P@10 | P@3 | MRR | MAP | NDCG@10 |
+|---|---|---|---|---|---|
+| relevant at the top | 0.300 | 1.000 | 1.0000 | 1.0000 | 1.0000 |
+| same items, at the bottom | **0.300** | 0.000 | 0.1250 | 0.2157 | **0.3452** |
+
+$P@10$ does not move at all. NDCG falls $2.90\times$ and MRR $8\times$. A metric that counts a *set* is blind to the only thing a ranker controls, which is why "we improved recall@100" is not by itself evidence that anyone's feed got better.
+
+<Callout type="info" title="Reading the gains column">
+  Each row's contribution is $(2^{\text{rel}} - 1)/\log_2(i+2)$: the numerator makes a grade-3 item worth 7 and a grade-1 item worth 1, and the denominator discounts by position. Moving a perfect item from rank 1 to rank 8 keeps its relevance and divides its contribution by 3.17.
+</Callout>
+
 <Exercise id="recsys-feedback" />
 
 <Exercise id="recsys-cold-start" />

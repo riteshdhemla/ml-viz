@@ -35,6 +35,25 @@ Each evaluation of the objective is a complete training run, so the whole game i
 
 **Bayesian optimization.** Both grid and random are **non-adaptive** — they ignore everything learned from past trials. Bayesian optimization (from the Bayesian Methods course) fits a surrogate to past results and picks the most promising next configuration, finding good hyperparameters in far fewer trials. The catch: it's **sequential**, so it parallelizes less easily than random search.
 
+### The same budget, spent two ways
+
+<HyperparamSearchViz />
+
+The objective is bright where it is high, and only $x$ moves it — the case Bergstra & Bengio built the argument on. A $k\times k$ grid costs $k^2$ evaluations and buys **$k$ distinct values of $x$**; $n$ random points buy $n$. The yellow ticks under each panel are the $x$ coordinates actually tried, and the difference in coverage is the whole story.
+
+Now sweep the budget, because the interesting failure is not the average:
+
+| evaluations | grid | random (2000-seed mean) |
+|---|---|---|
+| 9 | 0.5171 | 0.8554 |
+| 16 | **1.0472** | 0.9402 |
+| 25 | 0.7565 | 0.9797 |
+| 36 | 0.9843 | 0.9985 |
+
+At 16 the grid wins outright — one of its lines happens to fall near $x = 0.62$. Then at 25 it gets **worse**, from $1.0472$ down to $0.7565$, on 9 more evaluations. Grid search is not monotone in budget: whether a grid line lands on a peak is an accident of the spacing, and refining the grid can straddle a peak the coarser one hit. Random is monotone by construction, because every additional sample is a fresh draw of the coordinate that matters.
+
+Paying more and getting less is a worse property than being beaten on average, and it only shows up if you sweep the budget instead of fixing it.
+
 ## Early-stopping methods: spend compute where it counts
 
 The newest idea: don't run every configuration to completion. Bad configs usually reveal themselves early, so **stop the losers and reallocate their budget to promising configs**.
