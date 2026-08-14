@@ -103,6 +103,22 @@ The **Karush-Kuhn-Tucker (KKT)** conditions are necessary (and under convexity, 
 | 3 | $\mu_i^* \geq 0$ for all $i$ | **Dual feasibility** — dual variables non-negative |
 | 4 | $\mu_i^* g_i(x^*) = 0$ for all $i$ | **Complementary slackness** — inactive constraints have zero multiplier |
 
+<ConstrainedOptViz />
+
+Condition 4 is the one that reads like bookkeeping and is actually the interesting one. Minimise $(x-3)^2 + (y-2)^2$ inside $x + y \le b$ and watch $\lambda$ against a numerical derivative of the optimal value:
+
+| $b$ | $f^*$ | $\lambda$ | measured $-\mathrm{d}f^*/\mathrm{d}b$ |
+|---|---|---|---|
+| 2.0 | 4.50000 | 3.00000 | 3.00000 |
+| 3.0 | 2.00000 | 2.00000 | 2.00000 |
+| 4.0 | 0.50000 | 1.00000 | 1.00000 |
+| 4.5 | 0.12500 | 0.50000 | 0.50000 |
+| 5.0 | 0.00000 | 0.00000 | 0.00000 |
+
+Exact at every budget. That is what makes $\lambda$ a **shadow price** rather than an algebraic device: relax the constraint by one unit and the objective improves by $\lambda$. It is the number to quote when someone asks what another unit of budget is worth before you go and negotiate for it.
+
+Push $b$ past $5$ and the unconstrained optimum becomes feasible: $\lambda$ drops to exactly $0$ and stays there. **A constraint that is not binding has no price** — complementary slackness happening rather than being stated, and the reason $\mu_i^* g_i(x^*) = 0$ is a condition rather than a coincidence. The dashed line from the constrained optimum back to $(3,2)$ is $\nabla f$, and it stays perpendicular to the active constraint the whole time, which is condition 1 doing its work.
+
 <Callout type="info" title="KKT sufficient conditions">
   For convex $f$ and convex inequality constraints (convex $g_i$, affine $h_j$), the KKT conditions are also **sufficient** for global optimality. This is why the SVM dual derivation is exact — the primal SVM is convex.
 </Callout>
