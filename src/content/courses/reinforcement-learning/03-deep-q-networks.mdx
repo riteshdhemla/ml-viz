@@ -52,6 +52,19 @@ batch = random.sample(replay, 32)           # train on a random, decorrelated ba
 
 Benefits: breaks temporal correlation, and **reuses** each experience many times (sample-efficient).
 
+<ExperienceReplayViz />
+
+"SGD assumes i.i.d. samples" is easy to nod along to and hard to feel. Here the same data is fitted twice — same learning rate, same number of updates, differing **only in the order**:
+
+| learning rate | sequential $\lVert w - w^*\rVert$ | shuffled | ratio |
+|---|---|---|---|
+| 0.02 | 0.2575 | 0.0774 | 3.33× |
+| 0.05 | 0.1928 | 0.0162 | **11.89×** |
+
+(400 trajectories of 800 steps.) Replay is not a memory optimisation or a sample-efficiency trick here — not a byte of data changed, and the fit is twelve times worse without it. The rose path shows why: consecutive samples are near-duplicates, so the weights get dragged wherever the agent currently *is*, then dragged somewhere else when it moves on. The teal path sees a fresh mix at every step and walks more or less straight to the answer.
+
+The second row is the part worth remembering. **The damage grows with the learning rate** — 3× at 0.02, 12× at 0.05 — because a bigger step lets each stretch of correlated samples pull the weights further before the next region arrives. So the obvious fix, "use a smaller learning rate", does not solve the problem; it trades it for slowness. Replay changes the order, and the order is what is broken.
+
 ## Problem 2: a moving target → Target Network
 
 In the loss, the target $y$ depends on the *same* parameters $\theta$ we're updating — chasing a target that moves every step causes oscillation or divergence. DQN keeps a **separate, frozen** copy $\theta^-$ for computing targets, synced to $\theta$ only every $N$ steps:
