@@ -33,12 +33,12 @@ would carry better.
 - [x] **reinforcement-learning/05-exploration-and-model-based** — ε-greedy vs
       UCB vs Thompson on the same bandit, with cumulative regret.
       `BanditExplorationViz`.
-- [ ] **optimization-ml/02-convex-optimization** — the chord-above-the-graph
+- [x] **optimization-ml/02-convex-optimization** — the chord-above-the-graph
       definition and Jensen's inequality. Rejected for a *trace* (no loop that
-      transforms state) and exactly right for a viz.
-- [ ] **model-evaluation/02-validation-strategies** — which rows are train and
-      which are test, per fold, for k-fold / LOO / time-series split. Cheap and
-      genuinely clarifying.
+      transforms state) and exactly right for a viz. `ConvexityViz`.
+- [x] **model-evaluation/02-validation-strategies** — which rows are train and
+      which are test, per fold, for k-fold / LOO / time-series split.
+      `ValidationSplitViz`.
 - [ ] **ml-in-practice/05-data-engineering-fundamentals** — row vs column
       storage. The lesson already has a "worked example: the 2% read"; showing
       which bytes each layout touches makes the factor obvious.
@@ -239,3 +239,72 @@ the Tier 3 entry, not both.
     top-left, the one corner a cumulative curve starting at 0 cannot reach at
     any slider setting), and the pull-share percentages were clipped off the top
     of the mini-bar viewBox for the best arm — i.e. on the one bar that matters.
+
+- [x] **The chord test** — `optimization-ml/02`
+  - `ConvexityViz`: the lesson defines convexity three times — chord above the
+    graph, Hessian PSD, and Jensen — in three separate sections. They are one
+    diagram. Put weight 1−λ on x₁ and λ on x₂ and the point on the chord *is*
+    E[f(X)] while the point under it on the curve *is* f(E[X]); the λ slider is
+    moving a probability. The SVG labels say exactly that, so the unification is
+    the default reading rather than a remark.
+  - The 1000-pair midpoint scan is the numerical test the lesson's own callout
+    describes, run for real on a fixed seed: 0 violations for x², |x| and
+    softplus, **501 for x³ and 502 for sin** — both ≈ ½, which is not luck. With
+    endpoints written as m ± d the midpoint gap is ½f″(m)d² + O(d⁴), and for
+    these two the identity is exact and terminating (x³: gap = 3md²;
+    sin: gap = −sin(m)(1−cos d)). Both are negative exactly when f″(m) < 0, so a
+    random pair fails precisely when its midpoint lands in the rose band, which
+    covers half of each symmetric domain.
+  - That is what makes the f″ < 0 shading load-bearing rather than decorative:
+    it *predicts* which chords fail, and the reader can check the prediction on
+    x³ by straddling the inflection (gap exactly 0 at m = 0, sign following the
+    midpoint rather than the endpoints).
+  - **|x| is in the picker because it breaks the Hessian story**, not despite
+    it: convex, with f″ = 0 everywhere it exists and all the curvature
+    concentrated at the one point where it does not. The readout prints
+    "f″ undefined" there instead of a 0 it cannot justify — which is the honest
+    version of why the PSD criterion is stated for twice-differentiable
+    functions, and why ℓ1 needs subgradients.
+  - The gap-vs-Taylor readout also earns its place by *disagreeing*: sin with a
+    wide chord (d = 2.68) shows 0.2269 measured against 0.4299 predicted. The
+    O(d⁴) term is not a footnote at that width, and a viz that only ever showed
+    agreement would teach the approximation as an identity.
+  - Screenshot fixes: the two point labels crossed the curve and each other
+    (now carry a card-coloured halo via paint-order stroke, and flip to the left
+    of the marker near the right edge), and f(E[X]) printed "-0.000" at the
+    inflection.
+
+- [x] **Every split on the same rows** — `model-evaluation/02`
+  - `ValidationSplitViz`: seven schemes (hold-out, k-fold, stratified, LOO,
+    walk-forward, rolling, bootstrap) colouring one fixed 40-row dataset. The
+    design decision that makes it teach: **columns are always time order, never
+    fold order**, so shuffled k-fold renders as speckle and walk-forward renders
+    as a staircase before any number is read.
+  - **The leakage counter found something worth stating.** Shuffled 5-fold
+    validates 39 of 40 rows using data from their own future; switching to
+    contiguous folds only reaches 32. That is not bad luck — the number of
+    contaminated (v,t) pairs is C(40,2) − k·C(40/k,2), which depends on fold
+    *sizes* only and is 640 at k = 5 either way. Ordering folds concentrates the
+    leakage into the early folds rather than removing it. Only walk-forward hits
+    0, which is the argument for it, stated as a count instead of a warning.
+  - Stratification, made countable: 5 positives in 40 rows at k = 5. Stratified
+    puts exactly one per fold always; plain k-fold averaged **30.9% empty folds
+    over 4000 shuffles, with 95.3% of shuffles producing at least one**. An
+    empty fold has undefined precision and recall, so the CV mean averages over
+    terms that do not exist.
+  - Two findings the panel surfaced that the lesson never mentions, both kept:
+    LOO leaves **35 of 40 folds with no positive** (each fold's score is a
+    single 0/1 — that *is* its variance problem, on a classification task), and
+    walk-forward with a 5-row horizon leaves **3 of 6 windows with no positive**,
+    the standard rare-event failure of walk-forward.
+  - **The bootstrap readout was nearly a dishonest one.** The plan was to show
+    that the lesson's 36.8% is the n→∞ limit and (1−1/40)^40 = 36.32% is the
+    truth at this n — but six drawn resamples read 37.1%, which is about one SE
+    from either. Six draws cannot resolve half a point. Fixed by putting the
+    exact expectation on the panel beside the measured value and saying so in
+    the prose, rather than asking the reader to see a difference that is not
+    there; the 20000-resample confirmation (0.3632 / 0.3668 / 0.3676 at
+    n = 40 / 200 / 1000) carries the claim instead.
+  - LOO originally inherited the shuffle permutation, scattering the diagonal.
+    Its folds are singletons, so their order carries no information — forced to
+    time order.

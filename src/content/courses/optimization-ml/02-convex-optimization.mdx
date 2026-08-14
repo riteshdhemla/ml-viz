@@ -52,6 +52,31 @@ print("softplus f'' range:", softplus_dd(x).min().round(4), "to", softplus_dd(x)
   The definition says the chord between any two points must lie *above* the curve. To test convexity numerically, pick 1000 random pairs $(x, y)$ and check whether $f\!\left(\frac{x+y}{2}\right) \leq \frac{f(x)+f(y)}{2}$ holds for all of them. The notebook exercise automates exactly this.
 </Callout>
 
+### The chord test, run on every row of that table
+
+<ConvexityViz />
+
+That scan is running for real — 1000 seeded random pairs, the exact test the callout describes — and it separates the table cleanly: $0$ violations for $x^2$, $|x|$ and softplus; $501$ for $x^3$; $502$ for $\sin x$; $1000$ for $-x^2$.
+
+The two "sometimes" cases both land near $500$, and that is not luck. Write the endpoints as $m \pm d$ — midpoint and half-width — and expand:
+
+$$
+\tfrac{1}{2}\big(f(m+d) + f(m-d)\big) - f(m) \;=\; \tfrac{1}{2}f''(m)\,d^2 + O(d^4)
+$$
+
+The chord clears the curve exactly when the curvature **at the midpoint** is positive. For these two functions there is no $O(d^4)$ slop to argue about — the identities are exact:
+
+$$
+x^3:\;\; \text{gap} = 3md^2 \qquad\qquad \sin:\;\; \text{gap} = -\sin(m)\,(1 - \cos d)
+$$
+
+Both are negative precisely when $f''(m) < 0$, so a random pair fails the test exactly when its midpoint lands in the rose band — which covers half of each of these symmetric domains. Hence $\approx 500/1000$.
+
+Two things worth doing with it:
+
+1. **Straddle the inflection of $x^3$.** Put $x_1 = -2$ and $x_2 = 2$: the midpoint sits at $0$, the gap is exactly $0$, and the chord touches. Nudge either endpoint and the sign of the gap follows the sign of the midpoint, not the sign of the endpoints. Convexity is a local-curvature property being tested globally.
+2. **Pick $|x|$ and watch the Hessian story break.** Its $f''$ is $0$ everywhere the derivative exists, yet it is convex — all of its curvature is concentrated at the single kink where $f''$ is undefined. Move the midpoint onto $x = 0$ and the readout says so rather than printing a zero it cannot justify. This is why the PSD-Hessian criterion is stated for *twice-differentiable* functions, and why $\ell_1$ regularization needs subgradients.
+
 ## Jensen's inequality
 
 If $f$ is convex and $X$ is a random variable, then:
@@ -61,6 +86,8 @@ f\!\left(\mathbb{E}[X]\right) \leq \mathbb{E}[f(X)]
 $$
 
 "The function of the mean is less than or equal to the mean of the function."
+
+This is the same picture again, not a new one. Put probability $1-\lambda$ on $x_1$ and $\lambda$ on $x_2$: then $\mathbb{E}[X] = (1-\lambda)x_1 + \lambda x_2$ is the point on the axis, $\mathbb{E}[f(X)]$ is the height of the **chord** above it, and $f(\mathbb{E}[X])$ is the height of the **curve**. The λ slider above is moving a probability weight, and the vertical bar it drags along is the Jensen gap. The chord definition is Jensen restricted to two-point distributions; the general case follows by taking limits of those.
 
 ### Application: cross-entropy ≥ entropy
 
