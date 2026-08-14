@@ -73,6 +73,24 @@ for epoch in range(10):
     print(f"Epoch {epoch}: loss={loss.item():.4f}")
 ```
 
+## What the bottleneck actually buys
+
+<BottleneckViz />
+
+A linear autoencoder trained to convergence **is** PCA, so reconstruction error at code size $k$ is exactly the tail of the eigenvalue spectrum — which means it can be computed rather than trained, with no question about whether the optimiser converged. The data here is 3 latent directions embedded in 16 dimensions plus isotropic noise:
+
+| code size | reconstruction MSE | variance kept |
+|---|---|---|
+| 1 | 0.35273 | 64.04% |
+| 2 | 0.11667 | 88.11% |
+| **3** | **0.05215** | **94.68%** |
+| 4 | 0.04708 | 95.20% |
+| 8 | 0.02875 | 97.07% |
+
+Going from 2 to 3 more than halves the error. Going from 3 to 4 improves it by 10%, and every unit after that buys a slice of noise. The eigenvalue bars say it more bluntly — $10.049,\ 3.777,\ 1.032$, then $0.081,\ 0.077,\ 0.076$ — a cliff exactly at the intrinsic dimension.
+
+**That elbow is the whole argument for the bottleneck.** Set the code size at or above the data's real dimensionality and the network can afford to learn the identity map: perfect reconstruction, zero representation. Set it below and the model is forced to choose what to keep — and the point where the error stops falling tells you how many directions the data actually had. A "compression" framing undersells this: you are not trying to make the file small, you are using scarcity to force a decision about structure.
+
 ## Types of autoencoders
 
 ### Undercomplete autoencoder

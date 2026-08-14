@@ -74,10 +74,10 @@ would carry better.
       adjustment on the graph from lesson 01.
 - [x] **probability-statistics/01-thinking-in-probabilities** — conditional
       probability as areas; the comma vs the bar. `ConditionalAreaViz`.
-- [ ] **generative-models/02-autoencoders** — reconstruction quality against
-      code size, showing why the bottleneck is the point.
-- [ ] **reinforcement-learning/03-deep-q-networks** — why correlated
-      transitions break the regression, and what replay does to them.
+- [x] **generative-models/02-autoencoders** — reconstruction quality against
+      code size. `BottleneckViz`.
+- [x] **reinforcement-learning/03-deep-q-networks** — why correlated
+      transitions break the regression. `ExperienceReplayViz`.
 
 ## Tier 2 — wants a guided walkthrough, not a viz
 
@@ -517,3 +517,27 @@ the Tier 3 entry, not both.
     so the receptive field does not merely widen with depth — it saturates. That
     is over-smoothing (lesson 03) seen from the other side, and it inverts the
     CNN intuition that depth is how you afford a wide field.
+
+- [x] **The bottleneck** — `generative-models/02` (`BottleneckViz`)
+  - A linear autoencoder trained to convergence *is* PCA, so error at code size
+    k is exactly the eigenvalue tail — **computed, not trained**, which removes
+    any question about convergence. 3 latent directions in 16 dimensions plus
+    noise: MSE 0.35273 / 0.11667 / **0.05215** / 0.04708 at k = 1/2/3/4, and a
+    spectrum of 10.049, 3.777, 1.032, then 0.081, 0.077, 0.076.
+  - The elbow *is* the argument: at or above the intrinsic dimension the network
+    can afford the identity map — perfect reconstruction, zero representation.
+    The "compression" framing undersells it; scarcity is what forces a decision
+    about structure.
+
+- [x] **Experience replay** — `reinforcement-learning/03` (`ExperienceReplayViz`)
+  - "SGD assumes i.i.d. samples" made felt: the same data, same learning rate,
+    same number of updates, **only the order differs**. Sequential ‖w − w*‖ is
+    0.2575 against 0.0774 shuffled at lr 0.02, and 0.1928 against **0.0162** at
+    lr 0.05 — 11.89×. Not a byte of data changed.
+  - **The damage grows with the learning rate** (3× → 12×), because a bigger
+    step lets each stretch of near-duplicate samples drag the weights further
+    before the next region arrives. So "just lower the learning rate" trades the
+    problem for slowness rather than fixing it — replay fixes the order, and the
+    order is what is broken.
+  - The on-screen mean used 200 trajectories while the prose quoted 400; raised
+    the component to 400 so the two agree exactly rather than approximately.
