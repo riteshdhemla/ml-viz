@@ -39,7 +39,14 @@ function scoreItem(item: SearchItem, query: string): number {
   return score;
 }
 
-export function CommandPalette({ items }: { items: SearchItem[] }) {
+/**
+ * Static index built at build time by `src/app/search-index.json/route.ts`.
+ * basePath is not applied to fetch() automatically, so add it here for the
+ * GitHub Pages mirror.
+ */
+const INDEX_URL = `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/search-index.json`;
+
+export function CommandPalette() {
   const { open, setOpen } = useSearchStore();
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -47,7 +54,32 @@ export function CommandPalette({ items }: { items: SearchItem[] }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
+  // The index is fetched the first time the palette opens rather than embedded
+  // in every page. `null` means "not loaded yet" so the UI can say so instead of
+  // claiming there are no results.
+  const [items, setItems] = useState<SearchItem[] | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const loadingRef = useRef(false);
+
+  useEffect(() => {
+    if (!open || items || loadingRef.current) return;
+    loadingRef.current = true;
+    setLoadFailed(false);
+    fetch(INDEX_URL)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data: SearchItem[]) => setItems(data))
+      .catch(() => {
+        // Allow a retry on the next open rather than failing for the session.
+        loadingRef.current = false;
+        setLoadFailed(true);
+      });
+  }, [open, items]);
+
   const results = useMemo(() => {
+    if (!items) return [];
     const scored = items
       .map((item) => ({ item, score: scoreItem(item, query) }))
       .filter((r) => r.score > 0)
@@ -143,7 +175,13 @@ export function CommandPalette({ items }: { items: SearchItem[] }) {
           </button>
         </div>
 
-        {results.length === 0 ? (
+        {loadFailed ? (
+          <p className="px-4 py-8 text-center text-sm text-slate-500">
+            Couldn’t load the search index. Close and reopen to retry.
+          </p>
+        ) : !items ? (
+          <p className="px-4 py-8 text-center text-sm text-slate-500">Loading…</p>
+        ) : results.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-slate-500">
             No results for “{query}”
           </p>

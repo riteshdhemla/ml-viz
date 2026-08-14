@@ -202,8 +202,14 @@ notebook JSON round-trips cleanly (source-as-string, `indent=1`). Colab runs Pyt
 4. Accept a `className?: string` prop
 5. Wrap output in `<VizFrame title=... caption=... className={className}>` and
    reuse `VizSlider` / `VizButton` / `VizStat` for controls
-6. Export from file, then add to `src/components/mdx/mdxComponents.tsx`
+6. Register it in **two** places (see "Bundle rules" below — this is what keeps
+   it out of every other page's bundle):
+   - `src/components/visualizations/lazy-viz.tsx` — a `dynamic()` loader entry
+   - `src/components/mdx/mdxComponents.tsx` — `KMeansViz: viz("KMeansViz"),`
 7. Reference it in a lesson MDX with a self-closing tag, e.g. `<KMeansViz />`
+
+`viz-registry-integrity.test.ts` fails if the two registries drift or if content
+references an unregistered viz.
 
 **Template:** see `prompts/new-visualization.md`
 
@@ -499,12 +505,44 @@ re-authoring; just keep those links accurate.
 - No `useState` in server components; no `fs` / file-system code in client components
 - `src/lib/content.ts` is server-only (imports `fs`) — never import in client components
 
+### Bundle rules (keep content pages light)
+
+`mdxComponents.tsx` is a server module reachable from all 331 content pages, so
+**anything its module graph touches ships to every lesson, wiki page, and case
+study**. Three site-wide registries used to leak that way — all 771 exercises,
+all 50 algorithm traces, and all 93 visualizations sat in one 1.7 MB chunk that
+loaded even on pages using none of them (672 kB First Load JS per page). The
+patterns that fixed it are load-bearing; don't undo them:
+
+1. **Big registries are resolved on the server.** `<Exercise id>` and
+   `<AlgorithmTrace id>` are *server* components that look the id up and pass
+   only the matched entry to a client child (`ExerciseClient`,
+   `AlgorithmTracePlayer`). Never import `@/lib/exercises` or
+   `@/lib/algo-traces` from a client component — that pulls the whole registry
+   back into the bundle. (Trace builders also run their algorithm at module
+   scope, so importing them client-side re-ran all 50 during hydration.)
+2. **Visualizations load through `LazyViz`.** The `import()` calls must live in
+   `visualizations/lazy-viz.tsx` (a client module) to become real async chunks.
+   `next/dynamic` inside `mdxComponents.tsx` does **not** work — client
+   components are already split by the RSC protocol, and a server-module
+   reference still puts them in the shared client graph. Never import a viz
+   directly into `mdxComponents.tsx`.
+3. **Site-wide data is fetched, not embedded.** The search index is a static
+   asset (`src/app/search-index.json/route.ts`, `force-static`) fetched by the
+   palette on first open. Passing it as a prop from the root layout serialized
+   ~370 entries into the RSC payload of every page.
+
+After changing anything in this area, check `npm run build` output: content
+routes should stay near the ~102 kB shared baseline, not balloon past 200 kB.
+
 ### Search & progress (site-wide UX)
 
 - **Search palette** (Ctrl/⌘+K): `src/components/search/CommandPalette.tsx`,
   mounted globally in `src/app/layout.tsx`. The index is built server-side by
   `src/lib/search-index.ts` from MDX frontmatter — new courses/lessons are
-  indexed automatically, no registration needed. Open state lives in
+  indexed automatically, no registration needed. It is served as a static asset
+  by `src/app/search-index.json/route.ts` and fetched by the palette on first
+  open (not passed as a prop — see "Bundle rules"). Open state lives in
   `src/lib/search-store.ts` (Zustand) so any component (e.g. SiteHeader) can
   trigger it.
 - **Lesson completion**: `LessonCompleteButton` (rendered by `LessonLayout`)
@@ -784,8 +822,8 @@ Paste them directly into Claude Code to generate new content following establish
 
 When adding a visualization, always:
 1. Check `src/components/mdx/mdxComponents.tsx` to see what's registered
-2. Add the new component to that registry after creating it
-3. Uncomment its import in `mdxComponents.tsx`
+2. Add a `dynamic()` loader to `src/components/visualizations/lazy-viz.tsx`
+3. Bind the MDX tag in `mdxComponents.tsx`: `KMeansViz: viz("KMeansViz"),`
 
 When adding a lesson, always:
 1. Create both the `.mdx` and the `.ipynb` notebook with the same slug
