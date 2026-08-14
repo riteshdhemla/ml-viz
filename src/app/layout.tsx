@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from "@/lib/site";
-import { buildSearchIndex } from "@/lib/search-index";
 import { CommandPalette } from "@/components/search/CommandPalette";
 import { ReviewWidget } from "@/components/review/ReviewWidget";
 import "./globals.css";
+
+// The review widget is a dev-only content-capture tool. It self-gates at
+// render, but gating the element here keeps its module out of the production
+// client graph entirely rather than relying on minifier dead-code elimination.
+const isDev = process.env.NODE_ENV === "development";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,14 +42,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const searchItems = buildSearchIndex();
-
   return (
     <html lang="en" className={inter.variable} data-scroll-behavior="smooth">
       <body>
         {children}
-        <CommandPalette items={searchItems} />
-        <ReviewWidget />
+        <CommandPalette />
+        {isDev && <ReviewWidget />}
       </body>
     </html>
   );

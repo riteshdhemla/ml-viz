@@ -1,6 +1,12 @@
 /**
  * MDX component map — every custom component usable in .mdx lesson files.
  * Add new viz/exercise components here and they become available in all lessons.
+ *
+ * Visualizations are referenced by name through `LazyViz` rather than imported
+ * here. This module is a server module shared by every MDX route, so a direct
+ * import makes a viz part of the client graph of all 331 content pages; routing
+ * them through one client module lets webpack give each viz its own chunk. See
+ * `visualizations/lazy-viz.tsx` for the full reasoning.
  */
 import type { MDXComponents } from "mdx/types";
 import { Callout } from "./Callout";
@@ -9,101 +15,19 @@ import { ThinkFirst } from "./ThinkFirst";
 import { CodeBlock } from "./CodeBlock";
 import { WikiLink } from "./WikiLink";
 import { SystemDesignMeta } from "./SystemDesignMeta";
+import { LazyViz } from "@/components/visualizations/lazy-viz";
+// Exercise and AlgorithmTrace are server components: they resolve an id against
+// their registry and pass only the matched entry to a client child, so the
+// registries themselves stay out of the client bundle.
 import { Exercise } from "@/components/exercises/Exercise";
-import { GradientDescentViz } from "@/components/visualizations/GradientDescent/GradientDescentViz";
-import { ActivationFunctionViz } from "@/components/visualizations/ActivationFunction/ActivationFunctionViz";
-import { LinearRegressionViz } from "@/components/visualizations/LinearRegression/LinearRegressionViz";
-import { DecisionBoundaryViz } from "@/components/visualizations/DecisionBoundary/DecisionBoundaryViz";
-import { KMeansViz } from "@/components/visualizations/KMeans/KMeansViz";
-import { PCAViz } from "@/components/visualizations/PCA/PCAViz";
-import { VectorViz } from "@/components/visualizations/Vector/VectorViz";
-import { MatrixTransformViz } from "@/components/visualizations/MatrixTransform/MatrixTransformViz";
-import { EigenvectorViz } from "@/components/visualizations/Eigenvector/EigenvectorViz";
-import { FunctionTangentViz } from "@/components/visualizations/FunctionTangent/FunctionTangentViz";
-import { ComputationalGraphViz } from "@/components/visualizations/ComputationalGraph/ComputationalGraphViz";
-import { GradientFieldViz } from "@/components/visualizations/GradientField/GradientFieldViz";
-import { DistributionViz } from "@/components/visualizations/Distribution/DistributionViz";
-import { MLEViz } from "@/components/visualizations/MLE/MLEViz";
-import { BayesViz } from "@/components/visualizations/Bayes/BayesViz";
-import { AttentionViz } from "@/components/visualizations/Attention/AttentionViz";
-import { ConvolutionViz } from "@/components/visualizations/Convolution/ConvolutionViz";
-import { VanishingGradientViz } from "@/components/visualizations/VanishingGradient/VanishingGradientViz";
-import { KNNBoundaryViz } from "@/components/visualizations/KNNBoundary/KNNBoundaryViz";
-import { MarginViz } from "@/components/visualizations/Margin/MarginViz";
-import { DecisionTreeSplitViz } from "@/components/visualizations/DecisionTreeSplit/DecisionTreeSplitViz";
-import { NeuralNetworkViz } from "@/components/visualizations/NeuralNetwork/NeuralNetworkViz";
-import { KernelViz } from "@/components/visualizations/KernelViz/KernelViz";
-import { LSTMGateViz } from "@/components/visualizations/LSTMGate/LSTMGateViz";
-import { DSeparationViz } from "@/components/visualizations/DSeparation/DSeparationViz";
-import { GridWorldViz } from "@/components/visualizations/GridWorld/GridWorldViz";
-import { DiffusionViz } from "@/components/visualizations/Diffusion/DiffusionViz";
-import { BaggingViz } from "@/components/visualizations/Bagging/BaggingViz";
-import { BoostingViz } from "@/components/visualizations/Boosting/BoostingViz";
-import { QTableViz } from "@/components/visualizations/QTable/QTableViz";
-import { PoolingViz } from "@/components/visualizations/Pooling/PoolingViz";
-import { CoalescingViz } from "@/components/visualizations/Coalescing/CoalescingViz";
-import { SamplingDistributionViz } from "@/components/visualizations/SamplingDistribution/SamplingDistributionViz";
-import { HypothesisTestViz } from "@/components/visualizations/HypothesisTest/HypothesisTestViz";
-import { MessagePassingViz } from "@/components/visualizations/MessagePassing/MessagePassingViz";
-import { MatrixFactorizationViz } from "@/components/visualizations/MatrixFactorization/MatrixFactorizationViz";
-import { GaussianProcessViz } from "@/components/visualizations/GaussianProcess/GaussianProcessViz";
-import { MoERoutingViz } from "@/components/visualizations/MoERouting/MoERoutingViz";
-import { CalibrationViz } from "@/components/visualizations/Calibration/CalibrationViz";
-import { LatentSpaceViz } from "@/components/visualizations/LatentSpace/LatentSpaceViz";
-import { RNNUnrollViz } from "@/components/visualizations/RNNUnroll/RNNUnrollViz";
-import { HMMViterbiViz } from "@/components/visualizations/HMMViterbi/HMMViterbiViz";
-import { TransferLearningViz } from "@/components/visualizations/TransferLearning/TransferLearningViz";
-import { GMMResponsibilityViz } from "@/components/visualizations/GMM/GMMResponsibilityViz";
-import { PositionalEncodingViz } from "@/components/visualizations/PositionalEncoding/PositionalEncodingViz";
-import { DendrogramViz } from "@/components/visualizations/Dendrogram/DendrogramViz";
-import { TransformerBlockViz } from "@/components/visualizations/TransformerBlock/TransformerBlockViz";
-import { GANTrainingViz } from "@/components/visualizations/GANTraining/GANTrainingViz";
-import { PerplexityViz } from "@/components/visualizations/Perplexity/PerplexityViz";
-import { PolicyGradientViz } from "@/components/visualizations/PolicyGradient/PolicyGradientViz";
-import { BiasVarianceViz } from "@/components/visualizations/BiasVariance/BiasVarianceViz";
-import { RegularizationPathViz } from "@/components/visualizations/RegularizationPath/RegularizationPathViz";
-import { SoftMarginViz } from "@/components/visualizations/SoftMargin/SoftMarginViz";
-import { BoostingShrinkageViz } from "@/components/visualizations/BoostingShrinkage/BoostingShrinkageViz";
-import { SilhouetteViz } from "@/components/visualizations/Silhouette/SilhouetteViz";
-import { PCAReconstructionViz } from "@/components/visualizations/PCAReconstruction/PCAReconstructionViz";
-import { NaiveBayesVotesViz } from "@/components/visualizations/NaiveBayesVotes/NaiveBayesVotesViz";
-import DecompositionViz from "@/components/visualizations/Decomposition/DecompositionViz";
-import ACFViz from "@/components/visualizations/ACF/ACFViz";
-import ARIMAForecastViz from "@/components/visualizations/ARIMAForecast/ARIMAForecastViz";
-import { SamplingViz } from "@/components/visualizations/Sampling/SamplingViz";
-import { RAGRetrievalViz } from "@/components/visualizations/RAGRetrieval/RAGRetrievalViz";
-import { RAGArchitectureViz } from "@/components/visualizations/RAGArchitecture/RAGArchitectureViz";
-import { GraphRAGViz } from "@/components/visualizations/GraphRAG/GraphRAGViz";
-import { AudioFeaturesViz } from "@/components/visualizations/AudioFeatures/AudioFeaturesViz";
-import { BoxJenkinsViz } from "@/components/visualizations/BoxJenkins/BoxJenkinsViz";
-import { ContextAssemblyViz } from "@/components/visualizations/ContextAssembly/ContextAssemblyViz";
-import { HierarchicalForecastViz } from "@/components/visualizations/HierarchicalForecast/HierarchicalForecastViz";
-import { AgentEvalViz } from "@/components/visualizations/AgentEval/AgentEvalViz";
-import { PreferenceTuningViz } from "@/components/visualizations/PreferenceTuning/PreferenceTuningViz";
-import { ContinuousTrainingViz } from "@/components/visualizations/ContinuousTraining/ContinuousTrainingViz";
-import { CTCDecodingViz } from "@/components/visualizations/CTCDecoding/CTCDecodingViz";
-import { LoRAViz } from "@/components/visualizations/LoRA/LoRAViz";
-import { RewardModelViz } from "@/components/visualizations/RewardModel/RewardModelViz";
-import { QuantizationViz } from "@/components/visualizations/Quantization/QuantizationViz";
-import { ScalingLawViz } from "@/components/visualizations/ScalingLaw/ScalingLawViz";
-import { ContrastiveViz } from "@/components/visualizations/Contrastive/ContrastiveViz";
-import { CLIPSpaceViz } from "@/components/visualizations/CLIPSpace/CLIPSpaceViz";
-import { SamplingStrategiesViz } from "@/components/visualizations/SamplingStrategies/SamplingStrategiesViz";
-import { RolloutViz } from "@/components/visualizations/Rollout/RolloutViz";
-import { AgentLoopViz } from "@/components/visualizations/AgentLoop/AgentLoopViz";
-import { OptimizerPathViz } from "@/components/visualizations/OptimizerPath/OptimizerPathViz";
-import { KLDivergenceViz } from "@/components/visualizations/KLDivergence/KLDivergenceViz";
-import { LowRankViz } from "@/components/visualizations/LowRank/LowRankViz";
-import { VCDimensionViz } from "@/components/visualizations/VCDimension/VCDimensionViz";
-import { DistributedTrainingViz } from "@/components/visualizations/DistributedTraining/DistributedTrainingViz";
-import { TraceWaterfallViz } from "@/components/visualizations/TraceWaterfall/TraceWaterfallViz";
-import { LatencyCriticalPathViz } from "@/components/visualizations/LatencyCriticalPath/LatencyCriticalPathViz";
-import { CondorcetViz } from "@/components/visualizations/Condorcet/CondorcetViz";
-import { ReservoirSamplingViz } from "@/components/visualizations/ReservoirSampling/ReservoirSamplingViz";
-import { OnlineRegretViz } from "@/components/visualizations/OnlineRegret/OnlineRegretViz";
-import { ConceptDriftViz } from "@/components/visualizations/ConceptDrift/ConceptDriftViz";
-import { ProjectLoopViz } from "@/components/visualizations/ProjectLoop/ProjectLoopViz";
 import { AlgorithmTrace } from "@/components/visualizations/AlgoTrace/AlgorithmTrace";
+
+/** Binds an MDX tag to a lazily-loaded visualization of the same name. */
+function viz(name: string) {
+  const Viz = (props: Record<string, unknown>) => <LazyViz name={name} {...props} />;
+  Viz.displayName = name;
+  return Viz;
+}
 
 export const mdxComponents: MDXComponents = {
   h1: (props) => <h1 className="text-3xl font-bold text-white mt-10 mb-4" {...props} />,
@@ -123,97 +47,97 @@ export const mdxComponents: MDXComponents = {
   AlgorithmTrace,
 
   // Visualizations (pure-SVG client components — see visualizations/viz-kit.tsx)
-  GradientDescentViz,
-  ActivationFunctionViz,
-  LinearRegressionViz,
-  DecisionBoundaryViz,
-  KMeansViz,
-  PCAViz,
-  VectorViz,
-  MatrixTransformViz,
-  EigenvectorViz,
-  FunctionTangentViz,
-  ComputationalGraphViz,
-  GradientFieldViz,
-  DistributionViz,
-  MLEViz,
-  BayesViz,
-  AttentionViz,
-  ConvolutionViz,
-  VanishingGradientViz,
-  KNNBoundaryViz,
-  MarginViz,
-  DecisionTreeSplitViz,
-  NeuralNetworkViz,
-  KernelViz,
-  LSTMGateViz,
-  DSeparationViz,
-  GridWorldViz,
-  DiffusionViz,
-  BaggingViz,
-  BoostingViz,
-  QTableViz,
-  PoolingViz,
-  CoalescingViz,
-  SamplingDistributionViz,
-  HypothesisTestViz,
-  MessagePassingViz,
-  MatrixFactorizationViz,
-  GaussianProcessViz,
-  MoERoutingViz,
-  CalibrationViz,
-  LatentSpaceViz,
-  RNNUnrollViz,
-  HMMViterbiViz,
-  TransferLearningViz,
-  GMMResponsibilityViz,
-  PositionalEncodingViz,
-  DendrogramViz,
-  TransformerBlockViz,
-  GANTrainingViz,
-  PerplexityViz,
-  PolicyGradientViz,
-  BiasVarianceViz,
-  RegularizationPathViz,
-  SoftMarginViz,
-  BoostingShrinkageViz,
-  SilhouetteViz,
-  PCAReconstructionViz,
-  NaiveBayesVotesViz,
-  DecompositionViz,
-  ACFViz,
-  ARIMAForecastViz,
-  SamplingViz,
-  RAGRetrievalViz,
-  RAGArchitectureViz,
-  GraphRAGViz,
-  AudioFeaturesViz,
-  BoxJenkinsViz,
-  ContextAssemblyViz,
-  HierarchicalForecastViz,
-  AgentEvalViz,
-  PreferenceTuningViz,
-  ContinuousTrainingViz,
-  CTCDecodingViz,
-  LoRAViz,
-  RewardModelViz,
-  QuantizationViz,
-  ScalingLawViz,
-  ContrastiveViz,
-  CLIPSpaceViz,
-  SamplingStrategiesViz,
-  RolloutViz,
-  AgentLoopViz,
-  OptimizerPathViz,
-  KLDivergenceViz,
-  LowRankViz,
-  VCDimensionViz,
-  DistributedTrainingViz,
-  TraceWaterfallViz,
-  LatencyCriticalPathViz,
-  CondorcetViz,
-  ReservoirSamplingViz,
-  OnlineRegretViz,
-  ConceptDriftViz,
-  ProjectLoopViz,
+  ACFViz: viz("ACFViz"),
+  ActivationFunctionViz: viz("ActivationFunctionViz"),
+  AgentEvalViz: viz("AgentEvalViz"),
+  AgentLoopViz: viz("AgentLoopViz"),
+  ARIMAForecastViz: viz("ARIMAForecastViz"),
+  AttentionViz: viz("AttentionViz"),
+  AudioFeaturesViz: viz("AudioFeaturesViz"),
+  BaggingViz: viz("BaggingViz"),
+  BayesViz: viz("BayesViz"),
+  BiasVarianceViz: viz("BiasVarianceViz"),
+  BoostingShrinkageViz: viz("BoostingShrinkageViz"),
+  BoostingViz: viz("BoostingViz"),
+  BoxJenkinsViz: viz("BoxJenkinsViz"),
+  CalibrationViz: viz("CalibrationViz"),
+  CLIPSpaceViz: viz("CLIPSpaceViz"),
+  CoalescingViz: viz("CoalescingViz"),
+  ComputationalGraphViz: viz("ComputationalGraphViz"),
+  ConceptDriftViz: viz("ConceptDriftViz"),
+  CondorcetViz: viz("CondorcetViz"),
+  ContextAssemblyViz: viz("ContextAssemblyViz"),
+  ContinuousTrainingViz: viz("ContinuousTrainingViz"),
+  ContrastiveViz: viz("ContrastiveViz"),
+  ConvolutionViz: viz("ConvolutionViz"),
+  CTCDecodingViz: viz("CTCDecodingViz"),
+  DecisionBoundaryViz: viz("DecisionBoundaryViz"),
+  DecisionTreeSplitViz: viz("DecisionTreeSplitViz"),
+  DecompositionViz: viz("DecompositionViz"),
+  DendrogramViz: viz("DendrogramViz"),
+  DiffusionViz: viz("DiffusionViz"),
+  DistributedTrainingViz: viz("DistributedTrainingViz"),
+  DistributionViz: viz("DistributionViz"),
+  DSeparationViz: viz("DSeparationViz"),
+  EigenvectorViz: viz("EigenvectorViz"),
+  FunctionTangentViz: viz("FunctionTangentViz"),
+  GANTrainingViz: viz("GANTrainingViz"),
+  GaussianProcessViz: viz("GaussianProcessViz"),
+  GMMResponsibilityViz: viz("GMMResponsibilityViz"),
+  GradientDescentViz: viz("GradientDescentViz"),
+  GradientFieldViz: viz("GradientFieldViz"),
+  GraphRAGViz: viz("GraphRAGViz"),
+  GridWorldViz: viz("GridWorldViz"),
+  HierarchicalForecastViz: viz("HierarchicalForecastViz"),
+  HMMViterbiViz: viz("HMMViterbiViz"),
+  HypothesisTestViz: viz("HypothesisTestViz"),
+  KernelViz: viz("KernelViz"),
+  KLDivergenceViz: viz("KLDivergenceViz"),
+  KMeansViz: viz("KMeansViz"),
+  KNNBoundaryViz: viz("KNNBoundaryViz"),
+  LatencyCriticalPathViz: viz("LatencyCriticalPathViz"),
+  LatentSpaceViz: viz("LatentSpaceViz"),
+  LinearRegressionViz: viz("LinearRegressionViz"),
+  LoRAViz: viz("LoRAViz"),
+  LowRankViz: viz("LowRankViz"),
+  LSTMGateViz: viz("LSTMGateViz"),
+  MarginViz: viz("MarginViz"),
+  MatrixFactorizationViz: viz("MatrixFactorizationViz"),
+  MatrixTransformViz: viz("MatrixTransformViz"),
+  MessagePassingViz: viz("MessagePassingViz"),
+  MLEViz: viz("MLEViz"),
+  MoERoutingViz: viz("MoERoutingViz"),
+  NaiveBayesVotesViz: viz("NaiveBayesVotesViz"),
+  NeuralNetworkViz: viz("NeuralNetworkViz"),
+  OnlineRegretViz: viz("OnlineRegretViz"),
+  OptimizerPathViz: viz("OptimizerPathViz"),
+  PCAReconstructionViz: viz("PCAReconstructionViz"),
+  PCAViz: viz("PCAViz"),
+  PerplexityViz: viz("PerplexityViz"),
+  PolicyGradientViz: viz("PolicyGradientViz"),
+  PoolingViz: viz("PoolingViz"),
+  PositionalEncodingViz: viz("PositionalEncodingViz"),
+  PreferenceTuningViz: viz("PreferenceTuningViz"),
+  ProjectLoopViz: viz("ProjectLoopViz"),
+  QTableViz: viz("QTableViz"),
+  QuantizationViz: viz("QuantizationViz"),
+  RAGArchitectureViz: viz("RAGArchitectureViz"),
+  RAGRetrievalViz: viz("RAGRetrievalViz"),
+  RegularizationPathViz: viz("RegularizationPathViz"),
+  ReservoirSamplingViz: viz("ReservoirSamplingViz"),
+  RewardModelViz: viz("RewardModelViz"),
+  RNNUnrollViz: viz("RNNUnrollViz"),
+  RolloutViz: viz("RolloutViz"),
+  SamplingDistributionViz: viz("SamplingDistributionViz"),
+  SamplingStrategiesViz: viz("SamplingStrategiesViz"),
+  SamplingViz: viz("SamplingViz"),
+  ScalingLawViz: viz("ScalingLawViz"),
+  SilhouetteViz: viz("SilhouetteViz"),
+  SoftMarginViz: viz("SoftMarginViz"),
+  TraceWaterfallViz: viz("TraceWaterfallViz"),
+  TransferLearningViz: viz("TransferLearningViz"),
+  TransformerBlockViz: viz("TransformerBlockViz"),
+  VanishingGradientViz: viz("VanishingGradientViz"),
+  VCDimensionViz: viz("VCDimensionViz"),
+  VectorViz: viz("VectorViz"),
 };

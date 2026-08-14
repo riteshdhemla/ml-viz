@@ -20,6 +20,9 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || "https://ml-viz-ruby.vercel.app",
     NEXT_PUBLIC_GITHUB_PAGES: isGitHubPages ? "true" : "",
+    // Next prefixes basePath onto <Link>/<Image> automatically but not onto
+    // fetch(), and the command palette fetches /search-index.json at runtime.
+    NEXT_PUBLIC_BASE_PATH: basePath,
   },
 };
 
