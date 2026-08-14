@@ -70,6 +70,25 @@ Estimating *per-individual* effects — who benefits most from treatment, the ta
   Adjusting for confounders removes bias — but adjusting for a **collider** (a common *effect* of $T$ and $Y$) or a **mediator** (a variable *on* the causal path) introduces bias. "Control for more variables" is not safe; the causal graph tells you which $Z$ is valid — the path-blocking machinery is [d-separation](/courses/graphical-models/01-bayesian-networks). This is the practical payoff of drawing the structure first.
 </Callout>
 
+### The cost of adjusting for the wrong thing
+
+<BackdoorAdjustmentViz />
+
+A structural model with a known direct effect of $\beta = 0.9$, one confounder $Z$, one descendant $M$, and one collider $C$. 4000 samples, and the estimate is just the OLS coefficient on $X$ with whichever controls you switch on:
+
+| adjust for | $\hat\beta$ | bias | |
+|---|---|---|---|
+| nothing | 1.6502 | +0.7502 | confounded |
+| $Z$ | **0.9078** | +0.0078 | correct backdoor set |
+| $M$ (descendant) | 1.6162 | +0.7162 | does not close the back door |
+| $C$ (collider) | 0.0301 | −0.8699 | effect destroyed |
+| $Z$ and $C$ | **0.0684** | −0.8316 | a correct answer, ruined |
+| $Z$ and $M$ | 0.8955 | −0.0045 | harmless here |
+
+Read the second row, then the fifth. Adjusting for $Z$ alone lands on $0.9078$ against a truth of $0.9$ — the backdoor criterion delivering exactly what it promises. Then add one more variable you happened to have in the table, and the estimate falls to $0.0684$: **worse than adjusting for nothing at all**. Conditioning on a collider does not close a path, it *opens* one, because learning $C$ makes $X$ and $Y$ informative about each other through their shared effect.
+
+The uncomfortable part is that nothing in the data distinguishes these rows. All six regressions run without complaint, all six produce a tidy coefficient and a small standard error, and the only thing that tells you which one answers your question is the graph you were willing to draw beforehand. "Throw every covariate in and let regularisation sort it out" is not a conservative choice — it is a causal assumption, made silently.
+
 <Exercise id="causal-ate" />
 
 <Exercise id="causal-do-operator" />
