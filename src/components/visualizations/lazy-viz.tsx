@@ -68,6 +68,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   DistillationViz: dynamic(() => import("@/components/visualizations/Distillation/DistillationViz").then((m) => m.DistillationViz)) as ComponentType<VizProps>,
   DistributedTrainingViz: dynamic(() => import("@/components/visualizations/DistributedTraining/DistributedTrainingViz").then((m) => m.DistributedTrainingViz)) as ComponentType<VizProps>,
   DistributionViz: dynamic(() => import("@/components/visualizations/Distribution/DistributionViz").then((m) => m.DistributionViz)) as ComponentType<VizProps>,
+  DPDisparityViz: dynamic(() => import("@/components/visualizations/DPDisparity/DPDisparityViz").then((m) => m.DPDisparityViz)) as ComponentType<VizProps>,
   DSeparationViz: dynamic(() => import("@/components/visualizations/DSeparation/DSeparationViz").then((m) => m.DSeparationViz)) as ComponentType<VizProps>,
   EarlyStoppingViz: dynamic(() => import("@/components/visualizations/EarlyStopping/EarlyStoppingViz").then((m) => m.EarlyStoppingViz)) as ComponentType<VizProps>,
   EigenvectorViz: dynamic(() => import("@/components/visualizations/Eigenvector/EigenvectorViz").then((m) => m.EigenvectorViz)) as ComponentType<VizProps>,

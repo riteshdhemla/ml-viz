@@ -88,6 +88,7 @@ export const mdxComponents: MDXComponents = {
   DistillationViz: viz("DistillationViz"),
   DistributedTrainingViz: viz("DistributedTrainingViz"),
   DistributionViz: viz("DistributionViz"),
+  DPDisparityViz: viz("DPDisparityViz"),
   DSeparationViz: viz("DSeparationViz"),
   EarlyStoppingViz: viz("EarlyStoppingViz"),
   EigenvectorViz: viz("EigenvectorViz"),

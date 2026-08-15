@@ -256,8 +256,36 @@ wrong format.
       already traced on `wiki/bpe-tokenization`).
 - [ ] **recommender-systems/03-deep-and-two-tower** — two towers, in-batch
       negatives, retrieve-then-rank.
-- [ ] **ml-in-practice/15-privacy-and-federated-learning** — the DP-SGD loop and
-      the federated round.
+- [x] **ml-in-practice/15-privacy-and-federated-learning** — `DPDisparityViz`
+      (guided, 4 steps). Scoped to the DP-SGD half; the federated round is a
+      protocol diagram with no quantity that varies, so it stays prose.
+
+      The lesson claimed DP-SGD hurts underrepresented groups because "their
+      gradients are rarer, so noise drowns them out more". **Both halves of that
+      are wrong**, and the lesson was corrected:
+
+      1. Their gradients are **larger, not rarer** — median per-example norm
+         3.76× the majority's, because the model fits them worse so their
+         gradients never shrink. At C = 1 that means 16% of minority examples
+         are clipped against 3% of majority, 4.6× the rate, every step.
+      2. **It is the clipping, not the noise.** At *zero* noise — no privacy
+         purchased at all — tightening C from 20 to 0.2 leaves majority accuracy
+         flat at 0.95 while minority falls 0.882 → 0.504. Holding C = 1 and
+         sweeping σ, the minority barely moves from σ = 0 to σ = 32 (ε ≈ 1.4).
+         Large-batch averaging amortises the noise; the per-example clip is not
+         amortised. Matches Bagdasaryan et al. 2019, now cited in the lesson.
+
+      Harm scales with representation: gap 0.521 at a 5% minority share, 0.259
+      at 10%, 0.037 at 20%, 0.005 at 50%.
+
+      Two failed attempts recorded: a shared linear model **cannot represent a
+      group-specific rule** (minority sat at chance even with no DP, 0.562), so
+      group-interaction features are required; and noise applied to a full-batch
+      averaged gradient is negligible at any realistic σ, which is why the
+      finding came out as clipping-dominated rather than noise-dominated.
+      Accounting uses an exact RDP accountant for the **non-subsampled**
+      Gaussian mechanism, which is why the sim is full-batch — subsampled
+      amplification would have needed a much more involved accountant.
 - [ ] **building-with-llms/07-reasoning-models** — train-time vs test-time
       compute scaling.
 - [x] **ml-in-practice/02-deployment-pitfalls** — train-serve skew as a pipeline
