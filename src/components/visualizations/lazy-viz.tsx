@@ -62,6 +62,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   DecisionBoundaryViz: dynamic(() => import("@/components/visualizations/DecisionBoundary/DecisionBoundaryViz").then((m) => m.DecisionBoundaryViz)) as ComponentType<VizProps>,
   DecisionTreeSplitViz: dynamic(() => import("@/components/visualizations/DecisionTreeSplit/DecisionTreeSplitViz").then((m) => m.DecisionTreeSplitViz)) as ComponentType<VizProps>,
   DecompositionViz: dynamic(() => import("@/components/visualizations/Decomposition/DecompositionViz").then((m) => m.default)) as ComponentType<VizProps>,
+  DelayedLabelViz: dynamic(() => import("@/components/visualizations/DelayedLabel/DelayedLabelViz").then((m) => m.DelayedLabelViz)) as ComponentType<VizProps>,
   DendrogramViz: dynamic(() => import("@/components/visualizations/Dendrogram/DendrogramViz").then((m) => m.DendrogramViz)) as ComponentType<VizProps>,
   DiffusionViz: dynamic(() => import("@/components/visualizations/Diffusion/DiffusionViz").then((m) => m.DiffusionViz)) as ComponentType<VizProps>,
   DistillationViz: dynamic(() => import("@/components/visualizations/Distillation/DistillationViz").then((m) => m.DistillationViz)) as ComponentType<VizProps>,

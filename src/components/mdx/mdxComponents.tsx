@@ -82,6 +82,7 @@ export const mdxComponents: MDXComponents = {
   DecisionBoundaryViz: viz("DecisionBoundaryViz"),
   DecisionTreeSplitViz: viz("DecisionTreeSplitViz"),
   DecompositionViz: viz("DecompositionViz"),
+  DelayedLabelViz: viz("DelayedLabelViz"),
   DendrogramViz: viz("DendrogramViz"),
   DiffusionViz: viz("DiffusionViz"),
   DistillationViz: viz("DistillationViz"),

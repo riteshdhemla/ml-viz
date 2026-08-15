@@ -54,6 +54,16 @@ Online learning assumes you get the label right after predicting. In production 
 
 The pattern is to **log features at prediction time** (snapshot exactly what the model saw), park that snapshot keyed by an id, and **join the label to it when the outcome finally arrives** — training on the historically-correct feature values, not today's. Until labels arrive, unsupervised drift signals (shifts in $P(X)$) are your early warning.
 
+### What the delay does to every recent metric
+
+<DelayedLabelViz />
+
+The snapshot-and-join pattern fixes *training*. It does nothing for *measurement*, and the measurement failure is the one that gets read every morning. Simulate 200 days at a fraud rate of exactly 3.00% with no drift and no model at all — the only moving part is when chargebacks land — and a rolling 30-day fraud dashboard reads about **half** the real rate. A 7-day window reads roughly a tenth of it.
+
+This bias is one-directional, stable, and does not average out: the understatement is 49–53% at every value of "today" across the whole simulation. Read naively, **the freshest number is always the most flattering**, which is precisely backwards from how a recency dashboard is meant to be used, and it is why a model that is silently degrading can look fine right up until the cohort matures.
+
+Two defensible reads, both shown above. **Wait** — restrict to cohorts old enough to be complete (here 120 days gives 2.97% against a true 3.00%), which is unbiased and four months stale. Or **divide by the completion curve** — the share of a cohort's labels that have landed by age $d$, estimated from history. The 30-day window whose raw reading is 1.40% is on average only 48% complete; dividing recovers 2.89% against a true 2.93%. The correction assumes the delay distribution is stable, so a genuine change in *how fast* chargebacks arrive will break it — but the raw number is not defensible under any assumption.
+
 ## The monitor-and-adapt loop
 
 Because a streaming model faces drift, monitoring is not optional garnish — it is part of the model:
