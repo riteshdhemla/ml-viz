@@ -11,7 +11,7 @@ spineStages: [optimization]
 
 Backpropagation is not magic — it's the chain rule applied to computational graphs. It's what makes the loop's **optimization** stage tractable for deep nets: without an efficient way to get the gradient of the loss w.r.t. millions of parameters, gradient descent would be a non-starter. Once you understand the chain rule, every step of backprop becomes a mechanical application of one idea.
 
-**Real-world examples:** Backpropagation — the algorithm that trains every deep neural network — is the chain rule applied recursively through a computational graph.
+**Real-world examples:** Backpropagation (the algorithm that trains every deep neural network) is the chain rule applied recursively through a computational graph.
 
 ## The chain rule
 
@@ -214,7 +214,7 @@ What to notice:
 - **Non-zero $\partial L/\partial \mathbf{a}_1$, zero $\partial L/\partial
   \mathbf{z}_1$.** The trace's second hidden unit sits at $z_1 = -0.1$. The loss
   is genuinely sensitive to its *activation* ($0.121$), but the ReLU gate zeroes
-  the gradient to its *pre-activation* — and those are different quantities. This
+  the gradient to its *pre-activation*, and those are different quantities. This
   is the mechanism behind dying ReLU: the gradient that would revive the unit is
   precisely the one being switched off.
 - **One dead unit zeroes 5 of the 11 parameter gradients** — the whole second row
@@ -262,7 +262,7 @@ Solutions:
 
 - Backpropagation = chain rule applied to a computational graph.
 - Each node multiplies the upstream gradient by its local gradient and passes it back.
-- Backprop computes all gradients simultaneously in one pass — this is why neural network training is tractable.
+- Backprop computes all gradients simultaneously in one pass. This is why neural network training is tractable.
 - **Vanishing gradients** happen when many $< 1$ factors multiply; solved by ReLU, batch norm, or residual connections.
 
 ## Related concepts

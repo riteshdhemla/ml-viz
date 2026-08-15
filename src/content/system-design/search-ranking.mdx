@@ -93,13 +93,13 @@ synonyms, morphological variants ("woman" vs "women"), spelling errors — and
 reported a **+4.7% Recall@100** lift from adding a trained semantic-matching
 channel ([Nigam et al., KDD 2019](https://arxiv.org/abs/1907.00937)). Facebook
 Search ran on Boolean lexical matching for years before adding embedding-based
-retrieval *alongside* — not instead of — the inverted index
+retrieval *alongside* (not instead of) the inverted index
 ([Huang et al., KDD 2020](https://arxiv.org/abs/2006.11632)).
 
 <ThinkFirst question="You're building the ranker's training set. Clicked items are the positives — what should the negatives be?">
 Not random catalog items: separating "beach house" from a lawnmower is too easy
 and teaches the model nothing. Use **hard negatives** — items shown in the same
-session that the user skipped — so the model learns to resolve close calls. And
+session that the user skipped, so the model learns to resolve close calls. And
 remember the positives are biased by position: the user clicked partly because
 you ranked it first.
 </ThinkFirst>
@@ -114,7 +114,7 @@ you ranked it first.
 - **Hard negatives:** sample non-clicked items *shown in the same session* — the
   model must learn to separate close calls, not just random junk. Amazon's
   semantic-search loss makes this explicit with **three tiers** — purchased,
-  impressed-but-not-purchased, and random — so the model learns both the coarse
+  impressed-but-not-purchased, and random, so the model learns both the coarse
   and the fine distinction.
 - **Position bias:** treat the probability that a user *examined* a position as
   a propensity and inverse-weight the logged clicks — the counterfactual
@@ -127,7 +127,7 @@ you ranked it first.
 Airbnb's published answer: a **single-hidden-layer network on the same features
 as the GBDT**, shipped mainly to prove the training-serving pipeline end to
 end, then a lambdarank NN, then deeper nets. Going straight to a deep
-architecture stacks two risks — new plumbing and new hypothesis space — so when
+architecture stacks two risks (new plumbing and new hypothesis space), so when
 the metric drops you can't tell which broke. Most of their paper is failed
 "obvious" ideas; the pipeline-first discipline is what let them find the ones
 that worked.
@@ -243,7 +243,7 @@ the booking label, not clicks, and interleave before trusting offline NDCG.
 - **Hybrid** lexical + semantic retrieval beats either alone; lexical keeps exact
   matches, semantic adds meaning.
 - Optimize the **downstream conversion**, correct **position bias** in the labels,
-  and let interleaving/A-B — not offline NDCG — decide.
+  and let interleaving/A-B (not offline NDCG) decide.
 
 ## References
 

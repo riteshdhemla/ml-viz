@@ -9,9 +9,9 @@ estimatedMinutes: 12
 
 # Maximum Likelihood Estimation
 
-You flip a bent coin 10 times and get 7 heads. What is the coin's true probability of heads? Your gut says $0.7$ — but *why* is that the best answer, and not $0.6$ or $0.8$?
+You flip a bent coin 10 times and get 7 heads. What is the coin's true probability of heads? Your gut says $0.7$, but *why* is that the best answer, and not $0.6$ or $0.8$?
 
-**Maximum Likelihood Estimation (MLE)** turns that gut feeling into a principle: out of every possible coin (every value of $p$), pick the one that makes the data you actually saw as probable as possible. The same idea fits a Gaussian to measurements, fits a logistic regression to labels, and underlies almost every loss function in machine learning — this is where the loop's **objective** stage comes from: a loss is usually just a negative log-likelihood in disguise.
+**Maximum Likelihood Estimation (MLE)** turns that gut feeling into a principle: out of every possible coin (every value of $p$), pick the one that makes the data you actually saw as probable as possible. The same idea fits a Gaussian to measurements, fits a logistic regression to labels, and underlies almost every loss function in machine learning. This is where the loop's **objective** stage comes from: a loss is usually just a negative log-likelihood in disguise.
 
 **Real-world examples:** Fitting a linear regression model, training a logistic classifier, and learning the parameters of a Gaussian mixture — all minimize the negative log-likelihood, i.e. maximize the likelihood of the data.
 
@@ -32,7 +32,7 @@ $$
 $$
 
 <Callout type="warning" title="Likelihood is not a probability over θ">
-  $L(\theta)$ varies $\theta$ with the *data fixed*. It is **not** a probability distribution over $\theta$ — it does not integrate to 1 over $\theta$. To get probabilities over $\theta$ you need a prior, which is Bayesian inference (next lesson).
+  $L(\theta)$ varies $\theta$ with the *data fixed*. It is **not** a probability distribution over $\theta$. It does not integrate to 1 over $\theta$. To get probabilities over $\theta$ you need a prior, which is Bayesian inference (next lesson).
 </Callout>
 
 ## Why we maximize the log-likelihood
@@ -159,7 +159,7 @@ print("Closed-form k/n:  p = {:.3f}".format(data.mean()))  # 0.700 — same!
 | **Invariant** | $\widehat{f(\theta)} = f(\hat{\theta})$ for any invertible transform |
 | **Biased** | May be biased in finite samples (e.g., Gaussian variance) |
 
-To reason about uncertainty in $\theta$ itself — to put a probability distribution *on the parameters* — you need a prior, which is **Bayesian inference** (next lesson).
+To reason about uncertainty in $\theta$ itself (to put a probability distribution *on the parameters*) you need a prior, which is **Bayesian inference** (next lesson).
 
 The information-theoretic view of the same objects — entropy, KL divergence, and why minimizing cross-entropy minimizes the KL to the data distribution — is developed in the deep dive:
 

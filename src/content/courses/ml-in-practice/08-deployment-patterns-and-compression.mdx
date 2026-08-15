@@ -19,7 +19,7 @@ The first decision is *when* inference happens relative to the user request. Thr
 
 ### Batch
 
-Score every user (or every item) overnight, write the predictions to a key-value store, and at request time the online code is a database lookup. Throughput is unbounded — you can shard the batch across as many machines as you can afford — and latency at the request path is whatever a lookup costs (typically a few milliseconds). The cost is **freshness**: a prediction made at 02:00 cannot reflect a click made at 09:00. Batch is the right pattern when inputs barely change minute-to-minute: nightly recommendations, weekly churn risk, daily inventory forecasts.
+Score every user (or every item) overnight, write the predictions to a key-value store, and at request time the online code is a database lookup. Throughput is unbounded (you can shard the batch across as many machines as you can afford) and latency at the request path is whatever a lookup costs (typically a few milliseconds). The cost is **freshness**: a prediction made at 02:00 cannot reflect a click made at 09:00. Batch is the right pattern when inputs barely change minute-to-minute: nightly recommendations, weekly churn risk, daily inventory forecasts.
 
 ### Online (real-time)
 
@@ -51,9 +51,9 @@ Quantization, pruning, and distillation each cost engineering time and a small a
 
 ## Quantization (recap)
 
-Quantization stores each weight in fewer bits — FP32 → FP16 → INT8 → INT4 → INT2 — by mapping the continuous weight range onto a discrete grid of `2^b` levels. Memory shrinks linearly with bit-width; accuracy degrades non-linearly (cheap from 32 → 8, painful below 4). The math (uniform symmetric quantization, QAT, NF4) is covered in the fine-tuning course; for deployment the take-away is that **INT8 is essentially free** on most LLMs and **INT4 is the sweet spot** for serving on consumer GPUs.
+Quantization stores each weight in fewer bits (FP32 → FP16 → INT8 → INT4 → INT2) by mapping the continuous weight range onto a discrete grid of `2^b` levels. Memory shrinks linearly with bit-width; accuracy degrades non-linearly (cheap from 32 → 8, painful below 4). The math (uniform symmetric quantization, QAT, NF4) is covered in the fine-tuning course; for deployment the take-away is that **INT8 is essentially free** on most LLMs and **INT4 is the sweet spot** for serving on consumer GPUs.
 
-One subtlety that matters for production throughput: **activation quantization** is as important as weight quantization. *Weight-only* (W8 or W4) shrinks the model on disk and in GPU RAM, but the matmul still runs in FP16 on the activations — so peak throughput is bounded by FP16 GEMM. *Weight + activation* (W8A8 or W4A8) lets the matmul run in INT8 / INT4, often 2–4× faster per kernel. The trade-off is calibration: activation quantization needs a small representative dataset to set per-tensor scales without clipping outliers.
+One subtlety that matters for production throughput: **activation quantization** is as important as weight quantization. *Weight-only* (W8 or W4) shrinks the model on disk and in GPU RAM, but the matmul still runs in FP16 on the activations, so peak throughput is bounded by FP16 GEMM. *Weight + activation* (W8A8 or W4A8) lets the matmul run in INT8 / INT4, often 2–4× faster per kernel. The trade-off is calibration: activation quantization needs a small representative dataset to set per-tensor scales without clipping outliers.
 
 <QuantizationViz />
 
@@ -82,7 +82,7 @@ A 90 % unstructured-pruned model can still take as long as the dense original to
 
 ## Knowledge distillation
 
-Train a small **student** model to mimic the outputs of a large **teacher**. The student is the model you actually deploy; the teacher is the expensive thing you already trained. Distillation works because the teacher's *softened* output distribution carries more information than its hard prediction: the relative probabilities of the runner-up classes — the so-called *dark knowledge* — tell the student which classes are "near misses" for each input, which is signal you could not get from labels alone.
+Train a small **student** model to mimic the outputs of a large **teacher**. The student is the model you actually deploy; the teacher is the expensive thing you already trained. Distillation works because the teacher's *softened* output distribution carries more information than its hard prediction: the relative probabilities of the runner-up classes (the so-called *dark knowledge*) tell the student which classes are "near misses" for each input, which is signal you could not get from labels alone.
 
 The standard distillation loss with temperature $T$:
 

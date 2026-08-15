@@ -27,7 +27,7 @@ An agentic system-design interview is *not* an ML-modeling interview — you don
 train the model, you **design the system around it**. The backbone is the
 **agentic project loop**: task → context & tools → orchestration → evaluation →
 guardrails → operations. A support agent stresses the middle of that loop
-hardest, because it takes **real actions on real accounts** — so getting context,
+hardest, because it takes **real actions on real accounts**, so getting context,
 orchestration, and guardrails right is the whole game. This is also the domain
 with the most honest published benchmark: Sierra's **τ-bench** simulates full
 agent↔user conversations over retail and airline support APIs with written
@@ -102,7 +102,7 @@ and the model largely takes care of itself.
 
 <ThinkFirst question="“Why was I charged twice this month?” The help center has nothing to say about this customer. What does answering it require that doc-RAG can't provide?">
 **Live account state through tools.** Docs encode general policy; this ticket
-needs *this* customer's billing events — so the agent must call
+needs *this* customer's billing events, so the agent must call
 `lookup_invoices`, reason over the result, and possibly act. That's the line
 between a RAG chatbot and an agent, and it's why the orchestration loop
 interleaves retrieval, tool calls, and generation instead of doing one
@@ -137,7 +137,7 @@ asks: does the agent succeed on the *same task* k times in a row? GPT-4o-class
 agents at ~61% pass@1 on τ-retail collapsed to roughly 25% at pass^8 — a ~60%
 drop ([Sierra](https://sierra.ai/blog/benchmarking-ai-agents)). A customer
 doesn't experience your average; they experience one sample. Reliability, not
-peak capability, is the production metric — and it's also why outcome numbers
+peak capability, is the production metric, and it's also why outcome numbers
 need **trajectory** evaluation behind them: right tools, right arguments,
 sensible order.
 </ThinkFirst>
@@ -246,7 +246,7 @@ Distribution mismatch. Public claims average across mature deployments with
 curated knowledge bases; your ticket mix, doc coverage, and definition of
 "resolved" differ (does a customer silently giving up count?). Audit what
 "resolution" means, measure reopen rate and CSAT alongside it, and improve the
-inputs the agent depends on — doc coverage and tool access — before blaming the
+inputs the agent depends on (doc coverage and tool access) before blaming the
 model.
 </Details>
 

@@ -99,7 +99,7 @@ and embarrassingly parallel: sub-agents exploring different sub-questions
 can't step on each other, and Anthropic reports up to 90% wall-clock reduction
 on complex queries from parallelism
 ([Anthropic](https://www.anthropic.com/engineering/built-multi-agent-research-system)).
-Conflicts live in the *write* path — so synthesis stays single-threaded in the
+Conflicts live in the *write* path, so synthesis stays single-threaded in the
 orchestrator, which holds the full picture. Cognition's warning applies with
 full force to agents whose parallel actions mutate shared state (like code)
 ([Cognition](https://cognition.ai/blog/dont-build-multi-agents)).
@@ -185,7 +185,7 @@ independent sources.
 <ThinkFirst question="Multi-agent research burns roughly 15× the tokens of a chat turn. What does that constrain about when to deploy it — and what operational machinery does a 10-minute run demand that a 5-second chat doesn't?">
 Economics first: at 15× tokens ([Anthropic](https://www.anthropic.com/engineering/built-multi-agent-research-system)),
 the architecture only pays for questions whose answer is worth dollars, not
-cents — so route simple lookups to a single cheap pass and reserve the full
+cents, so route simple lookups to a single cheap pass and reserve the full
 loop for genuinely open-ended queries. Operationally, long runs change the
 failure model: errors compound over minutes, so you need checkpointing/resume
 (don't restart a 9-minute run for a step-8 timeout), streaming progress so the
@@ -241,7 +241,7 @@ integrity an explicit, measured gate.
 
 <Details summary="Why not fine-tune one model to do research end-to-end instead of building this scaffolding?">
 That's roughly what OpenAI did — Deep Research is trained with end-to-end RL on
-browsing tasks — but it's a frontier-lab-scale bet, and even then the *system*
+browsing tasks, but it's a frontier-lab-scale bet, and even then the *system*
 still needs budgets, injection defenses, provenance tracking, and evaluation.
 For most teams, orchestration + a strong base model is buildable today, and the
 scaffolding (memory, citations, guardrails) is required either way.

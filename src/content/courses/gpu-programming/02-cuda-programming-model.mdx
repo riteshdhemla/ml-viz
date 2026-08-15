@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # The CUDA Programming Model
 
-A GPU can't do anything on its own — the CPU (the **host**) orchestrates the GPU (the **device**): allocate device memory, copy inputs over, launch a **kernel**, copy results back. The programming model's central job is letting you say "run *this* function across *these* million data elements in parallel." This lesson shows how a kernel maps thousands of threads onto an array, using CUDA C syntax — but the *mental model* is what transfers to PyTorch, Triton, or any GPU framework.
+A GPU can't do anything on its own — the CPU (the **host**) orchestrates the GPU (the **device**): allocate device memory, copy inputs over, launch a **kernel**, copy results back. The programming model's central job is letting you say "run *this* function across *these* million data elements in parallel." This lesson shows how a kernel maps thousands of threads onto an array, using CUDA C syntax, but the *mental model* is what transfers to PyTorch, Triton, or any GPU framework.
 
 **Real-world examples:** every `torch.add`, `torch.matmul`, or custom CUDA/Triton kernel; the fused attention kernels in FlashAttention; the element-wise ops in any training step all follow exactly this launch-and-index pattern under the hood.
 
@@ -90,7 +90,7 @@ This decouples the launch configuration from the data size (any grid size is cor
 
 ## It's the same model everywhere
 
-You rarely hand-write CUDA C today — but the abstraction is identical one level up:
+You rarely hand-write CUDA C today, but the abstraction is identical one level up:
 
 - **PyTorch** dispatches your `a + b` to a pre-written CUDA kernel doing exactly this.
 - **Triton** lets you write kernels in Python with `program_id`/block-level tiles — the same index math, friendlier syntax.
@@ -116,7 +116,7 @@ Understanding "thread → global index → one element" is what lets you reason 
 - A **kernel** is a per-thread program; the parallelism replaces the loop.
 - A thread finds its data via $i = \text{blockIdx.x} \cdot \text{blockDim.x} + \text{threadIdx.x}$, with a bounds check for over-launch.
 - Host and device have **separate memory**; explicit copies cost real time, so keep data on the GPU.
-- The **grid-stride loop** decouples launch size from data size and is the idiomatic kernel shape — and the same indexing model underlies PyTorch, Triton, and friends.
+- The **grid-stride loop** decouples launch size from data size and is the idiomatic kernel shape, and the same indexing model underlies PyTorch, Triton, and friends.
 
 ## Related concepts
 

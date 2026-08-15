@@ -10,7 +10,7 @@ estimatedMinutes: 13
 
 # Platt Scaling and Isotonic Regression
 
-Both are **post-hoc calibration maps**: given a trained classifier that outputs a score $s(x)$ (a logit, an SVM margin, a random-forest vote fraction), they learn a function $g$ on a *held-out* set so that $g(s(x))$ behaves like a real probability. Neither touches the model's weights, and — because both are **monotonic** — neither changes the ranking of examples, so ROC-AUC and top-1 accuracy are untouched. They differ in the *shape* of map they can express and in how much calibration data they need.
+Both are **post-hoc calibration maps**: given a trained classifier that outputs a score $s(x)$ (a logit, an SVM margin, a random-forest vote fraction), they learn a function $g$ on a *held-out* set so that $g(s(x))$ behaves like a real probability. Neither touches the model's weights, and (because both are **monotonic**) neither changes the ranking of examples, so ROC-AUC and top-1 accuracy are untouched. They differ in the *shape* of map they can express and in how much calibration data they need.
 
 ## The setup
 
@@ -40,7 +40,7 @@ A positive is asked to hit $\tfrac{N_+ + 1}{N_+ + 2}$ (a hair under 1), a negati
 
 ## Isotonic regression — the non-parametric monotone fit
 
-Isotonic regression drops the sigmoid assumption. It finds the **best non-decreasing step function** — any monotone shape — by minimizing squared error subject to a monotonicity constraint:
+Isotonic regression drops the sigmoid assumption. It finds the **best non-decreasing step function** (any monotone shape) by minimizing squared error subject to a monotonicity constraint:
 
 $$
 \min_{g \text{ non-decreasing}} \sum_i \big(g(s_i) - y_i\big)^2

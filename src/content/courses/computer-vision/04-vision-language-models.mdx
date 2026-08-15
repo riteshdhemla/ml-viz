@@ -19,8 +19,8 @@ Vision-language models (VLMs) close the gap between two previously separate worl
 
 CLIP (Contrastive Language–Image Pre-training, Radford et al., 2021) trains two encoders side by side:
 
-- An **image encoder** $f_\theta$ — a ViT or a ResNet — that maps an image to a $d$-dimensional vector. Typical $d = 512$.
-- A **text encoder** $g_\phi$ — a Transformer — that maps a caption to a vector of the same $d$.
+- An **image encoder** $f_\theta$ (a ViT or a ResNet) that maps an image to a $d$-dimensional vector. Typical $d = 512$.
+- A **text encoder** $g_\phi$ (a Transformer) that maps a caption to a vector of the same $d$.
 
 Each encoder ends with a linear projection head into the shared $d$-space. The output is then $\ell_2$-normalised:
 
@@ -76,7 +76,7 @@ You want to classify images into 1,000 ImageNet labels without ever training a c
 
 CLIP-ViT-B/32 hits roughly 63% top-1 on ImageNet *without any training on ImageNet labels*. ResNet-50 trained with full supervision on ImageNet hits 76% — a fair comparison only after you remember that CLIP was never told what ImageNet classes exist.
 
-**Prompt engineering for classification.** The exact prompt template matters a lot. `"a photo of a {label}"` beats just `"{label}"` because the text encoder was trained on captions, not bare words. Averaging multiple templates per class — `"a photo of a {label}"`, `"a picture of a {label}"`, `"a {label} in the wild"`, `"a close-up of a {label}"` — beats any single template by several points on ImageNet. The averaging happens *in the embedding space*: build the class prototype by mean-pooling the unit-norm embeddings of each templated prompt, then re-normalise.
+**Prompt engineering for classification.** The exact prompt template matters a lot. `"a photo of a {label}"` beats just `"{label}"` because the text encoder was trained on captions, not bare words. Averaging multiple templates per class (`"a photo of a {label}"`, `"a picture of a {label}"`, `"a {label} in the wild"`, `"a close-up of a {label}"`) beats any single template by several points on ImageNet. The averaging happens *in the embedding space*: build the class prototype by mean-pooling the unit-norm embeddings of each templated prompt, then re-normalise.
 
 <Callout type="tip">
 **Why averaging multiple prompt templates helps.** Each template injects its own irrelevant variation (camera angle, background, framing) that has nothing to do with the class. Averaging cancels that noise and isolates the *class direction* — the part of the embedding that is consistent across all of "a photo of a cat" / "a close-up of a cat" / "a cat in the wild". This is the multimodal twin of the ensembling trick from supervised learning.
@@ -116,7 +116,7 @@ CLIP gives you a great cross-modal *retrieval* model, but it can't actually *say
 
 The LLM treats these projected image tokens like any other prefix — its self-attention reads them, its language-modelling head decodes a caption or an answer. The training data is image-caption pairs plus instruction-following data with images mixed in (e.g. "describe what is happening" or "what does the sign say").
 
-Because the LLM and the ViT stay frozen, **only the bridge gets trained from scratch**. The bridge is small — a few percent of total parameters — so the recipe is cheap and reuses every dollar already spent on the base LLM and the base ViT. The LLM inherits its reasoning, knowledge, and refusal behaviour into the multimodal setting essentially for free.
+Because the LLM and the ViT stay frozen, **only the bridge gets trained from scratch**. The bridge is small (a few percent of total parameters), so the recipe is cheap and reuses every dollar already spent on the base LLM and the base ViT. The LLM inherits its reasoning, knowledge, and refusal behaviour into the multimodal setting essentially for free.
 
 Most VLM *fine-tuning* in production is then [PEFT / LoRA](/courses/fine-tuning-alignment/02-peft-lora-qlora) on the bridge plus a few of the LLM's attention layers — keeping the base frozen, learning a small low-rank update for the new task. This is how teams ship in-house VLMs for medical imaging, satellite photos, or document QA without a frontier-lab compute budget.
 
@@ -130,7 +130,7 @@ Most teams shipping VLMs in production aren't building captioning systems — th
 - **Visual deduplication.** Embed everything in your image library; cluster the embeddings; the near-duplicate detection problem becomes a single nearest-neighbour lookup.
 - **Policy enforcement.** A handful of policy sentences become a handful of vectors; every uploaded image gets compared against them. Adding a new rule is editing a string.
 
-The reason this pattern wins is operational. You ship *one* embedding model, you index *all* of your images once, and then every new product question — search, moderation, dedup, recommendation — turns into a different query against the same index. The marginal cost of a new use case is zero.
+The reason this pattern wins is operational. You ship *one* embedding model, you index *all* of your images once, and then every new product question (search, moderation, dedup, recommendation) turns into a different query against the same index. The marginal cost of a new use case is zero.
 
 ---
 

@@ -33,7 +33,7 @@ Watch the Q-table fill in over 200 episodes — Q-values propagate from the goal
 
 ## Why "off-policy"?
 
-Notice the update uses $\max_{a'} Q(s', a')$ — the value of the **best** next action — regardless of which action the agent *actually* takes next. This makes Q-learning **off-policy**: it learns the optimal policy $\pi^*$ while *behaving* with a different, exploratory policy.
+Notice the update uses $\max_{a'} Q(s', a')$ (the value of the **best** next action) regardless of which action the agent *actually* takes next. This makes Q-learning **off-policy**: it learns the optimal policy $\pi^*$ while *behaving* with a different, exploratory policy.
 
 | | On-policy (SARSA) | Off-policy (Q-learning) |
 |---|-------------------|-------------------------|
@@ -86,7 +86,7 @@ What to notice as you step:
 - **Value propagates backwards from the goal**, exactly as in value iteration,
   but every increment came from a sampled transition instead of a known $P$.
 - **The last step changes one expression** — `max Q(s', b)` becomes `Q(s', a')`,
-  the action actually about to be taken — and the same code is SARSA. On
+  the action actually about to be taken, and the same code is SARSA. On
   identical experience the two learn *different routes*: Q-learning hugs the
   cliff edge (optimal, because the max ignores its own exploration), SARSA
   detours along the top (because its target feels every exploratory fall).
@@ -134,7 +134,7 @@ Q-learning **provably converges** to $Q^*$ for any finite MDP, provided every st
 
 ## The wall: big state spaces
 
-The Q-table has one entry per $(s, a)$. That's fine for a 16-cell grid, hopeless for chess ($10^{47}$ states) or Atari (every screen of pixels). A table can't generalize to states it hasn't seen. The fix — replace the table with a neural network that *approximates* $Q$ — is the **Deep Q-Network**, the next lesson.
+The Q-table has one entry per $(s, a)$. That's fine for a 16-cell grid, hopeless for chess ($10^{47}$ states) or Atari (every screen of pixels). A table can't generalize to states it hasn't seen. The fix (replace the table with a neural network that *approximates* $Q$) is the **Deep Q-Network**, the next lesson.
 
 <Callout type="warning" title="Tabular Q-learning doesn't scale">
   Tabular Q-learning needs to visit (nearly) every state. Beyond a few thousand states it becomes infeasible — both to store and to explore. Function approximation is mandatory for real problems.

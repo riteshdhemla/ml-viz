@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Correlation, Causation & Confounding
 
-Machine learning is extraordinary at finding **correlations** — but most decisions we actually care about are **causal**: *will this treatment help this patient? will this feature change increase retention?* A model can predict perfectly and still be useless (or dangerous) for these questions, because correlation and causation come apart in systematic, predictable ways. This lesson builds the intuition for *why*, which the next lesson formalizes. Confounding is fundamentally a **data** problem in the [ML project loop](/wiki/ml-project-loop): a perfect optimizer on a perfectly-fit model still gives the wrong answer to a causal question if the *data-generating process* hides a common cause. No amount of hypothesis-space or optimization work fixes a broken causal structure.
+Machine learning is extraordinary at finding **correlations**, but most decisions we actually care about are **causal**: *will this treatment help this patient? will this feature change increase retention?* A model can predict perfectly and still be useless (or dangerous) for these questions, because correlation and causation come apart in systematic, predictable ways. This lesson builds the intuition for *why*, which the next lesson formalizes. Confounding is fundamentally a **data** problem in the [ML project loop](/wiki/ml-project-loop): a perfect optimizer on a perfectly-fit model still gives the wrong answer to a causal question if the *data-generating process* hides a common cause. No amount of hypothesis-space or optimization work fixes a broken causal structure.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -44,7 +44,7 @@ Health $Z$ drives *both* who gets the treatment $X$ and who recovers $Y$, so $X$
 
 ## Simpson's paradox
 
-The most vivid demonstration: an association can **reverse** when you account for a confounder. A treatment can appear *worse* overall yet be *better* in every subgroup — because the subgroups had different base rates and different treatment assignment.
+The most vivid demonstration: an association can **reverse** when you account for a confounder. A treatment can appear *worse* overall yet be *better* in every subgroup, because the subgroups had different base rates and different treatment assignment.
 
 $$
 P(\text{recover}\mid\text{treated}) < P(\text{recover}\mid\text{untreated})
@@ -59,7 +59,7 @@ The generating process here is fixed and known: the dose helps **every** patient
 
 1. **Start at 0.** Nothing is confounded yet, and the pooled fit reports $+0.898$ against a true $+0.90$. The naive analysis is not wrong in principle; it is wrong under a particular structure.
 2. **Drag it up.** Near $0.35$ the pooled slope crosses zero, and past that the aggregate says the drug *harms* patients while all three stratum lines still slope up. The three within-stratum estimates never move — they sit at $+0.896$ the entire time. Nothing about the treatment changed; only who received it.
-3. **Press "randomise the dose".** The strata still differ in recovery, and the slider still reads whatever you left it at — but the pooled fit snaps back to the truth. Randomisation doesn't measure the confounder or adjust for it. It deletes the arrow that made adjustment necessary.
+3. **Press "randomise the dose".** The strata still differ in recovery, and the slider still reads whatever you left it at, but the pooled fit snaps back to the truth. Randomisation doesn't measure the confounder or adjust for it. It deletes the arrow that made adjustment necessary.
 
 The third point is the one worth carrying: adjustment recovers the effect *if* you knew to adjust, and randomisation recovers it *without* you knowing anything. That asymmetry is why the RCT is the gold standard and not merely a convenience.
 

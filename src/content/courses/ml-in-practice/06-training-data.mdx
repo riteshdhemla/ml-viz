@@ -23,11 +23,11 @@ Pick each example with equal probability. This is the default, the baseline agai
 
 ### Stratified sampling
 
-Partition the population by some discrete key — class label, geography, customer segment, language — and sample a fixed quota from each stratum. Stratified sampling is **mandatory** when the classes are unbalanced and you have to split your data into train / validation / test, because a uniform random split on a 1% minority rate routinely produces a test set with *zero* minority examples. A test set without the rare class cannot tell you anything about the rare class. Almost every production ML codebase calls `train_test_split(..., stratify=y)` or equivalent.
+Partition the population by some discrete key (class label, geography, customer segment, language) and sample a fixed quota from each stratum. Stratified sampling is **mandatory** when the classes are unbalanced and you have to split your data into train / validation / test, because a uniform random split on a 1% minority rate routinely produces a test set with *zero* minority examples. A test set without the rare class cannot tell you anything about the rare class. Almost every production ML codebase calls `train_test_split(..., stratify=y)` or equivalent.
 
 ### Weighted / importance sampling
 
-Sample each record with a probability proportional to a per-record weight. Used to *oversample* a rare class so the training mini-batches contain more positives than the population would naturally produce, or — equivalently — to reweight the loss so that each positive contributes more gradient than each negative. The two formulations are mathematically equivalent for cross-entropy: oversampling minority examples by factor $k$ is the same as multiplying the minority class's loss by $k$.
+Sample each record with a probability proportional to a per-record weight. Used to *oversample* a rare class so the training mini-batches contain more positives than the population would naturally produce, or (equivalently) to reweight the loss so that each positive contributes more gradient than each negative. The two formulations are mathematically equivalent for cross-entropy: oversampling minority examples by factor $k$ is the same as multiplying the minority class's loss by $k$.
 
 ### Reservoir sampling
 
@@ -35,14 +35,14 @@ A one-pass algorithm for picking a uniform sample of size $k$ from a stream of u
 
 ### Cluster / region sampling
 
-When records arrive in *groups* — a user with hundreds of sessions, a hospital with thousands of patients — uniform sampling at the record level leaks information across the train / test boundary: the same user can land in both. Cluster sampling first picks whole users (or hospitals, or sessions) and then takes every record from the chosen clusters. Train and test are now group-disjoint; the leakage is gone. This is the right primitive for almost any model where records are not independent.
+When records arrive in *groups* (a user with hundreds of sessions, a hospital with thousands of patients), uniform sampling at the record level leaks information across the train / test boundary: the same user can land in both. Cluster sampling first picks whole users (or hospitals, or sessions) and then takes every record from the chosen clusters. Train and test are now group-disjoint; the leakage is gone. This is the right primitive for almost any model where records are not independent.
 
 ### Sampling bias
 
-Every sampling decision is a chance to introduce bias the model will inherit. If you train your fraud model on transactions *that were flagged for review* you have not built a fraud classifier — you have built a "would the existing rules flag this?" classifier. If you train your medical model on the patients who actually walked into the clinic, you cannot infer anything about the patients who could not afford to. Sampling bias is a Phase-5-grade failure mode: it is silent in offline metrics and visible only when the model is deployed against the population it was never shown.
+Every sampling decision is a chance to introduce bias the model will inherit. If you train your fraud model on transactions *that were flagged for review* you have not built a fraud classifier. You have built a "would the existing rules flag this?" classifier. If you train your medical model on the patients who actually walked into the clinic, you cannot infer anything about the patients who could not afford to. Sampling bias is a Phase-5-grade failure mode: it is silent in offline metrics and visible only when the model is deployed against the population it was never shown.
 
 <Callout type="tip" title="Stratify your splits, not just your batches">
-Stratified mini-batches help training converge, but the real damage from imbalance happens at the *split* boundary. A random `train_test_split` with a 1% positive rate may land 0–3 positives in the test set on any given seed — which means your reported recall is whatever number the seed happened to produce. Always stratify the split first, then decide whether to also rebalance batches; the split decision is irreversible once you commit to a model.
+Stratified mini-batches help training converge, but the real damage from imbalance happens at the *split* boundary. A random `train_test_split` with a 1% positive rate may land 0–3 positives in the test set on any given seed, which means your reported recall is whatever number the seed happened to produce. Always stratify the split first, then decide whether to also rebalance batches; the split decision is irreversible once you commit to a model.
 </Callout>
 
 ## Labelling at scale
@@ -55,7 +55,7 @@ The gold standard: a trained human annotator labels each example. Slow, expensiv
 
 ### Weak supervision (Snorkel-style)
 
-A labelling function is a heuristic — a regex, a keyword list, a rule like "if the message contains a phone number it is spam" — that votes a label on each example with some unknown accuracy and coverage. Weak supervision combines tens or hundreds of these noisy voters through a **label model**: a separate small generative model that learns each function's accuracy from the *pattern of agreements* between functions, without ever seeing a gold label. The output is a probabilistic label per example, which a downstream classifier trains on. Snorkel, the canonical implementation, powered industrial NLP at Google and Apple for years.
+A labelling function is a heuristic (a regex, a keyword list, a rule like "if the message contains a phone number it is spam") that votes a label on each example with some unknown accuracy and coverage. Weak supervision combines tens or hundreds of these noisy voters through a **label model**: a separate small generative model that learns each function's accuracy from the *pattern of agreements* between functions, without ever seeing a gold label. The output is a probabilistic label per example, which a downstream classifier trains on. Snorkel, the canonical implementation, powered industrial NLP at Google and Apple for years.
 
 ### Programmatic / heuristic labels
 
@@ -63,7 +63,7 @@ Cheaper still: write the rule, apply it, train on the result. A regex labelling 
 
 ### LLM-as-labeller
 
-Hand a prompt and an example to a strong LLM and ask for a label. Fast, cheap relative to humans, and surprisingly good at the *median* example — but biased toward verbose answers, sycophantic to the prompt's framing, and confidently wrong on edge cases. Useful for cold-start, expansion of a small gold set, or pre-labelling work that humans then review. The bias caveats from AI-as-judge generalise here: see the [LLM evaluation lesson](/courses/model-evaluation/04-llm-evaluation) for the full discussion of why AI-as-judge can systematically mislead.
+Hand a prompt and an example to a strong LLM and ask for a label. Fast, cheap relative to humans, and surprisingly good at the *median* example, but biased toward verbose answers, sycophantic to the prompt's framing, and confidently wrong on edge cases. Useful for cold-start, expansion of a small gold set, or pre-labelling work that humans then review. The bias caveats from AI-as-judge generalise here: see the [LLM evaluation lesson](/courses/model-evaluation/04-llm-evaluation) for the full discussion of why AI-as-judge can systematically mislead.
 
 ### Active learning
 
@@ -71,11 +71,11 @@ A meta-strategy that closes the loop. Train an initial classifier on whatever la
 
 ## Class imbalance
 
-Class imbalance is the failure mode that breaks more demos than any other. The data layer is fine, the model is fine, the metric is "accuracy" — and the model that always predicts "negative" wins on a 1% positive rate. The fix is partly a metric choice and partly a training-data choice.
+Class imbalance is the failure mode that breaks more demos than any other. The data layer is fine, the model is fine, the metric is "accuracy", and the model that always predicts "negative" wins on a 1% positive rate. The fix is partly a metric choice and partly a training-data choice.
 
 ### Why accuracy lies
 
-Imagine a 99%-prevalence majority class and a 1%-prevalence minority. A model that predicts "majority" for every input has accuracy 0.99. That is precisely the accuracy of a totally useless model on totally useless data — and yet the dashboards say 99%. Accuracy is the wrong metric the moment the prior is skewed. Use precision, recall, F1, PR-AUC instead; the [classification metrics lesson](/courses/model-evaluation/01-classification-metrics) walks through which metric to reach for in which regime.
+Imagine a 99%-prevalence majority class and a 1%-prevalence minority. A model that predicts "majority" for every input has accuracy 0.99. That is precisely the accuracy of a totally useless model on totally useless data, and yet the dashboards say 99%. Accuracy is the wrong metric the moment the prior is skewed. Use precision, recall, F1, PR-AUC instead; the [classification metrics lesson](/courses/model-evaluation/01-classification-metrics) walks through which metric to reach for in which regime.
 
 ### Resampling: oversample, undersample, SMOTE
 

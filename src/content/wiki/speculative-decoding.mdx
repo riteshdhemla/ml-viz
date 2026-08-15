@@ -12,7 +12,7 @@ spineStages: [feedback]
 
 # Speculative Decoding
 
-Each decode step of a large model reads every weight from HBM to produce **one** token — and most tokens ("the", "of", closing brackets, boilerplate) don't need 70B parameters to predict. **Speculative decoding** lets a small *draft* model propose several tokens cheaply, then has the large *target* model verify all of them in a single forward pass. Accepted tokens cost one target step for many tokens; rejected ones fall back to normal decoding. The remarkable part: with the right acceptance rule, the output distribution is **mathematically identical** to sampling from the target model alone.
+Each decode step of a large model reads every weight from HBM to produce **one** token, and most tokens ("the", "of", closing brackets, boilerplate) don't need 70B parameters to predict. **Speculative decoding** lets a small *draft* model propose several tokens cheaply, then has the large *target* model verify all of them in a single forward pass. Accepted tokens cost one target step for many tokens; rejected ones fall back to normal decoding. The remarkable part: with the right acceptance rule, the output distribution is **mathematically identical** to sampling from the target model alone.
 
 ## The algorithm
 
@@ -53,7 +53,7 @@ Position 3 rejects, so we resample from the residual there. Suppose at position 
 
 ## Watch it run
 
-The cycle above, decision by decision — and then the check that matters:
+The cycle above, decision by decision, and then the check that matters:
 
 <AlgorithmTrace id="speculative-decoding" />
 
@@ -101,7 +101,7 @@ At $\alpha = 0.8$, $k = 4$, $c = 0.05$: $\mathbb{E}[\text{tokens}] \approx 3.36$
 
 ## When it wins and loses
 
-- ✅ **Templated, predictable text** — support answers, code boilerplate, JSON — acceptance rates soar.
+- ✅ **Templated, predictable text** (support answers, code boilerplate, JSON) acceptance rates soar.
 - ✅ **Low-batch, latency-sensitive serving** — spare compute exists between bandwidth-bound decode steps; verification rides it free.
 - ❌ **Large batches** — the GPU is already compute-saturated, and verifying $k$ positions per sequence competes with other requests; the speedup shrinks toward zero.
 - ❌ **High-entropy generation** (creative writing at high temperature) — acceptance drops and cycles waste draft work.

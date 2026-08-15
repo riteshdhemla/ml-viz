@@ -99,7 +99,7 @@ Around each generation:
 <ThinkFirst question="What actually is a 'moderation classifier' in 2025 — a keyword list, a fine-tuned encoder, or an LLM? What did Llama Guard's design change?">
 The stack moved from blocklists → fine-tuned encoders → **safeguard LLMs**.
 Llama Guard is a Llama-2-7B instruction-tuned to classify both prompts *and*
-responses against a taxonomy that is written into its prompt — so you can
+responses against a taxonomy that is written into its prompt, so you can
 swap or extend the policy zero-shot without retraining, and get per-category
 verdicts with a rationale. The tradeoff: an LLM judge costs more per call
 than an encoder, which is why production stacks distill or cascade (cheap
@@ -158,7 +158,7 @@ frontier models), **input checks run in parallel with prompt processing**,
 output checks streamed over tokens as they're generated rather than after the
 full response, and verdict caching for repeated content. Even a strong
 classifier stack costs real compute — Anthropic reported ~24% inference
-overhead — and safety that doubles latency gets quietly bypassed by product
+overhead, and safety that doubles latency gets quietly bypassed by product
 teams. Cheapness is part of the design requirement.
 </ThinkFirst>
 

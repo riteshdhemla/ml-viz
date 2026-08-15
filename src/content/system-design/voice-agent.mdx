@@ -26,7 +26,7 @@ estimatedMinutes: 23
 A voice agent (think an AI phone receptionist or hands-free assistant) is the
 agentic interview where **latency is the architecture**. Human conversation
 turns over in a few hundred milliseconds, so the entire **listen → think →
-speak** loop must stream and overlap. Everything else — tools, guardrails — is
+speak** loop must stream and overlap. Everything else (tools, guardrails) is
 standard; the differentiator is the real-time pipeline. Walk it through the
 **agentic project loop**.
 
@@ -51,7 +51,7 @@ Human turn-taking gaps run on the order of ~200ms, and production platforms
 converge on roughly the same budget: [Vapi's published targets are p50 under
 500ms and p95 under 800ms](https://vapi.ai/blog/speech-latency); past ~800ms
 callers assume the line dropped and start talking over the agent. No LLM
-round-trip plus ASR plus TTS fits that budget run *sequentially* — so the
+round-trip plus ASR plus TTS fits that budget run *sequentially*, so the
 number itself dictates a streaming, overlapped pipeline before you've chosen a
 single model.
 </ThinkFirst>
@@ -213,7 +213,7 @@ risk; targeted confirmation buys safety without slowing every turn.
   p95 per turn, stream and overlap ASR, LLM, and TTS; **time-to-first-audio** is
   the metric that matters.
 - **Barge-in, endpointing, and turn-taking** are core interaction paths, not edge
-  cases — and endpointing is the most underrated latency component.
+  cases, and endpointing is the most underrated latency component.
 - Choose **cascade for control** (inspectable transcripts, per-stage swaps) or
   **speech-to-speech for latency/naturalness**; either way, add **ASR-confidence
   confirmations** for high-stakes slots and serve with **continuous batching**.

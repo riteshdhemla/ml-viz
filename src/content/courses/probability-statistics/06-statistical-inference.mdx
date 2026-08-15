@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Statistical Inference & Confidence Intervals
 
-You never measure the whole population — you measure a *sample* and try to say something about the whole. A model's accuracy on a test set, an A/B test's conversion lift, a poll's support level: each is an estimate from limited data, and each comes with uncertainty. This is the rigor behind the loop's **evaluation** stage — a single test-set number is meaningless without the error bar this lesson teaches you to compute. **Statistical inference** is the discipline of turning a sample into a quantified claim about the population. This lesson builds the machinery — sampling distributions, the standard error, and confidence intervals — that the next lesson's hypothesis tests rely on.
+You never measure the whole population — you measure a *sample* and try to say something about the whole. A model's accuracy on a test set, an A/B test's conversion lift, a poll's support level: each is an estimate from limited data, and each comes with uncertainty. This is the rigor behind the loop's **evaluation** stage — a single test-set number is meaningless without the error bar this lesson teaches you to compute. **Statistical inference** is the discipline of turning a sample into a quantified claim about the population. This lesson builds the machinery (sampling distributions, the standard error, and confidence intervals) that the next lesson's hypothesis tests rely on.
 
 **Real-world examples:** reporting a model's accuracy as "92% ± 1.5%"; deciding whether an A/B test's 2-point lift is real or noise; estimating click-through rate from a day's traffic; error bars on every benchmark you've ever trusted.
 
@@ -65,7 +65,7 @@ The multiplier $z^*$ comes from the normal distribution: $95\%$ of its mass lies
   It is a statement about the *procedure*, not about one interval. If you repeated the whole sample-and-compute-interval process many times, about $95\%$ of the resulting intervals would contain the true parameter. It is **not** correct to say "there's a 95% probability the true value is in *this* interval" — the true value is fixed; the interval is what's random.
 </Callout>
 
-**Worked example.** A model scores $88\%$ accuracy on $n = 400$ test examples. Treating each prediction as a Bernoulli trial, $\text{SE} = \sqrt{\hat p(1-\hat p)/n} = \sqrt{0.88\cdot0.12/400} \approx 0.0162$. The $95\%$ CI is $0.88 \pm 1.96(0.0162) = [0.848,\, 0.912]$. So "$88\%$" really means "somewhere around $85$–$91\%$" — and a competitor at $90\%$ may not be meaningfully better.
+**Worked example.** A model scores $88\%$ accuracy on $n = 400$ test examples. Treating each prediction as a Bernoulli trial, $\text{SE} = \sqrt{\hat p(1-\hat p)/n} = \sqrt{0.88\cdot0.12/400} \approx 0.0162$. The $95\%$ CI is $0.88 \pm 1.96(0.0162) = [0.848,\, 0.912]$. So "$88\%$" really means "somewhere around $85$–$91\%$", and a competitor at $90\%$ may not be meaningfully better.
 
 ```python
 import numpy as np
@@ -80,7 +80,7 @@ print(f"accuracy {p_hat:.3f}, 95% CI [{lo:.3f}, {hi:.3f}]")   # [0.848, 0.912]
 # A model reporting 0.90 sits inside this interval — not clearly better.
 ```
 
-When the statistic has no clean standard-error formula — the median, AUC, a correlation — you can still get a confidence interval by **resampling** the data itself:
+When the statistic has no clean standard-error formula (the median, AUC, a correlation), you can still get a confidence interval by **resampling** the data itself:
 
 <WikiLink slug="bootstrap-resampling" title="The Bootstrap: Resampling for Standard Errors & Confidence Intervals" />
 

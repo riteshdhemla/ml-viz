@@ -9,7 +9,7 @@ estimatedMinutes: 22
 
 # Supervised Fine-Tuning & Instruction Tuning
 
-Prompting and retrieval keep the weights frozen. **Supervised fine-tuning (SFT)** actually updates them. You hand the model a dataset of input/output pairs and continue training it with the same next-token cross-entropy loss it was pretrained with — but now on *your* distribution.
+Prompting and retrieval keep the weights frozen. **Supervised fine-tuning (SFT)** actually updates them. You hand the model a dataset of input/output pairs and continue training it with the same next-token cross-entropy loss it was pretrained with, but now on *your* distribution.
 
 <Callout type="tip" title="This course is one trip around the ML loop">
 Fine-tuning and alignment are the cleanest whole-course showcase of the [ML project loop](/wiki/ml-project-loop) — each lesson is a different slot, applied to a frozen foundation model:
@@ -45,7 +45,7 @@ Fine-tuning is the **most expensive** lever — try the cheaper ones first.
 
 ## The SFT loss
 
-For every training pair $(x, y)$ — prompt $x$, target completion $y = (y_1, \dots, y_T)$ — the loss is plain **token-level cross-entropy on the target tokens**:
+For every training pair $(x, y)$ (prompt $x$, target completion $y = (y_1, \dots, y_T)$), the loss is plain **token-level cross-entropy on the target tokens**:
 
 $$
 \mathcal{L}_{\text{SFT}} = -\sum_{t=1}^{T} \log p_\theta(y_t \mid x,\, y_{<t})
@@ -106,7 +106,7 @@ Update every weight aggressively on a narrow dataset and the model **forgets** a
 
 ## Key takeaways
 
-- SFT continues pretraining on (input, target) pairs using the same next-token cross-entropy — but **only on the target tokens**.
+- SFT continues pretraining on (input, target) pairs using the same next-token cross-entropy, but **only on the target tokens**.
 - Pick SFT when **behaviour** must change; prefer prompting + RAG when **knowledge** is what you need.
 - Instruction tuning is just SFT on (instruction → desired response) pairs, with a consistent chat template.
 - Aggressive fine-tuning causes **catastrophic forgetting**: use small learning rates, few epochs, and parameter-efficient methods.

@@ -73,7 +73,7 @@ The diagram below animates a single LSTM cell — step through the sequence to w
 
 ### Worked example — the forget gate in action
 
-Imagine a single cell tracking grammatical subject *number* (singular vs plural) while reading "The **keys** to the cabinet ...". At the word "keys" the input gate writes "plural" to the cell. As irrelevant words ("to", "the", "cabinet") stream past, the forget gate stays near 1 — **preserving** "plural" — so that many steps later the model conjugates "**are** on the table," not "is." A vanilla RNN would have forgotten the subject by then.
+Imagine a single cell tracking grammatical subject *number* (singular vs plural) while reading "The **keys** to the cabinet ...". At the word "keys" the input gate writes "plural" to the cell. As irrelevant words ("to", "the", "cabinet") stream past, the forget gate stays near 1 (**preserving** "plural"), so that many steps later the model conjugates "**are** on the table," not "is." A vanilla RNN would have forgotten the subject by then.
 
 ### A full LSTM timestep, by hand
 
@@ -224,7 +224,7 @@ $$
 \frac{\partial \mathbf{c}_T}{\partial \mathbf{c}_0} \approx \prod_{t=1}^{T} \mathbf{f}_t.
 $$
 
-Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mathrm{diag}(\tanh')$ — so the gradient scales like $\big(W_{hh}\big)^{T}$ and a single eigenvalue below 1 makes it **vanish** exponentially.
+Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mathrm{diag}(\tanh')$, so the gradient scales like $\big(W_{hh}\big)^{T}$ and a single eigenvalue below 1 makes it **vanish** exponentially.
 
 **Concrete contrast over $T = 50$ steps.** If the LSTM keeps its forget gate at $f = 0.95$, the surviving gradient is $0.95^{50} \approx 0.077$. A vanilla RNN with an effective per-step factor of $0.9$ gives $0.9^{50} \approx 0.005$ — about **15× smaller**. Push the forget gate to $f = 0.99$ and $0.99^{50} \approx 0.61$: nearly **two-thirds of the gradient survives** 50 steps. That is the gradient highway.
 

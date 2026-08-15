@@ -10,11 +10,11 @@ estimatedMinutes: 12
 
 # GroupNorm & InstanceNorm: Batch-Independent Normalization
 
-[**BatchNorm**](/wiki/batchnorm-algorithm) normalizes over the batch dimension, which breaks down at small batch sizes and needs running statistics for inference. [**LayerNorm**](/courses/transformers/03-transformer-architecture) fixes the batch-dependence by normalizing over the feature dimension of each sample independently — but for image tensors, "feature dimension" means *all* channels and spatial positions at once, which can be too coarse. **GroupNorm** and **InstanceNorm** sit between these two: both normalize *per sample* (so they need no running statistics and work at batch size 1), but they differ in how much of the channel dimension they pool together.
+[**BatchNorm**](/wiki/batchnorm-algorithm) normalizes over the batch dimension, which breaks down at small batch sizes and needs running statistics for inference. [**LayerNorm**](/courses/transformers/03-transformer-architecture) fixes the batch-dependence by normalizing over the feature dimension of each sample independently, but for image tensors, "feature dimension" means *all* channels and spatial positions at once, which can be too coarse. **GroupNorm** and **InstanceNorm** sit between these two: both normalize *per sample* (so they need no running statistics and work at batch size 1), but they differ in how much of the channel dimension they pool together.
 
 ## The shared formula
 
-Every member of this normalization family — BatchNorm, LayerNorm, GroupNorm, InstanceNorm — computes the exact same two-step transform. Only the **set of elements averaged together**, $S$, changes:
+Every member of this normalization family (BatchNorm, LayerNorm, GroupNorm, InstanceNorm) computes the exact same two-step transform. Only the **set of elements averaged together**, $S$, changes:
 
 $$
 \mu_S = \frac{1}{|S|}\sum_{x \in S} x, \qquad \sigma_S^2 = \frac{1}{|S|}\sum_{x \in S} (x - \mu_S)^2
@@ -74,7 +74,7 @@ $$
 **Why this matters for style transfer and GANs:** a feature channel's mean and variance across its own spatial map largely encode *contrast and overall intensity* — properties of "how this particular image happened to be lit or scaled," not the image's *content*. Subtracting $\mu_{n,c}$ and dividing by $\sigma_{n,c}$ strips that per-instance contrast out, channel by channel, leaving a representation that is invariant to it. Style-transfer methods (and the AdaIN mechanism used in many GAN generators) exploit this directly: they normalize away the content image's own contrast with InstanceNorm, then re-inject a *target style's* mean and variance via $\gamma, \beta$ instead of learned constants — swapping one image's "contrast signature" for another's.
 
 <Callout type="tip" title="InstanceNorm as contrast removal">
-  Scaling and shifting a single channel of a single sample — $x_{n,c,h,w} \mapsto a\cdot x_{n,c,h,w} + b$ for any $a > 0$ — leaves InstanceNorm's output for that channel completely unchanged, because $\mu_{n,c}$ and $\sigma_{n,c}$ absorb exactly that transform. That invariance is the formal version of "removes instance-specific contrast," and the notebook below verifies it numerically.
+  Scaling and shifting a single channel of a single sample ($x_{n,c,h,w} \mapsto a\cdot x_{n,c,h,w} + b$ for any $a > 0$) leaves InstanceNorm's output for that channel completely unchanged, because $\mu_{n,c}$ and $\sigma_{n,c}$ absorb exactly that transform. That invariance is the formal version of "removes instance-specific contrast," and the notebook below verifies it numerically.
 </Callout>
 
 ## Worked trace
@@ -114,7 +114,7 @@ $$
 
 Note $c_0$ and $c_1$ no longer both normalize to $\pm 1$ — pooling them together means $c_1$'s larger values pull the group mean up, so $c_0$'s values land further below it. This is the tradeoff: GroupNorm's cross-channel pooling makes statistics less noisy (more values contribute to each $\mu,\sigma^2$) at the cost of channels influencing each other's normalization.
 
-As a sanity check on the two special cases described above: pooling *all four* channels into $G=1$ group gives $\mu = 4.25, \sigma^2 = 10.6875$ over all 8 values — this is exactly what LayerNorm would compute for this sample (reduction set $C,H,W$), confirming $G{=}1$ GroupNorm $\equiv$ LayerNorm. The notebook reproduces every number above and both identities directly in code.
+As a sanity check on the two special cases described above: pooling *all four* channels into $G=1$ group gives $\mu = 4.25, \sigma^2 = 10.6875$ over all 8 values. This is exactly what LayerNorm would compute for this sample (reduction set $C,H,W$), confirming $G{=}1$ GroupNorm $\equiv$ LayerNorm. The notebook reproduces every number above and both identities directly in code.
 
 ## BatchNorm vs. LayerNorm vs. GroupNorm vs. InstanceNorm
 

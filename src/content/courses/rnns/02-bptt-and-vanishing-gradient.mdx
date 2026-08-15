@@ -13,7 +13,7 @@ An RNN learns the same way any network does — gradient descent on a loss. But 
 
 ## Unrolling for training
 
-To train, we unroll the RNN over the whole sequence, treating it as a very deep feed-forward network — one "layer" per time step — that happens to *share weights*. The total loss sums each step's loss:
+To train, we unroll the RNN over the whole sequence, treating it as a very deep feed-forward network (one "layer" per time step) that happens to *share weights*. The total loss sums each step's loss:
 
 $$
 \mathcal{L} = \sum_{t=1}^{T} \mathcal{L}_t(\mathbf{y}_t, \hat{\mathbf{y}}_t)
@@ -72,7 +72,7 @@ hidden = hidden.detach()   # keep the value, drop the gradient history
 
 ## The real fix is architectural
 
-You cannot tune your way out of vanishing gradients: the bound $(\|W_{hh}\|\cdot\gamma)^{T-k}$ — where $\gamma = \max_t \|\mathrm{diag}(\tanh'(\mathbf{a}_t))\| \le 1$ is the tanh derivative factor — is exponential in the gap no matter how you initialize, because *every* path back multiplies by $W_{hh}$ and $\tanh'$. The fix is to change the architecture so there is a path whose per-step Jacobian is $\approx 1$ instead of $\|W_{hh}\|\cdot\gamma$. That is exactly what LSTMs and GRUs do: their **cell state** is updated additively ($c_t \approx c_{t-1} + \text{(stuff)}$), so $\partial c_t/\partial c_{t-1} \approx 1$ and the product of Jacobians stays near 1 over long gaps — a gradient **highway**. The next lesson derives those gates.
+You cannot tune your way out of vanishing gradients: the bound $(\|W_{hh}\|\cdot\gamma)^{T-k}$ (where $\gamma = \max_t \|\mathrm{diag}(\tanh'(\mathbf{a}_t))\| \le 1$ is the tanh derivative factor) is exponential in the gap no matter how you initialize, because *every* path back multiplies by $W_{hh}$ and $\tanh'$. The fix is to change the architecture so there is a path whose per-step Jacobian is $\approx 1$ instead of $\|W_{hh}\|\cdot\gamma$. That is exactly what LSTMs and GRUs do: their **cell state** is updated additively ($c_t \approx c_{t-1} + \text{(stuff)}$), so $\partial c_t/\partial c_{t-1} \approx 1$ and the product of Jacobians stays near 1 over long gaps — a gradient **highway**. The next lesson derives those gates.
 
 | Problem | Symptom | Fix |
 |---------|---------|-----|

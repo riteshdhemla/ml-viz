@@ -9,10 +9,10 @@ estimatedMinutes: 20
 
 # ARIMA Models
 
-The **ARIMA** family is the dominant classical approach to univariate time series forecasting. It is principled, interpretable, well-understood statistically, and often surprisingly competitive with more complex models on short, clean series. Understanding ARIMA also builds the vocabulary — stationarity, autoregression, moving averages, differencing — that underpins every modern forecasting framework.
+The **ARIMA** family is the dominant classical approach to univariate time series forecasting. It is principled, interpretable, well-understood statistically, and often surprisingly competitive with more complex models on short, clean series. Understanding ARIMA also builds the vocabulary (stationarity, autoregression, moving averages, differencing) that underpins every modern forecasting framework.
 
 <Callout type="info" title="The forecasting thread">
-This is the second stop for the site's running `daily-demand` problem from the [project-loop hub](/wiki/ml-project-loop). The [linear-regression baseline](/courses/linear-regression/01-linear-regression) treated it as a tabular regression; ARIMA instead models the series *as a series* — differencing away the trend, an AR term for the weekly echo, an MA term for the shocks. Same problem, a **hypothesis space** built for temporal structure — and it will still be blindsided by the day-400 regime shift, which is why lesson 04 and [streaming ML](/courses/streaming-ml) exist.
+This is the second stop for the site's running `daily-demand` problem from the [project-loop hub](/wiki/ml-project-loop). The [linear-regression baseline](/courses/linear-regression/01-linear-regression) treated it as a tabular regression; ARIMA instead models the series *as a series* — differencing away the trend, an AR term for the weekly echo, an MA term for the shocks. Same problem, a **hypothesis space** built for temporal structure, and it will still be blindsided by the day-400 regime shift, which is why lesson 04 and [streaming ML](/courses/streaming-ml) exist.
 </Callout>
 
 ARIMA stands for **A**uto**R**egressive **I**ntegrated **M**oving **A**verage. The three letters each correspond to one component of the model, and together they capture the most common structure found in real-world economic, scientific, and engineering time series.
@@ -81,7 +81,7 @@ Before fitting any model, inspect the ACF and PACF of the *stationary* (differen
 
 <ACFViz />
 
-That reading is one stage of the **Box-Jenkins procedure** — ADF test → $d$ selection → ACF/PACF reading → model fitting → residual diagnostics → forecast. Walk it end to end below on a series simulated from a *known* ARIMA(1,1,1), so you can check whether the procedure recovers the model it was generated from. Every statistic is computed live; the candidate grid is clickable, and your choice carries into the diagnostics and the forecast — so fit the wrong model on purpose and watch the residual check catch it.
+That reading is one stage of the **Box-Jenkins procedure** — ADF test → $d$ selection → ACF/PACF reading → model fitting → residual diagnostics → forecast. Walk it end to end below on a series simulated from a *known* ARIMA(1,1,1), so you can check whether the procedure recovers the model it was generated from. Every statistic is computed live; the candidate grid is clickable, and your choice carries into the diagnostics and the forecast, so fit the wrong model on purpose and watch the residual check catch it.
 
 <BoxJenkinsViz />
 

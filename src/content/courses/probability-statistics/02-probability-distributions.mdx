@@ -34,14 +34,14 @@ P(a \leq X \leq b) = \int_a^b p(x)\, dx, \qquad \int_{-\infty}^\infty p(x)\, dx 
 $$
 
 <Callout type="warning" title="A density is not a probability">
-  A PDF value $p(x)$ can be **larger than 1** — it is a *rate*, not a probability. For example a Gaussian with $\sigma = 0.1$ peaks at $p(\mu) = \tfrac{1}{0.1\sqrt{2\pi}} \approx 3.99$. Only the **area** under the curve is a probability, and that area is always $\le 1$.
+  A PDF value $p(x)$ can be **larger than 1**. It is a *rate*, not a probability. For example a Gaussian with $\sigma = 0.1$ peaks at $p(\mu) = \tfrac{1}{0.1\sqrt{2\pi}} \approx 3.99$. Only the **area** under the curve is a probability, and that area is always $\le 1$.
 </Callout>
 
 In both cases the total "stuff" sums (discrete) or integrates (continuous) to exactly $1$ — that normalization is what makes it a valid distribution.
 
 ## Expectation and variance
 
-Lesson 01 defined **expectation** as the probability-weighted average, $\mathbb{E}[X] = \sum_k k\,p(k)$ (or $\int x\,p(x)\,dx$), and **variance** as the spread around it. What's new here is the workhorse identity — "mean of the square minus the square of the mean" — which we derive once and reuse for every distribution below:
+Lesson 01 defined **expectation** as the probability-weighted average, $\mathbb{E}[X] = \sum_k k\,p(k)$ (or $\int x\,p(x)\,dx$), and **variance** as the spread around it. What's new here is the workhorse identity ("mean of the square minus the square of the mean"), which we derive once and reuse for every distribution below:
 
 $$
 \text{Var}(X) = \mathbb{E}\left[(X - \mathbb{E}[X])^2\right] = \mathbb{E}[X^2] - (\mathbb{E}[X])^2
@@ -142,13 +142,13 @@ The covariance matrix $\boldsymbol{\Sigma}$ captures both variance (diagonal) an
 
 **Where:** Gaussian Mixture Models, Kalman filters, Gaussian Processes, VAEs.
 
-For the full catalog — Poisson, Exponential, Gamma, Beta, Dirichlet, Laplace, Student-t — with the relationships between them, the conjugate-prior cheat sheet, and a modeling chooser:
+For the full catalog (Poisson, Exponential, Gamma, Beta, Dirichlet, Laplace, Student-t), with the relationships between them, the conjugate-prior cheat sheet, and a modeling chooser:
 
 <WikiLink slug="probability-distributions" title="Probability Distributions: A Field Guide & Where They're Used" />
 
 ## Conditional probability and independence
 
-[Lesson 01](/courses/probability-statistics/01-thinking-in-probabilities) introduced conditioning as *zooming in* on the worlds where $B$ happened. Here is the same idea as a ratio — the form you'll actually compute with — plus a worked belief update.
+[Lesson 01](/courses/probability-statistics/01-thinking-in-probabilities) introduced conditioning as *zooming in* on the worlds where $B$ happened. Here is the same idea as a ratio (the form you'll actually compute with) plus a worked belief update.
 
 $$
 P(A | B) = \frac{P(A \cap B)}{P(B)}
@@ -178,7 +178,7 @@ $$
 P(A | B) = \frac{P(B | A)\, P(A)}{P(B)}
 $$
 
-Comparing two whole distributions — how far your model $q$ sits from the truth $p$ — has its own toolkit (entropy, cross-entropy, and KL divergence), built from scratch in [Entropy & KL Divergence](/courses/probability-statistics/05-entropy-and-kl-divergence).
+Comparing two whole distributions (how far your model $q$ sits from the truth $p$) has its own toolkit (entropy, cross-entropy, and KL divergence), built from scratch in [Entropy & KL Divergence](/courses/probability-statistics/05-entropy-and-kl-divergence).
 
 ## From distributions to ML: the likelihood
 
@@ -196,7 +196,7 @@ $$
 \ell(\theta) = \log L(\theta) = \sum_{i=1}^n \log p(x_i \mid \theta).
 $$
 
-**Preview — fitting a Bernoulli.** Flip a coin $n$ times and see $s$ heads: which $\theta$ makes that outcome most probable? Intuition says the fraction of heads, $s/n$ — and maximizing $\ell(\theta)$ confirms it. The [next lesson](/courses/probability-statistics/03-maximum-likelihood-estimation) derives that answer step by step and shows the same recipe (write the likelihood, take its log, maximize) is how logistic regression, linear regression, and neural-network classifiers are all trained — their loss functions are *negative* log-likelihoods in disguise.
+**Preview — fitting a Bernoulli.** Flip a coin $n$ times and see $s$ heads: which $\theta$ makes that outcome most probable? Intuition says the fraction of heads, $s/n$, and maximizing $\ell(\theta)$ confirms it. The [next lesson](/courses/probability-statistics/03-maximum-likelihood-estimation) derives that answer step by step and shows the same recipe (write the likelihood, take its log, maximize) is how logistic regression, linear regression, and neural-network classifiers are all trained — their loss functions are *negative* log-likelihoods in disguise.
 
 <Exercise id="prob-expectation" />
 <Exercise id="prob-gaussian" />

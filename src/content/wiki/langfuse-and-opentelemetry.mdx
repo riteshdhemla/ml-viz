@@ -69,9 +69,9 @@ Span names follow `"{operation} {model}"` — e.g. `chat claude-sonnet-5`. Promp
 - **Score** — a numeric/categorical/boolean judgment attached to a trace or observation: user feedback (👍/👎), guardrail flags, LLM-as-judge grades, human annotations. Scores are what turn traces from a debugging tool into an **evaluation dataset** — filter to `score < threshold`, inspect the exact resolved context, add the failure to a test set.
 - **Session / User** — group traces into conversations and per-user histories.
 
-Instrumentation options, in increasing generality: drop-in SDK wrappers for popular clients, an `@observe()` decorator that turns any Python function into a span, framework callbacks (LangChain, LlamaIndex), and — the standards route — a native **OTLP endpoint**: anything that emits OTel spans with GenAI attributes can point at Langfuse, which maps the semantic conventions onto its trace/observation model. Langfuse's own SDK is itself built on OpenTelemetry, so both routes converge.
+Instrumentation options, in increasing generality: drop-in SDK wrappers for popular clients, an `@observe()` decorator that turns any Python function into a span, framework callbacks (LangChain, LlamaIndex), and (the standards route) a native **OTLP endpoint**: anything that emits OTel spans with GenAI attributes can point at Langfuse, which maps the semantic conventions onto its trace/observation model. Langfuse's own SDK is itself built on OpenTelemetry, so both routes converge.
 
-Langfuse also hosts the **prompt management** workflow from the lesson: versioned prompts with labels (e.g. `production`, `staging`), fetched at runtime and linked to the generations they produced — so "which prompt version served this bad answer" is a lookup, not a guess.
+Langfuse also hosts the **prompt management** workflow from the lesson: versioned prompts with labels (e.g. `production`, `staging`), fetched at runtime and linked to the generations they produced, so "which prompt version served this bad answer" is a lookup, not a guess.
 
 ## A worked trace
 

@@ -14,7 +14,7 @@ The simplest supervised learning task: given input features $x_1, \ldots, x_d$, 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 <Callout type="info" title="The forecasting thread">
-The site's running example — the `daily-demand` forecasting problem from the [project-loop hub](/wiki/ml-project-loop) — starts right here. Its **tabular baseline** is exactly this model: build features from the recent past ($y_{t-1}$, $y_{t-7}$) and the calendar (day-of-week), then fit them with ordinary least squares. Every later course revisits the *same* problem with a richer hypothesis space; this is trip number one.
+The site's running example (the `daily-demand` forecasting problem from the [project-loop hub](/wiki/ml-project-loop)) starts right here. Its **tabular baseline** is exactly this model: build features from the recent past ($y_{t-1}$, $y_{t-7}$) and the calendar (day-of-week), then fit them with ordinary least squares. Every later course revisits the *same* problem with a richer hypothesis space; this is trip number one.
 </Callout>
 
 **Real-world examples:** Predicting house prices from square footage, bedrooms, and location. Estimating a patient's blood pressure from age and weight. Forecasting sales from advertising spend.
@@ -41,7 +41,7 @@ $$
 \mathcal{L}(\mathbf{w}) = \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 = \frac{1}{n} \| \mathbf{y} - X\mathbf{w} \|^2
 $$
 
-The $\frac{1}{n}$ is just a positive constant — it does not move the location of the minimum, so to keep the algebra clean we minimize the plain sum of squared errors $\| \mathbf{y} - X\mathbf{w} \|^2$ instead. The minimizer is identical.
+The $\frac{1}{n}$ is just a positive constant. It does not move the location of the minimum, so to keep the algebra clean we minimize the plain sum of squared errors $\| \mathbf{y} - X\mathbf{w} \|^2$ instead. The minimizer is identical.
 
 The closed-form minimizer is obtained by expanding the squared norm, taking the gradient, setting it to zero, and solving — a four-step algebra exercise using two standard matrix-calculus identities. The result:
 
@@ -59,7 +59,7 @@ $(X^\top X)^{-1}$ exists when the feature columns are linearly independent; Ridg
 
 ### Residuals and $R^2$ for this fit
 
-Using the three-point dataset $\{(1,2),\,(2,3),\,(3,5)\}$ (also used in the Python code below) — where the normal equation gives $\mathbf{w} = (w_0, w_1) = (0.333,\,1.5)$ — let's verify the fit quality. A **residual** is the gap between truth and prediction, $r_i = y_i - \hat{y}_i$. Plug each $x_i$ into the fitted line:
+Using the three-point dataset $\{(1,2),\,(2,3),\,(3,5)\}$ (also used in the Python code below) (where the normal equation gives $\mathbf{w} = (w_0, w_1) = (0.333,\,1.5)$) let's verify the fit quality. A **residual** is the gap between truth and prediction, $r_i = y_i - \hat{y}_i$. Plug each $x_i$ into the fitted line:
 
 $$
 \hat{y}_1 = 0.333 + 1.5\cdot1 = 1.833, \quad
@@ -140,7 +140,7 @@ $$
 
 and the $\lambda I$ term lifts every eigenvalue of $X^\top X$ above zero — the numerical fix and the statistical fix are the same fix.
 
-How Ridge (L2) and Lasso (L1) differ — why L1 zeroes features out entirely while L2 only shrinks them, and how to choose $\lambda$ — is the subject of [Regularization: Ridge & Lasso](/courses/linear-regression/03-regularization).
+How Ridge (L2) and Lasso (L1) differ (why L1 zeroes features out entirely while L2 only shrinks them, and how to choose $\lambda$) is the subject of [Regularization: Ridge & Lasso](/courses/linear-regression/03-regularization).
 
 <Exercise id="ols-formula" />
 <Exercise id="ols-worked-example" />

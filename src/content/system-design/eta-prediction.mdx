@@ -71,7 +71,7 @@ asymmetry.
 
 ## 3. ML problem framing
 
-**Regression with uncertainty** on spatial-temporal data — and in production,
+**Regression with uncertainty** on spatial-temporal data, and in production,
 usually **residual** regression. Uber's DeepETA doesn't predict the trip time
 from scratch: a routing engine first computes a physics-style ETA as the sum of
 segment traversal times along the best path, and the ML model predicts the
@@ -104,7 +104,7 @@ platform.
   couriers, kitchen backlog), and merchant-specific prep-time history.
 - **Encoding matters more than you'd think:** DeepETA **buckets every
   continuous feature by quantiles and embeds the buckets** — discretizing then
-  embedding beat feeding raw floats — and encodes origin/destination lat-longs
+  embedding beat feeding raw floats, and encodes origin/destination lat-longs
   as multi-resolution geohash grids mapped to embeddings via feature hashing.
 - **Feature store:** the same streaming pipeline computes courier-supply and
   kitchen-load features for train and serve to avoid skew.
@@ -220,7 +220,7 @@ asymmetric Huber loss is the same idea pushed into training.
 <Details summary="A kitchen suddenly slows down at lunch. How does the ETA adapt?">
 Streaming merchant-load features (live backlog, recent prep times) feed the prep-
 time sub-model, so ETAs lengthen within minutes. Static historical averages would
-lag the regime change entirely — this is why the feature store must be real-time.
+lag the regime change entirely. This is why the feature store must be real-time.
 </Details>
 
 <Details summary="Why does Uber predict the residual instead of the ETA itself?">

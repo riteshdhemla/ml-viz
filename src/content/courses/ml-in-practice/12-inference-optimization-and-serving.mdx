@@ -9,7 +9,7 @@ estimatedMinutes: 22
 
 # Inference Optimization & Serving
 
-Training a model is the part that gets the papers; *serving* it is the part that gets the bill. A 70B-parameter LLM that costs eight figures to train will quietly cost the same again every year in serving GPUs if no one optimises the inference path. The good news is that the entire inference stack — from the kernel that computes attention to the scheduler that batches requests — has been re-engineered over the last three years, and most of the win is available to teams that *use* the right serving stack rather than build one. This lesson walks the layers: the cost equation, the KV-cache, batching, accelerators, and the modern serving stacks (vLLM / TGI / TensorRT-LLM / Triton) that bundle the wins.
+Training a model is the part that gets the papers; *serving* it is the part that gets the bill. A 70B-parameter LLM that costs eight figures to train will quietly cost the same again every year in serving GPUs if no one optimises the inference path. The good news is that the entire inference stack (from the kernel that computes attention to the scheduler that batches requests) has been re-engineered over the last three years, and most of the win is available to teams that *use* the right serving stack rather than build one. This lesson walks the layers: the cost equation, the KV-cache, batching, accelerators, and the modern serving stacks (vLLM / TGI / TensorRT-LLM / Triton) that bundle the wins.
 
 Real-world examples: a chat product that needs sub-second time-to-first-token at peak traffic typically picks **vLLM** or **TGI** on H100/H200 GPUs with **continuous batching** and **paged KV-cache**, then layers **INT4 quantization** on top once latency is acceptable. A batch summarisation job that re-runs every night picks throughput-first stacks (TensorRT-LLM with large static batches, or vLLM with high `max_num_seqs`) on cheaper L40S / A100s. An on-device assistant picks a smaller model (Phi / Llama-3.1-8B) quantized to INT4, served by **llama.cpp** or **MLX** on consumer silicon with no GPU at all.
 
@@ -29,7 +29,7 @@ For a 70B model on a single H100, decoding one token requires reading roughly 14
 
 ## The KV-cache: the trick that makes decoding fast
 
-Naive autoregressive decoding recomputes attention over the whole prefix at every step: token $t$ attends to tokens $1, \ldots, t-1$, then token $t+1$ attends to $1, \ldots, t$, and so on. That's $O(s^2)$ work to generate a response of length $s$. The **KV-cache** is the observation that the *keys* $K$ and *values* $V$ for every previous token were already computed in earlier steps — so we can store them and only compute $K, V, Q$ for the *new* token at each decode step. Decoding becomes $O(s)$ instead of $O(s^2)$, at the cost of carrying the cache in memory.
+Naive autoregressive decoding recomputes attention over the whole prefix at every step: token $t$ attends to tokens $1, \ldots, t-1$, then token $t+1$ attends to $1, \ldots, t$, and so on. That's $O(s^2)$ work to generate a response of length $s$. The **KV-cache** is the observation that the *keys* $K$ and *values* $V$ for every previous token were already computed in earlier steps, so we can store them and only compute $K, V, Q$ for the *new* token at each decode step. Decoding becomes $O(s)$ instead of $O(s^2)$, at the cost of carrying the cache in memory.
 
 The memory cost is the thing that bites. For a model with $L$ layers, $H$ attention heads of dimension $d$, sequence length $s$, batch size $b$, and a numerical format using `bytes` per element, the KV-cache size is
 
@@ -56,7 +56,7 @@ Continuous batching is what gives vLLM and TGI most of their throughput advantag
 <WikiLink slug="continuous-batching" title="Watch the scheduler swap a finished request out mid-batch" />
 
 <Callout type="warning" title="Padding wastes compute *and* memory.">
-Naive batching pads every sequence to the longest one in the batch and runs the GPU over the padding tokens too. The KV-cache for the padding is also allocated. The combined waste — padded compute *and* padded cache — is why teams who batch without continuous batching see real throughput well below the theoretical "batch size × single-sequence speed" they expected.
+Naive batching pads every sequence to the longest one in the batch and runs the GPU over the padding tokens too. The KV-cache for the padding is also allocated. The combined waste (padded compute *and* padded cache) is why teams who batch without continuous batching see real throughput well below the theoretical "batch size × single-sequence speed" they expected.
 </Callout>
 
 ## Accelerators and the roofline model
@@ -84,7 +84,7 @@ Move the batch-size control and watch decode climb the bandwidth roof: at batch 
 
 ## Serving stacks: what each buys you
 
-Every modern LLM serving stack bundles the same handful of ideas — continuous batching, paged KV-cache, kernel-level fusion — but with different trade-offs.
+Every modern LLM serving stack bundles the same handful of ideas (continuous batching, paged KV-cache, kernel-level fusion) but with different trade-offs.
 
 - **vLLM** — open-source, Python-first, the reference implementation of **PagedAttention**. Easiest to stand up; great throughput; supports most open models. The default choice for self-hosted LLM serving in 2026.
 - **Text Generation Inference (TGI)** — HuggingFace's serving stack. Continuous batching, tensor-parallelism, tightly integrated with the HF model hub. Production-grade with a slightly older codebase than vLLM but more battle-tested in HF Inference Endpoints.
@@ -129,7 +129,7 @@ A single decode step on a large model reads all the weights from HBM to produce 
 
 - LLM inference has two phases with different bottlenecks: **prefill** is compute-bound, **decode** is HBM-bandwidth-bound. Optimisations target one or the other.
 - The **KV-cache** turns $O(s^2)$ attention into $O(s)$ at the cost of $2 \cdot L \cdot H \cdot d \cdot s \cdot b \cdot B$ memory (where $B$ is bytes per element). The cache, not the weights, usually limits concurrency.
-- **PagedAttention** (vLLM) treats the cache like virtual memory — 16-token blocks, prefix sharing, on-demand allocation — and recovers 60–80% of HBM otherwise wasted on padding.
+- **PagedAttention** (vLLM) treats the cache like virtual memory (16-token blocks, prefix sharing, on-demand allocation) and recovers 60–80% of HBM otherwise wasted on padding.
 - **Continuous batching** (iteration-level scheduling) keeps every decode slot busy by rotating requests in and out at every step. It's worth 4–10× throughput vs static batching for chat traffic.
 - The **roofline model** is the right mental model for accelerator choice: pick bandwidth for decode-bound workloads (H100/H200, Groq), compute for prefill-heavy or batch jobs (L40S, TPU).
 - **vLLM** is the right default open-source serving stack in 2026; **TensorRT-LLM + Triton** is faster on NVIDIA when the team can absorb the compile loop; **TGI** for HF-shop integration.

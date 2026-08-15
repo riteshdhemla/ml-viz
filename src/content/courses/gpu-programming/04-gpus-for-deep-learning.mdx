@@ -17,7 +17,7 @@ Everything in the first three lessons exists to make one thing fast: the arithme
 
 A forward pass through a linear layer is $\mathbf{Y} = \mathbf{X}\mathbf{W}$ — a matrix multiply. Attention is a stack of matrix multiplies. Convolutions are lowered to matrix multiplies (im2col) or implemented as specialized GEMMs. Across a real model, **the overwhelming majority of FLOPs are matrix multiplies (GEMM — General Matrix Multiply)**.
 
-This is a gift, because GEMM is the *ideal* GPU workload from Lesson 1: massively parallel (every output element is independent), high arithmetic intensity (each loaded value is reused $O(N)$ times), and a regular, coalescable access pattern. GPU vendors therefore pour enormous effort into one routine — and you inherit it through cuBLAS/cuDNN.
+This is a gift, because GEMM is the *ideal* GPU workload from Lesson 1: massively parallel (every output element is independent), high arithmetic intensity (each loaded value is reused $O(N)$ times), and a regular, coalescable access pattern. GPU vendors therefore pour enormous effort into one routine, and you inherit it through cuBLAS/cuDNN.
 
 $$
 \text{matmul } (M\times K)\cdot(K\times N): \quad \text{FLOPs} = 2MNK, \qquad \text{bytes} \approx 4(MK + KN + MN)
@@ -30,14 +30,14 @@ For large $M, N, K$ the FLOPs ($\propto N^3$) grow faster than the bytes ($\prop
 Modern GPUs add **tensor cores**: units that compute a small **matrix multiply-accumulate** ($\mathbf{D} = \mathbf{A}\mathbf{B} + \mathbf{C}$ on, say, 16×16 tiles) in a single operation, rather than one scalar multiply-add per ALU. They deliver many times the throughput of the general-purpose cores — *for matmul-shaped work* in supported precisions.
 
 <Callout type="info" title="Tensor cores want the right shapes and types">
-  Tensor cores engage for GEMM-like operations in reduced precision (FP16/BF16/TF32/FP8). To use them well, matrix dimensions should be multiples of the tile size (e.g. 8 or 16) and data should be in a supported low-precision format. A matmul with awkward dimensions or in FP32 may fall back to the slower general cores — which is why padding to "nice" shapes can speed a model up.
+  Tensor cores engage for GEMM-like operations in reduced precision (FP16/BF16/TF32/FP8). To use them well, matrix dimensions should be multiples of the tile size (e.g. 8 or 16) and data should be in a supported low-precision format. A matmul with awkward dimensions or in FP32 may fall back to the slower general cores, which is why padding to "nice" shapes can speed a model up.
 </Callout>
 
 ## Mixed precision
 
 Training in pure FP32 wastes the tensor cores and doubles memory traffic. **Mixed-precision training** keeps a master copy of the weights in FP32 but does the matmuls in 16-bit (FP16 or BF16):
 
-- **Half the memory and bandwidth** for activations and gradients — and bandwidth is often the limit.
+- **Half the memory and bandwidth** for activations and gradients, and bandwidth is often the limit.
 - **Tensor cores engage**, multiplying throughput.
 - **Numerics are managed**: FP16 has a narrow range, so frameworks use **loss scaling** to keep small gradients from underflowing to zero; BF16 has FP32's exponent range and usually needs no scaling.
 
@@ -49,7 +49,7 @@ Mixed precision saves memory by shrinking each activation's *size*. A sibling te
 
 ## Kernel fusion
 
-Each kernel launch reads its inputs from global memory and writes its outputs back. A chain of small element-wise ops — `bias → activation → dropout` — pays that round-trip *every step*, even though each op does almost no arithmetic. These ops are **memory-bound** (low arithmetic intensity from Lesson 3).
+Each kernel launch reads its inputs from global memory and writes its outputs back. A chain of small element-wise ops (`bias → activation → dropout`) pays that round-trip *every step*, even though each op does almost no arithmetic. These ops are **memory-bound** (low arithmetic intensity from Lesson 3).
 
 **Kernel fusion** merges them into one kernel: load once, do all the arithmetic in registers, write once.
 
@@ -78,7 +78,7 @@ For memory-bound chains this is a near-$k\times$ speedup. This is exactly what `
 
 <RooflineViz />
 
-Every row of the table above is a point on this plot, and where it sits relative to the **ridge point** — peak FLOP/s ÷ bandwidth — is the whole diagnosis. Left of the ridge you are waiting on memory and faster arithmetic buys nothing; right of it you are actually using the machine.
+Every row of the table above is a point on this plot, and where it sits relative to the **ridge point** (peak FLOP/s ÷ bandwidth) is the whole diagnosis. Left of the ridge you are waiting on memory and faster arithmetic buys nothing; right of it you are actually using the machine.
 
 **Toggle FP32 to tensor cores and watch the ridge move.** On an A100 it goes from $19.5/1555 = 12.5$ FLOP/byte to $312/1555 = 200.6$ — **16× further to the right**. This is the part that trips people up: making the arithmetic 16× faster did not make more kernels compute-bound, it made *more of them memory-bound*. `GEMM n=256` at 85 FLOP/byte is comfortably compute-bound in FP32 and firmly bandwidth-bound in FP16. Every generation of faster tensor cores raises the intensity bar your kernels have to clear.
 
@@ -97,7 +97,7 @@ That converts "batch your inference server" from advice into a target:
 | 64 | 99.5 TFLOP/s | 31.9% |
 | 201 | 312 TFLOP/s | 100% |
 
-Batch 1 decode runs a $312$ TFLOP/s machine at **1.6**. You need $B \ge 201$ on an A100 — $296$ on an H100 — before the weights you dragged out of HBM are being reused enough to leave the memory roof. That single number is why continuous batching exists.
+Batch 1 decode runs a $312$ TFLOP/s machine at **1.6**. You need $B \ge 201$ on an A100 ($296$ on an H100) before the weights you dragged out of HBM are being reused enough to leave the memory roof. That single number is why continuous batching exists.
 
 Note what the fusion rows show, too: fusing three element-wise ops moves them from $0.167$ to $0.5$ FLOP/byte — a genuine 3× less traffic, and still nowhere near the ridge. Fusion does not make a memory-bound kernel compute-bound; it just makes you do the memory-bound thing fewer times.
 

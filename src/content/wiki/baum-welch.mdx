@@ -9,7 +9,7 @@ estimatedMinutes: 12
 
 # The Baum–Welch Algorithm
 
-When you have observation sequences but *no* hidden labels, **Baum–Welch** — an instance of the [EM algorithm](/courses/probabilistic-models/02-em-algorithm) — estimates the HMM parameters $\pi$ (initial distribution), $A$ (transition matrix), and $B$ (emission matrix).
+When you have observation sequences but *no* hidden labels, **Baum–Welch** (an instance of the [EM algorithm](/courses/probabilistic-models/02-em-algorithm)) estimates the HMM parameters $\pi$ (initial distribution), $A$ (transition matrix), and $B$ (emission matrix).
 
 The loop alternates between two steps until the log-likelihood converges:
 
@@ -113,7 +113,7 @@ What to notice as you step:
 
 ## Convergence guarantees and pitfalls
 
-- Each iteration **provably increases** the likelihood (the standard EM guarantee) — but only to a **local** optimum. Use multiple random restarts.
+- Each iteration **provably increases** the likelihood (the standard EM guarantee), but only to a **local** optimum. Use multiple random restarts.
 - Multiplying many probabilities underflows fast; real implementations run all recursions in **log space** (or rescale $\alpha_t$, $\beta_t$ at each step). `hmmlearn` handles this for you.
 - With multiple training sequences, sum the expected counts across sequences before normalizing.
 

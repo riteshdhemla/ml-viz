@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # AI-Engineering Architecture
 
-A production LLM feature is much more than a call to a model. Around that call sits a system that keeps it safe, fast, cheap, and improving over time. This lesson assembles those pieces — the layers you add **between the user and the model** — and the feedback loop that turns usage into better behaviour.
+A production LLM feature is much more than a call to a model. Around that call sits a system that keeps it safe, fast, cheap, and improving over time. This lesson assembles those pieces (the layers you add **between the user and the model**) and the feedback loop that turns usage into better behaviour.
 
 ## The whole loop, at a glance
 
@@ -19,7 +19,7 @@ Everything this course teaches is a slice of one recurring shape — the **agent
 
 The earlier lessons filled in the left of the loop — **context & tools** (prompting, RAG, embeddings) and **orchestration** (agents, reasoning). This lesson and the next few are the right of it: **guardrails** (safety, injection defense) and **operations** (tracing, prompt versioning, the usage→improvement feedback loop). It rhymes with the [ML project loop](/wiki/ml-project-loop) — the biggest difference is that you don't get to change the model's weights, so your leverage is in the context, the loop around it, and the guardrails.
 
-**Real-world examples:** any user-facing assistant — support bots, copilots, search/answer engines — operated at scale.
+**Real-world examples:** any user-facing assistant (support bots, copilots, search/answer engines) operated at scale.
 
 ## The request path
 
@@ -52,7 +52,7 @@ Defenses: keep trusted instructions and untrusted data clearly separated; never 
 
 ## Model routing and gateways
 
-Not every request needs your biggest model. A **router** sends each query to an appropriate backend — a small cheap model for easy requests, a frontier model for hard ones — often fronted by a **gateway** that centralises API keys, rate limits, retries, and fallbacks across providers.
+Not every request needs your biggest model. A **router** sends each query to an appropriate backend (a small cheap model for easy requests, a frontier model for hard ones), often fronted by a **gateway** that centralises API keys, rate limits, retries, and fallbacks across providers.
 
 <Callout type="tip" title="Cost follows the router">
   Routing easy traffic to a small model is one of the highest-leverage cost levers in an LLM product — frequently a 5–10× reduction with little quality loss, because most real traffic is easy.
@@ -65,7 +65,7 @@ LLM calls are slow and metered, and real traffic is repetitive.
 - **Exact-match cache** — identical prompt → stored response.
 - **Semantic cache** — embed the query; if it's close (cosine) to a previously answered one, return that answer. This reuses the embeddings and similarity machinery from the [semantic search lesson](/courses/building-with-llms/03-embeddings-and-semantic-search).
 
-Caching cuts latency and token cost on repeated or near-duplicate queries — it does **not** make the model smarter.
+Caching cuts latency and token cost on repeated or near-duplicate queries. It does **not** make the model smarter.
 
 ## Observability
 

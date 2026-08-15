@@ -68,13 +68,13 @@ gradient norm reported at every hop:
 What to notice as you step:
 
 - **Every backward step is the same two multiplications.** One $W_{hh}^\top$ and
-  one diagonal of $\tanh'$ values — and because it is the *same* $W_{hh}$ each
+  one diagonal of $\tanh'$ values, and because it is the *same* $W_{hh}$ each
   time, the shrink factor is roughly constant, which makes the decay geometric
   rather than incidental.
 - **$\tanh'$ can only make it worse.** It is at most 1, and strictly below 1
   whenever a unit is saturated at all, so it never rescues a small $W_{hh}$.
 - **After six steps the gradient is 0.7% of what it started as.** The loss at
-  step 6 has essentially nothing to say about $\mathbf{h}_0$ — and that gradient
+  step 6 has essentially nothing to say about $\mathbf{h}_0$, and that gradient
   *is* the learning signal for the earliest timesteps.
 - **The final step sweeps the spectral radius** on a log axis. Below 1 the curve
   is a straight line downward, above 1 a straight line upward, and the usable
@@ -160,7 +160,7 @@ $$
 \frac{\partial \mathcal{L}}{\partial W_{hh}} = \sum_{t=1}^{T} \frac{\partial \mathcal{L}_t}{\partial W_{hh}}
 $$
 
-Each term $\partial \mathcal{L}_t / \partial W_{hh}$ itself requires back-propagating through all earlier steps to reach $W_{hh}$ — which is exactly the product-of-Jacobians computation above, applied at each $t$.
+Each term $\partial \mathcal{L}_t / \partial W_{hh}$ itself requires back-propagating through all earlier steps to reach $W_{hh}$, which is exactly the product-of-Jacobians computation above, applied at each $t$.
 
 ## BPTT in PyTorch
 

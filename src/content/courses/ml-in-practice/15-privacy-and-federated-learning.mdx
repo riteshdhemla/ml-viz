@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Privacy & Federated Learning
 
-Models trained on personal data — health records, messages, keystrokes, location — can **leak** that data: they memorize training examples, and attackers can extract them or infer who was in the training set. As ML touches more sensitive data (and regulation tightens), training that *provably* protects individuals has become a first-class engineering concern. This lesson covers the two pillars: **differential privacy** (a rigorous guarantee) and **federated learning** (keep the data on the device).
+Models trained on personal data (health records, messages, keystrokes, location) can **leak** that data: they memorize training examples, and attackers can extract them or infer who was in the training set. As ML touches more sensitive data (and regulation tightens), training that *provably* protects individuals has become a first-class engineering concern. This lesson covers the two pillars: **differential privacy** (a rigorous guarantee) and **federated learning** (keep the data on the device).
 
 **Real-world examples:** mobile keyboards learning next-word prediction without uploading your texts, hospitals jointly training a model without sharing patient records, the US Census applying differential privacy to published statistics, and DP-trained foundation models.
 
@@ -24,7 +24,7 @@ Anonymization alone is famously weak: "de-identified" datasets are routinely **r
 
 ## Differential privacy
 
-**Differential privacy (DP)** is that guarantee. Intuitively: the model's output should be **almost the same whether or not any single individual's data was included** — so no one's participation can be detected, and nothing specific to them can be learned. Formally, a randomized algorithm $M$ is $\varepsilon$-differentially private if for any two datasets $D, D'$ differing in one person's record, and any outcome $S$:
+**Differential privacy (DP)** is that guarantee. Intuitively: the model's output should be **almost the same whether or not any single individual's data was included**, so no one's participation can be detected, and nothing specific to them can be learned. Formally, a randomized algorithm $M$ is $\varepsilon$-differentially private if for any two datasets $D, D'$ differing in one person's record, and any outcome $S$:
 
 $$
 \Pr[M(D) \in S] \le e^{\varepsilon}\,\Pr[M(D') \in S]
@@ -70,7 +70,7 @@ The disparate impact is usually explained as *noise drowning out rarer gradients
 
 **The minority's gradients are larger, not rarer.** The model fits them worse, so their gradients never shrink: after training, the median per-example gradient norm is **3.76×** the majority's. Clipping is a ceiling on gradient norm, so this is exactly the group sitting above it — at $C = 1$, **16% of minority examples are clipped against 3% of majority**, five times the rate, every step.
 
-**And it is the clipping, not the noise.** With *zero* noise — no privacy guarantee purchased at all — tightening $C$ from 20 to 0.2 leaves majority accuracy flat at 0.95 while minority accuracy falls from 0.88 to chance. Holding $C = 1$ and sweeping the noise instead, the minority barely moves from $\sigma = 0$ through $\sigma = 32$ ($\varepsilon \approx 1.4$). Averaged over a large batch the noise is amortised across every example; the per-example clip is not.
+**And it is the clipping, not the noise.** With *zero* noise (no privacy guarantee purchased at all) tightening $C$ from 20 to 0.2 leaves majority accuracy flat at 0.95 while minority accuracy falls from 0.88 to chance. Holding $C = 1$ and sweeping the noise instead, the minority barely moves from $\sigma = 0$ through $\sigma = 32$ ($\varepsilon \approx 1.4$). Averaged over a large batch the noise is amortised across every example; the per-example clip is not.
 
 That changes which knob to reach for. Spending more $\varepsilon$ buys back almost nothing here — the damage was done by the operation that carries no privacy guarantee. **Per-group or adaptive clip norms** target the mechanism that is actually responsible. This matches the finding in [Bagdasaryan et al., *Differential Privacy Has Disparate Impact on Model Accuracy* (2019)](https://papers.nips.cc/paper/2019/hash/fc0de4e0396fff257ea362983c2dda5a-Abstract.html), which isolates clipping as the dominant cause.
 

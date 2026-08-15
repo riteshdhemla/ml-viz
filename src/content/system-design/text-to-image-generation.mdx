@@ -26,7 +26,7 @@ estimatedMinutes: 25
 
 "Type a prompt, get an image" is the flagship generative-AI system-design
 problem. Unlike a classifier, the output is a **sample from a learned
-distribution** — so the challenges are generation *quality*, **GPU cost** (the
+distribution**, so the challenges are generation *quality*, **GPU cost** (the
 model runs a heavy denoising loop), and **safety** (it can generate anything).
 Most of the pipeline is an instance of the ML loop (train a generative model),
 with a serving stage that dominates cost.
@@ -54,7 +54,7 @@ Each denoising step is a full forward pass, so time ≈ steps × per-step cost �
 a few seconds per image at 50 steps, i.e. on the order of 1–2K images per
 GPU-hour. Millions of images a day therefore means a fleet of hundreds of
 GPUs running hot. And because cost is *linear in step count*, halving steps
-halves the fleet — which is why step reduction, not model shrinking, is the
+halves the fleet, which is why step reduction, not model shrinking, is the
 first cost lever every image product pulls.
 </ThinkFirst>
 
@@ -70,7 +70,7 @@ first cost lever every image product pulls.
 **Back-of-envelope:** a diffusion model runs *N* denoising steps, each a full
 UNet/transformer forward pass on a GPU. Total cost is
 $N \times \text{cost}(\text{step})$, so the whole cost story is "how do we cut
-$N$, shrink each step, and pack GPUs" — which is why **latent** diffusion
+$N$, shrink each step, and pack GPUs", which is why **latent** diffusion
 (denoise a compressed representation) and step-distilled samplers matter so
 much.
 
@@ -107,7 +107,7 @@ generative systems, dataset curation isn't preprocessing; it's product design.
   detection scores precisely so trainers can filter
   ([Schuhmann et al., 2022](https://arxiv.org/abs/2210.08402)). **Curation is
   the product**: dedup, aesthetic filtering, CSAM removal, and caption quality
-  gate what the model can do — and what it *can't* be made to do.
+  gate what the model can do, and what it *can't* be made to do.
 - **IP/licensing:** training-data provenance is a legal and ethical minefield;
   document sources and honor opt-outs (Stability and others now run artist
   opt-out programs).
@@ -172,7 +172,7 @@ latent → safety-check → return. Optimize by:
 FID measures **distributional realism** (do generated images statistically
 resemble real ones); CLIPScore measures **prompt adherence**. Neither measures
 what users buy: aesthetic taste. Both can improve while humans prefer the old
-model — so automated metrics screen checkpoints, and **human preference A/B**
+model, so automated metrics screen checkpoints, and **human preference A/B**
 makes the ship call.
 </ThinkFirst>
 
@@ -192,7 +192,7 @@ can emit near-copies of training examples — Carlini et al. extracted over a
 thousand training images from Stable Diffusion with a generate-and-filter
 attack, and found heavily *duplicated* training images are by far the
 likeliest to regurgitate. So deduplication is the highest-leverage
-mitigation, and extraction-style audits belong in your eval suite — this is
+mitigation, and extraction-style audits belong in your eval suite. This is
 an IP and privacy exposure, not a curiosity.
 </ThinkFirst>
 
@@ -231,7 +231,7 @@ an IP and privacy exposure, not a curiosity.
 
 <Details summary="Images look great but ignore half the prompt. How do you improve adherence?">
 Prompt faithfulness is driven by the text encoder, the captions, and guidance.
-Raise the CFG scale (more adherence, less diversity — but too high causes
+Raise the CFG scale (more adherence, less diversity, but too high causes
 oversaturated artifacts), use a stronger/larger text encoder (the Imagen
 result), and fine-tune on high-quality caption–image pairs. Measure with
 CLIPScore + human adherence ratings, not just FID (which only captures

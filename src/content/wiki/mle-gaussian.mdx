@@ -66,7 +66,7 @@ $$
 The MLE for the mean is the **sample average**.
 
 <Callout type="tip" title="Gaussian MLE = OLS">
-  Maximizing $\ell$ over $\mu$ with $\sigma^2$ fixed is the same as minimizing $\sum(x_i - \mu)^2$. So fitting a linear model by **minimizing squared error is exactly MLE under Gaussian noise**. The two derivations — OLS and Gaussian MLE — are the same optimization in disguise.
+  Maximizing $\ell$ over $\mu$ with $\sigma^2$ fixed is the same as minimizing $\sum(x_i - \mu)^2$. So fitting a linear model by **minimizing squared error is exactly MLE under Gaussian noise**. The two derivations (OLS and Gaussian MLE) are the same optimization in disguise.
 </Callout>
 
 ## Solving for the maximum-likelihood variance
@@ -138,7 +138,7 @@ print(f"Numpy default std²:    {x.var(ddof=1):.3f}") # 4.571  (ddof=1 = n-1)
 
 The MLE variance divides by $n$, not $n-1$. Why is it biased?
 
-Because we substituted $\hat{\mu} = \bar{x}$ — an estimate fit to the same data — the squared deviations $(x_i - \bar{x})^2$ come out systematically too small. The true deviations $(x_i - \mu)^2$ would be larger since the true $\mu$ doesn't chase the sample.
+Because we substituted $\hat{\mu} = \bar{x}$ (an estimate fit to the same data), the squared deviations $(x_i - \bar{x})^2$ come out systematically too small. The true deviations $(x_i - \mu)^2$ would be larger since the true $\mu$ doesn't chase the sample.
 
 Formally, $E[\hat{\sigma}^2_\text{MLE}] = \frac{n-1}{n}\sigma^2 < \sigma^2$.
 
@@ -148,7 +148,7 @@ $$
 s^2 = \frac{1}{n-1}\sum_{i=1}^n (x_i - \bar{x})^2
 $$
 
-MLE is **consistent** — as $n \to \infty$, $\hat{\sigma}^2_\text{MLE} \to \sigma^2$ — but it is not unbiased in finite samples.
+MLE is **consistent** (as $n \to \infty$, $\hat{\sigma}^2_\text{MLE} \to \sigma^2$) but it is not unbiased in finite samples.
 
 ## The log-likelihood surface
 

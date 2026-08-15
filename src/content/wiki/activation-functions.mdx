@@ -10,7 +10,7 @@ estimatedMinutes: 13
 
 # Activation Functions: From Sigmoid to GELU
 
-An **activation function** is the non-linearity applied to a neuron's pre-activation $z = \mathbf{w}\cdot\mathbf{x} + b$. Without it, stacking layers is pointless: the composition of linear maps is still linear, so a 100-layer network would collapse to a single matrix multiply. The activation is what lets depth buy expressive power — and the *choice* of activation governs how gradients flow, which is the difference between a network that trains and one that stalls.
+An **activation function** is the non-linearity applied to a neuron's pre-activation $z = \mathbf{w}\cdot\mathbf{x} + b$. Without it, stacking layers is pointless: the composition of linear maps is still linear, so a 100-layer network would collapse to a single matrix multiply. The activation is what lets depth buy expressive power, and the *choice* of activation governs how gradients flow, which is the difference between a network that trains and one that stalls.
 
 ## The job of an activation
 
@@ -31,7 +31,7 @@ A function **saturates** when its output flattens for large $|z|$, driving its d
 
 ## ReLU and its family
 
-**ReLU** $\max(0, z)$ is the modern default for hidden layers. Its derivative is exactly **1** for $z > 0$ — it does not shrink gradients in the active region — and it costs a single comparison. That combination is why deep nets became trainable at scale.
+**ReLU** $\max(0, z)$ is the modern default for hidden layers. Its derivative is exactly **1** for $z > 0$ (it does not shrink gradients in the active region) and it costs a single comparison. That combination is why deep nets became trainable at scale.
 
 Its weakness is the **dead/dying ReLU**: a neuron whose pre-activation is negative for *every* input outputs 0 with derivative 0, so it receives no gradient and can never recover. A bad initialization or too-large a learning rate can kill a large fraction of units permanently.
 
@@ -60,7 +60,7 @@ $$
 \text{softmax}(z)_i = \frac{e^{z_i}}{\sum_j e^{z_j}}
 $$
 
-It couples all outputs (they sum to 1) and pairs with cross-entropy loss, whose combined gradient simplifies to the clean $\hat{p} - y$. For numerical stability, subtract $\max_j z_j$ from every logit before exponentiating — this is exact (softmax is shift-invariant) and prevents overflow.
+It couples all outputs (they sum to 1) and pairs with cross-entropy loss, whose combined gradient simplifies to the clean $\hat{p} - y$. For numerical stability, subtract $\max_j z_j$ from every logit before exponentiating. This is exact (softmax is shift-invariant) and prevents overflow.
 
 ## Derivatives at a glance
 
@@ -84,7 +84,7 @@ The pattern that matters: sigmoid's $0.25$ ceiling vs ReLU's $1.0$ is the heart 
 - **Regression output:** usually **no activation** (linear) on the final layer.
 
 <Callout type="info" title="Initialization is tuned to the activation">
-  He initialization is designed for ReLU (variance $2/n_\text{in}$); Xavier/Glorot for tanh/sigmoid ($1/n_\text{in}$). Pairing the wrong init with an activation reintroduces vanishing or exploding signals on the very first forward pass — which is why activation choice and weight init are decided together.
+  He initialization is designed for ReLU (variance $2/n_\text{in}$); Xavier/Glorot for tanh/sigmoid ($1/n_\text{in}$). Pairing the wrong init with an activation reintroduces vanishing or exploding signals on the very first forward pass, which is why activation choice and weight init are decided together.
 </Callout>
 
 ## Related concepts

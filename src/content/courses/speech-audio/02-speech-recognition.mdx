@@ -9,7 +9,7 @@ estimatedMinutes: 23
 
 # Speech Recognition
 
-**Automatic Speech Recognition (ASR)** maps an audio signal to the words that were spoken. The central difficulty isn't recognizing sounds — it's **alignment**: a one-second utterance is ~100 spectrogram frames but maybe 3 words, and you don't know which frames correspond to which characters. This lesson covers the two ideas that solved alignment — **CTC** and **attention-based sequence-to-sequence** — and how modern systems like Whisper combine them.
+**Automatic Speech Recognition (ASR)** maps an audio signal to the words that were spoken. The central difficulty isn't recognizing sounds — it's **alignment**: a one-second utterance is ~100 spectrogram frames but maybe 3 words, and you don't know which frames correspond to which characters. This lesson covers the two ideas that solved alignment (**CTC** and **attention-based sequence-to-sequence**) and how modern systems like Whisper combine them.
 
 **Real-world examples:** voice assistants, dictation, video captioning and subtitles, call-center transcription, and the speech front-end of multimodal assistants.
 
@@ -41,7 +41,7 @@ This sum has exponentially many alignments but is computed efficiently with a **
 The alternative: treat ASR as **translation from audio to text**. An **encoder** processes the spectrogram into a representation; a **decoder** generates the transcript token by token, using **attention** to look at the relevant audio frames for each output token.
 
 - **Listen, Attend and Spell (LAS)** was the canonical attention-based ASR model.
-- Unlike CTC, the decoder is **autoregressive** — each token conditions on the previous ones — so it models the language internally (no conditional-independence assumption) and needs no separate language model.
+- Unlike CTC, the decoder is **autoregressive** (each token conditions on the previous ones), so it models the language internally (no conditional-independence assumption) and needs no separate language model.
 - The cost: it must be run sequentially and can "hallucinate" fluent-but-wrong text if attention drifts.
 
 | | CTC | Attention seq2seq |
@@ -83,7 +83,7 @@ $$
 
 **Character Error Rate (CER)** is the same metric computed at the character level — preferred for languages without clear word boundaries (Chinese, Japanese, Thai) or for measuring fine-grained accuracy in morphologically complex languages.
 
-Every piece above — blank, collapse, the sum over alignments, then WER — is easy to state and hard to feel working together. Walk the whole pipeline below on one utterance of 102 frames: edit a frame labelling and watch it collapse, see the forward DP's probability mass (checked against brute-force enumeration of every labelling), then decode the same acoustic model three ways. Two characters are deliberately barely voiced, and the two errors that causes turn out to need completely different fixes — one is the decoder's fault and one is the model's.
+Every piece above (blank, collapse, the sum over alignments, then WER) is easy to state and hard to feel working together. Walk the whole pipeline below on one utterance of 102 frames: edit a frame labelling and watch it collapse, see the forward DP's probability mass (checked against brute-force enumeration of every labelling), then decode the same acoustic model three ways. Two characters are deliberately barely voiced, and the two errors that causes turn out to need completely different fixes — one is the decoder's fault and one is the model's.
 
 <CTCDecodingViz />
 

@@ -22,7 +22,7 @@ $$
 \mathrm{PSI} = \sum_{i=1}^{k} (p_i - q_i) \cdot \ln\!\left(\frac{p_i}{q_i}\right)
 $$
 
-Each term contributes the **signed difference** $(p_i - q_i)$ weighted by the **log-ratio** $\ln(p_i/q_i)$. Because the difference and the log-ratio always share the same sign — when $p_i > q_i$ both are positive, when $p_i < q_i$ both are negative — every term is non-negative. PSI = 0 only when $p_i = q_i$ for every bin. It is always finite and symmetric in $p$ and $q$ (proved below).
+Each term contributes the **signed difference** $(p_i - q_i)$ weighted by the **log-ratio** $\ln(p_i/q_i)$. Because the difference and the log-ratio always share the same sign (when $p_i > q_i$ both are positive, when $p_i < q_i$ both are negative), every term is non-negative. PSI = 0 only when $p_i = q_i$ for every bin. It is always finite and symmetric in $p$ and $q$ (proved below).
 
 ## Threshold interpretation
 
@@ -117,7 +117,7 @@ D_{\mathrm{KL}}(P \,\|\, Q) + D_{\mathrm{KL}}(Q \,\|\, P) = \sum_i (p_i - q_i)\l
 $$
 
 This explains two properties:
-- **Symmetry:** swapping reference and production gives the same PSI value — there is no privileged direction.
+- **Symmetry:** swapping reference and production gives the same PSI value. There is no privileged direction.
 - **Non-negativity:** both KL terms are ≥ 0 by Gibbs' inequality, so PSI ≥ 0 always.
 
 KL divergence alone is directional. $D_{\mathrm{KL}}(P \,\|\, Q)$ measures the extra nats needed to encode samples drawn from $P$ using a code optimized for $Q$. Using bare KL as a drift metric forces you to choose which distribution is "reference" in the log-ratio. PSI avoids that choice by treating both symmetrically.

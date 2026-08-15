@@ -77,7 +77,7 @@ This is a structural advantage over full fine-tuning, which gives you a fresh mu
 
 Even with LoRA, the *frozen* base still has to live in GPU memory. A 65B-parameter model at FP16 is 130 GB — nothing single-GPU fits it. **QLoRA** adds three ingredients on top of LoRA:
 
-1. **4-bit NF4 quantization** of the frozen base. "NF4" (NormalFloat-4) is a quantization scheme designed for the bell-shaped weight distributions you actually see in language models — it has 16 levels placed at the quantiles of a unit normal, not evenly spaced.
+1. **4-bit NF4 quantization** of the frozen base. "NF4" (NormalFloat-4) is a quantization scheme designed for the bell-shaped weight distributions you actually see in language models. It has 16 levels placed at the quantiles of a unit normal, not evenly spaced.
 2. **Double quantization** — the per-block quantization *constants* are themselves quantized, saving an extra ~0.4 bits per parameter.
 3. **Paged optimizer state** — Adam state spills to CPU memory under pressure instead of crashing the run.
 

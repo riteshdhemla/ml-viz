@@ -12,7 +12,7 @@ spineStages: [feedback]
 
 # PagedAttention & KV-Cache Management
 
-The KV-cache — not the model weights — usually decides how many requests a GPU can serve concurrently. A naive allocator reserves one **contiguous** slab of `max_seq_len` cache per request the moment it arrives; since real responses are far shorter than the maximum and lengths are unknowable in advance, 60–80% of that memory sits reserved-but-unused. **PagedAttention** (the algorithm at the core of vLLM) applies the oldest trick in operating systems: break the cache into small fixed-size **blocks**, map logical positions to physical blocks through a per-sequence **block table**, and allocate blocks only when tokens actually exist.
+The KV-cache (not the model weights), usually decides how many requests a GPU can serve concurrently. A naive allocator reserves one **contiguous** slab of `max_seq_len` cache per request the moment it arrives; since real responses are far shorter than the maximum and lengths are unknowable in advance, 60–80% of that memory sits reserved-but-unused. **PagedAttention** (the algorithm at the core of vLLM) applies the oldest trick in operating systems: break the cache into small fixed-size **blocks**, map logical positions to physical blocks through a per-sequence **block table**, and allocate blocks only when tokens actually exist.
 
 ## Why contiguous allocation fails
 
@@ -54,7 +54,7 @@ What to notice as you step:
   single pop from the free list. There is never a re-reservation or a copy of
   the sequence.
 - **Only full blocks can be shared.** A partially-filled block has no stable
-  content hash — the next token would change it — so prefix sharing operates at
+  content hash (the next token would change it), so prefix sharing operates at
   block granularity, which is one reason $B$ is small.
 - **Copy-on-write copies exactly one block**, not the prefix and not the
   sequence. That is what makes parallel sampling branches cheap.

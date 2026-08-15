@@ -61,7 +61,7 @@ Better than percentile when the bootstrap distribution is shifted, but it can pr
 
 ### BCa (bias-corrected and accelerated)
 
-The gold standard. It adjusts the percentile endpoints for two things: **bias** (the bootstrap distribution not centered on $\hat\theta$) via a correction $z_0$, and **skew** (variance that changes with $\theta$) via an acceleration $a$ estimated by jackknife. BCa is **second-order accurate** — its coverage error shrinks like $1/n$ rather than $1/\sqrt{n}$ — and transformation-respecting. Prefer it when the statistic is skewed (ratios, variances, extreme quantiles) and accuracy matters.
+The gold standard. It adjusts the percentile endpoints for two things: **bias** (the bootstrap distribution not centered on $\hat\theta$) via a correction $z_0$, and **skew** (variance that changes with $\theta$) via an acceleration $a$ estimated by jackknife. BCa is **second-order accurate** (its coverage error shrinks like $1/n$ rather than $1/\sqrt{n}$) and transformation-respecting. Prefer it when the statistic is skewed (ratios, variances, extreme quantiles) and accuracy matters.
 
 | Interval | Corrects bias | Corrects skew | Respects range | Cost |
 |----------|:---:|:---:|:---:|------|
@@ -77,7 +77,7 @@ Analytic standard errors for the median are clumsy (they depend on the unknown d
 2. $\widehat{\mathrm{SE}} = \mathrm{sd}$ of the 5,000 medians.
 3. 95% percentile CI = the 2.5th and 97.5th percentiles of those 5,000 medians.
 
-No density estimation, no formula — and the same three lines of code work for the trimmed mean, the Gini coefficient, or AUC.
+No density estimation, no formula, and the same three lines of code work for the trimmed mean, the Gini coefficient, or AUC.
 
 ## When the bootstrap fails
 

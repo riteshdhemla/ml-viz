@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Knowledge Distillation
 
-Training a GPT-4-class model requires hundreds of billions of parameters and costs millions of dollars. Deploying it on every user request is even costlier. **Knowledge distillation** offers a way out: train a small, fast **student** model to mimic the output distribution of the large **teacher** — and the student often ends up far better than an identically-sized model trained from scratch.
+Training a GPT-4-class model requires hundreds of billions of parameters and costs millions of dollars. Deploying it on every user request is even costlier. **Knowledge distillation** offers a way out: train a small, fast **student** model to mimic the output distribution of the large **teacher**, and the student often ends up far better than an identically-sized model trained from scratch.
 
 **Real-world examples:** Phi-2/3 (Microsoft), Gemma-2 (Google), LLaMA distilled variants, DistilBERT (Hugging Face), and virtually every mobile- or edge-deployed LLM are distillation products. The core idea transfers beyond LLMs to any domain where you have a strong, expensive model and need a cheap one.
 
@@ -49,7 +49,7 @@ The $\tau^2$ factor compensates for the gradient scaling introduced by temperatu
 
 Three things are worth checking against the slider.
 
-**Softening reveals mass, never order.** At $\tau = 1$ the top class holds $0.8521$ and everything else rounds to nothing; at $\tau = 10$ it holds $0.1685$ and the mass outside the argmax has gone from $0.148$ to $0.832$ (entropy $0.561 \to 2.255$ nats). The *ranking* is identical at every temperature — softmax is monotone in the logits — so temperature cannot change what the teacher believes, only how much of it survives into a loss.
+**Softening reveals mass, never order.** At $\tau = 1$ the top class holds $0.8521$ and everything else rounds to nothing; at $\tau = 10$ it holds $0.1685$ and the mass outside the argmax has gone from $0.148$ to $0.832$ (entropy $0.561 \to 2.255$ nats). The *ranking* is identical at every temperature (softmax is monotone in the logits), so temperature cannot change what the teacher believes, only how much of it survives into a loss.
 
 **What compresses is the ratios, exactly.** For any two classes,
 
@@ -57,7 +57,7 @@ $$
 \frac{p_i}{p_j} = \exp\!\left(\frac{z_i - z_j}{\tau}\right)
 $$
 
-The panel prints `p(lynx)/p(tiger)` next to $\exp(0.5/\tau)$ and they agree to six decimals: $1.648721$ at $\tau=1$, $1.133148$ at $\tau=4$, $1.051271$ at $\tau=10$. "Dark knowledge" is not a metaphor — it is those ratios being lifted out of floating-point irrelevance so a cross-entropy can see them.
+The panel prints `p(lynx)/p(tiger)` next to $\exp(0.5/\tau)$ and they agree to six decimals: $1.648721$ at $\tau=1$, $1.133148$ at $\tau=4$, $1.051271$ at $\tau=10$. "Dark knowledge" is not a metaphor. It is those ratios being lifted out of floating-point irrelevance so a cross-entropy can see them.
 
 **And the $\tau^2$ is not a fudge factor.** The KD gradient with respect to the student's logits is $(p_{\text{student}} - p_{\text{teacher}})/\tau$; both the difference and the $1/\tau$ shrink as you soften, so the raw gradient norm falls **118×** across $\tau = 1 \to 10$ (0.383 to 0.0032). Without the correction, raising the temperature would quietly turn the distillation term off. With it, the norm holds at 0.383 → 0.324 and $\alpha$ keeps meaning what you set it to.
 

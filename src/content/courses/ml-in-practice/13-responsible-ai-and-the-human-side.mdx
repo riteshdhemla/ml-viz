@@ -24,7 +24,7 @@ Classical software hides its internals; ML interfaces have to expose just enough
 - **Calibrated confidence display.** A model can output a probability, but only a *calibrated* one means what the user thinks it means. If your "95% sure" predictions are right under 80% of the time, surfacing the number is a lie. Calibrate first (Platt scaling, isotonic regression — covered in earlier lessons) *then* show the number; show buckets ("high / medium / low") rather than raw probabilities for non-technical users.
 - **Human-in-the-loop vs autonomous.** Two distinct regimes. *Human-in-the-loop* (HITL) — the model proposes, a human decides; appropriate when the cost of an error is high or the model's accuracy is below the human's. *Autonomous* — the model acts without intervention; appropriate when error cost is low, the model beats the human, or the action is reversible. The choice is a product decision, not an ML one. Most products start HITL and move toward autonomy as confidence (and metrics) earn it.
 - **Graceful failure modes.** What does the UI do when the model abstains, errors, or returns garbage? A search box that returns nothing teaches users that ML "doesn't work"; one that falls back to a keyword search teaches them it's a feature. Always design the fallback before the happy path.
-- **Explanations users actually understand.** SHAP plots are for ML engineers. A user-facing explanation is one sentence: *"We're recommending this because you watched X, Y, and Z."* Counterfactual phrasings — *"if your income were over 50k, you would have been approved"* — give users something to act on, not just a reason code.
+- **Explanations users actually understand.** SHAP plots are for ML engineers. A user-facing explanation is one sentence: *"We're recommending this because you watched X, Y, and Z."* Counterfactual phrasings (*"if your income were over 50k, you would have been approved"*) give users something to act on, not just a reason code.
 - **Diversity in recommendations.** A recommender that maximises predicted relevance collapses to a handful of safe choices and creates a feedback loop: only safe choices get shown, only safe choices get clicked, only safe choices get trained on. Inject diversity at the ranking layer (MMR, determinantal point processes, simple re-shuffling of the tail) and treat coverage as a first-class metric alongside CTR.
 
 <Callout type="info" title="The honest-confidence pattern.">
@@ -33,7 +33,7 @@ The most under-used UX move in ML products: when the model is uncertain, *say so
 
 ## Team structure: who actually ships a model
 
-A model in production touches more people than the practitioner who trained it. The roles below are not all separate humans on small teams — one person can wear two or three hats — but the *responsibilities* are real on any team that ships.
+A model in production touches more people than the practitioner who trained it. The roles below are not all separate humans on small teams (one person can wear two or three hats) but the *responsibilities* are real on any team that ships.
 
 - **ML engineer.** Owns the model itself: training pipeline, evaluation, debugging, online performance. Spends most of their time on data, not architecture.
 - **Data engineer.** Owns the data substrate: pipelines, schemas, freshness, lineage. The person who finds out at 3am that an upstream feature dropped to zero.

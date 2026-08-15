@@ -9,11 +9,11 @@ estimatedMinutes: 18
 
 # Evaluating Clusters & Choosing k
 
-Classification has accuracy. Regression has RMSE. Clustering has… a problem: there are no labels to check against, and [K-Means](/courses/clustering/01-k-means) will happily carve *any* dataset — including pure noise — into exactly $k$ pieces. Evaluating clusters means asking two questions: *are these clusters real?* and *how many should there be?* This is the **evaluation** slot in its hardest form — with no ground truth, you need internal validity measures (silhouette, the elbow) instead of accuracy.
+Classification has accuracy. Regression has RMSE. Clustering has… a problem: there are no labels to check against, and [K-Means](/courses/clustering/01-k-means) will happily carve *any* dataset (including pure noise) into exactly $k$ pieces. Evaluating clusters means asking two questions: *are these clusters real?* and *how many should there be?* This is the **evaluation** slot in its hardest form — with no ground truth, you need internal validity measures (silhouette, the elbow) instead of accuracy.
 
 ## Inertia and the elbow
 
-K-Means' own objective — within-cluster sum of squares — always decreases as $k$ grows. More centroids, shorter distances, until $k = n$ gives inertia 0. So you can't pick the $k$ that minimizes it.
+K-Means' own objective (within-cluster sum of squares) always decreases as $k$ grows. More centroids, shorter distances, until $k = n$ gives inertia 0. So you can't pick the $k$ that minimizes it.
 
 The **elbow method** plots inertia against $k$ and looks for the bend: the point where adding another cluster stops paying. Before the elbow, each new centroid claims a genuine group; after it, new centroids just split real groups in half for marginal gains.
 

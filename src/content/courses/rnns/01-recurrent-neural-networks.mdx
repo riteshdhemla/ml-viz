@@ -68,7 +68,7 @@ The diagram below unrolls the RNN — the same $W_h$ reappears at every step, an
 
 <RNNUnrollViz />
 
-Crucially, every box is the **same** set of weights. This **parameter sharing** is why an RNN can handle a sequence of *any* length with a fixed number of parameters — and why a pattern learned at position 2 transfers to position 200.
+Crucially, every box is the **same** set of weights. This **parameter sharing** is why an RNN can handle a sequence of *any* length with a fixed number of parameters, and why a pattern learned at position 2 transfers to position 200.
 
 ## Weight sharing matters
 
@@ -101,7 +101,7 @@ $$
 \underbrace{4\cdot 3}_{12} + \underbrace{4^2}_{16} + \underbrace{4}_{4} + \underbrace{2\cdot 4}_{8} + \underbrace{2}_{2} = 42
 $$
 
-The recurrent cell alone (the part reused at every step) is $HD + H^2 + H = 12 + 16 + 4 = 32$ parameters. Process a length-3 or a length-3000 sequence — it is still these same 32 numbers.
+The recurrent cell alone (the part reused at every step) is $HD + H^2 + H = 12 + 16 + 4 = 32$ parameters. Process a length-3 or a length-3000 sequence. It is still these same 32 numbers.
 
 ## Worked forward pass — two timesteps by hand
 
@@ -227,7 +227,7 @@ print(h_n.shape)     # (1, 2, 4) — final hidden state only
 3. **Vanishing/exploding gradients** — repeated multiplication by $W_{hh}$ during training destabilizes learning.
 
 <Callout type="warning" title="Vanilla RNNs forget fast">
-  In practice a plain RNN reliably remembers only ~10–20 steps. The "vanishing gradient" problem — covered next — is *the* reason LSTMs and GRUs were invented.
+  In practice a plain RNN reliably remembers only ~10–20 steps. The "vanishing gradient" problem (covered next) is *the* reason LSTMs and GRUs were invented.
 </Callout>
 
 <Exercise id="rnn-hidden-state" />

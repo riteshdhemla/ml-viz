@@ -9,7 +9,7 @@ estimatedMinutes: 20
 
 # Retrieval-Augmented Generation
 
-An LLM only knows what was in its training data, frozen at some cutoff. It can't answer questions about your private wiki, last week's incident, or a document it has never seen — and when it doesn't know, it often **hallucinates** a confident wrong answer. **Retrieval-Augmented Generation (RAG)** fixes this by retrieving relevant text at query time and putting it *in the prompt*, so the model answers from evidence it can see.
+An LLM only knows what was in its training data, frozen at some cutoff. It can't answer questions about your private wiki, last week's incident, or a document it has never seen, and when it doesn't know, it often **hallucinates** a confident wrong answer. **Retrieval-Augmented Generation (RAG)** fixes this by retrieving relevant text at query time and putting it *in the prompt*, so the model answers from evidence it can see.
 
 **Real-world examples:** "chat with your docs," customer-support assistants, internal knowledge bots, legal/medical research tools, code assistants grounded in a repo.
 
@@ -33,7 +33,7 @@ RAG has an offline **indexing** phase and an online **query** phase.
 Notice in the visualisation: when $k$ is small and the query sits inside the right cluster, every retrieved chunk is on-topic. Push $k$ too high and off-topic chunks sneak in — noise the generator must then ignore.
 
 <Callout type="info" title="Retrieval isn't only embeddings">
-  Step 2 is drawn here as dense (embedding) retrieval, but the oldest, cheapest retriever is **lexical**: score chunks by keyword overlap with **BM25**. It has no training and no vectors, yet it beats dense retrieval on exact tokens — names, error codes, rare jargon — which is why strong RAG systems run **hybrid** retrieval (BM25 + embeddings) and fuse the two lists.
+  Step 2 is drawn here as dense (embedding) retrieval, but the oldest, cheapest retriever is **lexical**: score chunks by keyword overlap with **BM25**. It has no training and no vectors, yet it beats dense retrieval on exact tokens (names, error codes, rare jargon), which is why strong RAG systems run **hybrid** retrieval (BM25 + embeddings) and fuse the two lists.
 </Callout>
 
 <WikiLink slug="bm25-ranking" title="BM25: Lexical Ranking" />
@@ -48,7 +48,7 @@ Embed a whole 50-page manual as one vector and it becomes a blurry average of ev
 
 ## Reranking
 
-First-stage retrieval (a fast bi-encoder + ANN index) favours recall over precision. A **reranker** — typically a cross-encoder that reads the query and a candidate *together* — re-scores the top, say, 50 candidates and keeps the best 5. It's slower per pair, so you only run it on the shortlist, not the whole corpus.
+First-stage retrieval (a fast bi-encoder + ANN index) favours recall over precision. A **reranker** (typically a cross-encoder that reads the query and a candidate *together*) re-scores the top, say, 50 candidates and keeps the best 5. It's slower per pair, so you only run it on the shortlist, not the whole corpus.
 
 ```text
 Retrieve (fast, top-50)  →  Rerank (accurate, keep top-5)  →  Generate

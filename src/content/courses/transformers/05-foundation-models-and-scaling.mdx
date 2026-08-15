@@ -9,7 +9,7 @@ estimatedMinutes: 22
 
 # Foundation Models & Scaling Laws
 
-A **foundation model** is a single, large, self-supervised model that is pretrained once on enormous amounts of text and then adapted — by prompting, retrieval, fine-tuning, or alignment — to thousands of downstream tasks. GPT-4-class systems, Claude, Gemini, and the open-weights Llama-3 family are all foundation models. They all share the same basic recipe: a decoder-only Transformer trained to predict the next token on a trillion-scale text corpus, followed by a post-training stage that turns the raw "internet autocomplete" into an instruction-following assistant.
+A **foundation model** is a single, large, self-supervised model that is pretrained once on enormous amounts of text and then adapted (by prompting, retrieval, fine-tuning, or alignment) to thousands of downstream tasks. GPT-4-class systems, Claude, Gemini, and the open-weights Llama-3 family are all foundation models. They all share the same basic recipe: a decoder-only Transformer trained to predict the next token on a trillion-scale text corpus, followed by a post-training stage that turns the raw "internet autocomplete" into an instruction-following assistant.
 
 This lesson covers the part of the recipe that is **not** architecture: the **pretraining objective**, the **scale** at which it is done, the **scaling laws** that make that scale predictable, what the **context window** actually costs, and a short forward-link to **post-training** (SFT → RM → RLHF/DPO), which gets its own course.
 
@@ -27,15 +27,15 @@ This is **causal language modelling** (CLM): position $t$ is allowed to attend o
 
 **Concrete loss value.** Cross-entropy is in nats per token. For a model whose predicted probability of the true next token is on average $0.18$, the per-token loss is $-\ln 0.18 \approx 1.71$ nats. A token-level loss of about $1.9$ on web text corresponds to a perplexity $e^{1.9} \approx 6.7$ — the model behaves as if it had to pick between 6–7 equally likely options at every step.
 
-**Why causal LM and not masked LM (BERT)?** Encoder-only models like BERT use a **masked language modelling** objective: replace 15 % of tokens with `[MASK]` and predict them from bidirectional context. That works great for embeddings and classification but is awkward for generation, because at inference time the model doesn't see masks — it has to produce tokens one at a time. Causal LM matches the inference pattern exactly: every training example is also a valid generation step. That alignment between training and inference is the deepest reason GPT-style models won the generative race.
+**Why causal LM and not masked LM (BERT)?** Encoder-only models like BERT use a **masked language modelling** objective: replace 15 % of tokens with `[MASK]` and predict them from bidirectional context. That works great for embeddings and classification but is awkward for generation, because at inference time the model doesn't see masks. It has to produce tokens one at a time. Causal LM matches the inference pattern exactly: every training example is also a valid generation step. That alignment between training and inference is the deepest reason GPT-style models won the generative race.
 
 <Callout type="info" title="Why next-token prediction is enough">
-  Next-token prediction looks like a narrow objective, but it forces the model to learn syntax, world knowledge, arithmetic, code, reasoning chains, and dialogue conventions — because every one of those skills shows up somewhere in the training data, and you cannot predict the next token without modelling them. "Just predict the next token" turns out to be a remarkably general task.
+  Next-token prediction looks like a narrow objective, but it forces the model to learn syntax, world knowledge, arithmetic, code, reasoning chains, and dialogue conventions, because every one of those skills shows up somewhere in the training data, and you cannot predict the next token without modelling them. "Just predict the next token" turns out to be a remarkably general task.
 </Callout>
 
 ## Training data scale: the trillion-token regime
 
-The training corpus for a frontier model is dominated by **web text** — Common Crawl, GitHub, books, papers, Wikipedia — heavily filtered and deduplicated. The unit of accounting is the **token** (sub-word piece). For reference:
+The training corpus for a frontier model is dominated by **web text** (Common Crawl, GitHub, books, papers, Wikipedia) heavily filtered and deduplicated. The unit of accounting is the **token** (sub-word piece). For reference:
 
 | Model | Parameters $N$ | Training tokens $D$ | $D / N$ ratio |
 |-------|----------------|---------------------|---------------|
@@ -79,7 +79,7 @@ In words: spend roughly **twenty training tokens per parameter**. Earlier models
 
 <ScalingLawViz />
 
-**Why a sum of two power laws?** Each term in $L(N, D) = A/N^{\alpha} + B/D^{\beta} + E$ captures a separate bottleneck: $A/N^{\alpha}$ is the **model-capacity** floor (a tiny model cannot fit complex regularities no matter how much data you show it), $B/D^{\beta}$ is the **data** floor (you cannot learn what you have never seen), and $E$ is the **irreducible** noise. At any fixed $C$, the optimum balances the first two terms — and the algebra gives $D \propto N$ with the constant set by the exponents, which works out to $\approx 20$ for the fitted values.
+**Why a sum of two power laws?** Each term in $L(N, D) = A/N^{\alpha} + B/D^{\beta} + E$ captures a separate bottleneck: $A/N^{\alpha}$ is the **model-capacity** floor (a tiny model cannot fit complex regularities no matter how much data you show it), $B/D^{\beta}$ is the **data** floor (you cannot learn what you have never seen), and $E$ is the **irreducible** noise. At any fixed $C$, the optimum balances the first two terms, and the algebra gives $D \propto N$ with the constant set by the exponents, which works out to $\approx 20$ for the fitted values.
 
 ## The context window and what it really costs
 
@@ -99,7 +99,7 @@ Two families of techniques attack this:
 A third axis is **position generalisation**. RoPE-style positional encodings, with techniques such as YaRN, NTK-aware scaling, or position-interpolation, let a model trained at 4 K tokens be extended to 32 K or 128 K with only light fine-tuning. Without such tricks the model's positional understanding simply degrades past its training length.
 
 <Callout type="warning" title="What 'context window' really costs">
-  A "1 M-token context" headline does not mean attention is free at that length — it means the engineering team paid the $O(L^2)$ cost with FlashAttention plus sparse/linear approximations, plus a position-encoding trick to keep the embeddings sane. Quality on long-context tasks degrades smoothly with $L$ and is best measured directly (needle-in-a-haystack, long-doc QA), not assumed from the advertised window.
+  A "1 M-token context" headline does not mean attention is free at that length. It means the engineering team paid the $O(L^2)$ cost with FlashAttention plus sparse/linear approximations, plus a position-encoding trick to keep the embeddings sane. Quality on long-context tasks degrades smoothly with $L$ and is best measured directly (needle-in-a-haystack, long-doc QA), not assumed from the advertised window.
 </Callout>
 
 ## Post-training, in one paragraph
@@ -110,7 +110,7 @@ A freshly pretrained model is a fluent **autocomplete** — it produces plausibl
 2. **Reward Modelling (RM)** trains a separate scalar head on pairwise preferences (chosen vs rejected responses).
 3. **Preference optimisation** — classical [RLHF with PPO](/courses/fine-tuning-alignment/04-rlhf-and-dpo) (uses the reward model + a KL leash) or **DPO** (a closed-form, RM-free alternative).
 
-Post-training uses orders of magnitude less compute than pretraining — typically a few percent — but is responsible for the dramatic quality jump from "raw GPT-3 base model" to "ChatGPT". It is also where most of the visible behavioural differences between frontier models live; the underlying pretrained Transformers are remarkably similar.
+Post-training uses orders of magnitude less compute than pretraining (typically a few percent) but is responsible for the dramatic quality jump from "raw GPT-3 base model" to "ChatGPT". It is also where most of the visible behavioural differences between frontier models live; the underlying pretrained Transformers are remarkably similar.
 
 <Exercise id="scaling-chinchilla-recipe" />
 

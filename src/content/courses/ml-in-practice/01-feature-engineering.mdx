@@ -9,11 +9,11 @@ estimatedMinutes: 16
 
 # Feature Engineering
 
-Raw data is almost never model-ready. A CSV of house prices has dollar amounts spanning six orders of magnitude, city names as free strings, and a "garage" column that is 80% null. Feature engineering is the craft of transforming that raw data into the numerical matrix a model can actually learn from. This course is the home of the two slots that decide whether real projects succeed — the **data** and **deployment-feedback** stages of the [ML project loop](/wiki/ml-project-loop) — and it starts, rightly, with data.
+Raw data is almost never model-ready. A CSV of house prices has dollar amounts spanning six orders of magnitude, city names as free strings, and a "garage" column that is 80% null. Feature engineering is the craft of transforming that raw data into the numerical matrix a model can actually learn from. This course is the home of the two slots that decide whether real projects succeed (the **data** and **deployment-feedback** stages of the [ML project loop](/wiki/ml-project-loop)) and it starts, rightly, with data.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
-**Why it matters by model type.** Tree-based models (Random Forest, XGBoost) split on thresholds, so they are scale-invariant and handle categories as integers naturally. Linear models, SVMs, and neural networks all operate on dot products — so the scale and encoding of inputs directly affect the geometry of the optimization landscape and the quality of learned representations.
+**Why it matters by model type.** Tree-based models (Random Forest, XGBoost) split on thresholds, so they are scale-invariant and handle categories as integers naturally. Linear models, SVMs, and neural networks all operate on dot products, so the scale and encoding of inputs directly affect the geometry of the optimization landscape and the quality of learned representations.
 
 ## Numerical feature scaling
 
@@ -86,7 +86,7 @@ $$
 
 No ordinal relationship is implied. Best for **nominal** categories (no inherent order) with **low cardinality** (fewer than ~20 distinct values). Drop one column (the "dummy" column) to avoid perfect multicollinearity in linear models.
 
-**Label encoding** maps each category to an integer: `low → 0`, `medium → 1`, `high → 2`. This is only meaningful for **ordinal** features where the ordering is real and the model should exploit it. Never use label encoding for nominal features with tree-based models either — while trees can handle any integer, the ordering implied by `red=0, green=1, blue=2` is arbitrary and forces the tree to make splits that respect that fictitious order.
+**Label encoding** maps each category to an integer: `low → 0`, `medium → 1`, `high → 2`. This is only meaningful for **ordinal** features where the ordering is real and the model should exploit it. Never use label encoding for nominal features with tree-based models either, while trees can handle any integer, the ordering implied by `red=0, green=1, blue=2` is arbitrary and forces the tree to make splits that respect that fictitious order.
 
 **Target encoding** replaces each category with the mean target value for that category:
 
@@ -130,11 +130,11 @@ $$
 (x_1, x_2) \;\to\; (x_1,\; x_2,\; x_1^2,\; x_1 x_2,\; x_2^2)
 $$
 
-This lets a linear model fit curved decision boundaries without changing the model class — but the number of features grows as $O(d^2)$ for degree-2 and $O(d^k)$ for degree $k$, so regularization becomes critical.
+This lets a linear model fit curved decision boundaries without changing the model class, but the number of features grows as $O(d^2)$ for degree-2 and $O(d^k)$ for degree $k$, so regularization becomes critical.
 
 **Cross features** combine two categorical features into a single joint category. For example, `country × device_type` produces features like `"US_mobile"` and `"DE_desktop"`. This lets the model learn different effects per combination — the click-through rate for mobile users in the US may differ substantially from mobile users in Germany, even if the individual effects of `country` and `device_type` are each small.
 
-**Binning / discretization** converts a continuous feature into discrete bins. A model may struggle to learn that `age` affects churn differently in the 18–25 range versus 26–35 versus 65+ — but a set of binary "age bucket" features makes those piecewise effects directly learnable by a linear model.
+**Binning / discretization** converts a continuous feature into discrete bins. A model may struggle to learn that `age` affects churn differently in the 18–25 range versus 26–35 versus 65+, but a set of binary "age bucket" features makes those piecewise effects directly learnable by a linear model.
 
 ```python
 from sklearn.preprocessing import PolynomialFeatures
@@ -193,7 +193,7 @@ Leakage is the silent killer of ML projects. A model with leakage may look excel
   The most dangerous leakage is target leakage — the feature you're including is only known after the prediction would be made in production. Target leakage inflates evaluation metrics dramatically but produces a model that cannot function at inference time. Ask of every feature: "Would I know this value at the moment I need to make the prediction?"
 </Callout>
 
-**Data leakage (preprocessing leakage)** happens when the test set's statistics influence the training pipeline. Fitting a scaler on the entire dataset — train and test together — means the training data's scaler parameters incorporate information about test values. The resulting model has indirectly "seen" the test set.
+**Data leakage (preprocessing leakage)** happens when the test set's statistics influence the training pipeline. Fitting a scaler on the entire dataset (train and test together) means the training data's scaler parameters incorporate information about test values. The resulting model has indirectly "seen" the test set.
 
 ```python
 # WRONG — scaler sees test statistics

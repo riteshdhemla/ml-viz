@@ -489,6 +489,26 @@ re-authoring; just keep those links accurate.
   prerequisite graph must stay an acyclic DAG (enforced in
   `knowledge-graph.test.ts`), so set new-course `prerequisites` carefully.
 
+### Prose rules (em dashes)
+
+Em dashes were thinning out the argument in lesson prose: a dash mid-sentence
+reads as "stop, switch idea, come back", so a paragraph carrying two of them
+makes the reader jump. Keep **at most one em dash per sentence**, and prefer
+the punctuation that states the relationship:
+
+- Interrupting aside → **parentheses**. `the call (how many times, in what
+  order) determines everything`. Parentheses say "skippable"; dashes say
+  "stop and read this".
+- Second independent clause → **full stop**. `Caching cuts cost. It does not
+  make the model smarter.`
+- Before `and` / `but` / `so` / `which` / `because` → **comma**. The dash is
+  redundant there.
+
+**Keep** the dash in the structural gloss conventions, where it is a scannable
+separator rather than an interruption: bullet glosses
+(`- [**Title**](/wiki/x) — one-line description`), table cells, headings, and
+`**Term** — definition` labels.
+
 ### Styling rules
 
 - Dark background: `bg-surface` (#0f1117), cards: `bg-surface-card` (#1a1d27)

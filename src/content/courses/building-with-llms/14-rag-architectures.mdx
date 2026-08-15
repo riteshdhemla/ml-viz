@@ -14,7 +14,7 @@ This lesson sits on the **context** stage of the agentic loop, and spills into *
 So "we're building RAG" is about as specific as "we're building a database." The useful question is which **query shapes** your users actually send, because every RAG family below was invented to rescue a specific shape that plain vector search fails on.
 
 <Callout type="info" title="The question this lesson answers">
-  Not "how does RAG work" (lesson 4 did that) but **"given the questions my users ask and the documents I have, which retrieval architecture should I build — and what will it cost me?"**
+  Not "how does RAG work" (lesson 4 did that) but **"given the questions my users ask and the documents I have, which retrieval architecture should I build, and what will it cost me?"**
 </Callout>
 
 ## The five query shapes
@@ -31,7 +31,7 @@ Before the architectures, the taxonomy that drives them. Sort a sample of real u
 
 <RAGArchitectureViz />
 
-Notice what the bars do: as you move down the query shapes, the winner changes completely and the gap widens. Naive vector RAG scores 78 on single-fact lookup and 18 on aggregation. GraphRAG is the reverse story on corpus-wide synthesis. There is no row that wins everywhere — and the architecture that wins is usually *not* the most expensive one.
+Notice what the bars do: as you move down the query shapes, the winner changes completely and the gap widens. Naive vector RAG scores 78 on single-fact lookup and 18 on aggregation. GraphRAG is the reverse story on corpus-wide synthesis. There is no row that wins everywhere, and the architecture that wins is usually *not* the most expensive one.
 
 ## Three generations of RAG
 
@@ -61,19 +61,19 @@ This is the right answer far more often than the RAG-architecture discourse impl
 **Adds:** BM25 alongside embeddings, rank fusion, then a cross-encoder reranker on the shortlist.
 **Costs:** an inverted index, ~2× query latency, roughly 2× per-query cost.
 
-Embeddings and BM25 fail in *different* ways, which is exactly why fusing them works. Embeddings handle paraphrase ("get my money back" → "refund policy") and fail on rare literals — error codes, SKUs, function names, part numbers — because a rare token gets smeared into its semantic neighbourhood. BM25 nails the literal and fails on paraphrase. Fuse the two ranked lists (Reciprocal Rank Fusion, or a weighted blend — Anthropic reports 0.8/0.2 dense/sparse as a good starting point) and you cover both.
+Embeddings and BM25 fail in *different* ways, which is exactly why fusing them works. Embeddings handle paraphrase ("get my money back" → "refund policy") and fail on rare literals (error codes, SKUs, function names, part numbers), because a rare token gets smeared into its semantic neighbourhood. BM25 nails the literal and fails on paraphrase. Fuse the two ranked lists (Reciprocal Rank Fusion, or a weighted blend — Anthropic reports 0.8/0.2 dense/sparse as a good starting point) and you cover both.
 
 Then rerank. First-stage retrieval is a **bi-encoder**: query and document are embedded independently, so the score can be precomputed and indexed, which is what makes it fast and also what makes it blunt. A **cross-encoder** reranker reads query and candidate *together* and scores the pair — far more accurate, far too slow to run over a corpus, perfect over a 50–150 candidate shortlist.
 
 ### Contextual retrieval
 
-The sharpest cheap win in this family. A chunk like *"The margin improved by 3% over the prior quarter"* is useless in isolation — which company, which quarter? **Contextual retrieval** prepends an LLM-written 1–2 sentence situating blurb to each chunk *before* embedding and indexing it. In [Anthropic's evaluation](https://www.anthropic.com/engineering/contextual-retrieval), that cut top-20 retrieval failures by 49%, and 67% when combined with reranking (5.7% → 1.9% failure rate). It's an offline, one-time cost per chunk, and prompt caching makes it cheap because the whole document is re-read for each of its chunks.
+The sharpest cheap win in this family. A chunk like *"The margin improved by 3% over the prior quarter"* is useless in isolation, which company, which quarter? **Contextual retrieval** prepends an LLM-written 1–2 sentence situating blurb to each chunk *before* embedding and indexing it. In [Anthropic's evaluation](https://www.anthropic.com/engineering/contextual-retrieval), that cut top-20 retrieval failures by 49%, and 67% when combined with reranking (5.7% → 1.9% failure rate). It's an offline, one-time cost per chunk, and prompt caching makes it cheap because the whole document is re-read for each of its chunks.
 
 $$
 \text{RRF}(d) = \sum_{r \in \text{retrievers}} \frac{1}{k + \text{rank}_r(d)}, \quad k \approx 60
 $$
 
-Rank fusion deliberately ignores the raw scores — BM25 scores and cosine similarities aren't on comparable scales — and combines *ranks* instead.
+Rank fusion deliberately ignores the raw scores (BM25 scores and cosine similarities aren't on comparable scales) and combines *ranks* instead.
 
 <WikiLink slug="bm25-ranking" title="BM25: Lexical Ranking" />
 
@@ -92,7 +92,7 @@ Three common transforms:
 - **Multi-query / RAG-Fusion** — generate several paraphrases of the query, retrieve for each, fuse the result lists. Buys recall on vague or multi-faceted queries.
 
 <Callout type="tip" title="The caveat that gets skipped">
-  If the query is already specific, a rewrite adds latency and no signal — and HyDE can actively hurt, because a confidently wrong hypothetical answer drags retrieval toward the wrong region. Query transformation is a fix for a *measured* retrieval failure, not a default layer.
+  If the query is already specific, a rewrite adds latency and no signal, and HyDE can actively hurt, because a confidently wrong hypothetical answer drags retrieval toward the wrong region. Query transformation is a fix for a *measured* retrieval failure, not a default layer.
 </Callout>
 
 ## Family 4 — Hierarchical / summary-tree RAG
@@ -103,7 +103,7 @@ Three common transforms:
 
 **RAPTOR** (Recursive Abstractive Processing for Tree-Organized Retrieval) is the canonical version: embed the leaf chunks, cluster them with a Gaussian mixture, summarise each cluster with an LLM, embed the summaries, and recurse until you reach a root. Query time retrieves across *all* levels at once, so a detail question pulls a leaf and a "what is this document about" question pulls a high node.
 
-This is the natural fit for long, structured single documents — a 300-page manual, a 10-K, a research monograph — where the reader's questions span both "what does clause 14.2 say" and "what's the overall risk posture."
+This is the natural fit for long, structured single documents (a 300-page manual, a 10-K, a research monograph) where the reader's questions span both "what does clause 14.2 say" and "what's the overall risk posture."
 
 ## Family 5 — GraphRAG
 
@@ -137,8 +137,8 @@ The production evidence is real: LinkedIn built a knowledge graph over historica
 
 Two designs worth knowing, because they trade off differently:
 
-- **Self-RAG** trains **reflection tokens** into the model's vocabulary — `[Retrieve]`, `[IsRel]`, `[IsSup]`, `[IsUse]` — so a single model decides *whether* to retrieve, grades relevance of what came back, and grades whether its own draft is supported by it. Elegant and self-contained, but it requires supervised fine-tuning on reflection-labelled data, which rules it out if you're calling a frozen API model.
-- **CRAG (Corrective RAG)** puts a lightweight external evaluator in front of generation, which sorts retrieval into three actions: **correct** (use it), **ambiguous** (augment with web search), **incorrect** (discard, fall back to web search). It wraps *any* frozen LLM — no training — at the cost of an extra model and its latency. On LLaMA2-7b it beat Self-RAG by 20.0 points on PopQA and 36.9 FactScore on Biography ([Yan et al., 2024](https://arxiv.org/abs/2401.15884)).
+- **Self-RAG** trains **reflection tokens** into the model's vocabulary (`[Retrieve]`, `[IsRel]`, `[IsSup]`, `[IsUse]`), so a single model decides *whether* to retrieve, grades relevance of what came back, and grades whether its own draft is supported by it. Elegant and self-contained, but it requires supervised fine-tuning on reflection-labelled data, which rules it out if you're calling a frozen API model.
+- **CRAG (Corrective RAG)** puts a lightweight external evaluator in front of generation, which sorts retrieval into three actions: **correct** (use it), **ambiguous** (augment with web search), **incorrect** (discard, fall back to web search). It wraps *any* frozen LLM (no training) at the cost of an extra model and its latency. On LLaMA2-7b it beat Self-RAG by 20.0 points on PopQA and 36.9 FactScore on Biography ([Yan et al., 2024](https://arxiv.org/abs/2401.15884)).
 
 For most teams shipping on an API model, CRAG-style grading is the practical choice: it's a prompt and a branch, and it converts a silent hallucination into an explicit "I couldn't find this."
 
@@ -186,7 +186,7 @@ Three architectures dominate, in ascending order of fidelity and cost:
 **Adds:** retrieval against a database instead of a text index — retrieve the *schema*, generate SQL, execute it.
 **Costs:** SQL validation and a repair loop; a semantic layer if your schema is gnarly.
 
-Embedding models are built for semantic similarity, not numeric precision or relational logic. No chunking strategy makes a vector index able to sum a column. The move is to retrieve schema fragments relevant to the question, generate SQL, execute it, and let the LLM narrate the result set. A semantic layer — column descriptions, metric definitions, join hints, canonical example queries — is what turns this from a demo into something that survives a real warehouse schema.
+Embedding models are built for semantic similarity, not numeric precision or relational logic. No chunking strategy makes a vector index able to sum a column. The move is to retrieve schema fragments relevant to the question, generate SQL, execute it, and let the LLM narrate the result set. A semantic layer (column descriptions, metric definitions, join hints, canonical example queries) is what turns this from a demo into something that survives a real warehouse schema.
 
 Most enterprise systems end up **routed**: a first-pass classifier sends quantitative questions to text-to-SQL, qualitative ones to the vector index, and hybrid ones to both, merging the results. That router *is* the architecture, and it's usually the highest-leverage component in the system.
 
@@ -194,7 +194,7 @@ Most enterprise systems end up **routed**: a first-pass classifier sends quantit
 
 ## RAG vs. long context
 
-With million-token context windows, the recurring question is whether retrieval is obsolete. The measured answer, consistently, is no — but with a real caveat.
+With million-token context windows, the recurring question is whether retrieval is obsolete. The measured answer, consistently, is no, but with a real caveat.
 
 When the corpus **fits** in the window, loading everything generally beats retrieval on accuracy: [one 2025 evaluation](https://arxiv.org/abs/2501.01880) found long context ahead of naive RAG by ~10.9% and of agentic RAG by ~4.4% on the subset of problems that fit. The model sees everything, so there's no retrieval miss to recover from.
 
@@ -243,7 +243,7 @@ Build the eval set **per query shape**. An aggregate score over a mixed set will
 
 ## Common mistakes
 
-1. **Jumping to GraphRAG or agentic RAG** without a naive baseline to compare against — so nobody can say what the complexity bought.
+1. **Jumping to GraphRAG or agentic RAG** without a naive baseline to compare against, so nobody can say what the complexity bought.
 2. **Assuming one architecture for all traffic.** Real query distributions are mixed; the router is usually worth more than any single retriever.
 3. **Ignoring indexing cost.** GraphRAG's bill is mostly offline, and it recurs every time the corpus changes.
 4. **Treating query transformation as a free upgrade.** It adds latency to every query and can degrade already-specific ones.
@@ -252,7 +252,7 @@ Build the eval set **per query shape**. An aggregate score over a mixed set will
 
 ## Key takeaways
 
-- **"RAG" is a family, not an architecture.** The query shape — lookup, exact token, multi-hop, corpus-wide, aggregation — determines which member you need.
+- **"RAG" is a family, not an architecture.** The query shape (lookup, exact token, multi-hop, corpus-wide, aggregation) determines which member you need.
 - The generations run **naive → advanced → modular**; everything past family 2 is a wiring of modular components.
 - **Hybrid + rerank + contextual chunks** is the best quality-per-complexity upgrade, and where most production systems should start.
 - **GraphRAG** buys multi-hop and corpus-wide synthesis with a heavy, recurring indexing bill; **agentic RAG** buys open-ended research with a heavy per-query bill.

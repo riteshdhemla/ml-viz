@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Anomaly & Outlier Detection
 
-Most ML predicts the common case. **Anomaly detection** flips the goal: find the rare, the unexpected, the *don't-look-like-the-rest*. The anomalies are exactly the points you have almost no labeled examples of — fraud, intrusions, equipment failures, manufacturing defects — so the problem demands different tools and a different mindset than ordinary classification.
+Most ML predicts the common case. **Anomaly detection** flips the goal: find the rare, the unexpected, the *don't-look-like-the-rest*. The anomalies are exactly the points you have almost no labeled examples of (fraud, intrusions, equipment failures, manufacturing defects), so the problem demands different tools and a different mindset than ordinary classification.
 
 **Real-world examples:** credit-card fraud, network-intrusion detection, predictive maintenance (a failing machine), manufacturing QA, and out-of-distribution detection for safe ML deployment.
 
@@ -67,7 +67,7 @@ Set the threshold from a **target alert budget** ("we can investigate 50/day") o
 
 The F1-optimal threshold is $3.31$ — recall $0.2593$, precision $0.3575$, 725 alerts. It is a defensible operating point, and it is **2% off at a ratio of 10, 50% off at 100, and 244% off at 1000**. F1 is not a neutral default; it encodes an assumption that a missed anomaly costs roughly ten false alarms. If fraud costs you £5,000 and an analyst's review costs £5, your ratio is 1000 and F1 is choosing a threshold nearly four times worse than the one you want.
 
-**And then the arithmetic imbalance forces.** At ratio 1000, catching 88% of anomalies means accepting **101,057 alerts a day of which 99.1% are false**. That is not a bad detector — the model is unchanged — it is what 0.1% prevalence costs, and no choice of cutoff escapes it. Drag prevalence up to 1% and the same recall becomes affordable. This is why the real fixes are triage, enrichment and a better score rather than a better threshold, and why "we can investigate 50/day" is a more honest starting point than any metric.
+**And then the arithmetic imbalance forces.** At ratio 1000, catching 88% of anomalies means accepting **101,057 alerts a day of which 99.1% are false**. That is not a bad detector (the model is unchanged); it is what 0.1% prevalence costs, and no choice of cutoff escapes it. Drag prevalence up to 1% and the same recall becomes affordable. This is why the real fixes are triage, enrichment and a better score rather than a better threshold, and why "we can investigate 50/day" is a more honest starting point than any metric.
 
 <Callout type="warning" title="Contamination and drift">
   Two traps: (1) your "normal" training data is often **contaminated** with undetected anomalies, which the model then learns as normal — use robust methods or clean iteratively. (2) Normal **drifts** over time (seasonality, new user behavior), so a static threshold goes stale; monitor and re-fit, tying back to production monitoring.

@@ -75,7 +75,7 @@ from gensim.models import KeyedVectors
 
 <WordAnalogyViz />
 
-The space here is *constructed*, not downloaded — seven random attribute axes, each word a weighted sum of the attributes it has, plus noise — so there is no question about whether the structure exists. It does, by construction, and `king − man + woman` lands on `queen`.
+The space here is *constructed*, not downloaded (seven random attribute axes, each word a weighted sum of the attributes it has, plus noise), so there is no question about whether the structure exists. It does, by construction, and `king − man + woman` lands on `queen`.
 
 What is worth knowing is the fine print. Every standard analogy benchmark **removes the three query words from the candidate set before scoring**, and that rule is doing more work than the embeddings are. Toggle it off and sweep the noise:
 
@@ -87,11 +87,11 @@ What is worth knowing is the fine print. Every standard analogy benchmark **remo
 | 0.60 | 6/7 | 6/7 |
 | 0.90 | 5/7 | 7/7 |
 
-At noise $0.40$ the benchmark still reports a perfect $7/7$ while the honest nearest neighbour to $a - b + c$ is one of the words you started from **more than half the time**. The offset exists and points the right way; it is simply shorter than the distance back to `king`. Read the analogy result as "the offset is in the right direction", not "the model can do analogies" — which is the substance of Linzen's and Nissim et al.'s critiques of the task.
+At noise $0.40$ the benchmark still reports a perfect $7/7$ while the honest nearest neighbour to $a - b + c$ is one of the words you started from **more than half the time**. The offset exists and points the right way; it is simply shorter than the distance back to `king`. Read the analogy result as "the offset is in the right direction", not "the model can do analogies", which is the substance of Linzen's and Nissim et al.'s critiques of the task.
 
 ## GloVe (Global Vectors)
 
-Word2Vec uses **local context windows**. GloVe (Pennington et al., 2014) instead uses **global co-occurrence statistics**: it builds a corpus-wide count matrix of which words appear near which, then learns embeddings whose dot products match the *log co-occurrence counts* via weighted least squares. The key insight is that co-occurrence **ratios** carry meaning — $P(k \mid \text{ice}) / P(k \mid \text{steam})$ is large for $k = \text{solid}$ and small for $k = \text{gas}$ — and GloVe's objective makes vector differences capture exactly these ratios.
+Word2Vec uses **local context windows**. GloVe (Pennington et al., 2014) instead uses **global co-occurrence statistics**: it builds a corpus-wide count matrix of which words appear near which, then learns embeddings whose dot products match the *log co-occurrence counts* via weighted least squares. The key insight is that co-occurrence **ratios** carry meaning ($P(k \mid \text{ice}) / P(k \mid \text{steam})$ is large for $k = \text{solid}$ and small for $k = \text{gas}$) and GloVe's objective makes vector differences capture exactly these ratios.
 
 In practice GloVe and Word2Vec produce embeddings of similar quality; GloVe's batch formulation parallelizes more naturally.
 

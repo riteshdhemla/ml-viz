@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Constrained Optimization & KKT
 
-Most real ML problems are not unconstrained. SVMs enforce a margin, portfolio optimizers cap risk, and max-entropy models must respect probability normalization. The **Lagrangian framework** converts constrained problems into unconstrained ones — and KKT conditions tell you exactly when you've found the solution.
+Most real ML problems are not unconstrained. SVMs enforce a margin, portfolio optimizers cap risk, and max-entropy models must respect probability normalization. The **Lagrangian framework** converts constrained problems into unconstrained ones, and KKT conditions tell you exactly when you've found the solution.
 
 ## Equality constraints — Lagrangians
 
@@ -129,7 +129,7 @@ Push $b$ past $5$ and the unconstrained optimum becomes feasible: $\lambda$ drop
 
 Rewrite constraints as $g_i \leq 0$: $g_1 = x+y-4$, $g_2 = x-3$, $g_3 = y-3$, $g_4 = -x$, $g_5 = -y$.
 
-The feasible region is a polygon, and a linear objective always attains its optimum at a vertex — so evaluate them all:
+The feasible region is a polygon, and a linear objective always attains its optimum at a vertex, so evaluate them all:
 
 | Vertex | Objective $-2x - y$ | Active constraints |
 |---|---|---|
@@ -199,7 +199,7 @@ $$
 
 **Strong duality** ($d^* = p^*$) holds when **Slater's condition** is satisfied: there exists a strictly feasible point ($g_i(x) < 0$ for all inequality constraints).
 
-The hard-margin SVM has $n$ constraints $g_i(x) = 1 - y_i(w \cdot x_i + b) \leq 0$. Slater's condition holds whenever the data is linearly separable — which is the problem's premise. Therefore:
+The hard-margin SVM has $n$ constraints $g_i(x) = 1 - y_i(w \cdot x_i + b) \leq 0$. Slater's condition holds whenever the data is linearly separable, which is the problem's premise. Therefore:
 
 $$
 d^*_\text{SVM} = p^*_\text{SVM}

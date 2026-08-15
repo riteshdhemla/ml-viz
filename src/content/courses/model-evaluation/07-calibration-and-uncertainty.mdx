@@ -12,20 +12,20 @@ estimatedMinutes: 18
 A model that outputs probabilities is making a promise: "I'm 90% confident." **Calibration** asks whether that promise holds — among all the times it says 90%, is it actually right 90% of the time? A model can be highly *accurate* yet badly *calibrated*, and in high-stakes settings (medicine, autonomous systems, anything with a human in the loop) miscalibrated confidence is dangerous. This lesson covers how to measure calibration, how to fix it, and the two fundamentally different kinds of uncertainty a model faces.
 
 <Callout type="info" title="The forecasting thread">
-Calibration is where the site's running `daily-demand` forecast (from the [project-loop hub](/wiki/ml-project-loop)) finally gets judged *honestly*. A point forecast has no confidence to check, but the [GP version](/courses/bayesian-methods/02-gaussian-processes) produces a predictive interval — and a well-calibrated 90% band should contain the actual demand 90% of the time. Quantile loss and empirical coverage are exactly the calibration tools of this lesson, applied to a forecast instead of a classifier.
+Calibration is where the site's running `daily-demand` forecast (from the [project-loop hub](/wiki/ml-project-loop)) finally gets judged *honestly*. A point forecast has no confidence to check, but the [GP version](/courses/bayesian-methods/02-gaussian-processes) produces a predictive interval, and a well-calibrated 90% band should contain the actual demand 90% of the time. Quantile loss and empirical coverage are exactly the calibration tools of this lesson, applied to a forecast instead of a classifier.
 </Callout>
 
 **Real-world examples:** a diagnostic model whose "85% malignant" must mean what it says; selective prediction (abstain when unsure); out-of-distribution detection; deciding when to escalate an LLM answer to a human.
 
 ## Confidence ≠ correctness
 
-Modern neural networks — especially deep ones with softmax outputs — are typically **overconfident**: they report 99% on predictions that are right far less often. Accuracy measures *whether* the top prediction is correct; calibration measures whether the *probability* attached to it is trustworthy. They're independent: you can be accurate and overconfident, or mediocre but well-calibrated.
+Modern neural networks (especially deep ones with softmax outputs) are typically **overconfident**: they report 99% on predictions that are right far less often. Accuracy measures *whether* the top prediction is correct; calibration measures whether the *probability* attached to it is trustworthy. They're independent: you can be accurate and overconfident, or mediocre but well-calibrated.
 
 ## Where miscalibration comes from
 
 A model's *stated* job is to minimize a loss on a finite training set — recovering the true $P(Y\mid X)$ is only a **byproduct**, guaranteed only under conditions real training never fully meets. The gap between predicted confidence and true probability has several distinct sources:
 
-- **The loss barely aims at calibration — and over-optimizing it hurts.** *Proper scoring rules* (cross-entropy, Brier) are minimized *in expectation* exactly at the true $P(Y\mid X)$, so log loss genuinely "wants" to be calibrated. But (a) **margin losses** like the SVM hinge don't estimate probabilities at all — the output is a score, not a probability, which is why SVMs need post-hoc scaling; and (b) modern nets drive training loss toward zero long past the calibrated point, pushing logits to extremes → **systematic overconfidence**.
+- **The loss barely aims at calibration, and over-optimizing it hurts.** *Proper scoring rules* (cross-entropy, Brier) are minimized *in expectation* exactly at the true $P(Y\mid X)$, so log loss genuinely "wants" to be calibrated. But (a) **margin losses** like the SVM hinge don't estimate probabilities at all — the output is a score, not a probability, which is why SVMs need post-hoc scaling; and (b) modern nets drive training loss toward zero long past the calibrated point, pushing logits to extremes → **systematic overconfidence**.
 - **Model-class mismatch.** If the true $P(Y\mid X)$ isn't representable by your model family, the best fit is a biased *projection* onto it — miscalibrated wherever the family can't bend to match. This is the approximation-error term of the [bias–variance decomposition](/wiki/bias-variance-decomposition).
 - **The training data distribution** — several separate effects: **finite-sample noise** in the estimates; **class imbalance / reweighting**, which makes the model learn $P(Y\mid X)$ under the *training* prior rather than the deployment base rate; and **label noise**, which pushes confident predictions onto inherently ambiguous inputs.
 - **Distribution shift (train ≠ deploy).** The biggest real-world cause. Calibration is *not* preserved when the input distribution moves — a model calibrated on validation data drifts the moment deployment differs.
@@ -72,13 +72,13 @@ $$
 - $T > 1$: **softens** the distribution → lower confidence (fixes overconfidence).
 - $T < 1$: sharpens → higher confidence.
 
-Because $T$ is a single parameter applied to all logits, it **rescales confidence without changing the ranking** — so accuracy is untouched while calibration improves. It's a cheap *post-hoc* step: train normally, then fit $T$ on held-out data. (Platt scaling and isotonic regression are alternatives.)
+Because $T$ is a single parameter applied to all logits, it **rescales confidence without changing the ranking**, so accuracy is untouched while calibration improves. It's a cheap *post-hoc* step: train normally, then fit $T$ on held-out data. (Platt scaling and isotonic regression are alternatives.)
 
 <Callout type="tip" title="Temperature scaling can't change which class wins">
-  Dividing all logits by the same $T$ is monotonic, so the argmax — the predicted class — is identical for every input. That's why it improves calibration *for free*: top-1 accuracy is exactly preserved, only the confidence numbers move. (This is the same temperature knob used in decoding; here it's tuned for calibration, not sampling.)
+  Dividing all logits by the same $T$ is monotonic, so the argmax (the predicted class) is identical for every input. That's why it improves calibration *for free*: top-1 accuracy is exactly preserved, only the confidence numbers move. (This is the same temperature knob used in decoding; here it's tuned for calibration, not sampling.)
 </Callout>
 
-Temperature scaling is the right tool when one global knob suffices. When the miscalibration isn't a uniform stretch — you need a per-score correction rather than a single scalar — the two standard alternatives are **Platt scaling** (fit a logistic sigmoid on the scores) and **isotonic regression** (fit a monotonic step function, non-parametrically). The deep dive derives both, including the Pool-Adjacent-Violators algorithm and when each beats the other:
+Temperature scaling is the right tool when one global knob suffices. When the miscalibration isn't a uniform stretch (you need a per-score correction rather than a single scalar), the two standard alternatives are **Platt scaling** (fit a logistic sigmoid on the scores) and **isotonic regression** (fit a monotonic step function, non-parametrically). The deep dive derives both, including the Pool-Adjacent-Violators algorithm and when each beats the other:
 
 <WikiLink slug="platt-scaling-and-isotonic-regression" title="Platt Scaling and Isotonic Regression" />
 
@@ -93,7 +93,7 @@ Not all uncertainty is the same, and the distinction drives what you can do abou
 | Reducible? | **No** — irreducible, even with infinite data | **Yes** — shrinks with more data |
 | Detect by | the predictive distribution's spread | disagreement across models / Bayesian posterior |
 
-**Aleatoric** uncertainty is the noise floor — the irreducible noise variance $\sigma^2$ that appears in the bias-variance decomposition, present even with infinite data. **Epistemic** uncertainty is what a Gaussian process or Bayesian model reports as it moves away from data — and it's why ensembles are useful: models trained from different seeds *agree* where they're confident and *disagree* where they're uncertain.
+**Aleatoric** uncertainty is the noise floor — the irreducible noise variance $\sigma^2$ that appears in the bias-variance decomposition, present even with infinite data. **Epistemic** uncertainty is what a Gaussian process or Bayesian model reports as it moves away from data, and it's why ensembles are useful: models trained from different seeds *agree* where they're confident and *disagree* where they're uncertain.
 
 ## Estimating uncertainty in deep nets
 

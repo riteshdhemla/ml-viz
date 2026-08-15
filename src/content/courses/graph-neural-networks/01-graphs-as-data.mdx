@@ -9,7 +9,7 @@ estimatedMinutes: 15
 
 # Graphs as Data & Message Passing
 
-Most ML assumes data lives on a grid (images), a sequence (text), or a flat table (rows of features). But molecules, social networks, road maps, knowledge graphs, and recommendation systems are **graphs**: entities connected by relationships, with no fixed order and no fixed number of neighbors. **Graph Neural Networks (GNNs)** learn directly on this structure. This lesson sets up how a graph becomes learnable **data** and introduces the single idea — **message passing** — that nearly every GNN is built from. That message-passing design is a **hypothesis-space** choice with a specific inductive bias: *permutation equivariance over a graph* — relabel the nodes and the output follows. It's the fourth of the four architectures in the [inductive-bias](/wiki/inductive-bias) story (CNN/RNN/transformer/GNN as one idea, four symmetries).
+Most ML assumes data lives on a grid (images), a sequence (text), or a flat table (rows of features). But molecules, social networks, road maps, knowledge graphs, and recommendation systems are **graphs**: entities connected by relationships, with no fixed order and no fixed number of neighbors. **Graph Neural Networks (GNNs)** learn directly on this structure. This lesson sets up how a graph becomes learnable **data** and introduces the single idea (**message passing**) that nearly every GNN is built from. That message-passing design is a **hypothesis-space** choice with a specific inductive bias: *permutation equivariance over a graph* — relabel the nodes and the output follows. It's the fourth of the four architectures in the [inductive-bias](/wiki/inductive-bias) story (CNN/RNN/transformer/GNN as one idea, four symmetries).
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -71,7 +71,7 @@ After **one** message-passing layer, each node knows about its immediate neighbo
 | 12 | 2.40 | 4, 9, 15, 22, 33, 40 |
 | 30 | 2.97 | 5, 14, 27, 46, 59, **60** |
 
-Thirty extra edges — less than a 50% increase in mean degree — take the 5-hop reach from 11 nodes to 59 of 60. Receptive field growth is **exponential in the degree**, and real graphs (citation networks, social graphs, molecules with rings) all have the shortcuts.
+Thirty extra edges (less than a 50% increase in mean degree) take the 5-hop reach from 11 nodes to 59 of 60. Receptive field growth is **exponential in the degree**, and real graphs (citation networks, social graphs, molecules with rings) all have the shortcuts.
 
 That is the whole depth problem in one plot, and it runs the opposite way from CNNs. There, depth is how you afford a wide receptive field. Here, the receptive field arrives almost immediately and the danger is that it arrives *completely* — once every node aggregates the same set of nodes, every node computes the same thing.
 
@@ -105,7 +105,7 @@ The same machinery serves three task levels, differing only in the final readout
 ## Key takeaways
 
 - A graph $(V, E)$ with node/edge features is learnable data; the **adjacency matrix** encodes connectivity. Grids and sequences are regular special cases.
-- Graph models must be **permutation-invariant** and handle **variable neighbor counts** — which forces order-independent aggregation (sum/mean/max).
+- Graph models must be **permutation-invariant** and handle **variable neighbor counts**, which forces order-independent aggregation (sum/mean/max).
 - **Message passing** — AGGREGATE neighbor states, then UPDATE — is the framework underlying nearly all GNNs; $k$ layers give a $k$-hop receptive field.
 - Node-, edge-, and graph-level tasks share the machinery; graph-level tasks add a **readout** that pools all nodes.
 

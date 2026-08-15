@@ -103,14 +103,14 @@ What to notice as you step:
 
 - **The loser is discarded permanently.** When $\delta_2(\text{Rainy})$ picks the
   Sunny predecessor, the Rainy-to-Rainy path is gone for good. That pruning is
-  what makes the recursion $O(K^2T)$ instead of $O(K^T)$ — and it is only valid
+  what makes the recursion $O(K^2T)$ instead of $O(K^T)$, and it is only valid
   because the Markov property guarantees no discarded prefix could ever be
   rescued by a later observation.
 - **$\delta$ is not a probability of a state.** It is the score of one complete
   best-path-so-far. The brute-force enumeration step confirms it: $\delta_2$
   equals the joint probability of the single best path, not the marginal.
 - **The final step swaps `max` for `sum`** — that one change is the forward
-  algorithm — and the answers diverge on identical numbers. $\alpha_2$ says Rainy
+  algorithm, and the answers diverge on identical numbers. $\alpha_2$ says Rainy
   is the more likely state at $t = 2$; $\delta_2$ says the best path ends in
   Sunny. Per-step argmax and best-whole-path are genuinely different questions,
   which is why Viterbi bothers with backpointers at all.
@@ -136,7 +136,7 @@ print("log P:", round(logprob, 3))
 
 ## Problem 3 — Baum–Welch (learning)
 
-When you have observation sequences but *no* hidden labels, **Baum–Welch** — an instance of the EM algorithm — estimates $\pi, A, B$. It alternates an **E-step** (run forward *and* backward passes to compute how responsible each state and transition is for the data) with an **M-step** (re-estimate all parameters as normalized expected counts), repeating until the likelihood converges to a local optimum. It is the same E/M loop as Gaussian Mixture Models — HMMs are essentially "GMMs with a Markov chain tying the components across time."
+When you have observation sequences but *no* hidden labels, **Baum–Welch** (an instance of the EM algorithm) estimates $\pi, A, B$. It alternates an **E-step** (run forward *and* backward passes to compute how responsible each state and transition is for the data) with an **M-step** (re-estimate all parameters as normalized expected counts), repeating until the likelihood converges to a local optimum. It is the same E/M loop as Gaussian Mixture Models — HMMs are essentially "GMMs with a Markov chain tying the components across time."
 
 <WikiLink slug="baum-welch" title="The Baum–Welch Algorithm" />
 
@@ -145,12 +145,12 @@ When you have observation sequences but *no* hidden labels, **Baum–Welch** —
 An HMM is just a specific Bayesian Network: a chain $z_1 \to z_2 \to \dots \to z_T$ with each $z_t \to x_t$. Everything from the Bayesian Networks lesson applies — the forward/backward passes are belief propagation specialized to a chain.
 
 <Callout type="warning" title="Underflow: work in log space">
-  Multiplying many probabilities underflows to 0 fast. Real implementations run the forward/Viterbi recursions in **log space** (sums of log-probs, `logsumexp` for the forward sum) — or rescale $\alpha_t$ at each step. `hmmlearn` does this for you.
+  Multiplying many probabilities underflows to 0 fast. Real implementations run the forward/Viterbi recursions in **log space** (sums of log-probs, `logsumexp` for the forward sum), or rescale $\alpha_t$ at each step. `hmmlearn` does this for you.
 </Callout>
 
 ## Limits and what replaced HMMs
 
-HMMs assume discrete hidden state and a strict Markov chain. For richer dependencies and continuous representations, RNNs/LSTMs and Transformers (earlier courses) largely superseded HMMs in speech and NLP — but HMMs remain valuable when data is scarce, interpretability matters, or the Markov structure is genuinely correct (e.g. bioinformatics).
+HMMs assume discrete hidden state and a strict Markov chain. For richer dependencies and continuous representations, RNNs/LSTMs and Transformers (earlier courses) largely superseded HMMs in speech and NLP, but HMMs remain valuable when data is scarce, interpretability matters, or the Markov structure is genuinely correct (e.g. bioinformatics).
 
 <Exercise id="hmm-assumptions" />
 
@@ -168,7 +168,7 @@ HMMs assume discrete hidden state and a strict Markov chain. For richer dependen
 
 - An HMM has hidden states (Markov chain) emitting observations.
 - **Forward** sums over paths (likelihood); **Viterbi** maximizes (best path).
-- **Baum-Welch** learns the parameters — it is EM for sequences.
+- **Baum-Welch** learns the parameters. It is EM for sequences.
 - Work in **log space** to avoid underflow.
 
 ## Related concepts

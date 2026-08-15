@@ -90,7 +90,7 @@ What to notice:
   procedure can produce a zero. Compare it against Ridge's coordinate update
   $\rho/(1+\lambda)$ in the same plot: a straight line, never flat, never zero.
 - **Marginal correlation is not what kills a feature.** Both noise columns
-  correlate 0.51 and 0.70 with $y$ — well above $\lambda = 0.25$ — and would
+  correlate 0.51 and 0.70 with $y$ (well above $\lambda = 0.25$) and would
   survive on that alone. They die because by the time the loop reaches them, the
   features already fitted have absorbed the signal and their *partial-residual*
   $\rho$ has collapsed to ~0.08.
@@ -98,7 +98,7 @@ What to notice:
   $x_5$ has a true weight of **zero** yet outlives both genuinely relevant
   features, because Lasso ranks by correlation with the residual, not relevance
   to the target. A zero from Lasso means *"added nothing given the others"*, not
-  *"irrelevant"* — which is the argument for elastic net, and why Lasso's
+  *"irrelevant"*, which is the argument for elastic net, and why Lasso's
   selections are unstable across bootstrap resamples.
 - **Correlation is expensive.** The same data converges in 267 sweeps with the
   echo present and 5 without it: the correlated pair passes the shared signal

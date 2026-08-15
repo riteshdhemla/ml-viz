@@ -26,7 +26,7 @@ estimatedMinutes: 25
 "Design the home feed" is the canonical ML system-design interview. The trap is
 to reach for a model on the first sentence. Strong answers move through the
 **ML project loop** in order — data → hypothesis space → objective →
-optimization → evaluation → feedback — and treat every design choice as *which
+optimization → evaluation → feedback, and treat every design choice as *which
 slot am I filling, and what breaks if I skip it?* The `SpineNav` strip above
 marks the stages this problem leans on hardest. The design below is not
 hypothetical — it is, to a first approximation, how Instagram Explore,
@@ -139,7 +139,7 @@ User and item can't interact *inside* the model at query time — that would mea
 scoring billions of pairs per request. Encode them **separately**, so item
 embeddings are precomputed and indexed offline, and query-time work collapses
 to one user embedding plus an approximate nearest-neighbor lookup. That
-constraint is exactly why the two-tower architecture exists — and why
+constraint is exactly why the two-tower architecture exists, and why
 cross-attention retrieval is off the table.
 </ThinkFirst>
 
@@ -170,7 +170,7 @@ are **multi-task**: one shared network with heads for `P(click)`, `P(save)`,
 formula. Twitter's open-sourced For You ranker made its weights public — a
 reply that draws the author back into conversation is worth on the order of
 **100× a like**, and a report is a large negative
-([twitter/the-algorithm](https://github.com/twitter/the-algorithm)) — so the
+([twitter/the-algorithm](https://github.com/twitter/the-algorithm)), so the
 value formula, not the model, is where product strategy lives. Baseline:
 logistic regression on hand-crafted features → prove the pipeline end-to-end
 before adding depth.
@@ -183,7 +183,7 @@ For the retrieval index, the ANN structure itself is worth knowing cold:
 Neither. The funnel doubles as a **degradation ladder**: serve the first-stage
 (lightweight) scores without the heavy re-rank, fall back to a
 popularity-plus-recency feed, or replay the user's last cached ranking. Each
-rung trades personalization quality for availability — which is why 99.9%
+rung trades personalization quality for availability, which is why 99.9%
 availability was a requirements-table row, not an afterthought. An empty feed
 costs you the session; a slightly worse feed costs you almost nothing.
 </ThinkFirst>
@@ -209,7 +209,7 @@ ranker times out.
 Not yet. Offline gains are computed on logged data the *old* model produced —
 position bias, training-serving skew, and proxy-metric mismatch can each fake a
 win. Ship behind an **A/B test** on the real objective (long-term engagement)
-with guardrail metrics, and let that — not NDCG — be the judge.
+with guardrail metrics, and let that (not NDCG) be the judge.
 </ThinkFirst>
 
 ## 7. Evaluation *(spine: evaluation)*
@@ -229,7 +229,7 @@ with guardrail metrics, and let that — not NDCG — be the judge.
 <ThinkFirst question="Thought experiment: you freeze everything — no retrains, no embedding refreshes — for 90 days. Offline metrics on the old test set don't move. What actually decays in production, and in what order?">
 Retrieval rots first: items uploaded after the freeze have no learned
 embeddings, so the fresh half of the corpus is invisible within days. Then the
-ranker's feature distributions drift — seasonality, trends, new creators — and
+ranker's feature distributions drift (seasonality, trends, new creators) and
 its calibration goes with them. The old test set can't detect any of this
 because it's drawn from the old world. The feed degrades into a greatest-hits
 archive of the quarter you froze, which is why retraining cadence is part of

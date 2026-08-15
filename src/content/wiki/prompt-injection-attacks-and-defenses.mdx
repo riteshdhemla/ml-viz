@@ -16,10 +16,10 @@ The [tool use lesson](/courses/agent-design-patterns/09-tool-use-and-mcp) flags 
 
 ## The root cause: one channel, two jobs
 
-An LLM's context window carries both the **instructions** it should obey (the system prompt, the developer's task) and the **data** it should merely process (a user message, a search result, a tool's return value). Both arrive as the same medium — plain text — and the model has no reliable, cryptographic way to tell them apart. **Prompt injection** is what happens when an attacker writes data that the model reads as an instruction instead.
+An LLM's context window carries both the **instructions** it should obey (the system prompt, the developer's task) and the **data** it should merely process (a user message, a search result, a tool's return value). Both arrive as the same medium (plain text) and the model has no reliable, cryptographic way to tell them apart. **Prompt injection** is what happens when an attacker writes data that the model reads as an instruction instead.
 
 <Callout type="warning" title="This is not a bug you patch">
-  SQL injection has a fix: parameterized queries separate code from data at the language level. Prompt injection has no equivalent — there is no widely deployed mechanism that marks a span of tokens as "definitely data, never treat as a command," and jailbreak research shows classifiers can be evaded. The honest framing is **containment**, not prevention.
+  SQL injection has a fix: parameterized queries separate code from data at the language level. Prompt injection has no equivalent. There is no widely deployed mechanism that marks a span of tokens as "definitely data, never treat as a command," and jailbreak research shows classifiers can be evaded. The honest framing is **containment**, not prevention.
 </Callout>
 
 ## Direct vs. indirect injection
@@ -60,7 +60,7 @@ A tempting first defense is a classifier: scan tool output for injection-like ph
 
 - **The instruction space is unbounded.** "Ignore previous instructions" is one phrasing among infinitely many; paraphrase, translation, encoding (base64, leetspeak), or splitting the payload across multiple fields all evade keyword and even classifier-based filters.
 - **Filtering degrades the model's actual job.** The agent needs to *read and act on* the content it fetches — that is the whole point of giving it tools. A filter aggressive enough to catch every injection also mangles legitimate content.
-- **The trust boundary is inside the model, not around it.** Once injected text and the system prompt sit in the same context window, the model — not your filter — decides which one wins. You cannot outsource that decision to a preprocessing step that never sees how the model will weigh the two.
+- **The trust boundary is inside the model, not around it.** Once injected text and the system prompt sit in the same context window, the model (not your filter) decides which one wins. You cannot outsource that decision to a preprocessing step that never sees how the model will weigh the two.
 
 Treat classifiers and regexes as a **cheap first layer** that catches the obvious cases, never as the defense.
 

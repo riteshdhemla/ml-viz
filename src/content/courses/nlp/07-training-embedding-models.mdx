@@ -9,7 +9,7 @@ estimatedMinutes: 22
 
 # Training Embedding Models
 
-The downstream side of an embedding — semantic search, clustering, deduplication, RAG retrieval — assumes that *similar text lands at nearby points in the vector space*. That assumption is not free. A raw pretrained encoder like BERT does **not** give you good sentence embeddings out of the box. This lesson is about the training **objectives** — contrastive losses like InfoNCE — that actually shape an embedding space so cosine similarity means what you want it to mean. It's a clean case of the objective slot doing the work: the encoder architecture barely changes; the *loss* is what turns a mediocre embedding space into a good one.
+The downstream side of an embedding (semantic search, clustering, deduplication, RAG retrieval) assumes that *similar text lands at nearby points in the vector space*. That assumption is not free. A raw pretrained encoder like BERT does **not** give you good sentence embeddings out of the box. This lesson is about the training **objectives** (contrastive losses like InfoNCE) that actually shape an embedding space so cosine similarity means what you want it to mean. It's a clean case of the objective slot doing the work: the encoder architecture barely changes; the *loss* is what turns a mediocre embedding space into a good one.
 
 Real-world examples: **Sentence-BERT** and the `sentence-transformers` library (the de facto open-source default — the `all-MiniLM-L6-v2`, `bge`, `e5`, `nomic-embed` family); hosted embedding APIs from **OpenAI** (`text-embedding-3-small/large`), **Cohere**, and **Voyage** that power the retrieval half of most RAG systems; the **MTEB leaderboard** that ranks open-source embedders across 50+ tasks; and **domain-tuned embeddings** for legal, medical, and code search, where general-purpose embedders underperform a model fine-tuned on a few hundred thousand in-domain pairs.
 
@@ -31,7 +31,7 @@ At inference time you only need *one* copy of the encoder: embed each document o
 
 ## Contrastive (InfoNCE) loss
 
-The modern default objective is **contrastive learning** with the InfoNCE loss. For a batch of $N$ positive pairs $(a_i, p_i)$ — anchors and their matching positives — every *other* example in the same batch acts as a negative for $a_i$. This is the "in-batch negatives" trick: $N - 1$ negatives per anchor for free, no extra forward passes.
+The modern default objective is **contrastive learning** with the InfoNCE loss. For a batch of $N$ positive pairs $(a_i, p_i)$ (anchors and their matching positives), every *other* example in the same batch acts as a negative for $a_i$. This is the "in-batch negatives" trick: $N - 1$ negatives per anchor for free, no extra forward passes.
 
 $$
 \mathcal{L} = -\frac{1}{N}\sum_{i=1}^N \log \frac{\exp(\mathrm{sim}(a_i, p_i)/\tau)}{\sum_{j=1}^N \exp(\mathrm{sim}(a_i, p_j)/\tau)}.
@@ -44,7 +44,7 @@ A few details that matter:
 - The numerator pulls $\mathrm{sim}(a_i, p_i)$ up. The denominator pulls *every* $\mathrm{sim}(a_i, p_j)$ down (the positive included, but the numerator overpowers that). Net effect: positives in, everything else out.
 
 <Callout type="info" title="In-batch negatives are basically free">
-Each forward pass of a batch of size $N$ computes $N$ embeddings. The InfoNCE loss treats the $N - 1$ *other* embeddings in the batch as negatives for each anchor — so a batch of 256 gives you 255 negatives per anchor, at the cost of one forward pass. This is why state-of-the-art embedding models use very large batches (4096+): more in-batch negatives means harder contrast and better embeddings.
+Each forward pass of a batch of size $N$ computes $N$ embeddings. The InfoNCE loss treats the $N - 1$ *other* embeddings in the batch as negatives for each anchor, so a batch of 256 gives you 255 negatives per anchor, at the cost of one forward pass. This is why state-of-the-art embedding models use very large batches (4096+): more in-batch negatives means harder contrast and better embeddings.
 </Callout>
 
 <ContrastiveViz />

@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Modern CNN Architectures
 
-Understanding *why* each architecture works — not just that it works — is what separates practitioners who can adapt to new problems from those who can only copy existing recipes. This lesson unpacks the key design decisions from ResNet, MobileNet, and EfficientNet that still dominate computer vision in 2025.
+Understanding *why* each architecture works (not just that it works) is what separates practitioners who can adapt to new problems from those who can only copy existing recipes. This lesson unpacks the key design decisions from ResNet, MobileNet, and EfficientNet that still dominate computer vision in 2025.
 
 ## 1×1 Convolutions: the Swiss army knife
 
@@ -55,7 +55,7 @@ $$
 
 Before ResNet (2015), adding more layers to a network consistently hurt both training *and* test accuracy beyond a certain depth — not just overfitting, but degradation. A 56-layer network performed *worse* than a 20-layer network even on training data. This is puzzling because the 56-layer network could in principle represent the 20-layer network by learning identity mappings for the extra 36 layers.
 
-The insight: **learning the identity mapping is harder than it should be**. If a layer should output $\mathbf{x}$ (unchanged), its weights must conspire to produce $\mathbf{x}$ from a complicated nonlinear transformation. But if we give the layer a residual formulation — explicitly add $\mathbf{x}$ back to the output — then the layer only needs to learn the *residual* $F(\mathbf{x}) = 0$ (set all weights to zero), which is easy.
+The insight: **learning the identity mapping is harder than it should be**. If a layer should output $\mathbf{x}$ (unchanged), its weights must conspire to produce $\mathbf{x}$ from a complicated nonlinear transformation. But if we give the layer a residual formulation (explicitly add $\mathbf{x}$ back to the output), then the layer only needs to learn the *residual* $F(\mathbf{x}) = 0$ (set all weights to zero), which is easy.
 
 ### The residual block
 

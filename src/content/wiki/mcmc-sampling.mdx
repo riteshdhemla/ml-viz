@@ -37,19 +37,19 @@ $$
 3. Accept $\theta'$ with probability $\alpha$ (set next state to $\theta'$); otherwise **stay** at $\theta$ (and record $\theta$ again).
 4. Repeat.
 
-The normalizing constant **cancels in the ratio** $\pi(\theta')/\pi(\theta)$ — which is the whole point. You only ever need the unnormalized posterior $p(x\mid\theta)p(\theta)$.
+The normalizing constant **cancels in the ratio** $\pi(\theta')/\pi(\theta)$, which is the whole point. You only ever need the unnormalized posterior $p(x\mid\theta)p(\theta)$.
 
 When the proposal is symmetric ($q(\theta'\mid\theta) = q(\theta\mid\theta')$, as for a Gaussian random walk), the $q$ terms cancel too and the ratio collapses to the original **Metropolis** form $\alpha = \min(1, \pi(\theta')/\pi(\theta))$ — always move to higher density, sometimes move to lower.
 
 <Callout type="info" title="Detailed balance is why it works">
-  The acceptance rule is engineered so the chain satisfies **detailed balance**: $\pi(\theta)\,P(\theta \to \theta') = \pi(\theta')\,P(\theta' \to \theta)$. A chain in detailed balance with $\pi$ is reversible and has $\pi$ as its stationary distribution — so its long-run samples are distributed according to the target, whatever the (positive) proposal.
+  The acceptance rule is engineered so the chain satisfies **detailed balance**: $\pi(\theta)\,P(\theta \to \theta') = \pi(\theta')\,P(\theta' \to \theta)$. A chain in detailed balance with $\pi$ is reversible and has $\pi$ as its stationary distribution, so its long-run samples are distributed according to the target, whatever the (positive) proposal.
 </Callout>
 
 ## Watch it run
 
 Metropolis sampling a target it is only allowed to see up to a constant. The
 target here is deliberately one we *can* solve exactly — the Beta(8, 4)
-posterior after 7 heads in 10 flips — so the sampler's answer can be checked
+posterior after 7 heads in 10 flips, so the sampler's answer can be checked
 against the truth instead of merely admired:
 
 <AlgorithmTrace id="metropolis-hastings" />
@@ -63,7 +63,7 @@ What to notice as you step:
   taken 41% of the time. Reject those always and you have hill-climbing, which
   converges to the mode and gets the *distribution* completely wrong.
 - **A rejection still emits a sample.** The current state is recorded again,
-  which is why trace plots have flat stretches — and why a high rejection rate
+  which is why trace plots have flat stretches, and why a high rejection rate
   destroys the effective sample size without shortening the chain.
 - **The first steps are burn-in**, and they describe the starting point rather
   than the target.
@@ -88,7 +88,7 @@ Gibbs is a special case of Metropolis–Hastings where the proposal is the full 
 A raw chain is not yet a clean set of posterior samples. Four issues to handle:
 
 - **Burn-in.** The chain starts at an arbitrary point and needs time to reach the high-density region. Discard the first $K$ samples (e.g. the first 10–50%) so the start point doesn't bias estimates.
-- **Thinning.** Consecutive states are autocorrelated. Keeping every $k$-th sample reduces storage and autocorrelation — though for estimating means it's usually better to keep everything and rely on the effective sample size. Thin only when storage or per-sample cost is the bottleneck.
+- **Thinning.** Consecutive states are autocorrelated. Keeping every $k$-th sample reduces storage and autocorrelation, though for estimating means it's usually better to keep everything and rely on the effective sample size. Thin only when storage or per-sample cost is the bottleneck.
 - **Acceptance rate tuning.** The proposal scale is the key knob. Too small → nearly all proposals accepted but tiny steps, glacial exploration. Too large → big jumps almost always rejected, the chain gets stuck. The classic target is **~23%** acceptance for high-dimensional random-walk Metropolis (≈44% for a single parameter).
 - **Multiple chains.** Run several chains from dispersed starts to diagnose convergence and detect multimodality a single chain might miss.
 
@@ -106,7 +106,7 @@ You can never *prove* convergence, but several diagnostics catch failure:
 
 ## Beyond random-walk MCMC
 
-Random-walk Metropolis explores by diffusion, which scales poorly in high dimensions. **Hamiltonian Monte Carlo (HMC)** uses the gradient of the log-posterior to propose distant, high-acceptance moves; the **No-U-Turn Sampler (NUTS)** auto-tunes its trajectory length and is the default engine in Stan, PyMC, and NumPyro. When you have gradients and a continuous parameter space, HMC/NUTS typically delivers far higher ESS per second than the methods on this page — which remain the conceptual foundation and the right tool for discrete or non-differentiable targets.
+Random-walk Metropolis explores by diffusion, which scales poorly in high dimensions. **Hamiltonian Monte Carlo (HMC)** uses the gradient of the log-posterior to propose distant, high-acceptance moves; the **No-U-Turn Sampler (NUTS)** auto-tunes its trajectory length and is the default engine in Stan, PyMC, and NumPyro. When you have gradients and a continuous parameter space, HMC/NUTS typically delivers far higher ESS per second than the methods on this page, which remain the conceptual foundation and the right tool for discrete or non-differentiable targets.
 
 ## Related concepts
 

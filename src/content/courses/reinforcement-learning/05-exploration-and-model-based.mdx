@@ -27,7 +27,7 @@ At every step an agent faces a choice:
 Too much exploitation: the agent gets stuck in a local optimum, never discovering better strategies.
 Too much exploration: the agent wastes time on suboptimal actions and accumulates poor rewards.
 
-The challenge is that the agent doesn't know in advance which arms/actions are good — it has to discover this through interaction.
+The challenge is that the agent doesn't know in advance which arms/actions are good. It has to discover this through interaction.
 
 ---
 
@@ -115,13 +115,13 @@ for these arms. That is the dashed line in the plot, and it is not an approximat
 | 0.20 | 0.0429 | 0.0428 | 143.9 |
 | 0.30 | 0.0642 | 0.0642 | 203.1 |
 
-At $\epsilon = 0.20$ and $0.30$ the prediction is exact. Below that the measured slope runs *above* it — and the gap is the interesting part, because it means the premise has failed: at 3000 pulls with $\epsilon = 0.05$ the agent still has not reliably found the best arm, so it is losing reward to **misidentification** on top of the exploration tax. Those are the two costs ε-greedy trades between, and the slider moves you along the tradeoff: regret is $253$ at $\epsilon = 0$ (pure greedy locks onto the wrong arm in nearly half of all runs), bottoms out around $81$ near $\epsilon = 0.08$, and climbs back to $203$ at $\epsilon = 0.30$. Both ends are bad for opposite reasons.
+At $\epsilon = 0.20$ and $0.30$ the prediction is exact. Below that the measured slope runs *above* it, and the gap is the interesting part, because it means the premise has failed: at 3000 pulls with $\epsilon = 0.05$ the agent still has not reliably found the best arm, so it is losing reward to **misidentification** on top of the exploration tax. Those are the two costs ε-greedy trades between, and the slider moves you along the tradeoff: regret is $253$ at $\epsilon = 0$ (pure greedy locks onto the wrong arm in nearly half of all runs), bottoms out around $81$ near $\epsilon = 0.08$, and climbs back to $203$ at $\epsilon = 0.30$. Both ends are bad for opposite reasons.
 
 Press **decay ε as 1/t** and the tax stops accruing: starting from $\epsilon_0 = 0.30$, regret falls from $203$ to $66$ — better than *any* fixed ε, which is exactly the argument for annealing.
 
 ### The constant matters more than the algorithm
 
-UCB and Thompson both bend. Compare each curve's slope over its last quarter against its first quarter: ε-greedy at $\epsilon = 0.30$ scores $0.98$ — a straight line — while UCB scores $0.46$ and Thompson $0.41$. They are still exploring, but less and less.
+UCB and Thompson both bend. Compare each curve's slope over its last quarter against its first quarter: ε-greedy at $\epsilon = 0.30$ scores $0.98$ (a straight line), while UCB scores $0.46$ and Thompson $0.41$. They are still exploring, but less and less.
 
 The uncomfortable part is the `c` slider:
 
@@ -232,7 +232,7 @@ Model-based and exploration methods are complementary:
 
 ## Common mistakes
 
-1. **Exploring blindly forever.** A constant high $\epsilon$ wastes late-training steps on random actions; decay it — or use an uncertainty-aware method (UCB, Thompson) that stops exploring arms it has learned.
+1. **Exploring blindly forever.** A constant high $\epsilon$ wastes late-training steps on random actions; decay it, or use an uncertainty-aware method (UCB, Thompson) that stops exploring arms it has learned.
 2. **Ignoring the exploration bonus scale.** Count-based and curiosity bonuses ($\beta$, $\eta$) that dwarf the real reward produce an agent that tours novelty and never solves the task.
 3. **Trusting long model rollouts.** Model errors compound exponentially with horizon; keep synthetic rollouts short (Dyna/MBPO style) and mix them with real data.
 4. **Using curiosity on stochastic distractors.** Raw prediction error rewards the agent for watching noise (the "noisy TV problem"); use ICM-style learned features or RND to filter it.

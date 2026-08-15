@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Prompt Engineering & In-Context Learning
 
-A pretrained LLM has fixed weights — yet it can do thousands of tasks it was never explicitly trained for. The trick is **in-context learning**: the model treats your prompt as a worked specification and continues it. Prompt engineering is the craft of writing that specification so the model's *next-token* distribution lands on the answer you want. This course runs on a different spine from the ML ones: the [**agentic project loop**](/wiki/agentic-project-loop) — task → context & tools → orchestration → evaluation → guardrails → operations. Because the weights are frozen, most of your leverage is in the **context** slot, and that's where prompting lives.
+A pretrained LLM has fixed weights, yet it can do thousands of tasks it was never explicitly trained for. The trick is **in-context learning**: the model treats your prompt as a worked specification and continues it. Prompt engineering is the craft of writing that specification so the model's *next-token* distribution lands on the answer you want. This course runs on a different spine from the ML ones: the [**agentic project loop**](/wiki/agentic-project-loop) — task → context & tools → orchestration → evaluation → guardrails → operations. Because the weights are frozen, most of your leverage is in the **context** slot, and that's where prompting lives.
 
 <WikiLink slug="agentic-project-loop" title="The Agentic Project Loop" />
 
@@ -56,7 +56,7 @@ The model outputs a probability distribution over the next token; **decoding** t
 
 - **Temperature** $T$ rescales the logits before softmax: $p_i = \dfrac{e^{z_i/T}}{\sum_j e^{z_j/T}}$. Low $T$ sharpens the distribution toward the top token (deterministic, "greedy"); high $T$ flattens it (diverse, "creative").
 - **Top-k sampling** keeps only the $k$ highest-probability tokens, zeros out the rest, and renormalises — a fixed-size shortlist.
-- **Top-p (nucleus) sampling** keeps only the smallest set of tokens whose probabilities sum to $p$, discards the long tail, and renormalises — so implausible tokens can never be sampled. Unlike top-k, the shortlist size adapts to how peaked the distribution is.
+- **Top-p (nucleus) sampling** keeps only the smallest set of tokens whose probabilities sum to $p$, discards the long tail, and renormalises, so implausible tokens can never be sampled. Unlike top-k, the shortlist size adapts to how peaked the distribution is.
 
 <SamplingViz />
 

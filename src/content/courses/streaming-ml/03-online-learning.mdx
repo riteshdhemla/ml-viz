@@ -19,7 +19,7 @@ Learning is framed as a repeated game between a learner and an (possibly adversa
 2. The environment reveals a convex loss function $f_t$.
 3. The learner suffers loss $f_t(x_t)$ and observes it (or its gradient).
 
-Crucially, $f_t$ can be chosen *after* seeing $x_t$, and the sequence need not come from any fixed distribution — it can drift, or even be adversarial. There is no i.i.d. assumption to lean on.
+Crucially, $f_t$ can be chosen *after* seeing $x_t$, and the sequence need not come from any fixed distribution. It can drift, or even be adversarial. There is no i.i.d. assumption to lean on.
 
 ## Regret: the right yardstick
 
@@ -65,7 +65,7 @@ Curvature makes online learning dramatically easier — the same reason strongly
 
 ## Follow-the-regularized-leader
 
-A second, unifying family is **follow-the-regularized-leader (FTRL)**. The naive "follow-the-leader" strategy replays the best point on all losses so far, $x_{t+1} = \arg\min_x \sum_{s\le t} f_s(x)$, but it is unstable — it can jump wildly round to round and incur linear regret. FTRL adds a strongly convex **regularizer** $R(x)$ to stabilise the choice:
+A second, unifying family is **follow-the-regularized-leader (FTRL)**. The naive "follow-the-leader" strategy replays the best point on all losses so far, $x_{t+1} = \arg\min_x \sum_{s\le t} f_s(x)$, but it is unstable. It can jump wildly round to round and incur linear regret. FTRL adds a strongly convex **regularizer** $R(x)$ to stabilise the choice:
 
 $$
 x_{t+1} = \arg\min_{x \in \mathcal{K}} \left[ \sum_{s=1}^{t} f_s(x) + R(x) \right].
@@ -122,7 +122,7 @@ for x, y in stream:                      # one pass, O(dim) memory
 - **Sublinear regret** ($o(T)$) means average regret vanishes — the learner matches the best fixed action per round.
 - **Online gradient descent** achieves $O(\sqrt{T})$ regret for convex losses ($\eta_t \propto 1/\sqrt{t}$) and $O(\log T)$ for strongly convex ones.
 - **FTRL** stabilises "follow the leader" with a regularizer and generalises OGD, mirror descent, and AdaGrad.
-- **Online-to-batch** converts regret bounds into generalization bounds — this is *why* SGD converges at $O(1/\sqrt{T})$.
+- **Online-to-batch** converts regret bounds into generalization bounds. This is *why* SGD converges at $O(1/\sqrt{T})$.
 
 ## Related concepts
 

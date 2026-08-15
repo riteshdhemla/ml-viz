@@ -9,7 +9,7 @@ estimatedMinutes: 22
 
 # From Policy Gradient to RLHF (PPO)
 
-You just learned [policy gradient](/courses/reinforcement-learning/04-policy-gradient): nudge the log-probability of an action by the advantage that followed. That's the right algorithm in principle but a terrible one in practice — the gradient is so noisy that one unlucky batch can launch the policy into a region it can't recover from. **PPO** fixes that with a single change: clip the update so any individual step is forced to stay close to the old policy. The same recipe — same clipped objective, same KL leash — is what turns a chat model into an aligned one. **RLHF is just PPO with the LLM as the policy and a learned reward model as the environment.**
+You just learned [policy gradient](/courses/reinforcement-learning/04-policy-gradient): nudge the log-probability of an action by the advantage that followed. That's the right algorithm in principle but a terrible one in practice — the gradient is so noisy that one unlucky batch can launch the policy into a region it can't recover from. **PPO** fixes that with a single change: clip the update so any individual step is forced to stay close to the old policy. The same recipe (same clipped objective, same KL leash) is what turns a chat model into an aligned one. **RLHF is just PPO with the LLM as the policy and a learned reward model as the environment.**
 
 **Real-world examples:** OpenAI's InstructGPT (the original "GPT-3 + RLHF" paper), ChatGPT-style alignment, Anthropic's Claude RLHF pipeline, Llama-2-Chat, and any modern frontier model that uses on-policy preference tuning.
 
@@ -83,7 +83,7 @@ So PPO only ever sees one combined reward signal. The end-of-sequence RM score i
 
 ## The surface DPO collapses
 
-The classical RLHF objective above — $\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(\pi_\theta\|\pi_\text{ref})$ — has a known closed-form optimum, a Boltzmann reweighting of $\pi_\text{ref}$ by the reward. **DPO** (covered in the [fine-tuning lesson](/courses/fine-tuning-alignment/04-rlhf-and-dpo)) reparameterises the reward as a log-ratio of policies and plugs it into the Bradley–Terry preference loss — and the entire PPO loop disappears, leaving a single classification objective. The clip-vs-collapse choice is the central design decision of modern preference tuning, and you now have both endpoints in view.
+The classical RLHF objective above ($\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(\pi_\theta\|\pi_\text{ref})$) has a known closed-form optimum, a Boltzmann reweighting of $\pi_\text{ref}$ by the reward. **DPO** (covered in the [fine-tuning lesson](/courses/fine-tuning-alignment/04-rlhf-and-dpo)) reparameterises the reward as a log-ratio of policies and plugs it into the Bradley–Terry preference loss, and the entire PPO loop disappears, leaving a single classification objective. The clip-vs-collapse choice is the central design decision of modern preference tuning, and you now have both endpoints in view.
 
 <Exercise id="ppo-clip-objective" />
 

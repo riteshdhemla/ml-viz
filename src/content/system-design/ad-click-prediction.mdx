@@ -83,7 +83,7 @@ context and can't price efficiently; a ranker without calibration breaks the
 auction's economics.
 
 <ThinkFirst question="CTR is around 1%, so 99% of your training rows are negatives. What's the standard fix — and its hidden cost?">
-**Negative downsampling** keeps training tractable and balanced — but it
+**Negative downsampling** keeps training tractable and balanced, but it
 distorts the output: a model trained on downsampled data predicts probabilities
 that are too high. In most systems that would be harmless (ranking survives a
 monotone distortion); here the auction prices on the absolute number, so you
@@ -103,7 +103,7 @@ must analytically correct or **recalibrate** after downsampling.
   $q = p / (p + (1-p)/w)$
   ([He et al., ADKDD 2014](https://dl.acm.org/doi/10.1145/2648584.2648589)).
 - **Freshness:** the same paper showed model quality decays day over day when
-  training lags serving — so labels flow into (at least) daily retrains, and the
+  training lags serving, so labels flow into (at least) daily retrains, and the
   feature pipeline is streaming, not nightly.
 
 <ThinkFirst question="Your feature space is billions of sparse IDs (every user × ad × placement cross). One weight per feature can't fit in serving memory. What are your levers before you reach for a smaller model?">
@@ -236,7 +236,7 @@ Cold start in ads is expensive, so exploration is bounded and tracked.
 - **Data freshness beats model cleverness**: day-old training data measurably
   degrades predictions, which is why the field invented online learning (FTRL)
   and daily GBDT+LR refresh cycles.
-- Track **AUC *and* calibration** separately — and calibration **per slice**; a
+- Track **AUC *and* calibration** separately, and calibration **per slice**; a
   ranking win with a calibration regression loses money.
 
 ## References

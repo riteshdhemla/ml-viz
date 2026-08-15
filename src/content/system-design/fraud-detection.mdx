@@ -26,7 +26,7 @@ estimatedMinutes: 25
 Fraud detection is the ML interview where **the data and the evaluation are the
 hard parts**, not the model. Two forces define it: **extreme class imbalance**
 (fraud is a fraction of a percent) and an **adaptive adversary** who changes
-behavior the moment you catch them — so the loop's **data → evaluation →
+behavior the moment you catch them, so the loop's **data → evaluation →
 feedback** stages carry the weight. The reference production system here is
 **Stripe Radar**, which evaluates over 1,000 characteristics of each payment
 and decides in under 100 milliseconds
@@ -178,7 +178,7 @@ policies
 <ThinkFirst question="The model outputs a risk score. Where do you set the decision threshold — and why is 0.5 the wrong answer?">
 0.5 assumes errors cost the same in both directions; here a missed fraud costs
 the transaction value while a false decline costs a customer. Put the threshold
-where the **expected dollar cost** curve says — and usually not one threshold
+where the **expected dollar cost** curve says, and usually not one threshold
 but bands: approve below, step-up challenge in the middle, decline above. The
 threshold is a business decision the model merely parameterizes — Stripe
 exposes exactly this as a merchant-tunable risk-threshold setting.
@@ -212,7 +212,7 @@ offline exercise.
 - **Adversarial drift:** the adversary adapts, so distributions shift by design.
   Monitor feature and score drift; keep a **human review queue** whose decisions
   become fresh labels far faster than chargebacks.
-- **Fast retrain:** the loop must close quickly — this is the operational reason
+- **Fast retrain:** the loop must close quickly. This is the operational reason
   Stripe's 85% training-time cut mattered: retraining several times a day
   shrinks the window between a new attack and a model that has seen it.
 - **Feedback bias:** you only get labels on transactions you *approved* (declined

@@ -9,7 +9,7 @@ estimatedMinutes: 24
 
 # Markov Decision Processes
 
-Reinforcement Learning is about an **agent** learning to act in an **environment** to maximize long-term reward — no labeled examples, just trial, error, and a reward signal. The **Markov Decision Process (MDP)** is the mathematical frame that makes this precise. Master the MDP and the Bellman equation, and every RL algorithm becomes a way of solving it. RL bends the [ML project loop](/wiki/ml-project-loop) in an instructive way: the reward is the **objective**, learning the policy is **optimization** — but the **data** isn't a fixed dataset. The agent *generates its own data* by acting, so exploration (lesson 05) is the data stage happening live at train time. That coupling is the whole personality of RL.
+Reinforcement Learning is about an **agent** learning to act in an **environment** to maximize long-term reward — no labeled examples, just trial, error, and a reward signal. The **Markov Decision Process (MDP)** is the mathematical frame that makes this precise. Master the MDP and the Bellman equation, and every RL algorithm becomes a way of solving it. RL bends the [ML project loop](/wiki/ml-project-loop) in an instructive way: the reward is the **objective**, learning the policy is **optimization**, but the **data** isn't a fixed dataset. The agent *generates its own data* by acting, so exploration (lesson 05) is the data stage happening live at train time. That coupling is the whole personality of RL.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -82,7 +82,7 @@ $$
 V^\pi(s) = \sum_a \pi(a\mid s)\sum_{s'} P(s'\mid s,a)\big[R(s,a,s') + \gamma V^\pi(s')\big]
 $$
 
-And the **Bellman optimality equation** — the one $\pi^*$ satisfies — replaces the policy average with a max:
+And the **Bellman optimality equation** (the one $\pi^*$ satisfies) replaces the policy average with a max:
 
 $$
 V^*(s) = \max_a \sum_{s'} P(s'\mid s,a)\big[R(s,a,s') + \gamma V^*(s')\big]
@@ -95,7 +95,7 @@ $$
 (We use the transition-reward convention $R(s,a,s')$ here to match the worked code below, where reward is attached to landing in $s'$. If reward depends only on $(s,a)$, it factors out of the $\sum_{s'}$ as $R(s,a)$.)
 
 <Callout type="tip" title="The recursion that powers all of RL">
-  "The value of where I am equals the best immediate reward plus the discounted value of where I'll be." Every RL algorithm — value iteration, Q-learning, DQN, actor-critic — is ultimately a way of solving or approximating this Bellman equation.
+  "The value of where I am equals the best immediate reward plus the discounted value of where I'll be." Every RL algorithm (value iteration, Q-learning, DQN, actor-critic) is ultimately a way of solving or approximating this Bellman equation.
 </Callout>
 
 ### Worked example — value iteration
@@ -149,7 +149,7 @@ What to notice as you step:
   γ, so convergence takes 20 sweeps at γ = 0.5 and 1375 at γ = 0.99. Caring
   about the far future is not free.
 - **The last step changes one reward and lowers γ, and the optimal policy
-  reverses.** A myopic agent has not converged badly — it has correctly solved a
+  reverses.** A myopic agent has not converged badly. It has correctly solved a
   different problem. γ belongs in the problem specification, not the
   hyperparameter sweep.
 
@@ -164,7 +164,7 @@ Watch value iteration converge on a 4×4 gridworld — each step is one full swe
 | **Model-based** | Yes | Plan with Bellman directly | Value/policy iteration |
 | **Model-free** | No | Learn from sampled experience | Q-learning, DQN, policy gradient |
 
-In most real problems you **don't** know the transition dynamics — you can only act and observe. That's the model-free setting the rest of this course tackles, starting with Q-learning.
+In most real problems you **don't** know the transition dynamics. You can only act and observe. That's the model-free setting the rest of this course tackles, starting with Q-learning.
 
 <Exercise id="mdp-components" />
 

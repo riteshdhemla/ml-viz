@@ -9,29 +9,29 @@ estimatedMinutes: 15
 
 # Deployment Pitfalls
 
-A model that performs beautifully in your notebook can fail silently in production. The reasons are rarely algorithmic — they are almost always about the gap between the controlled conditions of experimentation and the messy, evolving reality of a live system. This lesson catalogues the most common failure modes and the practices that prevent them.
+A model that performs beautifully in your notebook can fail silently in production. The reasons are rarely algorithmic. They are almost always about the gap between the controlled conditions of experimentation and the messy, evolving reality of a live system. This lesson catalogues the most common failure modes and the practices that prevent them.
 
 ## Train-serve skew
 
 Train-serve skew is the family of bugs where the training pipeline and the inference pipeline diverge. The model is trained on one version of a feature and served with a different version — often without anyone noticing until accuracy degrades weeks later.
 
 <Callout type="warning" title="The notebook-to-production gap">
-  Train-serve skew is the most common cause of "my model works in the notebook but fails in production." The notebook and the production service compute features from the same raw data, but through different code paths — and those paths inevitably diverge.
+  Train-serve skew is the most common cause of "my model works in the notebook but fails in production." The notebook and the production service compute features from the same raw data, but through different code paths, and those paths inevitably diverge.
 </Callout>
 
-**Different computation logic.** Training computes the `days_since_last_login` feature with a pandas `groupby` on a historical DataFrame. The serving system computes the same feature with a SQL query against a live database. A subtle difference in how each handles missing timestamps — pandas fills with `NaT`, SQL returns `NULL`, and the downstream cast behaves differently — produces systematically different feature values at inference time.
+**Different computation logic.** Training computes the `days_since_last_login` feature with a pandas `groupby` on a historical DataFrame. The serving system computes the same feature with a SQL query against a live database. A subtle difference in how each handles missing timestamps (pandas fills with `NaT`, SQL returns `NULL`, and the downstream cast behaves differently) produces systematically different feature values at inference time.
 
 **Missing value handling.** During training, the imputer replaces `NaN` in `age` with the training-set median (34). The serving code that was written separately uses `0` as a default. The model was trained expecting values around 34; it receives 0 for every user whose age is unknown in production.
 
-**Stale models.** A model trained on data from six months ago is deployed and never retrained. The user demographics have shifted (new geographic markets), the product has changed (new categories), and the relationship between features and outcomes has evolved. The model's performance slowly degrades — but because there is no monitoring, no one notices until a business review.
+**Stale models.** A model trained on data from six months ago is deployed and never retrained. The user demographics have shifted (new geographic markets), the product has changed (new categories), and the relationship between features and outcomes has evolved. The model's performance slowly degrades, but because there is no monitoring, no one notices until a business review.
 
-**Prevention.** Serialize the entire preprocessing pipeline (not just the model weights) with the model artifact. Use the same pipeline object — the same code path — at both training time and serving time. Tools like `joblib.dump` for sklearn pipelines and ONNX for neural network preprocessing make this concrete.
+**Prevention.** Serialize the entire preprocessing pipeline (not just the model weights) with the model artifact. Use the same pipeline object (the same code path) at both training time and serving time. Tools like `joblib.dump` for sklearn pipelines and ONNX for neural network preprocessing make this concrete.
 
 ### Why this class of bug survives so long
 
 <TrainServeSkewViz />
 
-Take the missing-value example above literally — training imputes `age` with the median 34, serving defaults to 0 — and measure what it costs. The answer explains why these bugs live in production for months.
+Take the missing-value example above literally (training imputes `age` with the median 34, serving defaults to 0) and measure what it costs. The answer explains why these bugs live in production for months.
 
 **Offline AUC does not move at all.** Not slightly: to three decimals, overall *and* within the affected rows themselves. Substituting a constant shifts every affected row by the same amount, so the ranking inside the slice is untouched. A rank-based metric is structurally incapable of representing this defect, and a nightly offline eval will never flag it.
 
@@ -59,7 +59,7 @@ prediction = pipe.predict(X_new)
 
 ## Overfitting in production
 
-A model that scores 98% accuracy on the test set but drops to 70% in production is not overfit to the training data in the classical sense — it is overfit to the *evaluation setup*.
+A model that scores 98% accuracy on the test set but drops to 70% in production is not overfit to the training data in the classical sense. It is overfit to the *evaluation setup*.
 
 **Test set contamination.** If the test set was selected by sampling at random from a dataset where the same real-world entity appears multiple times (e.g., the same customer ID across many rows), train and test sets share the same entity — the model has effectively seen the "test" entity during training. Performance on that test set is a deeply optimistic estimate. Always split at the entity level for grouped data.
 
@@ -73,7 +73,7 @@ Models are trained on a snapshot of the world. The world keeps changing.
 
 **Data drift (covariate shift)** occurs when the input distribution $P(X)$ changes but the conditional distribution $P(Y \mid X)$ stays the same. Seasonal patterns cause drift: user behaviour in December differs from June. New user demographics (expanding into a new country) shift the distribution of age, language, and device type. The model's mappings from features to labels are still valid — the problem is that the inputs the model receives have moved out of the region it was trained on.
 
-**Concept drift** occurs when the underlying relationship $P(Y \mid X)$ itself changes. The Covid-19 pandemic is the canonical example: every prediction model — for travel demand, consumer spending, hospital occupancy — had the relationship between its features and its target fundamentally altered in a matter of weeks. No amount of more data from before March 2020 helps; the model must be retrained on post-pandemic data.
+**Concept drift** occurs when the underlying relationship $P(Y \mid X)$ itself changes. The Covid-19 pandemic is the canonical example: every prediction model (for travel demand, consumer spending, hospital occupancy) had the relationship between its features and its target fundamentally altered in a matter of weeks. No amount of more data from before March 2020 helps; the model must be retrained on post-pandemic data.
 
 **Label shift** occurs when the output distribution $P(Y)$ changes. If a new product category is launched, the fraction of transactions in that category grows from 0% to 20% — the prior shifts, and a model that calibrated its outputs on the old prior will be systematically miscalibrated.
 
@@ -93,7 +93,7 @@ where $p_k$ is the fraction of values in bin $k$. PSI $< 0.1$ indicates no signi
 | 2 | 0.30 | 0.40 | +0.10 | ln(1.33) = +0.288 | (+0.10)(+0.288) = **0.029** |
 | 3 | 0.20 | 0.25 | +0.05 | ln(1.25) = +0.223 | (+0.05)(+0.223) = **0.011** |
 
-PSI = 0.054 + 0.029 + 0.011 = **0.094** → just below the 0.1 warning threshold. Worth monitoring but no retraining signal yet. The Kolmogorov-Smirnov (KS) test provides a hypothesis-testing alternative for continuous features. For output drift, monitoring the distribution of model scores (predicted probabilities) is often the earliest available signal — it does not require ground truth labels.
+PSI = 0.054 + 0.029 + 0.011 = **0.094** → just below the 0.1 warning threshold. Worth monitoring but no retraining signal yet. The Kolmogorov-Smirnov (KS) test provides a hypothesis-testing alternative for continuous features. For output drift, monitoring the distribution of model scores (predicted probabilities) is often the earliest available signal. It does not require ground truth labels.
 
 ## Model monitoring
 
@@ -156,7 +156,7 @@ shap.waterfall_plot(shap.Explanation(
 
 ## Calibration
 
-A well-calibrated model is one where predicted probabilities match empirical frequencies: if the model predicts `P(fraud) = 0.9`, then roughly 90% of such predictions should actually be fraud. Many powerful models — particularly gradient boosted trees — are not well calibrated out of the box.
+A well-calibrated model is one where predicted probabilities match empirical frequencies: if the model predicts `P(fraud) = 0.9`, then roughly 90% of such predictions should actually be fraud. Many powerful models (particularly gradient boosted trees) are not well calibrated out of the box.
 
 **Reliability diagram (calibration curve).** Bin predictions into deciles, compute the actual fraction positive in each bin, and plot predicted probability vs observed fraction. A perfectly calibrated model lies on the diagonal.
 
