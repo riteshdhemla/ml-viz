@@ -67,6 +67,18 @@ No single model both scans billions of items *and* scores each one richly. Produ
 
 Retrieval optimizes **recall** (don't miss good items) cheaply; ranking optimizes **precision/NDCG** (get the order right) expensively, but only on the small shortlist where it's affordable.
 
+### Which stage is actually holding you back
+
+<RetrievalFunnelViz />
+
+The funnel introduces one constraint that is easy to forget: **the ranker can only reorder what retrieval handed it.** Anything the first stage dropped is gone, whatever the second stage's quality — set the ranker to *perfect* in the walkthrough and end-to-end recall lands exactly on the retrieval ceiling and stops.
+
+That splits the system into two regimes. At small $K$, end-to-end sits right on the ceiling: retrieval is the binding constraint and the ranker is idle capacity. Past roughly $K = 800$ in this simulation the ceiling reaches 1.000 while end-to-end **plateaus near 0.81** — retrieval has stopped losing anything and the ranker's own error is now the entire limit.
+
+Which regime you are in decides what an investment is worth. Improving the ranker from noise 0.20 to perfect buys **+0.061** at $K = 100$ and then stops dead against the ceiling; the *identical* upgrade at $K = 800$ buys **+0.227**, nearly four times as much. Holding a perfect ranker at $K = 100$ and halving retrieval's noise instead takes end-to-end from 0.665 to 0.989.
+
+This is the mechanical explanation for a very common experience: **the ranker improved in offline eval and the end-to-end metric did not move**, because the system was never ranker-bound — and nothing in the ranker's own metrics would have told you that. Measure the ceiling separately from the final number, and you can see which stage owns your loss.
+
 ## Serving with approximate nearest neighbors
 
 The retrieval step — "find the item vectors closest to this user vector" — is exactly the **ANN search** problem. Item embeddings live in a vector index (HNSW/IVF); a query embedding is matched against them in milliseconds.

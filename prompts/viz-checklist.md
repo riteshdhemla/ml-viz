@@ -254,6 +254,89 @@ wrong format.
       entity/graph features → adversarial response.
 - [ ] **nlp/01-text-preprocessing** — the preprocessing pipeline (BPE itself is
       already traced on `wiki/bpe-tokenization`).
+- [x] **recommender-systems/03-deep-and-two-tower** — `RetrievalFunnelViz`
+      (guided, 4 steps). **Built on the second attempt**, using the alternative
+      target recorded after attempt 1 failed.
+
+      *Attempt 1 (discarded)* — in-batch-negative popularity bias and the logQ
+      correction. Measured, logQ made everything worse (recall@20 0.238 → 0.130,
+      mid/tail recall to 0.000). That was an artifact: training interactions
+      were generated as popularity-weighted exposure × affinity while evaluation
+      used *pure* affinity, so the correction — which makes the model a better
+      estimator of the training distribution — moved away from the eval target.
+      The correction's sign was right; the experiment design was wrong. Do not
+      retry without first making the training and evaluation distributions agree.
+
+      *Attempt 2 (shipped)* — the retrieve-then-rank recall ceiling. 3,000 items,
+      cheap noisy retriever returns top K, accurate ranker reorders only those K.
+      **The ranker can only reorder what retrieval handed it**: at K = 100 the
+      ceiling is 0.665 and a *perfect* ranker scores exactly 0.665, not a point
+      more. Two regimes with an actionable crossover — at small K end-to-end sits
+      on the ceiling (retrieval-bound, ranker idle); past ~K = 800 the ceiling
+      hits 1.000 while end-to-end **plateaus near 0.81** (ranker-bound).
+
+      So the same ranker upgrade (noise 0.20 → perfect) is worth **+0.061 at
+      K = 100** and **+0.227 at K = 800**, ~4×. Holding a perfect ranker at
+      K = 100 and halving retrieval noise instead takes end-to-end 0.665 → 0.989.
+      That is the mechanical explanation for "the ranker improved offline and the
+      end-to-end metric didn't move".
+
+      Note on precision: a single seed shows apparent bumps past K = 800 that
+      look like a peak; averaged over three seeds it is a flat plateau. Report
+      the plateau, not the peak.
+
+- [ ] **recommender-systems/04-session-based-and-realtime** — the real-time
+      feature pipeline through to re-ranking.
+- [~] **ml-in-practice/12-inference-optimization-and-serving** — KV-cache →
+      batching → accelerator. **Rejected on the overlap check the entry itself
+      asked for.** Every mechanism section already has a built artifact:
+      KV-cache/PagedAttention → `paged-attention` trace, batching →
+      `continuous-batching` trace, accelerators → `RooflineViz`, speculative
+      decoding → `speculative-decoding` trace, quantization → `QuantizationViz`.
+      A guided walkthrough would have re-taught four traces in a thinner form.
+
+      The actual defect was different and cheaper: the lesson linked to **none**
+      of them — zero `<WikiLink>`s in the whole file, despite explaining all four
+      mechanisms in prose. Fixed by wiring the three wiki links in at the end of
+      their matching sections and embedding `RooflineViz` in the accelerator
+      section with a "what to notice" paragraph tying decode's memory-bound
+      position back to why the KV-cache, continuous batching and quantization
+      all exist. Cross-link before building: a lesson that explains a mechanism
+      well but never points at its trace looks like a viz gap and is not one.
+- [x] **building-with-llms/03-embeddings-and-semantic-search** — `HybridSearchViz`
+      (guided, 4 steps). Overlap check passed: `RAGRetrievalViz` is a 2D k-vs-
+      precision picture and never touches keyword vs semantic, so this builds the
+      retrieval-comparison half only; indexing stays with the `hnsw` / `ivf`
+      traces the lesson already links.
+
+      BM25 is real over a real 15-doc corpus. The dense retriever is
+      **constructed but derived from the text, not the answer key** — words
+      sharing a sense share a direction (this table *is* an assumption, stated as
+      such), digits collapse onto one shared direction. Two findings that are
+      consequences rather than assumptions:
+
+      1. **The exact-ID failure is mechanical.** Cosine between the two SKU
+         documents is **1.0000** — the encoding cannot represent the difference
+         between SKU-88421 and SKU-88422 — and dense's top hit for the SKU query
+         is "Reset your account password". Per-query wins: BM25 1, dense 3,
+         tied 3, so "neither dominates" is measured, not asserted.
+      2. **RRF's constant decides whether fusion helps at all.** At k ≤ 10:
+         mean 0.989, worst query 0.920. At k ≥ 20 (including the k = 60 everyone
+         copies): mean 0.945, worst 0.613 — *below dense alone on both*. The
+         benefit switches off between k = 10 and k = 20, because k = 60 is
+         calibrated for corpora of millions.
+
+      **Process note worth keeping**: the first build was rigged — topic vectors
+      hand-assigned to match the relevance labels, so dense scored a perfect
+      1.000 everywhere and hybrid came out *worse*. Rebuilt to derive vectors
+      from the text. Then the shipped component's numbers diverged from the
+      scratch script (a filler-vector cache changed the retriever), so the doc
+      table and prose were re-extracted **by running the component's own
+      functions**. Verify against the file that ships, not the prototype.
+- [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →
+      entity/graph features → adversarial response.
+- [ ] **nlp/01-text-preprocessing** — the preprocessing pipeline (BPE itself is
+      already traced on `wiki/bpe-tokenization`).
 - [ ] **recommender-systems/03-deep-and-two-tower** — two towers, in-batch
       negatives, retrieve-then-rank. **Still open. One attempt failed; read this
       before retrying.**

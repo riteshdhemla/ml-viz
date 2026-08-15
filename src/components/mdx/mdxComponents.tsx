@@ -147,6 +147,7 @@ export const mdxComponents: MDXComponents = {
   ReceptiveFieldViz: viz("ReceptiveFieldViz"),
   RegularizationPathViz: viz("RegularizationPathViz"),
   ReservoirSamplingViz: viz("ReservoirSamplingViz"),
+  RetrievalFunnelViz: viz("RetrievalFunnelViz"),
   RewardModelViz: viz("RewardModelViz"),
   RNNUnrollViz: viz("RNNUnrollViz"),
   RolloutViz: viz("RolloutViz"),
