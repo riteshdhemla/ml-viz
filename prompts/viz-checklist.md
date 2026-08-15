@@ -255,7 +255,37 @@ wrong format.
 - [ ] **nlp/01-text-preprocessing** — the preprocessing pipeline (BPE itself is
       already traced on `wiki/bpe-tokenization`).
 - [ ] **recommender-systems/03-deep-and-two-tower** — two towers, in-batch
-      negatives, retrieve-then-rank.
+      negatives, retrieve-then-rank. **Still open. One attempt failed; read this
+      before retrying.**
+
+      Overlap check passes — `ContrastiveViz` (nlp/07) animates the InfoNCE
+      pull/push geometry in 2D and says nothing about two-tower training
+      economics, so there is a real gap here.
+
+      *Attempt 1 — in-batch-negative popularity bias and the logQ correction.*
+      The intended finding was that in-batch negatives are sampled proportional
+      to popularity, over-penalising popular items, and that the sampled-softmax
+      logQ correction (`logit_j - log Q(j)`) fixes it. Measured, logQ made
+      everything worse: recall@20 fell 0.238 → 0.130 and recall on the mid and
+      tail terciles collapsed to 0.000, with the mean retrieved item index
+      dropping from 104 to 13 of 300 — i.e. it retrieved almost only head items.
+
+      That is an **artifact of a confounded setup, not a result**. The training
+      data was generated as popularity-weighted exposure × affinity, but the
+      evaluation target was *pure* affinity. The logQ correction makes the model
+      a better estimator of the popularity-weighted training distribution, which
+      is exactly the direction *away* from the eval target — so the comparison
+      measured the mismatch between two objectives rather than the correction.
+      The sign of the correction was right (rare items are under-sampled, so
+      `-log Q` upweights them); the experiment design was wrong.
+
+      To retry: decide first whether the retrieval target is affinity or
+      engagement, generate the training interactions from *that same*
+      distribution, and only then ask what the correction buys. A cleaner and
+      probably better target for this lesson is the **retrieve-then-rank recall
+      ceiling** — the ranker can only reorder what retrieval returned, so
+      retrieval recall@k caps end-to-end quality no matter how good the ranker
+      is. That is measurable without any of the above ambiguity.
 - [x] **ml-in-practice/15-privacy-and-federated-learning** — `DPDisparityViz`
       (guided, 4 steps). Scoped to the DP-SGD half; the federated round is a
       protocol diagram with no quantity that varies, so it stays prose.
