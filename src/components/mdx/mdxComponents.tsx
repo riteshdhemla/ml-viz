@@ -162,6 +162,7 @@ export const mdxComponents: MDXComponents = {
   SoftMarginViz: viz("SoftMarginViz"),
   StorageLayoutViz: viz("StorageLayoutViz"),
   StreamWindowViz: viz("StreamWindowViz"),
+  TestTimeComputeViz: viz("TestTimeComputeViz"),
   ThresholdSweepViz: viz("ThresholdSweepViz"),
   TraceWaterfallViz: viz("TraceWaterfallViz"),
   TrainServeSkewViz: viz("TrainServeSkewViz"),
