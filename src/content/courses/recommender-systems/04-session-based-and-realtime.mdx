@@ -21,6 +21,8 @@ Sessions introduce two challenges absent from classical CF:
 1. **No persistent user identity** — the user may be anonymous or a new visitor. All you have is the current click stream.
 2. **Order matters** — the transition A→B→C is semantically different from C→B→A.
 
+That 30-minute gap is not a detail — it *is* your definition of a session, and no value of it is more correct than another. The [session-window walkthrough](/courses/streaming-ml/01-batch-to-streaming) measures this directly: on one event stream a 2-second gap yields 9 sessions and a 5-second gap yields 7, from identical events. Whatever you pick silently determines what every downstream sequence model is trained on.
+
 ## Sequence models for recommendation
 
 The natural tool is an **autoregressive sequence model** trained to predict the next item given the history of items in the session.
@@ -70,6 +72,8 @@ DoorDash's real-time ranking system: on every page view, the session sequence is
 
 <Callout type="warning" title="Training-serving skew in real-time features">
   If training used "items clicked in the last hour" computed from logs, but serving computes it from a Redis stream, even a small difference in windowing logic causes feature skew — a major source of silent model degradation. Use the **same feature computation library** at both training and serving time (often via a feature store with point-in-time correctness).
+
+  Two walkthroughs make the cost of getting this wrong concrete: [train-serve skew](/courses/ml-in-practice/02-deployment-pitfalls) shows a one-constant mismatch that leaves offline AUC *completely unchanged* while deflating an affected slice's scores by 28%, and [point-in-time correctness](/courses/ml-in-practice/17-feature-stores) shows what a naive training join costs when a feature is caused by the label.
 </Callout>
 
 ## Contextual bandits for real-time personalization
