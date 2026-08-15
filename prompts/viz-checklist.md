@@ -75,8 +75,42 @@ would carry better.
 - [x] **cnns/03-cnn-visualization-and-attacks** — the FGSM ε sweep. `FGSMViz`.
 - [x] **fine-tuning-alignment/06-knowledge-distillation** — temperature
       softening a logit vector. `DistillationViz`.
-- [ ] **computer-vision/03-backbones-in-practice** — the accuracy/FLOPs Pareto
-      front and compound scaling.
+- [~] **computer-vision/03-backbones-in-practice** — the accuracy/FLOPs Pareto
+      front and compound scaling. **Rejected twice; do not re-derive.**
+
+      *Attempt 1 — simulate the scaling law.* Built a model of accuracy vs
+      depth/width/resolution to show compound scaling beating single-axis
+      scaling. It failed its own verification: depth-only scaling beat compound
+      at 2× FLOPs (80.90% vs 78.87%), and at 8× and 16× the constrained grid
+      produced no compound candidates at all. The model was hand-tuned to a
+      conclusion rather than measured, so the plot would have asserted the
+      lesson's claim rather than tested it. Discarded.
+
+      *Attempt 2 — plot published benchmark numbers.* A Pareto front over real
+      ImageNet results is computable (dominance is arithmetic, not judgement),
+      and it produces a striking result: with the commonly-quoted figures the
+      **entire ResNet family is dominated on both params and FLOPs**, and the
+      frontier *changes membership* depending on which axis you constrain
+      (MobileNetV3-L and ViT-B/16 sit on the FLOPs front but are dominated on
+      params; MobileNetV2 and EfficientNet-B6 are the reverse). Good finding —
+      but the inputs do not survive scrutiny. Three confounds, all fatal:
+      training recipe (timm's `resnet50.a1_in1k` is **80.4%**, not the 76% every
+      comparison table quotes — a +4.3pp swing on an unchanged architecture),
+      pre-training data (EfficientNet's headline numbers are NoisyStudent on
+      JFT-300M, not ImageNet-only), and FLOP convention (B4 quoted at both 4.2G
+      and 8.29G, a clean 2× MAC-vs-FLOP split). Published sources disagree on
+      B4's accuracy across 82.6 / 82.9 / 83.0. Every other viz here *computes*
+      its numbers; this one would transcribe contested constants and present
+      them as a frontier. Not built.
+
+      *What was done instead:* the confound is the real teaching point, and it
+      was cheap and well-sourced, so it went into the lesson as prose — a
+      warning callout under the "Choosing a Backbone" table explaining that its
+      accuracy column compares recipes as much as architectures, with the
+      ResNet-50 76% → 80.4% figure cited to *ResNet strikes back* and timm.
+      If this is ever revisited, the viz to build is **that**: one architecture,
+      several recipes, watching the ranking reorder. It needs a single-harness
+      multi-recipe table, which no source cleanly publishes today.
 - [x] **graph-neural-networks/01-graphs-as-data** — receptive field growth per
       message-passing layer. `ReceptiveFieldViz`.
 - [x] **causal-inference/02-interventions-and-potential-outcomes** — backdoor

@@ -155,6 +155,12 @@ Rules of thumb:
 - **High-accuracy production model**: EfficientNet-B4 or B5
 - **Abundant compute and data**: ViT-B/16 or larger
 
+<Callout type="warning">
+**These accuracy columns compare training recipes as much as architectures.** The ResNet-50 figure of 76% is the 2015 recipe: 90 epochs, step LR, basic augmentation. Re-train the *identical* architecture — same 25.6M parameters, same 4.1 GFLOPs — with a modern recipe (LAMB, heavy augmentation, longer schedule) and it reaches **80.4%** top-1 ([Wightman et al., *ResNet strikes back*, 2021](https://arxiv.org/abs/2110.00476); reproduced in [timm's results table](https://github.com/huggingface/pytorch-image-models/blob/main/results/results-imagenet.csv)). That single change closes most of the gap to backbones released six years later.
+
+Two consequences when you read any table like this one. First, a headline accuracy is a claim about a *checkpoint*, not an architecture — always check the recipe, the input resolution, and whether extra pre-training data was used (EfficientNet's highest published numbers use NoisyStudent with JFT-300M, which is not an ImageNet-only result). Second, FLOP counts follow two conventions that differ by 2×, since some authors report multiply-accumulates. Compare architectures only within a single consistent evaluation harness.
+</Callout>
+
 <Callout type="tip">
 **Always normalize inputs to ImageNet statistics** when using any pre-trained backbone. The weights were trained expecting pixel values normalized to mean $\mu = [0.485,\ 0.456,\ 0.406]$ and standard deviation $\sigma = [0.229,\ 0.224,\ 0.225]$ (per channel, RGB). Skipping normalization produces activations outside the trained distribution and severely degrades transfer performance — even when fine-tuning end-to-end.
 </Callout>
