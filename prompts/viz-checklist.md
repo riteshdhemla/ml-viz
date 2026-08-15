@@ -187,9 +187,22 @@ wrong format.
       trap and the delayed-label loop.
 - [ ] **recommender-systems/04-session-based-and-realtime** — the real-time
       feature pipeline through to re-ranking.
-- [ ] **ml-in-practice/12-inference-optimization-and-serving** — KV-cache →
-      batching → accelerator, though three of its components are already traced
-      on wiki pages; check for overlap first.
+- [~] **ml-in-practice/12-inference-optimization-and-serving** — KV-cache →
+      batching → accelerator. **Rejected on the overlap check the entry itself
+      asked for.** Every mechanism section already has a built artifact:
+      KV-cache/PagedAttention → `paged-attention` trace, batching →
+      `continuous-batching` trace, accelerators → `RooflineViz`, speculative
+      decoding → `speculative-decoding` trace, quantization → `QuantizationViz`.
+      A guided walkthrough would have re-taught four traces in a thinner form.
+
+      The actual defect was different and cheaper: the lesson linked to **none**
+      of them — zero `<WikiLink>`s in the whole file, despite explaining all four
+      mechanisms in prose. Fixed by wiring the three wiki links in at the end of
+      their matching sections and embedding `RooflineViz` in the accelerator
+      section with a "what to notice" paragraph tying decode's memory-bound
+      position back to why the KV-cache, continuous batching and quantization
+      all exist. Cross-link before building: a lesson that explains a mechanism
+      well but never points at its trace looks like a viz gap and is not one.
 - [ ] **building-with-llms/03-embeddings-and-semantic-search** — text → vector →
       index → retrieve, if it can avoid duplicating `RAGRetrievalViz`.
 - [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →

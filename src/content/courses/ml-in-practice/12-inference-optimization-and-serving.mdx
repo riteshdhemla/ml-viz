@@ -41,6 +41,8 @@ where the leading 2 covers both K *and* V. For Llama-3.1-70B (L = 80, H = 8 KV-h
 
 **PagedAttention**, the algorithm behind vLLM, fixes the worst part of this. Naive allocators reserve `max_seq_len` of cache for every active request and waste 60–80% of HBM on padding. PagedAttention treats the KV-cache like a virtual-memory pager — allocate it in 16-token blocks on demand, share blocks between requests with identical prefixes, and free blocks when a request finishes. It is roughly the same idea as OS paging applied to attention, and it routinely 2–4× the throughput of naive serving without changing the model at all.
 
+<WikiLink slug="paged-attention" title="PagedAttention & KV-cache management, block by block" />
+
 ## Batching: static, dynamic, and continuous
 
 A GPU that processes one request at a time wastes most of its compute. Batching amortises the model-weight read across many sequences, which is what unlocks decode throughput.
@@ -50,6 +52,8 @@ A GPU that processes one request at a time wastes most of its compute. Batching 
 - **Continuous batching** (also called *iteration-level scheduling* or *in-flight batching*) — the scheduler runs the model *one decode step at a time across the whole active batch*, and the moment any request finishes, a queued request takes its slot. There's no "batch boundary"; the batch composition changes every step. This is the design that makes modern LLM servers feel responsive at high QPS.
 
 Continuous batching is what gives vLLM and TGI most of their throughput advantage. A static batch of 32 sequences with response lengths spanning 50–1000 tokens runs at the *longest* sequence's pace and wastes ~80% of the slots after the short ones finish. The same workload with continuous batching keeps every slot busy, increasing throughput by 4–10× for chat traffic.
+
+<WikiLink slug="continuous-batching" title="Watch the scheduler swap a finished request out mid-batch" />
 
 <Callout type="warning" title="Padding wastes compute *and* memory.">
 Naive batching pads every sequence to the longest one in the batch and runs the GPU over the padding tokens too. The KV-cache for the padding is also allocated. The combined waste — padded compute *and* padded cache — is why teams who batch without continuous batching see real throughput well below the theoretical "batch size × single-sequence speed" they expected.
@@ -73,6 +77,10 @@ The major accelerator families occupy different points:
 - **Inference-specific silicon** — Groq LPU (extreme bandwidth, fixed weight layout), Cerebras WSE-3, AWS Inferentia, Google's Edge TPU. Specialised wins, narrower software stacks.
 
 The practical takeaway: pick the accelerator by where your workload sits on the roofline. A high-throughput batch summariser benefits from cheap compute-heavy chips (L40S); a low-latency chat product benefits from bandwidth-heavy chips (H100/H200 or Groq); an edge assistant benefits from a quantized small model on commodity hardware.
+
+<RooflineViz />
+
+Move the batch-size control and watch decode climb the bandwidth roof: at batch 1 the kernel sits far into the memory-bound region, and the only thing that buys throughput is reading weights faster or reading them less often. That is the whole argument for the KV-cache, for continuous batching, and for quantization, in one picture.
 
 ## Serving stacks: what each buys you
 
@@ -99,6 +107,8 @@ The KV-cache itself can also be quantized to INT8 or FP8, doubling the effective
 ## Speculative decoding: getting two tokens for the price of one
 
 A single decode step on a large model reads all the weights from HBM to produce one token — almost all of that bandwidth is "wasted" if the next token was easy to predict. **Speculative decoding** uses a small "draft" model to propose the next $k$ tokens cheaply, then the large model verifies all $k$ in a single forward pass and accepts the longest prefix that matches. When the draft model's predictions are close to the target's, the effective tokens-per-step rises from 1 to 2–4 with no quality loss, since the *target* model still validates everything. The win is biggest on easy prefixes (boilerplate, code skeletons) and smallest on hard ones (novel reasoning). All major serving stacks now support some flavour of this — Medusa heads, EAGLE, plain draft-target, lookahead decoding.
+
+<WikiLink slug="speculative-decoding" title="Step through draft, verify, and the accepted prefix" />
 
 <Exercise id="ml-practice-inference-kv-cache-bytes" />
 
