@@ -57,6 +57,12 @@ ranked = sorted(corpus, key=lambda d: cosine(query, embed(d)), reverse=True)
 
 Neither dominates everywhere — production systems often run **hybrid search** (combine both scores) to get exact-match precision *and* semantic recall.
 
+<HybridSearchViz />
+
+Two things are worth taking from measuring that rather than asserting it. **Semantic search's failure on exact codes is structural, not a tuning problem.** In the walkthrough the two near-identical SKU documents have a cosine similarity of 1.0000 — tokens containing digits collapse onto a shared direction, so the representation has no way to express the difference between `SKU-88421` and `SKU-88422`. Asked for one, its top hit is a password-reset document. Information the encoding discarded cannot be recovered downstream, which is the real argument for keeping a keyword index alongside.
+
+**And fusion's constant is not a detail.** Reciprocal-rank fusion scores by $1/(k + \text{rank})$ from each retriever; the $k = 60$ everyone copies from the original paper is calibrated for corpora of millions, where tail-rank differences are noise. Over a small corpus it flattens exactly the rank differences fusion exists to exploit. At $k \\le 10$ hybrid scores 0.989 mean and — the number that matters — **0.920 on its worst query**, against the dense retriever's 0.631. Past $k = 20$ the benefit switches off completely: 0.945 mean and 0.613 worst, below dense on both. Fusion's real product is that worst-query floor, and you only get it if you tune $k$ against your own corpus.
+
 ## Scaling: the vector index
 
 Comparing a query against millions of vectors one-by-one (exact nearest-neighbour) is too slow. **Vector databases** use **Approximate Nearest Neighbour (ANN)** indexes (e.g. HNSW graphs, IVF) that trade a little recall for orders-of-magnitude speed.

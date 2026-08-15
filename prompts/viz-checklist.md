@@ -220,8 +220,36 @@ wrong format.
       position back to why the KV-cache, continuous batching and quantization
       all exist. Cross-link before building: a lesson that explains a mechanism
       well but never points at its trace looks like a viz gap and is not one.
-- [ ] **building-with-llms/03-embeddings-and-semantic-search** — text → vector →
-      index → retrieve, if it can avoid duplicating `RAGRetrievalViz`.
+- [x] **building-with-llms/03-embeddings-and-semantic-search** — `HybridSearchViz`
+      (guided, 4 steps). Overlap check passed: `RAGRetrievalViz` is a 2D k-vs-
+      precision picture and never touches keyword vs semantic, so this builds the
+      retrieval-comparison half only; indexing stays with the `hnsw` / `ivf`
+      traces the lesson already links.
+
+      BM25 is real over a real 15-doc corpus. The dense retriever is
+      **constructed but derived from the text, not the answer key** — words
+      sharing a sense share a direction (this table *is* an assumption, stated as
+      such), digits collapse onto one shared direction. Two findings that are
+      consequences rather than assumptions:
+
+      1. **The exact-ID failure is mechanical.** Cosine between the two SKU
+         documents is **1.0000** — the encoding cannot represent the difference
+         between SKU-88421 and SKU-88422 — and dense's top hit for the SKU query
+         is "Reset your account password". Per-query wins: BM25 1, dense 3,
+         tied 3, so "neither dominates" is measured, not asserted.
+      2. **RRF's constant decides whether fusion helps at all.** At k ≤ 10:
+         mean 0.989, worst query 0.920. At k ≥ 20 (including the k = 60 everyone
+         copies): mean 0.945, worst 0.613 — *below dense alone on both*. The
+         benefit switches off between k = 10 and k = 20, because k = 60 is
+         calibrated for corpora of millions.
+
+      **Process note worth keeping**: the first build was rigged — topic vectors
+      hand-assigned to match the relevance labels, so dense scored a perfect
+      1.000 everywhere and hybrid came out *worse*. Rebuilt to derive vectors
+      from the text. Then the shipped component's numbers diverged from the
+      scratch script (a filler-vector cache changed the retriever), so the doc
+      table and prose were re-extracted **by running the component's own
+      functions**. Verify against the file that ships, not the prototype.
 - [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →
       entity/graph features → adversarial response.
 - [ ] **nlp/01-text-preprocessing** — the preprocessing pipeline (BPE itself is

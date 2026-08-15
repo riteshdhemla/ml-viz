@@ -104,6 +104,7 @@ export const mdxComponents: MDXComponents = {
   GridWorldViz: viz("GridWorldViz"),
   HierarchicalForecastViz: viz("HierarchicalForecastViz"),
   HMMViterbiViz: viz("HMMViterbiViz"),
+  HybridSearchViz: viz("HybridSearchViz"),
   HyperparamSearchViz: viz("HyperparamSearchViz"),
   HypothesisTestViz: viz("HypothesisTestViz"),
   KernelViz: viz("KernelViz"),
