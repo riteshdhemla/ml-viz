@@ -183,8 +183,25 @@ wrong format.
       group-correlated features, i.e. a whole extra mechanism. And the **tier
       analysis at 1,500 test items** produced 0–4 items per tier, far too few to
       mean anything; it needs ≥20k held out.
-- [ ] **streaming-ml/05-streaming-ml-in-production** — the online/offline skew
-      trap and the delayed-label loop.
+- [x] **streaming-ml/05-streaming-ml-in-production** — the online/offline skew
+      trap and the delayed-label loop. `DelayedLabelViz` (guided, 4 steps).
+      **Scoped down on an overlap check**: the skew/point-in-time half is now
+      `PointInTimeViz` (ml-in-practice/17) and the drift half is the `adwin`
+      trace, so this builds only the delayed-label piece, which nothing covered.
+
+      200 days, 1,200 transactions/day, true fraud rate exactly 3.00%, no drift
+      and no model — the only moving part is when chargebacks land (lognormal,
+      median ~2 weeks, tail to 150 days). Finding: **every recent-window metric
+      is biased low, one-directionally and stably.** A rolling 30-day fraud
+      dashboard reads 1.40% against a true 2.93% — understated 52%, and 49–53%
+      across seeds 13/29/41/57 at every value of "today" from day 60 to 199. It
+      is not noise and does not average out. A 7-day window understates by 91%,
+      so *the freshest number is always the most flattering*.
+
+      Both fixes measured: matured cohorts (age ≥ 120d) give 2.97% vs true
+      3.00%, unbiased but four months stale; dividing by the completion curve
+      (the 30-day window is 48.4% complete on average) recovers 2.89% vs 2.93%
+      immediately, at the cost of assuming the delay distribution is stable.
 - [ ] **recommender-systems/04-session-based-and-realtime** — the real-time
       feature pipeline through to re-ranking.
 - [~] **ml-in-practice/12-inference-optimization-and-serving** — KV-cache →
