@@ -59,8 +59,17 @@ would carry better.
       computed live on a re-orderable list. `RankingMetricsViz`.
 - [x] **optimization-ml/05-hyperparameter-optimization** — grid vs random over
       the same budget. `HyperparamSearchViz`.
-- [ ] **streaming-ml/01-batch-to-streaming** — tumbling / sliding / session
+- [x] **streaming-ml/01-batch-to-streaming** — tumbling / sliding / session
       windows, and event time vs processing time on the same event stream.
+      `StreamWindowViz`. Finding: on one 28-event stream, switching tumbling-10s
+      from event time to processing time moves **8 of 28 events (28.6%)** into a
+      different bucket, changes every per-window count (6/2/6/6/4/4 →
+      5/1/7/6/4/3/2), and **invents a seventh window** no event belongs to — with
+      nothing in the output to signal it. Sliding 10s/5s counts each event 1.93×
+      (the overlap working, not a bug); session gap 2s → 9 sessions, 5s → 7, so
+      the gap threshold *is* the definition rather than a tuning knob.
+      Sliding windows had to be drawn on two lanes: stacked in one band the
+      overlap rendered as an unreadable blob, and overlap is the whole point.
 - [x] **model-evaluation/03-training-techniques** — early stopping: train and
       validation curves with the patience window. `EarlyStoppingViz`.
 - [x] **cnns/03-cnn-visualization-and-attacks** — the FGSM ε sweep. `FGSMViz`.

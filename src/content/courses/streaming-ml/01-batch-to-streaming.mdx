@@ -64,6 +64,19 @@ Correct streaming systems window by **event time** and accept that a window can 
 
 **Worked example.** Suppose you count logins per minute. At processing-time 10:00:30 you have seen 40 logins stamped 10:00:xx, so you might emit "40 logins in the 10:00 minute." But three phones were offline; their 10:00 logins arrive at 10:02. With a watermark that allows 3 minutes of lateness, the 10:00 window stays open until event-time 10:03 is reached, and the final count is 43. Window by processing time and you would have permanently reported 40.
 
+### The same stream, cut three ways, on two clocks
+
+<StreamWindowViz />
+
+The worked example above is one window. Here it is as a whole stream: 28 events over a minute, arriving in bursts, 9 of them delayed the way a phone leaving a tunnel delays them.
+
+**Keep tumbling at 10s and flip the clock.** Nothing about the stream changes — the same events, the same timestamps — yet **8 of 28 events (28.6%) land in a different bucket**, the per-window counts go from $6/2/6/6/4/4$ to $5/1/7/6/4/3/2$, and a **seventh window appears that no event actually belongs to**. Every one of those numbers is wrong, and nothing in the output says so. There is no anomaly to detect downstream, no error to log; the pipeline is simply reporting a different stream than the one that happened. That silence is the argument for watermarks over event time.
+
+The other two schemes are not alternatives to tumbling — they answer different questions:
+
+- **Sliding (10s every 5s)** counts each event **1.93 times on average**. That is the overlap doing its job, not double-counting: it is what you want for "rolling 10-minute rate" and exactly what you must not feed to a sum.
+- **Session windows** have no fixed grid at all; they cut wherever the stream goes quiet. At a 2s gap this stream has **9 sessions**, at 5s it has **7** — the same events, regrouped. The gap threshold *is* your definition of a session, and no value of it is more correct than another. That is a modelling decision you are making whether or not you notice.
+
 ## Why not just micro-batch?
 
 A common first instinct is to avoid streaming entirely: buffer a few minutes of data and run an ordinary batch job repeatedly. This **micro-batch** approach (how Spark Structured Streaming works under the hood) is genuinely useful and simpler to reason about. But it inherits batch latency (you wait for the batch to fill), and it does **not** solve the hard parts — bounded memory over an unbounded history, out-of-order event time, and models that must adapt to drift. Those are exactly what the streaming-specific tools in this course address.
