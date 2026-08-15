@@ -9,11 +9,11 @@ estimatedMinutes: 15
 
 # What Are Generative Models?
 
-Most machine learning is **discriminative**: given an input $x$, predict a label $y$. A cat-or-dog classifier learns $P(y \mid x)$. Generative models instead learn to model the data itself, $P(x)$ — and the fascinating thing through a [project-loop](/wiki/ml-project-loop) lens is that VAEs, GANs, and diffusion are mostly the *same* hypothesis space (a neural net) with radically different **objectives** for "make realistic data." Watch the objective slot do the heavy lifting across this course.
+Most machine learning is **discriminative**: given an input $x$, predict a label $y$. A cat-or-dog classifier learns $P(y \mid x)$. Generative models instead learn to model the data itself, $P(x)$, and the fascinating thing through a [project-loop](/wiki/ml-project-loop) lens is that VAEs, GANs, and diffusion are mostly the *same* hypothesis space (a neural net) with radically different **objectives** for "make realistic data." Watch the objective slot do the heavy lifting across this course.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
-Generative models flip the goal. They learn the **distribution of the data itself** — $P(x)$ — so they can sample *new* examples that look like the originals.
+Generative models flip the goal. They learn the **distribution of the data itself** ($P(x)$), so they can sample *new* examples that look like the originals.
 
 **Real-world examples:** Image generation (DALL-E, Midjourney), text generation (GPT), drug discovery, data augmentation, anomaly detection, image super-resolution.
 
@@ -46,7 +46,7 @@ Both models are fitted live on the sampled points, and on this data they draw **
 
 With eight labels the generative model is nearly twice as accurate; by sixty they have converged and the advantage is gone. Modelling $P(x,y)$ commits you to an assumption about the data's shape, and that assumption pays exactly while you have too little data to learn the shape from scratch — the classic Ng & Jordan result.
 
-**And only one of them can say "I have never seen this."** Move the probe off the edge of the data. At $(4.5, 3.2)$ the logistic regression reports $P(\text{orange}) = 1.0000$ — total certainty — while the generative model reports $p(x)$ on the order of $10^{-8}$. Push the probe to $(-6, 5)$ and it is $P = 0.0000$ against $p(x) \approx 10^{-24}$. A discriminative model has no vocabulary for doubt: it knows which side of a line you are on and literally nothing else, and a point a thousand miles from any training example is simply very far on one side. This is why out-of-distribution detection, anomaly detection and calibration under shift all reach for a density.
+**And only one of them can say "I have never seen this."** Move the probe off the edge of the data. At $(4.5, 3.2)$ the logistic regression reports $P(\text{orange}) = 1.0000$ (total certainty), while the generative model reports $p(x)$ on the order of $10^{-8}$. Push the probe to $(-6, 5)$ and it is $P = 0.0000$ against $p(x) \approx 10^{-24}$. A discriminative model has no vocabulary for doubt: it knows which side of a line you are on and literally nothing else, and a point a thousand miles from any training example is simply very far on one side. This is why out-of-distribution detection, anomaly detection and calibration under shift all reach for a density.
 
 ## Why generate data?
 
@@ -103,7 +103,7 @@ $$
 \mathbf{z} \sim P(\mathbf{z}) \quad \xrightarrow{\text{decoder}} \quad \mathbf{x}
 $$
 
-The latent space captures the "essence" of the data — style, pose, identity — while the decoder fills in the details.
+The latent space captures the "essence" of the data (style, pose, identity), while the decoder fills in the details.
 
 ### A concrete density: 2D Gaussian
 

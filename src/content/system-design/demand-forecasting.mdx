@@ -91,7 +91,7 @@ line.
 <ThinkFirst question="Your training target is historical sales. When is “sales” not “demand” — and what does the model learn if you ignore the difference?">
 Whenever you **stocked out**: sales flatline at inventory, not at what
 customers wanted. Train on raw sales and the model learns suppressed demand as
-true demand, forecasts low, orders less — and manufactures the next stockout.
+true demand, forecasts low, orders less, and manufactures the next stockout.
 Censored periods must be masked or demand-corrected before training. At
 Instacart the same problem appears one level down: predicting real-time
 *availability* of 200M+ grocery items is its own ML system, because observed
@@ -170,7 +170,7 @@ recursive rollouts.
 A random split leaks the future: the model trains on observations *after* the
 ones it's tested on, so seasonality and trends are effectively given away.
 Time series demands **walk-forward** (rolling-origin) backtesting — train up to
-time T, forecast beyond it, roll forward, repeat — and probabilistic outputs
+time T, forecast beyond it, roll forward, repeat, and probabilistic outputs
 need pinball loss and coverage checks, not just MAPE. The M5 competition's
 companion **uncertainty track** scored exactly this: quantile forecasts under
 pinball loss.

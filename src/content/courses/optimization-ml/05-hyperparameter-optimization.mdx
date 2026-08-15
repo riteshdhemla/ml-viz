@@ -9,7 +9,7 @@ estimatedMinutes: 15
 
 # Hyperparameter Optimization & AutoML
 
-Gradient descent learns the *parameters* (weights). But the **hyperparameters** — learning rate, regularization strength, layer width, tree depth — are set *before* training and can't be learned by the same gradient. Choosing them well is often the difference between a great model and a mediocre one, and doing it efficiently is its own optimization problem. This lesson covers how to search hyperparameter space, and the **AutoML** vision of automating the search entirely.
+Gradient descent learns the *parameters* (weights). But the **hyperparameters** (learning rate, regularization strength, layer width, tree depth) are set *before* training and can't be learned by the same gradient. Choosing them well is often the difference between a great model and a mediocre one, and doing it efficiently is its own optimization problem. This lesson covers how to search hyperparameter space, and the **AutoML** vision of automating the search entirely.
 
 **Real-world examples:** tuning a model's learning rate and weight decay, choosing tree depth and number of estimators for XGBoost, neural architecture search, and managed AutoML services that try to deliver a good model with minimal manual tuning.
 
@@ -30,7 +30,7 @@ Each evaluation of the objective is a complete training run, so the whole game i
 **Random search.** Sample configurations at random. Surprisingly, it usually **beats grid search** for the same budget: most hyperparameters barely matter, so random sampling explores the *important* ones more finely instead of wasting trials on a fine grid over irrelevant ones (Bergstra & Bengio).
 
 <Callout type="info" title="Why random beats grid">
-  A grid spends its budget evenly across all dimensions, including useless ones — so it only tries a few distinct values of the *one* hyperparameter that matters. Random search tries a different value of every hyperparameter on every trial, effectively giving the important dimension many more distinct samples for the same number of runs.
+  A grid spends its budget evenly across all dimensions, including useless ones, so it only tries a few distinct values of the *one* hyperparameter that matters. Random search tries a different value of every hyperparameter on every trial, effectively giving the important dimension many more distinct samples for the same number of runs.
 </Callout>
 
 **Bayesian optimization.** Both grid and random are **non-adaptive** — they ignore everything learned from past trials. Bayesian optimization (from the Bayesian Methods course) fits a surrogate to past results and picks the most promising next configuration, finding good hyperparameters in far fewer trials. The catch: it's **sequential**, so it parallelizes less easily than random search.
@@ -66,7 +66,7 @@ These combine naturally with random search (random configs, halving allocation) 
 
 ## AutoML and neural architecture search
 
-**AutoML** aims to automate the whole pipeline — feature preprocessing, model choice, and hyperparameters — so a non-expert can get a strong model. **Neural Architecture Search (NAS)** is the most ambitious slice: *search the model architecture itself* (which layers, connections, sizes). Early NAS cost thousands of GPU-days; modern weight-sharing and gradient-based NAS made it far cheaper, though for most practitioners a good search over a sensible space still beats fully automated design.
+**AutoML** aims to automate the whole pipeline (feature preprocessing, model choice, and hyperparameters), so a non-expert can get a strong model. **Neural Architecture Search (NAS)** is the most ambitious slice: *search the model architecture itself* (which layers, connections, sizes). Early NAS cost thousands of GPU-days; modern weight-sharing and gradient-based NAS made it far cheaper, though for most practitioners a good search over a sensible space still beats fully automated design.
 
 <Callout type="warning" title="Don't tune on the test set">
   Hyperparameter search optimizes the **validation** score; if you tune against the test set you'll overfit it and your reported numbers will be optimistic. With heavy searching even the validation set can be overfit — use **nested cross-validation** or a held-out final test set touched only once.

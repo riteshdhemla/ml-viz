@@ -48,7 +48,7 @@ Mini-batch is the practical sweet spot for two reasons:
 
 ## SGD with momentum
 
-Plain mini-batch SGD bounces back and forth across the walls of narrow ravines — directions where the loss curvature is large — while advancing slowly along the floor where curvature is small. Momentum fixes this by keeping a running **velocity** that accumulates past gradients.
+Plain mini-batch SGD bounces back and forth across the walls of narrow ravines (directions where the loss curvature is large), while advancing slowly along the floor where curvature is small. Momentum fixes this by keeping a running **velocity** that accumulates past gradients.
 
 ### The update rule
 
@@ -202,7 +202,7 @@ $$
 m_1 = 0.9 \cdot 0 + 0.1 \cdot g = 0.1\,g
 $$
 
-Without correction, $m_1$ is 10× smaller than the true gradient — it is systematically biased toward zero. Dividing by $(1 - \beta_1^1) = 0.1$ recovers $g$ exactly. The bias decays exponentially: by $t = 100$, $\beta_1^{100} \approx 3 \times 10^{-5}$, so the correction becomes negligible.
+Without correction, $m_1$ is 10× smaller than the true gradient. It is systematically biased toward zero. Dividing by $(1 - \beta_1^1) = 0.1$ recovers $g$ exactly. The bias decays exponentially: by $t = 100$, $\beta_1^{100} \approx 3 \times 10^{-5}$, so the correction becomes negligible.
 
 ### Worked example: 2 Adam steps on $L(\theta) = \theta^2$
 
@@ -294,7 +294,7 @@ What to notice:
   run here beats Adam's, but Adam converges over ~4 decades of learning rate against
   SGD's 0.7.
 
-For the full family tree — AdaGrad, AdamW's decoupled weight decay, Nadam — with every update rule derived and compared on the same problem:
+For the full family tree (AdaGrad, AdamW's decoupled weight decay, Nadam), with every update rule derived and compared on the same problem:
 
 <WikiLink slug="gradient-descent-optimizers" title="Gradient Descent Optimizers: SGD, Momentum, Adagrad, RMSprop & Adam" />
 
@@ -342,7 +342,7 @@ $$
 
 Why? At initialization, the model's weights are random and its gradient estimates are unreliable. A large initial learning rate can cause catastrophic parameter updates before the gradient signal stabilizes. The warm-up gives the optimizer a few steps to build up accurate first- and second-moment estimates before taking large steps.
 
-For schedule shapes beyond these — one-cycle, inverse square root, and how to pick warm-up length — see the deep dive:
+For schedule shapes beyond these (one-cycle, inverse square root, and how to pick warm-up length), see the deep dive:
 
 <WikiLink slug="learning-rate-schedules" title="Learning Rate Schedules: Warmup, Decay & Restarts" />
 

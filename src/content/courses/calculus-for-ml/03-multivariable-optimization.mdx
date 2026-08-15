@@ -80,7 +80,7 @@ $$
 H_{ij} = \frac{\partial^2 f}{\partial x_i \partial x_j}
 $$
 
-It generalizes the second derivative to multiple dimensions and captures **curvature**. For a smooth function the mixed partials are equal ($\partial^2 f / \partial x \partial y = \partial^2 f / \partial y \partial x$), so the Hessian is always **symmetric** — which is why its eigenvalues are real.
+It generalizes the second derivative to multiple dimensions and captures **curvature**. For a smooth function the mixed partials are equal ($\partial^2 f / \partial x \partial y = \partial^2 f / \partial y \partial x$), so the Hessian is always **symmetric**, which is why its eigenvalues are real.
 
 ### Worked example: the Hessian of our function
 
@@ -141,7 +141,7 @@ $$
 f(\mathbf{x}) \approx f(\mathbf{x}_0) + \nabla f(\mathbf{x}_0)^\top (\mathbf{x} - \mathbf{x}_0) + \frac{1}{2}(\mathbf{x} - \mathbf{x}_0)^\top \mathbf{H}(\mathbf{x}_0)(\mathbf{x} - \mathbf{x}_0)
 $$
 
-The three terms are: the value, the linear (slope) correction, and the quadratic (curvature) correction. At a critical point $\nabla f = \mathbf{0}$, so the linear term drops and the local shape is governed entirely by $\mathbf{H}$ — this is precisely why the Hessian's eigenvalues decide minimum vs. saddle.
+The three terms are: the value, the linear (slope) correction, and the quadratic (curvature) correction. At a critical point $\nabla f = \mathbf{0}$, so the linear term drops and the local shape is governed entirely by $\mathbf{H}$. This is precisely why the Hessian's eigenvalues decide minimum vs. saddle.
 
 Let $\mathbf{s} = \mathbf{x} - \mathbf{x}_0$. Writing the curvature term in the eigenbasis $\mathbf{H} = \sum_i \lambda_i \mathbf{v}_i \mathbf{v}_i^\top$ gives
 
@@ -255,7 +255,7 @@ $$
 
 A standard safe choice is $\eta = 1/\lambda_{\max} = 0.25$, which kills the error along the steepest direction in one step. The rate that optimally balances *both* directions is $\eta^* = 2/(\lambda_{\max} + \lambda_{\min}) = 0.4$ — it contracts each coordinate by the same factor $0.6$ per step. The notebook runs $\eta \in \{0.05, 0.2, 0.49, 0.51\}$ and shows the last value blowing up — exactly the $0.5$ threshold predicted here.
 
-This is why the curvature of the loss landscape determines the best learning rate — and why adaptive methods like Adam use per-parameter estimates of curvature.
+This is why the curvature of the loss landscape determines the best learning rate, and why adaptive methods like Adam use per-parameter estimates of curvature.
 
 <Callout type="warning" title="Saddle points and plateaus">
   In high dimensions, saddle points are exponentially more common than local minima. Gradient descent slows near them because the gradient is small. SGD noise and momentum help escape them by adding randomness to the updates.

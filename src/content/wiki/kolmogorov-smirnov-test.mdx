@@ -10,7 +10,7 @@ estimatedMinutes: 12
 
 # The Kolmogorov–Smirnov Test: Comparing Distributions
 
-The **Kolmogorov–Smirnov (KS) test** answers a precise question: do two samples come from the same distribution (two-sample), or does one sample come from a specified reference distribution (one-sample)? Unlike PSI it needs **no binning** — it works directly on the empirical cumulative distribution function — which makes it the natural drift detector for continuous features.
+The **Kolmogorov–Smirnov (KS) test** answers a precise question: do two samples come from the same distribution (two-sample), or does one sample come from a specified reference distribution (one-sample)? Unlike PSI it needs **no binning** (it works directly on the empirical cumulative distribution function), which makes it the natural drift detector for continuous features.
 
 Its central idea is geometric: line up the two CDFs and measure the single largest vertical gap between them. If that gap is bigger than sampling noise can plausibly explain, the distributions differ.
 
@@ -22,7 +22,7 @@ $$
 F_n(x) = \frac{1}{n} \sum_{i=1}^{n} \mathbf{1}[x_i \le x]
 $$
 
-It rises by $1/n$ at each observed value and is flat in between. By the Glivenko–Cantelli theorem, $F_n$ converges uniformly to the true CDF $F$ as $n \to \infty$ — which is exactly what makes a CDF-gap statistic meaningful.
+It rises by $1/n$ at each observed value and is flat in between. By the Glivenko–Cantelli theorem, $F_n$ converges uniformly to the true CDF $F$ as $n \to \infty$, which is exactly what makes a CDF-gap statistic meaningful.
 
 ## The D statistic
 
@@ -58,7 +58,7 @@ This is the version used in drift monitoring: $F_n$ is the training sample, $G_m
 
 ## From D to a p-value
 
-Under $H_0$ (same distribution), the scaled statistic converges to the **Kolmogorov distribution**, whose tail gives the p-value. The remarkable property: this limiting distribution is **distribution-free** — it does not depend on the underlying $F$ (for continuous data). The asymptotic tail is
+Under $H_0$ (same distribution), the scaled statistic converges to the **Kolmogorov distribution**, whose tail gives the p-value. The remarkable property: this limiting distribution is **distribution-free**. It does not depend on the underlying $F$ (for continuous data). The asymptotic tail is
 
 $$
 P\!\left(\sqrt{n}\, D_n > t\right) \to 2 \sum_{k=1}^{\infty} (-1)^{k-1} e^{-2 k^2 t^2}

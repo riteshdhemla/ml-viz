@@ -13,13 +13,13 @@ The **DGIM algorithm** (Datar, Gionis, Indyk, Motwani, 2002) answers a deceptive
 
 ## Why exact counting is impossible in sublinear space
 
-If you must answer *exactly* for every possible window content, you need to distinguish all $2^N$ bit patterns, which requires $N$ bits. Approximation is not a convenience here — it is the only way to beat $O(N)$. DGIM commits to a bounded *relative* error and spends its memory on a clever summary.
+If you must answer *exactly* for every possible window content, you need to distinguish all $2^N$ bit patterns, which requires $N$ bits. Approximation is not a convenience here. It is the only way to beat $O(N)$. DGIM commits to a bounded *relative* error and spends its memory on a clever summary.
 
 ## Buckets
 
 DGIM summarises the window with **buckets**. Each bucket covers a contiguous range of stream positions and records two things:
 
-- **Timestamp** of its most recent 1, stored modulo $N$ — so $O(\log N)$ bits. This lets DGIM tell when a bucket has slid out of the window.
+- **Timestamp** of its most recent 1, stored modulo $N$, so $O(\log N)$ bits. This lets DGIM tell when a bucket has slid out of the window.
 - **Size** = the number of 1s in the bucket, which is always a **power of two** $2^j$. Storing the exponent $j$ costs only $O(\log\log N)$ bits.
 
 Two invariants are maintained at all times:

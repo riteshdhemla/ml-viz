@@ -9,7 +9,7 @@ estimatedMinutes: 15
 
 # Generalized Linear Models & GDA
 
-Linear regression and logistic regression look different on the surface — one outputs a real number, the other a probability — but they share the same update rule and the same theoretical justification. **Generalized Linear Models (GLMs)** expose why.
+Linear regression and logistic regression look different on the surface (one outputs a real number, the other a probability) but they share the same update rule and the same theoretical justification. **Generalized Linear Models (GLMs)** expose why.
 
 ## The exponential family
 
@@ -25,7 +25,7 @@ $$
 - $b(y)$ — a base measure independent of $\eta$
 
 <Callout type="info" title="Why this matters">
-  The exponential family is a single algebraic form that contains **Gaussian, Bernoulli, Poisson, Exponential, Gamma, Multinomial**, and many other distributions. Every member has a concave log-likelihood with the same clean gradient structure, so one fitting recipe covers them all — and GLMs are built exactly on top of this structure.
+  The exponential family is a single algebraic form that contains **Gaussian, Bernoulli, Poisson, Exponential, Gamma, Multinomial**, and many other distributions. Every member has a concave log-likelihood with the same clean gradient structure, so one fitting recipe covers them all, and GLMs are built exactly on top of this structure.
 </Callout>
 
 ### Bernoulli as exponential family
@@ -91,7 +91,7 @@ Gradient descent works, but no production fitter uses it. R's `glm` and statsmod
 - **Frame 2 — the first step is plain OLS.** Starting from $\theta = 0$, every $\eta$ is 0, so every $\mu = 1$ and every weight is 1. The reweighting only begins once the fitted means spread out.
 - **Frame 3 — Newton's rate is *local*, and the numbers show both halves.** The first five iterations crawl (2.25 down to 0.28, a factor of 8 in total); the last five square the error each step (9e-2 → 1e-2 → 1e-4 → 1e-8 → 1e-15). "Quadratic convergence" describes the second half only.
 - **Frame 4 — Gaussian converges in exactly one iteration**, with a second step that moves $\theta$ by 0. With the identity link the weights are all 1 and $z = y$, so the first weighted least-squares solve *is* OLS. Linear regression is not a GLM that happens to be easy; it is the case where the iteration has nothing to iterate.
-- **Frame 6 — separation.** On perfectly separable logistic data the MLE does not exist, and the loop cannot tell you. It does not error or fail to converge: $\|\theta\|$ climbs to 110, the weights $\mu(1-\mu)$ collapse to $10^{-12}$, and $\det(X^\top W X)$ falls from 140 to $10^{-6}$. What you see downstream is enormous coefficients with enormous standard errors — and those standard errors come from inverting exactly that collapsing matrix.
+- **Frame 6 — separation.** On perfectly separable logistic data the MLE does not exist, and the loop cannot tell you. It does not error or fail to converge: $\|\theta\|$ climbs to 110, the weights $\mu(1-\mu)$ collapse to $10^{-12}$, and $\det(X^\top W X)$ falls from 140 to $10^{-6}$. What you see downstream is enormous coefficients with enormous standard errors, and those standard errors come from inverting exactly that collapsing matrix.
 
 Frame 5 is worth reading against the callout above. Gradient ascent on the same likelihood is not catastrophically slow — 83 iterations at its best learning rate against IRLS's 10. Its real cost is that the iteration count spans 18× across learning rates and fails to converge entirely at 0.5, just past the best one. IRLS has no learning rate: the step size comes from the curvature.
 

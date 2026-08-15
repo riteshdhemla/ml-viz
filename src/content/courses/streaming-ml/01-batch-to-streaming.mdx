@@ -23,7 +23,7 @@ one at a time, often at a rate so high that if an element is not processed the m
 
 ## The data-stream model
 
-The classic streaming model — formalised in Stanford's CS246 and MIT's advanced-algorithms courses — makes the constraints precise:
+The classic streaming model (formalised in Stanford's CS246 and MIT's advanced-algorithms courses) makes the constraints precise:
 
 1. **Unbounded input.** The stream length $n$ is not known in advance and may be effectively infinite.
 2. **One pass.** Each element is seen exactly once, in arrival order. No rewinding.
@@ -70,7 +70,7 @@ Correct streaming systems window by **event time** and accept that a window can 
 
 The worked example above is one window. Here it is as a whole stream: 28 events over a minute, arriving in bursts, 9 of them delayed the way a phone leaving a tunnel delays them.
 
-**Keep tumbling at 10s and flip the clock.** Nothing about the stream changes — the same events, the same timestamps — yet **8 of 28 events (28.6%) land in a different bucket**, the per-window counts go from $6/2/6/6/4/4$ to $5/1/7/6/4/3/2$, and a **seventh window appears that no event actually belongs to**. Every one of those numbers is wrong, and nothing in the output says so. There is no anomaly to detect downstream, no error to log; the pipeline is simply reporting a different stream than the one that happened. That silence is the argument for watermarks over event time.
+**Keep tumbling at 10s and flip the clock.** Nothing about the stream changes (the same events, the same timestamps), yet **8 of 28 events (28.6%) land in a different bucket**, the per-window counts go from $6/2/6/6/4/4$ to $5/1/7/6/4/3/2$, and a **seventh window appears that no event actually belongs to**. Every one of those numbers is wrong, and nothing in the output says so. There is no anomaly to detect downstream, no error to log; the pipeline is simply reporting a different stream than the one that happened. That silence is the argument for watermarks over event time.
 
 The other two schemes are not alternatives to tumbling — they answer different questions:
 

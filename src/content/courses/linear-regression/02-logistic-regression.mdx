@@ -40,12 +40,12 @@ $$
 $$
 
 <Callout type="tip" title="Intuition">
-  The sigmoid "squashes" the linear score into a probability. Large positive scores → close to 1, large negative scores → close to 0, and the transition happens smoothly around $z=0$. It is a smooth, differentiable version of a hard step function — and being differentiable is what lets us train it with gradient descent.
+  The sigmoid "squashes" the linear score into a probability. Large positive scores → close to 1, large negative scores → close to 0, and the transition happens smoothly around $z=0$. It is a smooth, differentiable version of a hard step function, and being differentiable is what lets us train it with gradient descent.
 </Callout>
 
 ### The log-odds link (why this model is "linear")
 
-The sigmoid is not an arbitrary choice — it is the function that makes the **log-odds** linear in $\mathbf{x}$. The **odds** of an event with probability $p$ are defined as $\frac{p}{1-p}$ — how many times more likely the event is to occur than not (e.g., odds of 3 means "3 times as likely to happen as not"). The *odds* of the positive class in our model are $\frac{\hat{y}}{1-\hat{y}}$. Start from $\hat{y} = \sigma(z)$ and compute it:
+The sigmoid is not an arbitrary choice. It is the function that makes the **log-odds** linear in $\mathbf{x}$. The **odds** of an event with probability $p$ are defined as $\frac{p}{1-p}$ — how many times more likely the event is to occur than not (e.g., odds of 3 means "3 times as likely to happen as not"). The *odds* of the positive class in our model are $\frac{\hat{y}}{1-\hat{y}}$. Start from $\hat{y} = \sigma(z)$ and compute it:
 
 $$
 1 - \hat{y} = 1 - \frac{1}{1+e^{-z}} = \frac{(1+e^{-z}) - 1}{1+e^{-z}} = \frac{e^{-z}}{1+e^{-z}}
@@ -186,7 +186,7 @@ This is not a heuristic — it *is* the negative log-likelihood of a Bernoulli m
 | 0.5 | 1 | $-\log(0.5) \approx 0.7$ (uncertain) |
 
 <Callout type="success" title="Why this is convex">
-  With $\hat{y} = \sigma(\mathbf{w}^T\mathbf{x})$, cross-entropy is convex in $\mathbf{w}$ — there are no bad local minima, so gradient descent reaches the global optimum. MSE composed with the sigmoid loses this property.
+  With $\hat{y} = \sigma(\mathbf{w}^T\mathbf{x})$, cross-entropy is convex in $\mathbf{w}$. There are no bad local minima, so gradient descent reaches the global optimum. MSE composed with the sigmoid loses this property.
 </Callout>
 
 ```python

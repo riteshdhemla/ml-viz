@@ -92,19 +92,19 @@ $$
 P(i \text{ beats } j) \;=\; \frac{e^{\theta_i}}{e^{\theta_i} + e^{\theta_j}} \;=\; \sigma(\theta_i - \theta_j).
 $$
 
-Fit $\theta$ by maximum likelihood on the win/loss matrix, then convert to Elo points with a linear rescale ($400 / \ln 10$ per natural-log unit, by convention). The math is identical to the **reward model** used in RLHF — see [Reward Models](/courses/fine-tuning-alignment/03-reward-models) — which is not an accident: a reward model *is* a Bradley–Terry model fit to human pairwise preferences.
+Fit $\theta$ by maximum likelihood on the win/loss matrix, then convert to Elo points with a linear rescale ($400 / \ln 10$ per natural-log unit, by convention). The math is identical to the **reward model** used in RLHF (see [Reward Models](/courses/fine-tuning-alignment/03-reward-models)), which is not an accident: a reward model *is* a Bradley–Terry model fit to human pairwise preferences.
 
 ### Why pairwise beats absolute scoring
 
 Absolute scoring asks raters to anchor their "8/10" to a stable mental rubric across thousands of items — they cannot, and rater drift dominates the signal. Pairwise asks "is this one better than that one?", which is a much easier local comparison. The noise floor lives on **deltas**, not on absolute scales, so a $50$-point Elo gap is meaningful even if the absolute numbers move when new models join the pool. **Chatbot Arena** by LMSYS is the canonical example: anonymous side-by-side comparisons from real users, fit to a Bradley–Terry / Elo rating, and the resulting leaderboard is now the de facto public ranking of chat LLMs.
 
 <Callout type="tip" title="Why pairwise beats absolute scoring">
-Absolute rubric scoring conflates *the model's quality* with *the rater's calibration that day*. Pairwise comparison removes the per-rater intercept — only relative differences matter — and the Bradley–Terry / Elo fit aggregates noisy individual judgements into a stable ranking. This is also why preference-tuned models (RLHF, DPO) are trained on pairwise data, not on absolute scalar scores: the supervisor signal is cleaner.
+Absolute rubric scoring conflates *the model's quality* with *the rater's calibration that day*. Pairwise comparison removes the per-rater intercept (only relative differences matter) and the Bradley–Terry / Elo fit aggregates noisy individual judgements into a stable ranking. This is also why preference-tuned models (RLHF, DPO) are trained on pairwise data, not on absolute scalar scores: the supervisor signal is cleaner.
 </Callout>
 
 ## Pitfalls that bite real evaluations
 
-- **Train/test contamination.** Public benchmarks are scraped from the web. When you pretrain a $1$T-token model, a chunk of the test split inevitably ends up in pretraining data, and the model literally memorises the answers. Reported MMLU numbers from models with unfiltered pretraining corpora are systematically optimistic. The defence is contamination-scanning the pretraining set against the test split — and increasingly, **held-out** or **rolling** benchmarks (LiveBench, fresh competition problems) that are constructed after the model's cutoff.
+- **Train/test contamination.** Public benchmarks are scraped from the web. When you pretrain a $1$T-token model, a chunk of the test split inevitably ends up in pretraining data, and the model literally memorises the answers. Reported MMLU numbers from models with unfiltered pretraining corpora are systematically optimistic. The defence is contamination-scanning the pretraining set against the test split, and increasingly, **held-out** or **rolling** benchmarks (LiveBench, fresh competition problems) that are constructed after the model's cutoff.
 - **Tokenizer-dependent metrics.** Already covered — if you must compare across architectures, report bits-per-byte, not perplexity.
 - **Goodhart on the proxy.** Once a benchmark becomes the headline metric, training pipelines start optimising for it directly. MMLU-tuned models can post strong MMLU scores without being broadly better at the underlying tasks; reward-model-tuned models can game the reward model without becoming more helpful. This is the same failure mode as **reward hacking** in RLHF — the proxy and the true objective diverge, and the model exploits the gap.
 

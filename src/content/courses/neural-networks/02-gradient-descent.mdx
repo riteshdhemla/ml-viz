@@ -11,7 +11,7 @@ estimatedMinutes: 18
 
 Training a neural network means finding weights that minimize a **loss function** — a number that measures how wrong the network's predictions are. Gradient descent is the algorithm that does this, and it is the engine behind essentially all of deep learning.
 
-**Real-world examples:** Every trained model — image classifiers, language models, recommenders — was fit by some variant of gradient descent.
+**Real-world examples:** Every trained model (image classifiers, language models, recommenders) was fit by some variant of gradient descent.
 
 ## The core idea
 
@@ -188,7 +188,7 @@ The learning rate $\eta$ scales every step. Using the same line-fitting problem,
   training diverges, the first fix is to lower $\eta$ by 10×.
 </Callout>
 
-In practice $\eta$ is rarely held constant — it is *scheduled* to start large and shrink, often with a warmup ramp first:
+In practice $\eta$ is rarely held constant. It is *scheduled* to start large and shrink, often with a warmup ramp first:
 
 <WikiLink slug="learning-rate-schedules" title="Learning Rate Schedules: Warmup, Decay & Restarts" />
 
@@ -202,7 +202,7 @@ In the example above we summed the gradient over **all three** points before eac
 | **Stochastic (SGD)** | One | Noisy, cheap, the noise can jump out of shallow minima |
 | **Mini-batch** | 32–512 | Best of both — the practical default |
 
-The key insight: a mini-batch gradient is an **unbiased estimate** of the full gradient. On average it points the right way; any single step is noisy, but over many steps the noise averages out while each step costs a fraction of the full-batch price. With $n$ examples and batch size $B$, one pass over the data (an **epoch**) does $n/B$ updates instead of just one — so mini-batch SGD makes far more progress per pass.
+The key insight: a mini-batch gradient is an **unbiased estimate** of the full gradient. On average it points the right way; any single step is noisy, but over many steps the noise averages out while each step costs a fraction of the full-batch price. With $n$ examples and batch size $B$, one pass over the data (an **epoch**) does $n/B$ updates instead of just one, so mini-batch SGD makes far more progress per pass.
 
 ## Beyond vanilla: momentum and Adam
 
@@ -219,7 +219,7 @@ Plain SGD crawls through narrow **ravines** — regions where the loss is very s
   Start with **Adam** — it works well out of the box and is the default for most deep learning. Well-tuned SGD with momentum can generalize slightly better on some vision tasks, but Adam needs far less tuning.
 </Callout>
 
-For the full lineage — Adagrad, RMSprop, Adam's bias correction, and AdamW — with every update rule and when each fails:
+For the full lineage (Adagrad, RMSprop, Adam's bias correction, and AdamW), with every update rule and when each fails:
 
 <WikiLink slug="gradient-descent-optimizers" title="Optimizers: SGD, Momentum, Adagrad, RMSprop & Adam" />
 

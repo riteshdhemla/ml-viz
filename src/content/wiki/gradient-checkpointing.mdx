@@ -10,7 +10,7 @@ estimatedMinutes: 12
 
 # Gradient Checkpointing
 
-Backpropagation needs every layer's intermediate activations to compute gradients — the standard implementation caches all of them during the forward pass and consumes them during the backward pass. For a network with $L$ layers, that's activation memory that grows **linearly in depth**, and for today's deep models it is often the single biggest consumer of GPU memory, larger than the parameters or optimizer state. **Gradient checkpointing** (a.k.a. activation checkpointing, or "rematerialization") breaks this by storing only a sparse set of activations — the *checkpoints* — and **recomputing** the discarded ones on the fly during the backward pass. It trades extra forward compute for a memory footprint that grows only as $O(\sqrt{L})$.
+Backpropagation needs every layer's intermediate activations to compute gradients — the standard implementation caches all of them during the forward pass and consumes them during the backward pass. For a network with $L$ layers, that's activation memory that grows **linearly in depth**, and for today's deep models it is often the single biggest consumer of GPU memory, larger than the parameters or optimizer state. **Gradient checkpointing** (a.k.a. activation checkpointing, or "rematerialization") breaks this by storing only a sparse set of activations (the *checkpoints*) and **recomputing** the discarded ones on the fly during the backward pass. It trades extra forward compute for a memory footprint that grows only as $O(\sqrt{L})$.
 
 ## 1 — Why plain backprop is $O(L)$ in memory
 
@@ -39,7 +39,7 @@ During the backward pass, process segments in reverse order. To get the gradient
 5. Repeat until segment 1, arriving back at $a_0$.
 
 <Callout type="info" title="What's actually being traded">
-  Gradient checkpointing doesn't reduce the *total* amount of forward computation ever performed in an absolute sense — it performs it **twice** for the layers inside each segment (once during the real forward pass, once during recomputation). What it eliminates is the need to **hold every layer's activation in memory at once**. That's the trade: a bounded, fixed increase in FLOPs for an asymptotic reduction in peak memory — which is what lets a model that would otherwise OOM actually fit on the GPU.
+  Gradient checkpointing doesn't reduce the *total* amount of forward computation ever performed in an absolute sense — it performs it **twice** for the layers inside each segment (once during the real forward pass, once during recomputation). What it eliminates is the need to **hold every layer's activation in memory at once**. That's the trade: a bounded, fixed increase in FLOPs for an asymptotic reduction in peak memory, which is what lets a model that would otherwise OOM actually fit on the GPU.
 </Callout>
 
 ## 3 — Choosing the segment size: why $\sqrt{L}$
@@ -93,7 +93,7 @@ Take a toy MLP where each layer's activation costs 1 "unit" of memory, and compa
 | 256  | 16 | 16 | 32 | 256  | 8×  | ~33% |
 | 1024 | 32 | 32 | 64 | 1024 | 16× | ~33% |
 
-Reading the $L=64$ row concretely: without checkpointing you hold all 64 layer activations simultaneously (64 units). With checkpointing every $8$ layers, you store 8 checkpoints (at layers $0, 8, 16, \dots, 56$); when the backward pass reaches the segment for layers $48$–$56$, it replays that segment's forward pass, transiently holding up to 8 more activations — a peak of $8 + 8 = 16$ units, a $4\times$ reduction — for a fixed ~33% increase in forward FLOPs. As $L$ grows the memory reduction factor grows like $\sqrt{L}/2$, while the compute tax stays flat: exactly the trade that makes checkpointing more valuable the deeper the model gets.
+Reading the $L=64$ row concretely: without checkpointing you hold all 64 layer activations simultaneously (64 units). With checkpointing every $8$ layers, you store 8 checkpoints (at layers $0, 8, 16, \dots, 56$); when the backward pass reaches the segment for layers $48$–$56$, it replays that segment's forward pass, transiently holding up to 8 more activations (a peak of $8 + 8 = 16$ units, a $4\times$ reduction) for a fixed ~33% increase in forward FLOPs. As $L$ grows the memory reduction factor grows like $\sqrt{L}/2$, while the compute tax stays flat: exactly the trade that makes checkpointing more valuable the deeper the model gets.
 
 ## Related concepts
 

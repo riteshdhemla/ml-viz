@@ -93,7 +93,7 @@ Other checks:
 
 ## The whole procedure on a 36-observation series
 
-Dataset (simulated monthly sales, Jan 2020 – Dec 2022). It is a draw from an actual ARIMA(0,1,1)-with-drift process ($\theta_1 = -0.6$, drift 2.0, $\sigma = 3$), rounded to integers — so the procedure below has something real to recover:
+Dataset (simulated monthly sales, Jan 2020 – Dec 2022). It is a draw from an actual ARIMA(0,1,1)-with-drift process ($\theta_1 = -0.6$, drift 2.0, $\sigma = 3$), rounded to integers, so the procedure below has something real to recover:
 
 ```
 Period:  1   2   3   4   5   6   7   8   9  10  11  12
@@ -150,7 +150,7 @@ The forecast jumps 5.6 on the first step even though the drift is only 1.96, bec
 The 95% prediction intervals are $\pm 5.1$ at $h=1$ and only $\pm 5.4$ at $h=6$ — they barely widen. For ARIMA(0,1,1) the $h$-step variance is $\sigma^2[1 + (h-1)(1+\theta_1)^2]$, and with $\theta_1 \approx -0.85$ the factor $(1+\theta_1)^2 \approx 0.02$ is nearly zero. A random walk's intervals grow like $\sqrt{h}$; an MA(1) with $\theta$ near $-1$ has almost cancelled the differencing, so its uncertainty is nearly horizon-independent.
 
 <Callout type="warning" title="ARIMA with d ≥ 1 has no drift term by default">
-  In statsmodels, `ARIMA(y, order=(0,1,1))` fits **no constant** when $d \ge 1$. On this series that model forecasts a flat 114.3 forever — below the last observation — and scores AIC 197.4 instead of 173.3. If your series has a visible trend, you must pass `trend='t'`, or you will silently fit a driftless model and wonder why the forecast is flat.
+  In statsmodels, `ARIMA(y, order=(0,1,1))` fits **no constant** when $d \ge 1$. On this series that model forecasts a flat 114.3 forever (below the last observation), and scores AIC 197.4 instead of 173.3. If your series has a visible trend, you must pass `trend='t'`, or you will silently fit a driftless model and wonder why the forecast is flat.
 </Callout>
 
 ## Running the whole workflow in Python

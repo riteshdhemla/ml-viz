@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Model Querying Patterns
 
-An agent is ultimately a loop that calls a model. But the *shape* of that call — how many times, in what order, how results feed back — determines everything: cost, latency, reasoning quality, and how gracefully the agent recovers from mistakes. This lesson dissects the two fundamental querying architectures and teaches you to choose between them deliberately.
+An agent is ultimately a loop that calls a model. But the *shape* of that call (how many times, in what order, how results feed back) determines everything: cost, latency, reasoning quality, and how gracefully the agent recovers from mistakes. This lesson dissects the two fundamental querying architectures and teaches you to choose between them deliberately.
 
 **Real-world examples:** single-pass document classification, multi-step code generation with self-review, CoT-driven math solvers, tool-using agents that re-plan when a tool call fails.
 
@@ -37,7 +37,7 @@ User:   Extract all dates from the following invoice text and return
 Model:  ["2024-03-15", "2024-04-15", "2024-03-01"]
 ```
 
-The prompt must carry *all* necessary context upfront because there is no second chance. This forces careful prompt design — which is actually a feature: it makes the agent's behaviour predictable and the call auditable.
+The prompt must carry *all* necessary context upfront because there is no second chance. This forces careful prompt design, which is actually a feature: it makes the agent's behaviour predictable and the call auditable.
 
 **When to use it:**
 
@@ -50,7 +50,7 @@ The prompt must carry *all* necessary context upfront because there is no second
 | High call volume | Scales linearly, no state to manage |
 
 <Callout type="tip" title="One-shot forces prompt discipline">
-  One-shot querying is not lazy — it is a deliberate constraint. If you cannot write a single prompt that reliably solves your task, that is a signal the task may need decomposition. Start one-shot and escalate to incremental only when quality demands it.
+  One-shot querying is not lazy. It is a deliberate constraint. If you cannot write a single prompt that reliably solves your task, that is a signal the task may need decomposition. Start one-shot and escalate to incremental only when quality demands it.
 </Callout>
 
 **Forces against one-shot:** complex tasks with implicit sub-problems, tasks where the model needs to discover information before it can plan, and cases where error recovery matters. A single context window has a fixed compute budget; harder tasks need more.

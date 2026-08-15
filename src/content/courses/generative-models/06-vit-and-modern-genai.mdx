@@ -111,7 +111,7 @@ The model therefore learns both $p(x \mid c)$ and $p(x \mid \emptyset)$ with one
 
 ### Inference
 
-At generation time, run the model **twice** per denoising step — once with and once without the condition — then interpolate:
+At generation time, run the model **twice** per denoising step (once with and once without the condition), then interpolate:
 
 $$
 \hat{\boldsymbol{\epsilon}}_\theta(\mathbf{x}_t, c, w) = (1 + w) \cdot \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c) \;-\; w \cdot \boldsymbol{\epsilon}_\theta(\mathbf{x}_t, \emptyset)
@@ -326,7 +326,7 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 
 ## Key takeaways
 
-- **ViT** treats an image as a sequence of patch tokens. With enough data it matches CNN performance — but inductive biases matter at small data scales.
+- **ViT** treats an image as a sequence of patch tokens. With enough data it matches CNN performance, but inductive biases matter at small data scales.
 - **Classifier-Free Guidance** trains one model for both conditional and unconditional generation; at inference it amplifies the direction toward the condition by guidance scale $w$.
 - **StyleGAN** uses a mapping network ($\mathcal{Z} \to \mathcal{W}$) and AdaIN to disentangle style at each scale, enabling fine-grained image attribute control.
 - **CycleGAN** enables unpaired image translation via cycle consistency: translating there and back must recover the original.

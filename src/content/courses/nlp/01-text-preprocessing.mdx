@@ -9,7 +9,7 @@ estimatedMinutes: 10
 
 # Text Preprocessing
 
-Before any model can process text, raw strings must become numbers. The decisions made at this stage — how to split words, how to handle morphology, how to weigh term importance — affect everything downstream. This is the **data** stage of the [ML project loop](/wiki/ml-project-loop) for language: tokenization and embeddings *are* the representation, and a bad choice here caps every model you build on top, no matter how good the architecture.
+Before any model can process text, raw strings must become numbers. The decisions made at this stage (how to split words, how to handle morphology, how to weigh term importance) affect everything downstream. This is the **data** stage of the [ML project loop](/wiki/ml-project-loop) for language: tokenization and embeddings *are* the representation, and a bad choice here caps every model you build on top, no matter how good the architecture.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -27,7 +27,7 @@ Before any model can process text, raw strings must become numbers. The decision
 
 ### Byte-Pair Encoding (BPE)
 
-BPE, used by GPT and many modern models, builds a subword vocabulary by **iteratively merging the most frequent adjacent symbol pair**: start from individual characters, repeatedly find the most common pair across the corpus and fuse it into a new token, until the vocabulary reaches its target size. The result is that common words become single tokens while rare words decompose into familiar subwords — "unhappiness" → `["un", "happi", "ness"]` — so nothing maps to `[UNK]`.
+BPE, used by GPT and many modern models, builds a subword vocabulary by **iteratively merging the most frequent adjacent symbol pair**: start from individual characters, repeatedly find the most common pair across the corpus and fuse it into a new token, until the vocabulary reaches its target size. The result is that common words become single tokens while rare words decompose into familiar subwords ("unhappiness" → `["un", "happi", "ness"]`), so nothing maps to `[UNK]`.
 
 **WordPiece** (used by BERT) is similar but merges based on language model likelihood improvement rather than raw frequency, producing tokens prefixed with `##` for word-continuation: "unhappiness" → `["un", "##happi", "##ness"]`.
 
@@ -39,7 +39,7 @@ BPE, used by GPT and many modern models, builds a subword vocabulary by **iterat
 
 <PreprocessingPipelineViz />
 
-Push twelve matched sentence pairs — the same sentence with and without a negation — through a standard pipeline and the cost stops being abstract. Stopword removal does exactly what it advertises: vocabulary falls from 44 types to 28, documents shrink from 5.2 tokens to 2.2. It also collapses **10 of the 12 pairs into byte-identical token lists**, because `not` is on the standard English stopword list, along with `no`, `nor` and `cannot`. "The food was not good" becomes `[food good]`.
+Push twelve matched sentence pairs (the same sentence with and without a negation) through a standard pipeline and the cost stops being abstract. Stopword removal does exactly what it advertises: vocabulary falls from 44 types to 28, documents shrink from 5.2 tokens to 2.2. It also collapses **10 of the 12 pairs into byte-identical token lists**, because `not` is on the standard English stopword list, along with `no`, `nor` and `cannot`. "The food was not good" becomes `[food good]`.
 
 Adding stemming takes it to 12 of 12. But stemming is not the culprit — applied alone it collapses **0 of 12**, and only closes the last two pairs that stopword removal had already opened.
 

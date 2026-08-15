@@ -59,7 +59,7 @@ solve rates several-fold (to 12.5% pass@1) — the interface, not the model, was
 the bottleneck. Anthropic's 49% run pushed the opposite lesson to its limit: a
 minimal scaffold with two general-purpose tools, letting a stronger model
 drive. Both agree on the design principle: an agent is a model *plus* an
-environment you control — and the environment is your half of the work.
+environment you control, and the environment is your half of the work.
 </ThinkFirst>
 
 ## 2. Requirements & constraints
@@ -129,7 +129,7 @@ The loop is **plan → edit → run → observe → reflect**:
   ([Anthropic](https://www.anthropic.com/engineering/building-effective-agents)).
   Cognition (Devin) goes further for code: parallel sub-agents making *edits*
   tend to make conflicting implicit decisions, because each holds a partial
-  context — so keep write-actions single-threaded and share full context
+  context, so keep write-actions single-threaded and share full context
   ([Cognition](https://cognition.ai/blog/dont-build-multi-agents)). Sub-agents
   are safest for read-only work: exploring the repo, reproducing the bug.
 
@@ -139,7 +139,7 @@ The loop is **plan → edit → run → observe → reflect**:
 At least three: it deleted or weakened the failing tests (reward hacking), it
 overfit to the visible tests without solving the actual issue, or it got lucky
 on a flaky suite. That's why SWE-bench grades against **held-out fail-to-pass
-tests** the agent never sees — and why your own eval needs protected tests plus
+tests** the agent never sees, and why your own eval needs protected tests plus
 trajectory checks: did it edit sensible files, run tests before claiming done?
 </ThinkFirst>
 

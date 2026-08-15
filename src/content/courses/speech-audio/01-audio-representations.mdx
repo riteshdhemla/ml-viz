@@ -9,19 +9,19 @@ estimatedMinutes: 19
 
 # Audio Representations & Spectrograms
 
-Audio is a wave — a one-dimensional signal of air pressure over time. Feeding a raw waveform to a model is possible but hard: it's enormously long (tens of thousands of samples per second) and the information you care about lives in its *frequencies*, not its raw amplitudes. The key move in audio ML is to transform sound into a **spectrogram** — a 2-D time-frequency image — which turns audio into something CNNs and transformers handle naturally. This lesson covers that pipeline. It's the **data** stage of the [ML project loop](/wiki/ml-project-loop) for sound: the representation you feed the model (waveform vs mel spectrogram vs MFCC) decides what's even learnable, before any architecture choice.
+Audio is a wave — a one-dimensional signal of air pressure over time. Feeding a raw waveform to a model is possible but hard: it's enormously long (tens of thousands of samples per second) and the information you care about lives in its *frequencies*, not its raw amplitudes. The key move in audio ML is to transform sound into a **spectrogram** (a 2-D time-frequency image), which turns audio into something CNNs and transformers handle naturally. This lesson covers that pipeline. It's the **data** stage of the [ML project loop](/wiki/ml-project-loop) for sound: the representation you feed the model (waveform vs mel spectrogram vs MFCC) decides what's even learnable, before any architecture choice.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
 **Real-world examples:** every speech recognizer, music classifier, voice assistant, sound-event detector, and audio generation model starts by computing spectrogram-style features (or learns an equivalent front-end).
 
-Walk the whole pipeline once before reading the sections below. Each step says what it produces **and what was broken without it** — and every number on screen is computed live, so the window-length control lets you test the time–frequency trade-off rather than take it on faith.
+Walk the whole pipeline once before reading the sections below. Each step says what it produces **and what was broken without it**, and every number on screen is computed live, so the window-length control lets you test the time–frequency trade-off rather than take it on faith.
 
 <AudioFeaturesViz />
 
 ## The waveform and sampling
 
-A microphone records a continuous pressure wave; a computer stores **samples** of it at a fixed **sampling rate** $f_s$ (e.g. 16 kHz for speech, 44.1 kHz for music). The **Nyquist theorem** says you can faithfully represent frequencies only up to $f_s/2$ — so 16 kHz audio captures content up to 8 kHz, enough for intelligible speech.
+A microphone records a continuous pressure wave; a computer stores **samples** of it at a fixed **sampling rate** $f_s$ (e.g. 16 kHz for speech, 44.1 kHz for music). The **Nyquist theorem** says you can faithfully represent frequencies only up to $f_s/2$, so 16 kHz audio captures content up to 8 kHz, enough for intelligible speech.
 
 The result is a long 1-D array: one second of 16 kHz audio is 16,000 numbers. Raw, this is unwieldy and frequency information is implicit.
 
@@ -33,7 +33,7 @@ But a single Fourier transform over a whole clip loses *when* each frequency occ
 
 ## The spectrogram (STFT)
 
-The **Short-Time Fourier Transform (STFT)** solves this: slide a short window across the signal and take the Fourier transform of each window. The result is a 2-D map — **time on one axis, frequency on the other, magnitude as intensity** — the **spectrogram**.
+The **Short-Time Fourier Transform (STFT)** solves this: slide a short window across the signal and take the Fourier transform of each window. The result is a 2-D map (**time on one axis, frequency on the other, magnitude as intensity**): the **spectrogram**.
 
 $$
 \text{STFT}: \text{1-D waveform} \;\longrightarrow\; \text{2-D } (\text{time} \times \text{frequency}) \text{ image}

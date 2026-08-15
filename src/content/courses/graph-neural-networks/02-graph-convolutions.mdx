@@ -70,11 +70,11 @@ Node 2 sits between opposite-signed neighbors and averages to exactly $0$; the e
 
 ## Spectral vs. spatial — same destination
 
-GCNs were originally **derived** from spectral graph theory: a convolution defined via the graph Laplacian's eigenbasis, then approximated (first-order Chebyshev) down to the simple $\hat{\mathbf{A}}\mathbf{H}\mathbf{W}$ form above. The modern, practical view is **spatial**: it's just normalized neighborhood aggregation. You don't need the spectral derivation to use it — but it's why GCNs are called "convolutions."
+GCNs were originally **derived** from spectral graph theory: a convolution defined via the graph Laplacian's eigenbasis, then approximated (first-order Chebyshev) down to the simple $\hat{\mathbf{A}}\mathbf{H}\mathbf{W}$ form above. The modern, practical view is **spatial**: it's just normalized neighborhood aggregation. You don't need the spectral derivation to use it, but it's why GCNs are called "convolutions."
 
 ## GraphSAGE: sample and aggregate
 
-A plain GCN has two practical problems: (1) the full $\hat{\mathbf{A}}\mathbf{H}$ multiply needs the **entire graph** in memory, and (2) it's **transductive** — it can only score nodes present at training time. **GraphSAGE** fixes both:
+A plain GCN has two practical problems: (1) the full $\hat{\mathbf{A}}\mathbf{H}$ multiply needs the **entire graph** in memory, and (2) it's **transductive**. It can only score nodes present at training time. **GraphSAGE** fixes both:
 
 - **Sample** a fixed number of neighbors per node (e.g. 25 at hop 1, 10 at hop 2) instead of using all of them — bounding compute and memory regardless of degree.
 - **Aggregate** the sampled neighbors with a chosen function, then concatenate with the node's own state and transform:

@@ -17,7 +17,7 @@ Every feed, store, and streaming service answers the same question millions of t
 
 ## The setup
 
-You have a set of **users** $U$ and **items** $I$, and a sparse record of past interactions. The goal is to predict, for a user, the items they'd most likely engage with — and surface a short ranked list.
+You have a set of **users** $U$ and **items** $I$, and a sparse record of past interactions. The goal is to predict, for a user, the items they'd most likely engage with, and surface a short ranked list.
 
 The interaction data is a **user–item matrix** $\mathbf{R}$, where $R_{ui}$ is user $u$'s response to item $i$. Crucially, this matrix is **extremely sparse**: a user has touched a tiny fraction of all items, so most entries are *unknown* (not zero). Recommendation is, at heart, filling in those unknowns.
 
@@ -112,7 +112,7 @@ $P@10$ does not move at all. NDCG falls $2.90\times$ and MRR $8\times$. A metric
 - Recommendation = filling in a **sparse user–item matrix** and surfacing a short ranked list.
 - **Explicit** feedback (ratings) is sparse but clear; **implicit** feedback (clicks) is abundant but has **no true negatives**.
 - **Content-based** filtering uses item features (handles new items, risks filter bubbles); **collaborative** filtering uses the interaction matrix (discovers novel items, suffers **cold start**). Production systems hybridize.
-- Judge recommenders with **position-aware ranking metrics** — recall@k, **NDCG@k**, MRR — not plain accuracy or RMSE.
+- Judge recommenders with **position-aware ranking metrics** (recall@k, **NDCG@k**, MRR), not plain accuracy or RMSE.
 
 ## Related concepts
 

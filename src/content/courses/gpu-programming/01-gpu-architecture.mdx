@@ -9,7 +9,7 @@ estimatedMinutes: 15
 
 # GPU Architecture & the Execution Model
 
-A CPU is a *latency* machine: a handful of powerful cores, big caches, and deep out-of-order pipelines that race a single thread to the finish line. A GPU is a *throughput* machine: thousands of simple cores that get enormous total work done by running tens of thousands of threads at once. Training a neural network is overwhelmingly parallel — the same multiply-add applied to millions of numbers — so it maps onto the throughput machine almost perfectly. This lesson is the mental model the rest of the course builds on. In [project-loop](/wiki/ml-project-loop) terms, this whole course is the **optimization** slot at the systems level — not *which* update rule, but how to make that update physically fast. It's also where the field's bottleneck moved: once models got big enough, the limit stopped being the math and became **memory bandwidth and communication between chips**.
+A CPU is a *latency* machine: a handful of powerful cores, big caches, and deep out-of-order pipelines that race a single thread to the finish line. A GPU is a *throughput* machine: thousands of simple cores that get enormous total work done by running tens of thousands of threads at once. Training a neural network is overwhelmingly parallel (the same multiply-add applied to millions of numbers), so it maps onto the throughput machine almost perfectly. This lesson is the mental model the rest of the course builds on. In [project-loop](/wiki/ml-project-loop) terms, this whole course is the **optimization** slot at the systems level — not *which* update rule, but how to make that update physically fast. It's also where the field's bottleneck moved: once models got big enough, the limit stopped being the math and became **memory bandwidth and communication between chips**.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -25,7 +25,7 @@ A CPU is a *latency* machine: a handful of powerful cores, big caches, and deep 
 | Hides memory stalls by | out-of-order execution, prefetch | **switching to other threads** |
 | Best at | branchy, sequential logic | regular, data-parallel arithmetic |
 
-The GPU spends its transistor budget on **arithmetic units** rather than control logic and cache. That only pays off when you can keep those units fed with independent work — which is exactly what a matrix multiply or an element-wise activation provides.
+The GPU spends its transistor budget on **arithmetic units** rather than control logic and cache. That only pays off when you can keep those units fed with independent work, which is exactly what a matrix multiply or an element-wise activation provides.
 
 ## SIMT: Single Instruction, Multiple Threads
 
@@ -84,7 +84,7 @@ This is **Little's Law** applied to the GPU: keep enough independent work *in fl
 
 ## Why this matters for ML
 
-The dominant operation in deep learning — matrix multiplication — is a sea of independent multiply-adds with a regular access pattern. It saturates the arithmetic units, has abundant parallelism to hide latency, and reuses data well. That is the *ideal* GPU workload, which is why a GPU can outrun a CPU by one to two orders of magnitude on training. The flip side: ops that are branchy, sequential, or memory-bound (Lesson 4) leave the hardware starved.
+The dominant operation in deep learning (matrix multiplication) is a sea of independent multiply-adds with a regular access pattern. It saturates the arithmetic units, has abundant parallelism to hide latency, and reuses data well. That is the *ideal* GPU workload, which is why a GPU can outrun a CPU by one to two orders of magnitude on training. The flip side: ops that are branchy, sequential, or memory-bound (Lesson 4) leave the hardware starved.
 
 <Exercise id="gpu-arch-throughput-latency" />
 

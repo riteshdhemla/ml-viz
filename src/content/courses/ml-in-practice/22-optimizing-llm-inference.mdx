@@ -36,7 +36,7 @@ Always state latency SLOs as **percentiles** (p95/p99), never means. Batching co
 
 ### Throughput, and the tension with latency
 
-Throughput — total tokens/second across all users on fixed hardware — pays the bill. The core tension: **batching raises throughput and ITL together.** Each decode step reads the full model weights once regardless of batch size, so a batch of 64 amortizes that read 64 ways — but each request now shares compute and memory bandwidth, so every request's ITL rises. The throughput-vs-ITL curve is the fundamental frontier you operate on (the companion notebook derives and plots it).
+Throughput — total tokens/second across all users on fixed hardware — pays the bill. The core tension: **batching raises throughput and ITL together.** Each decode step reads the full model weights once regardless of batch size, so a batch of 64 amortizes that read 64 ways, but each request now shares compute and memory bandwidth, so every request's ITL rises. The throughput-vs-ITL curve is the fundamental frontier you operate on (the companion notebook derives and plots it).
 
 Because raw throughput can be inflated by violating latency SLOs, mature teams optimize **goodput**: throughput counting only requests that met their SLO. A scheduler tuned for maximum tokens/s that times out 10% of requests has great throughput and terrible goodput.
 
@@ -55,7 +55,7 @@ Prefill and decode tokens also cost differently — prefill processes tokens in 
 
 ### Memory: the concurrency ceiling
 
-HBM must hold model weights + the KV-cache of every in-flight request. From lesson 12: a 70B model at FP16 needs ~140 GB for weights, and each 8k-context sequence adds ~2.7 GB of KV-cache. On 4×H100 (320 GB), that caps concurrency at roughly 65 sequences *before* any optimization — and hitting the cap means requests queue, which shows up as TTFT, not as an out-of-memory error. Memory pressure masquerades as a latency problem.
+HBM must hold model weights + the KV-cache of every in-flight request. From lesson 12: a 70B model at FP16 needs ~140 GB for weights, and each 8k-context sequence adds ~2.7 GB of KV-cache. On 4×H100 (320 GB), that caps concurrency at roughly 65 sequences *before* any optimization, and hitting the cap means requests queue, which shows up as TTFT, not as an out-of-memory error. Memory pressure masquerades as a latency problem.
 
 ### The quality floor
 
@@ -109,14 +109,14 @@ The cheapest token is one a smaller model generates. Two forms:
 
 ### Architecture levers: shrink the KV-cache
 
-The KV-cache formula scales with the number of KV heads $H$ — so architectures that share K/V across query heads shrink it directly:
+The KV-cache formula scales with the number of KV heads $H$, so architectures that share K/V across query heads shrink it directly:
 
 - **MQA** (one KV head) and **GQA** (grouped, e.g. 8 KV heads for 64 query heads) cut cache 8–64× vs vanilla multi-head attention. Llama-3-class models ship with GQA already.
 - **MLA** (multi-head latent attention, DeepSeek) compresses K/V into a low-rank latent, cutting cache a further ~4× beyond GQA.
 - **Sliding-window attention** (Mistral) bounds cache growth to the window length regardless of context.
 - **Cross-layer KV-sharing** (Character.AI) shares cache between adjacent layers for another 2–3×.
 
-You mostly *choose* these when picking a base model rather than retrofit them — which makes "KV-cache footprint" a first-class model-selection criterion for serving-heavy products, right next to eval scores.
+You mostly *choose* these when picking a base model rather than retrofit them, which makes "KV-cache footprint" a first-class model-selection criterion for serving-heavy products, right next to eval scores.
 
 ### Decoding levers
 
@@ -151,7 +151,7 @@ From lesson 12, the two pillars: **continuous batching** (rotate finished reques
 
 Every request in our scenario begins with the same ~5k tokens (system prompt + few-shot examples + retrieval template). **Prefix caching** stores that prefix's KV-cache once and reuses it across requests — those 5k tokens are never prefilled again. With ~63% of every prompt shared, prefill work drops ~60% instantly, and TTFT with it. Multi-turn conversations compound the win: each turn reuses the whole previous context's cache instead of re-prefilling it.
 
-This is such a large effect that API providers surface it as pricing: Anthropic discounts cached input tokens 90%, OpenAI 50%. When a vendor gives away 90%, they're telling you what the cache saves *them* — and what prefix caching will save you self-hosted (one flag in vLLM: `enable_prefix_caching=True`). Under the hood, both prefix caching and the no-padding cache allocation it rides on are the same mechanism — block-level KV management:
+This is such a large effect that API providers surface it as pricing: Anthropic discounts cached input tokens 90%, OpenAI 50%. When a vendor gives away 90%, they're telling you what the cache saves *them*, and what prefix caching will save you self-hosted (one flag in vLLM: `enable_prefix_caching=True`). Under the hood, both prefix caching and the no-padding cache allocation it rides on are the same mechanism — block-level KV management:
 
 <WikiLink slug="paged-attention" title="PagedAttention & KV-Cache Management" />
 
@@ -163,7 +163,7 @@ This is such a large effect that API providers surface it as pricing: Anthropic 
 
 ### Hardware by roofline
 
-Decode-bound serving wants **bandwidth** (H200's HBM3e over H100 is mostly a decode upgrade; Groq is the extreme point); prefill-heavy and batch workloads can use **compute-per-dollar** chips (L40S, older A100s). Our scenario is prefill-heavy *after* caching kills most prefill — so post-optimization it becomes decode-bound, and the right fleet shifts accordingly. Re-derive the roofline position after each big lever; the bottleneck moves. (Deeper treatment: [GPUs for Deep Learning](/courses/gpu-programming/04-gpus-for-deep-learning) and [Memory & Performance](/courses/gpu-programming/03-memory-and-performance).)
+Decode-bound serving wants **bandwidth** (H200's HBM3e over H100 is mostly a decode upgrade; Groq is the extreme point); prefill-heavy and batch workloads can use **compute-per-dollar** chips (L40S, older A100s). Our scenario is prefill-heavy *after* caching kills most prefill, so post-optimization it becomes decode-bound, and the right fleet shifts accordingly. Re-derive the roofline position after each big lever; the bottleneck moves. (Deeper treatment: [GPUs for Deep Learning](/courses/gpu-programming/04-gpus-for-deep-learning) and [Memory & Performance](/courses/gpu-programming/03-memory-and-performance).)
 
 ## 4 — Metrics and the levers that move them
 

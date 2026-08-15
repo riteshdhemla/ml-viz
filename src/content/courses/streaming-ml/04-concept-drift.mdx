@@ -9,7 +9,7 @@ estimatedMinutes: 20
 
 # Concept Drift & Adaptation
 
-Batch ML assumes the training and serving distributions match. On a live stream they routinely do not: user behaviour shifts, fraud patterns evolve, sensors age, a pandemic rewrites demand overnight. When the data-generating process changes over time, we call it **concept drift** — and a model that ignores it silently rots. This lesson covers detecting drift and adapting to it, the concerns at the heart of libraries like `river`.
+Batch ML assumes the training and serving distributions match. On a live stream they routinely do not: user behaviour shifts, fraud patterns evolve, sensors age, a pandemic rewrites demand overnight. When the data-generating process changes over time, we call it **concept drift**, and a model that ignores it silently rots. This lesson covers detecting drift and adapting to it, the concerns at the heart of libraries like `river`.
 
 <Callout type="info" title="The forecasting thread">
 This is the exact failure the site's running `daily-demand` model keeps hitting. The canonical series (from the [project-loop hub](/wiki/ml-project-loop)) has a **regime shift at day 400** — a permanent level jump. To a batch model it's invisible until the error blows up; a streaming system running a drift detector on the residuals catches it within days and adapts online. Concept drift *is* the demand problem's day-400 shift, generalized to "the world keeps changing."
@@ -31,12 +31,12 @@ Drift also has a **temporal shape**:
 - **Recurring** — old concepts return (weekday vs weekend, seasonal).
 
 <Callout type="warning" title="Drift ≠ noise, and covariate shift ≠ concept drift">
-The hard part of detection is distinguishing a genuine change in the concept from ordinary sampling noise. And a spike in $P(X)$ alone (covariate shift) may need no action, while a change in $P(Y\mid X)$ demands retraining. Monitoring input statistics is not enough — you have to watch the model's **error** on labelled feedback.
+The hard part of detection is distinguishing a genuine change in the concept from ordinary sampling noise. And a spike in $P(X)$ alone (covariate shift) may need no action, while a change in $P(Y\mid X)$ demands retraining. Monitoring input statistics is not enough. You have to watch the model's **error** on labelled feedback.
 </Callout>
 
 ## Detecting drift
 
-Detectors watch a signal — usually the model's streaming error rate — and raise an alarm when it changes more than chance allows.
+Detectors watch a signal (usually the model's streaming error rate) and raise an alarm when it changes more than chance allows.
 
 ### DDM — Drift Detection Method
 
@@ -56,7 +56,7 @@ $$
 \epsilon_{\text{cut}} = \sqrt{\frac{1}{2m}\ln\frac{4\,|W|}{\delta}},
 $$
 
-where $m$ is the harmonic mean of the two sub-window sizes and $\delta$ is a confidence parameter. When the test fires, ADWIN shrinks the window to just the recent segment — so the window length itself becomes an estimate of "how far back the current concept extends." A clever bucket scheme (exponential histograms, as in DGIM) keeps its memory logarithmic in the window size.
+where $m$ is the harmonic mean of the two sub-window sizes and $\delta$ is a confidence parameter. When the test fires, ADWIN shrinks the window to just the recent segment, so the window length itself becomes an estimate of "how far back the current concept extends." A clever bucket scheme (exponential histograms, as in DGIM) keeps its memory logarithmic in the window size.
 
 <ConceptDriftViz />
 

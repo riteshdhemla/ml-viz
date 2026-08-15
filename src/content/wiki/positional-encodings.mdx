@@ -24,7 +24,7 @@ where $\text{pos} \in \{0, 1, \ldots\}$ is the token index and $i \in \{0, 1, \l
 
 **Frequency structure:** each dimension pair $(2i, 2i+1)$ oscillates at a different frequency. Low-index pairs oscillate slowly (long period, long-range signal); high-index pairs oscillate quickly (short period, fine-grained local signal). The base $10000$ sets the lowest frequency to period $2\pi \times 10000 \approx 62{,}832$ — longer than any practical sequence.
 
-**Key property:** the relative offset between positions $\text{pos}$ and $\text{pos}+k$ can be expressed as a *linear function* of $PE_\text{pos}$. This means attention scores $\mathbf{q}_i \cdot \mathbf{k}_j$ can encode relative distance in principle — but in practice the model must learn this through training.
+**Key property:** the relative offset between positions $\text{pos}$ and $\text{pos}+k$ can be expressed as a *linear function* of $PE_\text{pos}$. This means attention scores $\mathbf{q}_i \cdot \mathbf{k}_j$ can encode relative distance in principle, but in practice the model must learn this through training.
 
 **Extrapolation:** the formula is defined for any position, but training only sees positions up to $L_\text{train}$. At longer lengths, attention patterns typically degrade because the absolute position values are out-of-distribution.
 
@@ -97,7 +97,7 @@ where $m_h = 2^{-8h/H}$ is a head-specific slope (different heads apply differen
 | ALiBi | 0 | Yes (linear penalty) | Excellent | MPT, BLOOM |
 
 <Callout type="info" title="Length extrapolation ≠ long-context capability">
-  Extrapolating to longer positions is only useful if the model can actually retrieve information from those positions. Without architectural changes (sliding window, RoPE scaling), models often fail to attend to relevant content in the middle of a very long sequence — the "lost in the middle" phenomenon — regardless of which position encoding is used.
+  Extrapolating to longer positions is only useful if the model can actually retrieve information from those positions. Without architectural changes (sliding window, RoPE scaling), models often fail to attend to relevant content in the middle of a very long sequence (the "lost in the middle" phenomenon) regardless of which position encoding is used.
 </Callout>
 
 ## Related concepts

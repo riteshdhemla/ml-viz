@@ -70,7 +70,7 @@ that fixes these three: alignment, grounding, guardrails.
 These aren't ad-hoc: Google's LaMDA formalized dialog quality as
 **sensibleness, specificity, interestingness** plus **safety** and
 **groundedness** — the fraction of external-world claims supported by
-authoritative sources — and showed fine-tuning improves all of them beyond what
+authoritative sources, and showed fine-tuning improves all of them beyond what
 scale alone delivers ([Thoppilan et al., 2022](https://arxiv.org/abs/2201.08239)).
 
 <ThinkFirst question="A conversation reaches turn 200; the context window fits 20. What's your strategy — and why is plain truncation wrong?">
@@ -129,7 +129,7 @@ tasks, higher for brainstorming; the product often adapts them per intent.
 have humans (and a calibrated LLM judge) pick blind winners — the same
 methodology InstructGPT used to show its 1.3B model beating 175B GPT-3. Add
 targeted checks the win-rate hides — groundedness when retrieval is used
-(LaMDA's metric), refusal correctness in both directions — and watch live
+(LaMDA's metric), refusal correctness in both directions, and watch live
 signals (thumbs, regeneration rate) after rollout. No single number; a panel
 of them.
 </ThinkFirst>
@@ -153,7 +153,7 @@ It assumed harm arrives labeled. Jailbreaks smuggle intent past input
 classifiers (role-play, encoding, multi-turn setup), and harm can *emerge* in
 the output even from a benign-looking prompt. Defense has to be layered —
 input classification, alignment training in the model itself, output
-classification, and injected-content hygiene — because each layer catches a
+classification, and injected-content hygiene, because each layer catches a
 different failure shape. This is why production stacks run a dedicated
 safeguard model on **both** the prompt and the response, not a keyword filter
 on the way in.

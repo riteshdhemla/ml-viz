@@ -10,7 +10,7 @@ estimatedMinutes: 11
 
 # Vector Databases & ANN Indexes
 
-The [embeddings lesson](/courses/building-with-llms/03-embeddings-and-semantic-search) turns text into vectors and ranks them by cosine similarity. That works fine for a few thousand documents. At a few **million**, scoring the query against every vector — exact $k$-nearest-neighbour — is too slow for an interactive request. A **vector database** is a system built around an **Approximate Nearest Neighbour (ANN)** index that returns *most* of the true neighbours in a fraction of the time, plus the operational machinery (persistence, metadata filtering, updates, sharding) a production retriever needs.
+The [embeddings lesson](/courses/building-with-llms/03-embeddings-and-semantic-search) turns text into vectors and ranks them by cosine similarity. That works fine for a few thousand documents. At a few **million**, scoring the query against every vector (exact $k$-nearest-neighbour) is too slow for an interactive request. A **vector database** is a system built around an **Approximate Nearest Neighbour (ANN)** index that returns *most* of the true neighbours in a fraction of the time, plus the operational machinery (persistence, metadata filtering, updates, sharding) a production retriever needs.
 
 ## The cost of exact search
 
@@ -52,7 +52,7 @@ $$
 
 **HNSW (Hierarchical Navigable Small World).** A multi-layer proximity graph. Search starts at a sparse top layer, greedily hops toward the query, then descends into denser layers — like a skip-list for geometry. Gives excellent recall at low latency and is the default in most modern vector DBs; the cost is high memory and slower inserts. Knobs: `M` (edges per node) and `efSearch` (candidate-list width during search).
 
-**Product Quantization (PQ).** A *compression* layer, usually combined with IVF (`IVF-PQ`). Split each vector into $m$ sub-vectors, k-means each subspace into 256 centroids, store each sub-vector as a 1-byte centroid id. A 768-dim float32 vector (3072 bytes) shrinks to ~$m$ bytes — ~100× smaller — so billion-scale indexes fit in RAM. Distances are approximated from small lookup tables; recall drops, so PQ is typically used to *shortlist* candidates that are then re-ranked with exact vectors.
+**Product Quantization (PQ).** A *compression* layer, usually combined with IVF (`IVF-PQ`). Split each vector into $m$ sub-vectors, k-means each subspace into 256 centroids, store each sub-vector as a 1-byte centroid id. A 768-dim float32 vector (3072 bytes) shrinks to ~$m$ bytes (~100× smaller), so billion-scale indexes fit in RAM. Distances are approximated from small lookup tables; recall drops, so PQ is typically used to *shortlist* candidates that are then re-ranked with exact vectors.
 
 | Index | Recall | Latency | Memory | Build/insert |
 |---|:---:|:---:|:---:|:---:|
@@ -75,7 +75,7 @@ $$
 \text{candidates} \approx 1{,}000{,}000 \cdot \tfrac{10}{1000} = 10{,}000
 $$
 
-You score 10k vectors instead of 1M — a **100× speedup** — at the cost of missing any true neighbour whose vector landed in one of the 990 un-probed cells. Raising `nprobe` to 50 scores 50k vectors and recovers most of that lost recall.
+You score 10k vectors instead of 1M (a **100× speedup**) at the cost of missing any true neighbour whose vector landed in one of the 990 un-probed cells. Raising `nprobe` to 50 scores 50k vectors and recovers most of that lost recall.
 
 ### Watch a probe run
 

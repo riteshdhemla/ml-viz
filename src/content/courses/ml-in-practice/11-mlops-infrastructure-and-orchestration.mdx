@@ -11,7 +11,7 @@ estimatedMinutes: 22
 
 The training script that won the offline metric is a tiny fraction of what actually ships an ML system. Around it sit a storage layer that has to hold petabytes of features without losing a row, a compute layer that has to schedule GPUs you only sort of own, a development environment that has to reproduce a run someone made eight months ago, and an orchestrator that has to retry a 14-step pipeline when step 9 fails at 4 a.m. without paging anyone. "MLOps infrastructure" is the name for *that* — the substrate underneath the model that decides whether the team ships once a quarter or once an hour.
 
-Real-world examples: most production ML stacks pick a few canonical pieces from this list — **S3** or **GCS** for object storage and **Snowflake** / **BigQuery** for the warehouse half of the data plane; **Feast** or **Tecton** for the feature store and **MLflow** / **Weights & Biases** for the model registry and experiment tracker; **Airflow** / **Prefect** / **Dagster** for batch DAGs, **Argo Workflows** or **Kubeflow Pipelines** for Kubernetes-native ones, and **Ray** / **SageMaker** for distributed training jobs. The exact picks vary; the shape of the stack — storage + compute + dev env + scheduler + tracker + registry — is remarkably similar across companies.
+Real-world examples: most production ML stacks pick a few canonical pieces from this list — **S3** or **GCS** for object storage and **Snowflake** / **BigQuery** for the warehouse half of the data plane; **Feast** or **Tecton** for the feature store and **MLflow** / **Weights & Biases** for the model registry and experiment tracker; **Airflow** / **Prefect** / **Dagster** for batch DAGs, **Argo Workflows** or **Kubeflow Pipelines** for Kubernetes-native ones, and **Ray** / **SageMaker** for distributed training jobs. The exact picks vary; the shape of the stack (storage + compute + dev env + scheduler + tracker + registry) is remarkably similar across companies.
 
 ## Storage and compute: the two halves of the data plane
 
@@ -88,7 +88,7 @@ The single biggest reason to put a pipeline in an orchestrator instead of a `cro
 
 ## The ML platform: what you're actually buying
 
-An "ML platform" — Vertex AI, SageMaker, Databricks, the in-house thing every large ML org eventually builds — is the union of the layers above plus the integrations that make them feel like one product. The layers, top to bottom:
+An "ML platform" (Vertex AI, SageMaker, Databricks, the in-house thing every large ML org eventually builds) is the union of the layers above plus the integrations that make them feel like one product. The layers, top to bottom:
 
 - **CI/CD for models** — Git push triggers a pipeline that retrains, evaluates against the live model, registers the new artefact, and gates promotion on metrics + manual approval.
 - **Experiment tracker** — every training run logs hyperparameters, metrics, system metadata, and links to the artefact in object storage. MLflow, W&B, Neptune.

@@ -74,7 +74,7 @@ $$
 \theta_{t+1} = \theta_t - \frac{\eta}{\sqrt{\hat{v}_t} + \epsilon}\, \hat{m}_t
 $$
 
-Defaults $\beta_1=0.9$, $\beta_2=0.999$, $\epsilon=10^{-8}$ work across a huge range of problems with little tuning — which is why Adam is the default for most deep learning.
+Defaults $\beta_1=0.9$, $\beta_2=0.999$, $\epsilon=10^{-8}$ work across a huge range of problems with little tuning, which is why Adam is the default for most deep learning.
 
 <Callout type="info" title="Why bias correction matters early">
   At $t=1$ with $\beta_2=0.999$, the raw second moment is $v_1 = 0.001\,g_1^2$ — about 1000× too small, which would make the first step enormous. The correction divides by $1-\beta_2^t = 0.001$, restoring the right scale. The factors $1-\beta_1^t$ and $1-\beta_2^t$ both $\to 1$ as $t$ grows, so bias correction only affects the opening steps — exactly where it is needed.

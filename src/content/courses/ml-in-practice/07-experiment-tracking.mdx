@@ -9,7 +9,7 @@ estimatedMinutes: 20
 
 # Experiment Tracking & Versioning
 
-A training run is a black box that consumed code, data, and a stack of GPUs for eight hours and emitted a checkpoint. Six weeks later your boss asks "can we get this number back" and you discover the LR was in a notebook cell that no longer exists, the dataset was a CSV someone overwrote, and the CUDA driver on the box has been bumped. Experiment tracking and versioning are the disciplines that turn that black box into a reproducible recipe: every run is a row in a database with its hyperparameters, its metrics over time, its output artifacts, and — critically — content-addressed pointers back to the exact code, exact data, and exact environment that produced it.
+A training run is a black box that consumed code, data, and a stack of GPUs for eight hours and emitted a checkpoint. Six weeks later your boss asks "can we get this number back" and you discover the LR was in a notebook cell that no longer exists, the dataset was a CSV someone overwrote, and the CUDA driver on the box has been bumped. Experiment tracking and versioning are the disciplines that turn that black box into a reproducible recipe: every run is a row in a database with its hyperparameters, its metrics over time, its output artifacts, and (critically) content-addressed pointers back to the exact code, exact data, and exact environment that produced it.
 
 Real-world examples: MLflow runs the experiment tracker at thousands of teams from startups to FAANGs; Weights & Biases is the default for hyperparameter sweeps in academic and applied DL labs; DVC versions datasets and model checkpoints in git-style content-addressed storage; Sacred is the quiet workhorse of research labs from Berkeley to ETH; Snowflake + dbt version SQL pipelines as code (the data-engineering equivalent of git); the Hugging Face Hub is the model-artifact registry the open-source world has converged on. Each tool solves a slice of the same problem — "what produced this model, and can I reproduce it?" — and a production team usually wires together two or three.
 
@@ -23,7 +23,7 @@ An experiment tracker is not a magical thing. At its core it is a database with 
 - **Artifacts.** Files produced by the run: model weights, optimiser state, configs, generated plots, test reports, a CSV of failure cases, sample predictions. The artifact store is content-addressed by hash (or by run id + filename) so two runs that emit byte-identical weights de-duplicate to one blob on disk.
 - **Tags / metadata.** Human-readable annotations: experiment name ("baseline-v3"), owner, dataset version, environment fingerprint, free-form notes. These are how a human navigates a thousand runs six months later.
 
-The point is not that the schema is complex — it isn't — but that *all five* of these dimensions have to be captured automatically. The moment any of them is "in the notebook" or "on the box that ran it," the run stops being reproducible.
+The point is not that the schema is complex (it isn't) but that *all five* of these dimensions have to be captured automatically. The moment any of them is "in the notebook" or "on the box that ran it," the run stops being reproducible.
 
 ## The three things you must version to reproduce a run
 
@@ -58,7 +58,7 @@ Set every source of randomness at the top of the script:
 - `torch.manual_seed(s)`, `torch.cuda.manual_seed_all(s)` for PyTorch on CPU and all GPUs.
 - Framework-specific deterministic flags: `torch.use_deterministic_algorithms(True)`, `cudnn.deterministic = True`, `cudnn.benchmark = False`.
 
-Even so, GPU kernels routinely add non-determinism. Float summation is non-associative — `(a + b) + c ≠ a + (b + c)` in IEEE-754 — and parallel reductions on a GPU choose summation order based on block scheduling, which depends on hardware and load. The last decimal of your loss can shift across two "identical" runs and there is nothing you can do about it short of forcing every reduction to a deterministic kernel (slow).
+Even so, GPU kernels routinely add non-determinism. Float summation is non-associative (`(a + b) + c ≠ a + (b + c)` in IEEE-754) and parallel reductions on a GPU choose summation order based on block scheduling, which depends on hardware and load. The last decimal of your loss can shift across two "identical" runs and there is nothing you can do about it short of forcing every reduction to a deterministic kernel (slow).
 
 ### Pin software versions, not just package versions
 
@@ -66,11 +66,11 @@ Even so, GPU kernels routinely add non-determinism. Float summation is non-assoc
 
 ### LLM training adds layers
 
-LLM training pipelines add their own reproducibility traps. Distributed training depends on the order workers initialise (NCCL ring topology), gradient accumulation introduces boundary effects (where you split a batch matters), and dataloader sharding decides which examples each rank sees in which order. A run that is reproducible on a single GPU is not necessarily reproducible on 8 — and reproducibility at 8 GPUs does not extend to 64. The fix is to version the distributed config (world size, gradient accumulation steps, micro-batch size, dataloader seed *per rank*) alongside the model config.
+LLM training pipelines add their own reproducibility traps. Distributed training depends on the order workers initialise (NCCL ring topology), gradient accumulation introduces boundary effects (where you split a batch matters), and dataloader sharding decides which examples each rank sees in which order. A run that is reproducible on a single GPU is not necessarily reproducible on 8, and reproducibility at 8 GPUs does not extend to 64. The fix is to version the distributed config (world size, gradient accumulation steps, micro-batch size, dataloader seed *per rank*) alongside the model config.
 
 ## The hyperparameter sweep lifecycle
 
-Most training runs are not standalone — they are members of a *sweep*: try ten learning rates, three seeds each, plot validation loss, pick the best. The tracker is the substrate that makes this manageable.
+Most training runs are not standalone. They are members of a *sweep*: try ten learning rates, three seeds each, plot validation loss, pick the best. The tracker is the substrate that makes this manageable.
 
 ### Search strategies
 
@@ -96,7 +96,7 @@ A run produced a model. The model registry decides whether that model is *promot
 
 ### Stages
 
-The canonical promotion ladder: `staging` → `production` → `archived`. A model in `staging` is being shadow-tested or canary-tested. A model in `production` is what serving infra loads when it boots. An `archived` model is kept for lineage but no longer serves. A run promoted to production should be content-addressed — its weights have a hash — and immutable: nobody is allowed to push new weights under the same model version.
+The canonical promotion ladder: `staging` → `production` → `archived`. A model in `staging` is being shadow-tested or canary-tested. A model in `production` is what serving infra loads when it boots. An `archived` model is kept for lineage but no longer serves. A run promoted to production should be content-addressed (its weights have a hash) and immutable: nobody is allowed to push new weights under the same model version.
 
 ### Lineage
 
@@ -114,7 +114,7 @@ A run is research output. A registered, promoted model is a production contract.
 
 ## Common mistakes
 
-1. **"Magic" hyperparameters in checkpoint filenames.** `model_v3_final_FINAL_lr3e4_actually_use_this.pt`. The LR is in the *filename* — there is no other record of it. The fix is to log every hyperparameter as a tracked parameter on the run, never inline it into a filename. Treat filenames as opaque keys.
+1. **"Magic" hyperparameters in checkpoint filenames.** `model_v3_final_FINAL_lr3e4_actually_use_this.pt`. The LR is in the *filename*. There is no other record of it. The fix is to log every hyperparameter as a tracked parameter on the run, never inline it into a filename. Treat filenames as opaque keys.
 2. **Re-running notebook cells out of order.** Cell 12 saved the model. Cell 7 was re-run with different hyperparameters *after*. The saved model no longer matches the saved metrics, and you do not know which is correct. The fix is to run training from a script (`python train.py --lr 3e-4 ...`), not interactively; the run record is the script + its arguments.
 3. **Logging the model file but not the preprocessing code.** The model expects features normalised with the *training* mean and std. Six months later, only the model file remains; the preprocessing code is gone. At inference time the new code normalises differently and predictions are silently shifted. The fix is to log the preprocessor as an artifact alongside the model — or, better, bake it into the model graph so it cannot be lost.
 4. **"Works on my machine."** Pinned package versions but not pinned CUDA / driver / OS. The container digest is the right level of pinning; anything looser is theatre.

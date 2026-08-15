@@ -9,7 +9,7 @@ estimatedMinutes: 15
 
 # Backbones in Practice
 
-Every detection and segmentation model has two parts: a **backbone** that converts raw pixels into rich feature representations, and one or more **heads** that consume those features to produce boxes, masks, or labels. Getting the backbone right — both the architecture and the initialization — often matters more than the choice of head.
+Every detection and segmentation model has two parts: a **backbone** that converts raw pixels into rich feature representations, and one or more **heads** that consume those features to produce boxes, masks, or labels. Getting the backbone right (both the architecture and the initialization), often matters more than the choice of head.
 
 ## The Backbone's Role
 
@@ -189,7 +189,7 @@ Two consequences when you read any table like this one. First, a headline accura
 
 - Backbones extract hierarchical features from raw images; detection and segmentation heads attach to intermediate multi-scale feature maps.
 - ResNet's identity shortcut $F(\mathbf{x}) + \mathbf{x}$ ensures gradient flow through very deep networks by adding an additive $1$ term in the chain rule.
-- Depthwise separable convolutions reduce compute by a factor of $1/C_{out} + 1/K^2$ — roughly 8–9× for $K=3$ — enabling efficient mobile architectures.
+- Depthwise separable convolutions reduce compute by a factor of $1/C_{out} + 1/K^2$ (roughly 8–9× for $K=3$), enabling efficient mobile architectures.
 - EfficientNet scales depth, width, and resolution jointly with a compound coefficient $\phi$, achieving better accuracy per FLOP than single-axis scaling.
 - Transfer learning from ImageNet is almost always worth it; use feature extraction for small datasets and full fine-tuning (with low LR and layer-wise decay) for larger ones.
 - Always normalize inputs to ImageNet mean and standard deviation; never fine-tune a pre-trained backbone with the same learning rate as the head.

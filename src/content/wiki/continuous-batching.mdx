@@ -12,7 +12,7 @@ spineStages: [feedback]
 
 # Continuous Batching
 
-Batching is what makes LLM decode affordable: one step reads the model weights from HBM once and serves every sequence in the batch. The question is *when batch membership can change*. **Static batching** fixes the batch until every member finishes — so a 50-token response waits idle while a 900-token neighbour grinds on. **Continuous batching** (also called *iteration-level scheduling* or *in-flight batching*, introduced by Orca) makes the batch a revolving door: composition is re-decided **every decode step**, so a finished sequence's slot is refilled by a queued request immediately.
+Batching is what makes LLM decode affordable: one step reads the model weights from HBM once and serves every sequence in the batch. The question is *when batch membership can change*. **Static batching** fixes the batch until every member finishes, so a 50-token response waits idle while a 900-token neighbour grinds on. **Continuous batching** (also called *iteration-level scheduling* or *in-flight batching*, introduced by Orca) makes the batch a revolving door: composition is re-decided **every decode step**, so a finished sequence's slot is refilled by a queued request immediately.
 
 ## The scheduler loop
 
@@ -61,7 +61,7 @@ request F (3 tok)            —    d2   d1   d0✓
 C finishes at iteration 2 and E (next in the FIFO queue) occupies its slot at iteration 3; A finishes at 3 and F replaces it at 4. Every iteration runs 4 active sequences. Under static batching, E and F would have waited until iteration 8 — the batch's slowest member (B) gates everyone. Same hardware, same requests: continuous batching finishes the work in 8 iterations with ~100% slot occupancy; the static schedule needs 8 + 4 = 12 iterations with slots idling from iteration 3 onward.
 
 Step through that schedule — retire, admit, step, stream, once per decode
-iteration — and then watch the same six requests run under static batching:
+iteration, and then watch the same six requests run under static batching:
 
 <AlgorithmTrace id="continuous-batching" />
 

@@ -9,14 +9,14 @@ estimatedMinutes: 12
 
 # BatchNorm & Dropout
 
-Two techniques transformed deep learning from an art into an engineering discipline: **Batch Normalization** and **Dropout**. Neither is about the network's hypothesis class — they do not change what functions the network can represent. Instead, they change the *optimization landscape*, making it easier to find good solutions and harder to memorize noise.
+Two techniques transformed deep learning from an art into an engineering discipline: **Batch Normalization** and **Dropout**. Neither is about the network's hypothesis class. They do not change what functions the network can represent. Instead, they change the *optimization landscape*, making it easier to find good solutions and harder to memorize noise.
 
 ## The problem: internal covariate shift
 
 Each layer of a deep network receives inputs whose distribution shifts every time the weights of the previous layer change. This **internal covariate shift** slows training because later layers must constantly adapt to a moving target.
 
 <Callout type="warning" title="Settled vs folklore">
-Internal covariate shift is the *original* (2015) motivation for batch norm, and it's the story you'll hear most often — but it is **contested**. A well-known 2018 study ("How Does Batch Normalization Help Optimization?") showed you can inject covariate shift *after* batch norm and still train fine, and argued the real mechanism is a **smoother loss landscape** — a genuine **optimization** effect. Treat covariate shift as useful intuition, not settled fact; the smoothing account is where the field currently sits.
+Internal covariate shift is the *original* (2015) motivation for batch norm, and it's the story you'll hear most often, but it is **contested**. A well-known 2018 study ("How Does Batch Normalization Help Optimization?") showed you can inject covariate shift *after* batch norm and still train fine, and argued the real mechanism is a **smoother loss landscape** — a genuine **optimization** effect. Treat covariate shift as useful intuition, not settled fact; the smoothing account is where the field currently sits.
 </Callout>
 
 Concretely, imagine training a five-layer network. After one gradient step, the first layer's weights change slightly, which changes the distribution of activations entering the second layer, which changes what the second layer needs to do, which changes the gradients the third layer sees — a cascade that makes each layer's job harder than it needs to be.
@@ -37,7 +37,7 @@ $$
 
 where $\mu_B = \frac{1}{m}\sum_{i=1}^m x_i$ and $\sigma_B^2 = \frac{1}{m}\sum_{i=1}^m (x_i - \mu_B)^2$ are the mini-batch mean and variance, and $\gamma, \beta$ are learned per-feature scale and shift.
 
-**Why two steps?** The normalization step forces zero mean and unit variance. But sometimes the network needs a non-zero mean or non-unit variance for its activations — the learned $\gamma, \beta$ restore that flexibility. At the limit, if $\gamma = \sigma_B$ and $\beta = \mu_B$, the layer has learned to undo the normalization entirely — but in practice this never happens because the smooth optimization landscape encourages smaller, useful values.
+**Why two steps?** The normalization step forces zero mean and unit variance. But sometimes the network needs a non-zero mean or non-unit variance for its activations — the learned $\gamma, \beta$ restore that flexibility. At the limit, if $\gamma = \sigma_B$ and $\beta = \mu_B$, the layer has learned to undo the normalization entirely, but in practice this never happens because the smooth optimization landscape encourages smaller, useful values.
 
 **Inference mode:** During training, BatchNorm uses mini-batch statistics, which vary each step. At inference time, the batch may contain just one sample, making batch statistics meaningless. Instead, BatchNorm accumulates **running statistics** during training: $\mu_\text{run} \leftarrow 0.9\,\mu_\text{run} + 0.1\,\mu_B$ (exponential moving average). At inference, these fixed running statistics replace $\mu_B$ and $\sigma^2_B$, making predictions deterministic. This is why calling `model.eval()` is essential — it switches the mode.
 

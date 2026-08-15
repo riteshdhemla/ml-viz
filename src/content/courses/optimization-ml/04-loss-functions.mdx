@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Loss Functions
 
-Every optimizer in this course minimizes *something* — but what? This lesson is the one place the course steps out of the **optimization** slot and into the **objective** slot: the **loss function** turns "the model is wrong" into a single number whose gradient drives learning. The choice of loss is one of the most consequential modeling decisions you make: it encodes what kinds of errors you care about, how you treat outliers, and even what probabilistic assumption you're making about the data.
+Every optimizer in this course minimizes *something*, but what? This lesson is the one place the course steps out of the **optimization** slot and into the **objective** slot: the **loss function** turns "the model is wrong" into a single number whose gradient drives learning. The choice of loss is one of the most consequential modeling decisions you make: it encodes what kinds of errors you care about, how you treat outliers, and even what probabilistic assumption you're making about the data.
 
 **Real-world examples:** MSE in every regression, cross-entropy in essentially every classifier and language model, hinge loss in SVMs, Huber loss in robust regression and RL, focal loss in object detectors with class imbalance.
 
@@ -51,7 +51,7 @@ $$
 
 **Hinge loss** (SVMs) penalizes predictions that aren't correct *by a margin*: $L = \max(0,\, 1 - y\cdot\hat{y})$ for $y\in\{-1,+1\}$. Zero loss once a point is correctly classified beyond the margin — it cares about the boundary, not calibrated probabilities.
 
-**Focal loss** down-weights easy examples — $L = -(1-\hat{p})^\gamma \log\hat{p}$ — so a detector swamped by thousands of easy background boxes still learns from the rare hard positives. It's cross-entropy built for extreme class imbalance.
+**Focal loss** down-weights easy examples ($L = -(1-\hat{p})^\gamma \log\hat{p}$), so a detector swamped by thousands of easy background boxes still learns from the rare hard positives. It's cross-entropy built for extreme class imbalance.
 
 ## The deep link: loss = negative log-likelihood
 
@@ -65,7 +65,7 @@ $$
 \text{MLE: } \max_\theta \prod_i p_\theta(y_i\mid \mathbf{x}_i) \;\;\Longleftrightarrow\;\; \min_\theta \sum_i -\log p_\theta(y_i\mid \mathbf{x}_i)
 $$
 
-So "choosing a loss" is really "choosing a probabilistic model of your data." The gradient-descent variants from Lesson 1 then minimize whichever surface that choice produces — and the loss shapes that surface:
+So "choosing a loss" is really "choosing a probabilistic model of your data." The gradient-descent variants from Lesson 1 then minimize whichever surface that choice produces, and the loss shapes that surface:
 
 <GradientDescentViz />
 
@@ -93,7 +93,7 @@ So "choosing a loss" is really "choosing a probabilistic model of your data." Th
 - The **loss function** defines the objective the optimizer minimizes; it encodes which errors matter and what data model you assume.
 - **Regression**: MSE (mean, outlier-sensitive), MAE (median, robust), Huber (a smooth compromise).
 - **Classification**: cross-entropy (default, calibrated probabilities), hinge (max-margin), focal (class imbalance).
-- Most losses are **negative log-likelihood** under a noise model — Gaussian→MSE, Laplace→MAE, Bernoulli→cross-entropy — so picking a loss is picking a probabilistic model.
+- Most losses are **negative log-likelihood** under a noise model (Gaussian→MSE, Laplace→MAE, Bernoulli→cross-entropy), so picking a loss is picking a probabilistic model.
 
 ## Related concepts
 

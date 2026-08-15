@@ -67,7 +67,7 @@ That also fixes the **rate**. Dirichlet energy $E(H) = \sum_{(u,v)\in E}\lVert h
 | 40 | 0.82608 | 0.82637 |
 | 78 | 0.82636 | 0.82637 |
 
-**Now drag the bridge slider, because it runs against the obvious intuition.** Adding edges *between* the two communities makes the graph mix better, which lowers $\lambda_2$ — so a better-connected graph over-smooths **faster**. At depth 20 the surviving energy is $0.504$ with one bridge and $0.0088$ with twelve: a 57× difference from adding eleven edges, with the node features untouched. More connectivity is not more information here; it is a shorter fuse.
+**Now drag the bridge slider, because it runs against the obvious intuition.** Adding edges *between* the two communities makes the graph mix better, which lowers $\lambda_2$, so a better-connected graph over-smooths **faster**. At depth 20 the surviving energy is $0.504$ with one bridge and $0.0088$ with twelve: a 57× difference from adding eleven edges, with the node features untouched. More connectivity is not more information here; it is a shorter fuse.
 
 Mitigations:
 
@@ -88,7 +88,7 @@ Mitigations:
 
 ## Common mistakes
 
-1. **Treating GAT attention as global.** It's restricted to each node's neighbors — it does not attend across the whole graph like a transformer.
+1. **Treating GAT attention as global.** It's restricted to each node's neighbors. It does not attend across the whole graph like a transformer.
 2. **Using a non-invariant readout.** Concatenating node embeddings in some order breaks permutation invariance; pool with sum/mean/max.
 3. **Going deep by default.** Beyond ~4 layers, over-smoothing usually hurts; add skip connections or use fewer layers.
 4. **Confusing node- and graph-level outputs.** Graph-level tasks need a readout; forgetting it leaves you with per-node vectors and no graph prediction.

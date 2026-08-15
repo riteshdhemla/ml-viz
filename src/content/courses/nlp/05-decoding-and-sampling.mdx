@@ -117,7 +117,7 @@ A typical setting is $p = 0.9$ — keep the smallest set of tokens that together
 <SamplingViz />
 
 <Callout type="tip" title="Why top-p > top-k for open-ended tasks">
-Top-k fixes the count regardless of whether the model is confident. Top-p fixes the *mass* — so when the model is sure of the next token, you essentially get greedy; when the model is genuinely uncertain, you sample from a wide nucleus. That dynamic range is exactly what natural-language generation needs to avoid both repetition and gibberish.
+Top-k fixes the count regardless of whether the model is confident. Top-p fixes the *mass*, so when the model is sure of the next token, you essentially get greedy; when the model is genuinely uncertain, you sample from a wide nucleus. That dynamic range is exactly what natural-language generation needs to avoid both repetition and gibberish.
 </Callout>
 
 ## Combining the knobs
@@ -135,7 +135,7 @@ In practice, samplers compose. The HuggingFace `generate()` default applies them
 
 ## Repetition control
 
-Vanilla sampling — even with top-p — drifts into repetition because once a phrase appears the model's own context biases it toward emitting that phrase again. Three patches show up everywhere:
+Vanilla sampling (even with top-p) drifts into repetition because once a phrase appears the model's own context biases it toward emitting that phrase again. Three patches show up everywhere:
 
 - **Repetition penalty** $\rho > 1$ (Keskar et al., 2019). For any token $i$ that has already appeared in the context, divide its logit by $\rho$ before softmax (or multiply if negative). Typical $\rho = 1.1$–$1.3$. Too large and the model can never reuse common words like "the".
 - **No-repeat n-gram constraint.** Hard rule: never emit a token that would complete an $n$-gram already in the context. Common values: $n = 3$ for chat, $n = 4$–$5$ for translation. Cheap, deterministic, brittle on technical text where repetition is correct.
@@ -151,10 +151,10 @@ It is tempting to believe that temperature 0 (or greedy decoding) makes generati
 2. **Batch-size sensitivity.** Many inference servers batch concurrent requests for throughput. The same prompt may run in a batch of 1 at 3am and a batch of 64 at peak — different kernels, different reductions, different outputs.
 3. **Mixed precision and kernel selection.** bf16/fp16 weights, fp8 KV caches, and FlashAttention variants all use different summation orders. cuBLAS / cuDNN sometimes autoselect different kernels based on shapes that depend on dynamic batch composition.
 
-The closest you get to bit-exact in practice is: **(a)** fix the random seed and the `seed` parameter (matters only for sampling, not greedy), **(b)** decode greedily (no sampling), **(c)** pin batch size and padding, **(d)** disable autotuning, **(e)** pin the model version, the driver, and the kernel library versions. Production APIs that advertise a `seed` argument generally promise "best-effort reproducibility", not bit-exactness — and explicitly warn that infrastructure changes can shift outputs.
+The closest you get to bit-exact in practice is: **(a)** fix the random seed and the `seed` parameter (matters only for sampling, not greedy), **(b)** decode greedily (no sampling), **(c)** pin batch size and padding, **(d)** disable autotuning, **(e)** pin the model version, the driver, and the kernel library versions. Production APIs that advertise a `seed` argument generally promise "best-effort reproducibility", not bit-exactness, and explicitly warn that infrastructure changes can shift outputs.
 
 <Callout type="warning" title="Temperature = 0 is not the same as deterministic">
-"Temperature 0" guarantees that *sampling* reduces to argmax. It does **not** guarantee that the argmax itself is identical across machines, batches, or kernel versions. If two of your eval runs give different outputs on the same prompt at $T = 0$, you have not found a bug — you have rediscovered non-associative float math.
+"Temperature 0" guarantees that *sampling* reduces to argmax. It does **not** guarantee that the argmax itself is identical across machines, batches, or kernel versions. If two of your eval runs give different outputs on the same prompt at $T = 0$, you have not found a bug. You have rediscovered non-associative float math.
 </Callout>
 
 <Exercise id="decoding-greedy-vs-beam" />

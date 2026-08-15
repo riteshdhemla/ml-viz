@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Content Moderation at Scale
 
-Every platform with user-generated content faces the same problem: a small fraction of content violates policies — spam, hate speech, misinformation, explicit imagery, discriminatory listings — and it must be detected and acted on before it harms users or creates legal liability. The challenge is scale: Pinterest moderates billions of pins, YouTube hundreds of hours per minute of video, DoorDash thousands of restaurant photos per day. Human review alone is impossible; ML must handle the load.
+Every platform with user-generated content faces the same problem: a small fraction of content violates policies (spam, hate speech, misinformation, explicit imagery, discriminatory listings) and it must be detected and acted on before it harms users or creates legal liability. The challenge is scale: Pinterest moderates billions of pins, YouTube hundreds of hours per minute of video, DoorDash thousands of restaurant photos per day. Human review alone is impossible; ML must handle the load.
 
 **Real-world examples:** Pinterest (detect violative content at scale), Zillow (detect discriminatory language in listings), DoorDash (detect inappropriate restaurant photos), Etsy (policy violation detection), Snap (ad content review at scale), Roblox (in-game content moderation), LinkedIn (spam and fake profile detection), Bumble (detect offensive images).
 
@@ -40,9 +40,9 @@ ML models can only be as good as their training labels. Content moderation label
 
 Always measure **inter-annotator agreement** (Cohen's kappa, Krippendorff's alpha) before computing model metrics. If kappa < 0.4 (poor agreement), the task needs better annotation guidelines or task decomposition before model training.
 
-The usual phrasing of this rule — "a model can't outperform human agreement" — is worth stating more precisely, because what it constrains is your *measurement*, not your model. Symmetric annotator noise does not move a decision boundary; averaging washes it out. What it does is corrupt the ruler you evaluate with, since your test labels are drawn from the same disagreeing annotators. In the walkthrough below, sweeping annotator noise leaves the model's true AUC flat at 0.96 while the AUC you would *report* falls to 0.84. Low kappa is a reason to build an adjudicated gold set before trusting any metric — not a reason to conclude the model is bad.
+The usual phrasing of this rule ("a model can't outperform human agreement") is worth stating more precisely, because what it constrains is your *measurement*, not your model. Symmetric annotator noise does not move a decision boundary; averaging washes it out. What it does is corrupt the ruler you evaluate with, since your test labels are drawn from the same disagreeing annotators. In the walkthrough below, sweeping annotator noise leaves the model's true AUC flat at 0.96 while the AUC you would *report* falls to 0.84. Low kappa is a reason to build an adjudicated gold set before trusting any metric — not a reason to conclude the model is bad.
 
-That holds for noise that is symmetric and independent of the content. Annotator bias that *correlates* with the content — the fairness case discussed below — is a different failure, and it does move the boundary.
+That holds for noise that is symmetric and independent of the content. Annotator bias that *correlates* with the content (the fairness case discussed below) is a different failure, and it does move the boundary.
 
 ### Active learning
 
@@ -94,7 +94,7 @@ The threshold is a **policy decision**, not an ML decision. Business, legal, and
 
 Every removal generates an appeal signal. Users who appeal removed content and win provide **high-quality corrective labels**: the model was wrong on exactly those cases. LinkedIn feeds winning appeals back into the training set with a corrective label and retrains weekly.
 
-The appeal channel is a **one-sided sampler**, and that shapes what you can ever know. It observes only decisions on the action side of the threshold — in the simulation below, about 2% of all decisions — so it measures precision continuously and for free, and measures recall not at all. Nobody appeals a piece of harmful content that was quietly approved. Recall requires a **separately drawn audit sample** of approved content, reviewed on purpose; it will never arrive on its own.
+The appeal channel is a **one-sided sampler**, and that shapes what you can ever know. It observes only decisions on the action side of the threshold (in the simulation below, about 2% of all decisions), so it measures precision continuously and for free, and measures recall not at all. Nobody appeals a piece of harmful content that was quietly approved. Recall requires a **separately drawn audit sample** of approved content, reviewed on purpose; it will never arrive on its own.
 
 ### The whole pipeline, measured
 

@@ -9,10 +9,10 @@ estimatedMinutes: 20
 
 # Monitoring & Observability
 
-A model that returns HTTP 200s, holds p99 latency under 300 ms, and never throws an exception can still be *silently broken*. The predictions look like predictions. The schema is unchanged. The dashboard is green. Meanwhile the model has been calibrated on data from six months ago, the upstream feature pipeline started returning zeros for a critical column two weeks back, and the click-through rate has been quietly bleeding 0.3 % a day. ML monitoring is the discipline of catching that *silent* failure mode in addition to the loud ones — and it requires a different toolkit from the one a backend service uses for the same job.
+A model that returns HTTP 200s, holds p99 latency under 300 ms, and never throws an exception can still be *silently broken*. The predictions look like predictions. The schema is unchanged. The dashboard is green. Meanwhile the model has been calibrated on data from six months ago, the upstream feature pipeline started returning zeros for a critical column two weeks back, and the click-through rate has been quietly bleeding 0.3 % a day. ML monitoring is the discipline of catching that *silent* failure mode in addition to the loud ones, and it requires a different toolkit from the one a backend service uses for the same job.
 
 <Callout type="info" title="The forecasting thread">
-Picture the site's running `daily-demand` model (from the [project-loop hub](/wiki/ml-project-loop)) six months after launch. The regime shift the [time-series course](/courses/time-series/04-demand-forecasting-in-production) warned about has happened — a new store opened, demand stepped up — and the model's error is quietly climbing. Monitoring is what *catches* that: a rolling-MAPE alert on the forecast, a null-rate check on the promo feature, a drift test on the input distribution. This is the **deployment-feedback** slot doing its job, closing the loop back to a retrain before the business notices.
+Picture the site's running `daily-demand` model (from the [project-loop hub](/wiki/ml-project-loop)) six months after launch. The regime shift the [time-series course](/courses/time-series/04-demand-forecasting-in-production) warned about has happened (a new store opened, demand stepped up) and the model's error is quietly climbing. Monitoring is what *catches* that: a rolling-MAPE alert on the forecast, a null-rate check on the promo feature, a drift test on the input distribution. This is the **deployment-feedback** slot doing its job, closing the loop back to a retrain before the business notices.
 </Callout>
 
 Real-world examples: most teams build the system-metrics layer on **Grafana + Prometheus** (or **Datadog** / **New Relic**) and bolt an ML-specific layer on top using **Arize**, **Fiddler**, or **WhyLabs** for input/output drift; **CloudWatch alarms** wired to **PagerDuty** handle the page-the-on-call leg; LLM-shaped products instrument prompt/response telemetry with **Langfuse** or **Helicone** to feed offline-eval dashboards. The pattern is always the same — system metrics in one stack, ML-specific metrics in another, alerting glue on top.
@@ -31,7 +31,7 @@ The fix is to monitor at four layers, top to bottom:
 You catch different failure modes at each layer. A bad code deploy shows up at the system layer. An upstream feature-pipeline bug shows up at the input layer. A retrain that mis-calibrated the model shows up at the output layer. A genuine concept shift shows up at the outcome layer. Monitoring only one layer is the most common reason teams discover, in production, that a problem has been there for a month.
 
 <Callout type="info" title="A 200 OK is not a correct prediction.">
-Service-level dashboards can be entirely green while a model is silently degraded. The classic version of this story: a feature pipeline upstream of the model started returning zeros for a top-importance feature. The HTTP response was on time, the JSON was well-formed, the model returned a number — and the number was systematically wrong for two weeks before anyone noticed. The system layer cannot catch this. You need the input and output layers too.
+Service-level dashboards can be entirely green while a model is silently degraded. The classic version of this story: a feature pipeline upstream of the model started returning zeros for a top-importance feature. The HTTP response was on time, the JSON was well-formed, the model returned a number, and the number was systematically wrong for two weeks before anyone noticed. The system layer cannot catch this. You need the input and output layers too.
 </Callout>
 
 ## System-layer metrics
@@ -51,7 +51,7 @@ Two mnemonics worth memorising:
 Use both. RED on the model endpoint, USE on the GPU pool it runs on, then graph them side by side. A correlated spike in queue depth (USE) and tail latency (RED) is a saturation incident; an uncorrelated spike in errors with flat utilisation is a code bug.
 
 <Callout type="warning" title="The mean lies — alert on the p99.">
-A service with a 50 ms mean latency can have a 5 s p99. The 1 % of users hitting that tail are absolutely sure your product is broken; their complaints are real, and the dashboard says everything is fine. Always alert on p95 or p99 — never on the mean — and remember that even p99 can hide a worse p99.9. If your traffic is large enough that a 0.1 % failure is many users per minute, the p99.9 is the line to watch.
+A service with a 50 ms mean latency can have a 5 s p99. The 1 % of users hitting that tail are absolutely sure your product is broken; their complaints are real, and the dashboard says everything is fine. Always alert on p95 or p99 (never on the mean) and remember that even p99 can hide a worse p99.9. If your traffic is large enough that a 0.1 % failure is many users per minute, the p99.9 is the line to watch.
 </Callout>
 
 ## Input drift detection
@@ -96,12 +96,12 @@ For the delayed case, **counterfactual logging** is the technique to know. Under
 
 Detection is the easy half. The hard half is alerting that wakes the on-call only when something is actually wrong. Two principles:
 
-**Alert on burn rate, not raw thresholds.** Define an SLO ("99.5 % of requests in p99 < 300 ms over a 30-day window") and let the *error budget* — the amount of breach you've allowed in the window — drive alerts. The metric to watch is the *burn rate*: how fast the current error rate is consuming the monthly budget. Google's SRE workbook recommends a **multi-window, multi-burn-rate** alert: a fast-burn alert fires when the rolling 1-hour error rate is consuming the monthly budget at 14× (you'll be out of budget in about two days at this rate), and a slow-burn alert fires when the 6-hour rate is consuming it at 1× (steady leak that needs investigation but not a page). The fast-burn pages, the slow-burn opens a ticket.
+**Alert on burn rate, not raw thresholds.** Define an SLO ("99.5 % of requests in p99 < 300 ms over a 30-day window") and let the *error budget* (the amount of breach you've allowed in the window) drive alerts. The metric to watch is the *burn rate*: how fast the current error rate is consuming the monthly budget. Google's SRE workbook recommends a **multi-window, multi-burn-rate** alert: a fast-burn alert fires when the rolling 1-hour error rate is consuming the monthly budget at 14× (you'll be out of budget in about two days at this rate), and a slow-burn alert fires when the 6-hour rate is consuming it at 1× (steady leak that needs investigation but not a page). The fast-burn pages, the slow-burn opens a ticket.
 
 **Runbooks for every alert, no exceptions.** A page without a runbook is a page that wakes the on-call to ask "what does this mean?" Every alert in the system should have a one-page document with: what fires it, what to check first, the three most common causes, and the rollback step. If you can't write a runbook for an alert, you don't yet understand what the alert means, and you shouldn't be alerting on it.
 
 <Callout type="warning" title="Alert fatigue is a real failure mode.">
-A noisy alert that fires 50 times a week — false positives, transient spikes, things that resolve themselves — trains the on-call to ignore it. When the real incident comes, it pages at 3 a.m. into a culture that hits "acknowledge" without looking. Audit alert frequency monthly: anything that fires more than once a week without a real incident is either a bug, the wrong metric, or the wrong threshold. Fix it, don't normalise it.
+A noisy alert that fires 50 times a week (false positives, transient spikes, things that resolve themselves) trains the on-call to ignore it. When the real incident comes, it pages at 3 a.m. into a culture that hits "acknowledge" without looking. Audit alert frequency monthly: anything that fires more than once a week without a real incident is either a bug, the wrong metric, or the wrong threshold. Fix it, don't normalise it.
 </Callout>
 
 ## Putting it together

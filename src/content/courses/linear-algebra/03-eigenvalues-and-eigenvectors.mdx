@@ -9,7 +9,7 @@ spineStages: [hypothesis-space]
 
 # Eigenvalues and Eigenvectors
 
-When you apply a matrix $\mathbf{A}$ to most vectors, both the direction and the length change. But there exist special vectors — **eigenvectors** — that only get scaled, never rotated. These special directions reveal the matrix's fundamental geometry — the geometry that decides what a transformation-based model (PCA, a spectral method, a deep network's stability) can and can't represent.
+When you apply a matrix $\mathbf{A}$ to most vectors, both the direction and the length change. But there exist special vectors (**eigenvectors**) that only get scaled, never rotated. These special directions reveal the matrix's fundamental geometry — the geometry that decides what a transformation-based model (PCA, a spectral method, a deep network's stability) can and can't represent.
 
 **Real-world examples:** PCA uses eigenvectors of the covariance matrix to find directions of maximum variance; Google PageRank is the dominant eigenvector of the web link graph; neural network stability analysis uses the spectral radius (largest absolute eigenvalue) to determine whether gradients will explode or vanish.
 
@@ -55,7 +55,7 @@ $$
 where $\mathbf{V} = [\mathbf{v}_1 | \cdots | \mathbf{v}_n]$ and $\boldsymbol{\Lambda} = \text{diag}(\lambda_1, \ldots, \lambda_n)$.
 
 <Callout type="info" title="Symmetric matrices are special">
-  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal — a guarantee known as the **spectral theorem**. Covariance matrices are symmetric — this is why PCA always gives orthogonal components.
+  For **symmetric** matrices ($\mathbf{A} = \mathbf{A}^\top$), eigenvalues are always real, eigenvectors are orthogonal, and $\mathbf{A} = \mathbf{Q}\boldsymbol{\Lambda}\mathbf{Q}^\top$ where $\mathbf{Q}$ is orthogonal — a guarantee known as the **spectral theorem**. Covariance matrices are symmetric. This is why PCA always gives orthogonal components.
 </Callout>
 
 ## Connection to PCA
@@ -111,7 +111,7 @@ $$
 \mathbf{A} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^\top
 $$
 
-with orthonormal $\mathbf{U}, \mathbf{V}$ and non-negative singular values $\sigma_i$ on the diagonal of $\boldsymbol{\Sigma}$. For a square symmetric PSD matrix — like a covariance matrix — the two decompositions coincide: $\sigma_i = \lambda_i$ and $\mathbf{U} = \mathbf{V} = \mathbf{Q}$.
+with orthonormal $\mathbf{U}, \mathbf{V}$ and non-negative singular values $\sigma_i$ on the diagonal of $\boldsymbol{\Sigma}$. For a square symmetric PSD matrix (like a covariance matrix), the two decompositions coincide: $\sigma_i = \lambda_i$ and $\mathbf{U} = \mathbf{V} = \mathbf{Q}$.
 
 Where $\mathbf{U}$, $\boldsymbol{\Sigma}$, $\mathbf{V}$ come from, why truncating them gives the *best* low-rank approximation (Eckart–Young), and the compression applications are the [next lesson](/courses/linear-algebra/04-svd-and-low-rank).
 

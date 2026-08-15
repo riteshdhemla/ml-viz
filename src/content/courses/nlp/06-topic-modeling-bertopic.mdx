@@ -69,7 +69,7 @@ $$
 
 where $\mathrm{tf}_{t,c}$ is the term frequency of $t$ inside class $c$'s super-document, $f_t$ is the total frequency of $t$ across the entire corpus, and $\bar{f}$ is the average number of words per class. The $\log(1 + \bar{f}/f_t)$ factor down-weights terms that appear in many classes (the c-TF-IDF analogue of IDF) and the $+1$ keeps the score non-negative even for very common words.
 
-**Vanilla TF-IDF** ranks terms that distinguish one *document* from the rest. **c-TF-IDF** ranks terms that distinguish one *cluster* from the rest. That single change is what makes the resulting labels read like topic names — `refund`, `delivery`, `defective` — rather than per-document noise.
+**Vanilla TF-IDF** ranks terms that distinguish one *document* from the rest. **c-TF-IDF** ranks terms that distinguish one *cluster* from the rest. That single change is what makes the resulting labels read like topic names (`refund`, `delivery`, `defective`) rather than per-document noise.
 
 The label for cluster $c$ is the top-$k$ terms by c-TF-IDF score, typically $k = 5$ or $10$. You can post-process (lowercase, deduplicate, strip stopwords, optionally re-rank with a small LM like KeyBERT for fluency) but the c-TF-IDF ranking is the load-bearing step.
 
@@ -101,7 +101,7 @@ It also has three structural weaknesses that BERTopic sidesteps:
 - **Mixture-per-document assumption.** LDA assumes every document is a mixture over *all* topics. Most short documents are about one thing.
 - **Hard to tune.** Number of topics $K$, $\alpha$ and $\beta$ Dirichlet priors, vocabulary pruning, stopword removal — all materially change the output. BERTopic moves most of those knobs into well-understood stages (cluster size, min/max df) instead.
 
-BERTopic gives up LDA's generative-model interpretability — there is no posterior, no per-document topic distribution by default — and in return gets dramatically better topic quality on real-world short text. For a corpus of 10 000 tweets, BERTopic usually wins on every metric a human cares about; for a corpus of 200 long Wikipedia articles, LDA can still be competitive.
+BERTopic gives up LDA's generative-model interpretability (there is no posterior, no per-document topic distribution by default) and in return gets dramatically better topic quality on real-world short text. For a corpus of 10 000 tweets, BERTopic usually wins on every metric a human cares about; for a corpus of 200 long Wikipedia articles, LDA can still be competitive.
 
 <Exercise id="bertopic-pipeline-order" />
 

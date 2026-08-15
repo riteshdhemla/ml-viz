@@ -56,9 +56,9 @@ print("softplus f'' range:", softplus_dd(x).min().round(4), "to", softplus_dd(x)
 
 <ConvexityViz />
 
-That scan is running for real — 1000 seeded random pairs, the exact test the callout describes — and it separates the table cleanly: $0$ violations for $x^2$, $|x|$ and softplus; $501$ for $x^3$; $502$ for $\sin x$; $1000$ for $-x^2$.
+That scan is running for real (1000 seeded random pairs, the exact test the callout describes) and it separates the table cleanly: $0$ violations for $x^2$, $|x|$ and softplus; $501$ for $x^3$; $502$ for $\sin x$; $1000$ for $-x^2$.
 
-The two "sometimes" cases both land near $500$, and that is not luck. Write the endpoints as $m \pm d$ — midpoint and half-width — and expand:
+The two "sometimes" cases both land near $500$, and that is not luck. Write the endpoints as $m \pm d$ (midpoint and half-width) and expand:
 
 $$
 \tfrac{1}{2}\big(f(m+d) + f(m-d)\big) - f(m) \;=\; \tfrac{1}{2}f''(m)\,d^2 + O(d^4)
@@ -70,7 +70,7 @@ $$
 x^3:\;\; \text{gap} = 3md^2 \qquad\qquad \sin:\;\; \text{gap} = -\sin(m)\,(1 - \cos d)
 $$
 
-Both are negative precisely when $f''(m) < 0$, so a random pair fails the test exactly when its midpoint lands in the rose band — which covers half of each of these symmetric domains. Hence $\approx 500/1000$.
+Both are negative precisely when $f''(m) < 0$, so a random pair fails the test exactly when its midpoint lands in the rose band, which covers half of each of these symmetric domains. Hence $\approx 500/1000$.
 
 Two things worth doing with it:
 
@@ -122,7 +122,7 @@ Relevant examples in ML:
 - **Half-spaces** $\{x : a^\top x \leq b\}$ — the building block of linear constraints
 - **Balls** $\{x : \|x\| \leq r\}$ — the $\ell_2$ regularization feasible set
 - **Probability simplex** $\{p \geq 0 : \sum_i p_i = 1\}$ — valid distributions
-- **Intersections of convex sets** are always convex — so Ridge ($\ell_2$) and Lasso ($\ell_1$) constraint balls are convex
+- **Intersections of convex sets** are always convex, so Ridge ($\ell_2$) and Lasso ($\ell_1$) constraint balls are convex
 
 This matters because optimization over a **convex domain** with a **convex objective** gives the strongest guarantees.
 
@@ -194,7 +194,7 @@ Despite non-convexity:
 - **Empirical observation:** in high dimensions, most critical points are saddle points, not local minima. Gradient descent tends to escape them.
 
 <Callout type="warning" title="Non-convexity does not mean chaos">
-  Deep networks are non-convex, but their landscapes are not random noise. Structured non-convexity — with benign saddle points and few poor local minima — is why training large networks works reliably in practice.
+  Deep networks are non-convex, but their landscapes are not random noise. Structured non-convexity (with benign saddle points and few poor local minima) is why training large networks works reliably in practice.
 </Callout>
 
 ## Convexity-adjacent tools
@@ -223,7 +223,7 @@ Together, $\mu$-SC + $L$-smooth gives the **condition number** $\kappa = L/\mu$;
 1. **Assuming convexity implies fast convergence.** Convexity guarantees global minima but not speed. A badly conditioned convex problem ($\kappa \gg 1$) can be extremely slow for vanilla GD.
 2. **Confusing convexity of loss with convexity of predictions.** The logistic loss is convex in $w$, but the predicted probabilities $\sigma(w^\top x)$ are not linear in $w$. Composing a convex function with a non-convex one can break convexity.
 3. **Checking convexity only on the loss, not the domain.** Constrained problems require convexity of *both* the objective and the feasible set.
-4. **Dismissing non-convex losses as unsolvable.** Non-convexity does not mean intractable — it means you lose the global minimum guarantee, but practical methods often work extremely well.
+4. **Dismissing non-convex losses as unsolvable.** Non-convexity does not mean intractable. It means you lose the global minimum guarantee, but practical methods often work extremely well.
 
 ## Key takeaways
 

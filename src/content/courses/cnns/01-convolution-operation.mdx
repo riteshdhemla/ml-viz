@@ -9,7 +9,7 @@ estimatedMinutes: 22
 
 # The Convolution Operation
 
-A CNN starts with a simple idea: instead of looking at every pixel independently, slide a small **filter** (kernel) across the image to detect local patterns. That "same filter everywhere" rule is a **hypothesis-space** choice — a built-in *translation-equivariance* bias — and it's the reason a CNN beats a plain MLP on images with far less data. It's the first of the four architectures in the [inductive-bias](/wiki/inductive-bias) story.
+A CNN starts with a simple idea: instead of looking at every pixel independently, slide a small **filter** (kernel) across the image to detect local patterns. That "same filter everywhere" rule is a **hypothesis-space** choice (a built-in *translation-equivariance* bias) and it's the reason a CNN beats a plain MLP on images with far less data. It's the first of the four architectures in the [inductive-bias](/wiki/inductive-bias) story.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -26,7 +26,7 @@ $$
 The filter slides across every position, computing a dot product at each step. This produces a **feature map** — a new image highlighting where the filter's pattern appears.
 
 <Callout type="info" title="Cross-correlation vs. true convolution">
-  Strictly, the formula above is **cross-correlation**: the filter is not flipped before being slid over the input. True mathematical convolution would replace $K_{m,n}$ with $K_{f-1-m,\;f-1-n}$ (a 180° flip). CNNs universally use cross-correlation but call it "convolution" by convention — since the filter weights are learned, the flip is absorbed into the weights and the distinction has no practical effect. PyTorch's `nn.Conv2d` computes cross-correlation.
+  Strictly, the formula above is **cross-correlation**: the filter is not flipped before being slid over the input. True mathematical convolution would replace $K_{m,n}$ with $K_{f-1-m,\;f-1-n}$ (a 180° flip). CNNs universally use cross-correlation but call it "convolution" by convention, since the filter weights are learned, the flip is absorbed into the weights and the distinction has no practical effect. PyTorch's `nn.Conv2d` computes cross-correlation.
 </Callout>
 
 <Callout type="tip" title="Intuition">

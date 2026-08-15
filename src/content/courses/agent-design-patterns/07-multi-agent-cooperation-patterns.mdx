@@ -9,9 +9,9 @@ estimatedMinutes: 18
 
 # Multi-Agent Cooperation Patterns
 
-A single agent — no matter how capable — is still a single point of failure. Its reasoning can go off-track, its training may have blind spots, and its confidence calibration is imperfect. The solution is the same one humans discovered for high-stakes decisions: **involve more minds**.
+A single agent (no matter how capable) is still a single point of failure. Its reasoning can go off-track, its training may have blind spots, and its confidence calibration is imperfect. The solution is the same one humans discovered for high-stakes decisions: **involve more minds**.
 
-Multi-agent cooperation is the umbrella term for architectures in which two or more agents work together on the same problem. The three patterns below — voting, role-based, and debate — span a spectrum from *breadth* (many independent views) to *depth* (iterative argumentation). Choosing the right pattern is an engineering trade-off, not a universally correct answer.
+Multi-agent cooperation is the umbrella term for architectures in which two or more agents work together on the same problem. The three patterns below (voting, role-based, and debate) span a spectrum from *breadth* (many independent views) to *depth* (iterative argumentation). Choosing the right pattern is an engineering trade-off, not a universally correct answer.
 
 This lesson builds on [Reflection Patterns](/courses/agent-design-patterns/06-reflection-patterns), where a single agent critiques its own output. Cooperation extends that idea to *external* critique and *distributed* generation. We look ahead to [Safety, Registries & Adaptation](/courses/agent-design-patterns/08-safety-registry-and-adaptation) in the next lesson.
 
@@ -21,7 +21,7 @@ Three forces push us toward multi-agent designs:
 
 1. **Divide and conquer.** Long or complex tasks exceed a single context window or require domain expertise that no one system prompt can cover. Splitting work across specialists keeps each sub-task tractable.
 2. **Diverse perspectives.** Different sampling temperatures, system prompts, or model versions produce meaningfully different outputs for the same input. Aggregating those outputs smooths out idiosyncratic errors.
-3. **Specialisation.** Roles like *planner*, *executor*, and *critic* require genuinely different behaviours. Encoding them in separate agents — each with a tight system prompt — is cleaner than asking one agent to context-switch mid-conversation.
+3. **Specialisation.** Roles like *planner*, *executor*, and *critic* require genuinely different behaviours. Encoding them in separate agents (each with a tight system prompt) is cleaner than asking one agent to context-switch mid-conversation.
 
 <Callout type="info" title="Coordination overhead is real">
   Adding agents multiplies API calls, latency, and cost. Each pattern below has a different overhead profile. Always benchmark against the simpler single-agent baseline before committing to a multi-agent design.
@@ -128,7 +128,7 @@ The protocol:
 
 1. **Initialisation.** The mediator presents the question. Agent A argues *for* position X; Agent B argues *against* (or for position Y).
 2. **Debate rounds.** Each agent reads the other's last argument and responds, attempting to rebut weak points and reinforce strong ones.
-3. **Synthesis.** After $K$ rounds, the mediator grades each side's arguments against a rubric — logical validity, evidence cited, responsiveness to the opponent's rebuttals — picks each side's strongest round, and produces a final answer that incorporates the most defensible claims from both.
+3. **Synthesis.** After $K$ rounds, the mediator grades each side's arguments against a rubric (logical validity, evidence cited, responsiveness to the opponent's rebuttals), picks each side's strongest round, and produces a final answer that incorporates the most defensible claims from both.
 
 ### Why debate produces higher quality
 

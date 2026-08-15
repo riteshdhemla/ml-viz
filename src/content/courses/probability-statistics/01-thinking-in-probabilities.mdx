@@ -27,7 +27,7 @@ An **event** is any subset of outcomes you might care about: "the roll is even" 
 2. $P(\Omega) = 1$ — *something* happens
 3. If $A$ and $B$ can't both happen, $P(A \cup B) = P(A) + P(B)$ — probabilities of exclusive events add
 
-That's the entire rulebook. Everything else — Bayes' theorem, likelihoods, expectation — is a consequence.
+That's the entire rulebook. Everything else (Bayes' theorem, likelihoods, expectation) is a consequence.
 
 <Callout type="info" title="Two readings of the same number">
   What does $P(\text{rain}) = 0.3$ *mean*? The **frequentist** reading: in many repeats of days like this one, 30% are rainy. The **Bayesian** reading: 0.3 is a degree of belief, which new evidence should update. The axioms above don't care which story you tell — both readings obey the same math, and ML uses each where it fits ([Bayesian inference](/courses/probability-statistics/04-bayesian-inference) leans on the second).
@@ -47,7 +47,7 @@ $$
 P(A, B) = P(A \mid B)\, P(B)
 $$
 
-Conditioning is *zooming in*: $P(A \mid B)$ throws away every world where $B$ didn't happen and renormalizes what's left. When the zoom changes nothing — $P(A \mid B) = P(A)$ — the events are **independent**, and the product rule collapses to $P(A,B) = P(A)P(B)$. (Naive Bayes builds an entire classifier from pretending this collapse holds.)
+Conditioning is *zooming in*: $P(A \mid B)$ throws away every world where $B$ didn't happen and renormalizes what's left. When the zoom changes nothing ($P(A \mid B) = P(A)$), the events are **independent**, and the product rule collapses to $P(A,B) = P(A)P(B)$. (Naive Bayes builds an entire classifier from pretending this collapse holds.)
 
 ### Both of them, as areas of one square
 
@@ -77,7 +77,7 @@ A **random variable** $X$ attaches a number to each outcome — the die's face v
 The next lesson makes this concrete with the four distributions ML reaches for daily.
 
 <Details summary="Deep dive: why a density can exceed 1">
-  A common trip-up: a PDF value is **not** a probability. A uniform on $[0, 0.5]$ has density $p(x) = 2$ everywhere on that interval — perfectly legal, because only the *area* must equal 1, and $2 \times 0.5 = 1$. Probabilities come from integrating the density over a range; the value at a single point can be arbitrarily large (and the probability of any *exact* single value is 0). Heights trade off against widths so the total area stays 1 — you can see this live in the distribution visualization in the next lesson.
+  A common trip-up: a PDF value is **not** a probability. A uniform on $[0, 0.5]$ has density $p(x) = 2$ everywhere on that interval — perfectly legal, because only the *area* must equal 1, and $2 \times 0.5 = 1$. Probabilities come from integrating the density over a range; the value at a single point can be arbitrarily large (and the probability of any *exact* single value is 0). Heights trade off against widths so the total area stays 1. You can see this live in the distribution visualization in the next lesson.
 </Details>
 
 ## Expectation: the long-run average

@@ -40,7 +40,7 @@ A correct training join (an **as-of join**) takes, for each label, the most rece
 
 <PointInTimeViz />
 
-The walkthrough simulates a fraud pipeline end to end — 1200 users, 140 days, ~30k labelled transactions — where `disputes_30d` is *caused by* the label: a fraudulent transaction generates a dispute that lands seven days later. Two results are worth carrying away, and the second one qualifies the warning above.
+The walkthrough simulates a fraud pipeline end to end (1200 users, 140 days, ~30k labelled transactions) where `disputes_30d` is *caused by* the label: a fraudulent transaction generates a dispute that lands seven days later. Two results are worth carrying away, and the second one qualifies the warning above.
 
 **The leak starves the honest features.** The naive join does not merely add fake accuracy. Weight piles onto the leaky column — 0.74 versus 0.10 under the as-of join — while account age, amount and device count are squeezed toward zero. The model stops learning the signal it will actually have at serving time, and no metric reports that.
 

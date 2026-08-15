@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Modern Attention Mechanisms
 
-The original Transformer paper introduced an architecture that worked. The models in production today — LLaMA, Mistral, GPT-4, Claude — are built on that same architecture but with a set of targeted engineering improvements. Each one solves a specific bottleneck: cross-attention extends the design to translation and summarization; MQA/GQA shrink the memory cost of long-context inference; RoPE gives relative position awareness for free; FlashAttention eliminates the quadratic memory wall; and sparse patterns let attention scale to hundreds of thousands of tokens.
+The original Transformer paper introduced an architecture that worked. The models in production today (LLaMA, Mistral, GPT-4, Claude) are built on that same architecture but with a set of targeted engineering improvements. Each one solves a specific bottleneck: cross-attention extends the design to translation and summarization; MQA/GQA shrink the memory cost of long-context inference; RoPE gives relative position awareness for free; FlashAttention eliminates the quadratic memory wall; and sparse patterns let attention scale to hundreds of thousands of tokens.
 
 ## Encoder–decoder cross-attention
 
@@ -205,7 +205,7 @@ FlashAttention (Dao et al., 2022) reorders the computation to never store the fu
 
 That last failure is worth remembering because it hides well: trained networks rarely produce scores near 709, so the bug survives review and then surfaces on a long context, an untrained model, or a lower-precision format — as NaN rather than as a slightly wrong number.
 
-FlashAttention-2 (2023) and FlashAttention-3 (2024) push further with better work partitioning across thread blocks and tensor-core utilization, but the core idea — tile and keep data in SRAM — is unchanged.
+FlashAttention-2 (2023) and FlashAttention-3 (2024) push further with better work partitioning across thread blocks and tensor-core utilization, but the core idea (tile and keep data in SRAM) is unchanged.
 
 ## Sliding-window and sparse attention
 

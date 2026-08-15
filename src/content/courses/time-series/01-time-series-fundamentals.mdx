@@ -15,7 +15,7 @@ A **time series** is any sequence of observations ordered by time. Stock prices 
 
 Formally, we write a time series as $\{y_t\}_{t=1}^T$, where $t$ is a discrete time index and $T$ is the total number of observations. The key difference from an ordinary dataset is that successive values are **not independent**: knowing $y_{100}$ tells you something about $y_{101}$ that you would not know from an arbitrary earlier observation.
 
-This dependence is both the challenge and the opportunity of time series analysis. It means standard i.i.d. assumptions break down — but it also means the past genuinely predicts the future.
+This dependence is both the challenge and the opportunity of time series analysis. It means standard i.i.d. assumptions break down, but it also means the past genuinely predicts the future.
 
 ## Components of a time series
 
@@ -54,7 +54,7 @@ A time series is **weakly stationary** (also called covariance-stationary) if th
 
 Intuitively, a stationary series looks the same at any point in time: no trending mean, no widening spread, no shifting seasonal amplitude.
 
-**Why does it matter?** Almost every classical forecasting model — ARIMA, exponential smoothing, state-space models — assumes stationarity. Parameter estimates from a non-stationary series are unreliable: the mean computed on the first half of the series will differ from the mean computed on the second half, so any model trained on one period will misfire on another.
+**Why does it matter?** Almost every classical forecasting model (ARIMA, exponential smoothing, state-space models) assumes stationarity. Parameter estimates from a non-stationary series are unreliable: the mean computed on the first half of the series will differ from the mean computed on the second half, so any model trained on one period will misfire on another.
 
 ### The Augmented Dickey-Fuller (ADF) test
 
@@ -99,7 +99,7 @@ The **second difference** $\Delta^2 y_t = \Delta y_t - \Delta y_{t-1}$ removes a
 
 ### Log transformation
 
-When variance grows proportionally with the level of the series — typical in financial and economic data — a log transform stabilises it:
+When variance grows proportionally with the level of the series (typical in financial and economic data), a log transform stabilises it:
 
 $$
 z_t = \log(y_t)

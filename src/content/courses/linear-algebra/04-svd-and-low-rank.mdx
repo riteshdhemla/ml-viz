@@ -9,7 +9,7 @@ spineStages: [hypothesis-space, data]
 
 # SVD & Low-Rank Approximation
 
-[Eigendecomposition](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) was powerful but picky: it needs a square matrix, and the nicest guarantees only arrive when the matrix is symmetric. The **singular value decomposition** drops every restriction. *Any* matrix — rectangular, rank-deficient, ugly — factors as:
+[Eigendecomposition](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) was powerful but picky: it needs a square matrix, and the nicest guarantees only arrive when the matrix is symmetric. The **singular value decomposition** drops every restriction. *Any* matrix (rectangular, rank-deficient, ugly) factors as:
 
 $$
 A = U \Sigma V^\top
@@ -33,7 +33,7 @@ This is also exactly the [PCA](/courses/pca-dimensionality/01-pca) connection: f
 
 ## The sum-of-layers view and best rank-$k$ approximation
 
-Rewriting $A = U\Sigma V^\top$ one column at a time gives a sum of rank-1 layers: $A = \sum_i \sigma_i \mathbf{u}_i\mathbf{v}_i^\top$. Truncating to the first $k$ layers gives $A_k$ — and the **Eckart–Young theorem** proves this is the best rank-$k$ approximation in Frobenius norm, with error $\sqrt{\sum_{i>k}\sigma_i^2}$.
+Rewriting $A = U\Sigma V^\top$ one column at a time gives a sum of rank-1 layers: $A = \sum_i \sigma_i \mathbf{u}_i\mathbf{v}_i^\top$. Truncating to the first $k$ layers gives $A_k$, and the **Eckart–Young theorem** proves this is the best rank-$k$ approximation in Frobenius norm, with error $\sqrt{\sum_{i>k}\sigma_i^2}$.
 
 **Quick numeric example.** Suppose $A$ has singular values $[10, 5, 0.3]$. The full Frobenius norm is $\sqrt{10^2+5^2+0.3^2} = \sqrt{125.09} \approx 11.18$. Keeping only $k=2$ gives error $\sqrt{0.3^2} = 0.3$ — we captured 99.9% of the "signal" in just two layers. Keeping only $k=1$ gives error $\sqrt{5^2+0.3^2} = \sqrt{25.09} \approx 5.01$ — still meaningful structure, but a lot is lost. The singular value spectrum tells you at a glance where to cut.
 
@@ -56,7 +56,7 @@ tail = np.sqrt((s[k:] ** 2).sum())
 print(f"rank-{k} error = {err:.4f}, tail = {tail:.4f}")  # identical
 ```
 
-Sweep the truncation rank $k$ below and watch the rank-$k$ reconstruction sharpen as the discarded singular values — and the Frobenius error $\sqrt{\sum_{i>k}\sigma_i^2}$ — shrink. A few layers capture almost all the signal.
+Sweep the truncation rank $k$ below and watch the rank-$k$ reconstruction sharpen as the discarded singular values (and the Frobenius error $\sqrt{\sum_{i>k}\sigma_i^2}$) shrink. A few layers capture almost all the signal.
 
 <LowRankViz />
 
@@ -69,7 +69,7 @@ Sweep the truncation rank $k$ below and watch the rank-$k$ reconstruction sharpe
 ## Key takeaways
 
 - SVD factors **any** matrix into rotation · stretch · rotation; singular values are the stretch factors, always real and ≥ 0
-- $U$, $V$ are eigenvectors of $AA^\top$ and $A^\top A$; $\sigma_i = \sqrt{\lambda_i}$ — and PCA is the SVD of centered data
+- $U$, $V$ are eigenvectors of $AA^\top$ and $A^\top A$; $\sigma_i = \sqrt{\lambda_i}$, and PCA is the SVD of centered data
 - $A = \sum_i \sigma_i \mathbf{u}_i \mathbf{v}_i^\top$: a stack of rank-1 layers, sorted by importance
 - Truncating the stack gives the provably best rank-k approximation (Eckart–Young) — the engine behind compression, recommenders, denoising, and LoRA
 

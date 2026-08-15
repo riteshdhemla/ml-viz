@@ -9,7 +9,7 @@ spineStages: [optimization]
 
 # Jacobians & Vector Calculus
 
-Every layer in a neural network is a vector-valued function: it takes a vector input and produces a vector output. The gradient tools from earlier lessons — the derivative for scalars, the gradient for scalar-output functions — do not directly apply here. The right generalization is the **Jacobian matrix**.
+Every layer in a neural network is a vector-valued function: it takes a vector input and produces a vector output. The gradient tools from earlier lessons (the derivative for scalars, the gradient for scalar-output functions) do not directly apply here. The right generalization is the **Jacobian matrix**.
 
 **Real-world examples:** Backpropagation through a softmax layer, computing gradients through a batch-norm layer, understanding why narrow layers can bottleneck information flow, and analysing training stability all require Jacobian reasoning.
 
@@ -171,7 +171,7 @@ $$
 \mathbf{v}^\top \mathbf{J} \quad \text{(a vector-Jacobian product, or VJP)}
 $$
 
-where $\mathbf{v}$ is the **upstream gradient** (the gradient of the loss w.r.t. the output of the current layer). The VJP has the same shape as the input $\mathbf{x}$ — it is the gradient of the loss w.r.t. $\mathbf{x}$.
+where $\mathbf{v}$ is the **upstream gradient** (the gradient of the loss w.r.t. the output of the current layer). The VJP has the same shape as the input $\mathbf{x}$. It is the gradient of the loss w.r.t. $\mathbf{x}$.
 
 **Why VJPs instead of full Jacobians?**
 
@@ -194,7 +194,7 @@ $$
 This is the backward pass formula you see in every backprop derivation: multiply by the *transpose* of the weight matrix.
 
 <Callout type="tip" title="Transposing in backprop">
-  The transpose in $\mathbf{W}^\top \mathbf{v}$ is not an accident — it is the definition of the VJP. Forward pass: multiply by $\mathbf{W}$. Backward pass: multiply by $\mathbf{W}^\top$. This follows directly from the Jacobian being $\mathbf{W}$.
+  The transpose in $\mathbf{W}^\top \mathbf{v}$ is not an accident. It is the definition of the VJP. Forward pass: multiply by $\mathbf{W}$. Backward pass: multiply by $\mathbf{W}^\top$. This follows directly from the Jacobian being $\mathbf{W}$.
 </Callout>
 
 ## Condition number and training stability
@@ -227,7 +227,7 @@ For a sequence of layers the condition number of the composition can grow expone
 
 - The **Jacobian** $\mathbf{J} \in \mathbb{R}^{m \times n}$ generalises the gradient to vector-valued functions.
 - Affine layer: $\mathbf{J} = \mathbf{W}$. Element-wise activation: $\mathbf{J} = \operatorname{diag}(\phi'(\mathbf{x}))$. Softmax: $\mathbf{J} = \operatorname{diag}(\boldsymbol{\sigma}) - \boldsymbol{\sigma}\boldsymbol{\sigma}^\top$.
-- The **vector chain rule** chains Jacobians by matrix multiplication — this is what backpropagation implements.
+- The **vector chain rule** chains Jacobians by matrix multiplication. This is what backpropagation implements.
 - Backprop computes **VJPs** (not full Jacobians) — the upstream gradient times the Jacobian transpose.
 - Condition number $\kappa(\mathbf{J})$ governs gradient flow: ill-conditioned Jacobians cause vanishing/exploding gradients.
 

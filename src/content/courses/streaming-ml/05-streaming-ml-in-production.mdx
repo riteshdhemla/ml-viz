@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Streaming ML in Production
 
-The sketches, online learners, and drift detectors of this course only pay off inside a system that moves data reliably and serves models with low latency. This lesson is the architecture: how a streaming ML pipeline is actually wired, and the failure modes — feature skew, staleness, delayed labels — that decide whether it works.
+The sketches, online learners, and drift detectors of this course only pay off inside a system that moves data reliably and serves models with low latency. This lesson is the architecture: how a streaming ML pipeline is actually wired, and the failure modes (feature skew, staleness, delayed labels) that decide whether it works.
 
 <Callout type="info" title="The forecasting thread">
 This is the site's `daily-demand` problem with its **deployment-feedback loop closing in real time**. The [time-series production lesson](/courses/time-series/04-demand-forecasting-in-production) described the retrain cadence at the level of days; here the loop tightens to *minutes*: features stream in, the online model updates, drift detectors watch the residuals, and a stale forecast is corrected before the next order cycle. Same six-stage loop as everywhere else on the site — just spinning fast.
@@ -58,15 +58,15 @@ The pattern is to **log features at prediction time** (snapshot exactly what the
 
 <DelayedLabelViz />
 
-The snapshot-and-join pattern fixes *training*. It does nothing for *measurement*, and the measurement failure is the one that gets read every morning. Simulate 200 days at a fraud rate of exactly 3.00% with no drift and no model at all — the only moving part is when chargebacks land — and a rolling 30-day fraud dashboard reads about **half** the real rate. A 7-day window reads roughly a tenth of it.
+The snapshot-and-join pattern fixes *training*. It does nothing for *measurement*, and the measurement failure is the one that gets read every morning. Simulate 200 days at a fraud rate of exactly 3.00% with no drift and no model at all (the only moving part is when chargebacks land) and a rolling 30-day fraud dashboard reads about **half** the real rate. A 7-day window reads roughly a tenth of it.
 
 This bias is one-directional, stable, and does not average out: the understatement is 49–53% at every value of "today" across the whole simulation. Read naively, **the freshest number is always the most flattering**, which is precisely backwards from how a recency dashboard is meant to be used, and it is why a model that is silently degrading can look fine right up until the cohort matures.
 
-Two defensible reads, both shown above. **Wait** — restrict to cohorts old enough to be complete (here 120 days gives 2.97% against a true 3.00%), which is unbiased and four months stale. Or **divide by the completion curve** — the share of a cohort's labels that have landed by age $d$, estimated from history. The 30-day window whose raw reading is 1.40% is on average only 48% complete; dividing recovers 2.89% against a true 2.93%. The correction assumes the delay distribution is stable, so a genuine change in *how fast* chargebacks arrive will break it — but the raw number is not defensible under any assumption.
+Two defensible reads, both shown above. **Wait** — restrict to cohorts old enough to be complete (here 120 days gives 2.97% against a true 3.00%), which is unbiased and four months stale. Or **divide by the completion curve** — the share of a cohort's labels that have landed by age $d$, estimated from history. The 30-day window whose raw reading is 1.40% is on average only 48% complete; dividing recovers 2.89% against a true 2.93%. The correction assumes the delay distribution is stable, so a genuine change in *how fast* chargebacks arrive will break it, but the raw number is not defensible under any assumption.
 
 ## The monitor-and-adapt loop
 
-Because a streaming model faces drift, monitoring is not optional garnish — it is part of the model:
+Because a streaming model faces drift, monitoring is not optional garnish. It is part of the model:
 
 - **Prediction monitoring** — track the distribution of model outputs and input features; a shift in $P(X)$ is the earliest, label-free drift signal.
 - **Performance monitoring** — once labels arrive, track rolling accuracy/AUC and feed the error stream to a detector (ADWIN/DDM from lesson 4).
@@ -74,7 +74,7 @@ Because a streaming model faces drift, monitoring is not optional garnish — it
 - **Shadow & canary** — validate a refreshed model on live traffic before promoting it, so an adaptation that overfits recent noise cannot take down serving.
 
 <Callout type="tip" title="Continuous training is the norm">
-Mature streaming ML systems retrain **automatically and continuously** — on a schedule, on a drift trigger, or every example — rather than in occasional manual pushes. The pipeline, not a person, closes the loop from new data to a refreshed model.
+Mature streaming ML systems retrain **automatically and continuously** (on a schedule, on a drift trigger, or every example) rather than in occasional manual pushes. The pipeline, not a person, closes the loop from new data to a refreshed model.
 </Callout>
 
 ## Key takeaways

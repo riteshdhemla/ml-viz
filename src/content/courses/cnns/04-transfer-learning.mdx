@@ -115,7 +115,7 @@ $$
 \frac{525{,}058}{24{,}033{,}090} \approx \boxed{2.2\%}
 $$
 
-**Only 2.2% of the network learns.** If you instead used a plain `Linear(2048, 2)` head ($4{,}098$ params) the trainable fraction drops to a stunning **0.017%** — you are fitting ~4K numbers, which a few hundred images can comfortably constrain. *This* is why feature extraction works on tiny datasets.
+**Only 2.2% of the network learns.** If you instead used a plain `Linear(2048, 2)` head ($4{,}098$ params) the trainable fraction drops to a stunning **0.017%**. You are fitting ~4K numbers, which a few hundred images can comfortably constrain. *This* is why feature extraction works on tiny datasets.
 
 ### Strategy 2: Fine-tuning (medium data)
 
@@ -158,7 +158,7 @@ The two parameter groups above use **different** learning rates on purpose:
 - The **new head** is randomly initialized — its weights are *garbage*, so it needs a normal-sized LR ($\approx 10^{-3}$) to learn fast.
 - The **pretrained `layer4`** is already excellent — it only needs gentle nudging, so it gets a $10\times$ smaller LR ($\approx 10^{-4}$).
 
-If you used the head's large LR on the backbone, the first few mini-batches — when the head's gradients are huge and meaningless — would flow back and **overwrite the pretrained features** before the head has learned anything useful. This is *catastrophic forgetting*. Discriminative LRs (often a geometric decay like $\eta_\ell = \eta_{\text{head}} \cdot \gamma^{\,(L-\ell)}$ for layer $\ell$, with $\gamma \approx 0.3$–$0.5$) keep early layers nearly fixed while letting the head move freely.
+If you used the head's large LR on the backbone, the first few mini-batches (when the head's gradients are huge and meaningless) would flow back and **overwrite the pretrained features** before the head has learned anything useful. This is *catastrophic forgetting*. Discriminative LRs (often a geometric decay like $\eta_\ell = \eta_{\text{head}} \cdot \gamma^{\,(L-\ell)}$ for layer $\ell$, with $\gamma \approx 0.3$–$0.5$) keep early layers nearly fixed while letting the head move freely.
 
 A common companion trick is to **warm up the head first**: freeze the backbone for a few epochs (feature extraction) until the head's gradients are sane, *then* unfreeze `layer4` for fine-tuning.
 

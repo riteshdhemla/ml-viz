@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Mixture of Experts
 
-Scaling laws (previous lesson) say bigger models are better — but bigger models cost more *per token*, for training and every inference. **Mixture of Experts (MoE)** breaks that link: it grows a model's parameter count enormously while keeping the compute per token nearly flat, by activating only a small **sparse** slice of the network for each input. It's how many of the largest frontier models pack hundreds of billions or trillions of parameters into a serveable budget.
+Scaling laws (previous lesson) say bigger models are better, but bigger models cost more *per token*, for training and every inference. **Mixture of Experts (MoE)** breaks that link: it grows a model's parameter count enormously while keeping the compute per token nearly flat, by activating only a small **sparse** slice of the network for each input. It's how many of the largest frontier models pack hundreds of billions or trillions of parameters into a serveable budget.
 
 **Real-world examples:** the Switch Transformer, GLaM, Mixtral, and a large fraction of frontier LLMs use MoE feed-forward layers; it's the dominant technique for scaling parameters past what a dense model can afford.
 
@@ -47,7 +47,7 @@ $$
 
 A model with 64 experts has ~64× the FFN parameters of a dense model but, at $k=1$, roughly the *same* compute per token. More parameters store more knowledge; sparse activation keeps each token cheap. MoE **decouples capacity from cost** — the lever scaling laws couldn't otherwise reach affordably.
 
-**Concrete numbers — Mixtral 8×7B:** $N = 8$ experts per layer, $k = 2$ active. Total parameters ≈ **46.7 B**, but each token activates only ≈ **12.9 B** of them — so it stores knowledge like a ~47 B model while running (per token) like a ~13 B model.
+**Concrete numbers — Mixtral 8×7B:** $N = 8$ experts per layer, $k = 2$ active. Total parameters ≈ **46.7 B**, but each token activates only ≈ **12.9 B** of them, so it stores knowledge like a ~47 B model while running (per token) like a ~13 B model.
 
 <Callout type="info" title="Specialization is emergent, not assigned">
   You don't tell experts what to specialize in — the router *learns* to send related tokens to the same experts. In practice experts often loosely specialize (by syntax, language, or topic), though the structure is fuzzy and far from human-interpretable. The router and experts are trained jointly, end to end.

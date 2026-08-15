@@ -155,7 +155,7 @@ agreement — independent verification beats agents rubber-stamping each other.
 
 <ThinkFirst question="What are the two signature failure modes unique to multi-agent systems — the ones a single agent can't have?">
 **Error propagation** — one worker's hallucination flows through aggregation
-into the final output, laundered by the agents downstream — and **runaway
+into the final output, laundered by the agents downstream, and **runaway
 chatter** — unbounded inter-agent messaging that burns budget without
 converging (MAST's inter-agent misalignment cluster, at 15× chat-level token
 prices). The countermeasures are structural: validate outputs at the
@@ -177,7 +177,7 @@ long-running agents need **checkpoint/resume** so errors don't force expensive
 restarts from the beginning, and let the *system* handle retries around a
 saved state. For the budget question, a **distributed trace** with one span
 per agent (inputs, outputs, tool calls, tokens, wall time) makes per-agent
-spend a query instead of an investigation — and exposes the critical path that
+spend a query instead of an investigation, and exposes the critical path that
 actually determines latency.
 </ThinkFirst>
 
@@ -208,7 +208,7 @@ actually determines latency.
 <Details summary="When is multi-agent actually worth it over one agent with tools?">
 When subtasks are genuinely parallel (fan-out speeds things up), require distinct
 skills/contexts that would bloat a single prompt, or benefit from separation-of-
-duties (an independent critic) — and the task value covers the ~15× token cost.
+duties (an independent critic), and the task value covers the ~15× token cost.
 Anthropic's rule of thumb: multi-agent suits parallelizable *read/research* work;
 write-heavy work (most coding) coordinates poorly. If none apply, a single agent
 is simpler, cheaper, and easier to debug — start there.
@@ -218,7 +218,7 @@ is simpler, cheaper, and easier to debug — start there.
 Validate worker outputs at the aggregation boundary (schema checks, an independent
 verifier/critic, cross-checking overlapping claims) rather than trusting them
 blindly. MAST classifies this as task-verification failure — one of the three
-dominant clusters — and the fix is structural: the orchestrator must be a gate,
+dominant clusters, and the fix is structural: the orchestrator must be a gate,
 not just a concatenator.
 </Details>
 

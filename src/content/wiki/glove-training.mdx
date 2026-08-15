@@ -22,7 +22,7 @@ The ratio $P(k \mid \text{ice})\, /\, P(k \mid \text{steam})$ is informative abo
 | water | high | high | ≈ 1 |
 | fashion | low | low | ≈ 1 |
 
-GloVe is designed so that *differences of word vectors* capture these ratios — which is exactly what makes analogies ("king − man + woman ≈ queen") work.
+GloVe is designed so that *differences of word vectors* capture these ratios, which is exactly what makes analogies ("king − man + woman ≈ queen") work.
 
 ## The full training procedure
 
@@ -51,7 +51,7 @@ $$
 The objective targets the **log** of each co-occurrence count rather than the raw count:
 
 <Callout type="tip" title="Why log counts?">
-  Co-occurrence counts span many orders of magnitude (Zipf's law). Taking the log compresses this range so the least-squares objective isn't dominated by the handful of extremely frequent pairs — and it makes vector *differences* correspond to count *ratios*: $\mathbf{v}_a^\top\tilde{\mathbf{v}}_k - \mathbf{v}_b^\top\tilde{\mathbf{v}}_k \approx \log\frac{X_{ak}}{X_{bk}}$.
+  Co-occurrence counts span many orders of magnitude (Zipf's law). Taking the log compresses this range so the least-squares objective isn't dominated by the handful of extremely frequent pairs, and it makes vector *differences* correspond to count *ratios*: $\mathbf{v}_a^\top\tilde{\mathbf{v}}_k - \mathbf{v}_b^\top\tilde{\mathbf{v}}_k \approx \log\frac{X_{ak}}{X_{bk}}$.
 </Callout>
 
 ## The weighting function: a numeric example

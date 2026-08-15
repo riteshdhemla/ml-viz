@@ -29,7 +29,7 @@ $$
 
 ## Why the naive difference is biased
 
-The obvious estimate — average outcome of the treated minus the untreated — equals the ATE only if the groups are **comparable**. With confounding they aren't:
+The obvious estimate (average outcome of the treated minus the untreated) equals the ATE only if the groups are **comparable**. With confounding they aren't:
 
 $$
 \underbrace{\mathbb{E}[Y\mid T=1] - \mathbb{E}[Y\mid T=0]}_{\text{naive (observed)}} = \text{ATE} + \underbrace{\text{confounding bias}}_{\text{groups differ}}
@@ -43,7 +43,7 @@ Pearl's **do-operator** formalizes intervention: $P(Y \mid \text{do}(T=1))$ is t
 
 ## The backdoor criterion and adjustment
 
-When can observational data identify a causal effect? The **backdoor criterion**: if a set of variables $Z$ **blocks every non-causal ("backdoor") path** from $T$ to $Y$ — intuitively, if $Z$ contains all the confounders — then you can recover the effect by **adjusting** for $Z$:
+When can observational data identify a causal effect? The **backdoor criterion**: if a set of variables $Z$ **blocks every non-causal ("backdoor") path** from $T$ to $Y$ (intuitively, if $Z$ contains all the confounders), then you can recover the effect by **adjusting** for $Z$:
 
 $$
 P(Y \mid \text{do}(T)) = \sum_{z} P(Y \mid T, Z=z)\,P(Z=z)
@@ -62,12 +62,12 @@ In words: estimate the effect *within each stratum* of the confounders, then ave
 - **Doubly-robust estimators** — combine an outcome model and a propensity model; consistent if *either* is correct.
 - **Randomize when you can** — an RCT/A-B test makes $Z$ irrelevant by design; adjustment is the fallback when experiments are impossible or unethical.
 
-Estimating *per-individual* effects — who benefits most from treatment, the targeting question behind marketing and medicine — is uplift modeling, built exactly on this machinery:
+Estimating *per-individual* effects (who benefits most from treatment, the targeting question behind marketing and medicine) is uplift modeling, built exactly on this machinery:
 
 <WikiLink slug="uplift-modeling" title="Uplift Modeling & Causal Treatment Effects" />
 
 <Callout type="tip" title="Don't adjust for everything">
-  Adjusting for confounders removes bias — but adjusting for a **collider** (a common *effect* of $T$ and $Y$) or a **mediator** (a variable *on* the causal path) introduces bias. "Control for more variables" is not safe; the causal graph tells you which $Z$ is valid — the path-blocking machinery is [d-separation](/courses/graphical-models/01-bayesian-networks). This is the practical payoff of drawing the structure first.
+  Adjusting for confounders removes bias, but adjusting for a **collider** (a common *effect* of $T$ and $Y$) or a **mediator** (a variable *on* the causal path) introduces bias. "Control for more variables" is not safe; the causal graph tells you which $Z$ is valid — the path-blocking machinery is [d-separation](/courses/graphical-models/01-bayesian-networks). This is the practical payoff of drawing the structure first.
 </Callout>
 
 ### The cost of adjusting for the wrong thing
@@ -87,7 +87,7 @@ A structural model with a known direct effect of $\beta = 0.9$, one confounder $
 
 Read the second row, then the fifth. Adjusting for $Z$ alone lands on $0.9078$ against a truth of $0.9$ — the backdoor criterion delivering exactly what it promises. Then add one more variable you happened to have in the table, and the estimate falls to $0.0684$: **worse than adjusting for nothing at all**. Conditioning on a collider does not close a path, it *opens* one, because learning $C$ makes $X$ and $Y$ informative about each other through their shared effect.
 
-The uncomfortable part is that nothing in the data distinguishes these rows. All six regressions run without complaint, all six produce a tidy coefficient and a small standard error, and the only thing that tells you which one answers your question is the graph you were willing to draw beforehand. "Throw every covariate in and let regularisation sort it out" is not a conservative choice — it is a causal assumption, made silently.
+The uncomfortable part is that nothing in the data distinguishes these rows. All six regressions run without complaint, all six produce a tidy coefficient and a small standard error, and the only thing that tells you which one answers your question is the graph you were willing to draw beforehand. "Throw every covariate in and let regularisation sort it out" is not a conservative choice. It is a causal assumption, made silently.
 
 <Exercise id="causal-ate" />
 
@@ -107,7 +107,7 @@ The uncomfortable part is that nothing in the data distinguishes these rows. All
 - Each unit has **potential outcomes** $Y(1), Y(0)$ but you observe only one — the **fundamental problem**; so we estimate the **ATE** $=\mathbb{E}[Y(1)-Y(0)]$.
 - The **naive** treated-minus-untreated difference equals the ATE plus **confounding bias**; randomization zeroes the bias, observational data must adjust.
 - The **do-operator** defines intervention (delete arrows into $T$); the **backdoor criterion + adjustment formula** identify the effect *if* you measured all confounders.
-- Practical estimators — **regression adjustment, propensity scores/IPW, doubly-robust** — rely on **unconfoundedness, positivity, consistency**; don't adjust for colliders or mediators.
+- Practical estimators (**regression adjustment, propensity scores/IPW, doubly-robust**) rely on **unconfoundedness, positivity, consistency**; don't adjust for colliders or mediators.
 
 ## Related concepts
 

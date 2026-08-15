@@ -16,7 +16,7 @@ Before "ask a strong LLM to judge it" was an option, machine translation and sum
 
 ## 1 — BLEU: modified n-gram precision + brevity penalty
 
-BLEU (Bilingual Evaluation Understudy) asks: *of the n-grams the candidate produced, how many actually appear in the reference?* It is precision-oriented — it does not care whether the candidate covered everything in the reference, only whether what it said is supported.
+BLEU (Bilingual Evaluation Understudy) asks: *of the n-grams the candidate produced, how many actually appear in the reference?* It is precision-oriented. It does not care whether the candidate covered everything in the reference, only whether what it said is supported.
 
 **Step 1 — modified n-gram precision.** For each n-gram length $n$ (typically 1–4), count matches with **clipping**: a candidate n-gram can only match up to as many times as it occurs in the reference (this stops "the the the the" from scoring perfectly against a reference containing "the" once).
 
@@ -68,7 +68,7 @@ with $\beta$ usually set to favor recall ($\beta > 1$) since summarization cares
 
 ## 3 — METEOR: precision/recall harmonic mean with matching stages and a fragmentation penalty
 
-METEOR (Metric for Evaluation of Translation with Explicit ORdering) was designed to fix BLEU's two weak spots: it has no recall term, and it only counts **exact** token matches. METEOR aligns candidate and reference tokens in three passes — **exact match**, then **stemmed match** (e.g. "running" ↔ "run"), then **synonym match** (via a resource like WordNet) — and unmatched tokens simply don't align.
+METEOR (Metric for Evaluation of Translation with Explicit ORdering) was designed to fix BLEU's two weak spots: it has no recall term, and it only counts **exact** token matches. METEOR aligns candidate and reference tokens in three passes — **exact match**, then **stemmed match** (e.g. "running" ↔ "run"), then **synonym match** (via a resource like WordNet), and unmatched tokens simply don't align.
 
 Given the alignment, compute unigram precision $P$ and recall $R$ over matched tokens, then combine with recall weighted more heavily than precision (opposite of BLEU's precision-only view):
 

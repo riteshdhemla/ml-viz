@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Reasoning Models
 
-Standard LLMs predict the next token given their context. They do a fixed amount of computation per token — which means a one-step multiplication and a twenty-step proof look equally hard from the model's perspective. **Reasoning models** break that constraint: they spend extra compute *thinking* before answering, and they are trained to exploit it. The result is dramatically better performance on tasks requiring multi-step logic, math, and code.
+Standard LLMs predict the next token given their context. They do a fixed amount of computation per token, which means a one-step multiplication and a twenty-step proof look equally hard from the model's perspective. **Reasoning models** break that constraint: they spend extra compute *thinking* before answering, and they are trained to exploit it. The result is dramatically better performance on tasks requiring multi-step logic, math, and code.
 
 **Real-world examples:** OpenAI o1/o3, DeepSeek-R1, Google Gemini Flash Thinking, and Qwen QwQ. All are trained on top of strong base LLMs but with an additional reasoning-focused post-training stage.
 
@@ -35,7 +35,7 @@ The training recipe for reasoning models uses **reinforcement learning** to teac
 2. **Verify** the final answer against a ground-truth checker (math answer, unit-test pass, or a reward model for open-ended problems).
 3. **Reinforce** chains that reached the correct answer; penalize those that didn't.
 
-The model learns — entirely through trial and error — that longer, more deliberate chains lead to better answers. No human-written reasoning traces are required; the reward signal comes from verifying the *end result*.
+The model learns (entirely through trial and error) that longer, more deliberate chains lead to better answers. No human-written reasoning traces are required; the reward signal comes from verifying the *end result*.
 
 $$
 \mathcal{L}_{\text{RL}} = -\mathbb{E}_{\tau \sim \pi_\theta}\big[R(\tau)\big]
@@ -65,7 +65,7 @@ If p² is even then p must be even — write p = 2k...
 [Answer] √2 is irrational because any representation p/q leads to a contradiction.
 ```
 
-**Scaling curve:** empirically, reasoning accuracy improves with more thinking tokens — but with diminishing returns. There is an optimal compute budget per problem difficulty; hard competition problems benefit from much longer chains than grade-school arithmetic.
+**Scaling curve:** empirically, reasoning accuracy improves with more thinking tokens, but with diminishing returns. There is an optimal compute budget per problem difficulty; hard competition problems benefit from much longer chains than grade-school arithmetic.
 
 ### Sampling more, and the verifier that decides what it is worth
 
@@ -77,7 +77,7 @@ $\text{pass@}N = 1 - (1-p)^N$ is the chance a correct answer is somewhere in the
 
 **The verifier sets how much of the ceiling you collect.** At $N = 16$ a near-perfect verifier collects all 0.999 of it; one with noise 1.0 collects 75.9%; one with noise 3.0 collects 50.0%. The sampling is identical in all three cases.
 
-**So returns to more compute are non-monotone in verifier quality.** Going from 16 to 128 samples — 8× the spend — buys **+0.001** with a near-perfect verifier (already saturated against the ceiling), **+0.130** with a mediocre one, and **+0.096** with a bad one. Both extremes waste the extra budget, for opposite reasons.
+**So returns to more compute are non-monotone in verifier quality.** Going from 16 to 128 samples (8× the spend) buys **+0.001** with a near-perfect verifier (already saturated against the ceiling), **+0.130** with a mediocre one, and **+0.096** with a bad one. Both extremes waste the extra budget, for opposite reasons.
 
 **And that reframes the train-vs-test-time choice as a bet on selection.** Best-of-16 on the 35% model with a good verifier scores 0.953 — equivalent to owning a 95.3%-single-shot model. With a poor verifier the same 16× spend scores 0.500. Same sampler, same compute, completely different substitution rate against simply training a better model. Measure your verifier against pass@N before budgeting for samples; that ratio, not the sample count, is what to improve.
 
@@ -113,7 +113,7 @@ The answer is 42, because [brief explanation].
 
 ## When to use a reasoning model
 
-Reasoning models are not universally better — they are slower and more expensive per query. Choose them when:
+Reasoning models are not universally better. They are slower and more expensive per query. Choose them when:
 
 ✅ **Hard, verifiable tasks** — math olympiad problems, competitive programming, formal proofs, scientific calculations where correctness is binary and checkable
 

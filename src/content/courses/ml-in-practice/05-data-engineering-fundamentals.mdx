@@ -22,15 +22,15 @@ A production model sees data from four broad sources, and they behave differentl
 - **Third-party.** Vendor APIs, partner feeds, public datasets, scraped sources. Freshness and completeness are now *their* property, not yours. A 500 from the vendor at 03:00 becomes a missing-feature gap in your training set at 04:00.
 - **Internal databases.** The transactional store behind the product: users, orders, subscriptions, inventory. This is your *source of truth* for business state, but it is optimised for the live app, not for training reads, so you copy it into the warehouse first.
 
-Each source carries different freshness, completeness, and governance constraints. A well-designed ML pipeline knows which of its features come from which source and how each one fails — because they fail differently and the monitoring you need is not the same.
+Each source carries different freshness, completeness, and governance constraints. A well-designed ML pipeline knows which of its features come from which source and how each one fails, because they fail differently and the monitoring you need is not the same.
 
 ## Storage formats: row vs column
 
-The same logical table — `events(user_id, item_id, ts, action, country, device, …)` — can be stored on disk in two fundamentally different ways. The choice is the difference between a query that takes 30 seconds and one that takes 30 minutes.
+The same logical table (`events(user_id, item_id, ts, action, country, device, …)`) can be stored on disk in two fundamentally different ways. The choice is the difference between a query that takes 30 seconds and one that takes 30 minutes.
 
 ### Row-oriented storage
 
-Every record's fields are stored together, contiguous on disk. Reading a single row is one seek. Updating a single row is one read + one write. The classics — CSV, JSON-lines, and Avro — are row-oriented. Postgres and MySQL store their primary heap files in row-major order. (Parquet is *not* row-oriented: although it partitions rows into "row groups," the bytes inside each row group are laid out column-chunk by column-chunk — it is columnar, as below.)
+Every record's fields are stored together, contiguous on disk. Reading a single row is one seek. Updating a single row is one read + one write. The classics (CSV, JSON-lines, and Avro) are row-oriented. Postgres and MySQL store their primary heap files in row-major order. (Parquet is *not* row-oriented: although it partitions rows into "row groups," the bytes inside each row group are laid out column-chunk by column-chunk. It is columnar, as below.)
 
 - **Fast.** Point lookups (`WHERE user_id = 42`), single-row updates, full-record reads, serialisation for transport.
 - **Slow.** Column scans (`SELECT AVG(price) FROM orders`), aggregations across millions of rows on a few columns, predicate push-down on one column.
@@ -46,7 +46,7 @@ Each column's values are stored together, contiguous on disk. Reading one column
 
 ### Worked example: the 2% read
 
-You have a 100-million-row events table with 10 columns of roughly equal width. Your training job needs only two columns — `user_id` and `ts` — to build session features. What does each layout read off disk?
+You have a 100-million-row events table with 10 columns of roughly equal width. Your training job needs only two columns (`user_id` and `ts`) to build session features. What does each layout read off disk?
 
 - **Row store.** Every row is laid out as 10 fields side-by-side. To get *any* two columns you must read *every* row in full, then project two columns in memory. Bytes read: $100\text{M rows} \times 10 \text{ cols} = 1{,}000\text{M field-reads}$ — call it ~100% of the file.
 - **Column store.** Each column is a separate run on disk. You read the `user_id` chunk and the `ts` chunk and skip the other eight. Bytes read: $100\text{M rows} \times 2 \text{ cols} = 200\text{M field-reads}$ — about 20% of the field-reads, and after columnar compression more like **2% of the on-disk bytes** for typical telemetry columns.
@@ -59,9 +59,9 @@ This is the single most important reason ML training pipelines store features in
 
 The ribbon is disk in byte order, which is the only view in which the two layouts differ at all — as tables they are identical. Pick different columns and two separate effects move independently.
 
-**Locality, which is about blocks and not bytes.** Disk is read a block at a time. Under row-major every column's cells are strided across *every* block, so projecting 2 of 8 columns still fetches **100% of blocks** — and the block-size slider does not rescue it, at 4, 8, 16 or 32 cells per read. The grey cells are the ones dragged in for free: 4 bytes wasted for every 1 wanted. Column-major fetches ~25%, the fraction of columns asked for, and nothing else.
+**Locality, which is about blocks and not bytes.** Disk is read a block at a time. Under row-major every column's cells are strided across *every* block, so projecting 2 of 8 columns still fetches **100% of blocks**, and the block-size slider does not rescue it, at 4, 8, 16 or 32 cells per read. The grey cells are the ones dragged in for free: 4 bytes wasted for every 1 wanted. Column-major fetches ~25%, the fraction of columns asked for, and nothing else.
 
-**Compressibility, which only column-major can use at all.** Dictionary and run-length encoding need neighbours drawn from the same domain, and row-major never has any. Encoding each column the way Parquet actually does — best of plain, dictionary + bit-packing, dictionary + RLE — the measured per-column ratios on this table span a factor of thirty:
+**Compressibility, which only column-major can use at all.** Dictionary and run-length encoding need neighbours drawn from the same domain, and row-major never has any. Encoding each column the way Parquet actually does (best of plain, dictionary + bit-packing, dictionary + RLE), the measured per-column ratios on this table span a factor of thirty:
 
 | column | encoded as | ratio |
 |---|---|---|
@@ -74,7 +74,7 @@ The ribbon is disk in byte order, which is the only view in which the two layout
 | `price` (random floats) | plain | **1.0×** |
 
 <Callout type="warning" title="The 50× is not a property of the format">
-  Those two effects multiply, and the result depends on *which* columns you ask for. On this identical file, projecting `ts` + `user_id` reads **6.7× less** than the row store, while projecting `event` + `ab_bucket` reads **85× less**. Same format, same data, a thirteen-fold difference — because `price` and `ts` carry real entropy and `device` carries two bits pretending to be eight bytes. "Parquet gives 10–30×" is a statement about typical telemetry schemas, not about Parquet. The actionable version: a wide low-cardinality column is nearly free to store and nearly free to read, so denormalising enum-like features into your training table costs far less than the row count suggests.
+  Those two effects multiply, and the result depends on *which* columns you ask for. On this identical file, projecting `ts` + `user_id` reads **6.7× less** than the row store, while projecting `event` + `ab_bucket` reads **85× less**. Same format, same data, a thirteen-fold difference, because `price` and `ts` carry real entropy and `device` carries two bits pretending to be eight bytes. "Parquet gives 10–30×" is a statement about typical telemetry schemas, not about Parquet. The actionable version: a wide low-cardinality column is nearly free to store and nearly free to read, so denormalising enum-like features into your training table costs far less than the row count suggests.
 </Callout>
 
 <Callout type="tip" title="Why column stores dominate ML training">
@@ -135,12 +135,12 @@ A long-lived process consumes events from a log (Kafka, Kinesis, Pulsar) and emi
 
 ### For ML specifically
 
-Training is almost always batch. You read a partition of training data from the warehouse or lake, run an offline job for hours or days, and produce a model artefact. The benefits — reproducibility, scale, low cost per byte — outweigh the latency cost because training does not need to be near-real-time.
+Training is almost always batch. You read a partition of training data from the warehouse or lake, run an offline job for hours or days, and produce a model artefact. The benefits (reproducibility, scale, low cost per byte) outweigh the latency cost because training does not need to be near-real-time.
 
 **Feature serving** for online inference is usually a *mix*. Cheap, slow-moving features (a user's lifetime spend; their tenure; their historical preferences) are precomputed in batch and written to a key-value store (Redis, DynamoDB, Bigtable) keyed by user id. Fast-moving features (the items the user clicked in the last 90 seconds) are computed on the request path, often in a streaming feature service. The model's request handler reads both and concatenates. This is the *online-feature-store* pattern and is the source of most train-serve skew incidents (see the [deployment pitfalls lesson](/courses/ml-in-practice/02-deployment-pitfalls)) — the batch path and the streaming path have to compute *exactly* the same transform on the same inputs.
 
 <Callout type="warning" title="Streaming is hard — only use it where latency justifies the complexity">
-A batch pipeline you understand is worth ten streaming pipelines you do not. Streaming adds event-time semantics, watermarks, checkpointed state, replay, backpressure, and a whole new class of "where exactly is this counter wrong" debugging problems. Adopt it when the *product* genuinely needs sub-minute latency — fraud detection, ad ranking, live recommendations, real-time monitoring — and not because the architecture diagram looks more modern. The default answer for an ML pipeline is still "batch, with one streaming path for the small set of features that truly need it."
+A batch pipeline you understand is worth ten streaming pipelines you do not. Streaming adds event-time semantics, watermarks, checkpointed state, replay, backpressure, and a whole new class of "where exactly is this counter wrong" debugging problems. Adopt it when the *product* genuinely needs sub-minute latency (fraud detection, ad ranking, live recommendations, real-time monitoring) and not because the architecture diagram looks more modern. The default answer for an ML pipeline is still "batch, with one streaming path for the small set of features that truly need it."
 </Callout>
 
 ## Data quality and contracts

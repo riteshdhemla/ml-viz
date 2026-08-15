@@ -10,7 +10,7 @@ estimatedMinutes: 14
 
 # Probability Distributions: A Field Guide & Where They're Used
 
-Picking the right distribution is half of probabilistic modeling. A distribution encodes your assumption about how a quantity is generated — a count, a duration, a proportion, a category — and that choice flows straight into the likelihood you optimize, the loss you minimize, and the prior you place. This page is a reference catalog: for each distribution, *what it models*, its parameters and moments, and *where it shows up in ML*.
+Picking the right distribution is half of probabilistic modeling. A distribution encodes your assumption about how a quantity is generated (a count, a duration, a proportion, a category) and that choice flows straight into the likelihood you optimize, the loss you minimize, and the prior you place. This page is a reference catalog: for each distribution, *what it models*, its parameters and moments, and *where it shows up in ML*.
 
 The first fork is always the same: **is the outcome discrete or continuous?**
 
@@ -67,7 +67,7 @@ The bell curve $\mathcal{N}(\mu,\sigma^2)$. Justified by the **Central Limit The
 - **Where:** everywhere — regression noise (MSE loss *is* a Gaussian likelihood), weight initialization, VAE latent priors, Gaussian Processes, Kalman filters, diffusion-model noise. The **Multivariate Gaussian** extends it to correlated vectors via a covariance matrix $\boldsymbol{\Sigma}$.
 
 <Callout type="info" title="MSE is a Gaussian assumption in disguise">
-  Minimizing squared error is exactly maximum-likelihood under "targets = prediction + Gaussian noise of constant variance." If your residuals are heavy-tailed or skewed, that assumption is wrong — which is why a Laplace likelihood (→ MAE loss) or a Student-t likelihood (robust regression) can fit better. The loss function you pick *is* a distributional assumption.
+  Minimizing squared error is exactly maximum-likelihood under "targets = prediction + Gaussian noise of constant variance." If your residuals are heavy-tailed or skewed, that assumption is wrong, which is why a Laplace likelihood (→ MAE loss) or a Student-t likelihood (robust regression) can fit better. The loss function you pick *is* a distributional assumption.
 </Callout>
 
 ### Exponential & Gamma — durations and positive quantities

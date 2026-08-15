@@ -47,7 +47,7 @@ Most detectors only raise a boolean alarm. ADWIN additionally *rightsizes* its w
 
 ## Making it cheap: exponential histograms
 
-Re-scanning every possible split of a length-$|W|$ window on every element would cost $O(|W|)$ per step and $O(|W|)$ memory. ADWIN2 compresses $W$ into an **exponential histogram** of buckets — the same power-of-two bucket structure as [DGIM](/wiki/dgim-sliding-window) — storing per-bucket sums and counts with relative accuracy. This gives:
+Re-scanning every possible split of a length-$|W|$ window on every element would cost $O(|W|)$ per step and $O(|W|)$ memory. ADWIN2 compresses $W$ into an **exponential histogram** of buckets (the same power-of-two bucket structure as [DGIM](/wiki/dgim-sliding-window)) storing per-bucket sums and counts with relative accuracy. This gives:
 
 - **Memory:** $O(\log W)$ instead of $O(W)$.
 - **Time:** only $O(\log W)$ candidate split points (the bucket boundaries) are tested per update, not all $|W|-1$.

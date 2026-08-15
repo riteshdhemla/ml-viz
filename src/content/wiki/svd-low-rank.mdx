@@ -23,7 +23,7 @@ $$
 - $\Sigma = \text{diag}(\sigma_1, \ldots, \sigma_r)$ — singular values, $\sigma_1 \ge \sigma_2 \ge \cdots \ge \sigma_r > 0$
 - $V \in \mathbb{R}^{n \times r}$ — right singular vectors; orthonormal columns; eigenvectors of $A^\top A$
 
-Each $\sigma_i = \sqrt{\lambda_i(A^\top A)}$ — because $A^\top A = (U\Sigma V^\top)^\top(U\Sigma V^\top) = V\Sigma^2 V^\top$, which is exactly the eigendecomposition of $A^\top A$ with eigenvalues $\sigma_i^2$. $U$ and $V$ are orthogonal, so $U^\top U = I$ and $V^\top V = I$.
+Each $\sigma_i = \sqrt{\lambda_i(A^\top A)}$, because $A^\top A = (U\Sigma V^\top)^\top(U\Sigma V^\top) = V\Sigma^2 V^\top$, which is exactly the eigendecomposition of $A^\top A$ with eigenvalues $\sigma_i^2$. $U$ and $V$ are orthogonal, so $U^\top U = I$ and $V^\top V = I$.
 
 ## SVD as a sum of rank-1 layers
 
@@ -61,7 +61,7 @@ $$
 \lVert A - A_k \rVert_F = \sqrt{\sum_{i=k+1}^{r} \sigma_i^2}
 $$
 
-**Why.** The Frobenius norm satisfies $\lVert A \rVert_F^2 = \sum_i \sigma_i^2$ (sum of squared singular values). Among all rank-$k$ matrices, the one closest to $A$ in Frobenius norm must retain the $k$ largest singular values unchanged and zero out the rest. Any other rank-$k$ matrix would keep some smaller $\sigma_i$ while discarding a larger one, increasing the sum of dropped terms. $A_k$ keeps exactly the top-$k$ — it is the unique minimizer.
+**Why.** The Frobenius norm satisfies $\lVert A \rVert_F^2 = \sum_i \sigma_i^2$ (sum of squared singular values). Among all rank-$k$ matrices, the one closest to $A$ in Frobenius norm must retain the $k$ largest singular values unchanged and zero out the rest. Any other rank-$k$ matrix would keep some smaller $\sigma_i$ while discarding a larger one, increasing the sum of dropped terms. $A_k$ keeps exactly the top-$k$. It is the unique minimizer.
 
 ## Verifying the error formula numerically
 

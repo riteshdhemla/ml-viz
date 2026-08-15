@@ -9,7 +9,7 @@ estimatedMinutes: 16
 
 # Self-Supervised Learning
 
-Labels are expensive; raw data is nearly free. **Self-supervised learning (SSL)** exploits that asymmetry: it invents a supervised task *from the unlabeled data itself*, learning representations that transfer to real tasks with little or no labeling. This is a **data**-slot breakthrough in the [ML project loop](/wiki/ml-project-loop): it manufactures supervision where there was none, which is why the data stage — not the architecture — is what unlocked foundation models. SSL is the engine behind modern foundation models — BERT, GPT, CLIP, and the strongest vision backbones are all pretrained self-supervised. This lesson covers the main recipes, with vision as the running example.
+Labels are expensive; raw data is nearly free. **Self-supervised learning (SSL)** exploits that asymmetry: it invents a supervised task *from the unlabeled data itself*, learning representations that transfer to real tasks with little or no labeling. This is a **data**-slot breakthrough in the [ML project loop](/wiki/ml-project-loop): it manufactures supervision where there was none, which is why the data stage (not the architecture) is what unlocked foundation models. SSL is the engine behind modern foundation models — BERT, GPT, CLIP, and the strongest vision backbones are all pretrained self-supervised. This lesson covers the main recipes, with vision as the running example.
 
 **Real-world examples:** pretraining a vision backbone on millions of unlabeled images then fine-tuning on a small labeled set; BERT's masked-language pretraining; DINO/MAE features used for retrieval and segmentation; the entire "pretrain then adapt" paradigm.
 
@@ -21,7 +21,7 @@ Supervised learning needs $(\mathbf{x}, y)$ pairs. SSL constructs the target $y$
 - Transform the input and predict the transformation.
 - Decide whether two views came from the same source (contrastive).
 
-Solving the pretext task forces the network to learn the structure of the data — edges, objects, semantics — which then **transfers** to downstream tasks. The pretext task is a means; the learned representation is the product.
+Solving the pretext task forces the network to learn the structure of the data (edges, objects, semantics), which then **transfers** to downstream tasks. The pretext task is a means; the learned representation is the product.
 
 ## Two dominant families
 
@@ -39,7 +39,7 @@ $$
 $$
 
 <Callout type="warning" title="Contrastive methods need good negatives — or a trick to avoid them">
-  Naive contrastive learning can **collapse**: map everything to the same vector and the loss looks fine. Negatives prevent that (everything can't be close to everything). Newer methods — **BYOL, DINO** — avoid explicit negatives using asymmetry (a momentum/target network, stop-gradient, predictor head) and still don't collapse, which was a surprising and influential result.
+  Naive contrastive learning can **collapse**: map everything to the same vector and the loss looks fine. Negatives prevent that (everything can't be close to everything). Newer methods (**BYOL, DINO**) avoid explicit negatives using asymmetry (a momentum/target network, stop-gradient, predictor head) and still don't collapse, which was a surprising and influential result.
 </Callout>
 
 ### Masked modeling
@@ -53,11 +53,11 @@ Masked modeling is **generative** (predict content) where contrastive learning i
 
 ## Augmentations are the inductive bias
 
-In vision SSL, the choice of **augmentations** quietly defines what "similar" means. Random crop, color jitter, blur, and flips tell the model "these transformations shouldn't change the representation" — so it learns features invariant to them. Get the augmentations wrong (e.g. color jitter on a task where color is the signal) and the representation discards exactly what you needed. The pretext task's design *is* the prior.
+In vision SSL, the choice of **augmentations** quietly defines what "similar" means. Random crop, color jitter, blur, and flips tell the model "these transformations shouldn't change the representation", so it learns features invariant to them. Get the augmentations wrong (e.g. color jitter on a task where color is the signal) and the representation discards exactly what you needed. The pretext task's design *is* the prior.
 
 ## Why SSL matters: it scales
 
-The reason SSL reshaped ML: it removes the labeling bottleneck, so training data scales to the entire internet. Pretrain once, self-supervised, on enormous unlabeled corpora; then **adapt** (fine-tune or linear-probe) to many downstream tasks with little labeled data. This is exactly the **foundation-model** recipe — and why a pretrained backbone often beats a from-scratch supervised model even when labels are available.
+The reason SSL reshaped ML: it removes the labeling bottleneck, so training data scales to the entire internet. Pretrain once, self-supervised, on enormous unlabeled corpora; then **adapt** (fine-tune or linear-probe) to many downstream tasks with little labeled data. This is exactly the **foundation-model** recipe, and why a pretrained backbone often beats a from-scratch supervised model even when labels are available.
 
 <Exercise id="ssl-pretext-task" />
 

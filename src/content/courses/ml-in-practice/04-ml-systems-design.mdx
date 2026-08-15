@@ -9,7 +9,7 @@ estimatedMinutes: 20
 
 # ML Systems Design & Problem Framing
 
-A model that hits 88% accuracy on a held-out test set is 0% useful if the upstream feature store is stale, the inference path runs at 8 seconds p99, the per-query cost outruns the unit economics, or the metric it optimises is the wrong one. This lesson is the prequel to every other lesson in this course: how to *frame* the ML problem — pick the metric, sketch the system, name the failure modes — before you touch a notebook.
+A model that hits 88% accuracy on a held-out test set is 0% useful if the upstream feature store is stale, the inference path runs at 8 seconds p99, the per-query cost outruns the unit economics, or the metric it optimises is the wrong one. This lesson is the prequel to every other lesson in this course: how to *frame* the ML problem (pick the metric, sketch the system, name the failure modes) before you touch a notebook.
 
 Real-world examples: recommender systems at Netflix and Spotify (the metric is retention, the trainable proxy is click and dwell time); fraud detection at Stripe (a hard latency SLO, with delayed ground truth); YouTube ranking (composite objectives spanning watch time, satisfaction, and ads); ad CTR prediction (low margin per query so cost per inference matters); LLM-powered customer support assistants (build-vs-buy, eval-set design, refusal rate); medical-image triage (calibrated probabilities and a human in the loop are non-negotiable).
 
@@ -19,7 +19,7 @@ Every course on this site teaches a slice of one recurring shape — the **ML pr
 
 <ProjectLoopViz variant="ml" />
 
-The loop also explains the *arc* of the whole curriculum — the bottleneck moves from era to era, and each era's fix becomes the next era's constraint. Classical ML is where all six slots are visible and the math is tractable. Deep learning made the **hypothesis space** expressive enough that **optimization** became the hard part. Scale pushed the bottleneck into **memory bandwidth and communication** (the subject of [GPU programming](/courses/gpu-programming)). And production — this course — is where it lands in **data and feedback loops**: drift, labelling, train/serve skew, and retraining cadence. That is why "systems design" is a discipline of its own, and why the [project-loop hub](/wiki/ml-project-loop) is worth reading alongside this lesson.
+The loop also explains the *arc* of the whole curriculum — the bottleneck moves from era to era, and each era's fix becomes the next era's constraint. Classical ML is where all six slots are visible and the math is tractable. Deep learning made the **hypothesis space** expressive enough that **optimization** became the hard part. Scale pushed the bottleneck into **memory bandwidth and communication** (the subject of [GPU programming](/courses/gpu-programming)). And production (this course) is where it lands in **data and feedback loops**: drift, labelling, train/serve skew, and retraining cadence. That is why "systems design" is a discipline of its own, and why the [project-loop hub](/wiki/ml-project-loop) is worth reading alongside this lesson.
 
 ## Why "systems design" is different from notebook ML
 
@@ -28,7 +28,7 @@ Notebook ML is a single Jupyter kernel reading a static CSV. Production ML is a 
 The failure modes are *silent* — that is the most important property to internalise. A misconfigured feature pipeline does not raise an exception; it produces predictions that look like normal predictions but are systematically wrong. A stale model does not crash; it just degrades over weeks. **You cannot debug what you do not monitor**, and you cannot monitor what you have not designed in advance.
 
 <Callout type="warning" title="Reliability is not accuracy">
-Accuracy measures how often the model is right on a static test set. Reliability measures how often the *whole system* delivers a correct, timely prediction to the caller under real-world conditions: stale features, partial outages, traffic spikes, edge cases the test set never saw. A 95%-accurate model wrapped in a 99%-reliable system has an effective end-to-end correctness around 94%. A 95%-accurate model wrapped in a 90%-reliable system delivers around 85% — and the 5% reliability gap is invisible to your offline metrics.
+Accuracy measures how often the model is right on a static test set. Reliability measures how often the *whole system* delivers a correct, timely prediction to the caller under real-world conditions: stale features, partial outages, traffic spikes, edge cases the test set never saw. A 95%-accurate model wrapped in a 99%-reliable system has an effective end-to-end correctness around 94%. A 95%-accurate model wrapped in a 90%-reliable system delivers around 85%, and the 5% reliability gap is invisible to your offline metrics.
 </Callout>
 
 ## Four properties of production ML systems
@@ -39,7 +39,7 @@ Production systems are judged on four properties — borrowed and lightly refram
 
 The system delivers correct, timely predictions under expected conditions and degrades gracefully under unexpected ones. Define SLOs over both *correctness* (accuracy stays within a band) and *freshness* (features are no more than N minutes old). A "successful response" is a prediction that satisfies both — not just an HTTP 200.
 
-The key insight: most ML failures are silent. Define alerts on second-order signals — null rate per feature, prediction distribution drift, retraining-job exit code — before launch, not after the first incident.
+The key insight: most ML failures are silent. Define alerts on second-order signals (null rate per feature, prediction distribution drift, retraining-job exit code) before launch, not after the first incident.
 
 ### 2. Scalability
 
@@ -67,7 +67,7 @@ Distribution shift is the default state of the world, not the exception. The sys
 
 The hardest part of an ML project is rarely the model. It is the translation between what the business asks for and what a loss function can optimise.
 
-**You cannot train on the metric you actually care about.** A product manager says "increase revenue". You cannot regress directly on revenue: per-user revenue is sparse, lagging, and confounded by everything from ad spend to seasonality. So you pick a *proxy* — click-through rate, dwell time, conversion, retention, satisfaction rating — and train on that. Every modelling pipeline is implicitly making this translation; the question is whether the team has thought about it explicitly.
+**You cannot train on the metric you actually care about.** A product manager says "increase revenue". You cannot regress directly on revenue: per-user revenue is sparse, lagging, and confounded by everything from ad spend to seasonality. So you pick a *proxy* (click-through rate, dwell time, conversion, retention, satisfaction rating) and train on that. Every modelling pipeline is implicitly making this translation; the question is whether the team has thought about it explicitly.
 
 **Every proxy has a Goodhart failure mode.** Once a measure becomes a target, it ceases to be a good measure. Optimise click-through and you get clickbait. Optimise conversion and you get low-margin upsells. Optimise dwell time and you get rage-bait. Optimise watch time and you get autoplaying long videos. The same dynamic appears in [RLHF reward models](/courses/fine-tuning-alignment/03-reward-models) under the label "reward hacking" — the policy learns to exploit the proxy in ways that diverge from the true objective.
 
@@ -77,10 +77,10 @@ $$
 L = \alpha \cdot L_\text{accuracy} + \beta \cdot L_\text{fairness} + \gamma \cdot L_\text{latency} + \delta \cdot L_\text{cost}
 $$
 
-The weights are **business calls, not statistical calls**. There is no "optimal $\alpha$" — there is only the $\alpha$ that reflects how much accuracy your stakeholders are willing to trade for latency, given the current product priorities. The composite is honest about the trade-off; a single-objective loss hides it inside whichever objective happened to be picked.
+The weights are **business calls, not statistical calls**. There is no "optimal $\alpha$". There is only the $\alpha$ that reflects how much accuracy your stakeholders are willing to trade for latency, given the current product priorities. The composite is honest about the trade-off; a single-objective loss hides it inside whichever objective happened to be picked.
 
 <Callout type="tip" title="Pick the metric before the model">
-The sequence matters. First, write down the business outcome. Second, pick the trainable proxy that you believe causally drives it, and name its Goodhart failure mode. Third, define the eval set you will use to score every candidate. Only then pick the model. Teams that pick the model first end up retrofitting whatever metric the model happens to optimise — and then are surprised when shipping the model degrades the business outcome.
+The sequence matters. First, write down the business outcome. Second, pick the trainable proxy that you believe causally drives it, and name its Goodhart failure mode. Third, define the eval set you will use to score every candidate. Only then pick the model. Teams that pick the model first end up retrofitting whatever metric the model happens to optimise, and then are surprised when shipping the model degrades the business outcome.
 </Callout>
 
 ## Research-vs-production gaps
@@ -137,7 +137,7 @@ A short tour of the recurring failure modes:
 
 ## Key takeaways
 
-- **A model is one component of a system.** Reliability, scalability, maintainability, and adaptability are properties of the whole system, not the model — and they decide whether the product works.
+- **A model is one component of a system.** Reliability, scalability, maintainability, and adaptability are properties of the whole system, not the model, and they decide whether the product works.
 - **Pick the metric before the model.** Write down the business outcome, pick a trainable proxy, name its Goodhart failure mode, define the eval set. Then pick the model.
 - **Composite objectives are honest.** When accuracy, fairness, latency, and cost all matter, weight them explicitly. The weights are business calls.
 - **Research and production are different artefacts.** Distribution, latency budget, feedback loops, and code path all diverge in production — design for that gap from day one.

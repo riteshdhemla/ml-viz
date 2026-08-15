@@ -15,7 +15,7 @@ This lesson covers four patterns that address exactly these concerns: **Multimod
 
 ## Multimodal Guardrails
 
-An agent that interacts with a foundation model (FM) or external service must handle inputs and outputs it did not author. A **Guardrail** is a validation layer placed between the agent and the FM — or between the FM and the external world — that inspects content for safety before allowing it to pass.
+An agent that interacts with a foundation model (FM) or external service must handle inputs and outputs it did not author. A **Guardrail** is a validation layer placed between the agent and the FM (or between the FM and the external world) that inspects content for safety before allowing it to pass.
 
 <Callout type="info" title="What guardrails validate">
   Modern agents are multimodal, so guardrails must cover more than text. The same interception layer can validate:
@@ -44,7 +44,7 @@ Output Guardrail ─── reject ──► fallback response
 Agent / Caller
 ```
 
-**Rule-based checks** run first — they are cheap and catch obvious violations (regex for SSN patterns, keyword blocklists). **Classifier-based checks** run second — they are slower but handle subtle content. Both operate on the same content; the chain fails fast on the first failure.
+**Rule-based checks** run first. They are cheap and catch obvious violations (regex for SSN patterns, keyword blocklists). **Classifier-based checks** run second. They are slower but handle subtle content. Both operate on the same content; the chain fails fast on the first failure.
 
 ### Forces
 

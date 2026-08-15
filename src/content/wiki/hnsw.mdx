@@ -12,7 +12,7 @@ estimatedMinutes: 12
 
 The [vector-databases wiki](/wiki/vector-databases) names **HNSW** as the default ANN index in most modern vector databases (FAISS, Qdrant, Weaviate, pgvector, Milvus, Redis). This page opens the box: what the "hierarchical" and "navigable small world" parts actually are, the exact search and insert procedures, a worked trace, and the operational gotchas that make HNSW excellent for read-heavy corpora and awkward for churny ones.
 
-The one-sentence idea: **build a multi-layer proximity graph — a skip-list for geometry — then answer a query by greedily hopping along edges toward it, coarse layers first, then fine.**
+The one-sentence idea: **build a multi-layer proximity graph (a skip-list for geometry), then answer a query by greedily hopping along edges toward it, coarse layers first, then fine.**
 
 ## Two ingredients
 
@@ -41,7 +41,7 @@ The "hierarchy" in HNSW is lifted directly from the **skip list**, so it pays to
 
 You examined `3, 15, 34, 41` instead of all seven. The express lane let you *skip* the region between checkpoints, then you descended only for the final fine-grained step.
 
-**Stack more lanes → logarithmic search.** With $L$ levels, each holding half the nodes of the one below, the top lane has $\approx N/2^{L}$ nodes. At every level you take at most a couple of steps before overshooting and dropping down, and there are $\approx \log_2 N$ levels — so search is $O(\log N)$. That is the whole trick: **sparse-on-top layers turn a linear walk into a logarithmic one, without giving up cheap inserts.**
+**Stack more lanes → logarithmic search.** With $L$ levels, each holding half the nodes of the one below, the top lane has $\approx N/2^{L}$ nodes. At every level you take at most a couple of steps before overshooting and dropping down, and there are $\approx \log_2 N$ levels, so search is $O(\log N)$. That is the whole trick: **sparse-on-top layers turn a linear walk into a logarithmic one, without giving up cheap inserts.**
 
 <Callout type="info" title="Why the levels are random, not every-other">
   Maintaining a *perfect* every-other spacing under insert/delete would cost $O(N)$ rebalancing —
@@ -67,11 +67,11 @@ HNSW is a skip list where the **one-dimensional sorted order is replaced by a pr
 | Search: descend levels, walk right, drop at overshoot | Search: descend levels greedy (`ef=1`), then a width-`ef` beam on layer 0 |
 | Bottom level = full sorted list | Layer 0 = graph over **all** $N$ points |
 
-The single crucial difference is *why* a level needs more than one link per node. In a sorted list "closer to the target" has exactly one direction — forward — so one `next` pointer suffices. In $d$ dimensions the query can be in *any* direction, so each node needs a small **set** of edges (`M` of them) fanning out in different directions, and the greedy walk picks whichever edge points most toward the query. That is the "navigable small world" part doing the job the total order does for free in 1-D — and it is why HNSW spends `M` and the neighbour-selection heuristic to keep those edges pointing in genuinely different directions.
+The single crucial difference is *why* a level needs more than one link per node. In a sorted list "closer to the target" has exactly one direction (forward), so one `next` pointer suffices. In $d$ dimensions the query can be in *any* direction, so each node needs a small **set** of edges (`M` of them) fanning out in different directions, and the greedy walk picks whichever edge points most toward the query. That is the "navigable small world" part doing the job the total order does for free in 1-D, and it is why HNSW spends `M` and the neighbour-selection heuristic to keep those edges pointing in genuinely different directions.
 
 <Callout type="warning" title="The analogy has a limit: no total order means no guarantees">
   A skip list's ordering guarantees greedy descent *always* lands on the exact key. HNSW has no
-  total order, so greedy graph search can still stall in a local minimum — which is precisely why
+  total order, so greedy graph search can still stall in a local minimum, which is precisely why
   layer 0 widens from a 1-step walk into a width-`efSearch` beam, and why HNSW is *approximate*
   where a skip list is exact.
 </Callout>

@@ -9,7 +9,7 @@ estimatedMinutes: 14
 
 # Object Detection
 
-A classifier answers *"what is in this image?"*. An object detector answers *"what is in this image, where exactly is each one, and how confident are you?"* That additional *where* transforms a single label into a list of bounding boxes, each paired with a class and a confidence score. Most of this course lives in the **hypothesis-space** slot of the [ML project loop](/wiki/ml-project-loop) — anchors, FPNs, U-Nets, and backbones are all architectural machinery — with one big exception: self-supervised learning (lesson 05), which is squarely about the **data** slot.
+A classifier answers *"what is in this image?"*. An object detector answers *"what is in this image, where exactly is each one, and how confident are you?"* That additional *where* transforms a single label into a list of bounding boxes, each paired with a class and a confidence score. Most of this course lives in the **hypothesis-space** slot of the [ML project loop](/wiki/ml-project-loop) (anchors, FPNs, U-Nets, and backbones are all architectural machinery) with one big exception: self-supervised learning (lesson 05), which is squarely about the **data** slot.
 
 <WikiLink slug="ml-project-loop" title="The ML Project Loop" />
 
@@ -84,7 +84,7 @@ Two things are worth pushing on.
 | thin, 60×400 | **0.368** |
 | small, 32×32 | **0.250** |
 
-The last two never clear any sensible positive threshold, so they are invisible to the detector *regardless of how long you train*. Anchor scales and aspect ratios are a decision about your dataset, not a default to inherit — and this is the failure mode that anchor-free detectors (FCOS, CenterNet) were designed to remove.
+The last two never clear any sensible positive threshold, so they are invisible to the detector *regardless of how long you train*. Anchor scales and aspect ratios are a decision about your dataset, not a default to inherit, and this is the failure mode that anchor-free detectors (FCOS, CenterNet) were designed to remove.
 
 ## Faster R-CNN — Two-Stage Detection
 
@@ -106,7 +106,7 @@ Each proposal is cropped from the backbone feature map using **RoI Pooling** (or
 - A **classification head** predicting one of $C$ classes (plus background).
 - A **regression head** predicting final box offsets per class.
 
-**Speed vs accuracy:** Faster R-CNN runs at roughly 5–10 fps on a GPU — too slow for real-time use — but delivers high accuracy because the two-stage design allows the classification head to focus only on promising regions.
+**Speed vs accuracy:** Faster R-CNN runs at roughly 5–10 fps on a GPU (too slow for real-time use) but delivers high accuracy because the two-stage design allows the classification head to focus only on promising regions.
 
 **Training loss:**
 
@@ -146,7 +146,7 @@ Each of the $B \times 5$ entries encodes $(x, y, w, h, \text{objectness})$ for o
 
 ### Multi-Scale Predictions (YOLOv3+)
 
-YOLOv1 and v2 struggle with small and overlapping objects because a single $7\times7$ grid is too coarse. YOLOv3 addresses this by predicting at **three scales** — analogous to an FPN — using feature maps of strides 8, 16, and 32. Larger feature maps (stride 8) detect small objects; smaller maps (stride 32) detect large objects.
+YOLOv1 and v2 struggle with small and overlapping objects because a single $7\times7$ grid is too coarse. YOLOv3 addresses this by predicting at **three scales** (analogous to an FPN) using feature maps of strides 8, 16, and 32. Larger feature maps (stride 8) detect small objects; smaller maps (stride 32) detect large objects.
 
 **Speed:** YOLOv1 achieves ~45 fps; modern variants (YOLOv8, RT-DETR) push well past 60 fps at competitive accuracy.
 
@@ -185,7 +185,7 @@ This multi-scale strategy is conceptually similar to FPN but uses the raw backbo
 | Small objects | Good | Struggles (YOLO v1/v2) |
 | Typical use case | Offline, accuracy-critical | Real-time applications |
 
-The accuracy gap has narrowed considerably with YOLOv7/v8 and one-stage detectors with FPN backbones. For latency-sensitive applications — autonomous vehicles, robotics, live video — one-stage detectors remain the dominant choice.
+The accuracy gap has narrowed considerably with YOLOv7/v8 and one-stage detectors with FPN backbones. For latency-sensitive applications (autonomous vehicles, robotics, live video), one-stage detectors remain the dominant choice.
 
 ## Evaluation: Mean Average Precision (mAP)
 
@@ -229,7 +229,7 @@ $$
 - Anchor boxes are predefined priors; models predict small offsets from them rather than absolute coordinates, which makes regression stable.
 - IoU measures bounding-box overlap; the standard positive-anchor threshold is IoU $> 0.5$.
 - Faster R-CNN (two-stage) is accurate but slow; YOLO/SSD (one-stage) are fast but historically less accurate on small objects.
-- FPN adds a top-down lateral pathway to backbone features, giving every scale access to high-level semantics — this is the key ingredient for detecting objects across a wide size range.
+- FPN adds a top-down lateral pathway to backbone features, giving every scale access to high-level semantics. This is the key ingredient for detecting objects across a wide size range.
 - NMS removes duplicate detections by keeping the highest-confidence box and suppressing all boxes with IoU $>$ threshold against it; Soft-NMS is preferred in crowded scenes.
 
 ## Related Concepts

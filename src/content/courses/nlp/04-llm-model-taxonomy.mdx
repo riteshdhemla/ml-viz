@@ -23,7 +23,7 @@ Every modern Transformer-based LLM falls into one of three families, distinguish
 | **Decoder-only** | Causal (lower-triangular) | Next-token prediction (causal LM) | Generation: chat, code, agents, function-calling |
 | **Encoder-decoder** | Bi-dir on encoder + causal on decoder + cross-attention | Span-corruption / seq2seq | Structured input→output: translate, summarise, instruction-tuned |
 
-The same residual block — multi-head self-attention + MLP + LayerNorm + residual — appears in all three. The mathematics of self-attention itself does not change; what changes is which entries of the $L \times L$ score matrix $QK^\top$ are *allowed* to be non-zero.
+The same residual block (multi-head self-attention + MLP + LayerNorm + residual) appears in all three. The mathematics of self-attention itself does not change; what changes is which entries of the $L \times L$ score matrix $QK^\top$ are *allowed* to be non-zero.
 
 (For the self-attention derivation itself, see [Self-Attention](/courses/transformers/01-self-attention) — we won't re-derive it here.)
 
@@ -31,7 +31,7 @@ The same residual block — multi-head self-attention + MLP + LayerNorm + residu
 
 You can read off the family from the attention mask:
 
-- **Encoder-only (bidirectional).** The mask is the all-ones matrix. Token at position $i$ attends to *every* token in the sequence, including the future. That is why an encoder can build a representation of "bank" that already knows about "river" three words later — and why it cannot generate text left-to-right without a separate decoder.
+- **Encoder-only (bidirectional).** The mask is the all-ones matrix. Token at position $i$ attends to *every* token in the sequence, including the future. That is why an encoder can build a representation of "bank" that already knows about "river" three words later, and why it cannot generate text left-to-right without a separate decoder.
 
 - **Decoder-only (causal).** The mask is strictly lower-triangular: position $i$ may attend only to positions $j \le i$. Concretely the masked logits are
   $$
@@ -59,14 +59,14 @@ Where they dominate: dense retrieval and reranking (an encoder is what powers `s
 Where they cannot help: free-form generation. There is no "next token" because the model never had to predict one during pretraining — every position saw the whole sentence.
 
 <Callout type="info" title="Bidirectional context is not free">
-  BERT's bidirectionality is the source of both its power and its limitation. Seeing the future during training is great for embeddings — but it forces a training/inference mismatch (you only train on masked positions, so only ~15% of tokens contribute gradient per example) and rules out a clean generation procedure. Decoder-only fixes both at the cost of giving up the bidirectional view.
+  BERT's bidirectionality is the source of both its power and its limitation. Seeing the future during training is great for embeddings, but it forces a training/inference mismatch (you only train on masked positions, so only ~15% of tokens contribute gradient per example) and rules out a clean generation procedure. Decoder-only fixes both at the cost of giving up the bidirectional view.
 </Callout>
 
 ## Decoder-only: GPT, Llama, Mistral, Claude, Gemini
 
 The decoder family is what almost everyone now means by "LLM". A single stack of causal-masked Transformer blocks, pretrained on next-token prediction over trillions of tokens, post-trained with SFT and preference optimisation — see [Foundation Models & Scaling Laws](/courses/transformers/05-foundation-models-and-scaling) for the recipe.
 
-The architecture and the inference loop match exactly: at every position the model predicts the next token from the prefix, both during training and during generation. That alignment is the deepest reason decoder-only won the generative race — there is no `[MASK]` at inference time, no separate encoder pass, no two-stage prompting.
+The architecture and the inference loop match exactly: at every position the model predicts the next token from the prefix, both during training and during generation. That alignment is the deepest reason decoder-only won the generative race. There is no `[MASK]` at inference time, no separate encoder pass, no two-stage prompting.
 
 Representative sizes:
 
@@ -105,7 +105,7 @@ The word "large" in "large language model" is doing four jobs at once. Untanglin
 
 4. **Emergent capability.** The non-obvious part. Past some threshold (~$10^{22}$ FLOPs or ~$10^{10}$ params, very roughly) capabilities like in-context learning, chain-of-thought, instruction following, and tool use appear that did not exist in smaller models trained on the same data. This is what people *mean* when they reach for "large" — not the parameter count, but the qualitative shift.
 
-A useful test for whether someone is using "LLM" precisely: ask them whether BERT counts. By job description (predict masked tokens, output embeddings) it is a *language model*. By the cultural meaning of "LLM" — instruction-following generative system — it usually is not. The taxonomy in this lesson is the right vocabulary to be clearer.
+A useful test for whether someone is using "LLM" precisely: ask them whether BERT counts. By job description (predict masked tokens, output embeddings) it is a *language model*. By the cultural meaning of "LLM" (instruction-following generative system) it usually is not. The taxonomy in this lesson is the right vocabulary to be clearer.
 
 <Callout type="warning" title="Parameter count without tokens is a vanity metric">
   A "1 trillion parameter" headline tells you almost nothing on its own. If the model is an MoE with 50 B active per token, the inference cost is set by 50 B, not 1 T. If it was trained on too few tokens for its size, it is *under-trained* and a smaller, longer-trained model will beat it. Always ask for $N$, $D$, and ideally $C$ together — Chinchilla scaling is unforgiving.
@@ -128,7 +128,7 @@ A practical decision tree before you reach for a model:
 
 ## Common mistakes
 
-1. **Asking BERT to generate text.** It cannot — there is no causal mask, no next-token head, no autoregressive sampling. Use a decoder.
+1. **Asking BERT to generate text.** It cannot. There is no causal mask, no next-token head, no autoregressive sampling. Use a decoder.
 2. **Using a decoder-only model as a sentence embedder by mean-pooling the last hidden state.** It works passably but is dominated by a properly-trained encoder (or an explicitly instruction-tuned embedding model like `text-embedding-3-large`).
 3. **Treating "large" as a synonym for "billions of parameters".** Under Chinchilla, a 7 B model trained on 15 T tokens is *more capable* than a 175 B model trained on 0.3 T. The right currency is compute or capability, not raw $N$.
 4. **Reaching for an encoder-decoder for chat.** T5 / BART are seq2seq systems — for open-ended dialogue a causal decoder is structurally simpler and almost always better. Encoder-decoder shines when input and output are clearly distinct sequences.

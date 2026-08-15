@@ -17,7 +17,7 @@ Real-world examples: deciding between a GPT-4-class API, Claude, Gemini, and a s
 
 A surprising number of teams pick a model by reading a leaderboard, signing a contract, and skipping straight to integration. The headline number on a public benchmark is **structurally the wrong input** for that decision — it measures performance on a generic test set, against a fixed prompt, with no awareness of your latency budget or your data. A repeatable, defensible workflow has five steps:
 
-1. **Define your task-specific eval set.** $50$ to $200$ representative held-out examples drawn from your actual product — real support tickets, real user queries, real documents — with the answers you would accept from a human. This is the single highest-leverage artefact a team can build. It is also reusable: every future model swap, prompt change, or fine-tune is scored against the same set.
+1. **Define your task-specific eval set.** $50$ to $200$ representative held-out examples drawn from your actual product (real support tickets, real user queries, real documents) with the answers you would accept from a human. This is the single highest-leverage artefact a team can build. It is also reusable: every future model swap, prompt change, or fine-tune is scored against the same set.
 2. **Decide the success metric.** Closed-ended tasks: accuracy, pass@k (for code), exact-match (for extraction). Open-ended tasks: AI-judge score (rubric-graded), human-eval Elo (pairwise preference), or a domain-specific composite (e.g. "answer is grounded in the retrieved document"). Whatever you pick, write it down before scoring — choosing the metric after seeing the numbers is how you get fooled.
 3. **Score every candidate model.** Fix the prompt, the decoding settings (temperature, top-p), the system message, and the eval set; then run each candidate. Report per-task numbers, not just the average. A model can crush your "answer factual questions" slice and fail your "refuse unsafe requests" slice — averaging hides that.
 4. **Combine with cost / latency budget to pick.** The candidate that wins on accuracy alone is rarely the right pick once $/$query and p95 latency are factored in. The decision space is **Pareto** — see "Cost & latency as first-class metrics" below.
@@ -29,7 +29,7 @@ A $100$-example task-specific eval set will steer your model selection better th
 
 ## Build-vs-buy
 
-"Buy" means calling a hosted API — OpenAI, Anthropic, Google, Cohere, and so on. "Build" means hosting open-weights models — Llama-3, Mistral, Qwen, DeepSeek — on your own GPUs (or on rented GPUs from a cloud provider). The trade-off is not "API is easy, self-host is hard"; it is a *real* economic and operational trade between two different cost structures.
+"Buy" means calling a hosted API — OpenAI, Anthropic, Google, Cohere, and so on. "Build" means hosting open-weights models (Llama-3, Mistral, Qwen, DeepSeek) on your own GPUs (or on rented GPUs from a cloud provider). The trade-off is not "API is easy, self-host is hard"; it is a *real* economic and operational trade between two different cost structures.
 
 **Buy (API):**
 
@@ -63,7 +63,7 @@ Most production systems do **both**: a cheap open-weights model handles the easy
 
 ## Public benchmarks and their limits
 
-Public benchmarks — MMLU, HellaSwag, GSM8K, HumanEval, MT-Bench, Chatbot Arena — are the canonical capability metrics; see [LLM Evaluation](/courses/model-evaluation/04-llm-evaluation) for the math behind each one. They are useful, but they systematically **mislead** when used as the sole input to a model-selection decision. Four reasons:
+Public benchmarks (MMLU, HellaSwag, GSM8K, HumanEval, MT-Bench, Chatbot Arena) are the canonical capability metrics; see [LLM Evaluation](/courses/model-evaluation/04-llm-evaluation) for the math behind each one. They are useful, but they systematically **mislead** when used as the sole input to a model-selection decision. Four reasons:
 
 - **Contamination.** Benchmarks are scraped from the public web. Frontier pretraining runs hoover up the public web. Test questions therefore end up in pretraining data, and the model literally *memorises* the answers. Reported MMLU numbers from models with unfiltered pretraining corpora are systematically optimistic. The defence is contamination-scanning the pretraining set against the test split, and increasingly, **held-out** or **rolling** benchmarks (LiveBench, fresh competition problems) constructed after the model's cutoff.
 - **Overfit / Goodhart.** Once a benchmark is the headline, training pipelines start optimising for it directly. MMLU-tuned models post strong MMLU scores without being broadly better. This is the same failure mode as **reward hacking** in RLHF: the proxy and the true objective diverge, and the model exploits the gap.
@@ -131,7 +131,7 @@ The metrics that matter in production go further than "did the model get the ans
 - **Hallucination rate against grounded answers.** For RAG and tool-using systems, score how often the model invents facts not present in the retrieved context. The eval set needs a "grounded answer" column.
 - **Robustness to adversarial prompts.** Prompt injection, jailbreaks, and confused-deputy attacks. The defences live in [AI-Engineering Architecture](/courses/building-with-llms/06-ai-engineering-architecture) (input/output guardrails, least-privilege tool access, separation of instructions and untrusted data). The eval is a curated adversarial set against which every candidate model is scored.
 
-A model that wins on accuracy but is poorly calibrated, refuses inappropriately, or is easy to jailbreak is the wrong production pick — and none of those failure modes show up on a generic benchmark leaderboard.
+A model that wins on accuracy but is poorly calibrated, refuses inappropriately, or is easy to jailbreak is the wrong production pick, and none of those failure modes show up on a generic benchmark leaderboard.
 
 <Exercise id="eval-systems-build-vs-buy" />
 

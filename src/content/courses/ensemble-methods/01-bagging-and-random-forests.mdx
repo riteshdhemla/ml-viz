@@ -27,7 +27,7 @@ $$
 \hat{f}_{\text{bag}}(\mathbf{x}) = \frac{1}{B} \sum_{b=1}^{B} T_b(\mathbf{x})
 $$
 
-Watch how bootstrap resampling creates diverse trees — and how majority vote smooths the combined boundary:
+Watch how bootstrap resampling creates diverse trees, and how majority vote smooths the combined boundary:
 
 <BaggingViz />
 
@@ -37,7 +37,7 @@ Watch how bootstrap resampling creates diverse trees — and how majority vote s
 
 ### How much does variance actually drop?
 
-The "factor of $B$" only holds if the trees are *perfectly uncorrelated* — but bagged trees aren't, since they share most of their data. For $B$ identically-distributed trees each with variance $\sigma^2$ and **pairwise correlation $\rho$**, the variance of their average is:
+The "factor of $B$" only holds if the trees are *perfectly uncorrelated*, but bagged trees aren't, since they share most of their data. For $B$ identically-distributed trees each with variance $\sigma^2$ and **pairwise correlation $\rho$**, the variance of their average is:
 
 $$
 \text{Var}\!\left(\frac{1}{B}\sum_b T_b\right) = \rho\,\sigma^2 + \frac{1-\rho}{B}\,\sigma^2.
@@ -75,7 +75,7 @@ print(f"Bagging accuracy: {bag.score(X_test, y_test):.3f}")
 
 Random Forests improve on bagging by adding **feature randomization**: at each split, only consider a random subset of $m$ features.
 
-This decorrelates the trees further — they can't all rely on the same dominant feature:
+This decorrelates the trees further. They can't all rely on the same dominant feature:
 
 | Task | Default $m$ |
 |------|------------|

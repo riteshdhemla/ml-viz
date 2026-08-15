@@ -70,7 +70,7 @@ $$
 \text{votes} = \{\text{Red}: 2,\ \text{Blue}: 1\} \;\Rightarrow\; \boxed{\text{predict Red}}
 $$
 
-This is the exact query point and result reproduced in the companion notebook. Notice that the answer can flip with $k$: at $k=5$ the votes become $\{\text{Red}: 2,\ \text{Blue}: 3\}$, so the prediction would change to **Blue**. The choice of $k$ is not a detail — it can decide the class.
+This is the exact query point and result reproduced in the companion notebook. Notice that the answer can flip with $k$: at $k=5$ the votes become $\{\text{Red}: 2,\ \text{Blue}: 3\}$, so the prediction would change to **Blue**. The choice of $k$ is not a detail. It can decide the class.
 
 ```python
 import numpy as np
@@ -114,7 +114,7 @@ X_test_scaled = scaler.transform(X_test)         # reuse the SAME scaler — nev
 The hyperparameter $k$ controls **how much you smooth**. Think of it as a dial between trusting one neighbor versus averaging a whole crowd.
 
 **Small $k$ (e.g. $k=1$) — low bias, high variance.**
-The prediction copies the single closest point. The model bends around every individual example, so it fits the training data perfectly — but a single mislabeled or noisy point creates its own little island of wrong predictions. Move the query a hair and the answer can flip. The decision boundary is jagged.
+The prediction copies the single closest point. The model bends around every individual example, so it fits the training data perfectly, but a single mislabeled or noisy point creates its own little island of wrong predictions. Move the query a hair and the answer can flip. The decision boundary is jagged.
 
 **Large $k$ (e.g. $k=n$) — high bias, low variance.**
 Every query averages over a huge neighborhood, so noise washes out and predictions are stable. But the model can no longer represent fine structure: in the extreme $k=n$ it ignores the query entirely and always returns the **global majority class**. The boundary is over-smoothed and underfits.

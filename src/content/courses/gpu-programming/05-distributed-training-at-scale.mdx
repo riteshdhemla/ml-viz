@@ -9,7 +9,7 @@ estimatedMinutes: 18
 
 # Distributed Training at Scale
 
-Lesson 4 mapped a neural network onto a single GPU. Foundation models blow past what a single GPU — even a single *node* — can hold or compute in a reasonable time. This lesson covers the two walls that force training onto many GPUs at once, and the three families of parallelism that get around them.
+Lesson 4 mapped a neural network onto a single GPU. Foundation models blow past what a single GPU (even a single *node*) can hold or compute in a reasonable time. This lesson covers the two walls that force training onto many GPUs at once, and the three families of parallelism that get around them.
 
 **Real-world examples:** GPT- and Llama-scale pretraining runs on thousands of GPUs simultaneously; PyTorch's `FSDP` and Microsoft's `DeepSpeed` (ZeRO) are the memory-sharding libraries every large training run sits on top of; Megatron-LM's tensor-parallel matmul splitting; the reason LoRA/QLoRA (`fine-tuning-alignment`) are popular is that they let you dodge almost everything in this lesson by only training a small adapter.
 
@@ -65,7 +65,7 @@ Each stage shards one more piece of state across the $G$ GPUs, gathering it back
 
 ## When sharding still isn't enough: model and pipeline parallelism
 
-ZeRO shards *state*, but every GPU still needs to materialize the full activations of every layer during its forward pass. When a single layer is too large for that — or DP communication itself becomes the bottleneck — the model itself is split:
+ZeRO shards *state*, but every GPU still needs to materialize the full activations of every layer during its forward pass. When a single layer is too large for that (or DP communication itself becomes the bottleneck), the model itself is split:
 
 - **Tensor parallelism** splits an individual matmul across GPUs — e.g. a weight matrix's columns live on different GPUs, each computing a partial GEMM (the same GEMM from Lesson 4, just partitioned), with a small all-reduce/all-gather to combine partial results. Communication is frequent and latency-sensitive, so tensor parallelism is normally kept *within* a fast-interconnect node.
 - **Pipeline parallelism** splits the model by *layer*: GPU 1 holds layers 1–8, GPU 2 holds layers 9–16, and so on, with activations passed forward between them like a pipeline. To keep every GPU busy, the batch is cut into $M$ **micro-batches** that flow through the stages back-to-back.
@@ -104,7 +104,7 @@ Production training runs (Megatron-LM, DeepSpeed) combine all three axes at once
 
 ## Key takeaways
 
-- **Two distinct walls**: compute (not enough FLOPs) and memory (state doesn't fit) — and they need different fixes.
+- **Two distinct walls**: compute (not enough FLOPs) and memory (state doesn't fit), and they need different fixes.
 - **Data parallelism** replicates the model, shards the batch, and syncs gradients with all-reduce — it scales compute but not memory.
 - **ZeRO/FSDP** shards optimizer state, then gradients, then parameters across the data-parallel group, taking per-GPU memory from $16\Psi$ down to $16\Psi/G$ at full sharding (stage 3), at the cost of extra communication.
 - **Tensor and pipeline parallelism** split the model itself when sharding state still isn't enough; pipeline parallelism pays an idle "bubble" that shrinks with more micro-batches.
