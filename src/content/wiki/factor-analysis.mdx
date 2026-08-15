@@ -34,7 +34,7 @@ $$
 
 The covariance $\Lambda\Lambda^\top + \Psi$ has low-rank structure ($\Lambda\Lambda^\top$) plus diagonal noise ($\Psi$).
 
-## Intuition — cocktail party analogy
+## Intuition: cocktail party analogy
 
 Imagine $n = 100$ microphones recording $k = 3$ speakers. Each microphone's reading $x_i$ is a linear combination of the three speakers' voices (the factors $z_j$) plus independent microphone noise ($\psi_i$). Factor Analysis recovers the loading matrix $\Lambda$ that tells you how each microphone mixes the speakers, and the noise levels $\psi_i$ per microphone.
 
@@ -70,7 +70,7 @@ EM alternates these two steps until convergence.
 | **Noise model** | None (or spherical: $\sigma^2 I$) | Per-dimension: diagonal $\Psi$ |
 | **Components** | Orthogonal (from eigenvectors of covariance) | Not necessarily orthogonal (can be rotated) |
 | **Rotation invariance** | No: PC directions are fixed | Yes: $\Lambda$ can be rotated without changing the marginal likelihood |
-| **Handles heteroscedastic noise** | No | Yes — each dimension has its own noise variance |
+| **Handles heteroscedastic noise** | No | Yes: each dimension has its own noise variance |
 | **Use case** | Dimensionality reduction, preprocessing | Identifying latent structure when dimensions have different noise levels |
 
 **Key difference:** PCA minimizes reconstruction error and implicitly assumes all dimensions have the same noise. Factor Analysis uses a **per-dimension noise model** $\Psi$, which makes it more appropriate when different measurements have different reliability (e.g., some sensors are noisy, others are precise).
@@ -101,6 +101,6 @@ The Factor Analysis model is **not identifiable** without additional constraints
 
 ## Related concepts
 
-- [**The EM Algorithm**](/courses/probabilistic-models/02-em-algorithm) — the coordinate-ascent procedure that fits FA's latent factors
-- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — the deterministic cousin; PPCA is FA with isotropic noise $\Psi = \sigma^2 I$
-- [**Independent Component Analysis**](/wiki/independent-component-analysis) — a latent-factor model that instead assumes non-Gaussian, independent sources
+- [**The EM Algorithm**](/courses/probabilistic-models/02-em-algorithm): the coordinate-ascent procedure that fits FA's latent factors
+- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca): the deterministic cousin; PPCA is FA with isotropic noise $\Psi = \sigma^2 I$
+- [**Independent Component Analysis**](/wiki/independent-component-analysis): a latent-factor model that instead assumes non-Gaussian, independent sources

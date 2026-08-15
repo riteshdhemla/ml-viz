@@ -13,7 +13,7 @@ You just learned [policy gradient](/courses/reinforcement-learning/04-policy-gra
 
 **Real-world examples:** OpenAI's InstructGPT (the original "GPT-3 + RLHF" paper), ChatGPT-style alignment, Anthropic's Claude RLHF pipeline, Llama-2-Chat, and any modern frontier model that uses on-policy preference tuning.
 
-## Policy gradient — one-paragraph recap
+## Policy gradient: one-paragraph recap
 
 REINFORCE estimates the gradient of expected return as
 
@@ -25,7 +25,7 @@ where $A(s,a) = G_t - V(s)$ is the **advantage** — how much better this action
 
 <PolicyGradientViz />
 
-## PPO — clip the step, not the gradient
+## PPO: clip the step, not the gradient
 
 PPO (Schulman et al., 2017) doesn't change *what* the gradient is — it changes *how big a step* you're allowed to take. The trick is to keep a snapshot $\pi_{\theta_\text{old}}$ of the policy at the start of the update and write the objective in terms of an **importance-sampling ratio**:
 
@@ -60,7 +60,7 @@ Now stretch one variable: let the policy be a language model $\pi_\theta(y_t \mi
 | State $s_t$ | Prompt $x$ + tokens generated so far $y_{<t}$ |
 | Action $a_t$ | Next token $y_t$ |
 | Episode | One full completion $y$ given prompt $x$ |
-| Reward | Learned reward model $r_\phi(x, y)$ — scored on the *final* sequence |
+| Reward | Learned reward model $r_\phi(x, y)$: scored on the *final* sequence |
 | Reference policy | The SFT model $\pi_\text{ref}$ |
 
 The classical RLHF objective is the same KL-regularised return you saw in [the RLHF & DPO lesson](/courses/fine-tuning-alignment/04-rlhf-and-dpo):
@@ -105,9 +105,9 @@ The classical RLHF objective above ($\mathbb{E}[r_\phi] - \beta\,\mathrm{KL}(\pi
 
 ## Related concepts
 
-- [**Policy Gradient & Actor-Critic**](/courses/reinforcement-learning/04-policy-gradient) — the on-policy estimator PPO clips.
-- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the LLM-specific PPO pipeline and its closed-form alternative.
-- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the $r_\phi$ that PPO optimises against in RLHF.
-- [**GRPO: Group Relative Policy Optimization**](/wiki/grpo-objective) — a critic-free alternative to PPO that normalizes rewards within a sampled group
-- [**Imitation Learning**](/wiki/imitation-learning) — behavioral cloning, DAgger, and GAIL, the SFT-stage backdrop to RLHF
-- [**Inverse Reinforcement Learning**](/wiki/inverse-reinforcement-learning) — recovering a reward from behavior, the classical root of reward modeling
+- [**Policy Gradient & Actor-Critic**](/courses/reinforcement-learning/04-policy-gradient): the on-policy estimator PPO clips.
+- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo): the LLM-specific PPO pipeline and its closed-form alternative.
+- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models): the $r_\phi$ that PPO optimises against in RLHF.
+- [**GRPO: Group Relative Policy Optimization**](/wiki/grpo-objective): a critic-free alternative to PPO that normalizes rewards within a sampled group
+- [**Imitation Learning**](/wiki/imitation-learning): behavioral cloning, DAgger, and GAIL, the SFT-stage backdrop to RLHF
+- [**Inverse Reinforcement Learning**](/wiki/inverse-reinforcement-learning): recovering a reward from behavior, the classical root of reward modeling

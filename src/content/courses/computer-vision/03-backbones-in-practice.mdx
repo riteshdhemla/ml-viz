@@ -19,7 +19,7 @@ A backbone is a deep CNN (or Vision Transformer) trained to extract hierarchical
 
 ---
 
-## ResNet — Residual Connections
+## ResNet: Residual Connections
 
 Very deep networks (50+ layers) suffer from vanishing gradients: by the time the loss signal propagates back through dozens of layers, it shrinks to near zero and early layers stop learning.
 
@@ -51,7 +51,7 @@ ResNet-50 with a Feature Pyramid Network (FPN) head is the most common baseline 
 
 ---
 
-## MobileNet — Depthwise Separable Convolutions
+## MobileNet: Depthwise Separable Convolutions
 
 A standard $K \times K$ convolution over $C_{in}$ input channels producing $C_{out}$ output channels requires:
 
@@ -59,8 +59,8 @@ $$K \times K \times C_{in} \times C_{out} \text{ multiplications per output loca
 
 **Depthwise separable convolution** (introduced in depth in [Modern Architectures](/courses/cnns/05-modern-architectures)) splits this into two steps:
 
-1. **Depthwise conv** — one $K \times K$ filter per input channel (no cross-channel mixing): $K \times K \times C_{in}$ multiplications
-2. **Pointwise conv** — $1 \times 1 \times C_{in} \times C_{out}$ (cross-channel mixing, no spatial): $C_{in} \times C_{out}$ multiplications
+1. **Depthwise conv**: one $K \times K$ filter per input channel (no cross-channel mixing): $K \times K \times C_{in}$ multiplications
+2. **Pointwise conv**: $1 \times 1 \times C_{in} \times C_{out}$ (cross-channel mixing, no spatial): $C_{in} \times C_{out}$ multiplications
 
 **Cost reduction factor:**
 
@@ -70,13 +70,13 @@ For $K = 3$ and $C_{out} = 256$: $\frac{1}{256} + \frac{1}{9} \approx 0.115$, me
 
 ### MobileNet Variants
 
-**MobileNetV2 — Inverted Residuals.** Counterintuitively, residual shortcuts connect *narrow* (low-channel) layers, while the $3 \times 3$ depthwise conv operates in an *expanded* (high-channel) intermediate space. This prevents information loss in the bottleneck while keeping the shortcut cheap.
+**MobileNetV2: Inverted Residuals.** Counterintuitively, residual shortcuts connect *narrow* (low-channel) layers, while the $3 \times 3$ depthwise conv operates in an *expanded* (high-channel) intermediate space. This prevents information loss in the bottleneck while keeping the shortcut cheap.
 
-**MobileNetV3 — SE Attention + Hard-Swish.** Adds Squeeze-and-Excite (SE) blocks that reweight channels by global context, and replaces swish activation with hard-swish ($\frac{x \cdot \text{ReLU6}(x+3)}{6}$) — equivalent performance but integer-arithmetic friendly for mobile hardware.
+**MobileNetV3: SE Attention + Hard-Swish.** Adds Squeeze-and-Excite (SE) blocks that reweight channels by global context, and replaces swish activation with hard-swish ($\frac{x \cdot \text{ReLU6}(x+3)}{6}$) — equivalent performance but integer-arithmetic friendly for mobile hardware.
 
 ---
 
-## EfficientNet — Compound Scaling
+## EfficientNet: Compound Scaling
 
 Prior approaches scaled networks along a single axis: make it deeper (more layers), wider (more channels), or feed higher-resolution inputs. EfficientNet's insight is that **all three axes should be scaled jointly** — depth, width, and resolution are interdependent.
 
@@ -132,7 +132,7 @@ This prevents destroying the general-purpose ImageNet features while still allow
 
 Vision Transformers (ViT) treat an image as a sequence of non-overlapping $16 \times 16$ patches. Each patch is flattened, projected to an embedding dimension, and processed by standard Transformer self-attention blocks.
 
-- **ViT-B/16** — 86M parameters, 17.6 GFLOPs per 224×224 image
+- **ViT-B/16**: 86M parameters, 17.6 GFLOPs per 224×224 image
 - Pre-trained on ImageNet-21k (14M images), then fine-tuned on ImageNet-1k, ViT-B/16 achieves 81.8% top-1 — competitive with ResNet-50 at 4× the compute
 - **DeiT** (Data-efficient Image Transformers) adds a distillation token to train ViT from scratch on ImageNet-1k without extra data, reaching 79.8% at ResNet-50 compute
 
@@ -198,7 +198,7 @@ Two consequences when you read any table like this one. First, a headline accura
 
 ## Related Concepts
 
-- [Transfer Learning](/courses/cnns/04-transfer-learning) — fine-tuning strategies and when to freeze vs. unfreeze layers
-- [Object Detection](/courses/computer-vision/01-object-detection) — FPN and multi-scale backbone feature usage in detection heads
-- [Segmentation](/courses/computer-vision/02-segmentation) — U-Net and Mask R-CNN encoder backbones
-- [**Neural Radiance Fields (NeRF)**](/wiki/neural-radiance-fields) — coordinate-based neural fields that extend representation learning to 3D scenes
+- [Transfer Learning](/courses/cnns/04-transfer-learning): fine-tuning strategies and when to freeze vs. unfreeze layers
+- [Object Detection](/courses/computer-vision/01-object-detection): FPN and multi-scale backbone feature usage in detection heads
+- [Segmentation](/courses/computer-vision/02-segmentation): U-Net and Mask R-CNN encoder backbones
+- [**Neural Radiance Fields (NeRF)**](/wiki/neural-radiance-fields): coordinate-based neural fields that extend representation learning to 3D scenes

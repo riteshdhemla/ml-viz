@@ -388,10 +388,10 @@ For schedule shapes beyond these (one-cycle, inverse square root, and how to pic
 - **Momentum** ($\beta \approx 0.9$) accumulates past gradients with exponential decay (weight $\beta^k$ on gradient $k$ steps back), with an effective look-back window of $1/(1-\beta) \approx 10$ steps, smoothing oscillations in narrow ravines.
 - **RMSprop** normalizes each parameter's update by the EMA of its recent squared gradients, giving large steps to infrequent (sparse) parameters and small steps to frequently-updated ones.
 - **Adam** combines both: first-moment EMA (momentum) and second-moment EMA (RMSprop), with bias correction that compensates for zero initialization in the first few steps.
-- **Learning rate schedules** — especially cosine annealing and warm-up — matter as much as the choice of optimizer; a well-scheduled SGD often beats a poorly-scheduled Adam.
+- **Learning rate schedules**: especially cosine annealing and warm-up — matter as much as the choice of optimizer; a well-scheduled SGD often beats a poorly-scheduled Adam.
 - Default recipe: **Adam** at $\eta = 10^{-3}$ for fast convergence; **SGD + momentum + cosine** when you need the best generalization on vision tasks.
 
 ## Related concepts
 
-- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — saddle points, the Hessian, and why the loss surface shape drives optimizer design
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the single-parameter derivation and the effect of learning rate before adding momentum or adaptivity
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization): saddle points, the Hessian, and why the loss surface shape drives optimizer design
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the single-parameter derivation and the effect of learning rate before adding momentum or adaptivity

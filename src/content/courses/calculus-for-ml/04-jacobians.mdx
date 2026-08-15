@@ -177,7 +177,7 @@ where $\mathbf{v}$ is the **upstream gradient** (the gradient of the loss w.r.t.
 
 | Operation | Cost | What it computes |
 |-----------|------|-----------------|
-| Full Jacobian | $m$ VJPs — $m\times$ the forward-pass cost | All partial derivatives |
+| Full Jacobian | $m$ VJPs: $m\times$ the forward-pass cost | All partial derivatives |
 | VJP $\mathbf{v}^\top \mathbf{J}$ | ≈ one forward pass | Gradient of loss w.r.t. inputs |
 | JVP $\mathbf{J}\mathbf{u}$ | ≈ one forward pass | Directional derivative of the outputs along $\mathbf{u}$ |
 
@@ -219,9 +219,9 @@ For a sequence of layers the condition number of the composition can grow expone
 
 ## Common mistakes
 
-1. **Confusing Jacobian shape** — the Jacobian of $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^m$ is $m \times n$, not $n \times m$. Rows index outputs, columns index inputs.
-2. **Assuming diagonal Jacobians for all element-wise functions** — this is true when each output depends on exactly one input. Softmax is element-wise in the sense of being a fixed formula per output, but outputs are coupled through the normalizer, making the Jacobian dense.
-3. **Computing full Jacobians in code** — `torch.autograd.functional.jacobian` is useful for debugging but O(mn) in time. In production, only VJPs (the backward pass) are needed.
+1. **Confusing Jacobian shape**: the Jacobian of $\mathbf{f}: \mathbb{R}^n \to \mathbb{R}^m$ is $m \times n$, not $n \times m$. Rows index outputs, columns index inputs.
+2. **Assuming diagonal Jacobians for all element-wise functions**: this is true when each output depends on exactly one input. Softmax is element-wise in the sense of being a fixed formula per output, but outputs are coupled through the normalizer, making the Jacobian dense.
+3. **Computing full Jacobians in code**: `torch.autograd.functional.jacobian` is useful for debugging but O(mn) in time. In production, only VJPs (the backward pass) are needed.
 
 ## Key takeaways
 
@@ -233,6 +233,6 @@ For a sequence of layers the condition number of the composition can grow expone
 
 ## Related concepts
 
-- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the scalar version of the same idea
-- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — the Hessian, the second-order Jacobian
-- [**SVD & Low-Rank Approximations**](/courses/linear-algebra/04-svd-and-low-rank) — singular values determine the Jacobian's condition number
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation): the scalar version of the same idea
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization): the Hessian, the second-order Jacobian
+- [**SVD & Low-Rank Approximations**](/courses/linear-algebra/04-svd-and-low-rank): singular values determine the Jacobian's condition number

@@ -132,7 +132,7 @@ $$\text{latency} \approx \sum_{i=1}^{N} \text{latency}_i \quad \text{(sequential
 | **Number of calls** | 1 | 2–$N$ |
 | **Total tokens** | Often lower | Can exceed one-shot with long chains |
 | **Latency** | Minimal | Adds up with depth |
-| **Latency budget pressure** | Low | High — each call adds wall-clock time |
+| **Latency budget pressure** | Low | High: each call adds wall-clock time |
 
 The critical insight: latency compounds because sequential calls cannot be parallelised. A chain of four calls each taking 800 ms costs 3.2 s of wall-clock time *minimum*, regardless of token count.
 
@@ -156,7 +156,7 @@ One-shot querying corresponds to **direct prompting**: the task is solved in a s
 | **Latency** | Lowest | Grows linearly with depth |
 | **Cost** | Predictable, often lower | Can be lower *or* higher |
 | **Reasoning quality** | Limited to one-pass | Improves with depth |
-| **Error recovery** | None — no retry | Possible via loop + self-correction |
+| **Error recovery** | None: no retry | Possible via loop + self-correction |
 | **Explainability** | Low (single opaque call) | High (each step is inspectable) |
 | **Implementation complexity** | Minimal | Requires state management |
 | **Failure mode** | Silent wrong answer | Infinite loops, cost explosions |
@@ -191,7 +191,7 @@ This lesson builds on the planning patterns in [Lesson 04 — Planning Patterns]
 
 ## Related concepts
 
-- [**Planning Patterns**](/courses/agent-design-patterns/04-planning-patterns) — how agents decompose tasks before querying
-- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns) — how agents evaluate and revise outputs after querying
-- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the original CoT technique that incremental querying operationalises
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — how tool calls fit into the incremental querying loop
+- [**Planning Patterns**](/courses/agent-design-patterns/04-planning-patterns): how agents decompose tasks before querying
+- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns): how agents evaluate and revise outputs after querying
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought): the original CoT technique that incremental querying operationalises
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): how tool calls fit into the incremental querying loop

@@ -31,14 +31,14 @@ To compute $P(Q \mid E = e)$ (query $Q$, evidence $E$):
 
 Network: Rain → Sprinkler, Rain → Wet, Sprinkler → Wet. Query: $P(\text{Wet} \mid \text{Rain=T})$.
 
-**Step 1 — set evidence.** Restrict every factor that mentions Rain to Rain = T:
+**Step 1: set evidence.** Restrict every factor that mentions Rain to Rain = T:
 - $P(\text{Rain})$ → constant $P(\text{Rain=T}) = 0.2$
 - $P(\text{Sprinkler} \mid \text{Rain})$ → $P(\text{Sprinkler} \mid \text{Rain=T})$, a factor over Sprinkler only
 - $P(\text{Wet} \mid \text{Sprinkler}, \text{Rain})$ → $P(\text{Wet} \mid \text{Sprinkler}, \text{Rain=T})$, a factor over (Wet, Sprinkler)
 
-**Step 2 — ordering.** Only one hidden variable: Sprinkler.
+**Step 2: ordering.** Only one hidden variable: Sprinkler.
 
-**Step 3 — eliminate Sprinkler.** Using CPT values: $P(S=T \mid R=T) = 0.01$, $P(W=T \mid S=T, R=T) = 0.99$, $P(W=T \mid S=F, R=T) = 0.80$. Multiply the two factors that mention Sprinkler, then sum over its two values:
+**Step 3: eliminate Sprinkler.** Using CPT values: $P(S=T \mid R=T) = 0.01$, $P(W=T \mid S=T, R=T) = 0.99$, $P(W=T \mid S=F, R=T) = 0.80$. Multiply the two factors that mention Sprinkler, then sum over its two values:
 
 $$
 g(\text{Wet=T}) = \sum_{s \in \{T, F\}} P(s \mid R=T)\; P(W=T \mid s, R=T)
@@ -48,7 +48,7 @@ $$
 = 0.01 \times 0.99 + 0.99 \times 0.80 = 0.0099 + 0.7920 = 0.8019
 $$
 
-**Step 4 — normalize.** Compute $g(\text{Wet=F}) = 0.01 \times 0.01 + 0.99 \times 0.20 = 0.1981$. These sum to $1.000$, so no further normalization is needed: $P(\text{Wet=T} \mid \text{Rain=T}) \approx 0.802$. Even with the sprinkler being off 99% of the time when it rains, the rain itself makes the grass likely wet.
+**Step 4: normalize.** Compute $g(\text{Wet=F}) = 0.01 \times 0.01 + 0.99 \times 0.20 = 0.1981$. These sum to $1.000$, so no further normalization is needed: $P(\text{Wet=T} \mid \text{Rain=T}) \approx 0.802$. Even with the sprinkler being off 99% of the time when it rains, the rain itself makes the grass likely wet.
 
 ## Watch it run
 
@@ -86,5 +86,5 @@ For graphs where exact inference is intractable, switch to approximate methods �
 
 ## Related concepts
 
-- [**Bayesian Networks**](/courses/graphical-models/01-bayesian-networks) — the model this algorithm queries
-- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — the forward algorithm is variable elimination specialized to a chain
+- [**Bayesian Networks**](/courses/graphical-models/01-bayesian-networks): the model this algorithm queries
+- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models): the forward algorithm is variable elimination specialized to a chain

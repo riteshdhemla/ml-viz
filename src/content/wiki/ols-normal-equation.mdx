@@ -23,13 +23,13 @@ The $\frac{1}{n}$ scaling constant is dropped — it doesn't affect where the mi
 
 ## Deriving the normal-equation solution
 
-**Step 1 — Expand the squared norm.** Use $(\mathbf{a}-\mathbf{b})^\top(\mathbf{a}-\mathbf{b}) = \mathbf{a}^\top\mathbf{a} - 2\mathbf{a}^\top\mathbf{b} + \mathbf{b}^\top\mathbf{b}$ (valid because $\mathbf{y}^\top X\mathbf{w}$ is a scalar, equal to its transpose $\mathbf{w}^\top X^\top\mathbf{y}$):
+**Step 1: Expand the squared norm.** Use $(\mathbf{a}-\mathbf{b})^\top(\mathbf{a}-\mathbf{b}) = \mathbf{a}^\top\mathbf{a} - 2\mathbf{a}^\top\mathbf{b} + \mathbf{b}^\top\mathbf{b}$ (valid because $\mathbf{y}^\top X\mathbf{w}$ is a scalar, equal to its transpose $\mathbf{w}^\top X^\top\mathbf{y}$):
 
 $$
 \mathcal{L}(\mathbf{w}) = \mathbf{y}^\top\mathbf{y} - 2\,\mathbf{w}^\top X^\top\mathbf{y} + \mathbf{w}^\top X^\top X\,\mathbf{w}
 $$
 
-**Step 2 — Take the gradient with respect to $\mathbf{w}$.** Two standard matrix-calculus identities:
+**Step 2: Take the gradient with respect to $\mathbf{w}$.** Two standard matrix-calculus identities:
 
 $$
 \nabla_{\mathbf{w}}(\mathbf{w}^\top\mathbf{b}) = \mathbf{b}, \qquad \nabla_{\mathbf{w}}(\mathbf{w}^\top A\mathbf{w}) = 2A\mathbf{w} \quad (A \text{ symmetric})
@@ -41,7 +41,7 @@ $$
 \nabla_{\mathbf{w}}\mathcal{L} = -2X^\top\mathbf{y} + 2X^\top X\,\mathbf{w}
 $$
 
-**Step 3 — Set the gradient to zero.** This is the *normal equation*:
+**Step 3: Set the gradient to zero.** This is the *normal equation*:
 
 $$
 -2X^\top\mathbf{y} + 2X^\top X\,\mathbf{w} = \mathbf{0}
@@ -49,7 +49,7 @@ $$
 X^\top X\,\mathbf{w} = X^\top\mathbf{y}
 $$
 
-**Step 4 — Solve for $\mathbf{w}$.** Left-multiply both sides by $(X^\top X)^{-1}$:
+**Step 4: Solve for $\mathbf{w}$.** Left-multiply both sides by $(X^\top X)^{-1}$:
 
 $$
 \boxed{\;\mathbf{w}^* = (X^\top X)^{-1}X^\top\mathbf{y}\;}
@@ -127,6 +127,6 @@ print(f"R² = {1 - ss_res/ss_tot:.3f}")   # 0.964
 
 ## Related concepts
 
-- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — source lesson with the full model, Ridge, Lasso
-- [**Ridge Regression**](/courses/linear-regression/03-regularization) — adds $\lambda I$ to make $X^\top X + \lambda I$ always invertible
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the iterative alternative when $d$ is too large for direct inversion
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression): source lesson with the full model, Ridge, Lasso
+- [**Ridge Regression**](/courses/linear-regression/03-regularization): adds $\lambda I$ to make $X^\top X + \lambda I$ always invertible
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the iterative alternative when $d$ is too large for direct inversion

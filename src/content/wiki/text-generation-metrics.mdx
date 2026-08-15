@@ -14,23 +14,23 @@ spineStages: [evaluation]
 
 Before "ask a strong LLM to judge it" was an option, machine translation and summarization were scored by comparing a **candidate** string to one or more **reference** strings using nothing but n-gram overlap counts. **BLEU** (2002), **ROUGE** (2004), and **METEOR** (2005) predate LLM-as-a-judge by two decades, and they are still the metrics reported in translation/summarization papers and DML-style coding problems — cheap, deterministic, no model call required. They also have well-known blind spots that motivate the reference-free, model-based evaluation covered elsewhere.
 
-## 1 — BLEU: modified n-gram precision + brevity penalty
+## 1: BLEU: modified n-gram precision + brevity penalty
 
 BLEU (Bilingual Evaluation Understudy) asks: *of the n-grams the candidate produced, how many actually appear in the reference?* It is precision-oriented. It does not care whether the candidate covered everything in the reference, only whether what it said is supported.
 
-**Step 1 — modified n-gram precision.** For each n-gram length $n$ (typically 1–4), count matches with **clipping**: a candidate n-gram can only match up to as many times as it occurs in the reference (this stops "the the the the" from scoring perfectly against a reference containing "the" once).
+**Step 1: modified n-gram precision.** For each n-gram length $n$ (typically 1–4), count matches with **clipping**: a candidate n-gram can only match up to as many times as it occurs in the reference (this stops "the the the the" from scoring perfectly against a reference containing "the" once).
 
 $$
 p_n = \frac{\sum_{\text{n-gram} \in C} \min\big(\text{count}_C(\text{n-gram}),\ \text{count}_R(\text{n-gram})\big)}{\sum_{\text{n-gram} \in C} \text{count}_C(\text{n-gram})}
 $$
 
-**Step 2 — combine precisions geometrically.** Take the geometric mean of $p_1, \ldots, p_N$ (usually $N=4$), optionally with weights $w_n$ (typically uniform, $w_n = 1/N$):
+**Step 2: combine precisions geometrically.** Take the geometric mean of $p_1, \ldots, p_N$ (usually $N=4$), optionally with weights $w_n$ (typically uniform, $w_n = 1/N$):
 
 $$
 \text{BP-free score} = \exp\left(\sum_{n=1}^N w_n \log p_n\right)
 $$
 
-**Step 3 — brevity penalty (BP).** Precision alone rewards short, cautious candidates (a one-word candidate that happens to match the reference gets $p_n = 1$ for every $n$ it has n-grams for). BLEU penalizes candidates shorter than the reference:
+**Step 3: brevity penalty (BP).** Precision alone rewards short, cautious candidates (a one-word candidate that happens to match the reference gets $p_n = 1$ for every $n$ it has n-grams for). BLEU penalizes candidates shorter than the reference:
 
 $$
 \text{BP} = \begin{cases} 1 & \text{if } c > r \\ e^{(1 - r/c)} & \text{if } c \le r \end{cases}
@@ -46,7 +46,7 @@ $$
   The geometric mean means **any** $p_n = 0$ (no matching 4-gram at all) zeroes out the whole score — BLEU is unforgiving of candidates that get the right words but never in the right 4-word order. Clipping is what stops precision from being gamed by repeating a frequent token.
 </Callout>
 
-## 2 — ROUGE-N and ROUGE-L: recall-oriented overlap
+## 2: ROUGE-N and ROUGE-L: recall-oriented overlap
 
 ROUGE (Recall-Oriented Understudy for Gisting Evaluation) flips the question BLEU asks: *of the n-grams in the reference, how many did the candidate reproduce?* This recall orientation is why ROUGE is the standard for **summarization** — a good summary should cover the reference's key content, and missing content is the failure mode that matters more than a slightly different word order.
 
@@ -66,7 +66,7 @@ $$
 
 with $\beta$ usually set to favor recall ($\beta > 1$) since summarization cares more about coverage.
 
-## 3 — METEOR: precision/recall harmonic mean with matching stages and a fragmentation penalty
+## 3: METEOR: precision/recall harmonic mean with matching stages and a fragmentation penalty
 
 METEOR (Metric for Evaluation of Translation with Explicit ORdering) was designed to fix BLEU's two weak spots: it has no recall term, and it only counts **exact** token matches. METEOR aligns candidate and reference tokens in three passes — **exact match**, then **stemmed match** (e.g. "running" ↔ "run"), then **synonym match** (via a resource like WordNet), and unmatched tokens simply don't align.
 
@@ -119,6 +119,6 @@ All three metrics agree the candidate is close but imperfect — dropping a func
 
 ## Related concepts
 
-- [**LLM Evaluation & LLM-as-a-Judge**](/courses/building-with-llms/08-llm-evaluation) — the model-based evaluation these n-gram metrics predate and motivate
-- [**Sequence Models to BERT**](/courses/nlp/03-sequence-models-to-bert) — the seq2seq/translation systems BLEU was originally built to score
-- [**LLM-as-a-Judge: Automated LLM Evaluation**](/wiki/llm-as-judge) — the reference-free alternative for open-ended generation
+- [**LLM Evaluation & LLM-as-a-Judge**](/courses/building-with-llms/08-llm-evaluation): the model-based evaluation these n-gram metrics predate and motivate
+- [**Sequence Models to BERT**](/courses/nlp/03-sequence-models-to-bert): the seq2seq/translation systems BLEU was originally built to score
+- [**LLM-as-a-Judge: Automated LLM Evaluation**](/wiki/llm-as-judge): the reference-free alternative for open-ended generation

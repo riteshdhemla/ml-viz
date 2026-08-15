@@ -85,9 +85,9 @@ ML training workloads are *the* archetypal columnar workload: scan billions of r
 
 The row/column split corresponds to two distinct data-system *purposes*. They are usually different machines, different databases, often different teams.
 
-**OLTP — Online Transaction Processing.** The system of record for the live product. Many small writes and reads against individual rows, ACID guarantees so a payment is never half-charged, normalised relational schemas, latency in milliseconds, sharded for write throughput. Postgres, MySQL, DynamoDB, Spanner. Optimised so a `BEGIN; UPDATE … WHERE id = 42; COMMIT;` is fast and safe.
+**OLTP: Online Transaction Processing.** The system of record for the live product. Many small writes and reads against individual rows, ACID guarantees so a payment is never half-charged, normalised relational schemas, latency in milliseconds, sharded for write throughput. Postgres, MySQL, DynamoDB, Spanner. Optimised so a `BEGIN; UPDATE … WHERE id = 42; COMMIT;` is fast and safe.
 
-**OLAP — Online Analytical Processing.** The system you query for analytics, reporting, dashboards, and ML training. Big scans across many rows, denormalised star or wide-table schemas, latency from sub-second to seconds (occasionally minutes), partitioned by date. Snowflake, BigQuery, Redshift, Databricks SQL. Optimised so `SELECT country, SUM(revenue) FROM orders GROUP BY country` on a billion rows comes back before you lose attention.
+**OLAP: Online Analytical Processing.** The system you query for analytics, reporting, dashboards, and ML training. Big scans across many rows, denormalised star or wide-table schemas, latency from sub-second to seconds (occasionally minutes), partitioned by date. Snowflake, BigQuery, Redshift, Databricks SQL. Optimised so `SELECT country, SUM(revenue) FROM orders GROUP BY country` on a billion rows comes back before you lose attention.
 
 Real systems separate the two: the OLTP store powers the app, a Change Data Capture (CDC) or batch dump replicates the data into the OLAP warehouse, and analytics and ML read from the warehouse. The separation is intentional — running a heavy `GROUP BY` against the live OLTP store can block the checkout path and take down the product.
 
@@ -97,9 +97,9 @@ Real systems separate the two: the OLTP store powers the app, a Change Data Capt
 
 Once data exists in source systems, *something* has to move it into the place where models train and analytics happen. Two architectural choices:
 
-**ETL — Extract, Transform, Load.** Pull data out of the source, run cleaning / joining / aggregation in a staging system (Spark, Python, a transformation server), then load the *transformed* result into the warehouse. The classic 2000s-era pipeline. Works well when the warehouse is expensive and inelastic, and when the schema is well-known up front.
+**ETL: Extract, Transform, Load.** Pull data out of the source, run cleaning / joining / aggregation in a staging system (Spark, Python, a transformation server), then load the *transformed* result into the warehouse. The classic 2000s-era pipeline. Works well when the warehouse is expensive and inelastic, and when the schema is well-known up front.
 
-**ELT — Extract, Load, Transform.** Pull data out of the source, load it *raw* into the warehouse, then transform in-warehouse with SQL — typically using dbt. The modern default. It became the default because the warehouses themselves (Snowflake, BigQuery) are now cheap to scale and great at SQL, so the cheapest place to do the transform is also the place the data already lives.
+**ELT: Extract, Load, Transform.** Pull data out of the source, load it *raw* into the warehouse, then transform in-warehouse with SQL — typically using dbt. The modern default. It became the default because the warehouses themselves (Snowflake, BigQuery) are now cheap to scale and great at SQL, so the cheapest place to do the transform is also the place the data already lives.
 
 Why ELT won for analytics:
 
@@ -178,6 +178,6 @@ The drift-detection mechanics in the [deployment pitfalls lesson](/courses/ml-in
 
 ## Related concepts
 
-- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and drift are downstream symptoms of the data-contract and batch-vs-stream design decisions in this lesson.
-- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering) — the features your model trains on are computed in *this* infrastructure; whether they reproduce at inference time depends on which storage layer (batch warehouse vs streaming feature store) they came from.
-- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — this lesson is the data-layer detail behind the "sketch the system before training" step. You cannot draw the napkin diagram without knowing what an OLTP-to-OLAP arrow is.
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls): train-serve skew and drift are downstream symptoms of the data-contract and batch-vs-stream design decisions in this lesson.
+- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering): the features your model trains on are computed in *this* infrastructure; whether they reproduce at inference time depends on which storage layer (batch warehouse vs streaming feature store) they came from.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design): this lesson is the data-layer detail behind the "sketch the system before training" step. You cannot draw the napkin diagram without knowing what an OLTP-to-OLAP arrow is.

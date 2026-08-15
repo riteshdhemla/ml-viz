@@ -17,9 +17,9 @@ Some functions are brutally expensive to evaluate: training a model to read off 
 
 BO targets functions $f(\mathbf{x})$ that are:
 
-- **Expensive** — each evaluation costs minutes/hours/dollars, so you want few.
-- **Black-box** — no formula, just inputs→outputs.
-- **Derivative-free** — no gradients, so gradient descent is out.
+- **Expensive**: each evaluation costs minutes/hours/dollars, so you want few.
+- **Black-box**: no formula, just inputs→outputs.
+- **Derivative-free**: no gradients, so gradient descent is out.
 - Often **noisy**.
 
 The strategy: build a cheap *probabilistic model* of $f$ from the few points seen so far, use it to decide the single most promising next point, evaluate there, update, repeat.
@@ -36,8 +36,8 @@ The strategy: build a cheap *probabilistic model* of $f$ from the few points see
 
 The acquisition function must balance two pulls:
 
-- **Exploitation** — sample where the surrogate mean $\mu(\mathbf{x})$ is already good.
-- **Exploration** — sample where uncertainty $\sigma(\mathbf{x})$ is high, because the optimum might be hiding in an unexplored region.
+- **Exploitation**: sample where the surrogate mean $\mu(\mathbf{x})$ is already good.
+- **Exploration**: sample where uncertainty $\sigma(\mathbf{x})$ is high, because the optimum might be hiding in an unexplored region.
 
 Pure exploitation gets stuck in a local optimum; pure exploration wastes budget. Common acquisition functions encode the balance differently:
 
@@ -100,7 +100,7 @@ Each iteration spends one expensive evaluation but lots of cheap surrogate compu
 
 ## Related concepts
 
-- [**Gaussian Processes**](/courses/bayesian-methods/02-gaussian-processes) — the surrogate model BO is built on
-- [**Bayesian Linear Regression**](/courses/bayesian-methods/01-bayesian-linear-regression) — where the predictive uncertainty BO exploits first appeared
-- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — the validation scores BO optimizes when tuning hyperparameters
-- [**Hyperparameter Optimization & AutoML**](/courses/optimization-ml/05-hyperparameter-optimization) — where BO sits among grid, random, and Hyperband
+- [**Gaussian Processes**](/courses/bayesian-methods/02-gaussian-processes): the surrogate model BO is built on
+- [**Bayesian Linear Regression**](/courses/bayesian-methods/01-bayesian-linear-regression): where the predictive uncertainty BO exploits first appeared
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies): the validation scores BO optimizes when tuning hyperparameters
+- [**Hyperparameter Optimization & AutoML**](/courses/optimization-ml/05-hyperparameter-optimization): where BO sits among grid, random, and Hyperband

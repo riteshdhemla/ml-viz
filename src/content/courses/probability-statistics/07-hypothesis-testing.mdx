@@ -17,8 +17,8 @@ Is the new model *actually* better, or did it just get lucky on the test set? Di
 
 A test pits two hypotheses against each other:
 
-- **Null hypothesis $H_0$** — the "boring" default: *no effect, no difference*. It's the claim you assume true for the sake of argument, because it pins down a specific distribution to compute with. Always an equality: $\mu_A = \mu_B$, or $p = 0.5$.
-- **Alternative hypothesis $H_1$** — the effect you actually care about: $\mu_A \ne \mu_B$ (two-sided) or $\mu_B > \mu_A$ (one-sided).
+- **Null hypothesis $H_0$**: the "boring" default: *no effect, no difference*. It's the claim you assume true for the sake of argument, because it pins down a specific distribution to compute with. Always an equality: $\mu_A = \mu_B$, or $p = 0.5$.
+- **Alternative hypothesis $H_1$**: the effect you actually care about: $\mu_A \ne \mu_B$ (two-sided) or $\mu_B > \mu_A$ (one-sided).
 
 <Callout type="warning" title="You never 'accept' H₀ — you only fail to reject it">
   A test can **reject** $H_0$ or **fail to reject** it. Failing to reject is not proof that $H_0$ is true — you may simply lack the data to detect the effect. "Absence of evidence is not evidence of absence."
@@ -83,8 +83,8 @@ print("reject H0" if p < 0.05 else "fail to reject H0")
 | **Reject $H_0$** | Type I error (rate $\alpha$) | ✓ correct (power $=1-\beta$) |
 | **Fail to reject** | ✓ correct | Type II error (rate $\beta$) |
 
-- **Type I (false positive)** — claiming an effect that isn't there; its rate is the $\alpha$ you choose.
-- **Type II (false negative)** — missing a real effect; its rate $\beta$ falls as sample size or effect size grows.
+- **Type I (false positive)**: claiming an effect that isn't there; its rate is the $\alpha$ you choose.
+- **Type II (false negative)**: missing a real effect; its rate $\beta$ falls as sample size or effect size grows.
 - **Power** $= 1-\beta$ — the chance of detecting a real effect. More data buys power without raising $\alpha$.
 
 This is exactly the precision/recall-style tension you tune in A/B tests: lowering $\alpha$ avoids false alarms but costs power.
@@ -114,7 +114,7 @@ For a fuller worked A/B-test trace and the "peeking problem," see the deep dive:
 
 ## Related concepts
 
-- [**Statistical Inference & Confidence Intervals**](/courses/probability-statistics/06-statistical-inference) — the standard errors and sampling distributions hypothesis tests are built on
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the alternative that gives $P(H\mid\text{data})$ directly, the quantity p-values are mistaken for
-- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — A/B testing, power, and the peeking problem in a production ML setting
-- [**The Kolmogorov–Smirnov Test**](/wiki/kolmogorov-smirnov-test) — a distribution-free test that compares two whole distributions via their CDFs, with no binning
+- [**Statistical Inference & Confidence Intervals**](/courses/probability-statistics/06-statistical-inference): the standard errors and sampling distributions hypothesis tests are built on
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): the alternative that gives $P(H\mid\text{data})$ directly, the quantity p-values are mistaken for
+- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production): A/B testing, power, and the peeking problem in a production ML setting
+- [**The Kolmogorov–Smirnov Test**](/wiki/kolmogorov-smirnov-test): a distribution-free test that compares two whole distributions via their CDFs, with no binning

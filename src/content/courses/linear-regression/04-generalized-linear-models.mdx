@@ -88,16 +88,16 @@ Gradient descent works, but no production fitter uses it. R's `glm` and statsmod
 
 **What to notice:**
 
-- **Frame 2 — the first step is plain OLS.** Starting from $\theta = 0$, every $\eta$ is 0, so every $\mu = 1$ and every weight is 1. The reweighting only begins once the fitted means spread out.
+- **Frame 2: the first step is plain OLS.** Starting from $\theta = 0$, every $\eta$ is 0, so every $\mu = 1$ and every weight is 1. The reweighting only begins once the fitted means spread out.
 - **Frame 3 — Newton's rate is *local*, and the numbers show both halves.** The first five iterations crawl (2.25 down to 0.28, a factor of 8 in total); the last five square the error each step (9e-2 → 1e-2 → 1e-4 → 1e-8 → 1e-15). "Quadratic convergence" describes the second half only.
-- **Frame 4 — Gaussian converges in exactly one iteration**, with a second step that moves $\theta$ by 0. With the identity link the weights are all 1 and $z = y$, so the first weighted least-squares solve *is* OLS. Linear regression is not a GLM that happens to be easy; it is the case where the iteration has nothing to iterate.
-- **Frame 6 — separation.** On perfectly separable logistic data the MLE does not exist, and the loop cannot tell you. It does not error or fail to converge: $\|\theta\|$ climbs to 110, the weights $\mu(1-\mu)$ collapse to $10^{-12}$, and $\det(X^\top W X)$ falls from 140 to $10^{-6}$. What you see downstream is enormous coefficients with enormous standard errors, and those standard errors come from inverting exactly that collapsing matrix.
+- **Frame 4: Gaussian converges in exactly one iteration**, with a second step that moves $\theta$ by 0. With the identity link the weights are all 1 and $z = y$, so the first weighted least-squares solve *is* OLS. Linear regression is not a GLM that happens to be easy; it is the case where the iteration has nothing to iterate.
+- **Frame 6: separation.** On perfectly separable logistic data the MLE does not exist, and the loop cannot tell you. It does not error or fail to converge: $\|\theta\|$ climbs to 110, the weights $\mu(1-\mu)$ collapse to $10^{-12}$, and $\det(X^\top W X)$ falls from 140 to $10^{-6}$. What you see downstream is enormous coefficients with enormous standard errors, and those standard errors come from inverting exactly that collapsing matrix.
 
 Frame 5 is worth reading against the callout above. Gradient ascent on the same likelihood is not catastrophically slow — 83 iterations at its best learning rate against IRLS's 10. Its real cost is that the iteration count spans 18× across learning rates and fails to converge entirely at 0.5, just past the best one. IRLS has no learning rate: the step size comes from the curvature.
 
 ---
 
-## Poisson regression — a new example
+## Poisson regression: a new example
 
 When outcomes are counts (number of website visits, insurance claims, traffic accidents), $y \ge 0$ and the Gaussian assumption is violated (negative predictions are meaningless). Poisson regression fits naturally:
 
@@ -134,7 +134,7 @@ $$
 
 The posterior $P(y=1|x)$ turns out to be exactly $\sigma(\theta^\top x)$ for some $\theta$ derived from $(\phi, \mu_0, \mu_1, \Sigma)$. So GDA has a **logistic-regression-shaped decision boundary** even though it was fit as a generative model.
 
-### Worked example — 2D data
+### Worked example: 2D data
 
 Suppose we have two classes of 2D points:
 - Class 0: clustered around $\mu_0 = (-2, 0)$
@@ -205,6 +205,6 @@ The unifying message: once you pick a distribution, the GLM machinery gives you 
 
 ## Related concepts
 
-- [**Logistic Regression**](/courses/linear-regression/02-logistic-regression) — the Bernoulli GLM, and the discriminative counterpart to GDA
-- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — the principle behind fitting every GLM
-- [**Naive Bayes**](/courses/probabilistic-models/03-naive-bayes) — another generative classifier, with a different conditional-independence assumption
+- [**Logistic Regression**](/courses/linear-regression/02-logistic-regression): the Bernoulli GLM, and the discriminative counterpart to GDA
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation): the principle behind fitting every GLM
+- [**Naive Bayes**](/courses/probabilistic-models/03-naive-bayes): another generative classifier, with a different conditional-independence assumption

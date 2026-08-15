@@ -92,18 +92,18 @@ Admission is gated by **KV-block availability**, not just slot count — a 32k-c
 ## What to measure
 
 - **TTFT** = queue wait + prefill time. Under continuous batching, queueing is the elastic part — rising TTFT p95 at stable prefill time means you're admission-limited (add replicas or KV headroom).
-- **ITL p95, not mean** — stalls from un-chunked prefills or preemption storms live entirely in the tail.
-- **Goodput** — requests/s meeting both SLOs. Raising `max_num_seqs` raises throughput and ITL together; goodput is the number that tells you when to stop.
-- **Preemption rate** — nonzero is fine; climbing means the KV pool, not compute, is your ceiling.
+- **ITL p95, not mean**: stalls from un-chunked prefills or preemption storms live entirely in the tail.
+- **Goodput**: requests/s meeting both SLOs. Raising `max_num_seqs` raises throughput and ITL together; goodput is the number that tells you when to stop.
+- **Preemption rate**: nonzero is fine; climbing means the KV pool, not compute, is your ceiling.
 
 ## Gotchas
 
 - **Heterogeneous requests share fate**: one user's 100k-token prompt degrades every co-batched user's ITL unless chunked prefill is on. Route extreme-context traffic to a separate pool (the logic that ends in [prefill/decode disaggregation](/courses/ml-in-practice/22-optimizing-llm-inference)).
-- **Benchmarking with fixed-length synthetic traffic hides the entire benefit** — with zero length variance, static and continuous batching look identical. Always benchmark with realistic length distributions.
+- **Benchmarking with fixed-length synthetic traffic hides the entire benefit**: with zero length variance, static and continuous batching look identical. Always benchmark with realistic length distributions.
 - **`max_num_seqs` is not free throughput**: past the point where the KV-read dominates the weight-read, more concurrency mostly buys latency. Sweep it against the goodput curve, not the throughput curve.
 
 ## Related concepts
 
-- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference) — the case study that sequences this lever among the others
-- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — static vs dynamic vs continuous batching fundamentals
-- [**PagedAttention & KV-Cache Management**](/wiki/paged-attention) — the memory manager the scheduler negotiates with every iteration
+- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference): the case study that sequences this lever among the others
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving): static vs dynamic vs continuous batching fundamentals
+- [**PagedAttention & KV-Cache Management**](/wiki/paged-attention): the memory manager the scheduler negotiates with every iteration

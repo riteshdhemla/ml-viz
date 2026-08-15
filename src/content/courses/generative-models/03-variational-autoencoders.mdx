@@ -39,8 +39,8 @@ $$
 \mathcal{L} = \underbrace{-\log p_\theta(\mathbf{x}|\mathbf{z})}_{\text{reconstruction}} + \underbrace{D_{\text{KL}}\!\left(q_\phi(\mathbf{z}|\mathbf{x}) \;\|\; \mathcal{N}(0, I)\right)}_{\text{KL divergence}}
 $$
 
-1. **Reconstruction loss** — measures how well the decoder recovers the input. For a Gaussian decoder this is $\|\mathbf{x} - \hat{\mathbf{x}}\|^2$ (MSE); for a Bernoulli decoder (binary data such as black-and-white MNIST pixels) it is binary cross-entropy. The decoder architecture and loss must match.
-2. **KL divergence** — pulls the encoder's distribution toward the standard Gaussian
+1. **Reconstruction loss**: measures how well the decoder recovers the input. For a Gaussian decoder this is $\|\mathbf{x} - \hat{\mathbf{x}}\|^2$ (MSE); for a Bernoulli decoder (binary data such as black-and-white MNIST pixels) it is binary cross-entropy. The decoder architecture and loss must match.
+2. **KL divergence**: pulls the encoder's distribution toward the standard Gaussian
 
 The KL divergence has a closed-form solution for two Gaussians:
 
@@ -178,9 +178,9 @@ $$
 
 ## Common mistakes
 
-1. **KL divergence too high or too low** — if $\beta$ (the KL weight) is too large the model ignores the input ("posterior collapse"); too small and it ignores the prior and cannot sample coherently.
-2. **Misunderstanding the reparameterisation trick** — sampling $z \sim \mathcal{N}(\mu, \sigma^2)$ is not differentiable; the trick rewrites this as $z = \mu + \sigma \epsilon$ where $\epsilon \sim \mathcal{N}(0,1)$, moving randomness outside the gradient path.
-3. **Treating the ELBO bound as the true log-likelihood** — the ELBO is a lower bound; tighter bounds (importance-weighted ELBO) exist but require more samples.
+1. **KL divergence too high or too low**: if $\beta$ (the KL weight) is too large the model ignores the input ("posterior collapse"); too small and it ignores the prior and cannot sample coherently.
+2. **Misunderstanding the reparameterisation trick**: sampling $z \sim \mathcal{N}(\mu, \sigma^2)$ is not differentiable; the trick rewrites this as $z = \mu + \sigma \epsilon$ where $\epsilon \sim \mathcal{N}(0,1)$, moving randomness outside the gradient path.
+3. **Treating the ELBO bound as the true log-likelihood**: the ELBO is a lower bound; tighter bounds (importance-weighted ELBO) exist but require more samples.
 
 ## Key takeaways
 
@@ -191,6 +191,6 @@ $$
 
 ## Related concepts
 
-- [**Autoencoders**](/courses/generative-models/02-autoencoders) — the deterministic autoencoder it upgrades
-- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks) — the adversarial alternative
-- [**The EM Algorithm**](/courses/probabilistic-models/02-em-algorithm) — the latent-variable likelihood view
+- [**Autoencoders**](/courses/generative-models/02-autoencoders): the deterministic autoencoder it upgrades
+- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks): the adversarial alternative
+- [**The EM Algorithm**](/courses/probabilistic-models/02-em-algorithm): the latent-variable likelihood view

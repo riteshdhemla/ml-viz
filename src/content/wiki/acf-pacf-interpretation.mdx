@@ -99,9 +99,9 @@ This is the core skill. After differencing the series to stationarity, match the
 | Exponential decay (positive or alternating) | Cuts off sharply after lag $p$ | AR($p$) |
 | Cuts off sharply after lag $q$ | Exponential decay (positive or alternating) | MA($q$) |
 | Tails off gradually (exponential or damped sinusoidal) | Tails off gradually | ARMA($p$, $q$) |
-| All spikes within bands at all lags | All spikes within bands at all lags | White noise — model fitted |
-| Slow, linear decay — spikes stay significant for many lags | Large spike at lag 1 | Non-stationary — difference again |
-| Significant spikes at lags $s, 2s, 3s, \ldots$ (seasonal) | Spike at seasonal lag $s$ | Seasonal component — use SARIMA |
+| All spikes within bands at all lags | All spikes within bands at all lags | White noise: model fitted |
+| Slow, linear decay: spikes stay significant for many lags | Large spike at lag 1 | Non-stationary: difference again |
+| Significant spikes at lags $s, 2s, 3s, \ldots$ (seasonal) | Spike at seasonal lag $s$ | Seasonal component: use SARIMA |
 
 <Callout type="tip" title="Reading 'cuts off' vs 'tails off'">
   **Cuts off** means the ACF (or PACF) drops to zero abruptly at some lag and all subsequent spikes are inside the confidence bands. **Tails off** means the spikes decrease gradually and may remain statistically significant for many lags. The distinction is key: a MA(2) ACF *cuts off* at lag 2; an AR(2) ACF *tails off* with exponentially decaying spikes.
@@ -114,7 +114,7 @@ This is the core skill. After differencing the series to stationarity, match the
 **Step 1 — compute the mean:**
 $$\bar{y} = \frac{1 + 3 + 2 + 4 + 3 + 5}{6} = \frac{18}{6} = 3$$
 
-**Step 2 — compute deviations** $d_t = y_t - \bar{y}$:
+**Step 2: compute deviations** $d_t = y_t - \bar{y}$:
 
 | $t$ | $y_t$ | $d_t = y_t - 3$ |
 |-----|-------|-----------------|
@@ -125,18 +125,18 @@ $$\bar{y} = \frac{1 + 3 + 2 + 4 + 3 + 5}{6} = \frac{18}{6} = 3$$
 | 5 | 3 | $0$ |
 | 6 | 5 | $2$ |
 
-**Step 3 — variance** (denominator for all autocorrelations):
+**Step 3: variance** (denominator for all autocorrelations):
 $$\gamma_0 = \sum_{t=1}^6 d_t^2 = (-2)^2 + 0^2 + (-1)^2 + 1^2 + 0^2 + 2^2 = 4 + 0 + 1 + 1 + 0 + 4 = 10$$
 
-**Step 4 — autocovariance at lag 1** (sum over pairs $(t, t-1)$ for $t = 2, \ldots, 6$):
+**Step 4: autocovariance at lag 1** (sum over pairs $(t, t-1)$ for $t = 2, \ldots, 6$):
 $$\gamma_1 = \sum_{t=2}^{6} d_t \cdot d_{t-1} = (0)(-2) + (-1)(0) + (1)(-1) + (0)(1) + (2)(0) = 0 + 0 - 1 + 0 + 0 = -1$$
 $$\rho_1 = \frac{-1}{10} = -0.10$$
 
-**Step 5 — autocovariance at lag 2** (pairs $(t, t-2)$ for $t = 3, \ldots, 6$):
+**Step 5: autocovariance at lag 2** (pairs $(t, t-2)$ for $t = 3, \ldots, 6$):
 $$\gamma_2 = \sum_{t=3}^{6} d_t \cdot d_{t-2} = (-1)(-2) + (1)(0) + (0)(-1) + (2)(1) = 2 + 0 + 0 + 2 = 4$$
 $$\rho_2 = \frac{4}{10} = 0.40$$
 
-**Step 6 — autocovariance at lag 3** (pairs $(t, t-3)$ for $t = 4, 5, 6$):
+**Step 6: autocovariance at lag 3** (pairs $(t, t-3)$ for $t = 4, 5, 6$):
 $$\gamma_3 = \sum_{t=4}^{6} d_t \cdot d_{t-3} = (1)(-2) + (0)(0) + (2)(-1) = -2 + 0 - 2 = -4$$
 $$\rho_3 = \frac{-4}{10} = -0.40$$
 
@@ -159,10 +159,10 @@ The worked example above stops at the ACF. The trace carries it into the PACF vi
 
 **What to notice:**
 
-- **Frame 2 — what the PACF subtracts.** At lag 2 the numerator is $\hat\rho_2 - \hat\rho_1^2$: the total correlation minus the part already explained by routing through lag 1. On this series $\hat\rho_1^2 = 0.01$, so the indirect path is negligible and $\phi_{22} \approx \hat\rho_2$.
-- **Frame 3 — past where the formulas stop.** The recursion reaches $\phi_{33} = -0.4022$ without building or inverting the $3\times3$ system, and agrees with a direct solve to $10^{-16}$. It also carries the shorter model's coefficients forward, which is why the whole PACF costs $O(K^2)$ rather than a fresh $O(k^3)$ solve per lag.
-- **Frame 5 — the payoff, and it is a caution.** Over 600 replicates the AR(2) PACF satisfies "cuts off at lag 2" **68.7%** of the time when 10 lags are inspected, and **38.5%** at 20. More data does not help: the ceiling is $0.95^{L-2}$, because "inside the band at every later lag" is $L-2$ independent 5% tests. **Inspecting more lags makes the diagnosis less reliable, not more.**
-- **Frame 6 — why the band matters.** With the naive $\pm 1.96/\sqrt{T}$ band the MA(2) ACF reads correctly only 55.3% of the time, below even that ceiling, because the band assumes white noise while the significant $\rho_1, \rho_2$ inflate the true standard error at later lags. Bartlett's SE recovers it to 67.8%.
+- **Frame 2: what the PACF subtracts.** At lag 2 the numerator is $\hat\rho_2 - \hat\rho_1^2$: the total correlation minus the part already explained by routing through lag 1. On this series $\hat\rho_1^2 = 0.01$, so the indirect path is negligible and $\phi_{22} \approx \hat\rho_2$.
+- **Frame 3: past where the formulas stop.** The recursion reaches $\phi_{33} = -0.4022$ without building or inverting the $3\times3$ system, and agrees with a direct solve to $10^{-16}$. It also carries the shorter model's coefficients forward, which is why the whole PACF costs $O(K^2)$ rather than a fresh $O(k^3)$ solve per lag.
+- **Frame 5: the payoff, and it is a caution.** Over 600 replicates the AR(2) PACF satisfies "cuts off at lag 2" **68.7%** of the time when 10 lags are inspected, and **38.5%** at 20. More data does not help: the ceiling is $0.95^{L-2}$, because "inside the band at every later lag" is $L-2$ independent 5% tests. **Inspecting more lags makes the diagnosis less reliable, not more.**
+- **Frame 6: why the band matters.** With the naive $\pm 1.96/\sqrt{T}$ band the MA(2) ACF reads correctly only 55.3% of the time, below even that ceiling, because the band assumes white noise while the significant $\rho_1, \rho_2$ inflate the true standard error at later lags. Bartlett's SE recovers it to 67.8%.
 
 So the correlogram *proposes* an order; it does not confirm one. Inspect few lags, expect a stray spike, and let the information criteria and residual checks decide, which is exactly the workflow the [Box-Jenkins page](/wiki/arima-order-selection) lays out.
 
@@ -238,6 +238,6 @@ print(f"95% bands: ±{bands:.3f}")
 
 ## Related concepts
 
-- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals) — stationarity, differencing, and the motivation for looking at autocorrelation
-- [**ARIMA Models**](/courses/time-series/02-arima-models) — uses ACF/PACF patterns to select $p$ and $q$
-- [**ARIMA Order Selection: Box-Jenkins Methodology**](/wiki/arima-order-selection) — the full four-phase procedure that builds on these plots
+- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals): stationarity, differencing, and the motivation for looking at autocorrelation
+- [**ARIMA Models**](/courses/time-series/02-arima-models): uses ACF/PACF patterns to select $p$ and $q$
+- [**ARIMA Order Selection: Box-Jenkins Methodology**](/wiki/arima-order-selection): the full four-phase procedure that builds on these plots

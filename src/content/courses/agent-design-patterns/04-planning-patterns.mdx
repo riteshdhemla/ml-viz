@@ -29,8 +29,8 @@ Plans can be **flat** (a linear sequence as above) or **hierarchical** (a tree o
 
 Two properties matter most:
 
-- **Completeness** — does the plan cover all steps needed to reach the goal?
-- **Executability** — can each action actually be performed with the tools available?
+- **Completeness**: does the plan cover all steps needed to reach the goal?
+- **Executability**: can each action actually be performed with the tools available?
 
 ## Pattern 5: Single-path Plan Generator
 
@@ -69,10 +69,10 @@ The FM generates the entire plan in one shot. The validator checks that every ac
 ```
 
 **Forces:**
-- *Fast and low-cost* — one FM call regardless of plan length. Latency is dominated by the single call, not by plan size.
-- *Deterministic structure* — the plan is fixed before execution starts, making it easy to log, audit, and explain.
-- *"First-plan commitment" risk* — if the generated plan is flawed (wrong tool, missing step, incorrect order), the agent executes the flawed plan. There is no correction mechanism at the planning stage.
-- *Brittle for novel situations* — the FM generates a plan based on the goal description and tool names. Unusual combinations of constraints may produce plans that are syntactically valid but semantically wrong.
+- *Fast and low-cost*: one FM call regardless of plan length. Latency is dominated by the single call, not by plan size.
+- *Deterministic structure*: the plan is fixed before execution starts, making it easy to log, audit, and explain.
+- *"First-plan commitment" risk*: if the generated plan is flawed (wrong tool, missing step, incorrect order), the agent executes the flawed plan. There is no correction mechanism at the planning stage.
+- *Brittle for novel situations*: the FM generates a plan based on the goal description and tool names. Unusual combinations of constraints may produce plans that are syntactically valid but semantically wrong.
 
 **Best for:** well-defined tasks with clear success criteria, reversible or low-stakes actions, time-critical applications where latency matters more than plan quality.
 
@@ -118,10 +118,10 @@ The evaluator scores each candidate plan on multiple criteria. The plan with the
 | **Compliance** | Does the plan respect policy constraints? | Check steps against an allowlist/denylist |
 
 **Forces:**
-- *Better plan quality* — selecting from $N$ candidates finds plans that the first-generated option missed.
-- *Diverse coverage* — independent FM calls explore different plan structures (different ordering, different tool sequences).
-- *$N\times$ cost and latency* — generating 3 plans costs 3× the FM calls. For $N = 3$–$5$, this is acceptable; for larger $N$ the cost scales linearly.
-- *Evaluator is itself fallible* — the scoring function encodes assumptions. A flawed scoring function can consistently prefer bad plans.
+- *Better plan quality*: selecting from $N$ candidates finds plans that the first-generated option missed.
+- *Diverse coverage*: independent FM calls explore different plan structures (different ordering, different tool sequences).
+- *$N\times$ cost and latency*: generating 3 plans costs 3× the FM calls. For $N = 3$–$5$, this is acceptable; for larger $N$ the cost scales linearly.
+- *Evaluator is itself fallible*: the scoring function encodes assumptions. A flawed scoring function can consistently prefer bad plans.
 
 **Best for:** high-stakes tasks with irreversible actions; complex multi-step workflows; tasks where multiple valid approaches exist with meaningfully different risk profiles.
 
@@ -166,5 +166,5 @@ The connection is not cosmetic — the patterns share the same structural insigh
 
 ## Related concepts
 
-- [**Context & Knowledge Patterns**](/courses/agent-design-patterns/03-context-and-knowledge-patterns) — the Optimiser and RAG that supply the planner with relevant context
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the ReAct loop that planning patterns build on
+- [**Context & Knowledge Patterns**](/courses/agent-design-patterns/03-context-and-knowledge-patterns): the Optimiser and RAG that supply the planner with relevant context
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): the ReAct loop that planning patterns build on

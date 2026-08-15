@@ -91,9 +91,9 @@ Each entry maps a canonical name to a descriptor:
 
 The agent asks the registry *"what can I do right now?"* and receives only the tools it has permission to call, with their current schemas. This enables:
 
-- **Dynamic tool selection** — the LLM sees a fresh, role-filtered list at each invocation.
-- **Versioning** — callers can pin to a tool version or accept the latest.
-- **Access control** — certain tools (e.g. `send_email`) can be restricted to specific agent roles.
+- **Dynamic tool selection**: the LLM sees a fresh, role-filtered list at each invocation.
+- **Versioning**: callers can pin to a tool version or accept the latest.
+- **Access control**: certain tools (e.g. `send_email`) can be restricted to specific agent roles.
 
 ### Relation to MCP
 
@@ -126,9 +126,9 @@ Agent internal task            External API request
 ```
 
 The adapter:
-1. **Converts format** — maps internal field names and types to the external API's schema.
-2. **Injects auth** — adds API keys, OAuth tokens, or service credentials without the agent knowing they exist.
-3. **Maps errors** — translates HTTP status codes and vendor-specific error payloads into a uniform internal exception hierarchy.
+1. **Converts format**: maps internal field names and types to the external API's schema.
+2. **Injects auth**: adds API keys, OAuth tokens, or service credentials without the agent knowing they exist.
+3. **Maps errors**: translates HTTP status codes and vendor-specific error payloads into a uniform internal exception hierarchy.
 
 ### Forces
 
@@ -156,9 +156,9 @@ This is sometimes called the 18th design pattern in agentic systems because it i
 
 Full logging provides **debugging and trust**. The tensions are:
 
-- **Overhead** — logging every step adds latency and storage cost. Use structured, async logging so it does not block the critical path.
-- **Privacy** — intermediate steps may contain PII. Apply guardrails to logs as well as to responses.
-- **Verbosity for users** — users usually want a summary, not a raw trace. Distinguish between an internal audit log (full fidelity) and a user-facing "here's how I got this answer" explanation (curated highlights).
+- **Overhead**: logging every step adds latency and storage cost. Use structured, async logging so it does not block the critical path.
+- **Privacy**: intermediate steps may contain PII. Apply guardrails to logs as well as to responses.
+- **Verbosity for users**: users usually want a summary, not a raw trace. Distinguish between an internal audit log (full fidelity) and a user-facing "here's how I got this answer" explanation (curated highlights).
 
 <Callout type="tip" title="Explanation ≠ justification">
   Showing the agent's Thought steps is not the same as guaranteeing those steps are *correct*. A model can produce a plausible-sounding rationale that does not match how the actual computation reached the output. Treat logged reasoning as a debugging aid, not a proof.
@@ -209,5 +209,5 @@ The key insight is that **none of these patterns change the agent's core reasoni
 
 ## Related concepts
 
-- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — the cooperation topology that these safety and registry patterns operate within
-- [**Quiz: Agent Design Patterns**](/courses/agent-design-patterns/12-quiz) — test your understanding of the full pattern catalogue
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns): the cooperation topology that these safety and registry patterns operate within
+- [**Quiz: Agent Design Patterns**](/courses/agent-design-patterns/12-quiz): test your understanding of the full pattern catalogue

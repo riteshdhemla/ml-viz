@@ -33,11 +33,11 @@ Most production teams run a **hybrid** schedule: a full stateless rebuild monthl
 
 Even on a fixed model and fixed input pipeline, the *distribution* of inputs and outputs drifts over time. The standard taxonomy splits drift into three flavours, based on whether $p(x)$, $p(y)$, or $p(y \mid x)$ moves.
 
-**Covariate shift** — the input distribution $p(x)$ changes, but the conditional $p(y \mid x)$ is the same. A new TikTok-fuelled product category suddenly shows up in your e-commerce traffic; the model has never seen these queries but the relationship between query and category is unchanged. The model is *not wrong*, just under-trained on the new region. Fix: retrain on a window that includes the new data so the model interpolates the new $x$ region.
+**Covariate shift**: the input distribution $p(x)$ changes, but the conditional $p(y \mid x)$ is the same. A new TikTok-fuelled product category suddenly shows up in your e-commerce traffic; the model has never seen these queries but the relationship between query and category is unchanged. The model is *not wrong*, just under-trained on the new region. Fix: retrain on a window that includes the new data so the model interpolates the new $x$ region.
 
-**Label shift** — the target distribution $p(y)$ changes. Last year 2 % of transactions were fraud; this quarter a new attack pattern has pushed it to 6 %. The boundary between fraud and non-fraud is the same shape, but the prior probability of each class moved. Fix: re-weight or recalibrate the classifier on the new class frequencies.
+**Label shift**: the target distribution $p(y)$ changes. Last year 2 % of transactions were fraud; this quarter a new attack pattern has pushed it to 6 %. The boundary between fraud and non-fraud is the same shape, but the prior probability of each class moved. Fix: re-weight or recalibrate the classifier on the new class frequencies.
 
-**Concept shift** — the conditional $p(y \mid x)$ itself changes. Users used to mean "fast" when they searched "Tesla" and now mean "company"; the same query now warrants a different ranking. This is the hardest to detect and the most damaging to leave alone — the model is *systematically wrong* on inputs whose surface form hasn't changed. Fix: retrain on data labelled *after* the shift.
+**Concept shift**: the conditional $p(y \mid x)$ itself changes. Users used to mean "fast" when they searched "Tesla" and now mean "company"; the same query now warrants a different ranking. This is the hardest to detect and the most damaging to leave alone — the model is *systematically wrong* on inputs whose surface form hasn't changed. Fix: retrain on data labelled *after* the shift.
 
 **Detection.** All three flavours show up in monitoring as a divergence between the training distribution and the live distribution. The standard machinery: track input feature distributions (per-feature histograms over rolling windows), prediction distributions (per-class prediction rates), and (when you can) live label feedback (delayed but ground-truth). When a divergence metric like KL divergence or PSI (Population Stability Index) crosses a per-feature threshold for $N$ consecutive windows, trigger a retrain.
 
@@ -67,7 +67,7 @@ Instead of a fixed split, route adaptively: explore each arm enough to estimate 
 
 | Pattern | User-visible risk | Measurement quality | Time to decision | Stats complexity |
 |---|---|---|---|---|
-| **Shadow** | none | offline only — no user behaviour | minutes (offline) | trivial |
+| **Shadow** | none | offline only: no user behaviour | minutes (offline) | trivial |
 | **Canary** | low (5 %) | weak (operational trip-wire) | hours | trivial |
 | **A/B** | equal (50/50) | strong (causal on primary metric) | days | standard |
 | **Bandit** | adaptive | lower regret, biased estimates | continuous | hard |
@@ -135,7 +135,7 @@ Continual learning closes a loop the model is now part of: the *retrained* model
 
 - **Stateless retraining** rebuilds from scratch — reproducible, expensive. **Stateful** warm-starts and is cheap but accumulates bias. Most teams run a **hybrid**: stateless monthly, stateful daily.
 - **Distribution shift** comes in three flavours — covariate ($p(x)$), label ($p(y)$), and concept ($p(y \mid x)$) — and you monitor for each one differently. Use KL or PSI on per-feature distributions, debounce alarms across time and features.
-- **Four traffic-split patterns** — shadow, canary, A/B, bandit — make different risk / measurement trade-offs. Run them in sequence: shadow → canary → A/B → ramp.
+- **Four traffic-split patterns**: shadow, canary, A/B, bandit — make different risk / measurement trade-offs. Run them in sequence: shadow → canary → A/B → ramp.
 - **Shadow has zero user-visible risk and zero user-behaviour signal.** It's an operational gate and an offline-metric gate, not a measurement of user response.
 - **A/B testing essentials**: pre-register sample size, pick MDE and power up front, do not peek, watch for novelty and network effects.
 - **Bandits cut regret** vs a fixed A/B by routing more traffic to better arms over time, at the cost of biased post-hoc estimates and harder confirmatory statistics.
@@ -143,8 +143,8 @@ Continual learning closes a loop the model is now part of: the *retrained* model
 
 ## Related concepts
 
-- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and silent drift are the failure modes this lesson's monitoring is built to detect. The drift taxonomy is shared.
-- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems lens that asks "what happens when something goes wrong." A rollout is a pre-arranged answer to "the candidate model goes wrong"; this lesson is the playbook.
-- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — once a candidate has passed all four gates and is ramping to 100 %, the serving-pattern and compression choices from that lesson are what determine its $/query and tail latency.
-- [**LLM Evaluation**](/courses/model-evaluation/04-llm-evaluation) — for LLM-shaped products the A/B's primary metric is often pairwise human preference; Bradley–Terry and Elo formalise that comparison and are the dual of the user-behaviour metric this lesson uses.
-- [**Population Stability Index (PSI)**](/wiki/population-stability-index) — the drift metric that triggers the retraining loop
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls): train-serve skew and silent drift are the failure modes this lesson's monitoring is built to detect. The drift taxonomy is shared.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design): the systems lens that asks "what happens when something goes wrong." A rollout is a pre-arranged answer to "the candidate model goes wrong"; this lesson is the playbook.
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression): once a candidate has passed all four gates and is ramping to 100 %, the serving-pattern and compression choices from that lesson are what determine its $/query and tail latency.
+- [**LLM Evaluation**](/courses/model-evaluation/04-llm-evaluation): for LLM-shaped products the A/B's primary metric is often pairwise human preference; Bradley–Terry and Elo formalise that comparison and are the dual of the user-behaviour metric this lesson uses.
+- [**Population Stability Index (PSI)**](/wiki/population-stability-index): the drift metric that triggers the retraining loop

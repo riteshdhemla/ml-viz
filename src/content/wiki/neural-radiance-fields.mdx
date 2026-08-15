@@ -32,7 +32,7 @@ $$
 
 The network $F_\Theta$ is just an MLP (~8 layers). Density depends only on position (geometry is view-independent); color depends on both position and direction (so the model can capture specular highlights that change with viewpoint).
 
-## Volume rendering — making it differentiable
+## Volume rendering: making it differentiable
 
 To render a pixel, cast a camera ray $\mathbf{r}(t) = \mathbf{o} + t\mathbf{d}$ from the camera through that pixel and accumulate color along it. The expected color is the classic volume-rendering integral:
 
@@ -54,7 +54,7 @@ $$
 
 No 3D supervision is needed — only 2D photos and their camera poses.
 
-## Positional encoding — the key trick
+## Positional encoding: the key trick
 
 An MLP fed raw $(x, y, z)$ coordinates produces blurry results: networks are biased toward low-frequency functions and can't represent sharp geometric/texture detail. NeRF fixes this by mapping each coordinate through a high-frequency **positional encoding** before the MLP:
 
@@ -77,17 +77,17 @@ Uniformly sampling along each ray wastes computation on empty space. NeRF trains
 |---|---|
 | Photorealistic novel views | Slow to train (hours per scene) |
 | Tiny storage (~5 MB of weights vs GBs of voxels) | Slow to render (many MLP queries per ray) |
-| Continuous, no discretization artifacts | One network per scene — no generalization |
+| Continuous, no discretization artifacts | One network per scene: no generalization |
 | Only needs 2D images + poses | Struggles with reflective/transparent surfaces, dynamic scenes |
 
 ## The follow-up explosion
 
 NeRF spawned a huge research line addressing its weaknesses:
 
-- **Instant-NGP** — hash-grid encoding cuts training from hours to seconds
-- **Mip-NeRF** — anti-aliasing across scales
-- **Dynamic / 4D NeRFs** — scenes that change over time
-- **3D Gaussian Splatting** (2023) — replaces the MLP+ray-marching with explicit anisotropic Gaussians, achieving real-time rendering and largely superseding vanilla NeRF for many applications
+- **Instant-NGP**: hash-grid encoding cuts training from hours to seconds
+- **Mip-NeRF**: anti-aliasing across scales
+- **Dynamic / 4D NeRFs**: scenes that change over time
+- **3D Gaussian Splatting** (2023): replaces the MLP+ray-marching with explicit anisotropic Gaussians, achieving real-time rendering and largely superseding vanilla NeRF for many applications
 
 ## Why it matters
 
@@ -96,6 +96,6 @@ NeRF reframed 3D reconstruction as **coordinate-based representation learning** 
 
 ## Related concepts
 
-- [**Backbones in Practice**](/courses/computer-vision/03-backbones-in-practice) — the 2D vision models NeRF's neural-field paradigm extends into 3D
-- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the other continuous/coordinate paradigm for generating images
-- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — the Fourier-feature positional encoding NeRF reuses for sharp detail
+- [**Backbones in Practice**](/courses/computer-vision/03-backbones-in-practice): the 2D vision models NeRF's neural-field paradigm extends into 3D
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models): the other continuous/coordinate paradigm for generating images
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional): the Fourier-feature positional encoding NeRF reuses for sharp detail

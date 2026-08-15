@@ -47,7 +47,7 @@ $$
 \mu_B = \frac{2+4+6+8}{4} = 5, \qquad \sigma_B^2 = \frac{(-3)^2+(-1)^2+1^2+3^2}{4} = \frac{9+1+1+9}{4} = 5
 $$
 
-**Step 2 — normalize** ($\epsilon = 0$ for clarity):
+**Step 2: normalize** ($\epsilon = 0$ for clarity):
 
 $$
 \hat{\mathbf{x}} = \left(\frac{2-5}{\sqrt{5}},\ \frac{4-5}{\sqrt{5}},\ \frac{6-5}{\sqrt{5}},\ \frac{8-5}{\sqrt{5}}\right) \approx (-1.342,\ -0.447,\ 0.447,\ 1.342)
@@ -55,7 +55,7 @@ $$
 
 Verify: mean $= 0$ ✓, variance $= \frac{1.342^2+0.447^2+0.447^2+1.342^2}{4} = 1$ ✓
 
-**Step 3 — rescale** with $\gamma = 2$, $\beta = 1$:
+**Step 3: rescale** with $\gamma = 2$, $\beta = 1$:
 
 $$
 \mathbf{y} = 2\,\hat{\mathbf{x}} + 1 \approx (-1.683,\ 0.106,\ 1.894,\ 3.683)
@@ -129,10 +129,10 @@ print(f"Running var  after 5 batches: {var_run:.4f}")  # 2.6208 — heading to 5
 
 **What to notice:**
 
-- **Frame 2 — the layer contains the identity.** Set $\gamma = \sqrt{\sigma^2_B}$ and $\beta = \mu_B$ and the output returns the input exactly (error 0.0). Normalizing therefore cannot cost the network expressivity; it only changes which solutions are easy to reach.
-- **Frame 3 — the layer is not a function of its input alone.** The same value $x = 6$ comes out anywhere from 1.871 to 3.136 depending purely on which three samples share its batch. During training that noise is a regularizer; at inference it would mean your prediction depends on who else was in the request batch.
-- **Frame 5 — the running statistics are wrong for a long time.** After the five batches above $\mu_{\text{run}} = 2.0392$ against a true mean of 5, a **59% error**, and it takes **44 batches** to come within 1%. For a fixed input the eval-mode output drifts 11.99 → 2.79 as the EMA warms up. This is a commoner cause of "eval mode is broken" than forgetting `model.eval()`.
-- **Frame 6 — at $m = 1$ the variance is not undefined, it is exactly zero.** So $\hat{x} = 0/\sqrt{\epsilon} = 0$ and $y = \beta$ for *every* input: 2, 40 and −1000 all return 1.0. Not noisy — constant. The batch-size sweep shows $m = 1$ is not the endpoint of the small-batch noise trend but a different failure entirely, and it is why transformers use LayerNorm.
+- **Frame 2: the layer contains the identity.** Set $\gamma = \sqrt{\sigma^2_B}$ and $\beta = \mu_B$ and the output returns the input exactly (error 0.0). Normalizing therefore cannot cost the network expressivity; it only changes which solutions are easy to reach.
+- **Frame 3: the layer is not a function of its input alone.** The same value $x = 6$ comes out anywhere from 1.871 to 3.136 depending purely on which three samples share its batch. During training that noise is a regularizer; at inference it would mean your prediction depends on who else was in the request batch.
+- **Frame 5: the running statistics are wrong for a long time.** After the five batches above $\mu_{\text{run}} = 2.0392$ against a true mean of 5, a **59% error**, and it takes **44 batches** to come within 1%. For a fixed input the eval-mode output drifts 11.99 → 2.79 as the EMA warms up. This is a commoner cause of "eval mode is broken" than forgetting `model.eval()`.
+- **Frame 6: at $m = 1$ the variance is not undefined, it is exactly zero.** So $\hat{x} = 0/\sqrt{\epsilon} = 0$ and $y = \beta$ for *every* input: 2, 40 and −1000 all return 1.0. Not noisy — constant. The batch-size sweep shows $m = 1$ is not the endpoint of the small-batch noise trend but a different failure entirely, and it is why transformers use LayerNorm.
 
 ## Placement in a network
 
@@ -140,6 +140,6 @@ The original paper normalizes **pre-activations** (before the nonlinearity): `Li
 
 ## Related concepts
 
-- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — the full lesson: internal covariate shift, inverted dropout, ensemble interpretation, train/eval mode
-- [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the layers that BatchNorm is inserted between
-- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — uses LayerNorm (normalizes over features, not the batch)
+- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout): the full lesson: internal covariate shift, inverted dropout, ensemble interpretation, train/eval mode
+- [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass): the layers that BatchNorm is inserted between
+- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture): uses LayerNorm (normalizes over features, not the batch)

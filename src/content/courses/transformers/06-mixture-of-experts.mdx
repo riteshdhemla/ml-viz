@@ -57,8 +57,8 @@ A model with 64 experts has ~64× the FFN parameters of a dense model but, at $k
 
 Left alone, the router collapses: it learns to send almost everything to a few favorite experts, leaving the rest idle. That wastes the extra capacity and creates a compute bottleneck on the popular experts. Two standard fixes:
 
-- **Auxiliary load-balancing loss** — an added penalty that encourages the router to spread tokens **evenly** across experts (e.g. penalizing the product of each expert's token fraction and its average gate probability).
-- **Expert capacity** — a hard cap on how many tokens each expert will accept per batch; tokens beyond the cap are **dropped** (skipped via the residual connection) to keep the computation balanced and hardware-friendly.
+- **Auxiliary load-balancing loss**: an added penalty that encourages the router to spread tokens **evenly** across experts (e.g. penalizing the product of each expert's token fraction and its average gate probability).
+- **Expert capacity**: a hard cap on how many tokens each expert will accept per batch; tokens beyond the cap are **dropped** (skipped via the residual connection) to keep the computation balanced and hardware-friendly.
 
 <Callout type="warning" title="MoE's real costs">
   The parameter savings aren't free. MoE adds: **memory** (all $N$ experts' weights must be stored/loaded even though few run), **communication** (experts are sharded across devices, so routing shuffles tokens between GPUs — "all-to-all"), and **training instability** (the discrete top-k routing is finicky). MoE wins on *compute per token*, not on memory or simplicity.
@@ -92,6 +92,6 @@ Left alone, the router collapses: it learns to send almost everything to a few f
 
 ## Related concepts
 
-- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — why we want more parameters, the demand MoE serves cheaply
-- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the FFN sublayer MoE replaces
-- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — the memory/communication trade-offs MoE's sharding runs into
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling): why we want more parameters, the demand MoE serves cheaply
+- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture): the FFN sublayer MoE replaces
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning): the memory/communication trade-offs MoE's sharding runs into

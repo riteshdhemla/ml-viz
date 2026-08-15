@@ -18,7 +18,7 @@ Train the model on the training fold. Then, on a **separate calibration fold**, 
 
 Both methods require $g$ to be **non-decreasing** — a higher score should never map to a lower probability. That monotonicity is what preserves ranking; the methods differ in the family $g$ is drawn from.
 
-## Platt scaling — a logistic fit on the scores
+## Platt scaling: a logistic fit on the scores
 
 Platt's method (originally for SVM outputs) assumes the distortion is **sigmoidal** and fits a two-parameter logistic map:
 
@@ -38,7 +38,7 @@ A positive is asked to hit $\tfrac{N_+ + 1}{N_+ + 2}$ (a hair under 1), a negati
 
 **When it fits well:** the true reliability curve is close to sigmoidal — a good match for max-margin models (SVMs) and for boosted models, whose scores are pushed toward the extremes in a characteristically sigmoidal way. **When it fails:** the miscalibration has a non-sigmoidal shape (e.g. an S the wrong way, or a kink); two parameters simply can't bend to it, leaving residual error.
 
-## Isotonic regression — the non-parametric monotone fit
+## Isotonic regression: the non-parametric monotone fit
 
 Isotonic regression drops the sigmoid assumption. It finds the **best non-decreasing step function** (any monotone shape) by minimizing squared error subject to a monotonicity constraint:
 
@@ -116,6 +116,6 @@ What to notice as you step:
 
 ## Related concepts
 
-- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — reliability diagrams, ECE, temperature scaling, and aleatoric vs. epistemic uncertainty
-- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — the accuracy/precision metrics calibration complements
-- [**ROC Curve and AUC**](/wiki/roc-auc) — why a monotone calibration map leaves AUC unchanged
+- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty): reliability diagrams, ECE, temperature scaling, and aleatoric vs. epistemic uncertainty
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics): the accuracy/precision metrics calibration complements
+- [**ROC Curve and AUC**](/wiki/roc-auc): why a monotone calibration map leaves AUC unchanged

@@ -25,7 +25,7 @@ The training loss $L_{\text{train}}$ is a biased (optimistic) estimate — the m
 
 The simplest strategy: reserve 20% as a held-out test set, train on 80%.
 
-**Stratified split** — for classification, preserve the class distribution in both splits. Without stratification, random chance might put all rare-class examples in one set.
+**Stratified split**: for classification, preserve the class distribution in both splits. Without stratification, random chance might put all rare-class examples in one set.
 
 **When it's sufficient:** large datasets (>10k samples). With enough data, the 20% test set is large enough that the estimate has low variance.
 
@@ -171,11 +171,11 @@ X_test  = scaler.transform(X_test)       # transform only, not fit
 
 ## Common mistakes
 
-1. **Tuning hyperparameters on the test set** — even reading the test set error once to decide something is leakage. Use a separate validation set or CV.
-2. **Not stratifying splits on imbalanced data** — all rare-class examples in one fold causes wildly unstable CV estimates.
-3. **Applying k-fold to time series** — shuffled CV inflates performance on temporal data.
-4. **Feature selection before splitting** — selecting features based on correlation with labels computed on all data (including test) is leakage. Feature selection must happen inside each CV fold.
-5. **Reporting mean CV score without standard deviation** — the mean alone hides variance between folds; always report mean ± std.
+1. **Tuning hyperparameters on the test set**: even reading the test set error once to decide something is leakage. Use a separate validation set or CV.
+2. **Not stratifying splits on imbalanced data**: all rare-class examples in one fold causes wildly unstable CV estimates.
+3. **Applying k-fold to time series**: shuffled CV inflates performance on temporal data.
+4. **Feature selection before splitting**: selecting features based on correlation with labels computed on all data (including test) is leakage. Feature selection must happen inside each CV fold.
+5. **Reporting mean CV score without standard deviation**: the mean alone hides variance between folds; always report mean ± std.
 
 ## Key takeaways
 
@@ -188,6 +188,6 @@ X_test  = scaler.transform(X_test)       # transform only, not fit
 
 ## Related concepts
 
-- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — what to measure once you have a valid split
-- [**Training Techniques**](/courses/model-evaluation/03-training-techniques) — early stopping, hyperparameter search, and augmentation
-- [**ROC Curve and AUC**](/wiki/roc-auc) — curve construction, the rank-sum interpretation, and PR-AUC for imbalance
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics): what to measure once you have a valid split
+- [**Training Techniques**](/courses/model-evaluation/03-training-techniques): early stopping, hyperparameter search, and augmentation
+- [**ROC Curve and AUC**](/wiki/roc-auc): curve construction, the rank-sum interpretation, and PR-AUC for imbalance

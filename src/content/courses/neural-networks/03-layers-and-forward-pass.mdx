@@ -47,7 +47,7 @@ b^{(2)} = 1, \quad
 \mathbf{x} = \begin{bmatrix} 1 \\ 2 \end{bmatrix}
 $$
 
-**Step 1 — hidden pre-activations.** Each row of $W^{(1)}$ dots with $\mathbf{x}$, plus its bias:
+**Step 1: hidden pre-activations.** Each row of $W^{(1)}$ dots with $\mathbf{x}$, plus its bias:
 
 $$
 z^{(1)}_1 = \underbrace{(2)(1)}_{=\,2} + \underbrace{(-1)(2)}_{=\,-2} + 0.5 = 0.5
@@ -57,7 +57,7 @@ $$
 
 So $\mathbf{z}^{(1)} = [\,0.5,\; -0.5\,]$.
 
-**Step 2 — apply ReLU element-wise.** The second neuron's pre-activation is negative, so ReLU clamps it to zero:
+**Step 2: apply ReLU element-wise.** The second neuron's pre-activation is negative, so ReLU clamps it to zero:
 
 $$
 \mathbf{h}^{(1)} = \text{ReLU}\!\left(\mathbf{z}^{(1)}\right) = [\,\max(0, 0.5),\; \max(0, -0.5)\,] = [\,0.5,\; 0\,]
@@ -65,7 +65,7 @@ $$
 
 The second neuron is **inactive** for this input — it contributes nothing downstream. For a different input it might switch on; that input-dependent on/off pattern is how ReLU networks build piecewise-linear functions.
 
-**Step 3 — output layer.** The output neuron weights the hidden activations and applies sigmoid:
+**Step 3: output layer.** The output neuron weights the hidden activations and applies sigmoid:
 
 $$
 z^{(2)} = (2)(0.5) + (3)(0) + 1 = 2
@@ -141,20 +141,20 @@ The practical trade-off:
 
 ## Common mistakes
 
-1. **Mis-shaped matrices** — remember rows = outputs, columns = inputs; `W @ x` fails (or silently broadcasts wrong) otherwise.
-2. **Applying the hidden activation to the output layer** — a regression output squashed through ReLU can never be negative; a classification output needs sigmoid/softmax, not tanh.
-3. **Forgetting that ReLU zeros are persistent** — if a neuron's pre-activation is negative for *every* training input, it is "dead" and its weights stop receiving gradient.
+1. **Mis-shaped matrices**: remember rows = outputs, columns = inputs; `W @ x` fails (or silently broadcasts wrong) otherwise.
+2. **Applying the hidden activation to the output layer**: a regression output squashed through ReLU can never be negative; a classification output needs sigmoid/softmax, not tanh.
+3. **Forgetting that ReLU zeros are persistent**: if a neuron's pre-activation is negative for *every* training input, it is "dead" and its weights stop receiving gradient.
 
 ## Key takeaways
 
 - A layer is $m$ neurons sharing an input: $\mathbf{h} = f(W\mathbf{x} + \mathbf{b})$ with $W \in \mathbb{R}^{m \times n}$ — $mn + m$ parameters.
 - The **forward pass** is alternating matrix multiplications and element-wise activations, layer by layer.
 - The non-linearity between layers is what stops the stack collapsing into a single linear map.
-- **Depth composes features** — later layers build abstractions out of earlier ones, which is more parameter-efficient than going wide.
+- **Depth composes features**: later layers build abstractions out of earlier ones, which is more parameter-efficient than going wide.
 - **Width adds capacity** within a layer; each hidden ReLU neuron adds one "fold" to the function the network can express.
 
 ## Related concepts
 
-- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the unit each row of $W$ represents
-- [**Matrices & Transformations**](/courses/linear-algebra/02-matrices-and-transformations) — what $W\mathbf{x}$ does geometrically
-- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — how gradients flow backwards through this same composition
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron): the unit each row of $W$ represents
+- [**Matrices & Transformations**](/courses/linear-algebra/02-matrices-and-transformations): what $W\mathbf{x}$ does geometrically
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation): how gradients flow backwards through this same composition

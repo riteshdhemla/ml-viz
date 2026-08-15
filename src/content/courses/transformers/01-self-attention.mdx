@@ -51,8 +51,8 @@ Step by step:
 
 1. **Scores** $QK^{\top}$ — dot product of every query with every key. High dot product = high relevance.
 2. **Scale** by $\frac{1}{\sqrt{d_k}}$ — keeps scores from growing with dimension (see below).
-3. **Softmax** — turn each row of scores into weights that sum to 1 (the **attention weights**).
-4. **Weighted sum** — multiply weights by $V$: each output is a blend of all values, weighted by relevance.
+3. **Softmax**: turn each row of scores into weights that sum to 1 (the **attention weights**).
+4. **Weighted sum**: multiply weights by $V$: each output is a blend of all values, weighted by relevance.
 
 ### Why divide by $\sqrt{d_k}$?
 
@@ -110,7 +110,7 @@ The cost: attention is **quadratic** in sequence length ($n^2$ scores). For very
 
 1. **Forgetting the scale factor** $\sqrt{d_k}$ — softmax saturates, gradients vanish, training stalls.
 2. **Omitting the causal mask** in a generative model — the model "cheats" by seeing the answer, then fails at inference.
-3. **Confusing the dimensions** — attention weights are $n\times n$ (token-to-token), the output is $n\times d_v$ (same shape as input).
+3. **Confusing the dimensions**: attention weights are $n\times n$ (token-to-token), the output is $n\times d_v$ (same shape as input).
 
 ## Key takeaways
 
@@ -121,8 +121,8 @@ The cost: attention is **quadratic** in sequence length ($n^2$ scores). For very
 
 ## Related concepts
 
-- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — many attention heads + injecting word order
-- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — the recurrent approach attention replaced
-- [**Inductive Bias & Equivariance**](/wiki/inductive-bias) — why attention is the "keep only permutation symmetry, inject position" move, and the least-biased of the four architectures
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional): many attention heads + injecting word order
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru): the recurrent approach attention replaced
+- [**Inductive Bias & Equivariance**](/wiki/inductive-bias): why attention is the "keep only permutation symmetry, inject position" move, and the least-biased of the four architectures
 
 <WikiLink slug="attention-mechanisms" title="Attention Mechanisms: Self, Cross, Causal, MHA, MQA, and GQA" />

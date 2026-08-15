@@ -61,8 +61,8 @@ print(f"Token matrix shape: {tokens.shape}")  # (196, 768)
 
 Two additions are prepended/added before passing tokens to the Transformer encoder:
 
-1. **[CLS] token** — a learned vector prepended to the sequence. After all encoder layers, only this token's representation is used for classification (it aggregates global information via attention).
-2. **Positional embeddings** — learnable 1D vectors of shape $(197, d)$ added element-wise to the 196 patch tokens plus the CLS token. Unlike the sinusoidal embeddings in NLP Transformers, ViT's positional embeddings are **fully learned** from data.
+1. **[CLS] token**: a learned vector prepended to the sequence. After all encoder layers, only this token's representation is used for classification (it aggregates global information via attention).
+2. **Positional embeddings**: learnable 1D vectors of shape $(197, d)$ added element-wise to the 196 patch tokens plus the CLS token. Unlike the sinusoidal embeddings in NLP Transformers, ViT's positional embeddings are **fully learned** from data.
 
 $$
 \mathbf{z}_0 = [\mathbf{x}_{cls};\; \mathbf{x}^1_p \mathbf{E};\; \mathbf{x}^2_p \mathbf{E};\; \ldots;\; \mathbf{x}^{196}_p \mathbf{E}] + \mathbf{E}_{pos}
@@ -121,10 +121,10 @@ where $w$ is the **guidance scale**:
 
 | $w$ | Effect |
 |-----|--------|
-| 0 | No guidance — the plain conditional output $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c)$ (the $(1+w)$ form gives the *conditional* prediction at $w=0$, never the unconditional one) |
-| 1 | Moderate guidance — the prompt direction is amplified once |
-| 7.5 | Strong guidance — high prompt fidelity, less diversity (≈ Stable Diffusion's default; see convention note below) |
-| 15+ | Very strong — may over-saturate colors and lose realism |
+| 0 | No guidance: the plain conditional output $\boldsymbol{\epsilon}_\theta(\mathbf{x}_t, c)$ (the $(1+w)$ form gives the *conditional* prediction at $w=0$, never the unconditional one) |
+| 1 | Moderate guidance: the prompt direction is amplified once |
+| 7.5 | Strong guidance: high prompt fidelity, less diversity (≈ Stable Diffusion's default; see convention note below) |
+| 15+ | Very strong: may over-saturate colors and lose realism |
 
 > **Convention note:** libraries like `diffusers` expose `guidance_scale` $s$ in the form $\hat{\epsilon} = \epsilon_\emptyset + s\,(\epsilon_c - \epsilon_\emptyset)$, which equals the formula above with $s = 1 + w$. So "Stable Diffusion's default 7.5" is $s = 7.5$, i.e. $w = 6.5$ here — same idea, off-by-one parameterization.
 
@@ -293,7 +293,7 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 
 ---
 
-## GAN vs VAE vs Diffusion — Side-by-side
+## GAN vs VAE vs Diffusion: Side-by-side
 
 | Property | GAN | VAE | Diffusion |
 |----------|-----|-----|-----------|
@@ -316,11 +316,11 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 
 ## Common mistakes
 
-1. **Feeding raw pixels to ViT without enough data** — ViT has no locality bias, so it needs large datasets. Use a pre-trained checkpoint for fine-tuning; don't train ViT-B from scratch on ImageNet-1k alone.
-2. **Setting CFG guidance too high** — $w > 12$ causes over-saturation and artifact-heavy images. The sweet spot is typically $w \in [6, 10]$ for photorealistic prompts.
-3. **Confusing Z-space and W-space in StyleGAN** — Only $\mathcal{W}$-space interpolations give semantically smooth transitions. Interpolating in $\mathcal{Z}$ passes through the non-linear mapping network and produces inconsistent results.
-4. **Forgetting both cycle directions in CycleGAN** — The loss must enforce $G_{BA}(G_{AB}(x)) \approx x$ AND $G_{AB}(G_{BA}(y)) \approx y$. Omitting either direction lets one generator collapse.
-5. **Treating Stable Diffusion as pixel-space diffusion** — The U-Net operates on 64×64 latents, not 512×512 pixels. Interventions like inpainting or ControlNet operate in latent space and must be decoded only at the end.
+1. **Feeding raw pixels to ViT without enough data**: ViT has no locality bias, so it needs large datasets. Use a pre-trained checkpoint for fine-tuning; don't train ViT-B from scratch on ImageNet-1k alone.
+2. **Setting CFG guidance too high**: $w > 12$ causes over-saturation and artifact-heavy images. The sweet spot is typically $w \in [6, 10]$ for photorealistic prompts.
+3. **Confusing Z-space and W-space in StyleGAN**: Only $\mathcal{W}$-space interpolations give semantically smooth transitions. Interpolating in $\mathcal{Z}$ passes through the non-linear mapping network and produces inconsistent results.
+4. **Forgetting both cycle directions in CycleGAN**: The loss must enforce $G_{BA}(G_{AB}(x)) \approx x$ AND $G_{AB}(G_{BA}(y)) \approx y$. Omitting either direction lets one generator collapse.
+5. **Treating Stable Diffusion as pixel-space diffusion**: The U-Net operates on 64×64 latents, not 512×512 pixels. Interventions like inpainting or ControlNet operate in latent space and must be decoded only at the end.
 
 ---
 
@@ -336,7 +336,7 @@ The VAE is trained with a perceptual loss — it learns to preserve visually imp
 
 ## Related concepts
 
-- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the denoising foundation Stable Diffusion builds on
-- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks) — the adversarial training framework StyleGAN and CycleGAN use
-- [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders) — the VAE component inside Stable Diffusion
-- [**Attention & Transformers**](/courses/transformers/01-self-attention) — the self-attention mechanism ViT inherits
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models): the denoising foundation Stable Diffusion builds on
+- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks): the adversarial training framework StyleGAN and CycleGAN use
+- [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders): the VAE component inside Stable Diffusion
+- [**Attention & Transformers**](/courses/transformers/01-self-attention): the self-attention mechanism ViT inherits

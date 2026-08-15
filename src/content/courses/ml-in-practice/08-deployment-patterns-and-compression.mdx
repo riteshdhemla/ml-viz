@@ -149,16 +149,16 @@ A short decision tree, in prose:
 
 ## Key takeaways
 
-- **Three serving patterns** — batch, online, edge — answer *when* inference runs. They differ in latency, freshness, $/query, privacy, and hardware. Pick by asking whether the input changes per request and whether the latency budget exceeds a network round-trip.
+- **Three serving patterns**: batch, online, edge — answer *when* inference runs. They differ in latency, freshness, $/query, privacy, and hardware. Pick by asking whether the input changes per request and whether the latency budget exceeds a network round-trip.
 - **Compression buys back the scarcest resource.** Batch: optional cost cut. Online: $/query and tail latency. Edge: it is the entire game.
-- **Quantization recap** — INT8 is nearly free, INT4 is the QLoRA sweet spot. *Activation* quantization (W8A8) is what unlocks GEMM throughput; weight-only saves memory but not wall-clock.
+- **Quantization recap**: INT8 is nearly free, INT4 is the QLoRA sweet spot. *Activation* quantization (W8A8) is what unlocks GEMM throughput; weight-only saves memory but not wall-clock.
 - **Pruning splits two ways.** Unstructured shrinks disk only on standard GPUs; structured is what actually speeds up matmul. Magnitude pruning is one-shot, movement / iterative pruning reaches higher sparsity at higher training cost.
 - **Distillation makes small models punch above their weight** by training them to match a teacher's softened output distribution — the dark knowledge that labels alone cannot transmit.
 - **The compression stack composes multiplicatively.** Distill → quantize → optionally prune. For online, two are usually enough; for edge, you need all three.
 
 ## Related concepts
 
-- [**Model Merging & Quantization**](/courses/fine-tuning-alignment/05-model-merging-and-quantization) — the math of post-training quantization, QAT, and NF4 / QLoRA. This deployment lesson treats compression as a serving-cost lever; that lesson treats it as a fine-tuning recipe.
-- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems lens that asks "what happens when something goes wrong." Picking a serving pattern is one of the first decisions an ML system design has to commit to.
-- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — train-serve skew and silent drift are the failure modes each serving pattern is differently exposed to. Batch hides drift behind a stale prediction; online surfaces it on the request path; edge is the hardest to detect drift on because telemetry has to round-trip through the device.
-- [**Evaluating AI Systems**](/courses/model-evaluation/05-evaluating-ai-systems) — the cost / latency / quality trade-off this lesson operates inside. Picking the pattern and compression stack is what *moves* a model along that Pareto frontier.
+- [**Model Merging & Quantization**](/courses/fine-tuning-alignment/05-model-merging-and-quantization): the math of post-training quantization, QAT, and NF4 / QLoRA. This deployment lesson treats compression as a serving-cost lever; that lesson treats it as a fine-tuning recipe.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design): the systems lens that asks "what happens when something goes wrong." Picking a serving pattern is one of the first decisions an ML system design has to commit to.
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls): train-serve skew and silent drift are the failure modes each serving pattern is differently exposed to. Batch hides drift behind a stale prediction; online surfaces it on the request path; edge is the hardest to detect drift on because telemetry has to round-trip through the device.
+- [**Evaluating AI Systems**](/courses/model-evaluation/05-evaluating-ai-systems): the cost / latency / quality trade-off this lesson operates inside. Picking the pattern and compression stack is what *moves* a model along that Pareto frontier.

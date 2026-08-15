@@ -145,7 +145,7 @@ and the panel checks that measured shift against the prediction on every step. S
 
 $\lVert w \rVert_1$ grows roughly linearly with the number of inputs at fixed mean weight, so drag the dimension slider: at $224\times224\times3$ the same model shape has $\lVert w \rVert_1 \approx 50{,}000$ and $\epsilon^* \approx 0.035/255$ — a *thousandth* of a pixel level. Each pixel still moves by an imperceptible $\epsilon$; there are simply 150,000 of them, all pushing the same way. That is the entire phenomenon.
 
-## 7. PGD — iterative FGSM
+## 7. PGD: iterative FGSM
 
 **Projected Gradient Descent (PGD)** extends FGSM to $k$ steps with a smaller per-step size $\alpha$, projecting back to the $\epsilon$-ball after each step:
 
@@ -159,7 +159,7 @@ where $\mathcal{S} = \{\delta : \|\delta\|_\infty \le \epsilon\}$ is the allowed
 
 ## 8. Defenses
 
-**Adversarial training** — the most reliable defense: include adversarial examples in the training set. During each training iteration, generate adversarial examples from the current model and train on both clean and adversarial data.
+**Adversarial training**: the most reliable defense: include adversarial examples in the training set. During each training iteration, generate adversarial examples from the current model and train on both clean and adversarial data.
 
 $$
 \min_\theta \mathbb{E}_{(x,y) \sim \mathcal{D}}\left[\max_{\|\delta\|_\infty \le \epsilon} J(\theta, x+\delta, y)\right]
@@ -168,9 +168,9 @@ $$
 This is a minimax problem: the inner max finds the worst-case perturbation; the outer min trains the model to resist it. Models trained this way are called **adversarially trained** and are much more robust — at some cost to clean accuracy.
 
 **Other defenses:**
-- *Input preprocessing* — Gaussian blurring, JPEG compression, or feature squeezing to destroy adversarial structure before it reaches the model
-- *Randomized smoothing* — certifiably robust predictions via Monte Carlo noise injection
-- *Certified defenses* — prove mathematically that no attack within an $\ell_p$ ball can fool the model; computationally expensive but provides hard guarantees
+- *Input preprocessing*: Gaussian blurring, JPEG compression, or feature squeezing to destroy adversarial structure before it reaches the model
+- *Randomized smoothing*: certifiably robust predictions via Monte Carlo noise injection
+- *Certified defenses*: prove mathematically that no attack within an $\ell_p$ ball can fool the model; computationally expensive but provides hard guarantees
 
 <Callout type="warning" title="Arms race dynamics">
   Adversarial defense is an ongoing arms race. Many proposed defenses have been broken by adaptive attacks (attacks that know the defense). Adversarial training with PGD is currently the most empirically reliable approach, but no method achieves both full robustness and full accuracy.
@@ -205,6 +205,6 @@ FGSM and PGD are evasion attacks. Poisoning attacks (e.g., "backdoor attacks" th
 
 ## Related concepts
 
-- [**The Convolution Operation**](/courses/cnns/01-convolution-operation) — the feature maps that Grad-CAM visualizes
-- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the input-gradient computation behind saliency maps and FGSM
-- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks) — adversarial dynamics in a generative setting
+- [**The Convolution Operation**](/courses/cnns/01-convolution-operation): the feature maps that Grad-CAM visualizes
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation): the input-gradient computation behind saliency maps and FGSM
+- [**Generative Adversarial Networks**](/courses/generative-models/04-generative-adversarial-networks): adversarial dynamics in a generative setting

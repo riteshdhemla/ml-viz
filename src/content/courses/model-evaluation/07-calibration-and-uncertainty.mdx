@@ -27,7 +27,7 @@ A model's *stated* job is to minimize a loss on a finite training set — recove
 
 - **The loss barely aims at calibration, and over-optimizing it hurts.** *Proper scoring rules* (cross-entropy, Brier) are minimized *in expectation* exactly at the true $P(Y\mid X)$, so log loss genuinely "wants" to be calibrated. But (a) **margin losses** like the SVM hinge don't estimate probabilities at all — the output is a score, not a probability, which is why SVMs need post-hoc scaling; and (b) modern nets drive training loss toward zero long past the calibrated point, pushing logits to extremes → **systematic overconfidence**.
 - **Model-class mismatch.** If the true $P(Y\mid X)$ isn't representable by your model family, the best fit is a biased *projection* onto it — miscalibrated wherever the family can't bend to match. This is the approximation-error term of the [bias–variance decomposition](/wiki/bias-variance-decomposition).
-- **The training data distribution** — several separate effects: **finite-sample noise** in the estimates; **class imbalance / reweighting**, which makes the model learn $P(Y\mid X)$ under the *training* prior rather than the deployment base rate; and **label noise**, which pushes confident predictions onto inherently ambiguous inputs.
+- **The training data distribution**: several separate effects: **finite-sample noise** in the estimates; **class imbalance / reweighting**, which makes the model learn $P(Y\mid X)$ under the *training* prior rather than the deployment base rate; and **label noise**, which pushes confident predictions onto inherently ambiguous inputs.
 - **Distribution shift (train ≠ deploy).** The biggest real-world cause. Calibration is *not* preserved when the input distribution moves — a model calibrated on validation data drifts the moment deployment differs.
 - **Irreducible noise the labels never reveal.** Where the true probability is genuinely $0.7$ (overlapping classes), hard $0/1$ labels give the model no signal to *stop* at $0.7$. This is the **aleatoric** floor (below), distinct from **epistemic** confident-extrapolation into regions with no data.
 
@@ -35,15 +35,15 @@ Regularization cuts across several of these: weight decay and especially **label
 
 | Source | Mechanism | Fixable with more data? |
 |--------|-----------|:-----------------------:|
-| Margin loss (SVM hinge) | output is a score, not a probability | No — needs post-hoc scaling |
-| Over-optimizing a proper loss | logits driven to extremes → overconfidence | No — inherent to the training dynamics |
-| Regularization / label smoothing | trades likelihood fit for generalization | No — a deliberate bias |
-| Model-class mismatch | true $P(Y\mid X)$ not representable | No — approximation error |
+| Margin loss (SVM hinge) | output is a score, not a probability | No: needs post-hoc scaling |
+| Over-optimizing a proper loss | logits driven to extremes → overconfidence | No: inherent to the training dynamics |
+| Regularization / label smoothing | trades likelihood fit for generalization | No: a deliberate bias |
+| Model-class mismatch | true $P(Y\mid X)$ not representable | No: approximation error |
 | Finite-sample estimation error | noisy parameter estimates | **Yes** (epistemic) |
-| Class imbalance / reweighting | learns the training prior, not the deploy base rate | Yes — with base-rate correction |
+| Class imbalance / reweighting | learns the training prior, not the deploy base rate | Yes: with base-rate correction |
 | Label noise | hard labels on ambiguous inputs | Partly |
-| Distribution shift (train ≠ deploy) | calibration set ≠ deployment distribution | No — must recalibrate on target |
-| Aleatoric noise | true probability is intrinsically non-$0/1$ | **No — irreducible** |
+| Distribution shift (train ≠ deploy) | calibration set ≠ deployment distribution | No: must recalibrate on target |
+| Aleatoric noise | true probability is intrinsically non-$0/1$ | **No: irreducible** |
 | Epistemic ignorance | confident extrapolation off the data | **Yes** |
 
 ## Measuring calibration
@@ -90,16 +90,16 @@ Not all uncertainty is the same, and the distinction drives what you can do abou
 |---|---|---|
 | Source | inherent **noise** in the data | the **model's ignorance** |
 | Example | overlapping classes, label noise, a blurry image | a region with no training data |
-| Reducible? | **No** — irreducible, even with infinite data | **Yes** — shrinks with more data |
+| Reducible? | **No**: irreducible, even with infinite data | **Yes**: shrinks with more data |
 | Detect by | the predictive distribution's spread | disagreement across models / Bayesian posterior |
 
 **Aleatoric** uncertainty is the noise floor — the irreducible noise variance $\sigma^2$ that appears in the bias-variance decomposition, present even with infinite data. **Epistemic** uncertainty is what a Gaussian process or Bayesian model reports as it moves away from data, and it's why ensembles are useful: models trained from different seeds *agree* where they're confident and *disagree* where they're uncertain.
 
 ## Estimating uncertainty in deep nets
 
-- **Deep ensembles** — train several models; the spread of their predictions estimates epistemic uncertainty. Simple and strong.
-- **MC dropout** — keep dropout on at inference and average many stochastic forward passes — a cheap approximation to a Bayesian posterior.
-- **Bayesian methods** (GPs, Bayesian NNs) — model the posterior directly (see the Bayesian Methods course).
+- **Deep ensembles**: train several models; the spread of their predictions estimates epistemic uncertainty. Simple and strong.
+- **MC dropout**: keep dropout on at inference and average many stochastic forward passes — a cheap approximation to a Bayesian posterior.
+- **Bayesian methods** (GPs, Bayesian NNs): model the posterior directly (see the Bayesian Methods course).
 
 <Exercise id="eval-calibration" />
 
@@ -123,6 +123,6 @@ Not all uncertainty is the same, and the distinction drives what you can do abou
 
 ## Related concepts
 
-- [**Learning Theory & Generalization**](/courses/model-evaluation/06-learning-theory) — the irreducible-noise term that is aleatoric uncertainty
-- [**Gaussian Processes**](/courses/bayesian-methods/02-gaussian-processes) — a model whose epistemic uncertainty is calibrated by construction
-- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — the accuracy-style metrics calibration complements
+- [**Learning Theory & Generalization**](/courses/model-evaluation/06-learning-theory): the irreducible-noise term that is aleatoric uncertainty
+- [**Gaussian Processes**](/courses/bayesian-methods/02-gaussian-processes): a model whose epistemic uncertainty is calibrated by construction
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics): the accuracy-style metrics calibration complements

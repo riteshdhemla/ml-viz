@@ -33,7 +33,7 @@ $$
 | | Bayesian Network | Markov Random Field |
 |---|------------------|---------------------|
 | Edges | Directed (causal) | Undirected (symmetric) |
-| Local factor | $P(X_i \mid \text{Parents})$ — normalized | $\psi_c(X_c)$ — unnormalized |
+| Local factor | $P(X_i \mid \text{Parents})$: normalized | $\psi_c(X_c)$: unnormalized |
 | Normalization | Automatic (CPTs sum to 1) | Global $Z$ needed |
 | Independence test | d-separation (colliders tricky) | Simple graph separation |
 | Natural fit | Causal / generative stories | Spatial / relational symmetry |
@@ -51,7 +51,7 @@ $Z$ sums over **all** joint configurations — $2^n$ of them for $n$ binary node
 
 This is why MRF learning leans on approximations: contrastive divergence, pseudo-likelihood, or sampling.
 
-### Worked example — a 2-node Ising-style MRF
+### Worked example: a 2-node Ising-style MRF
 
 Two binary spins $X_1, X_2 \in \{-1, +1\}$ that prefer to align. Edge potential $\psi(x_1, x_2) = e^{\,\beta x_1 x_2}$ with coupling $\beta = 1$:
 
@@ -105,9 +105,9 @@ Step through both the greedy and the sampling version:
 
 **What to notice:**
 
-- **Frame 3 — the $d=3$ tie is a live defect, not a boundary case.** ICM reaches its final energy after one sweep and never moves again, yet the error keeps drifting 4.5% → 5.5% over later sweeps. $\Delta E$ is exactly zero for those pixels, so the tie-break flips them back and forth for free: converged in energy, still wandering in image space, and getting slightly worse.
-- **Frame 4 — the parameters above are not the good ones.** Sweeping $\eta/\beta$ (with $\beta$ fixed), $\eta/\beta = 0.5$ gives 5.8% error against 2.3% at $\eta/\beta \ge 1$. The $\Delta E = 12 - 4d$ derivation is correct; what it hides is that "only $d=4$ corrects" describes a model tuned almost entirely toward the data term.
-- **Frame 6 — sampling and optimization are different jobs.** Gibbs at $T=1$ reaches *worse* energy and error than greedy ICM. That is not a failure: Gibbs draws from $\exp(-E)$, and a typical draw from a distribution is not its mode. Annealing narrows the gap but, on this landscape, still does not beat ICM.
+- **Frame 3: the $d=3$ tie is a live defect, not a boundary case.** ICM reaches its final energy after one sweep and never moves again, yet the error keeps drifting 4.5% → 5.5% over later sweeps. $\Delta E$ is exactly zero for those pixels, so the tie-break flips them back and forth for free: converged in energy, still wandering in image space, and getting slightly worse.
+- **Frame 4: the parameters above are not the good ones.** Sweeping $\eta/\beta$ (with $\beta$ fixed), $\eta/\beta = 0.5$ gives 5.8% error against 2.3% at $\eta/\beta \ge 1$. The $\Delta E = 12 - 4d$ derivation is correct; what it hides is that "only $d=4$ corrects" describes a model tuned almost entirely toward the data term.
+- **Frame 6: sampling and optimization are different jobs.** Gibbs at $T=1$ reaches *worse* energy and error than greedy ICM. That is not a failure: Gibbs draws from $\exp(-E)$, and a typical draw from a distribution is not its mode. Annealing narrows the gap but, on this landscape, still does not beat ICM.
 
 One expected result the trace could not reproduce: there is no over-smoothing arm. Error plateaus at 2.3% and stays flat out to $\eta/\beta = 40$, because this test image is genuinely piecewise-constant with thick regions — the prior's assumption is *true*, so more of it never costs anything. An image with one-pixel-wide detail would show the other side of that curve.
 
@@ -129,9 +129,9 @@ A **CRF** is the discriminative cousin: it models $P(\mathbf{y} \mid \mathbf{x})
 
 ## Common mistakes
 
-1. **Treating potentials as probabilities** — they're unnormalized scores; only the product over cliques, divided by $Z$, is a distribution.
-2. **Ignoring $Z$'s dependence on parameters** — when learning, $Z$ changes with the potentials; you cannot treat it as constant.
-3. **Forcing direction onto symmetric relations** — if there's no causal story, an undirected MRF is the honest model.
+1. **Treating potentials as probabilities**: they're unnormalized scores; only the product over cliques, divided by $Z$, is a distribution.
+2. **Ignoring $Z$'s dependence on parameters**: when learning, $Z$ changes with the potentials; you cannot treat it as constant.
+3. **Forcing direction onto symmetric relations**: if there's no causal story, an undirected MRF is the honest model.
 
 ## Key takeaways
 
@@ -142,5 +142,5 @@ A **CRF** is the discriminative cousin: it models $P(\mathbf{y} \mid \mathbf{x})
 
 ## Related concepts
 
-- [**Bayesian Networks**](/courses/graphical-models/01-bayesian-networks) — the directed counterpart
-- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — a tractable sequence model
+- [**Bayesian Networks**](/courses/graphical-models/01-bayesian-networks): the directed counterpart
+- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models): a tractable sequence model

@@ -19,9 +19,9 @@ The first split to internalise is that *storage* and *compute* are separate conc
 
 On the storage side, three layers do most of the work:
 
-- **Object storage** — S3, GCS, Azure Blob. Cheap (cents per GB-month), eventually-consistent, slow per-read but massively parallel. This is where the raw training data, model artefacts, and intermediate Parquet/ORC files live. It is the only layer that holds the *truth*; everything else is a derived view.
-- **Feature store** — Feast, Tecton, Hopsworks. A two-tier system: an *offline store* (warehouse-backed, used at training time, optimised for big columnar scans) and an *online store* (Redis/DynamoDB-backed, used at serving time, optimised for sub-millisecond key lookups). The store's job is to ensure the same feature transformation runs in both — train-serve skew (covered in *Deployment Pitfalls*) is what happens when this guarantee breaks.
-- **Model registry** — MLflow, SageMaker Model Registry, Vertex AI Model Registry. Stores trained model artefacts plus the metadata you need to govern them: training run id, dataset version, evaluation metrics, approval status, deployment stage (staging / canary / production). The registry is the thing CI/CD-for-models pipelines pull from.
+- **Object storage**: S3, GCS, Azure Blob. Cheap (cents per GB-month), eventually-consistent, slow per-read but massively parallel. This is where the raw training data, model artefacts, and intermediate Parquet/ORC files live. It is the only layer that holds the *truth*; everything else is a derived view.
+- **Feature store**: Feast, Tecton, Hopsworks. A two-tier system: an *offline store* (warehouse-backed, used at training time, optimised for big columnar scans) and an *online store* (Redis/DynamoDB-backed, used at serving time, optimised for sub-millisecond key lookups). The store's job is to ensure the same feature transformation runs in both — train-serve skew (covered in *Deployment Pitfalls*) is what happens when this guarantee breaks.
+- **Model registry**: MLflow, SageMaker Model Registry, Vertex AI Model Registry. Stores trained model artefacts plus the metadata you need to govern them: training run id, dataset version, evaluation metrics, approval status, deployment stage (staging / canary / production). The registry is the thing CI/CD-for-models pipelines pull from.
 
 On the compute side, the relevant axes are *kind* (CPU vs GPU vs accelerator), *availability* (on-demand vs spot/preemptible), and *elasticity* (fixed pool vs autoscaling). A typical mix: a small CPU pool for orchestration and lightweight transforms, a larger spot-CPU pool for batch ETL (savings of roughly 70 % over on-demand, in exchange for the right to be evicted at any moment), and a GPU pool — usually on-demand for training jobs that hold state across hours and on spot for inference replicas that can be replaced without losing work.
 
@@ -35,10 +35,10 @@ Reproducibility is the single most underrated property of an ML codebase. A bug 
 
 The standard layering, from coarsest to finest:
 
-- **`pip freeze` / `requirements.txt`** — captures the resolved version of every Python package. Necessary, not sufficient: it doesn't pin transitive system libraries (CUDA, libstdc++) and it doesn't pin the Python version itself.
-- **`pyproject.toml` + lockfile** (`poetry.lock`, `uv.lock`, `pdm.lock`) — captures *declared* top-level deps separately from the *resolved* full graph. The lockfile is what gives you bit-for-bit Python-package reproducibility; the `pyproject.toml` is what tells humans what the project actually depends on.
-- **Docker** — captures the OS, CUDA driver/runtime version, Python interpreter, and lockfile-resolved environment in a single hashed artefact. This is the level that survives "the CUDA team upgraded the cluster image last weekend."
-- **Dev containers** (VS Code devcontainer, GitHub Codespaces) — Docker plus an IDE configuration, so that a new contributor's first interaction is "open in container, hit run, the test passes." Reduces the onboarding cliff that kills momentum on real ML teams.
+- **`pip freeze` / `requirements.txt`**: captures the resolved version of every Python package. Necessary, not sufficient: it doesn't pin transitive system libraries (CUDA, libstdc++) and it doesn't pin the Python version itself.
+- **`pyproject.toml` + lockfile** (`poetry.lock`, `uv.lock`, `pdm.lock`): captures *declared* top-level deps separately from the *resolved* full graph. The lockfile is what gives you bit-for-bit Python-package reproducibility; the `pyproject.toml` is what tells humans what the project actually depends on.
+- **Docker**: captures the OS, CUDA driver/runtime version, Python interpreter, and lockfile-resolved environment in a single hashed artefact. This is the level that survives "the CUDA team upgraded the cluster image last weekend."
+- **Dev containers** (VS Code devcontainer, GitHub Codespaces): Docker plus an IDE configuration, so that a new contributor's first interaction is "open in container, hit run, the test passes." Reduces the onboarding cliff that kills momentum on real ML teams.
 
 Notebooks deserve their own paragraph. They are unbeatable for exploration and *terrible* for production because they hide cell execution order, fail silently on partially-run state, and produce diffs no human can review. The right pattern is: explore in a notebook, then *promote* the working code into a Python module under version control. Tools like `papermill` (parameterise a notebook and run it as a job) and `nbconvert` (strip the outputs for clean diffs) make this pipeline livable.
 
@@ -52,9 +52,9 @@ A GPU costs roughly $1.5–$30 an hour depending on tier, and a team of ten can 
 
 Three mechanisms do most of the work:
 
-- **Job queues** — Slurm, Kueue (Kubernetes), Ray Job submission. Users submit jobs; the queue places them onto idle resources subject to priority, fair-share between teams, and dependency ordering.
-- **Quotas** — per-team and per-user caps on total GPU-hours and concurrent jobs. The right default is "soft" caps that warn before blocking, plus a hard cap that blocks runaway spend.
-- **GPU sharing** — packing multiple small jobs onto one physical GPU. **MIG** (Multi-Instance GPU) on NVIDIA A100/H100 hardware-partitions a single GPU into up to 7 instances with isolated memory; **time-slicing** lets multiple processes share a GPU at the cost of context-switch overhead; **MPS** (Multi-Process Service) sits in between.
+- **Job queues**: Slurm, Kueue (Kubernetes), Ray Job submission. Users submit jobs; the queue places them onto idle resources subject to priority, fair-share between teams, and dependency ordering.
+- **Quotas**: per-team and per-user caps on total GPU-hours and concurrent jobs. The right default is "soft" caps that warn before blocking, plus a hard cap that blocks runaway spend.
+- **GPU sharing**: packing multiple small jobs onto one physical GPU. **MIG** (Multi-Instance GPU) on NVIDIA A100/H100 hardware-partitions a single GPU into up to 7 instances with isolated memory; **time-slicing** lets multiple processes share a GPU at the cost of context-switch overhead; **MPS** (Multi-Process Service) sits in between.
 
 Queueing theory gives a startlingly useful model for *why* a 90 %-utilised cluster feels slow. For an M/M/1 queue with arrival rate $\lambda$ and service rate $\mu$, define utilisation $\rho = \lambda / \mu$. Expected wait time in the queue (before a job starts) is
 
@@ -70,15 +70,15 @@ Once you have data, compute, and a way to share it, you need a thing that *runs*
 
 Three properties matter regardless of which orchestrator you pick:
 
-- **Idempotency** — running the same task twice with the same inputs produces the same outputs, no side effects. Without idempotency, retries are dangerous: a failed task that already wrote half its rows to the warehouse will double-count on retry.
-- **Retries with backoff** — transient failures (a network blip, a spot eviction) need automatic retry; deterministic failures (a malformed input) need to surface immediately. Exponential backoff with a cap, plus a small jitter, is the boring default.
-- **Backfills** — when you ship a fixed pipeline you usually want to *re-run* it over historical date partitions. A scheduler that can backfill a year of daily runs with one command saves a week of manual ops work.
+- **Idempotency**: running the same task twice with the same inputs produces the same outputs, no side effects. Without idempotency, retries are dangerous: a failed task that already wrote half its rows to the warehouse will double-count on retry.
+- **Retries with backoff**: transient failures (a network blip, a spot eviction) need automatic retry; deterministic failures (a malformed input) need to surface immediately. Exponential backoff with a cap, plus a small jitter, is the boring default.
+- **Backfills**: when you ship a fixed pipeline you usually want to *re-run* it over historical date partitions. A scheduler that can backfill a year of daily runs with one command saves a week of manual ops work.
 
 The current ecosystem has three batch-DAG schedulers in active use:
 
-- **Airflow** — the elder. Defines DAGs as Python files that the scheduler parses; mature, opinionated, the lingua franca of analytics teams. Showing its age around dynamic DAGs and local development; the upgrade path between major versions has historically been painful.
-- **Prefect** — Python-native, "negative engineering" framing (the framework handles failure modes so you don't write them). DAGs are inferred from function calls; the scheduler is hosted (Prefect Cloud) or self-hosted (Prefect Server). Friendlier dev loop, less battle-tested at extreme scale.
-- **Dagster** — assets-first. Instead of describing *tasks*, you describe the data assets you produce; dependencies between assets define the DAG. The cleanest model for data-heavy pipelines, with the steepest mental shift.
+- **Airflow**: the elder. Defines DAGs as Python files that the scheduler parses; mature, opinionated, the lingua franca of analytics teams. Showing its age around dynamic DAGs and local development; the upgrade path between major versions has historically been painful.
+- **Prefect**: Python-native, "negative engineering" framing (the framework handles failure modes so you don't write them). DAGs are inferred from function calls; the scheduler is hosted (Prefect Cloud) or self-hosted (Prefect Server). Friendlier dev loop, less battle-tested at extreme scale.
+- **Dagster**: assets-first. Instead of describing *tasks*, you describe the data assets you produce; dependencies between assets define the DAG. The cleanest model for data-heavy pipelines, with the steepest mental shift.
 
 For Kubernetes-native ML pipelines, two other tools dominate: **Argo Workflows** runs each step as a pod and is the substrate underneath **Kubeflow Pipelines**, which adds an ML-aware SDK on top (KFP DSL) and integrates with the rest of the Kubeflow stack (Katib for hyperparameter sweeps, KServe for inference). The Argo/Kubeflow path is what teams pick when they're already deep in Kubernetes; the Airflow/Prefect/Dagster path is what teams pick when their data plane is warehouse-first.
 
@@ -90,13 +90,13 @@ The single biggest reason to put a pipeline in an orchestrator instead of a `cro
 
 An "ML platform" (Vertex AI, SageMaker, Databricks, the in-house thing every large ML org eventually builds) is the union of the layers above plus the integrations that make them feel like one product. The layers, top to bottom:
 
-- **CI/CD for models** — Git push triggers a pipeline that retrains, evaluates against the live model, registers the new artefact, and gates promotion on metrics + manual approval.
-- **Experiment tracker** — every training run logs hyperparameters, metrics, system metadata, and links to the artefact in object storage. MLflow, W&B, Neptune.
-- **Model registry** — the curated set of model versions, each with a deployment stage and a lineage back to the run that produced it.
-- **Serving infrastructure** — the inference layer that pulls from the registry: batch (Spark, Beam) for offline scoring, online (Triton, KServe, vLLM for LLMs) for real-time.
-- **Feature store + offline data warehouse** — the data plane that both training and serving read from.
-- **Workflow orchestrator** — the scheduler that runs the DAGs that produce all of the above.
-- **Storage and compute** — the substrate everything else sits on.
+- **CI/CD for models**: Git push triggers a pipeline that retrains, evaluates against the live model, registers the new artefact, and gates promotion on metrics + manual approval.
+- **Experiment tracker**: every training run logs hyperparameters, metrics, system metadata, and links to the artefact in object storage. MLflow, W&B, Neptune.
+- **Model registry**: the curated set of model versions, each with a deployment stage and a lineage back to the run that produced it.
+- **Serving infrastructure**: the inference layer that pulls from the registry: batch (Spark, Beam) for offline scoring, online (Triton, KServe, vLLM for LLMs) for real-time.
+- **Feature store + offline data warehouse**: the data plane that both training and serving read from.
+- **Workflow orchestrator**: the scheduler that runs the DAGs that produce all of the above.
+- **Storage and compute**: the substrate everything else sits on.
 
 A team's first reflex should be to *integrate* rather than *build*. Most of these layers have credible managed offerings now; the value of building in-house is real only when your scale, security posture, or specialisation makes the off-the-shelf product a bad fit. The teams that go their own way too early typically discover, two years in, that they've built a worse copy of MLflow with a worse copy of Airflow on top of a worse copy of Argo.
 
@@ -127,8 +127,8 @@ A team's first reflex should be to *integrate* rather than *build*. Most of thes
 
 ## Related concepts
 
-- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking) — the tracker and the model registry are the parts of the platform that turn ad-hoc training scripts into a reproducible release process. This lesson is where the *rest* of the platform sits.
-- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — the serving layer of the ML platform. Whatever pattern you choose (batch, online, edge), the infrastructure described here is what gets the model from the registry to the serving fleet.
-- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — once the platform is running, monitoring is the feedback loop that tells you whether the pipelines, the data, and the models are healthy. The dashboard sits on top of the storage/compute substrate from this lesson.
-- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the data plane (warehouse, feature store) is the foundation of the ML platform. The orchestrator usually starts its work at the ETL boundary defined there.
-- [**Gradient Checkpointing**](/wiki/gradient-checkpointing) — the O(√L) activation-memory trade-off that lets deep models fit on the GPU
+- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking): the tracker and the model registry are the parts of the platform that turn ad-hoc training scripts into a reproducible release process. This lesson is where the *rest* of the platform sits.
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression): the serving layer of the ML platform. Whatever pattern you choose (batch, online, edge), the infrastructure described here is what gets the model from the registry to the serving fleet.
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability): once the platform is running, monitoring is the feedback loop that tells you whether the pipelines, the data, and the models are healthy. The dashboard sits on top of the storage/compute substrate from this lesson.
+- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals): the data plane (warehouse, feature store) is the foundation of the ML platform. The orchestrator usually starts its work at the ETL boundary defined there.
+- [**Gradient Checkpointing**](/wiki/gradient-checkpointing): the O(√L) activation-memory trade-off that lets deep models fit on the GPU

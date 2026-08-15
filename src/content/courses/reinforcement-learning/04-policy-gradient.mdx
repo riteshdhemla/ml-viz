@@ -36,7 +36,7 @@ $$
 
 Read it as: **increase the log-probability of actions, weighted by the return that followed them.** Good returns ($G_t$ large) pull those actions' probabilities up; bad returns push them down. No model of the environment, no value table required.
 
-## REINFORCE — the basic algorithm
+## REINFORCE: the basic algorithm
 
 The simplest policy-gradient method (Williams, 1992):
 
@@ -78,7 +78,7 @@ $$
 $$
 The best baseline is the value function $V(s)$, which gives the **advantage** $A(s,a) = G_t - V(s)$: "how much better than average was this action?"
 
-2. **Bootstrapping** — replace the full-episode return with a one-step estimate, just like TD learning.
+2. **Bootstrapping**: replace the full-episode return with a one-step estimate, just like TD learning.
 
 Combine both and you get **actor-critic**.
 
@@ -90,9 +90,9 @@ Combine both and you get **actor-critic**.
 
 **What to notice:**
 
-- **Frame 2 — where the variance comes from.** A single episode returns $G \approx 10.5$, so the update scales the score by ten, even though the *informative* part — how much better than average that action is — is only 0.38. The absolute level of $G$ carries none of the signal and all of the variance.
-- **Frame 5 — "doesn't bias the gradient" does not depend on choosing well.** Four baselines, including two deliberately wrong ones, all recover the exact gradient; only the variance changes (64.5 → 0.70 at $V$, 1.49 one unit away). Unbiasedness is free because $\mathbb{E}[\nabla\log\pi] = 0$ identically, so $\mathbb{E}[\nabla\log\pi \cdot b] = 0$ for *any* action-independent $b$.
-- **Frame 6 — $V$ is not actually the optimal baseline.** The variance-minimizing choice is $b^\star = \mathbb{E}[\lVert g\rVert^2 G]/\mathbb{E}[\lVert g\rVert^2]$, a gradient-weighted average of returns rather than the plain mean. It beats $V$ by only **1.3%**, though, against the 93× that $V$ already bought, which is why every textbook says $V$ and is right to.
+- **Frame 2: where the variance comes from.** A single episode returns $G \approx 10.5$, so the update scales the score by ten, even though the *informative* part — how much better than average that action is — is only 0.38. The absolute level of $G$ carries none of the signal and all of the variance.
+- **Frame 5: "doesn't bias the gradient" does not depend on choosing well.** Four baselines, including two deliberately wrong ones, all recover the exact gradient; only the variance changes (64.5 → 0.70 at $V$, 1.49 one unit away). Unbiasedness is free because $\mathbb{E}[\nabla\log\pi] = 0$ identically, so $\mathbb{E}[\nabla\log\pi \cdot b] = 0$ for *any* action-independent $b$.
+- **Frame 6: $V$ is not actually the optimal baseline.** The variance-minimizing choice is $b^\star = \mathbb{E}[\lVert g\rVert^2 G]/\mathbb{E}[\lVert g\rVert^2]$, a gradient-weighted average of returns rather than the plain mean. It beats $V$ by only **1.3%**, though, against the 93× that $V$ already bought, which is why every textbook says $V$ and is right to.
 
 The failure that does matter is different: a baseline depending on the **action** rather than the state. Setting $b(a) = \mathbb{E}[G \mid a]$ drives the expected gradient to essentially zero (norm $1.8\times10^{-3}$ against a true 0.229) — learning stops dead with no error raised. That is why the baseline above is written $b(s)$ and not $b(s,a)$, and why the actor-critic advantage below stays legitimate: $V$ is a function of the state alone.
 
@@ -116,7 +116,7 @@ $$
   The **actor** acts. The **critic** judges. The critic's TD error tells the actor "that action did better/worse than I expected from this state" — a low-variance learning signal that arrives every step instead of only at episode end. The actor adjusts; the critic sharpens its judgment. They improve together.
 </Callout>
 
-### Worked example — advantage sign
+### Worked example: advantage sign
 
 State value estimate $V(s) = 8$. The agent takes an action, gets $r = 1$, lands in $s'$ with $V(s') = 10$, $\gamma = 0.9$.
 
@@ -128,7 +128,7 @@ Advantage $A = 1 + 0.9\cdot 10 - 8 = 1 + 9 - 8 = +2$. Positive → the action di
 |--------|------|
 | **A2C / A3C** | Parallel actor-critic, synchronous/asynchronous |
 | **TRPO** | Limit policy change with a trust region |
-| **PPO** | Clipped objective — simple, robust, the default today |
+| **PPO** | Clipped objective: simple, robust, the default today |
 | **SAC / DDPG** | Off-policy actor-critic for continuous control |
 
 **PPO** (Proximal Policy Optimization) is the workhorse: it clips the policy update so each step can't move too far, giving stable training with little tuning. It's the RL algorithm used in **RLHF** to align large language models.
@@ -145,9 +145,9 @@ Advantage $A = 1 + 0.9\cdot 10 - 8 = 1 + 9 - 8 = +2$. Positive → the action di
 
 ## Common mistakes
 
-1. **No baseline** — plain REINFORCE has crippling variance; always subtract a baseline / use a critic.
-2. **Reusing old data on-policy** — policy gradient data is stale after one update (PPO's clip lets you reuse it a *few* times, not indefinitely).
-3. **Forgetting entropy regularization** — without it the policy collapses to deterministic too early and stops exploring.
+1. **No baseline**: plain REINFORCE has crippling variance; always subtract a baseline / use a critic.
+2. **Reusing old data on-policy**: policy gradient data is stale after one update (PPO's clip lets you reuse it a *few* times, not indefinitely).
+3. **Forgetting entropy regularization**: without it the policy collapses to deterministic too early and stops exploring.
 
 ## Key takeaways
 
@@ -158,8 +158,8 @@ Advantage $A = 1 + 0.9\cdot 10 - 8 = 1 + 9 - 8 = +2$. Positive → the action di
 
 ## Related concepts
 
-- [**Deep Q-Networks**](/courses/reinforcement-learning/03-deep-q-networks) — the value-based alternative
-- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes) — the objective being optimized
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the ascent that updates the policy
-- [**Multi-Agent Reinforcement Learning**](/wiki/multi-agent-rl) — Markov games, non-stationarity, and CTDE actor-critic methods
-- [**Imitation Learning**](/wiki/imitation-learning) — GAIL uses policy gradients to match an expert's occupancy measure
+- [**Deep Q-Networks**](/courses/reinforcement-learning/03-deep-q-networks): the value-based alternative
+- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes): the objective being optimized
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the ascent that updates the policy
+- [**Multi-Agent Reinforcement Learning**](/wiki/multi-agent-rl): Markov games, non-stationarity, and CTDE actor-critic methods
+- [**Imitation Learning**](/wiki/imitation-learning): GAIL uses policy gradients to match an expert's occupancy measure

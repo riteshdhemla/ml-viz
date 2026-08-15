@@ -13,7 +13,7 @@ estimatedMinutes: 12
 
 PPO-based RLHF needs a **value network** (critic) the same size as the policy, roughly doubling training memory, just to estimate how good a state is. **GRPO** (used to train DeepSeek-R1) removes the critic entirely: instead of learning a baseline, it samples a *group* of completions for the same prompt and uses the group's own reward statistics as the baseline. No value network, no GAE — just relative comparison within the group.
 
-## 1 — Sample a group of completions
+## 1: Sample a group of completions
 
 For each prompt $q$, sample $G$ completions from the current policy $\pi_\theta$:
 
@@ -23,7 +23,7 @@ $$
 
 Score each one with the reward function (a verifier for math/code, or a learned reward model): $r_1, r_2, \dots, r_G$.
 
-## 2 — Group-relative advantage
+## 2: Group-relative advantage
 
 Normalize each reward against the **group's own mean and standard deviation**. This is the "group relative" part, and it replaces the critic:
 
@@ -37,7 +37,7 @@ A completion is only "good" relative to its siblings answering the *same* prompt
   PPO's value network estimates $V(q)$ so the advantage $r - V(q)$ isolates how much better an action was than the *expected* outcome for that state. GRPO gets the same effect for free: $\text{mean}(r_1,\dots,r_G)$ **is** the empirical estimate of $V(q)$, computed from the group instead of learned. It costs $G\times$ more sampling per update but zero extra parameters or a second forward/backward pass through a critic network.
 </Callout>
 
-## 3 — Clipped surrogate objective, applied per token
+## 3: Clipped surrogate objective, applied per token
 
 Every token in completion $o_i$ shares that completion's advantage $\hat A_i$. Let $r_{i,t}(\theta) = \dfrac{\pi_\theta(o_{i,t} \mid q, o_{i,<t})}{\pi_{\theta_{\text{old}}}(o_{i,t} \mid q, o_{i,<t})}$ be the per-token probability ratio against the policy that generated the group. GRPO clips it exactly like PPO:
 
@@ -47,7 +47,7 @@ $$
 
 The clip prevents any single update from moving the policy too far from what generated the group — without it, one lucky high-reward sample could push $r_{i,t}$ to an extreme and destabilize training.
 
-## 4 — KL penalty against a frozen reference
+## 4: KL penalty against a frozen reference
 
 To stop the policy drifting into reward hacking (e.g. degenerate outputs that fool the verifier), GRPO subtracts a KL term against a frozen reference policy $\pi_{\text{ref}}$ (typically the SFT checkpoint before RL began):
 
@@ -87,6 +87,6 @@ Every token in the two correct completions gets pushed up (positive advantage); 
 
 ## Related concepts
 
-- [**Reasoning Models**](/courses/building-with-llms/07-reasoning-models) — where GRPO is used to train DeepSeek-R1-style chain-of-thought
-- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the value-network-based alternative GRPO simplifies
-- [**From Policy Gradient to RLHF**](/courses/reinforcement-learning/06-from-policy-gradient-to-rlhf) — the PPO clip objective GRPO reuses per-token
+- [**Reasoning Models**](/courses/building-with-llms/07-reasoning-models): where GRPO is used to train DeepSeek-R1-style chain-of-thought
+- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo): the value-network-based alternative GRPO simplifies
+- [**From Policy Gradient to RLHF**](/courses/reinforcement-learning/06-from-policy-gradient-to-rlhf): the PPO clip objective GRPO reuses per-token

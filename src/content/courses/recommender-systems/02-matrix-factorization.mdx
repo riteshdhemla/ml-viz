@@ -48,8 +48,8 @@ $$
 
 Two standard optimizers:
 
-- **SGD** — for each observed rating, take a gradient step on $\mathbf{p}_u$ and $\mathbf{q}_i$. Simple, scales to huge sparse data, the Netflix-Prize favorite.
-- **ALS (Alternating Least Squares)** — fix $\mathbf{Q}$ and solve for $\mathbf{P}$ in closed form (it's just ridge regression per user), then fix $\mathbf{P}$ and solve for $\mathbf{Q}$; alternate. Each half is convex and **parallelizes** beautifully — the choice for implicit feedback at scale (Spark MLlib).
+- **SGD**: for each observed rating, take a gradient step on $\mathbf{p}_u$ and $\mathbf{q}_i$. Simple, scales to huge sparse data, the Netflix-Prize favorite.
+- **ALS (Alternating Least Squares)**: fix $\mathbf{Q}$ and solve for $\mathbf{P}$ in closed form (it's just ridge regression per user), then fix $\mathbf{P}$ and solve for $\mathbf{Q}$; alternate. Each half is convex and **parallelizes** beautifully — the choice for implicit feedback at scale (Spark MLlib).
 
 <Callout type="info" title="Biases matter as much as factors">
   Real ratings are dominated by *who is rating* and *what is being rated*. Production models add bias terms: $\hat{R}_{ui} = \mu + b_u + b_i + \mathbf{p}_u^{\top}\mathbf{q}_i$, where $\mu$ is the global mean, $b_u$ a user's tendency to rate high/low, and $b_i$ an item's overall popularity. These biases often explain more variance than the latent factors themselves.
@@ -87,6 +87,6 @@ A low rank $k$ encodes an assumption: a few hidden tastes explain most of the ra
 
 ## Related concepts
 
-- [**SVD & Low-Rank Approximation**](/courses/linear-algebra/04-svd-and-low-rank) — the exact low-rank theory matrix factorization adapts
-- [**Deep & Two-Tower Recommenders**](/courses/recommender-systems/03-deep-and-two-tower) — the neural generalization that scales to billions of items
-- [**Regularization**](/courses/linear-regression/03-regularization) — the L2 penalty that keeps sparse-data factors from overfitting
+- [**SVD & Low-Rank Approximation**](/courses/linear-algebra/04-svd-and-low-rank): the exact low-rank theory matrix factorization adapts
+- [**Deep & Two-Tower Recommenders**](/courses/recommender-systems/03-deep-and-two-tower): the neural generalization that scales to billions of items
+- [**Regularization**](/courses/linear-regression/03-regularization): the L2 penalty that keeps sparse-data factors from overfitting

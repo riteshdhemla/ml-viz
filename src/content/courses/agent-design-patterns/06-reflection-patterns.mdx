@@ -32,9 +32,9 @@ Reflection exploits a well-documented asymmetry: **models are better at detectin
 
 **Self-Reflection** is the simplest reflection pattern: a single agent critiques and revises its own output. The loop has three phases:
 
-1. **Generate** — produce an initial draft $d_0$.
-2. **Critique** — evaluate $d_0$, producing a structured critique $c_0$ listing identified problems.
-3. **Revise** — incorporate $c_0$ to produce a revised draft $d_1$.
+1. **Generate**: produce an initial draft $d_0$.
+2. **Critique**: evaluate $d_0$, producing a structured critique $c_0$ listing identified problems.
+3. **Revise**: incorporate $c_0$ to produce a revised draft $d_1$.
 
 Repeat from step 2 until a stopping criterion is met.
 
@@ -56,9 +56,9 @@ The key insight is that **generation and critique use different sub-skills**. Wh
 | Force | Effect |
 |---|---|
 | **Latency** | Each generate-critique-revise cycle adds 2–3× the base generation time |
-| **Cost** | Proportional to iterations — 3 iterations ≈ 4–6× the single-pass cost |
+| **Cost** | Proportional to iterations: 3 iterations ≈ 4–6× the single-pass cost |
 | **Error reduction** | Strong for factual errors, reasoning gaps, and format inconsistencies |
-| **Independence** | None — the same model with the same biases critiques itself |
+| **Independence** | None: the same model with the same biases critiques itself |
 
 ### When to use Self-Reflection
 
@@ -83,7 +83,7 @@ Agent A → revises d₀ using c₀ → produces d₁
 (Optional: Agent B or Agent C reviews d₁ → repeat)
 ```
 
-### Why it works — independence and diversity
+### Why it works: independence and diversity
 
 Self-Reflection is bounded by the model's own blind spots. If Agent A has a systematic bias (a false belief baked in from training, a tendency to over-claim), the same bias will appear in both the generation and the critique. Agent A can't see what it can't see.
 
@@ -99,10 +99,10 @@ If Agent A and Agent B are different model checkpoints, different temperatures, 
 
 | Force | Effect |
 |---|---|
-| **Independence** | High — separate model or sampling path eliminates shared blind spots |
+| **Independence** | High: separate model or sampling path eliminates shared blind spots |
 | **Error diversity** | Catches errors that self-reflection misses |
 | **Coordination overhead** | Two agents must be orchestrated; messages passed between them |
-| **Cost** | Higher than self-reflection — two LLM calls per round minimum |
+| **Cost** | Higher than self-reflection: two LLM calls per round minimum |
 | **Latency** | Can be parallelised partially (B reviews while A drafts the next round) |
 
 ### When to use Cross-Reflection
@@ -130,8 +130,8 @@ Human Reflection is the gold standard for accuracy — humans can draw on world 
 
 | Force | Effect |
 |---|---|
-| **Accuracy** | Highest — humans catch subtle errors, ethical issues, context mismatches |
-| **Latency** | Unbounded — depends entirely on human response time |
+| **Accuracy** | Highest: humans catch subtle errors, ethical issues, context mismatches |
+| **Latency** | Unbounded: depends entirely on human response time |
 | **Throughput** | Limited by the number of human reviewers |
 | **Human overhead** | Requires trained reviewers for specialized domains |
 | **Irreversibility** | Only pattern that can reliably gate irreversible actions |
@@ -176,10 +176,10 @@ Most of the gain comes in the first 1–2 iterations. Beyond 3, the cost-benefit
 
 Rather than fixing the number of iterations, use one of these stopping rules:
 
-1. **Quality threshold** — stop when the critic scores the output above a target (e.g. "no major issues found").
-2. **Delta threshold** — stop when $\Delta q_n < \delta$ for a small $\delta$ (the critic finds only trivial issues).
-3. **Maximum iterations** — always set an upper bound $N_\text{max}$ to cap cost and prevent loops.
-4. **No new issues** — stop when the critique is empty or identical to the previous critique.
+1. **Quality threshold**: stop when the critic scores the output above a target (e.g. "no major issues found").
+2. **Delta threshold**: stop when $\Delta q_n < \delta$ for a small $\delta$ (the critic finds only trivial issues).
+3. **Maximum iterations**: always set an upper bound $N_\text{max}$ to cap cost and prevent loops.
+4. **No new issues**: stop when the critique is empty or identical to the previous critique.
 
 In production, combine rules 1 and 3: target quality plus a hard cap.
 
@@ -229,5 +229,5 @@ Patterns can be **composed**: a pipeline might use Self-Reflection for a first q
 
 ## Related concepts
 
-- [**Model Querying Patterns**](/courses/agent-design-patterns/05-model-querying-patterns) — single-pass generation, chain-of-thought, and tool-augmented querying that feed into the reflection loop
-- [**Multi-Agent Cooperation**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — how reflection patterns compose with orchestration, delegation, and specialization in larger agent systems
+- [**Model Querying Patterns**](/courses/agent-design-patterns/05-model-querying-patterns): single-pass generation, chain-of-thought, and tool-augmented querying that feed into the reflection loop
+- [**Multi-Agent Cooperation**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns): how reflection patterns compose with orchestration, delegation, and specialization in larger agent systems

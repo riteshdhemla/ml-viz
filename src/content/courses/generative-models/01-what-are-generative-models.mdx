@@ -21,8 +21,8 @@ Generative models flip the goal. They learn the **distribution of the data itsel
 
 | Approach | Learns | Example |
 |----------|--------|---------|
-| Discriminative | $P(y \mid x)$ — boundary between classes | Cat vs dog classifier |
-| Generative | $P(x)$ — what the data looks like | A model that draws new cats and dogs |
+| Discriminative | $P(y \mid x)$: boundary between classes | Cat vs dog classifier |
+| Generative | $P(x)$: what the data looks like | A model that draws new cats and dogs |
 
 <Callout type="tip" title="Intuition">
   A discriminative model learns to tell real from fake. A generative model learns to *be the forger* — it creates data so realistic that the discriminative model can't tell the difference.
@@ -63,15 +63,15 @@ With eight labels the generative model is nearly twice as accurate; by sixty the
 
 Try to directly model $P(x)$ or a tractable lower bound:
 
-- **VAEs** (Variational Autoencoders) — learn an approximate posterior over a latent space
-- **Normalizing Flows** — transform a simple distribution through invertible functions
+- **VAEs** (Variational Autoencoders): learn an approximate posterior over a latent space
+- **Normalizing Flows**: transform a simple distribution through invertible functions
 
 ### 2. Implicit density models
 
 Learn to *sample* from $P(x)$ without ever computing it directly:
 
-- **GANs** (Generative Adversarial Networks) — a generator fools a discriminator
-- **Diffusion Models** — iteratively denoise random noise into data
+- **GANs** (Generative Adversarial Networks): a generator fools a discriminator
+- **Diffusion Models**: iteratively denoise random noise into data
 
 ### 3. Autoregressive models
 
@@ -134,9 +134,9 @@ A GAN trained on this distribution can sample $x \sim p(x)$ but cannot compute $
 
 ## Common mistakes
 
-1. **Confusing discriminative and generative models** — a discriminative model learns $p(y|x)$; a generative model learns $p(x)$ or $p(x,y)$. Only generative models can produce new samples.
-2. **Misunderstanding latent spaces** — the latent vector $z$ is not the same as learned features in a discriminative model; it is a compressed stochastic representation, not a deterministic encoding.
-3. **Equating sampling with evaluating $p(x)$** — GANs can sample but cannot compute $p(x)$ explicitly; VAEs and diffusion models can (approximately); this distinction matters for density estimation tasks.
+1. **Confusing discriminative and generative models**: a discriminative model learns $p(y|x)$; a generative model learns $p(x)$ or $p(x,y)$. Only generative models can produce new samples.
+2. **Misunderstanding latent spaces**: the latent vector $z$ is not the same as learned features in a discriminative model; it is a compressed stochastic representation, not a deterministic encoding.
+3. **Equating sampling with evaluating $p(x)$**: GANs can sample but cannot compute $p(x)$ explicitly; VAEs and diffusion models can (approximately); this distinction matters for density estimation tasks.
 
 ## Key takeaways
 
@@ -147,6 +147,6 @@ A GAN trained on this distribution can sample $x \sim p(x)$ but cannot compute $
 
 ## Related concepts
 
-- [**Autoencoders**](/courses/generative-models/02-autoencoders) — the first step toward learned latent spaces
-- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — a classic explicit-density generative model
-- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the state-of-the-art generative family
+- [**Autoencoders**](/courses/generative-models/02-autoencoders): the first step toward learned latent spaces
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models): a classic explicit-density generative model
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models): the state-of-the-art generative family

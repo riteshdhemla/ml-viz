@@ -31,8 +31,8 @@ Pull representations of two augmented views of the *same* image together; push a
 
 <ContrastiveViz />
 
-- **SimCLR** — two random augmentations of each image form a positive pair; all other images in the batch are negatives. Uses a large batch (many negatives) and the InfoNCE loss.
-- **MoCo** — keeps a **momentum-updated** encoder and a queue of past embeddings as negatives, so you get many negatives without a huge batch.
+- **SimCLR**: two random augmentations of each image form a positive pair; all other images in the batch are negatives. Uses a large batch (many negatives) and the InfoNCE loss.
+- **MoCo**: keeps a **momentum-updated** encoder and a queue of past embeddings as negatives, so you get many negatives without a huge batch.
 
 $$
 \mathcal{L}_{\text{InfoNCE}} = -\log \frac{\exp(\text{sim}(\mathbf{z}_i, \mathbf{z}_j)/\tau)}{\sum_{k}\exp(\text{sim}(\mathbf{z}_i, \mathbf{z}_k)/\tau)}
@@ -46,8 +46,8 @@ $$
 
 Mask out part of the input and reconstruct it — no augmentations or negatives needed:
 
-- **MAE (Masked Autoencoder)** — mask ~75% of image patches, encode the visible ones, and reconstruct the missing pixels. The high mask ratio makes it a hard, meaningful task (and cheap, since the encoder only sees 25% of patches).
-- **BERT** — the same idea in NLP: mask ~15% of tokens, predict them. (Masked *language* modeling is the original masked-modeling success.)
+- **MAE (Masked Autoencoder)**: mask ~75% of image patches, encode the visible ones, and reconstruct the missing pixels. The high mask ratio makes it a hard, meaningful task (and cheap, since the encoder only sees 25% of patches).
+- **BERT**: the same idea in NLP: mask ~15% of tokens, predict them. (Masked *language* modeling is the original masked-modeling success.)
 
 Masked modeling is **generative** (predict content) where contrastive learning is **discriminative** (compare views); both yield strong, transferable features.
 
@@ -81,6 +81,6 @@ The reason SSL reshaped ML: it removes the labeling bottleneck, so training data
 
 ## Related concepts
 
-- [**Training Embedding Models**](/courses/nlp/07-training-embedding-models) — the contrastive/in-batch-negative objective in the text domain
-- [**Vision-Language Models**](/courses/computer-vision/04-vision-language-models) — CLIP, contrastive learning across image and text
-- [**Transfer Learning**](/courses/cnns/04-transfer-learning) — how the pretrained SSL representation is adapted to downstream tasks
+- [**Training Embedding Models**](/courses/nlp/07-training-embedding-models): the contrastive/in-batch-negative objective in the text domain
+- [**Vision-Language Models**](/courses/computer-vision/04-vision-language-models): CLIP, contrastive learning across image and text
+- [**Transfer Learning**](/courses/cnns/04-transfer-learning): how the pretrained SSL representation is adapted to downstream tasks

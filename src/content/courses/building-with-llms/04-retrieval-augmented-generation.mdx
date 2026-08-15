@@ -56,11 +56,11 @@ Retrieve (fast, top-50)  →  Rerank (accurate, keep top-5)  →  Generate
 
 ## Where RAG fails
 
-- **Retrieval miss** — the answer isn't in the top-$k$, so the model can't use it.
-- **Irrelevant context** — off-topic chunks distract the generator (the high-$k$ case above).
-- **Context ignored** — the model falls back on its parametric memory instead of the evidence.
-- **Stale index** — documents changed but the vectors weren't re-embedded.
-- **Lost in the middle** — relevant text buried in a very long context gets underweighted.
+- **Retrieval miss**: the answer isn't in the top-$k$, so the model can't use it.
+- **Irrelevant context**: off-topic chunks distract the generator (the high-$k$ case above).
+- **Context ignored**: the model falls back on its parametric memory instead of the evidence.
+- **Stale index**: documents changed but the vectors weren't re-embedded.
+- **Lost in the middle**: relevant text buried in a very long context gets underweighted.
 
 ## Evaluating RAG
 
@@ -79,8 +79,8 @@ Evaluate the two halves separately, because a bad answer could come from either:
 
 ## Common mistakes
 
-1. **No retrieval evaluation** — blaming the LLM for what was actually a retrieval miss.
-2. **One giant chunk per document** — destroys retrieval precision.
+1. **No retrieval evaluation**: blaming the LLM for what was actually a retrieval miss.
+2. **One giant chunk per document**: destroys retrieval precision.
 3. **Cranking $k$ up** to "be safe" — adds noise and cost, often *lowers* answer quality.
 4. **Never re-indexing** after the source documents change.
 
@@ -93,7 +93,7 @@ Evaluate the two halves separately, because a bad answer could come from either:
 
 ## Related concepts
 
-- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the retrieval engine RAG depends on
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — retrieval as one tool an agent can call
-- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the ANN index (IVF/HNSW/PQ) that makes retrieval fast at scale
-- [**BM25: Lexical Ranking**](/wiki/bm25-ranking) — the keyword-overlap retriever that forms the sparse half of hybrid RAG
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search): the retrieval engine RAG depends on
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): retrieval as one tool an agent can call
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases): the ANN index (IVF/HNSW/PQ) that makes retrieval fast at scale
+- [**BM25: Lexical Ranking**](/wiki/bm25-ranking): the keyword-overlap retriever that forms the sparse half of hybrid RAG

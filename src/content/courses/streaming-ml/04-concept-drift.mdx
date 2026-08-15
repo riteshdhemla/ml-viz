@@ -19,16 +19,16 @@ This is the exact failure the site's running `daily-demand` model keeps hitting.
 
 Write the joint distribution the stream is drawn from at time $t$ as $P_t(X, Y) = P_t(X)\,P_t(Y \mid X)$. Drift is any change in $P_t$ over time, and it comes in distinct flavours that call for different responses:
 
-- **Virtual drift / covariate shift** — $P(X)$ changes but $P(Y \mid X)$ does not. The input distribution moves (new users, new regions) yet the *decision boundary* is still correct. Often you can tolerate this.
-- **Real / concept drift** — $P(Y \mid X)$ changes. The relationship between features and label is different now; the old decision boundary is *wrong*. This is the dangerous one.
-- **Label / prior drift** — $P(Y)$ changes (e.g. the base rate of fraud rises).
+- **Virtual drift / covariate shift**: $P(X)$ changes but $P(Y \mid X)$ does not. The input distribution moves (new users, new regions) yet the *decision boundary* is still correct. Often you can tolerate this.
+- **Real / concept drift**: $P(Y \mid X)$ changes. The relationship between features and label is different now; the old decision boundary is *wrong*. This is the dangerous one.
+- **Label / prior drift**: $P(Y)$ changes (e.g. the base rate of fraud rises).
 
 Drift also has a **temporal shape**:
 
-- **Sudden** — an abrupt switch (a policy change, a sensor swap).
-- **Gradual** — the new concept slowly displaces the old.
-- **Incremental** — a continuous slow morph.
-- **Recurring** — old concepts return (weekday vs weekend, seasonal).
+- **Sudden**: an abrupt switch (a policy change, a sensor swap).
+- **Gradual**: the new concept slowly displaces the old.
+- **Incremental**: a continuous slow morph.
+- **Recurring**: old concepts return (weekday vs weekend, seasonal).
 
 <Callout type="warning" title="Drift ≠ noise, and covariate shift ≠ concept drift">
 The hard part of detection is distinguishing a genuine change in the concept from ordinary sampling noise. And a spike in $P(X)$ alone (covariate shift) may need no action, while a change in $P(Y\mid X)$ demands retraining. Monitoring input statistics is not enough. You have to watch the model's **error** on labelled feedback.
@@ -38,7 +38,7 @@ The hard part of detection is distinguishing a genuine change in the concept fro
 
 Detectors watch a signal (usually the model's streaming error rate) and raise an alarm when it changes more than chance allows.
 
-### DDM — Drift Detection Method
+### DDM: Drift Detection Method
 
 DDM tracks the online error rate $p_t$ and its standard deviation $s_t = \sqrt{p_t(1-p_t)/t}$. For a stationary concept a well-fit classifier's error should not grow, so DDM records the minimum $p_{\min} + s_{\min}$ seen so far and flags:
 
@@ -47,7 +47,7 @@ DDM tracks the online error rate $p_t$ and its standard deviation $s_t = \sqrt{p
 
 The $2\sigma$/$3\sigma$ bands come straight from a normal approximation to the error rate.
 
-### ADWIN — Adaptive Windowing
+### ADWIN: Adaptive Windowing
 
 ADWIN keeps a window $W$ of recent values and asks: is there a split of $W$ into an older part $W_0$ and a newer part $W_1$ whose means differ by more than chance? It drops the old part exactly when
 
@@ -115,6 +115,6 @@ for x, y in stream:                 # one pass over an evolving stream
 
 ## Related concepts
 
-- [**Online Learning & Regret**](/courses/streaming-ml/03-online-learning) — the incremental learners that track a moving concept
-- [**Streaming ML in Production**](/courses/streaming-ml/05-streaming-ml-in-production) — monitoring and alerting on drift in a live system
-- [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — the batch trees Hoeffding trees stream-ify
+- [**Online Learning & Regret**](/courses/streaming-ml/03-online-learning): the incremental learners that track a moving concept
+- [**Streaming ML in Production**](/courses/streaming-ml/05-streaming-ml-in-production): monitoring and alerting on drift in a live system
+- [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees): the batch trees Hoeffding trees stream-ify

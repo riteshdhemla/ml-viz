@@ -71,7 +71,7 @@ The diagram below animates a single LSTM cell — step through the sequence to w
 
 <LSTMGateViz />
 
-### Worked example — the forget gate in action
+### Worked example: the forget gate in action
 
 Imagine a single cell tracking grammatical subject *number* (singular vs plural) while reading "The **keys** to the cabinet ...". At the word "keys" the input gate writes "plural" to the cell. As irrelevant words ("to", "the", "cabinet") stream past, the forget gate stays near 1 (**preserving** "plural"), so that many steps later the model conjugates "**are** on the table," not "is." A vanilla RNN would have forgotten the subject by then.
 
@@ -90,7 +90,7 @@ Let's run **one** timestep of a scalar LSTM ($D = 1$ input, $H = 1$ hidden) with
 | Candidate $\tilde{c}$ | 0 | 1 | 0 |
 | Output $o$ | 0 | 1 | 0 |
 
-**Step 1 — pre-activations** (each is $W_h h_{t-1} + W_x x_t + b$):
+**Step 1: pre-activations** (each is $W_h h_{t-1} + W_x x_t + b$):
 
 $$
 z_f = 0\cdot 0 + 0\cdot 1 + 2 = 2,\quad
@@ -99,7 +99,7 @@ z_{\tilde c} = 1,\quad
 z_o = 1
 $$
 
-**Step 2 — apply the nonlinearities** ($\sigma$ on the gates, $\tanh$ on the candidate):
+**Step 2: apply the nonlinearities** ($\sigma$ on the gates, $\tanh$ on the candidate):
 
 $$
 \begin{aligned}
@@ -110,7 +110,7 @@ o_t &= \sigma(1) \approx 0.731
 \end{aligned}
 $$
 
-**Step 3 — update the cell state** (the additive rule):
+**Step 3: update the cell state** (the additive rule):
 
 $$
 c_t = f_t\, c_{t-1} + i_t\, \tilde{c}_t
@@ -240,9 +240,9 @@ Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mat
 
 ## Common mistakes
 
-1. **Initializing the forget-gate bias to 0** — set $\mathbf{b}_f$ to **+1 or +2** so the cell defaults to *remembering* early in training. This is a well-known practical trick.
+1. **Initializing the forget-gate bias to 0**: set $\mathbf{b}_f$ to **+1 or +2** so the cell defaults to *remembering* early in training. This is a well-known practical trick.
 2. **Stacking too many layers** on small data — 1–2 layers is usually enough; more overfits.
-3. **Reaching for an LSTM when attention is better** — for long documents, Transformers (next course) generally beat any RNN. LSTMs shine on small data and streaming.
+3. **Reaching for an LSTM when attention is better**: for long documents, Transformers (next course) generally beat any RNN. LSTMs shine on small data and streaming.
 
 ## Key takeaways
 
@@ -253,5 +253,5 @@ Compare with the vanilla RNN, where every step multiplies by $W_{hh}^\top \,\mat
 
 ## Related concepts
 
-- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — the problem gates were invented to solve
-- [**Self-Attention**](/courses/transformers/01-self-attention) — what largely superseded LSTMs for long sequences
+- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient): the problem gates were invented to solve
+- [**Self-Attention**](/courses/transformers/01-self-attention): what largely superseded LSTMs for long sequences

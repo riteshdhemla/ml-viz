@@ -15,7 +15,7 @@ Every optimizer answers the same question — *given the gradient, how do I upda
 
 Throughout, $\theta$ are the parameters, $g_t = \nabla_\theta L(\theta_t)$ is the gradient at step $t$, and $\eta$ is the learning rate.
 
-## SGD — the baseline
+## SGD: the baseline
 
 Stochastic gradient descent takes one step downhill per mini-batch:
 
@@ -25,7 +25,7 @@ $$
 
 Simple, memory-free, and with a good learning-rate schedule it generalizes excellently — well-tuned SGD with momentum still wins some vision benchmarks. Its weaknesses motivate everything that follows: it crawls through **ravines** (steep in one direction, flat in another), treats every parameter with the same step size, and is sensitive to the learning rate.
 
-## Momentum — remember the direction
+## Momentum: remember the direction
 
 Accumulate a running **velocity** $v$ of past gradients so consistent directions build speed and oscillations cancel:
 
@@ -37,7 +37,7 @@ with momentum coefficient $\mu \approx 0.9$. In a ravine, the back-and-forth com
 
 **Nesterov (NAG)** evaluates the gradient at the *look-ahead* point $\theta_t - \eta\mu v_t$ rather than at $\theta_t$. By "peeking" where momentum is about to carry it, it corrects overshoot a step earlier and converges slightly faster.
 
-## The adaptive family — a per-parameter step size
+## The adaptive family: a per-parameter step size
 
 The next idea: scale each parameter's step by its own gradient history, so rarely-active features get large steps and frequently-updated ones get small steps.
 
@@ -59,7 +59,7 @@ $$
 
 with $\rho \approx 0.9$. The average forgets old gradients, so the effective rate stops shrinking and training continues. **Adadelta** is a close cousin that also removes the need to set $\eta$ at all by tracking a second moving average of the updates.
 
-## Adam — momentum meets adaptivity
+## Adam: momentum meets adaptivity
 
 **Adam** combines momentum (first moment) and RMSprop (second moment), each as an exponential moving average:
 
@@ -80,7 +80,7 @@ Defaults $\beta_1=0.9$, $\beta_2=0.999$, $\epsilon=10^{-8}$ work across a huge r
   At $t=1$ with $\beta_2=0.999$, the raw second moment is $v_1 = 0.001\,g_1^2$ — about 1000× too small, which would make the first step enormous. The correction divides by $1-\beta_2^t = 0.001$, restoring the right scale. The factors $1-\beta_1^t$ and $1-\beta_2^t$ both $\to 1$ as $t$ grows, so bias correction only affects the opening steps — exactly where it is needed.
 </Callout>
 
-### AdamW — decoupled weight decay
+### AdamW: decoupled weight decay
 Standard Adam implements L2 regularization by adding $\lambda\theta$ to the gradient, but the adaptive denominator $\sqrt{\hat v_t}$ then *scales the regularization unevenly* across parameters. **AdamW** decouples weight decay from the gradient step, applying it directly to the weights:
 
 $$
@@ -98,7 +98,7 @@ This restores proper regularization and is the **standard optimizer for training
 | Adagrad | sum of $g^2$ | ✓ | good for sparse data; **rate decays to zero** |
 | RMSprop | EMA of $g^2$ | ✓ | fixes Adagrad's stall |
 | Adam | EMA of $g$ and $g^2$ | ✓ | robust default, fast convergence |
-| AdamW | EMA of $g$ and $g^2$ | ✓ | Adam + correct weight decay — transformer default |
+| AdamW | EMA of $g$ and $g^2$ | ✓ | Adam + correct weight decay: transformer default |
 
 ## When each fails
 
@@ -112,7 +112,7 @@ This restores proper regularization and is the **standard optimizer for training
 
 ## Related concepts
 
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the base update and the ravine problem these optimizers solve
-- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization) — gradients, curvature, and why per-parameter scaling helps
-- [**Learning Rate Schedules**](/wiki/learning-rate-schedules) — the schedule that sits on top of any optimizer; warmup is essential for Adam
-- [**Newton's Method**](/wiki/newtons-method) — the second-order ideal these first-order methods cheaply approximate
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the base update and the ravine problem these optimizers solve
+- [**Multivariable Optimization**](/courses/calculus-for-ml/03-multivariable-optimization): gradients, curvature, and why per-parameter scaling helps
+- [**Learning Rate Schedules**](/wiki/learning-rate-schedules): the schedule that sits on top of any optimizer; warmup is essential for Adam
+- [**Newton's Method**](/wiki/newtons-method): the second-order ideal these first-order methods cheaply approximate

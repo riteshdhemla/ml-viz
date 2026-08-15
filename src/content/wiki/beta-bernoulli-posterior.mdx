@@ -25,13 +25,13 @@ where $B(\alpha,\beta) = \Gamma(\alpha)\Gamma(\beta)/\Gamma(\alpha+\beta)$ is th
 
 ## Deriving the posterior in five steps
 
-**Step 1 — write the likelihood.** For $n$ independent flips with $k$ heads and $n-k$ tails:
+**Step 1: write the likelihood.** For $n$ independent flips with $k$ heads and $n-k$ tails:
 
 $$
 p(\mathcal{D}\mid p) = \prod_{i=1}^n p^{x_i}(1-p)^{1-x_i} = p^k(1-p)^{n-k}
 $$
 
-**Step 2 — write the prior.**
+**Step 2: write the prior.**
 
 $$
 p(p) \;\propto\; p^{\alpha-1}(1-p)^{\beta-1}
@@ -39,19 +39,19 @@ $$
 
 (Dropping the normalizing constant $1/B(\alpha,\beta)$ since it does not contain $p$.)
 
-**Step 3 — multiply (unnormalized Bayes).**
+**Step 3: multiply (unnormalized Bayes).**
 
 $$
 p(p\mid\mathcal{D}) \;\propto\; \underbrace{p^k(1-p)^{n-k}}_{\text{likelihood}} \cdot \underbrace{p^{\alpha-1}(1-p)^{\beta-1}}_{\text{prior}}
 $$
 
-**Step 4 — collect exponents.** Add the powers of $p$ and of $(1-p)$ separately:
+**Step 4: collect exponents.** Add the powers of $p$ and of $(1-p)$ separately:
 
 $$
 p(p\mid\mathcal{D}) \;\propto\; p^{(\alpha+k)-1}\,(1-p)^{(\beta+n-k)-1}
 $$
 
-**Step 5 — recognize the shape.** This is exactly the kernel of a $\text{Beta}(\alpha+k,\;\beta+n-k)$ density. Since a probability distribution is uniquely determined by its kernel, the normalizing constant must be $B(\alpha+k,\;\beta+n-k)$, and therefore:
+**Step 5: recognize the shape.** This is exactly the kernel of a $\text{Beta}(\alpha+k,\;\beta+n-k)$ density. Since a probability distribution is uniquely determined by its kernel, the normalizing constant must be $B(\alpha+k,\;\beta+n-k)$, and therefore:
 
 $$
 \boxed{\;p\mid\mathcal{D}\;\sim\;\text{Beta}(\alpha+k,\;\beta+n-k)\;}
@@ -149,10 +149,10 @@ plt.show()
 
 | Prior $\text{Beta}(\alpha,\beta)$ | Meaning |
 |:---------------------------------:|:-------:|
-| $\text{Beta}(1,1)$ | Uniform — complete ignorance |
+| $\text{Beta}(1,1)$ | Uniform: complete ignorance |
 | $\text{Beta}(2,2)$ | Weak belief in fairness |
 | $\text{Beta}(10,10)$ | Strong belief in fairness |
-| $\text{Beta}(0.5,0.5)$ | U-shaped — suspect extreme bias |
+| $\text{Beta}(0.5,0.5)$ | U-shaped: suspect extreme bias |
 | $\text{Beta}(k+1, n-k+1)$ | Equivalent to $n$ observations with Laplace smoothing |
 
 ## Connection to MAP estimation
@@ -167,6 +167,6 @@ With the uniform prior $\text{Beta}(1,1)$: $\hat{p}_\text{MAP} = k/n = \hat{p}_\
 
 ## Related concepts
 
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the full lesson: Bayes' theorem, MAP, L2-regularization connection
-- [**MLE for the Gaussian**](/wiki/mle-gaussian) — the frequentist alternative (no prior)
-- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — Beta, Bernoulli, and the exponential family
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): the full lesson: Bayes' theorem, MAP, L2-regularization connection
+- [**MLE for the Gaussian**](/wiki/mle-gaussian): the frequentist alternative (no prior)
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions): Beta, Bernoulli, and the exponential family

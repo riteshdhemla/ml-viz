@@ -100,7 +100,7 @@ This product is the source of both vanishing and exploding gradients. See the co
 
 Scalar RNN with $W_{hh} = 0.8$, $W_{xh} = 0.5$, sequence $\mathbf{x} = [1, 0, 1]$, $h_0 = 0$.
 
-**Step 1 — forward pass.** Compute pre-activations, hidden states, and $\tanh'$:
+**Step 1: forward pass.** Compute pre-activations, hidden states, and $\tanh'$:
 
 | $t$ | $a_t = 0.8\,h_{t-1} + 0.5\,x_t$ | $h_t = \tanh(a_t)$ | $\tanh'(a_t) = 1 - h_t^2$ |
 |:---:|:--------------------------------:|:-------------------:|:-------------------------:|
@@ -108,7 +108,7 @@ Scalar RNN with $W_{hh} = 0.8$, $W_{xh} = 0.5$, sequence $\mathbf{x} = [1, 0, 1]
 | 2 | $0.8(0.462) + 0.5(0) = 0.370$ | $0.354$ | $0.875$ |
 | 3 | $0.8(0.354) + 0.5(1) = 0.783$ | $0.655$ | $0.571$ |
 
-**Step 2 — BPTT from $T=3$ back to $k=1$.** Starting from $\partial \mathcal{L}_3 / \partial h_3 = 1$:
+**Step 2: BPTT from $T=3$ back to $k=1$.** Starting from $\partial \mathcal{L}_3 / \partial h_3 = 1$:
 
 $$
 \frac{\partial h_3}{\partial h_2} = \tanh'(a_3) \cdot W_{hh} = 0.571 \times 0.8 = 0.457
@@ -193,6 +193,6 @@ hidden = hidden.detach()  # keep the value, drop the gradient history
 
 ## Related concepts
 
-- [**Vanishing & Exploding Gradients**](/wiki/vanishing-gradient-analysis) — spectral analysis of the Jacobian product
-- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — gated cells that maintain a near-unit Jacobian over long gaps
-- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation) — the single-step rule that BPTT extends
+- [**Vanishing & Exploding Gradients**](/wiki/vanishing-gradient-analysis): spectral analysis of the Jacobian product
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru): gated cells that maintain a near-unit Jacobian over long gaps
+- [**Chain Rule & Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation): the single-step rule that BPTT extends

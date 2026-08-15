@@ -23,10 +23,10 @@ A backend service has a single contract: respond to requests on time, with the r
 
 The fix is to monitor at four layers, top to bottom:
 
-- **System** — latency, error rate, throughput, saturation. The classic SRE metrics. Tells you "the box is up and responding."
-- **Input** — feature distributions, missingness rates, per-feature value ranges. Tells you "the data we're scoring still looks like the data we trained on."
-- **Output** — prediction distribution, prediction confidence, per-class prediction rates. Tells you "the model's view of the world hasn't shifted."
-- **Outcome** — accuracy / precision / recall / business KPI, once labels arrive (from delayed feedback, from human review, or from explicit ground truth). Tells you "the predictions are still right."
+- **System**: latency, error rate, throughput, saturation. The classic SRE metrics. Tells you "the box is up and responding."
+- **Input**: feature distributions, missingness rates, per-feature value ranges. Tells you "the data we're scoring still looks like the data we trained on."
+- **Output**: prediction distribution, prediction confidence, per-class prediction rates. Tells you "the model's view of the world hasn't shifted."
+- **Outcome**: accuracy / precision / recall / business KPI, once labels arrive (from delayed feedback, from human review, or from explicit ground truth). Tells you "the predictions are still right."
 
 You catch different failure modes at each layer. A bad code deploy shows up at the system layer. An upstream feature-pipeline bug shows up at the input layer. A retrain that mis-calibrated the model shows up at the output layer. A genuine concept shift shows up at the outcome layer. Monitoring only one layer is the most common reason teams discover, in production, that a problem has been there for a month.
 
@@ -38,10 +38,10 @@ Service-level dashboards can be entirely green while a model is silently degrade
 
 The classic SRE quartet, applied to a model server:
 
-- **Latency** — measured as percentiles, not means. The mean lies: a service with 99 % fast requests and 1 % timeouts has an excellent mean and a terrible user experience. Report p50 (typical), p95 (slow but tolerable), p99 (where users feel the pain). For LLMs, also report **time-to-first-token** and **inter-token latency** — total latency is dominated by output length and doesn't tell you whether the system felt responsive.
-- **Error rate** — 5xx, timeouts, schema-validation failures. Track the *rate*, not the absolute count, so the metric is independent of traffic volume.
-- **Throughput** — QPS (queries per second). For LLMs, also tokens-per-second per replica — useful for capacity planning since latency budget and throughput are usually traded off.
-- **Saturation** — GPU memory, GPU utilization, queue depth, batch fullness. Saturation predicts *future* latency: a model server at 95 % memory utilization will start swapping and tail-latency will explode before throughput dies. Alert here *before* the latency-rate alert fires.
+- **Latency**: measured as percentiles, not means. The mean lies: a service with 99 % fast requests and 1 % timeouts has an excellent mean and a terrible user experience. Report p50 (typical), p95 (slow but tolerable), p99 (where users feel the pain). For LLMs, also report **time-to-first-token** and **inter-token latency** — total latency is dominated by output length and doesn't tell you whether the system felt responsive.
+- **Error rate**: 5xx, timeouts, schema-validation failures. Track the *rate*, not the absolute count, so the metric is independent of traffic volume.
+- **Throughput**: QPS (queries per second). For LLMs, also tokens-per-second per replica — useful for capacity planning since latency budget and throughput are usually traded off.
+- **Saturation**: GPU memory, GPU utilization, queue depth, batch fullness. Saturation predicts *future* latency: a model server at 95 % memory utilization will start swapping and tail-latency will explode before throughput dies. Alert here *before* the latency-rate alert fires.
 
 Two mnemonics worth memorising:
 
@@ -86,9 +86,9 @@ Even when inputs look stable, the model's *output distribution* can shift — us
 
 The gold standard is to watch real performance metrics (accuracy, precision/recall, AUC, business KPI) on a rolling window. This only works when **labels arrive in time** for the window to be useful:
 
-- **Online feedback** — clicks on a recommendation, fraud reversals, chargebacks. Labels arrive within minutes to hours. Roll the window over the last $N$ minutes and you can detect a 1 % accuracy drop in close to real time.
-- **Delayed feedback** — medical outcomes, loan defaults. Labels arrive months later. Real-performance monitoring works but lags badly; you must lean harder on input/output drift as leading indicators in the meantime.
-- **No feedback** — purely autonomous decisions with no ground truth. You can't measure accuracy; you instrument human review on a sample, or run scheduled re-labeling jobs to sample the held-out distribution.
+- **Online feedback**: clicks on a recommendation, fraud reversals, chargebacks. Labels arrive within minutes to hours. Roll the window over the last $N$ minutes and you can detect a 1 % accuracy drop in close to real time.
+- **Delayed feedback**: medical outcomes, loan defaults. Labels arrive months later. Real-performance monitoring works but lags badly; you must lean harder on input/output drift as leading indicators in the meantime.
+- **No feedback**: purely autonomous decisions with no ground truth. You can't measure accuracy; you instrument human review on a sample, or run scheduled re-labeling jobs to sample the held-out distribution.
 
 For the delayed case, **counterfactual logging** is the technique to know. Under canary or shadow traffic, log not just the candidate's prediction but also the *baseline* model's prediction on the same input. Months later, when labels arrive, you can compare both — the candidate's regression (if any) is now attributable to the *model*, not to a confound in the traffic.
 
@@ -108,11 +108,11 @@ A noisy alert that fires 50 times a week (false positives, transient spikes, thi
 
 The dashboard for a production model usually has five rows, top to bottom:
 
-1. **System** — RED metrics, USE on the GPU pool. Catches deploys, infra incidents, saturation.
-2. **Input drift** — PSI heatmap over the top-$N$ features. Catches upstream pipeline regressions and genuine distribution shift.
-3. **Output drift** — mean prediction or per-class prediction rate, plus the ECE on a reliability diagram. Catches mis-calibrated retrains and silent concept drift.
-4. **Outcome** — real accuracy / business KPI on a rolling window, once labels arrive. The ground-truth signal.
-5. **SLO error budget burn** — single number per SLO. The burn rate alerts page off of this.
+1. **System**: RED metrics, USE on the GPU pool. Catches deploys, infra incidents, saturation.
+2. **Input drift**: PSI heatmap over the top-$N$ features. Catches upstream pipeline regressions and genuine distribution shift.
+3. **Output drift**: mean prediction or per-class prediction rate, plus the ECE on a reliability diagram. Catches mis-calibrated retrains and silent concept drift.
+4. **Outcome**: real accuracy / business KPI on a rolling window, once labels arrive. The ground-truth signal.
+5. **SLO error budget burn**: single number per SLO. The burn rate alerts page off of this.
 
 Each row catches a different failure mode. Catching all of them is what "production-grade ML monitoring" actually means.
 
@@ -143,8 +143,8 @@ Each row catches a different failure mode. Catching all of them is what "product
 
 ## Related concepts
 
-- [**Continual Learning & Testing in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — drift detection in that lesson is framed as a *trigger* for retraining. Here it's one of several monitored signals; the alerting and dashboard infrastructure below sits underneath that retraining loop.
-- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design) — the systems-design view that asks "what happens when something goes wrong." Monitoring is the engineered answer.
-- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — once a quantized / distilled model is serving, its calibration and tail-latency profile become first-class monitoring targets.
-- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — the metrics you alert on in the outcome layer are the metrics from that lesson, on a rolling window.
-- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry) — the OTel and GenAI-semantic-convention tracing stack for LLM systems
+- [**Continual Learning & Testing in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production): drift detection in that lesson is framed as a *trigger* for retraining. Here it's one of several monitored signals; the alerting and dashboard infrastructure below sits underneath that retraining loop.
+- [**ML Systems Design & Problem Framing**](/courses/ml-in-practice/04-ml-systems-design): the systems-design view that asks "what happens when something goes wrong." Monitoring is the engineered answer.
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression): once a quantized / distilled model is serving, its calibration and tail-latency profile become first-class monitoring targets.
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics): the metrics you alert on in the outcome layer are the metrics from that lesson, on a rolling window.
+- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry): the OTel and GenAI-semantic-convention tracing stack for LLM systems

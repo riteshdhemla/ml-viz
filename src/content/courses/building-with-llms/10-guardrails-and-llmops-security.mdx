@@ -17,9 +17,9 @@ An LLM in production is an untrusted-input machine wired to your tools, your dat
 
 A guardrail is a check that runs *before* the model sees an input or *before* a user (or tool) sees an output:
 
-- **Input guardrails** — screen the incoming prompt: prompt-injection detection, PII/secret redaction, topic and policy filters, and length/rate limits.
-- **Output guardrails** — screen the response: toxicity and policy classifiers, **schema/format validation**, PII leak detection, and **groundedness** checks against retrieved sources.
-- **Action guardrails** — gate what the model can *do*: tool allow-lists, spend/step ceilings, and human confirmation for irreversible actions.
+- **Input guardrails**: screen the incoming prompt: prompt-injection detection, PII/secret redaction, topic and policy filters, and length/rate limits.
+- **Output guardrails**: screen the response: toxicity and policy classifiers, **schema/format validation**, PII leak detection, and **groundedness** checks against retrieved sources.
+- **Action guardrails**: gate what the model can *do*: tool allow-lists, spend/step ceilings, and human confirmation for irreversible actions.
 
 <Callout type="tip" title="Cheap deterministic checks first, models second">
   Order guardrails by cost: run regexes, allow-lists, and schema validators before model-based classifiers, and short-circuit on the first failure. Deterministic checks are faster, cheaper, and more reliable than asking another model "is this safe?" — reserve model-based guardrails for the judgements regexes can't make.
@@ -29,10 +29,10 @@ A guardrail is a check that runs *before* the model sees an input or *before* a 
 
 The OWASP **Top 10 for LLM Applications** is the canonical threat checklist. The load-bearing ones:
 
-- **LLM01 Prompt Injection** — malicious instructions override your system prompt. **Direct** ("ignore your instructions…") or, more dangerously, **indirect**: instructions hidden in a web page, email, or document the model *reads*, which then hijack its tools.
-- **LLM02 Sensitive Information Disclosure** — the model reveals secrets, PII, or other users' data from its context or training.
-- **LLM06 Excessive Agency** — the model is granted too much capability/autonomy/permission, so a single bad decision causes real damage.
-- **LLM07 System Prompt Leakage** — the system prompt (and any secrets mistakenly placed in it) is extracted by the user.
+- **LLM01 Prompt Injection**: malicious instructions override your system prompt. **Direct** ("ignore your instructions…") or, more dangerously, **indirect**: instructions hidden in a web page, email, or document the model *reads*, which then hijack its tools.
+- **LLM02 Sensitive Information Disclosure**: the model reveals secrets, PII, or other users' data from its context or training.
+- **LLM06 Excessive Agency**: the model is granted too much capability/autonomy/permission, so a single bad decision causes real damage.
+- **LLM07 System Prompt Leakage**: the system prompt (and any secrets mistakenly placed in it) is extracted by the user.
 
 <Callout type="warning" title="Indirect prompt injection is the defining agent risk">
   The moment an agent reads external content (a page, a PDF, a tool result) that content can carry instructions. There is **no known complete defence**: you cannot fully separate "data" from "instructions" in a single text stream. So you must contain the blast radius — least privilege, human-in-the-loop for irreversible actions, and treating every tool output as hostile — rather than relying on a filter to catch every injection.
@@ -46,11 +46,11 @@ For the full attack taxonomy (direct, indirect, RAG poisoning, cross-agent propa
 
 No single guardrail is sufficient — models can be jailbroken, classifiers have false negatives, and injection defences are incomplete. The production posture is **layered**:
 
-1. **Least privilege** — give the model the minimum tools, scopes, and data access the task needs.
-2. **Untrusted by default** — treat every input *and every tool output* as adversarial.
-3. **Multiple independent checks** — combine deterministic and model-based guardrails so one bypass isn't fatal.
-4. **Human-in-the-loop** — require approval for high-stakes or irreversible actions.
-5. **Monitor and respond** — log guardrail triggers, alert on spikes, and feed bypasses back into the eval suite.
+1. **Least privilege**: give the model the minimum tools, scopes, and data access the task needs.
+2. **Untrusted by default**: treat every input *and every tool output* as adversarial.
+3. **Multiple independent checks**: combine deterministic and model-based guardrails so one bypass isn't fatal.
+4. **Human-in-the-loop**: require approval for high-stakes or irreversible actions.
+5. **Monitor and respond**: log guardrail triggers, alert on spikes, and feed bypasses back into the eval suite.
 
 The security mindset: assume the guardrail *will* be bypassed and design so the worst case is survivable, rather than betting everything on prevention.
 
@@ -60,10 +60,10 @@ The security mindset: assume the guardrail *will* be bypassed and design so the 
 
 ## Common mistakes
 
-1. **Trusting tool/retrieved content** — letting indirect injection through because external text was treated as data, not a threat.
-2. **One model-based guardrail as the whole defence** — no layering, no deterministic checks, no least privilege.
-3. **Secrets in the system prompt** — exposed via system-prompt leakage.
-4. **Over-permissioned agents** — excessive agency turning a single bad decision into real-world damage.
+1. **Trusting tool/retrieved content**: letting indirect injection through because external text was treated as data, not a threat.
+2. **One model-based guardrail as the whole defence**: no layering, no deterministic checks, no least privilege.
+3. **Secrets in the system prompt**: exposed via system-prompt leakage.
+4. **Over-permissioned agents**: excessive agency turning a single bad decision into real-world damage.
 
 ## Key takeaways
 
@@ -74,6 +74,6 @@ The security mindset: assume the guardrail *will* be bypassed and design so the 
 
 ## Related concepts
 
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the tools and autonomy that excessive agency and injection exploit
-- [**LLM Observability, Tracing & Prompt Management**](/courses/building-with-llms/09-llm-observability-and-prompt-management) — the monitoring that catches guardrail bypasses
-- [**Responsible AI & the Human Side**](/courses/ml-in-practice/13-responsible-ai-and-the-human-side) — the broader safety and accountability context
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): the tools and autonomy that excessive agency and injection exploit
+- [**LLM Observability, Tracing & Prompt Management**](/courses/building-with-llms/09-llm-observability-and-prompt-management): the monitoring that catches guardrail bypasses
+- [**Responsible AI & the Human Side**](/courses/ml-in-practice/13-responsible-ai-and-the-human-side): the broader safety and accountability context

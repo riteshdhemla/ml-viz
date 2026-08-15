@@ -28,10 +28,10 @@ with learnable per-channel $\gamma, \beta$ exactly as in BatchNorm. For a featur
 
 | Method | Reduction set $S$ (what's averaged) | Kept independent |
 |---|---|---|
-| BatchNorm | $N, H, W$ — all samples, all spatial positions | one stat per channel $c$ |
-| LayerNorm | $C, H, W$ — all channels, all spatial positions | one stat per sample $n$ |
-| GroupNorm | $C/G, H, W$ — channels *within one group*, all spatial positions | one stat per sample $n$ **and** group $g$ |
-| InstanceNorm | $H, W$ — spatial positions only | one stat per sample $n$ **and** channel $c$ |
+| BatchNorm | $N, H, W$: all samples, all spatial positions | one stat per channel $c$ |
+| LayerNorm | $C, H, W$: all channels, all spatial positions | one stat per sample $n$ |
+| GroupNorm | $C/G, H, W$: channels *within one group*, all spatial positions | one stat per sample $n$ **and** group $g$ |
+| InstanceNorm | $H, W$: spatial positions only | one stat per sample $n$ **and** channel $c$ |
 
 ## GroupNorm: normalize within channel groups, per sample
 
@@ -133,7 +133,7 @@ As a sanity check on the two special cases described above: pooling *all four* c
 
 ## Related concepts
 
-- [**Batch Normalization: Forward Pass & Running Stats**](/wiki/batchnorm-algorithm) — the batch-statistics member of this family, including the running-average mechanism GroupNorm/InstanceNorm don't need
-- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — the lesson-level intuition for why normalization stabilizes training
-- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the full LayerNorm derivation ($\mu,\sigma^2$ over the feature dimension) and why sequence models need it instead of BatchNorm
-- [**Modern CNN Architectures**](/courses/cnns/05-modern-architectures) — where GroupNorm replaces BatchNorm in small-batch detection/segmentation backbones
+- [**Batch Normalization: Forward Pass & Running Stats**](/wiki/batchnorm-algorithm): the batch-statistics member of this family, including the running-average mechanism GroupNorm/InstanceNorm don't need
+- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout): the lesson-level intuition for why normalization stabilizes training
+- [**Transformer Architecture**](/courses/transformers/03-transformer-architecture): the full LayerNorm derivation ($\mu,\sigma^2$ over the feature dimension) and why sequence models need it instead of BatchNorm
+- [**Modern CNN Architectures**](/courses/cnns/05-modern-architectures): where GroupNorm replaces BatchNorm in small-batch detection/segmentation backbones

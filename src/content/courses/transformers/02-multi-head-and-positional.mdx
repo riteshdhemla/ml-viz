@@ -33,7 +33,7 @@ $$
 
 Note the cost is roughly the same as one full-size head: each head is $1/h$ as wide, so total compute is unchanged — you get diversity for free.
 
-### Worked example — dimension bookkeeping
+### Worked example: dimension bookkeeping
 
 GPT-style block: $d_{\text{model}} = 512$, $h = 8$ heads, sequence length $T = 10$. Each head uses
 
@@ -60,7 +60,7 @@ $$
 
 back to $d_{\text{model}}$. Finally $W_O$ is $512 \times 512$, so the output is $(10{\times}512)(512{\times}512) = 10 \times 512$ — same shape as the input. In practice the per-head $W_Q^{(i)}$ are stacked into one $512 \times 512$ matrix $W_Q$ and reshaped, which is why the parameter count below uses full $d_{\text{model}} \times d_{\text{model}}$ matrices.
 
-### Worked example — parameter count
+### Worked example: parameter count
 
 Multi-head attention has exactly **four** learned projections, each $d_{\text{model}} \times d_{\text{model}}$: the stacked $W_Q, W_K, W_V$ and the output $W_O$. Ignoring biases,
 
@@ -119,7 +119,7 @@ Why sinusoids? Low frequencies encode coarse position, high frequencies encode f
 
 <PositionalEncodingViz />
 
-### Worked example — computing PE by hand
+### Worked example: computing PE by hand
 
 Take a tiny model dimension $d = 4$, so there are two frequency pairs: $i = 0$ uses dimensions $(0,1)$ and $i = 1$ uses dimensions $(2,3)$. The two angular frequencies are
 
@@ -189,9 +189,9 @@ Modern LLMs mostly use **RoPE**, which encodes *relative* position directly insi
 
 ## Common mistakes
 
-1. **Heads that don't divide the dimension** — $d_{\text{model}}$ must be divisible by $h$ (e.g. 512/8 = 64). Otherwise the reshape fails.
-2. **Forgetting positional encoding** — silently turns the model into a permutation-invariant bag-of-words.
-3. **Adding vs concatenating PE** — sinusoidal/learned PE is *added* to embeddings (same dimension), not concatenated.
+1. **Heads that don't divide the dimension**: $d_{\text{model}}$ must be divisible by $h$ (e.g. 512/8 = 64). Otherwise the reshape fails.
+2. **Forgetting positional encoding**: silently turns the model into a permutation-invariant bag-of-words.
+3. **Adding vs concatenating PE**: sinusoidal/learned PE is *added* to embeddings (same dimension), not concatenated.
 
 ## Key takeaways
 
@@ -202,8 +202,8 @@ Modern LLMs mostly use **RoPE**, which encodes *relative* position directly insi
 
 ## Related concepts
 
-- [**Self-Attention**](/courses/transformers/01-self-attention) — the single-head mechanism this scales up
-- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — assembling these into full blocks
+- [**Self-Attention**](/courses/transformers/01-self-attention): the single-head mechanism this scales up
+- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture): assembling these into full blocks
 
 <WikiLink slug="positional-encodings" title="Positional Encodings: Sinusoidal, RoPE, ALiBi, and Learned" />
 <WikiLink slug="attention-mechanisms" title="Attention Mechanisms: Self, Cross, Causal, MHA, MQA, GQA" />

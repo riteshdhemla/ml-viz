@@ -17,8 +17,8 @@ Models trained on personal data (health records, messages, keystrokes, location)
 
 Neural networks **memorize**. Documented attacks:
 
-- **Membership inference** — given a data point, determine whether it was in the training set (a privacy violation by itself for, say, a medical dataset).
-- **Training-data extraction** — prompt a large model to regurgitate verbatim training examples (names, phone numbers, secrets).
+- **Membership inference**: given a data point, determine whether it was in the training set (a privacy violation by itself for, say, a medical dataset).
+- **Training-data extraction**: prompt a large model to regurgitate verbatim training examples (names, phone numbers, secrets).
 
 Anonymization alone is famously weak: "de-identified" datasets are routinely **re-identified** by linking to side information. We need a mathematical guarantee, not a hope.
 
@@ -30,7 +30,7 @@ $$
 \Pr[M(D) \in S] \le e^{\varepsilon}\,\Pr[M(D') \in S]
 $$
 
-- **$\varepsilon$ (the privacy budget)** — smaller = more private. $\varepsilon \to 0$ means the two cases are indistinguishable (max privacy, useless model); large $\varepsilon$ means weak privacy. Typical deployments target $\varepsilon$ in roughly $1$–$10$.
+- **$\varepsilon$ (the privacy budget)**: smaller = more private. $\varepsilon \to 0$ means the two cases are indistinguishable (max privacy, useless model); large $\varepsilon$ means weak privacy. Typical deployments target $\varepsilon$ in roughly $1$–$10$.
 - The guarantee is achieved by adding **calibrated random noise** — to the data, the gradients, or the output.
 
 The definition above is **pure $\varepsilon$-DP**, achieved exactly by the **Laplace mechanism** (noise $\sim \text{Lap}(0, \Delta f / \varepsilon)$ for a query with $\ell_1$-sensitivity $\Delta f$). In practice, **DP-SGD uses Gaussian noise**, which satisfies the relaxed $(\varepsilon, \delta)$-DP guarantee: with small but nonzero $\delta$ (typically $\delta \ll 1/n$), the multiplicative bound may fail with probability at most $\delta$. The $(\varepsilon, \delta)$ variant is written:
@@ -117,6 +117,6 @@ FL's own challenges: clients have **non-IID** data (your phone's data isn't repr
 
 ## Related concepts
 
-- [**Responsible AI & the Human Side**](/courses/ml-in-practice/13-responsible-ai-and-the-human-side) — the ethics and fairness context privacy sits within
-- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — where federated and privacy-preserving training are operationalized
-- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants) — the SGD that DP-SGD modifies with clipping and noise
+- [**Responsible AI & the Human Side**](/courses/ml-in-practice/13-responsible-ai-and-the-human-side): the ethics and fairness context privacy sits within
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration): where federated and privacy-preserving training are operationalized
+- [**Gradient Descent Variants**](/courses/optimization-ml/01-gradient-descent-variants): the SGD that DP-SGD modifies with clipping and noise

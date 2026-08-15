@@ -81,9 +81,9 @@ FM outputs are not always in the format requested. The post-processor:
 4. Retries with a rephrased prompt if parsing fails
 
 **Forces:**
-- *Improves quality significantly* — structured prompts reduce ambiguity; few-shot examples align format expectations.
-- *Adds latency and complexity* — each optimisation step is processing overhead; prompt templates must be maintained as the agent's tools and context evolve.
-- *Can mask model weaknesses* — a very polished prompt may appear to work in testing but fail on edge cases not covered by the examples.
+- *Improves quality significantly*: structured prompts reduce ambiguity; few-shot examples align format expectations.
+- *Adds latency and complexity*: each optimisation step is processing overhead; prompt templates must be maintained as the agent's tools and context evolve.
+- *Can mask model weaknesses*: a very polished prompt may appear to work in testing but fail on edge cases not covered by the examples.
 
 <Callout type="tip" title="Highest-ROI optimisation technique">
   Few-shot examples are the most effective single prompt engineering technique. Three well-chosen examples of the input-output format the agent needs typically outperform elaborate instruction paragraphs. Prioritise examples over prose explanations.
@@ -127,25 +127,25 @@ $$\text{sim}(\mathbf{q}, \mathbf{d}) = \frac{\mathbf{q} \cdot \mathbf{d}}{\|\mat
 
 Basic RAG handles simple single-hop questions well. Agents face harder cases:
 
-**Multi-hop retrieval** — the answer requires chaining information from multiple documents. "What is the cancellation policy for the hotel the user booked last week?" requires first retrieving the booking, then retrieving the hotel's policy document. A single similarity search may not surface both.
+**Multi-hop retrieval**: the answer requires chaining information from multiple documents. "What is the cancellation policy for the hotel the user booked last week?" requires first retrieving the booking, then retrieving the hotel's policy document. A single similarity search may not surface both.
 
-**Retrieval planning** — the agent must decide *what* to retrieve. In a long-running task, the relevant query changes at each step. The agent should rewrite the retrieval query at each planning step rather than using the original user message.
+**Retrieval planning**: the agent must decide *what* to retrieve. In a long-running task, the relevant query changes at each step. The agent should rewrite the retrieval query at each planning step rather than using the original user message.
 
-**Dynamic knowledge bases** — the corpus changes over time (new documents added, old ones updated). The index must be maintained and stale embeddings refreshed.
+**Dynamic knowledge bases**: the corpus changes over time (new documents added, old ones updated). The index must be maintained and stale embeddings refreshed.
 
 **Forces:**
-- *Improves factual accuracy and recency* — the FM reasons over real documents, not parametric guesses.
-- *Adds retrieval latency* — embedding lookup and nearest-neighbour search add overhead (typically 50–200 ms at moderate scale).
-- *Requires index maintenance* — someone must build and keep the vector index fresh; stale indexes erode quality silently.
-- *Context window competition* — each retrieved chunk consumes context tokens. More chunks = more information but less room for reasoning and output.
+- *Improves factual accuracy and recency*: the FM reasons over real documents, not parametric guesses.
+- *Adds retrieval latency*: embedding lookup and nearest-neighbour search add overhead (typically 50–200 ms at moderate scale).
+- *Requires index maintenance*: someone must build and keep the vector index fresh; stale indexes erode quality silently.
+- *Context window competition*: each retrieved chunk consumes context tokens. More chunks = more information but less room for reasoning and output.
 
 ## How the two patterns compose
 
 The Optimiser and RAG are designed to work together. The composition has two stages:
 
-1. **Query rewriting** — the Optimiser rewrites the agent's current subgoal into a retrieval query. A subgoal like "confirm the user's hotel preference" is not a good retrieval query; "user hotel preference seat type booking history" retrieves better.
+1. **Query rewriting**: the Optimiser rewrites the agent's current subgoal into a retrieval query. A subgoal like "confirm the user's hotel preference" is not a good retrieval query; "user hotel preference seat type booking history" retrieves better.
 
-2. **Final prompt assembly** — after retrieval, the Optimiser injects the chunks and formats the full FM prompt with task, retrieved context, output spec, and examples.
+2. **Final prompt assembly**: after retrieval, the Optimiser injects the chunks and formats the full FM prompt with task, retrieved context, output spec, and examples.
 
 ```
 Goal
@@ -189,6 +189,6 @@ The diagram above shows the boxes but hides the thing that makes the pipeline ha
 
 ## Related concepts
 
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — deep dive on RAG in the LLM context
-- [**Goal Creation Patterns**](/courses/agent-design-patterns/02-goal-creation-patterns) — the structured goals that drive retrieval queries
-- [**Planning Patterns**](/courses/agent-design-patterns/04-planning-patterns) — next lesson: how structured goals become executable action sequences
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): deep dive on RAG in the LLM context
+- [**Goal Creation Patterns**](/courses/agent-design-patterns/02-goal-creation-patterns): the structured goals that drive retrieval queries
+- [**Planning Patterns**](/courses/agent-design-patterns/04-planning-patterns): next lesson: how structured goals become executable action sequences

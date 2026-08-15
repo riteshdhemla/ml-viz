@@ -20,14 +20,14 @@ p(x_i \mid \mu, \sigma^2)
 = \frac{1}{\sqrt{2\pi\sigma^2}}\exp\!\left(-\frac{(x_i-\mu)^2}{2\sigma^2}\right)
 $$
 
-**Step 1 — log a single term.** The $\ln$ cancels the $\exp$:
+**Step 1: log a single term.** The $\ln$ cancels the $\exp$:
 
 $$
 \ln p(x_i \mid \mu, \sigma^2)
 = -\tfrac{1}{2}\ln(2\pi\sigma^2) - \frac{(x_i - \mu)^2}{2\sigma^2}
 $$
 
-**Step 2 — sum over all $n$ points** to get the full log-likelihood:
+**Step 2: sum over all $n$ points** to get the full log-likelihood:
 
 $$
 \ell(\mu, \sigma^2)
@@ -37,7 +37,7 @@ $$
 
 ## Solving for the maximum-likelihood mean
 
-**Step 3 — differentiate with respect to $\mu$.**
+**Step 3: differentiate with respect to $\mu$.**
 
 The first term has no $\mu$. The chain rule on $(x_i - \mu)^2$ gives $-2(x_i - \mu)$:
 
@@ -47,7 +47,7 @@ $$
 = \frac{1}{\sigma^2}\sum_{i=1}^n (x_i - \mu)
 $$
 
-**Step 4 — set the derivative to zero.**
+**Step 4: set the derivative to zero.**
 
 Since $\sigma^2 > 0$ the prefactor cannot make it zero, so the sum must vanish:
 
@@ -57,7 +57,7 @@ $$
 \sum_{i=1}^n x_i - n\mu = 0
 $$
 
-**Step 5 — solve** for $\mu$:
+**Step 5: solve** for $\mu$:
 
 $$
 \boxed{\;\hat{\mu}_\text{MLE} = \frac{1}{n}\sum_{i=1}^n x_i = \bar{x}\;}
@@ -73,7 +73,7 @@ The MLE for the mean is the **sample average**.
 
 It is cleanest to treat $v = \sigma^2$ as the variable.
 
-**Step 6 — rewrite and differentiate with respect to $v$.**
+**Step 6: rewrite and differentiate with respect to $v$.**
 
 $$
 \ell(\mu, v)
@@ -93,7 +93,7 @@ $$
 -nv + \sum_{i=1}^n (x_i - \mu)^2 = 0
 $$
 
-**Step 8 — solve** for $v$, substituting $\mu = \hat{\mu} = \bar{x}$:
+**Step 8: solve** for $v$, substituting $\mu = \hat{\mu} = \bar{x}$:
 
 $$
 \boxed{\;\hat{\sigma}^2_\text{MLE} = \frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\;}
@@ -190,6 +190,6 @@ plt.show()
 
 ## Related concepts
 
-- [**MLE & the Bernoulli**](/courses/probability-statistics/03-maximum-likelihood-estimation) — companion derivation for discrete data; cross-entropy connection
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — adds a prior; posterior mean shifts $\hat{\mu}$ toward the prior
-- [**OLS: The Normal Equation**](/wiki/ols-normal-equation) — minimizing squared error = MLE under Gaussian noise
+- [**MLE & the Bernoulli**](/courses/probability-statistics/03-maximum-likelihood-estimation): companion derivation for discrete data; cross-entropy connection
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): adds a prior; posterior mean shifts $\hat{\mu}$ toward the prior
+- [**OLS: The Normal Equation**](/wiki/ols-normal-equation): minimizing squared error = MLE under Gaussian noise

@@ -21,10 +21,10 @@ where $Q \in \mathbb{R}^{n \times d_k}$ (queries), $K \in \mathbb{R}^{n \times d
 
 ## The step-by-step procedure
 
-1. **Scores** — compute $QK^\top$. Entry $(i,j)$ is the dot product of query $i$ with key $j$: how relevant token $j$ is to token $i$.
-2. **Scale** — divide by $\sqrt{d_k}$ to prevent large magnitudes from saturating the softmax.
-3. **Softmax** — apply row-wise so each row sums to 1 (the attention weights).
-4. **Weighted sum** — multiply by $V$: each output is a blend of all values, weighted by relevance.
+1. **Scores**: compute $QK^\top$. Entry $(i,j)$ is the dot product of query $i$ with key $j$: how relevant token $j$ is to token $i$.
+2. **Scale**: divide by $\sqrt{d_k}$ to prevent large magnitudes from saturating the softmax.
+3. **Softmax**: apply row-wise so each row sums to 1 (the attention weights).
+4. **Weighted sum**: multiply by $V$: each output is a blend of all values, weighted by relevance.
 
 ## Watch it run
 
@@ -82,7 +82,7 @@ K = \begin{bmatrix}2 & 0\\0 & 2\\1 & 1\end{bmatrix}, \quad
 V = \begin{bmatrix}1 & 0\\0 & 1\\10 & 10\end{bmatrix}
 $$
 
-**Step 1 — Scores $QK^\top$.** Entry $(i,j) = \mathbf{q}_i \cdot \mathbf{k}_j$ measures how well token $i$'s query aligns with token $j$'s key — a higher score means "pay more attention here." Row 1: $[2,0]\cdot[2,0]=4$; $[2,0]\cdot[0,2]=0$; $[2,0]\cdot[1,1]=2$:
+**Step 1: Scores $QK^\top$.** Entry $(i,j) = \mathbf{q}_i \cdot \mathbf{k}_j$ measures how well token $i$'s query aligns with token $j$'s key — a higher score means "pay more attention here." Row 1: $[2,0]\cdot[2,0]=4$; $[2,0]\cdot[0,2]=0$; $[2,0]\cdot[1,1]=2$:
 
 $$
 QK^\top = \begin{bmatrix}4 & 0 & 2\\0 & 4 & 2\\4 & 4 & 4\end{bmatrix}
@@ -90,13 +90,13 @@ $$
 
 Token 1's query matches key 1 best (score 4), not at all with key 2 (score 0), and moderately with key 3 (score 2). After softmax, this will mean token 1 attends mostly to itself.
 
-**Step 2 — Scale by $1/\sqrt{2} \approx 0.707$.** Using $4/\sqrt{2} = 2\sqrt{2} \approx 2.828$ and $2/\sqrt{2} = \sqrt{2} \approx 1.414$:
+**Step 2: Scale by $1/\sqrt{2} \approx 0.707$.** Using $4/\sqrt{2} = 2\sqrt{2} \approx 2.828$ and $2/\sqrt{2} = \sqrt{2} \approx 1.414$:
 
 $$
 \frac{QK^\top}{\sqrt{2}} = \begin{bmatrix}2.828 & 0 & 1.414\\0 & 2.828 & 1.414\\2.828 & 2.828 & 2.828\end{bmatrix}
 $$
 
-**Step 3 — Softmax each row.** Row 1: $e^{2.828}=16.92$, $e^0=1.00$, $e^{1.414}=4.11$, sum $= 22.03$:
+**Step 3: Softmax each row.** Row 1: $e^{2.828}=16.92$, $e^0=1.00$, $e^{1.414}=4.11$, sum $= 22.03$:
 
 $$
 \text{softmax}(\text{row 1}) = \frac{1}{22.03}[16.92,\,1.00,\,4.11] = [0.768,\,0.045,\,0.187]
@@ -110,7 +110,7 @@ $$
 
 Every row sums to exactly 1.
 
-**Step 4 — Weighted sum $\text{weights}\cdot V$.** Row 1:
+**Step 4: Weighted sum $\text{weights}\cdot V$.** Row 1:
 
 $$
 0.768[1,0] + 0.045[0,1] + 0.187[10,10] = [0.768 + 1.870,\; 0.045 + 1.870] = [2.638,\;1.915]
@@ -165,5 +165,5 @@ print(out.squeeze(0))  # matches the hand calculation above
 
 ## Related concepts
 
-- [**Self-Attention**](/courses/transformers/01-self-attention) — source lesson: QKV intuition, causal masking, comparison with RNNs
-- [**Multi-Head Attention**](/courses/transformers/02-multi-head-and-positional) — running multiple attention heads in parallel to capture different relationships
+- [**Self-Attention**](/courses/transformers/01-self-attention): source lesson: QKV intuition, causal masking, comparison with RNNs
+- [**Multi-Head Attention**](/courses/transformers/02-multi-head-and-positional): running multiple attention heads in parallel to capture different relationships

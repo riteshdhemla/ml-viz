@@ -143,7 +143,7 @@ The vector $\mathbf{x}_1 - \mathbf{x}_2$ points *along* the boundary, and it is 
 
 We can't use MSE here — paired with the sigmoid it gives a non-convex loss with flat regions, so gradient descent stalls. Instead the right loss falls out of **Maximum Likelihood Estimation**. Let's derive it.
 
-### Step 1 — model each label as a Bernoulli trial
+### Step 1: model each label as a Bernoulli trial
 
 Each label is either 0 or 1, so model $y_i$ as a coin flip whose probability of landing on 1 is the model's output $\hat{y}_i = \sigma(\mathbf{w}^T\mathbf{x}_i + w_0)$:
 
@@ -153,7 +153,7 @@ $$
 
 This single expression is a clean trick: when $y_i = 1$ it collapses to $\hat{y}_i$, and when $y_i = 0$ it collapses to $1 - \hat{y}_i$ (since anything to the power 0 is 1).
 
-### Step 2 — likelihood of the whole dataset
+### Step 2: likelihood of the whole dataset
 
 Assuming the examples are independent, the probability of observing all $n$ labels is the product:
 
@@ -161,7 +161,7 @@ $$
 L(\mathbf{w}) = \prod_{i=1}^n \hat{y}_i^{\,y_i}\,(1 - \hat{y}_i)^{\,1 - y_i}
 $$
 
-### Step 3 — take the log
+### Step 3: take the log
 
 Products of many small numbers underflow and are hard to differentiate. Logs turn products into sums (and $\log$ is monotonic, so the maximizer is unchanged):
 
@@ -169,7 +169,7 @@ $$
 \log L(\mathbf{w}) = \sum_{i=1}^n \Bigl[\, y_i \log \hat{y}_i + (1 - y_i)\log(1 - \hat{y}_i) \,\Bigr]
 $$
 
-### Step 4 — minimize the negative, averaged
+### Step 4: minimize the negative, averaged
 
 Maximizing the log-likelihood is the same as minimizing its negative. Dividing by $n$ to get a per-example average (so the learning rate doesn't depend on dataset size) gives the **binary cross-entropy loss**:
 
@@ -275,9 +275,9 @@ print("Probabilities: {}".format(probs.round(3)))  # [[0.659 0.242 0.099]]
 
 ## Common mistakes
 
-1. **Using MSE instead of cross-entropy** — MSE is non-convex with sigmoid, leading to slow training and poor convergence.
-2. **Not handling class imbalance** — If 95% of samples are negative, the model can achieve 95% accuracy by always predicting negative. Use class weights or oversampling.
-3. **Interpreting coefficients as probabilities** — The coefficients are in log-odds space. $w_j = 2$ means a one-unit increase in $x_j$ multiplies the odds by $e^2 \approx 7.4$.
+1. **Using MSE instead of cross-entropy**: MSE is non-convex with sigmoid, leading to slow training and poor convergence.
+2. **Not handling class imbalance**: If 95% of samples are negative, the model can achieve 95% accuracy by always predicting negative. Use class weights or oversampling.
+3. **Interpreting coefficients as probabilities**: The coefficients are in log-odds space. $w_j = 2$ means a one-unit increase in $x_j$ multiplies the odds by $e^2 \approx 7.4$.
 
 ## Key takeaways
 
@@ -288,6 +288,6 @@ print("Probabilities: {}".format(probs.round(3)))  # [[0.659 0.242 0.099]]
 
 ## Related concepts
 
-- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — the regression model it builds on
-- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — a sigmoid neuron is exactly this model
-- [**Maximum Margin**](/courses/svm/01-maximum-margin) — another linear classifier, with a different objective
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression): the regression model it builds on
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron): a sigmoid neuron is exactly this model
+- [**Maximum Margin**](/courses/svm/01-maximum-margin): another linear classifier, with a different objective

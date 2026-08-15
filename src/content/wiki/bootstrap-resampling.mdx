@@ -69,7 +69,7 @@ The gold standard. It adjusts the percentile endpoints for two things: **bias** 
 | Basic | ✓ | ✗ | ✗ | low |
 | BCa | ✓ | ✓ | ✓ | higher (jackknife) |
 
-## Worked sketch — CI for the median
+## Worked sketch: CI for the median
 
 Analytic standard errors for the median are clumsy (they depend on the unknown density at the median). The bootstrap sidesteps this entirely. Given $n = 200$ incomes:
 
@@ -83,7 +83,7 @@ No density estimation, no formula, and the same three lines of code work for the
 
 The bootstrap is not magic. It breaks when the plug-in distribution $\hat F$ is a poor stand-in for $F$ *in the way the statistic depends on it*:
 
-- **Extreme order statistics** — the maximum or minimum. The sample max can never exceed the largest observed value, so the bootstrap distribution of $\max$ is degenerate and badly underestimates the upper tail.
+- **Extreme order statistics**: the maximum or minimum. The sample max can never exceed the largest observed value, so the bootstrap distribution of $\max$ is degenerate and badly underestimates the upper tail.
 - **Heavy-tailed data with infinite variance.** The bootstrap of the mean is inconsistent when the variance doesn't exist; the resample means don't converge to the right limit.
 - **Very small $n$.** With $n = 5$, $\hat F$ is a crude approximation of $F$; intervals are unreliable regardless of $B$.
 - **Dependent data** (time series, spatial, clustered). Plain resampling destroys the autocorrelation, so the SE is underestimated. Use a **block bootstrap** (below).
@@ -98,7 +98,7 @@ Autocorrelated data violates the i.i.d. assumption behind ordinary resampling. T
 
 ## Related concepts
 
-- [**Statistical Inference & Sampling Distributions**](/courses/probability-statistics/06-statistical-inference) — the sampling-distribution concept the bootstrap approximates by resampling
-- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — cross-validation and the .632 bootstrap are the same resampling idea applied to generalization error
-- [**The Kolmogorov–Smirnov Test**](/wiki/kolmogorov-smirnov-test) — when ties break KS's distribution-free p-value, a permutation/resampling test recovers it
-- [**MCMC Sampling**](/wiki/mcmc-sampling) — the other major resampling-driven inference tool, aimed at posteriors rather than sampling distributions
+- [**Statistical Inference & Sampling Distributions**](/courses/probability-statistics/06-statistical-inference): the sampling-distribution concept the bootstrap approximates by resampling
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies): cross-validation and the .632 bootstrap are the same resampling idea applied to generalization error
+- [**The Kolmogorov–Smirnov Test**](/wiki/kolmogorov-smirnov-test): when ties break KS's distribution-free p-value, a permutation/resampling test recovers it
+- [**MCMC Sampling**](/wiki/mcmc-sampling): the other major resampling-driven inference tool, aimed at posteriors rather than sampling distributions

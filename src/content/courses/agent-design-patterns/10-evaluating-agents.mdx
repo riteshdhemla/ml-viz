@@ -17,8 +17,8 @@ A model produces one output you can score against a reference. An **agent** prod
 
 Two complementary axes of evaluation:
 
-- **Outcome (end-state) evaluation** — did the final result satisfy the goal? Often checkable programmatically: tests pass, the order shows refunded, the file contains the value. This is the metric users care about.
-- **Trajectory (process) evaluation** — was the *path* sound? Did the agent call the right tools, avoid forbidden actions, not loop, and stay within budget? Two agents with identical success rates can have wildly different trajectories — one efficient and auditable, the other a 40-step random walk that got lucky.
+- **Outcome (end-state) evaluation**: did the final result satisfy the goal? Often checkable programmatically: tests pass, the order shows refunded, the file contains the value. This is the metric users care about.
+- **Trajectory (process) evaluation**: was the *path* sound? Did the agent call the right tools, avoid forbidden actions, not loop, and stay within budget? Two agents with identical success rates can have wildly different trajectories — one efficient and auditable, the other a 40-step random walk that got lucky.
 
 A useful efficiency metric normalises steps taken against an oracle minimum:
 
@@ -46,8 +46,8 @@ Public agent benchmarks pin down capability claims: **GAIA** (multi-step reasoni
 
 Two budgets gate every production agent and belong in the eval report:
 
-- **Cost** — tokens × steps × price. An agent that solves a task for \$3 may be a worse product than a workflow that solves 90% of them for \$0.02.
-- **Latency** — steps are sequential, so end-to-end time grows with trajectory length. Parallelising independent tool calls is often the highest-leverage fix.
+- **Cost**: tokens × steps × price. An agent that solves a task for \$3 may be a worse product than a workflow that solves 90% of them for \$0.02.
+- **Latency**: steps are sequential, so end-to-end time grows with trajectory length. Parallelising independent tool calls is often the highest-leverage fix.
 
 For the full picture — how these metrics organise into four levels (single-agent correctness,
 per-agent profiling, multi-agent trajectory correctness, and whole-system health), the latency
@@ -66,10 +66,10 @@ Every piece above is easy to state and hard to size. Build the eval stage by sta
 
 ## Common mistakes
 
-1. **Scoring only the final answer** — missing unsafe or wasteful trajectories that happen to succeed.
-2. **Single-run evaluation** — reporting one lucky trajectory instead of pass@k with consistency.
-3. **Trusting an unvalidated judge** — using LLM-as-judge as ground truth without checking it against humans.
-4. **Ignoring cost and latency** — shipping an agent that is accurate but too slow or expensive to use.
+1. **Scoring only the final answer**: missing unsafe or wasteful trajectories that happen to succeed.
+2. **Single-run evaluation**: reporting one lucky trajectory instead of pass@k with consistency.
+3. **Trusting an unvalidated judge**: using LLM-as-judge as ground truth without checking it against humans.
+4. **Ignoring cost and latency**: shipping an agent that is accurate but too slow or expensive to use.
 
 ## Key takeaways
 
@@ -80,7 +80,7 @@ Every piece above is easy to state and hard to size. Build the eval stage by sta
 
 ## Related concepts
 
-- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns) — the self-critique loops that evaluation both measures and powers
-- [**Tool Use, Function Calling & MCP**](/courses/agent-design-patterns/09-tool-use-and-mcp) — the trajectory steps being scored
-- [**LLM Evaluation & LLM-as-a-Judge**](/courses/building-with-llms/08-llm-evaluation) — the judging machinery applied to single-turn outputs
-- [**Observability for Agents**](/wiki/agent-observability) — running these outcome and trajectory evals online over sampled production traces
+- [**Reflection Patterns**](/courses/agent-design-patterns/06-reflection-patterns): the self-critique loops that evaluation both measures and powers
+- [**Tool Use, Function Calling & MCP**](/courses/agent-design-patterns/09-tool-use-and-mcp): the trajectory steps being scored
+- [**LLM Evaluation & LLM-as-a-Judge**](/courses/building-with-llms/08-llm-evaluation): the judging machinery applied to single-turn outputs
+- [**Observability for Agents**](/wiki/agent-observability): running these outcome and trajectory evals online over sampled production traces

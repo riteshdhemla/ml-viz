@@ -17,10 +17,10 @@ A prototype agent is a `while` loop on your laptop. A *deployed* agent is a serv
 
 How you wire agents together is the first design decision, and it mirrors the workflow patterns:
 
-- **Single agent** — one loop with tools. Simplest; prefer it until you have evidence you need more.
-- **Orchestrator–workers** — a planner decomposes a task and delegates sub-tasks to specialised workers, then synthesises results. Good when sub-tasks are unpredictable.
-- **Routing** — a classifier sends each request to a specialised agent (billing vs technical), keeping each prompt focused.
-- **Parallelisation** — independent sub-tasks (or repeated voting) run concurrently to cut latency or raise quality.
+- **Single agent**: one loop with tools. Simplest; prefer it until you have evidence you need more.
+- **Orchestrator–workers**: a planner decomposes a task and delegates sub-tasks to specialised workers, then synthesises results. Good when sub-tasks are unpredictable.
+- **Routing**: a classifier sends each request to a specialised agent (billing vs technical), keeping each prompt focused.
+- **Parallelisation**: independent sub-tasks (or repeated voting) run concurrently to cut latency or raise quality.
 
 <Callout type="tip" title="Reach for a workflow before an agent">
   Autonomous agents are powerful *and* unpredictable. If the steps are known in advance, a fixed **workflow** (scripted chain) is cheaper, faster, and easier to test. Add agentic autonomy only where the task genuinely can't be predetermined — most production "agents" are mostly workflow with a small autonomous core.
@@ -30,10 +30,10 @@ How you wire agents together is the first design decision, and it mirrors the wo
 
 A reliable agent loop must be **persistable**. Modelling the agent as a state graph (nodes call the model or run tools; edges decide what's next) lets you **checkpoint** after every step. That single property unlocks production behaviours:
 
-- **Pause/resume** — stop at a step, persist, and continue later or on another worker.
-- **Human-in-the-loop (HITL)** — pause before an irreversible action (refund, deploy, email) and wait for approval, then resume from the checkpoint.
-- **Recovery** — on crash or timeout, resume from the last good checkpoint instead of restarting the whole trajectory.
-- **Time-travel debugging** — replay a trajectory to the step where it went wrong.
+- **Pause/resume**: stop at a step, persist, and continue later or on another worker.
+- **Human-in-the-loop (HITL)**: pause before an irreversible action (refund, deploy, email) and wait for approval, then resume from the checkpoint.
+- **Recovery**: on crash or timeout, resume from the last good checkpoint instead of restarting the whole trajectory.
+- **Time-travel debugging**: replay a trajectory to the step where it went wrong.
 
 The canonical implementation of this state-graph model (typed state, reducers, checkpointing, and HITL interrupts) is covered in the deep dive:
 
@@ -78,10 +78,10 @@ The first two controls are visible in a single trace — the waterfall shows exa
 
 ## Common mistakes
 
-1. **Using a multi-agent system where one agent (or a workflow) would do** — needless cost, latency, and coordination failure.
-2. **Stateless loops** — no checkpointing means no pause/resume, no HITL, and full restarts on failure.
-3. **Prompt-only limits** — trusting the prompt to bound steps/spend instead of enforcing it in the runtime.
-4. **No tracing** — shipping a non-deterministic system you cannot replay or debug.
+1. **Using a multi-agent system where one agent (or a workflow) would do**: needless cost, latency, and coordination failure.
+2. **Stateless loops**: no checkpointing means no pause/resume, no HITL, and full restarts on failure.
+3. **Prompt-only limits**: trusting the prompt to bound steps/spend instead of enforcing it in the runtime.
+4. **No tracing**: shipping a non-deterministic system you cannot replay or debug.
 
 ## Key takeaways
 
@@ -92,8 +92,8 @@ The first two controls are visible in a single trace — the waterfall shows exa
 
 ## Related concepts
 
-- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — the cooperation topologies you orchestrate here
-- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents) — the metrics that tell you a deployed agent still works
-- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production) — canary, shadow, and A/B rollouts that apply to agents too
-- [**Sub-Agent Types: Sequential, Parallel & Loop**](/wiki/sub-agent-orchestration) — the deterministic workflow primitives you compose when orchestrating agents
-- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry) — the tracing stack that makes a deployed agent debuggable
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns): the cooperation topologies you orchestrate here
+- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents): the metrics that tell you a deployed agent still works
+- [**Continual Learning & Test in Production**](/courses/ml-in-practice/09-continual-learning-and-test-in-production): canary, shadow, and A/B rollouts that apply to agents too
+- [**Sub-Agent Types: Sequential, Parallel & Loop**](/wiki/sub-agent-orchestration): the deterministic workflow primitives you compose when orchestrating agents
+- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry): the tracing stack that makes a deployed agent debuggable

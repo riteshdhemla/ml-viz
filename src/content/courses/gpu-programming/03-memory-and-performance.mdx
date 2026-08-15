@@ -97,20 +97,20 @@ A fast kernel typically: (1) coalesces global accesses, (2) tiles into shared me
 
 ## Common mistakes
 
-1. **Strided/scattered global access** — the single biggest bandwidth killer; fix the layout so consecutive threads hit consecutive addresses.
-2. **Skipping `__syncthreads()` around shared-memory tiles** — a race where threads read a tile before it's fully written.
-3. **Maximizing occupancy for its own sake** — it only helps until latency is hidden; per-thread reuse can be worth lower occupancy.
-4. **Optimizing compute on a memory-bound kernel** — adding FLOPs to something capped by bandwidth changes nothing; raise arithmetic intensity instead.
+1. **Strided/scattered global access**: the single biggest bandwidth killer; fix the layout so consecutive threads hit consecutive addresses.
+2. **Skipping `__syncthreads()` around shared-memory tiles**: a race where threads read a tile before it's fully written.
+3. **Maximizing occupancy for its own sake**: it only helps until latency is hidden; per-thread reuse can be worth lower occupancy.
+4. **Optimizing compute on a memory-bound kernel**: adding FLOPs to something capped by bandwidth changes nothing; raise arithmetic intensity instead.
 
 ## Key takeaways
 
-- **Coalescing** — consecutive threads must read consecutive memory; non-coalesced access can waste 8–32× of bandwidth.
+- **Coalescing**: consecutive threads must read consecutive memory; non-coalesced access can waste 8–32× of bandwidth.
 - **Tiling** into **shared memory** reuses data and cuts global traffic by the tile factor (the heart of fast GEMM and FlashAttention).
 - **Occupancy** = resident warps ÷ max; it exists to hide latency, and more isn't always better.
 - The **roofline model** classifies a kernel as **memory-bound** or **compute-bound** via arithmetic intensity $I = \text{FLOPs}/\text{byte}$, telling you what to optimize.
 
 ## Related concepts
 
-- [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture) — the memory hierarchy and latency hiding these techniques exploit
-- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning) — applying coalescing, tiling, and the roofline to real ML kernels
-- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression) — when memory and bandwidth limits drive compression choices
+- [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture): the memory hierarchy and latency hiding these techniques exploit
+- [**GPUs for Deep Learning**](/courses/gpu-programming/04-gpus-for-deep-learning): applying coalescing, tiling, and the roofline to real ML kernels
+- [**Deployment Patterns & Model Compression**](/courses/ml-in-practice/08-deployment-patterns-and-compression): when memory and bandwidth limits drive compression choices

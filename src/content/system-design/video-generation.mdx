@@ -35,7 +35,7 @@ compute cost with compression, factorization, and staging**.
 
 - **Goal:** generate a short, coherent video clip from a text prompt (optionally an
   image/first-frame), temporally consistent and prompt-faithful.
-- **The new hard axis:** **temporal consistency** — no flicker, stable identities,
+- **The new hard axis:** **temporal consistency**: no flicker, stable identities,
   physically plausible motion — on top of per-frame quality.
 - **Compute reality:** generation is minutes of GPU per clip; training is at the
   extreme end of distributed compute.
@@ -116,7 +116,7 @@ Attention is quadratic in tokens, and video multiplies tokens by the frame
 count — full 3D attention over hundreds of thousands of patches is
 prohibitive. Two factorizations tame it: **separate spatial and temporal
 attention** (attend within a frame, then across time at each location), and
-**staged generation** — produce a low-res/low-FPS clip first, then
+**staged generation**: produce a low-res/low-FPS clip first, then
 super-resolve spatially and interpolate temporally. Never pay full price in
 one pass.
 </ThinkFirst>
@@ -168,7 +168,7 @@ because "does it look real over time" is what viewers actually perceive.
 ## 7. Evaluation *(spine: evaluation)*
 
 - **Per-frame quality:** FID/aesthetic scores.
-- **Temporal metrics:** **FVD** (Fréchet Video Distance) — an FID analogue
+- **Temporal metrics:** **FVD** (Fréchet Video Distance): an FID analogue
   computed on features from a video network (an I3D action classifier), so it
   sees temporal coherence, and it correlates with human judgment
   ([Unterthiner et al., 2018](https://arxiv.org/abs/1812.01717)); plus
@@ -247,9 +247,9 @@ single filter.
 
 ## References
 
-- [Video generation models as world simulators](https://openai.com/index/video-generation-models-as-world-simulators/) — OpenAI, 2024 (Sora technical report); spacetime latent patches, DiT scaling, and video re-captioning.
-- [Movie Gen: A Cast of Media Foundation Models](https://arxiv.org/abs/2410.13720) — Meta, 2024; the 30B-parameter video model, 73K-token context, 16s/16fps 1080p generation, and human-eval benchmark.
-- [Stable Video Diffusion: Scaling Latent Video Diffusion Models to Large Datasets](https://arxiv.org/abs/2311.15127) — Blattmann et al., Stability AI, 2023; the three-stage training recipe and evidence that data curation drives video quality.
-- [Towards Accurate Generative Models of Video: A New Metric & Challenges](https://arxiv.org/abs/1812.01717) — Unterthiner et al., 2018; introduces FVD, the standard temporal-realism metric.
-- [State-of-the-art video and image generation with Veo 2 and Imagen 3](https://deepmind.google/discover/blog/state-of-the-art-video-and-image-generation-with-veo-2-and-imagen-3/) — Google DeepMind, 2024; a production text-to-video system and its watermarking/provenance stance.
-- [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752) — Rombach et al., CVPR 2022; the latent-compression foundation video models extend into time.
+- [Video generation models as world simulators](https://openai.com/index/video-generation-models-as-world-simulators/): OpenAI, 2024 (Sora technical report); spacetime latent patches, DiT scaling, and video re-captioning.
+- [Movie Gen: A Cast of Media Foundation Models](https://arxiv.org/abs/2410.13720): Meta, 2024; the 30B-parameter video model, 73K-token context, 16s/16fps 1080p generation, and human-eval benchmark.
+- [Stable Video Diffusion: Scaling Latent Video Diffusion Models to Large Datasets](https://arxiv.org/abs/2311.15127): Blattmann et al., Stability AI, 2023; the three-stage training recipe and evidence that data curation drives video quality.
+- [Towards Accurate Generative Models of Video: A New Metric & Challenges](https://arxiv.org/abs/1812.01717): Unterthiner et al., 2018; introduces FVD, the standard temporal-realism metric.
+- [State-of-the-art video and image generation with Veo 2 and Imagen 3](https://deepmind.google/discover/blog/state-of-the-art-video-and-image-generation-with-veo-2-and-imagen-3/): Google DeepMind, 2024; a production text-to-video system and its watermarking/provenance stance.
+- [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752): Rombach et al., CVPR 2022; the latent-compression foundation video models extend into time.

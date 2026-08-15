@@ -46,7 +46,7 @@ where $\tilde{\mathbf{A}} = \mathbf{A} + \mathbf{I}$ and $\tilde{\mathbf{D}}$ is
   Symmetric normalization $\tilde{\mathbf{D}}^{-1/2}\tilde{\mathbf{A}}\tilde{\mathbf{D}}^{-1/2}$ down-weights messages from **high-degree** neighbors (a hub shouldn't dominate everyone it touches), scaling each edge by $1/\sqrt{d_u d_v}$. It keeps the operator's eigenvalues bounded, which stabilizes training — better than the asymmetric row-average $\mathbf{D}^{-1}\mathbf{A}$ for most node-classification tasks.
 </Callout>
 
-### Worked example — one GCN aggregation by hand
+### Worked example: one GCN aggregation by hand
 
 Take the 3-node path graph $1\!-\!2\!-\!3$ with scalar features $\mathbf{h} = [1,\ 0,\ -1]$ (and $\mathbf{W} = 1$, no nonlinearity, to isolate the aggregation):
 
@@ -68,7 +68,7 @@ $$
 
 Node 2 sits between opposite-signed neighbors and averages to exactly $0$; the end nodes are pulled halfway toward their neighborhood. Note the edge weight $0.408 < 0.5$ — messages through the higher-degree middle node are down-weighted, exactly the hub-damping the callout describes. The notebook reproduces this matrix and one further layer.
 
-## Spectral vs. spatial — same destination
+## Spectral vs. spatial: same destination
 
 GCNs were originally **derived** from spectral graph theory: a convolution defined via the graph Laplacian's eigenbasis, then approximated (first-order Chebyshev) down to the simple $\hat{\mathbf{A}}\mathbf{H}\mathbf{W}$ form above. The modern, practical view is **spatial**: it's just normalized neighborhood aggregation. You don't need the spectral derivation to use it, but it's why GCNs are called "convolutions."
 
@@ -122,6 +122,6 @@ Sum is the most discriminative (the Graph Isomorphism Network result), mean and 
 
 ## Related concepts
 
-- [**Graphs as Data & Message Passing**](/courses/graph-neural-networks/01-graphs-as-data) — the framework this lesson instantiates
-- [**Graph Attention, Pooling & Over-smoothing**](/courses/graph-neural-networks/03-graph-attention-and-pooling) — learning which neighbors matter, and graph-level readout
-- [**Convolution Operation**](/courses/cnns/01-convolution-operation) — the grid convolution a graph convolution generalizes
+- [**Graphs as Data & Message Passing**](/courses/graph-neural-networks/01-graphs-as-data): the framework this lesson instantiates
+- [**Graph Attention, Pooling & Over-smoothing**](/courses/graph-neural-networks/03-graph-attention-and-pooling): learning which neighbors matter, and graph-level readout
+- [**Convolution Operation**](/courses/cnns/01-convolution-operation): the grid convolution a graph convolution generalizes

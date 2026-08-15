@@ -26,7 +26,7 @@ The early and middle layers are **universal** — they work for almost any image
   It's like learning to paint. First you learn to see shapes, colors, and light (universal skills). Then you specialize — portraits, landscapes, abstract art. Transfer learning skips the "learning to see" part.
 </Callout>
 
-### Why freezing early layers works — the gradient view
+### Why freezing early layers works: the gradient view
 
 "Freezing" a layer means setting `requires_grad = False` on its parameters. Concretely, during backprop the optimizer simply **skips the weight update** for that layer:
 
@@ -77,7 +77,7 @@ print(f"Trainable: {trainable:,} / {total:,} ({100*trainable/total:.1f}%)")
 
 **When to use:** < 1,000 training images. The pretrained features are already good — you just need a simple classifier.
 
-#### Worked parameter count — swapping the head on ResNet-50
+#### Worked parameter count: swapping the head on ResNet-50
 
 ResNet-50 ships with **25,557,032** parameters and an ImageNet head `fc = Linear(2048, 1000)`. A fully-connected layer with $d_\text{in}$ inputs and $d_\text{out}$ outputs has
 
@@ -199,7 +199,7 @@ The logic of the table is a simple guardrail: **trainable parameters $\lesssim$ 
 
 ## Practical tips
 
-1. **Start with feature extraction** — It's fast and often sufficient. Only move to fine-tuning if accuracy is insufficient.
+1. **Start with feature extraction**: It's fast and often sufficient. Only move to fine-tuning if accuracy is insufficient.
 
 2. **Use data augmentation** — Transfer learning shines with small datasets. Augment aggressively:
 ```python
@@ -221,7 +221,7 @@ transform = transforms.Compose([
    - **MobileNet:** Mobile/edge deployment
    - **ViT:** State-of-the-art but needs more data
 
-4. **Monitor overfitting** — With small datasets, overfitting is the #1 enemy. Use early stopping, dropout, and weight decay.
+4. **Monitor overfitting**: With small datasets, overfitting is the #1 enemy. Use early stopping, dropout, and weight decay.
 
 ## Worked example: Medical image classification
 
@@ -264,9 +264,9 @@ With 1,000 images and a 4,098-parameter head you are fitting only ~4 parameters 
 
 ## Common mistakes
 
-1. **Using ImageNet normalization on non-RGB data** — Medical images, grayscale, or satellite images need different normalization stats.
-2. **Fine-tuning too aggressively** — Large learning rates destroy pretrained features. Start small.
-3. **Ignoring domain mismatch** — If your images look very different from ImageNet (e.g., X-rays, aerial photos), the pretrained features may not transfer well. Consider training from scratch if you have enough data.
+1. **Using ImageNet normalization on non-RGB data**: Medical images, grayscale, or satellite images need different normalization stats.
+2. **Fine-tuning too aggressively**: Large learning rates destroy pretrained features. Start small.
+3. **Ignoring domain mismatch**: If your images look very different from ImageNet (e.g., X-rays, aerial photos), the pretrained features may not transfer well. Consider training from scratch if you have enough data.
 
 ## Key takeaways
 
@@ -279,5 +279,5 @@ With 1,000 images and a 4,098-parameter head you are fitting only ~4 parameters 
 
 ## Related concepts
 
-- [**Pooling & Architectures**](/courses/cnns/02-pooling-and-architectures) — the pretrained backbones you transfer
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — why fine-tuning needs a small learning rate
+- [**Pooling & Architectures**](/courses/cnns/02-pooling-and-architectures): the pretrained backbones you transfer
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): why fine-tuning needs a small learning rate

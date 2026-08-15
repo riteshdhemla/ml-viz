@@ -17,8 +17,8 @@ Two of the worst bugs in production ML are **train–serve skew** (the feature c
 
 A feature store has two faces backed by the same definitions:
 
-- **Offline store** — high-throughput, large-scale historical feature values (typically a warehouse or columnar files). Used to build **training sets** by joining labels to features.
-- **Online store** — low-latency key-value lookups (typically Redis/DynamoDB-class) holding the *latest* feature value per entity. Used at **inference** to fetch features in milliseconds.
+- **Offline store**: high-throughput, large-scale historical feature values (typically a warehouse or columnar files). Used to build **training sets** by joining labels to features.
+- **Online store**: low-latency key-value lookups (typically Redis/DynamoDB-class) holding the *latest* feature value per entity. Used at **inference** to fetch features in milliseconds.
 
 The store keeps them in sync (materialising offline values into the online store), so a feature defined once is served identically in both worlds. That shared definition is what eliminates train–serve skew at the source.
 
@@ -50,10 +50,10 @@ The familiar "production collapses" warning is true only when the leaky feature 
 
 ## What a feature store gives you
 
-- **Consistency** — one feature definition, served to training (offline) and inference (online) — no skew.
-- **Reuse & discovery** — a catalogue so teams find and share features instead of re-deriving them.
-- **Point-in-time joins** — leakage-free training sets by construction.
-- **Freshness & monitoring** — tracking how stale online values are, and drift on feature distributions.
+- **Consistency**: one feature definition, served to training (offline) and inference (online) — no skew.
+- **Reuse & discovery**: a catalogue so teams find and share features instead of re-deriving them.
+- **Point-in-time joins**: leakage-free training sets by construction.
+- **Freshness & monitoring**: tracking how stale online values are, and drift on feature distributions.
 
 <Callout type="info" title="Not every project needs one">
   A feature store earns its operational cost when features are **shared across models/teams**, require **low-latency online serving**, or demand **point-in-time training joins** at scale. A single batch model with a self-contained pipeline often does not — adding a feature store there is overhead, not leverage.
@@ -65,10 +65,10 @@ The familiar "production collapses" warning is true only when the leaky feature 
 
 ## Common mistakes
 
-1. **Naive joins that leak the future** — using current feature values for past labels instead of as-of values.
-2. **Two code paths for one feature** — computing it one way in the training job and another in the serving service (the skew a feature store exists to prevent).
-3. **Stale online values** — failing to monitor materialisation freshness, so inference reads hours-old features.
-4. **Adopting a feature store reflexively** — paying its complexity for a single model that doesn't share or serve features online.
+1. **Naive joins that leak the future**: using current feature values for past labels instead of as-of values.
+2. **Two code paths for one feature**: computing it one way in the training job and another in the serving service (the skew a feature store exists to prevent).
+3. **Stale online values**: failing to monitor materialisation freshness, so inference reads hours-old features.
+4. **Adopting a feature store reflexively**: paying its complexity for a single model that doesn't share or serve features online.
 
 ## Key takeaways
 
@@ -79,6 +79,6 @@ The familiar "production collapses" warning is true only when the leaky feature 
 
 ## Related concepts
 
-- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering) — the transformations a feature store stores and serves
-- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — the train–serve skew a feature store is built to prevent
-- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals) — the batch/stream and OLTP/OLAP substrate underneath
+- [**Feature Engineering**](/courses/ml-in-practice/01-feature-engineering): the transformations a feature store stores and serves
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls): the train–serve skew a feature store is built to prevent
+- [**Data Engineering Fundamentals**](/courses/ml-in-practice/05-data-engineering-fundamentals): the batch/stream and OLTP/OLAP substrate underneath

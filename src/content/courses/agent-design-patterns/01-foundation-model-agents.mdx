@@ -36,9 +36,9 @@ It's the sibling of the [ML project loop](/wiki/ml-project-loop) — same discip
 
 An FM-based agent is a software system with three essential characteristics:
 
-1. **Perception** — it ingests observations from an environment (user messages, tool outputs, sensor readings, API responses).
-2. **Reasoning** — it uses a foundation model to interpret observations, maintain context, and decide what to do next.
-3. **Action execution** — it can call tools, write files, invoke APIs, spawn sub-agents, or interact with the world in ways that have real consequences.
+1. **Perception**: it ingests observations from an environment (user messages, tool outputs, sensor readings, API responses).
+2. **Reasoning**: it uses a foundation model to interpret observations, maintain context, and decide what to do next.
+3. **Action execution**: it can call tools, write files, invoke APIs, spawn sub-agents, or interact with the world in ways that have real consequences.
 
 The crucial distinction from a simple chatbot is **persistent state and action execution**. A chatbot returns text; an agent *does things*. A chatbot forgets context between turns (unless you re-inject it); an agent maintains a working memory that accumulates over an extended task.
 
@@ -64,19 +64,19 @@ Every FM-based agent is built from some combination of these five components:
 
 These components interact: the planner uses context to generate a plan; the executor updates context with results; the monitor may reset context and replan on failure. Pattern design is largely about structuring these interactions.
 
-## Why agents are hard — five challenge dimensions
+## Why agents are hard: five challenge dimensions
 
 Building agents that work reliably in the real world is difficult for reasons that go beyond ordinary software engineering:
 
-**(a) Goal-seeking** — User goals are ambiguous ("book me something for dinner" — what? where? when? budget?), implicit (the user assumes the agent knows their calendar), and mutable (the user changes their mind mid-task). Agents must handle uncertainty about what success looks like.
+**(a) Goal-seeking**: User goals are ambiguous ("book me something for dinner" — what? where? when? budget?), implicit (the user assumes the agent knows their calendar), and mutable (the user changes their mind mid-task). Agents must handle uncertainty about what success looks like.
 
-**(b) Hallucination** — Foundation models confidently generate plausible-sounding but factually incorrect outputs. An agent that acts on hallucinated information (e.g., a file path that doesn't exist, an API endpoint that was invented) can corrupt state or fail silently in hard-to-detect ways.
+**(b) Hallucination**: Foundation models confidently generate plausible-sounding but factually incorrect outputs. An agent that acts on hallucinated information (e.g., a file path that doesn't exist, an API endpoint that was invented) can corrupt state or fail silently in hard-to-detect ways.
 
-**(c) Explainability** — Multi-step reasoning chains are opaque. When an agent produces a wrong answer after ten tool calls, diagnosing *which step* went wrong and *why* is non-trivial. This matters especially for debugging, auditing, and user trust.
+**(c) Explainability**: Multi-step reasoning chains are opaque. When an agent produces a wrong answer after ten tool calls, diagnosing *which step* went wrong and *why* is non-trivial. This matters especially for debugging, auditing, and user trust.
 
-**(d) Complex accountability** — When an agent causes harm (deletes the wrong file, sends an incorrect report, makes a financial transaction), accountability is distributed across: the FM provider, the agent developer, the deploying organisation, and the user who issued the goal. Existing legal and organisational frameworks are not well-equipped for this.
+**(d) Complex accountability**: When an agent causes harm (deletes the wrong file, sends an incorrect report, makes a financial transaction), accountability is distributed across: the FM provider, the agent developer, the deploying organisation, and the user who issued the goal. Existing legal and organisational frameworks are not well-equipped for this.
 
-**(e) Safety** — Agents can take **irreversible real-world actions**. Sending an email, deleting a database row, executing a trade — these cannot be undone. Safety guardrails must prevent catastrophic actions even when the FM's reasoning is subtly wrong.
+**(e) Safety**: Agents can take **irreversible real-world actions**. Sending an email, deleting a database row, executing a trade — these cannot be undone. Safety guardrails must prevent catastrophic actions even when the FM's reasoning is subtly wrong.
 
 <Callout type="warning" title="The irreversibility asymmetry">
   A human making a mistake can often apologise and correct course. An agent that sends 10,000 emails or drops a production table cannot. Design agents with the principle of **minimum necessary authority**: request only the permissions needed, prefer reversible actions, and checkpoint before irreversible ones.
@@ -106,11 +106,11 @@ This course covers Groups 1–3 in depth (Lessons 01–04). Groups 4–6 build o
 
 Each pattern in this catalogue is described using the **Gang of Four** pattern format, adapted for agents:
 
-- **Context** — when does this problem arise? What kind of system are you building?
-- **Problem** — what specific challenge does the pattern address? State it as a question or tension.
-- **Solution** — the structural arrangement: which components exist, how they connect, what each does.
-- **Forces** — the trade-offs. Every pattern has costs as well as benefits. Understanding the forces lets you choose the right pattern for your situation.
-- **Consequences** — what improves when you apply this pattern, and what gets harder or more expensive?
+- **Context**: when does this problem arise? What kind of system are you building?
+- **Problem**: what specific challenge does the pattern address? State it as a question or tension.
+- **Solution**: the structural arrangement: which components exist, how they connect, what each does.
+- **Forces**: the trade-offs. Every pattern has costs as well as benefits. Understanding the forces lets you choose the right pattern for your situation.
+- **Consequences**: what improves when you apply this pattern, and what gets harder or more expensive?
 
 A pattern is not a recipe. It is a named vocabulary for a structural decision — one that has been found useful enough to recur across many independent systems.
 
@@ -128,6 +128,6 @@ A pattern is not a recipe. It is a named vocabulary for a structural decision �
 
 ## Related concepts
 
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — practical introduction to agent loops, tool calling, and ReAct
-- [**Goal Creation Patterns**](/courses/agent-design-patterns/02-goal-creation-patterns) — next lesson: how to capture and structure user intent
-- [**The Agentic Project Loop**](/wiki/agentic-project-loop) — the six-slot spine (task → context & tools → orchestration → evaluation → guardrails → operations feedback) that every pattern in this course maps onto
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): practical introduction to agent loops, tool calling, and ReAct
+- [**Goal Creation Patterns**](/courses/agent-design-patterns/02-goal-creation-patterns): next lesson: how to capture and structure user intent
+- [**The Agentic Project Loop**](/wiki/agentic-project-loop): the six-slot spine (task → context & tools → orchestration → evaluation → guardrails → operations feedback) that every pattern in this course maps onto

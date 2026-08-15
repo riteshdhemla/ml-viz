@@ -24,9 +24,9 @@ The [agents lesson](/courses/building-with-llms/05-agents-and-tool-use) shows an
 
 An open standard (introduced by Anthropic, late 2024) with a **client–server** architecture spoken over **JSON-RPC 2.0** — a minimal request/response format where each message carries a `method`, `params`, and an `id` to match replies to requests:
 
-- **Host** — the LLM application (e.g. an IDE assistant, a chat app).
-- **Client** — lives inside the host; maintains a 1:1 connection to one server.
-- **Server** — a lightweight process exposing capabilities for a specific system (a database, GitHub, a filesystem, Slack).
+- **Host**: the LLM application (e.g. an IDE assistant, a chat app).
+- **Client**: lives inside the host; maintains a 1:1 connection to one server.
+- **Server**: a lightweight process exposing capabilities for a specific system (a database, GitHub, a filesystem, Slack).
 
 The transport is JSON-RPC over **stdio** (local subprocess) or **streamable HTTP / SSE** (remote). A server exposes three primitives:
 
@@ -57,10 +57,10 @@ That `inputSchema` is the same JSON-Schema function-calling contract from the ag
 
 An open standard (introduced by Google, 2025) for **agent-to-agent** collaboration across vendors and frameworks. Where MCP connects an agent *down* to tools, A2A connects agents *across* to peers, treating a remote agent as an opaque collaborator rather than a callable function. Core concepts:
 
-- **Agent Card** — a JSON document (served at a well-known URL) advertising an agent's identity, skills, endpoint, and auth requirements. This is **capability discovery**: an agent finds out what another can do without prior hard-coding.
-- **Task** — the unit of work, with a lifecycle (`submitted → working → input-required → completed/failed`). Long-running tasks stream status updates over SSE.
-- **Message / Part** — turns exchanged within a task; a *Part* carries text, files, or structured data (multi-modal by design).
-- **Artifact** — the produced output of a task.
+- **Agent Card**: a JSON document (served at a well-known URL) advertising an agent's identity, skills, endpoint, and auth requirements. This is **capability discovery**: an agent finds out what another can do without prior hard-coding.
+- **Task**: the unit of work, with a lifecycle (`submitted → working → input-required → completed/failed`). Long-running tasks stream status updates over SSE.
+- **Message / Part**: turns exchanged within a task; a *Part* carries text, files, or structured data (multi-modal by design).
+- **Artifact**: the produced output of a task.
 
 A client agent discovers a remote agent's card, sends a task, and receives streamed updates and artifacts:
 
@@ -114,7 +114,7 @@ Both standards move untrusted content and capability across trust boundaries —
 
 ## Related concepts
 
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — function calling and the reliability/security concerns these protocols inherit
-- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — guardrails, auth, and observability for multi-agent systems
-- [**LangGraph: Agents as State Graphs**](/wiki/langgraph) — an orchestration layer that frequently consumes MCP tools and A2A peers as graph nodes
-- [**Prompt Injection: Attack Taxonomy & Defenses**](/wiki/prompt-injection-attacks-and-defenses) — the full treatment of the risk this page's "Widening the attack surface" section flags
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): function calling and the reliability/security concerns these protocols inherit
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture): guardrails, auth, and observability for multi-agent systems
+- [**LangGraph: Agents as State Graphs**](/wiki/langgraph): an orchestration layer that frequently consumes MCP tools and A2A peers as graph nodes
+- [**Prompt Injection: Attack Taxonomy & Defenses**](/wiki/prompt-injection-attacks-and-defenses): the full treatment of the risk this page's "Widening the attack surface" section flags
