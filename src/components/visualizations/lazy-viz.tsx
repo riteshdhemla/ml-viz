@@ -127,6 +127,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   ReceptiveFieldViz: dynamic(() => import("@/components/visualizations/ReceptiveField/ReceptiveFieldViz").then((m) => m.ReceptiveFieldViz)) as ComponentType<VizProps>,
   RegularizationPathViz: dynamic(() => import("@/components/visualizations/RegularizationPath/RegularizationPathViz").then((m) => m.RegularizationPathViz)) as ComponentType<VizProps>,
   ReservoirSamplingViz: dynamic(() => import("@/components/visualizations/ReservoirSampling/ReservoirSamplingViz").then((m) => m.ReservoirSamplingViz)) as ComponentType<VizProps>,
+  RetrievalFunnelViz: dynamic(() => import("@/components/visualizations/RetrievalFunnel/RetrievalFunnelViz").then((m) => m.RetrievalFunnelViz)) as ComponentType<VizProps>,
   RewardModelViz: dynamic(() => import("@/components/visualizations/RewardModel/RewardModelViz").then((m) => m.RewardModelViz)) as ComponentType<VizProps>,
   RNNUnrollViz: dynamic(() => import("@/components/visualizations/RNNUnroll/RNNUnrollViz").then((m) => m.RNNUnrollViz)) as ComponentType<VizProps>,
   RolloutViz: dynamic(() => import("@/components/visualizations/Rollout/RolloutViz").then((m) => m.RolloutViz)) as ComponentType<VizProps>,
