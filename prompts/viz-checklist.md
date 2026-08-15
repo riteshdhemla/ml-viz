@@ -252,8 +252,31 @@ wrong format.
       functions**. Verify against the file that ships, not the prototype.
 - [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →
       entity/graph features → adversarial response.
-- [ ] **nlp/01-text-preprocessing** — the preprocessing pipeline (BPE itself is
-      already traced on `wiki/bpe-tokenization`).
+- [x] **nlp/01-text-preprocessing** — `PreprocessingPipelineViz` (guided, 4
+      steps). Scoped around the existing `bpe-tokenization` trace, which the
+      lesson already links: this builds the *destructive* stages instead.
+
+      Twelve matched sentence pairs (same sentence ± a negation) turn
+      "preprocessing loses information" into a count:
+
+          stage                  collided   vocab   tokens/doc
+          lowercase + tokenize    0 / 12      44       5.2
+          + stopword removal     10 / 12      28       2.2
+          + stemming             12 / 12      26       2.2
+          stemming alone          0 / 12      42       5.2
+
+      **`not` is on the standard English stopword list** (with `no`, `nor`,
+      `cannot`), so "the food was not good" → `[food good]`, byte-identical to
+      its opposite. The consequence is stronger than "accuracy drops": the two
+      classes have *identical feature vectors*, so no classifier of any
+      architecture beats chance on those pairs — destroyed upstream, in a
+      utility function, before any model exists.
+
+      Stemming is **not** the culprit (0/12 alone); it only closes the last two
+      pairs stopword removal left open. And the benefit is real — vocab 44 → 26,
+      docs 5.2 → 2.2 tokens — which is why the honest framing is task-specific:
+      these lists were built for keyword retrieval, where `not` genuinely
+      matches everything. The failure is carrying the list across tasks.
 - [x] **recommender-systems/03-deep-and-two-tower** — `RetrievalFunnelViz`
       (guided, 4 steps). **Built on the second attempt**, using the alternative
       target recorded after attempt 1 failed.
@@ -335,8 +358,31 @@ wrong format.
       functions**. Verify against the file that ships, not the prototype.
 - [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →
       entity/graph features → adversarial response.
-- [ ] **nlp/01-text-preprocessing** — the preprocessing pipeline (BPE itself is
-      already traced on `wiki/bpe-tokenization`).
+- [x] **nlp/01-text-preprocessing** — `PreprocessingPipelineViz` (guided, 4
+      steps). Scoped around the existing `bpe-tokenization` trace, which the
+      lesson already links: this builds the *destructive* stages instead.
+
+      Twelve matched sentence pairs (same sentence ± a negation) turn
+      "preprocessing loses information" into a count:
+
+          stage                  collided   vocab   tokens/doc
+          lowercase + tokenize    0 / 12      44       5.2
+          + stopword removal     10 / 12      28       2.2
+          + stemming             12 / 12      26       2.2
+          stemming alone          0 / 12      42       5.2
+
+      **`not` is on the standard English stopword list** (with `no`, `nor`,
+      `cannot`), so "the food was not good" → `[food good]`, byte-identical to
+      its opposite. The consequence is stronger than "accuracy drops": the two
+      classes have *identical feature vectors*, so no classifier of any
+      architecture beats chance on those pairs — destroyed upstream, in a
+      utility function, before any model exists.
+
+      Stemming is **not** the culprit (0/12 alone); it only closes the last two
+      pairs stopword removal left open. And the benefit is real — vocab 44 → 26,
+      docs 5.2 → 2.2 tokens — which is why the honest framing is task-specific:
+      these lists were built for keyword retrieval, where `not` genuinely
+      matches everything. The failure is carrying the list across tasks.
 - [ ] **recommender-systems/03-deep-and-two-tower** — two towers, in-batch
       negatives, retrieve-then-rank. **Still open. One attempt failed; read this
       before retrying.**

@@ -37,6 +37,16 @@ BPE, used by GPT and many modern models, builds a subword vocabulary by **iterat
 
 **Stopwords** are high-frequency words with low discriminative value ("the", "is", "a"). Removing them reduces vocabulary size and noise for bag-of-words models. However, for sequence models (RNNs, Transformers), stopwords carry grammatical structure and should usually be kept.
 
+<PreprocessingPipelineViz />
+
+Push twelve matched sentence pairs — the same sentence with and without a negation — through a standard pipeline and the cost stops being abstract. Stopword removal does exactly what it advertises: vocabulary falls from 44 types to 28, documents shrink from 5.2 tokens to 2.2. It also collapses **10 of the 12 pairs into byte-identical token lists**, because `not` is on the standard English stopword list, along with `no`, `nor` and `cannot`. "The food was not good" becomes `[food good]`.
+
+Adding stemming takes it to 12 of 12. But stemming is not the culprit — applied alone it collapses **0 of 12**, and only closes the last two pairs that stopword removal had already opened.
+
+The consequence is stronger than "accuracy drops". Two sentences with opposite labels now have **identical feature vectors**, so no classifier of any architecture can beat chance on them. The information was destroyed in a utility function, upstream of every model you will try, and nothing in the pipeline reports it.
+
+Which is why the honest framing is task-specific rather than "stopword removal is bad". These lists were built for **keyword retrieval**, where a term appearing in nearly every document really is noise — matching `not` retrieves the whole corpus. Carrying the same list into a sentiment task is where it breaks. Choose the list for the task you have, and for anything sentiment-shaped, keep the negations.
+
 **Case normalization:** lowercase all text. "Apple" and "apple" refer to the same concept in most contexts.
 
 **Punctuation removal:** "Hello!" → "Hello". Keep punctuation for sentiment analysis (exclamation marks carry signal) or named entity recognition.
