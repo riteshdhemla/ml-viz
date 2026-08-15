@@ -160,6 +160,7 @@ export const mdxComponents: MDXComponents = {
   StreamWindowViz: viz("StreamWindowViz"),
   ThresholdSweepViz: viz("ThresholdSweepViz"),
   TraceWaterfallViz: viz("TraceWaterfallViz"),
+  TrainServeSkewViz: viz("TrainServeSkewViz"),
   TransferLearningViz: viz("TransferLearningViz"),
   TransformerBlockViz: viz("TransformerBlockViz"),
   ValidationSplitViz: viz("ValidationSplitViz"),

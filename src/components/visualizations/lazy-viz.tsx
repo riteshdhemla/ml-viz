@@ -140,6 +140,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   StreamWindowViz: dynamic(() => import("@/components/visualizations/StreamWindow/StreamWindowViz").then((m) => m.StreamWindowViz)) as ComponentType<VizProps>,
   ThresholdSweepViz: dynamic(() => import("@/components/visualizations/ThresholdSweep/ThresholdSweepViz").then((m) => m.ThresholdSweepViz)) as ComponentType<VizProps>,
   TraceWaterfallViz: dynamic(() => import("@/components/visualizations/TraceWaterfall/TraceWaterfallViz").then((m) => m.TraceWaterfallViz)) as ComponentType<VizProps>,
+  TrainServeSkewViz: dynamic(() => import("@/components/visualizations/TrainServeSkew/TrainServeSkewViz").then((m) => m.TrainServeSkewViz)) as ComponentType<VizProps>,
   TransferLearningViz: dynamic(() => import("@/components/visualizations/TransferLearning/TransferLearningViz").then((m) => m.TransferLearningViz)) as ComponentType<VizProps>,
   TransformerBlockViz: dynamic(() => import("@/components/visualizations/TransformerBlock/TransformerBlockViz").then((m) => m.TransformerBlockViz)) as ComponentType<VizProps>,
   ValidationSplitViz: dynamic(() => import("@/components/visualizations/ValidationSplit/ValidationSplitViz").then((m) => m.ValidationSplitViz)) as ComponentType<VizProps>,

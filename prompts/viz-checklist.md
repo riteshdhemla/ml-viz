@@ -232,8 +232,27 @@ wrong format.
       the federated round.
 - [ ] **building-with-llms/07-reasoning-models** — train-time vs test-time
       compute scaling.
-- [ ] **ml-in-practice/02-deployment-pitfalls** — train-serve skew as a pipeline
-      defect rather than a list of warnings.
+- [x] **ml-in-practice/02-deployment-pitfalls** — train-serve skew as a pipeline
+      defect rather than a list of warnings. `TrainServeSkewViz` (guided, 4
+      steps). Scoped by an overlap check: most of this lesson's mechanisms are
+      covered elsewhere (temporal leak → `PointInTimeViz`, entity splits →
+      `ValidationSplitViz`, walk-forward → its trace, drift → `adwin`,
+      calibration → `CalibrationViz`), so this builds only the one uncovered
+      pitfall — the imputation-default mismatch the lesson names itself.
+
+      Finding, and it is stronger than expected: **the bug is invisible to both
+      of the things teams watch.** Training imputes a missing `age` with the
+      median 34, serving defaults to 0. Offline AUC is *unchanged* — 0.709 →
+      0.709 overall and 0.694 → 0.694 within the affected rows, because
+      substituting a constant shifts every affected row equally and a rank
+      metric cannot represent that. Aggregate prediction drift moves −1.4%,
+      below any alarm. Inside the affected slice the mean score falls **28%**,
+      and 68 of 410 affected rows cross an action threshold they should not.
+
+      So it is a *calibration* failure, not a ranking one: harmless if you only
+      rank, directly harmful the moment you threshold. The moral for the
+      lesson's monitoring section is to segment by the branches feature code can
+      take, which no aggregate dashboard does for you.
 
 ## Tier 3 — rejected, deliberately
 
