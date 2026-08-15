@@ -84,6 +84,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   GridWorldViz: dynamic(() => import("@/components/visualizations/GridWorld/GridWorldViz").then((m) => m.GridWorldViz)) as ComponentType<VizProps>,
   HierarchicalForecastViz: dynamic(() => import("@/components/visualizations/HierarchicalForecast/HierarchicalForecastViz").then((m) => m.HierarchicalForecastViz)) as ComponentType<VizProps>,
   HMMViterbiViz: dynamic(() => import("@/components/visualizations/HMMViterbi/HMMViterbiViz").then((m) => m.HMMViterbiViz)) as ComponentType<VizProps>,
+  HybridSearchViz: dynamic(() => import("@/components/visualizations/HybridSearch/HybridSearchViz").then((m) => m.HybridSearchViz)) as ComponentType<VizProps>,
   HyperparamSearchViz: dynamic(() => import("@/components/visualizations/HyperparamSearch/HyperparamSearchViz").then((m) => m.HyperparamSearchViz)) as ComponentType<VizProps>,
   HypothesisTestViz: dynamic(() => import("@/components/visualizations/HypothesisTest/HypothesisTestViz").then((m) => m.HypothesisTestViz)) as ComponentType<VizProps>,
   KernelViz: dynamic(() => import("@/components/visualizations/KernelViz/KernelViz").then((m) => m.KernelViz)) as ComponentType<VizProps>,
