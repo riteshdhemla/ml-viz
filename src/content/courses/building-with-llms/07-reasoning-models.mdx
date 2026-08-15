@@ -67,6 +67,20 @@ If p² is even then p must be even — write p = 2k...
 
 **Scaling curve:** empirically, reasoning accuracy improves with more thinking tokens — but with diminishing returns. There is an optimal compute budget per problem difficulty; hard competition problems benefit from much longer chains than grade-school arithmetic.
 
+### Sampling more, and the verifier that decides what it is worth
+
+Budget forcing spends compute *inside* one answer. The other way to spend it is **across** answers: sample $N$ attempts and pick the best. That makes the diminishing-returns story concrete, because the two halves separate cleanly.
+
+<TestTimeComputeViz />
+
+$\text{pass@}N = 1 - (1-p)^N$ is the chance a correct answer is somewhere in the batch — what a *perfect* verifier would score, and a hard ceiling on any way of choosing among the same samples. A model right 35% of the time has a correct answer in 16 samples 99.9% of the time. Whether you can **find** it is a separate problem, and it is the one that decides the payoff.
+
+**The verifier sets how much of the ceiling you collect.** At $N = 16$ a near-perfect verifier collects all 0.999 of it; one with noise 1.0 collects 75.9%; one with noise 3.0 collects 50.0%. The sampling is identical in all three cases.
+
+**So returns to more compute are non-monotone in verifier quality.** Going from 16 to 128 samples — 8× the spend — buys **+0.001** with a near-perfect verifier (already saturated against the ceiling), **+0.130** with a mediocre one, and **+0.096** with a bad one. Both extremes waste the extra budget, for opposite reasons.
+
+**And that reframes the train-vs-test-time choice as a bet on selection.** Best-of-16 on the 35% model with a good verifier scores 0.953 — equivalent to owning a 95.3%-single-shot model. With a poor verifier the same 16× spend scores 0.500. Same sampler, same compute, completely different substitution rate against simply training a better model. Measure your verifier against pass@N before budgeting for samples; that ratio, not the sample count, is what to improve.
+
 <Callout type="info" title="Train-time vs test-time scaling">
   | | Train-time | Test-time |
   |---|---|---|

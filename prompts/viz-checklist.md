@@ -445,8 +445,30 @@ wrong format.
       Accounting uses an exact RDP accountant for the **non-subsampled**
       Gaussian mechanism, which is why the sim is full-batch — subsampled
       amplification would have needed a much more involved accountant.
-- [ ] **building-with-llms/07-reasoning-models** — train-time vs test-time
-      compute scaling.
+- [x] **building-with-llms/07-reasoning-models** — `TestTimeComputeViz`
+      (guided, 4 steps). Reframes the train-vs-test-time question as sampling
+      versus *selection*, which is the half the lesson left implicit.
+
+      p = 0.35 base model, N samples, verifier scores correct ~ N(1,σ) and wrong
+      ~ N(0,σ), best-of-N takes the argmax. pass@N is the oracle ceiling.
+
+      - **The verifier decides how much of the ceiling you collect.** At N = 16
+        the ceiling is 0.999; σ = 0.2 collects 100%, σ = 1.0 collects 75.9%,
+        σ = 3.0 collects 50.0% — identical sampling in every case.
+      - **Returns to compute are non-monotone in verifier quality.** 16 → 128
+        samples (8×) buys +0.001 at σ = 0.2 (saturated), +0.130 at σ = 1.0,
+        +0.096 at σ = 2.0. Both extremes waste the spend, for opposite reasons.
+      - **So it is a bet on selection.** Best-of-16 with σ = 0.5 scores 0.953 —
+        equivalent to owning a 95.3%-single-shot model rather than the 35% one.
+        With σ = 3.0 the same 16× spend scores 0.500.
+
+      **Deliberately not modelled**: the "best-of-N peaks then declines"
+      reward-hacking curve. Here wrong answers sit at a fixed mean below correct
+      ones, so with enough samples the correct ones always win and the curve is
+      monotone — which the measurement showed plainly. Producing a decline needs
+      the assumption that some wrong answers are *systematically* over-scored;
+      that is real with learned reward models but is the conclusion rather than
+      something the simulation derives, so it was left out rather than built in.
 - [x] **ml-in-practice/02-deployment-pitfalls** — train-serve skew as a pipeline
       defect rather than a list of warnings. `TrainServeSkewViz` (guided, 4
       steps). Scoped by an overlap check: most of this lesson's mechanisms are
