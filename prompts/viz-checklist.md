@@ -202,8 +202,23 @@ wrong format.
       3.00%, unbiased but four months stale; dividing by the completion curve
       (the 30-day window is 48.4% complete on average) recovers 2.89% vs 2.93%
       immediately, at the cost of assuming the delay distribution is stable.
-- [ ] **recommender-systems/04-session-based-and-realtime** — the real-time
-      feature pipeline through to re-ranking.
+- [~] **recommender-systems/04-session-based-and-realtime** — **rejected on the
+      overlap check.** Every mechanism in this lesson now has a built artifact,
+      several of them added in the same round as this audit:
+
+      - session boundaries by gap threshold → `StreamWindowViz`, which measures
+        exactly this (gap 2s → 9 sessions, 5s → 7, from identical events)
+      - training-serving skew in real-time features → `TrainServeSkewViz`, and
+        the lesson's own callout points at point-in-time correctness, which is
+        `PointInTimeViz`
+      - contextual bandits → `BanditExplorationViz`
+      - re-ranking a shortlist → `RetrievalFunnelViz`
+      - sequence models → the RNN and attention viz
+
+      A walkthrough here would restate five existing ones. The actual defect was
+      the same as `ml-in-practice/12`: the lesson explains all of it in prose and
+      linked to almost none of it. Fixed by wiring cross-links into the session
+      section and the skew callout.
 - [~] **ml-in-practice/12-inference-optimization-and-serving** — KV-cache →
       batching → accelerator. **Rejected on the overlap check the entry itself
       asked for.** Every mechanism section already has a built artifact:
@@ -250,8 +265,38 @@ wrong format.
       scratch script (a filler-vector cache changed the retriever), so the doc
       table and prose were re-extracted **by running the component's own
       functions**. Verify against the file that ships, not the prototype.
-- [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →
-      entity/graph features → adversarial response.
+- [ ] **ml-in-practice/20-fraud-detection-at-scale** — **still open. Two
+      attempts failed; read this before a third.**
+
+      The target worth building is the lesson's own strongest claim: *"never use
+      the model's own fraud flags as the only source of ground-truth labels."*
+      That is a training-loop failure with real dynamics — fraud the model does
+      not flag never becomes a label, so the model stays permanently blind to it
+      — and it is distinct from everything built (`DelayedLabelViz` is about
+      label *timing*; `ModerationPipelineViz`'s appeals payoff is about
+      *measurement*, not a retraining loop that degrades over rounds).
+
+      *Attempt 1* — flagged-only labelling with a fixed 0.5 threshold. Collapsed
+      to nothing: at ~6% prevalence a calibrated model almost never crosses 0.5,
+      so nothing was ever flagged, recall was 0.00 in every round, and the audit
+      rate appeared to make things *worse* (nonsense). Also the fraud-generation
+      expression was malformed.
+
+      *Attempt 2* — fixed the threshold to a review *budget* (flag the top 3% of
+      scores, which is what a real review queue is) and cleaned the generator.
+      Better shaped but inert: recall sat flat at 0.07–0.08 across all eight
+      rounds and the audit quota barely moved pattern-B recall (0.02 → 0.05
+      regardless). Cause: prevalence was far too high relative to the 3% flag
+      budget, so recall was capped near 0.15 by capacity alone, and the pool kept
+      the 4,000-row seed history so retraining barely shifted the model.
+
+      For a third attempt: drop prevalence to ~1%, make the pool contain **only**
+      labelled (flagged + audited) rows rather than the seed history, and check
+      first that the initial model actually catches pattern A at a useful rate —
+      if the seed model is already at capacity-limited recall, there is no room
+      for the loop to degrade and nothing to see. Stop if two more rounds of
+      tuning are needed to make the effect appear: at that point the simulation
+      is being steered toward the lesson's conclusion rather than testing it.
 - [x] **nlp/01-text-preprocessing** — `PreprocessingPipelineViz` (guided, 4
       steps). Scoped around the existing `bpe-tokenization` trace, which the
       lesson already links: this builds the *destructive* stages instead.
@@ -308,8 +353,23 @@ wrong format.
       look like a peak; averaged over three seeds it is a flat plateau. Report
       the plateau, not the peak.
 
-- [ ] **recommender-systems/04-session-based-and-realtime** — the real-time
-      feature pipeline through to re-ranking.
+- [~] **recommender-systems/04-session-based-and-realtime** — **rejected on the
+      overlap check.** Every mechanism in this lesson now has a built artifact,
+      several of them added in the same round as this audit:
+
+      - session boundaries by gap threshold → `StreamWindowViz`, which measures
+        exactly this (gap 2s → 9 sessions, 5s → 7, from identical events)
+      - training-serving skew in real-time features → `TrainServeSkewViz`, and
+        the lesson's own callout points at point-in-time correctness, which is
+        `PointInTimeViz`
+      - contextual bandits → `BanditExplorationViz`
+      - re-ranking a shortlist → `RetrievalFunnelViz`
+      - sequence models → the RNN and attention viz
+
+      A walkthrough here would restate five existing ones. The actual defect was
+      the same as `ml-in-practice/12`: the lesson explains all of it in prose and
+      linked to almost none of it. Fixed by wiring cross-links into the session
+      section and the skew callout.
 - [~] **ml-in-practice/12-inference-optimization-and-serving** — KV-cache →
       batching → accelerator. **Rejected on the overlap check the entry itself
       asked for.** Every mechanism section already has a built artifact:
@@ -356,8 +416,38 @@ wrong format.
       scratch script (a filler-vector cache changed the retriever), so the doc
       table and prose were re-extracted **by running the component's own
       functions**. Verify against the file that ships, not the prototype.
-- [ ] **ml-in-practice/20-fraud-detection-at-scale** — imbalance → resampling →
-      entity/graph features → adversarial response.
+- [ ] **ml-in-practice/20-fraud-detection-at-scale** — **still open. Two
+      attempts failed; read this before a third.**
+
+      The target worth building is the lesson's own strongest claim: *"never use
+      the model's own fraud flags as the only source of ground-truth labels."*
+      That is a training-loop failure with real dynamics — fraud the model does
+      not flag never becomes a label, so the model stays permanently blind to it
+      — and it is distinct from everything built (`DelayedLabelViz` is about
+      label *timing*; `ModerationPipelineViz`'s appeals payoff is about
+      *measurement*, not a retraining loop that degrades over rounds).
+
+      *Attempt 1* — flagged-only labelling with a fixed 0.5 threshold. Collapsed
+      to nothing: at ~6% prevalence a calibrated model almost never crosses 0.5,
+      so nothing was ever flagged, recall was 0.00 in every round, and the audit
+      rate appeared to make things *worse* (nonsense). Also the fraud-generation
+      expression was malformed.
+
+      *Attempt 2* — fixed the threshold to a review *budget* (flag the top 3% of
+      scores, which is what a real review queue is) and cleaned the generator.
+      Better shaped but inert: recall sat flat at 0.07–0.08 across all eight
+      rounds and the audit quota barely moved pattern-B recall (0.02 → 0.05
+      regardless). Cause: prevalence was far too high relative to the 3% flag
+      budget, so recall was capped near 0.15 by capacity alone, and the pool kept
+      the 4,000-row seed history so retraining barely shifted the model.
+
+      For a third attempt: drop prevalence to ~1%, make the pool contain **only**
+      labelled (flagged + audited) rows rather than the seed history, and check
+      first that the initial model actually catches pattern A at a useful rate —
+      if the seed model is already at capacity-limited recall, there is no room
+      for the loop to degrade and nothing to see. Stop if two more rounds of
+      tuning are needed to make the effect appear: at that point the simulation
+      is being steered toward the lesson's conclusion rather than testing it.
 - [x] **nlp/01-text-preprocessing** — `PreprocessingPipelineViz` (guided, 4
       steps). Scoped around the existing `bpe-tokenization` trace, which the
       lesson already links: this builds the *destructive* stages instead.
