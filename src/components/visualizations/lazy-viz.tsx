@@ -109,6 +109,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   PCAReconstructionViz: dynamic(() => import("@/components/visualizations/PCAReconstruction/PCAReconstructionViz").then((m) => m.PCAReconstructionViz)) as ComponentType<VizProps>,
   PCAViz: dynamic(() => import("@/components/visualizations/PCA/PCAViz").then((m) => m.PCAViz)) as ComponentType<VizProps>,
   PerplexityViz: dynamic(() => import("@/components/visualizations/Perplexity/PerplexityViz").then((m) => m.PerplexityViz)) as ComponentType<VizProps>,
+  PointInTimeViz: dynamic(() => import("@/components/visualizations/PointInTime/PointInTimeViz").then((m) => m.PointInTimeViz)) as ComponentType<VizProps>,
   PolicyGradientViz: dynamic(() => import("@/components/visualizations/PolicyGradient/PolicyGradientViz").then((m) => m.PolicyGradientViz)) as ComponentType<VizProps>,
   PoolingViz: dynamic(() => import("@/components/visualizations/Pooling/PoolingViz").then((m) => m.PoolingViz)) as ComponentType<VizProps>,
   PositionalEncodingViz: dynamic(() => import("@/components/visualizations/PositionalEncoding/PositionalEncodingViz").then((m) => m.PositionalEncodingViz)) as ComponentType<VizProps>,

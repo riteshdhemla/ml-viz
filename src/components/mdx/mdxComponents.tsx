@@ -129,6 +129,7 @@ export const mdxComponents: MDXComponents = {
   PCAReconstructionViz: viz("PCAReconstructionViz"),
   PCAViz: viz("PCAViz"),
   PerplexityViz: viz("PerplexityViz"),
+  PointInTimeViz: viz("PointInTimeViz"),
   PolicyGradientViz: viz("PolicyGradientViz"),
   PoolingViz: viz("PoolingViz"),
   PositionalEncodingViz: viz("PositionalEncodingViz"),
