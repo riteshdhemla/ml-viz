@@ -33,8 +33,20 @@ $$t_f \le t$$
 A correct training join (an **as-of join**) takes, for each label, the most recent feature value satisfying $t_f \le t$ — never a later one.
 
 <Callout type="warning" title="The leak that inflates every offline metric">
-  If your training join grabs the latest feature value instead of the as-of value, offline accuracy looks fantastic and production accuracy collapses — the model trained on information it will never have at serving time. Point-in-time joins are the single most important reason to use a feature store rather than hand-rolled SQL.
+  If your training join grabs the latest feature value instead of the as-of value, offline accuracy looks fantastic and the model has trained on information it will never have at serving time. Point-in-time joins are the single most important reason to use a feature store rather than hand-rolled SQL.
 </Callout>
+
+### Watch the leak happen
+
+<PointInTimeViz />
+
+The walkthrough simulates a fraud pipeline end to end — 1200 users, 140 days, ~30k labelled transactions — where `disputes_30d` is *caused by* the label: a fraudulent transaction generates a dispute that lands seven days later. Two results are worth carrying away, and the second one qualifies the warning above.
+
+**The leak starves the honest features.** The naive join does not merely add fake accuracy. Weight piles onto the leaky column — 0.74 versus 0.10 under the as-of join — while account age, amount and device count are squeezed toward zero. The model stops learning the signal it will actually have at serving time, and no metric reports that.
+
+**Production accuracy usually does *not* collapse — your knowledge of it does.** Measured on this pipeline, the naive model reports 0.91 offline and delivers 0.81; the as-of model reports 0.81 and delivers 0.81. The production figures are *identical*: the three honest features still carry the ranking even with their weights starved. What the leak destroyed was the number you set thresholds, capacity and expectations from.
+
+The familiar "production collapses" warning is true only when the leaky feature is load-bearing. Train on `disputes_30d` alone and it is exactly right — 0.92 offline, **0.68** in production. You cannot tell in advance which case you are in, which is precisely why the as-of join is applied *by construction* rather than after a diagnosis.
 
 ## What a feature store gives you
 

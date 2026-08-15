@@ -128,9 +128,30 @@ These are **pipelines with stages**, which is the `GuidedViz` shape (see
 CLAUDE.md, "Adding a guided walkthrough"). A parameter explorer would be the
 wrong format.
 
-- [ ] **ml-in-practice/17-feature-stores** — point-in-time correctness. The
-      canonical candidate: the naive join leaks and the reader should watch it
-      happen before seeing the fix.
+- [x] **ml-in-practice/17-feature-stores** — point-in-time correctness.
+      `PointInTimeViz` (guided, 6 steps, two phases). A fraud pipeline simulated
+      end to end — 1200 users, 140 days, ~30k rows at ~3% fraud — where
+      `disputes_30d` is *caused by* the label (a fraud generates a dispute 7 days
+      later). Two findings:
+
+      1. **The leak starves the honest features.** The naive join puts 0.74 of
+         its weight on the leaky column vs 0.10 under the as-of join, while
+         account age collapses from −0.47 to −0.15. The model stops learning the
+         signal it will actually have at serving time, and no metric shows it.
+      2. **Production accuracy does *not* collapse — 0.81 either way.** This
+         contradicts the lesson's original wording, which was corrected. Naive
+         reports 0.91 and delivers 0.81; as-of reports 0.81 and delivers 0.81.
+         The honest features carry the ranking even with starved weights. What
+         the leak destroys is the number you set thresholds from. The familiar
+         "production collapses" line is true only when the leaky feature is
+         load-bearing — the step-6 toggle trains on `disputes_30d` alone and
+         gets 0.92 → 0.68, a real 0.24 collapse.
+
+      Seed stability (7/11/19/23/31) at full feedback: naive offline 0.892–0.927,
+      production 0.797–0.832, hence two decimals everywhere.
+      Gotcha for the next guided viz: `GuidedCard` renders children inside a
+      `<p>`, so a `<div>` child is invalid nesting and fails hydration — keep
+      card content inline.
 - [ ] **ml-in-practice/21-content-moderation** — label → agreement → active
       learning → policy thresholds → appeals.
 - [ ] **streaming-ml/05-streaming-ml-in-production** — the online/offline skew
