@@ -27,6 +27,18 @@ Train-serve skew is the family of bugs where the training pipeline and the infer
 
 **Prevention.** Serialize the entire preprocessing pipeline (not just the model weights) with the model artifact. Use the same pipeline object — the same code path — at both training time and serving time. Tools like `joblib.dump` for sklearn pipelines and ONNX for neural network preprocessing make this concrete.
 
+### Why this class of bug survives so long
+
+<TrainServeSkewViz />
+
+Take the missing-value example above literally — training imputes `age` with the median 34, serving defaults to 0 — and measure what it costs. The answer explains why these bugs live in production for months.
+
+**Offline AUC does not move at all.** Not slightly: to three decimals, overall *and* within the affected rows themselves. Substituting a constant shifts every affected row by the same amount, so the ranking inside the slice is untouched. A rank-based metric is structurally incapable of representing this defect, and a nightly offline eval will never flag it.
+
+**Aggregate prediction drift does not move either.** At 5% missing, the mean score across all traffic falls about 1% — inside normal daily variation and below any alarm anyone would set. Inside the affected slice, it falls about **30%**.
+
+So the bug is invisible to both of the things teams actually watch, while being large where it matters. It is a **calibration** failure rather than a ranking one: harmless if you only ever rank with the score, and directly harmful the moment you threshold it — those users get pushed below the action line for a reason that has nothing to do with them. That is the argument for segmenting monitoring by the branches your feature code can take (imputed vs present, each default, each fallback), which no aggregate dashboard will do for you.
+
 ```python
 import joblib
 from sklearn.pipeline import Pipeline
