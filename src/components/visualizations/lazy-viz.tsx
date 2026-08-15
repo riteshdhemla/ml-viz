@@ -134,6 +134,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   SimpsonsParadoxViz: dynamic(() => import("@/components/visualizations/SimpsonsParadox/SimpsonsParadoxViz").then((m) => m.SimpsonsParadoxViz)) as ComponentType<VizProps>,
   SoftMarginViz: dynamic(() => import("@/components/visualizations/SoftMargin/SoftMarginViz").then((m) => m.SoftMarginViz)) as ComponentType<VizProps>,
   StorageLayoutViz: dynamic(() => import("@/components/visualizations/StorageLayout/StorageLayoutViz").then((m) => m.StorageLayoutViz)) as ComponentType<VizProps>,
+  StreamWindowViz: dynamic(() => import("@/components/visualizations/StreamWindow/StreamWindowViz").then((m) => m.StreamWindowViz)) as ComponentType<VizProps>,
   ThresholdSweepViz: dynamic(() => import("@/components/visualizations/ThresholdSweep/ThresholdSweepViz").then((m) => m.ThresholdSweepViz)) as ComponentType<VizProps>,
   TraceWaterfallViz: dynamic(() => import("@/components/visualizations/TraceWaterfall/TraceWaterfallViz").then((m) => m.TraceWaterfallViz)) as ComponentType<VizProps>,
   TransferLearningViz: dynamic(() => import("@/components/visualizations/TransferLearning/TransferLearningViz").then((m) => m.TransferLearningViz)) as ComponentType<VizProps>,

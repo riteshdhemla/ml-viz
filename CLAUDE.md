@@ -762,6 +762,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | BackdoorAdjustmentViz | `visualizations/BackdoorAdjustment/` | causal-inference/02-interventions-and-potential-outcomes | ✅ |
 | AnomalyThresholdViz | `visualizations/AnomalyThreshold/` | ml-in-practice/14-anomaly-detection | ✅ |
 | ConstrainedOptViz | `visualizations/ConstrainedOpt/` | optimization-ml/03-constrained-optimization | ✅ |
+| StreamWindowViz | `visualizations/StreamWindow/` | streaming-ml/01-batch-to-streaming | ✅ |
 
 ## Algorithm Traces Built
 
