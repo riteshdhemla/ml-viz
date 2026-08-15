@@ -764,6 +764,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | ConstrainedOptViz | `visualizations/ConstrainedOpt/` | optimization-ml/03-constrained-optimization | ✅ |
 | StreamWindowViz | `visualizations/StreamWindow/` | streaming-ml/01-batch-to-streaming | ✅ |
 | PointInTimeViz | `visualizations/PointInTime/` | ml-in-practice/17-feature-stores | ✅ **guided** |
+| ModerationPipelineViz | `visualizations/ModerationPipeline/` | ml-in-practice/21-content-moderation | ✅ **guided** |
 
 ## Algorithm Traces Built
 

@@ -100,6 +100,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   MatrixTransformViz: dynamic(() => import("@/components/visualizations/MatrixTransform/MatrixTransformViz").then((m) => m.MatrixTransformViz)) as ComponentType<VizProps>,
   MessagePassingViz: dynamic(() => import("@/components/visualizations/MessagePassing/MessagePassingViz").then((m) => m.MessagePassingViz)) as ComponentType<VizProps>,
   MLEViz: dynamic(() => import("@/components/visualizations/MLE/MLEViz").then((m) => m.MLEViz)) as ComponentType<VizProps>,
+  ModerationPipelineViz: dynamic(() => import("@/components/visualizations/ModerationPipeline/ModerationPipelineViz").then((m) => m.ModerationPipelineViz)) as ComponentType<VizProps>,
   MoERoutingViz: dynamic(() => import("@/components/visualizations/MoERouting/MoERoutingViz").then((m) => m.MoERoutingViz)) as ComponentType<VizProps>,
   NaiveBayesVotesViz: dynamic(() => import("@/components/visualizations/NaiveBayesVotes/NaiveBayesVotesViz").then((m) => m.NaiveBayesVotesViz)) as ComponentType<VizProps>,
   NeuralNetworkViz: dynamic(() => import("@/components/visualizations/NeuralNetwork/NeuralNetworkViz").then((m) => m.NeuralNetworkViz)) as ComponentType<VizProps>,

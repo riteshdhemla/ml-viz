@@ -120,6 +120,7 @@ export const mdxComponents: MDXComponents = {
   MatrixTransformViz: viz("MatrixTransformViz"),
   MessagePassingViz: viz("MessagePassingViz"),
   MLEViz: viz("MLEViz"),
+  ModerationPipelineViz: viz("ModerationPipelineViz"),
   MoERoutingViz: viz("MoERoutingViz"),
   NaiveBayesVotesViz: viz("NaiveBayesVotesViz"),
   NeuralNetworkViz: viz("NeuralNetworkViz"),
