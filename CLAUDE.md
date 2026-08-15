@@ -768,6 +768,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | DelayedLabelViz | `visualizations/DelayedLabel/` | streaming-ml/05-streaming-ml-in-production | ✅ **guided** |
 | TrainServeSkewViz | `visualizations/TrainServeSkew/` | ml-in-practice/02-deployment-pitfalls | ✅ **guided** |
 | HybridSearchViz | `visualizations/HybridSearch/` | building-with-llms/03-embeddings-and-semantic-search | ✅ **guided** |
+| DPDisparityViz | `visualizations/DPDisparity/` | ml-in-practice/15-privacy-and-federated-learning | ✅ **guided** |
 
 ## Algorithm Traces Built
 

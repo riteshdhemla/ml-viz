@@ -59,8 +59,22 @@ $$
 The clip-then-noise pattern is the heart of it. A **privacy accountant** tracks the total $\varepsilon$ spent across all training steps (privacy budget is consumed cumulatively).
 
 <Callout type="warning" title="The privacy–utility trade-off is real">
-  Clipping and noise **cost accuracy** — more privacy (smaller $\varepsilon$, more noise) means a worse model. DP-SGD also disproportionately hurts **underrepresented groups** (their gradients are rarer, so noise drowns them out more), a fairness concern. There is no free privacy: you are always buying it with utility.
+  Clipping and noise **cost accuracy** — more privacy (smaller $\varepsilon$, more noise) means a worse model. DP-SGD also disproportionately hurts **underrepresented groups**, a fairness concern. There is no free privacy: you are always buying it with utility.
 </Callout>
+
+### Which of the two operations actually costs you
+
+<DPDisparityViz />
+
+The disparate impact is usually explained as *noise drowning out rarer gradients*. Simulate it and both halves of that explanation come apart.
+
+**The minority's gradients are larger, not rarer.** The model fits them worse, so their gradients never shrink: after training, the median per-example gradient norm is **3.76×** the majority's. Clipping is a ceiling on gradient norm, so this is exactly the group sitting above it — at $C = 1$, **16% of minority examples are clipped against 3% of majority**, five times the rate, every step.
+
+**And it is the clipping, not the noise.** With *zero* noise — no privacy guarantee purchased at all — tightening $C$ from 20 to 0.2 leaves majority accuracy flat at 0.95 while minority accuracy falls from 0.88 to chance. Holding $C = 1$ and sweeping the noise instead, the minority barely moves from $\sigma = 0$ through $\sigma = 32$ ($\varepsilon \approx 1.4$). Averaged over a large batch the noise is amortised across every example; the per-example clip is not.
+
+That changes which knob to reach for. Spending more $\varepsilon$ buys back almost nothing here — the damage was done by the operation that carries no privacy guarantee. **Per-group or adaptive clip norms** target the mechanism that is actually responsible. This matches the finding in [Bagdasaryan et al., *Differential Privacy Has Disparate Impact on Model Accuracy* (2019)](https://papers.nips.cc/paper/2019/hash/fc0de4e0396fff257ea362983c2dda5a-Abstract.html), which isolates clipping as the dominant cause.
+
+The harm also scales sharply with representation: at a 5% minority share the accuracy gap is about 0.52; at 20% it is 0.04; at 50% it is essentially zero. Same algorithm, same $\varepsilon$, same clip norm — the damage is set by how many examples the group has to spare.
 
 ## Federated learning
 
