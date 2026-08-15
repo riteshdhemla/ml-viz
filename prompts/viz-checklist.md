@@ -152,8 +152,37 @@ wrong format.
       Gotcha for the next guided viz: `GuidedCard` renders children inside a
       `<p>`, so a `<div>` child is invalid nesting and fails hydration — keep
       card content inline.
-- [ ] **ml-in-practice/21-content-moderation** — label → agreement → active
-      learning → policy thresholds → appeals.
+- [x] **ml-in-practice/21-content-moderation** — label → agreement → active
+      learning → policy thresholds → appeals. `ModerationPipelineViz` (guided,
+      5 steps, three phases). Three findings, two of which corrected the lesson:
+
+      1. **"A model can't outperform human agreement" is false as stated.** The
+         ceiling is on the *measurement*. Sweeping annotator noise leaves the
+         model's true AUC flat at 0.962 across kappa 0.79 → 0.19, because
+         symmetric label noise does not move a decision boundary; what falls is
+         the AUC you'd report (0.962 → 0.843), since the test labels come from
+         the same disagreeing annotators. Low kappa means fix the eval, not
+         abandon the model. Stated boundary: this holds for noise independent of
+         the features — systematic bias correlated with content is a different
+         failure.
+      2. **Active learning buys 4× early and nothing later.** Uncertainty
+         sampling reaches at 100 labels what random needs 400 for; past 400 both
+         flatten at the all-4500-labels score. Reported with the saturation, not
+         just the win.
+      3. **The lesson's tier table barely fires.** At ~5% prevalence the model's
+         highest score across 20k items is 0.991, so "auto-remove above 0.99"
+         catches 2 items. And the appeal channel is one-sided: it sees ~2% of
+         decisions, all on the action side, so it measures precision exactly and
+         recall never. Recall needs a separately drawn audit sample.
+
+      Two rejected sub-steps, recorded so they are not retried. **Systematic
+      annotator bias → disparate FPR** cannot work in this setup: the group flag
+      is not a feature and is independent of the features, so the model cannot
+      treat the group differently at all (measured FPR ratios came out 0.85×,
+      0.73×, 0.54× — wrong direction and non-monotonic). It would need
+      group-correlated features, i.e. a whole extra mechanism. And the **tier
+      analysis at 1,500 test items** produced 0–4 items per tier, far too few to
+      mean anything; it needs ≥20k held out.
 - [ ] **streaming-ml/05-streaming-ml-in-production** — the online/offline skew
       trap and the delayed-label loop.
 - [ ] **recommender-systems/04-session-based-and-realtime** — the real-time
