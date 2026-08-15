@@ -128,7 +128,7 @@ Their streams **stall**: every decode step waits behind the monolithic prefill,
 so inter-token latency spikes from ~30ms to ~230ms — visible stutter in thirty
 UIs to serve one new user. Options: **chunk the prefill** into pieces
 interleaved with decode steps (bounded TPOT, slightly worse TTFT), or
-**disaggregate** — run prefill and decode on separate GPU pools and ship the KV
+**disaggregate**: run prefill and decode on separate GPU pools and ship the KV
 cache across, so the phases never contend.
 </ThinkFirst>
 
@@ -179,7 +179,7 @@ compute — one of the rare optimizations with no quality tradeoff at all.
 Because throughput and tail latency are a **frontier**: a huge batch means new
 requests wait behind long prefills and every stream's TPOT degrades. Raw
 tokens/sec can rise while more requests *miss their SLO*. The honest metric is
-**goodput** — requests served within both the TTFT and TPOT targets, per GPU —
+**goodput**: requests served within both the TTFT and TPOT targets, per GPU —
 and batch size is chosen as an operating point on the frontier, not maximized.
 A system optimized for goodput can look "slower" on a throughput benchmark and
 be strictly better in production.
@@ -269,11 +269,11 @@ from ~140GB to ~35GB, turning a 4-GPU problem into a 1–2-GPU one.
 
 ## References
 
-- [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180) — Kwon et al., SOSP 2023; the vLLM paper — KV-cache fragmentation numbers, paging design, 2–4× throughput result.
-- [Orca: A Distributed Serving System for Transformer-Based Generative Models](https://www.usenix.org/conference/osdi22/presentation/yu) — Yu et al., OSDI 2022; introduced iteration-level (continuous) batching, 36.9× throughput vs. FasterTransformer.
-- [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192) — Leviathan et al., ICML 2023; draft-and-verify decoding with identical output distribution, 2–3× speedup.
-- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102) — Pope et al., MLSys 2023; prefill/decode cost model and optimal multi-GPU partitioning for 500B+ models.
-- [DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving](https://arxiv.org/abs/2401.09670) — Zhong et al., OSDI 2024; goodput framing and 7.4×/12.6× disaggregation results.
-- [AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978) — Lin et al., MLSys 2024 (Best Paper); 4-bit weight-only quantization via salient-channel scaling.
-- [FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness](https://arxiv.org/abs/2205.14135) — Dao et al., NeurIPS 2022; IO-aware exact attention kernel behind cheap long-prompt prefill.
-- [Mastering LLM Techniques: Inference Optimization](https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/) — NVIDIA Technical Blog; practitioner survey of batching, KV-cache, quantization, and parallelism techniques in TensorRT-LLM.
+- [Efficient Memory Management for Large Language Model Serving with PagedAttention](https://arxiv.org/abs/2309.06180): Kwon et al., SOSP 2023; the vLLM paper — KV-cache fragmentation numbers, paging design, 2–4× throughput result.
+- [Orca: A Distributed Serving System for Transformer-Based Generative Models](https://www.usenix.org/conference/osdi22/presentation/yu): Yu et al., OSDI 2022; introduced iteration-level (continuous) batching, 36.9× throughput vs. FasterTransformer.
+- [Fast Inference from Transformers via Speculative Decoding](https://arxiv.org/abs/2211.17192): Leviathan et al., ICML 2023; draft-and-verify decoding with identical output distribution, 2–3× speedup.
+- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102): Pope et al., MLSys 2023; prefill/decode cost model and optimal multi-GPU partitioning for 500B+ models.
+- [DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving](https://arxiv.org/abs/2401.09670): Zhong et al., OSDI 2024; goodput framing and 7.4×/12.6× disaggregation results.
+- [AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration](https://arxiv.org/abs/2306.00978): Lin et al., MLSys 2024 (Best Paper); 4-bit weight-only quantization via salient-channel scaling.
+- [FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness](https://arxiv.org/abs/2205.14135): Dao et al., NeurIPS 2022; IO-aware exact attention kernel behind cheap long-prompt prefill.
+- [Mastering LLM Techniques: Inference Optimization](https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/): NVIDIA Technical Blog; practitioner survey of batching, KV-cache, quantization, and parallelism techniques in TensorRT-LLM.

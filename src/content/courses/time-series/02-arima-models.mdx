@@ -19,7 +19,7 @@ ARIMA stands for **A**uto**R**egressive **I**ntegrated **M**oving **A**verage. T
 
 ## The three components
 
-### AR(p) — Autoregressive
+### AR(p): Autoregressive
 
 An AR(p) model expresses the current value as a linear combination of its $p$ most recent values plus white noise:
 
@@ -31,7 +31,7 @@ where $c$ is a constant, $\phi_1, \ldots, \phi_p$ are the **autoregressive coeff
 
 **Intuition:** An AR(1) with $\phi_1 = 0.8$ says "tomorrow is 80% of today plus some noise." The series has a long memory — shocks decay geometrically but never vanish.
 
-### MA(q) — Moving Average
+### MA(q): Moving Average
 
 An MA(q) model expresses the current value as the mean plus a linear combination of $q$ past forecast errors:
 
@@ -75,9 +75,9 @@ Before fitting any model, inspect the ACF and PACF of the *stationary* (differen
 | ACF: exponential decay or damped oscillation; PACF: cuts off after lag $p$ | AR($p$) |
 | ACF: cuts off after lag $q$; PACF: exponential decay or damped oscillation | MA($q$) |
 | Both ACF and PACF tail off gradually | ARMA($p$,$q$) |
-| No significant spikes in either plot | White noise — no model needed |
-| Significant spikes at every lag, slow decay | Non-stationary — difference again |
-| Spikes at lags $s, 2s, 3s, \ldots$ | Seasonal structure — use SARIMA |
+| No significant spikes in either plot | White noise: no model needed |
+| Significant spikes at every lag, slow decay | Non-stationary: difference again |
+| Spikes at lags $s, 2s, 3s, \ldots$ | Seasonal structure: use SARIMA |
 
 <ACFViz />
 
@@ -256,6 +256,6 @@ print(auto_model.summary())
 
 ## Related concepts
 
-- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals) — stationarity, differencing, and the ACF/PACF tools used here
-- [**Deep Learning for Time Series**](/courses/time-series/03-deep-learning-for-time-series) — when ARIMA is not expressive enough
-- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — AR coefficients are estimated by a variant of OLS
+- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals): stationarity, differencing, and the ACF/PACF tools used here
+- [**Deep Learning for Time Series**](/courses/time-series/03-deep-learning-for-time-series): when ARIMA is not expressive enough
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression): AR coefficients are estimated by a variant of OLS

@@ -68,23 +68,23 @@ where $c_0$ is the fixed context and $\bar{m}$ the average tokens added per step
 
 The trace store closes two loops from the [evaluation lesson](/courses/agent-design-patterns/10-evaluating-agents):
 
-- **Online evals** — sample completed trajectories and score them: programmatic checks on the outcome, an [LLM-as-judge](/wiki/llm-as-judge) on the *path* ("was each action justified by the preceding thought?"). Scores attach to the trace, so "show me trajectories where the judge flagged an unjustified action" is a filter, not a fishing trip.
+- **Online evals**: sample completed trajectories and score them: programmatic checks on the outcome, an [LLM-as-judge](/wiki/llm-as-judge) on the *path* ("was each action justified by the preceding thought?"). Scores attach to the trace, so "show me trajectories where the judge flagged an unjustified action" is a filter, not a fishing trip.
 - **Replay debugging** — because each span captured the full resolved context, you can re-run any single step offline with the exact inputs, or replay the whole trajectory up to the step where it derailed and try a fix from there. Combined with checkpointing this is *time-travel debugging* for a non-deterministic system.
-- **Regression sets** — every interesting production failure, exported with its context, becomes a test case the next prompt/model/tool change must pass.
+- **Regression sets**: every interesting production failure, exported with its context, becomes a test case the next prompt/model/tool change must pass.
 
 Grouping matters more for agents than for single calls: **sessions** stitch multi-turn conversations, **user** ties trajectories to accounts for billing and abuse detection, and **agent version tags** (prompt vX, toolset vY, model vZ) let you A/B trajectory metrics across rollouts.
 
 ## Common mistakes
 
-1. **Logging steps as flat log lines** — without span nesting and a shared `trace_id`, a 30-step trajectory with one delegation is unreconstructable.
-2. **Capturing outputs but not resolved context** — you can see *that* step 17 was wrong but never reproduce *why*.
-3. **Losing the trace at delegation boundaries** — sub-agents and MCP tool servers that don't propagate context turn one task into disconnected fragments.
-4. **Dashboarding averages only** — agent failures live in the tail; p95/p99 steps-per-task and per-tool error rates carry the signal.
+1. **Logging steps as flat log lines**: without span nesting and a shared `trace_id`, a 30-step trajectory with one delegation is unreconstructable.
+2. **Capturing outputs but not resolved context**: you can see *that* step 17 was wrong but never reproduce *why*.
+3. **Losing the trace at delegation boundaries**: sub-agents and MCP tool servers that don't propagate context turn one task into disconnected fragments.
+4. **Dashboarding averages only**: agent failures live in the tail; p95/p99 steps-per-task and per-tool error rates carry the signal.
 
 ## Related concepts
 
-- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — checkpointing, guardrails, and budget ceilings that observability verifies
-- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents) — outcome vs. trajectory evaluation that runs over these traces
-- [**Agentic Analysis: A Metrics Taxonomy**](/wiki/agent-metrics-taxonomy) — the four levels these shape metrics feed into, plus the latency and leading-indicator panels
-- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry) — the instrumentation stack and GenAI semantic conventions used here
-- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a) — the delegation edges a trace must cross
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents): checkpointing, guardrails, and budget ceilings that observability verifies
+- [**Evaluating Agents**](/courses/agent-design-patterns/10-evaluating-agents): outcome vs. trajectory evaluation that runs over these traces
+- [**Agentic Analysis: A Metrics Taxonomy**](/wiki/agent-metrics-taxonomy): the four levels these shape metrics feed into, plus the latency and leading-indicator panels
+- [**Langfuse & OpenTelemetry**](/wiki/langfuse-and-opentelemetry): the instrumentation stack and GenAI semantic conventions used here
+- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a): the delegation edges a trace must cross

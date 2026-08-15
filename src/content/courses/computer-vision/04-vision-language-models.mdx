@@ -15,7 +15,7 @@ Vision-language models (VLMs) close the gap between two previously separate worl
 
 ---
 
-## CLIP — the two-encoder recipe
+## CLIP: the two-encoder recipe
 
 CLIP (Contrastive Language–Image Pre-training, Radford et al., 2021) trains two encoders side by side:
 
@@ -62,7 +62,7 @@ The learnable temperature $\tau$ — initialised at $\tau = 0.07$ in the origina
 
 ---
 
-## The shared embedding space — what you get for free
+## The shared embedding space: what you get for free
 
 Once both encoders project into one $d$-dim space, any image and any text get scored by a single inner product. That single property unlocks several previously-separate ML tasks.
 
@@ -106,12 +106,12 @@ CLIP is not magic. Three failure modes show up everywhere it gets deployed:
 
 ---
 
-## BLIP-2 and the LLaVA family — using a VLM to generate text
+## BLIP-2 and the LLaVA family: using a VLM to generate text
 
 CLIP gives you a great cross-modal *retrieval* model, but it can't actually *say anything* about an image. For captioning and visual question answering you want the LLM's text-generation machinery hooked up to the image encoder. BLIP-2 (Salesforce, 2023) and the LLaVA family (Liu et al., 2023) ship a clean recipe that has become the industry default:
 
-1. **Take a frozen vision encoder** — typically a ViT-L/14 pretrained with CLIP. This is your image feature extractor.
-2. **Take a frozen LLM** — Llama, Mistral, Gemma, or similar. This is your text generator.
+1. **Take a frozen vision encoder**: typically a ViT-L/14 pretrained with CLIP. This is your image feature extractor.
+2. **Take a frozen LLM**: Llama, Mistral, Gemma, or similar. This is your text generator.
 3. **Train a small bridge module** between them. In BLIP-2 this is a **Q-former** — a tiny Transformer with a bank of 32 learnable query tokens that cross-attend to the ViT features and produce 32 "soft prompt" tokens the LLM consumes. In LLaVA the bridge is even simpler: a 2-layer MLP that projects ViT features to the LLM's embedding dimension and concatenates them at the start of the sequence.
 
 The LLM treats these projected image tokens like any other prefix — its self-attention reads them, its language-modelling head decodes a caption or an answer. The training data is image-caption pairs plus instruction-following data with images mixed in (e.g. "describe what is happening" or "what does the sign say").
@@ -157,7 +157,7 @@ The reason this pattern wins is operational. You ship *one* embedding model, you
 - A VLM trains an **image encoder** and a **text encoder** into a *shared* $d$-dim embedding space; $\ell_2$-normalised vectors mean cosine similarity = dot product.
 - The CLIP training loss is **symmetric cross-entropy on the $B \times B$ similarity matrix**, with the diagonal as positives — the same InfoNCE objective from contrastive embedding training, applied across modalities.
 - The shared space gives you **zero-shot classification, semantic search, and free-form content moderation** for free, without any task-specific training.
-- **Prompt engineering matters at inference time** — averaging multiple `"a photo of a {label}"` templates per class is the cheapest way to lift accuracy.
+- **Prompt engineering matters at inference time**: averaging multiple `"a photo of a {label}"` templates per class is the cheapest way to lift accuracy.
 - CLIP **cannot read text inside images**, behaves as a bag-of-words on order-sensitive captions, and inherits the web's data biases. Pick the right tool for the job.
 - BLIP-2 and LLaVA bridge a **frozen ViT** to a **frozen LLM** with a small **Q-former / MLP projector**; only the bridge trains. This is the cheap, reusable recipe behind almost every production captioning + chat-about-images system.
 
@@ -165,8 +165,8 @@ The reason this pattern wins is operational. You ship *one* embedding model, you
 
 ## Related Concepts
 
-- [Backbones in Practice](/courses/computer-vision/03-backbones-in-practice) — CLIP uses a ViT or ResNet as its image encoder
-- [Training Embedding Models](/courses/nlp/07-training-embedding-models) — the same InfoNCE / contrastive loss in the single-modality case
-- [Foundation Models and Scaling](/courses/transformers/05-foundation-models-and-scaling) — why the pretraining + frozen-base + bridge recipe became standard
-- [Embeddings and Semantic Search](/courses/building-with-llms/03-embeddings-and-semantic-search) — how the shared embedding space turns into a production search system
-- [PEFT: LoRA and QLoRA](/courses/fine-tuning-alignment/02-peft-lora-qlora) — how most VLM fine-tuning actually happens
+- [Backbones in Practice](/courses/computer-vision/03-backbones-in-practice): CLIP uses a ViT or ResNet as its image encoder
+- [Training Embedding Models](/courses/nlp/07-training-embedding-models): the same InfoNCE / contrastive loss in the single-modality case
+- [Foundation Models and Scaling](/courses/transformers/05-foundation-models-and-scaling): why the pretraining + frozen-base + bridge recipe became standard
+- [Embeddings and Semantic Search](/courses/building-with-llms/03-embeddings-and-semantic-search): how the shared embedding space turns into a production search system
+- [PEFT: LoRA and QLoRA](/courses/fine-tuning-alignment/02-peft-lora-qlora): how most VLM fine-tuning actually happens

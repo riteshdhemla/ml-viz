@@ -21,7 +21,7 @@ A graph $G = (V, E)$ is a set of **nodes** $V$ and **edges** $E$ connecting them
 
 - **Node features** $\mathbf{x}_v \in \mathbb{R}^{d}$ — e.g. an atom's element, a user's profile vector.
 - **Edge features** $\mathbf{e}_{uv}$ — e.g. a bond type, a transaction amount (optional).
-- **Graph-level features / labels** — e.g. "is this molecule toxic?".
+- **Graph-level features / labels**: e.g. "is this molecule toxic?".
 
 The connectivity is captured by the **adjacency matrix** $\mathbf{A} \in \{0,1\}^{n\times n}$, where $A_{uv} = 1$ if there's an edge $u\to v$. Node features stack into $\mathbf{X} \in \mathbb{R}^{n\times d}$.
 
@@ -48,8 +48,8 @@ $$
 
 where $\mathcal{N}(v)$ are the neighbors of $v$, and $\mathbf{h}_v^{(0)} = \mathbf{x}_v$. The two functions:
 
-- **AGGREGATE** — a permutation-invariant pooling over the neighbor set (sum/mean/max). This is what enforces permutation invariance and handles variable neighbor counts.
-- **UPDATE** — a learnable transform (typically a small neural net) combining a node's old state with the aggregated message.
+- **AGGREGATE**: a permutation-invariant pooling over the neighbor set (sum/mean/max). This is what enforces permutation invariance and handles variable neighbor counts.
+- **UPDATE**: a learnable transform (typically a small neural net) combining a node's old state with the aggregated message.
 
 A concrete simple instance — mean-aggregation with a learned linear update:
 
@@ -106,12 +106,12 @@ The same machinery serves three task levels, differing only in the final readout
 
 - A graph $(V, E)$ with node/edge features is learnable data; the **adjacency matrix** encodes connectivity. Grids and sequences are regular special cases.
 - Graph models must be **permutation-invariant** and handle **variable neighbor counts**, which forces order-independent aggregation (sum/mean/max).
-- **Message passing** — AGGREGATE neighbor states, then UPDATE — is the framework underlying nearly all GNNs; $k$ layers give a $k$-hop receptive field.
+- **Message passing**: AGGREGATE neighbor states, then UPDATE — is the framework underlying nearly all GNNs; $k$ layers give a $k$-hop receptive field.
 - Node-, edge-, and graph-level tasks share the machinery; graph-level tasks add a **readout** that pools all nodes.
 
 ## Related concepts
 
-- [**Graph Convolutions & GraphSAGE**](/courses/graph-neural-networks/02-graph-convolutions) — concrete message-passing layers and how they scale
-- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the neural building blocks inside UPDATE
-- [**Convolution Operation**](/courses/cnns/01-convolution-operation) — the regular-grid special case GNNs generalize
-- [**Inductive Bias & Equivariance**](/wiki/inductive-bias) — the GNN as permutation equivariance over graph structure, one of four instantiations of a single idea
+- [**Graph Convolutions & GraphSAGE**](/courses/graph-neural-networks/02-graph-convolutions): concrete message-passing layers and how they scale
+- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass): the neural building blocks inside UPDATE
+- [**Convolution Operation**](/courses/cnns/01-convolution-operation): the regular-grid special case GNNs generalize
+- [**Inductive Bias & Equivariance**](/wiki/inductive-bias): the GNN as permutation equivariance over graph structure, one of four instantiations of a single idea

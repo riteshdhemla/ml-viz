@@ -47,9 +47,9 @@ $$P(\text{success}) = p^n$$
 At $p = 0.95$, ten steps is only $0.95^{10} \approx 0.60$. The tool layer is where most of that loss lives — a malformed argument, a timed-out API, a rate limit, an empty result. Robust runtimes therefore:
 
 - **Validate arguments** against the schema *before* executing, and feed validation errors back as observations so the model can correct.
-- **Distinguish transient from deterministic failures** — retry a timeout with backoff; do **not** retry a 404 five times.
-- **Bound the loop** — cap total steps and total cost so a confused agent can't spin forever.
-- **Apply least privilege** — expose only the tools (and scopes) a task needs.
+- **Distinguish transient from deterministic failures**: retry a timeout with backoff; do **not** retry a 404 five times.
+- **Bound the loop**: cap total steps and total cost so a confused agent can't spin forever.
+- **Apply least privilege**: expose only the tools (and scopes) a task needs.
 
 <Callout type="warning" title="Tool output is untrusted input">
   A tool that browses the web or reads a document can return text containing **hidden instructions** (indirect prompt injection). That text flows straight back into the model's context. Treat every observation as untrusted: sandbox execution, strip or quarantine tool output, and require human confirmation for irreversible actions. This is the Multimodal Guardrails pattern doing real work.
@@ -76,10 +76,10 @@ The payoff is **n + m integrations instead of n × m**: any MCP-speaking agent c
 
 ## Common mistakes
 
-1. **Over-trusting tool output** — feeding unvalidated, possibly malicious results straight back to the model.
-2. **Retrying deterministic failures** — burning budget retrying a malformed request that will never succeed.
-3. **Too many tools** — a sprawling tool list degrades selection accuracy; keep it tight and well-described.
-4. **Confusing MCP with safety** — assuming a standard protocol makes tool use safe. It standardises connection, not trust.
+1. **Over-trusting tool output**: feeding unvalidated, possibly malicious results straight back to the model.
+2. **Retrying deterministic failures**: burning budget retrying a malformed request that will never succeed.
+3. **Too many tools**: a sprawling tool list degrades selection accuracy; keep it tight and well-described.
+4. **Confusing MCP with safety**: assuming a standard protocol makes tool use safe. It standardises connection, not trust.
 
 ## Key takeaways
 
@@ -90,6 +90,6 @@ The payoff is **n + m integrations instead of n × m**: any MCP-speaking agent c
 
 ## Related concepts
 
-- [**Model Querying Patterns**](/courses/agent-design-patterns/05-model-querying-patterns) — how the agent structures the calls this loop is built from
-- [**Safety, Registry & Adaptation Patterns**](/courses/agent-design-patterns/08-safety-registry-and-adaptation) — the Tool/Agent Registry and Guardrails that govern tool use
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the introductory treatment this lesson deepens
+- [**Model Querying Patterns**](/courses/agent-design-patterns/05-model-querying-patterns): how the agent structures the calls this loop is built from
+- [**Safety, Registry & Adaptation Patterns**](/courses/agent-design-patterns/08-safety-registry-and-adaptation): the Tool/Agent Registry and Guardrails that govern tool use
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): the introductory treatment this lesson deepens

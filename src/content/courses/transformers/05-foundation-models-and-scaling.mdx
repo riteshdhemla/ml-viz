@@ -93,8 +93,8 @@ per layer — the score matrix $QK^\top$ is $L \times L$. Doubling the context q
 
 Two families of techniques attack this:
 
-1. **Memory-efficient exact attention** — [FlashAttention](/courses/transformers/04-modern-attention) tiles the computation so the full $L \times L$ matrix is never written to HBM. Compute is still $O(L^2)$, but the memory wall is broken and wall-clock time drops 2–4×.
-2. **Sub-quadratic approximations** — sliding-window attention, sparse global tokens (Longformer, BigBird), and linear-attention variants (Mamba/SSMs, Linformer) all trade some quality for asymptotically lower cost. These are how 1 M-token and 10 M-token windows are achieved in practice.
+1. **Memory-efficient exact attention**: [FlashAttention](/courses/transformers/04-modern-attention) tiles the computation so the full $L \times L$ matrix is never written to HBM. Compute is still $O(L^2)$, but the memory wall is broken and wall-clock time drops 2–4×.
+2. **Sub-quadratic approximations**: sliding-window attention, sparse global tokens (Longformer, BigBird), and linear-attention variants (Mamba/SSMs, Linformer) all trade some quality for asymptotically lower cost. These are how 1 M-token and 10 M-token windows are achieved in practice.
 
 A third axis is **position generalisation**. RoPE-style positional encodings, with techniques such as YaRN, NTK-aware scaling, or position-interpolation, let a model trained at 4 K tokens be extended to 32 K or 128 K with only light fine-tuning. Without such tricks the model's positional understanding simply degrades past its training length.
 
@@ -108,7 +108,7 @@ A freshly pretrained model is a fluent **autocomplete** — it produces plausibl
 
 1. **Supervised Fine-Tuning (SFT)** on curated `(prompt, response)` pairs teaches the model the *shape* of a helpful answer — see [Supervised Fine-Tuning](/courses/fine-tuning-alignment/01-supervised-fine-tuning).
 2. **Reward Modelling (RM)** trains a separate scalar head on pairwise preferences (chosen vs rejected responses).
-3. **Preference optimisation** — classical [RLHF with PPO](/courses/fine-tuning-alignment/04-rlhf-and-dpo) (uses the reward model + a KL leash) or **DPO** (a closed-form, RM-free alternative).
+3. **Preference optimisation**: classical [RLHF with PPO](/courses/fine-tuning-alignment/04-rlhf-and-dpo) (uses the reward model + a KL leash) or **DPO** (a closed-form, RM-free alternative).
 
 Post-training uses orders of magnitude less compute than pretraining (typically a few percent) but is responsible for the dramatic quality jump from "raw GPT-3 base model" to "ChatGPT". It is also where most of the visible behavioural differences between frontier models live; the underlying pretrained Transformers are remarkably similar.
 
@@ -136,7 +136,7 @@ Post-training uses orders of magnitude less compute than pretraining (typically 
 
 ## Related concepts
 
-- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — the decoder-only design every foundation model is built from
-- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention) — FlashAttention and sliding-window patterns that make large context windows tractable
-- [**Supervised Fine-Tuning & Instruction Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the first post-training step that turns a base model into an instruction follower
-- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo) — the alignment step that gives modern assistants their voice
+- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture): the decoder-only design every foundation model is built from
+- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention): FlashAttention and sliding-window patterns that make large context windows tractable
+- [**Supervised Fine-Tuning & Instruction Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning): the first post-training step that turns a base model into an instruction follower
+- [**Preference Tuning: RLHF & DPO**](/courses/fine-tuning-alignment/04-rlhf-and-dpo): the alignment step that gives modern assistants their voice

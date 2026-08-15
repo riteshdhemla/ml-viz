@@ -15,8 +15,8 @@ Self-attention and multi-head attention are the engine. Now we build the whole c
 
 Each block has **two sub-layers**, each wrapped in a residual connection and a layer norm:
 
-1. **Multi-head self-attention** — tokens exchange information.
-2. **Position-wise feed-forward network (FFN)** — each token is independently transformed.
+1. **Multi-head self-attention**: tokens exchange information.
+2. **Position-wise feed-forward network (FFN)**: each token is independently transformed.
 
 $$
 \mathbf{z} = \text{LayerNorm}\big(\mathbf{x} + \text{MultiHead}(\mathbf{x})\big)
@@ -80,15 +80,15 @@ $$
 \mathbf{x} = [\,2,\ 4,\ 4,\ 4,\ 5,\ 5,\ 7,\ 9\,].
 $$
 
-**Step 1 — mean.** $\mu = \dfrac{2+4+4+4+5+5+7+9}{8} = \dfrac{40}{8} = 5$.
+**Step 1: mean.** $\mu = \dfrac{2+4+4+4+5+5+7+9}{8} = \dfrac{40}{8} = 5$.
 
-**Step 2 — variance.** Deviations from the mean are $[-3,-1,-1,-1,0,0,2,4]$, squared $[9,1,1,1,0,0,4,16]$, summing to $32$:
+**Step 2: variance.** Deviations from the mean are $[-3,-1,-1,-1,0,0,2,4]$, squared $[9,1,1,1,0,0,4,16]$, summing to $32$:
 
 $$
 \sigma^2 = \frac{32}{8} = 4, \qquad \sqrt{\sigma^2} = 2.
 $$
 
-**Step 3 — normalize** (with $\epsilon$ negligible, divide each deviation by $\sigma = 2$):
+**Step 3: normalize** (with $\epsilon$ negligible, divide each deviation by $\sigma = 2$):
 
 $$
 \hat{\mathbf{x}} = \frac{\mathbf{x} - 5}{2} = [\,-1.5,\ -0.5,\ -0.5,\ -0.5,\ 0,\ 0,\ 1.0,\ 2.0\,].
@@ -136,9 +136,9 @@ How you mask attention and stack blocks defines the model's purpose:
 
 An **encoder layer** is exactly what we counted above: bidirectional self-attention → FFN, each with residual + LayerNorm. A **decoder layer** has **three** sub-layers instead of two:
 
-1. **Masked (causal) self-attention** — the same self-attention, but a triangular mask sets all "future" scores to $-\infty$ before the softmax, so position $t$ can attend only to positions $\le t$. This is what makes generation autoregressive: while predicting token $t$ the model cannot peek at $t+1$.
-2. **Cross-attention** — queries come from the decoder, keys/values from the *encoder's* output. This is how the decoder "looks at" the source.
-3. **Feed-forward network** — same per-token MLP.
+1. **Masked (causal) self-attention**: the same self-attention, but a triangular mask sets all "future" scores to $-\infty$ before the softmax, so position $t$ can attend only to positions $\le t$. This is what makes generation autoregressive: while predicting token $t$ the model cannot peek at $t+1$.
+2. **Cross-attention**: queries come from the decoder, keys/values from the *encoder's* output. This is how the decoder "looks at" the source.
+3. **Feed-forward network**: same per-token MLP.
 
 The original Transformer translates with two stacks. The **encoder** reads the source sentence bidirectionally. The **decoder** generates the target one token at a time, mixing the masked self-attention (what it has written so far) with cross-attention (the source it is translating).
 
@@ -205,9 +205,9 @@ Transformers improved largely by getting **bigger** — more layers, wider dimen
 
 ## Common mistakes
 
-1. **Wrong mask for the family** — encoders use no causal mask; decoders require one. Mixing them up either leaks the future or cripples understanding.
-2. **Dropping the residual or LayerNorm** — deep stacks become untrainable without them.
-3. **Assuming bigger always wins** — scale needs proportional *data*; an under-fed huge model overfits.
+1. **Wrong mask for the family**: encoders use no causal mask; decoders require one. Mixing them up either leaks the future or cripples understanding.
+2. **Dropping the residual or LayerNorm**: deep stacks become untrainable without them.
+3. **Assuming bigger always wins**: scale needs proportional *data*; an under-fed huge model overfits.
 
 ## Key takeaways
 
@@ -218,5 +218,5 @@ Transformers improved largely by getting **bigger** — more layers, wider dimen
 
 ## Related concepts
 
-- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — the attention and positioning inside each block
-- [**Self-Attention**](/courses/transformers/01-self-attention) — the core mechanism it's built on
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional): the attention and positioning inside each block
+- [**Self-Attention**](/courses/transformers/01-self-attention): the core mechanism it's built on

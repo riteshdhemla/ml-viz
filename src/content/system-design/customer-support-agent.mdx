@@ -67,7 +67,7 @@ prompt-level policy handles only the soft judgment calls.
 | Dimension | Target | Consequence |
 |---|---|---|
 | Latency | < 5s first response, stream tokens | Cap tool-call loops; parallelize retrieval |
-| Volume | Millions of tickets/mo | Cost per resolution matters — model tiering |
+| Volume | Millions of tickets/mo | Cost per resolution matters: model tiering |
 | Autonomy | Read freely; writes gated | Permissioned tools + confirmation on risky actions |
 | Accuracy | No hallucinated policy, no wrong actions | Grounding + guardrails + human-in-the-loop |
 | Auditability | Every action traceable | Full trace of prompts, tools, outputs |
@@ -224,7 +224,7 @@ gives away*; you have to watch the actions, not just the outcomes.
 | RAG grounding | Fine-tune answers into the model | Docs change constantly; RAG updates instantly, fine-tuning goes stale |
 | Rules in code | Rules in the prompt | Prompted policy bends under conversational pressure; code doesn't |
 | Gated writes + HITL | Fully autonomous actions | The cost of a wrong write dominates; confirmation is cheap insurance |
-| Model tiering | One big model | Most tickets are easy — paying frontier-model cost for all is wasteful |
+| Model tiering | One big model | Most tickets are easy: paying frontier-model cost for all is wasteful |
 
 ## 9. Interviewer follow-ups
 
@@ -271,8 +271,8 @@ tickets to the eval set so the regression can't recur silently.
 
 ## References
 
-- [τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains](https://arxiv.org/abs/2406.12045) — Yao et al. (Sierra), 2024; simulated user + policy + API evaluation, under 50% task success, state-based grading.
-- [𝜏-Bench: Benchmarking AI agents for the real-world](https://sierra.ai/blog/benchmarking-ai-agents) — Sierra; the pass^k reliability metric and the ~61%→~25% pass^8 drop.
-- [The Fin AI Engine](https://www.intercom.com/help/en/articles/9929230-the-fin-ai-engine) — Intercom; production support-agent pipeline: interpret with account context, safety filters, RAG, grounded drafting.
-- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) — Anthropic engineering; simplest-pattern-first, the augmented single-agent loop this design defaults to.
-- [Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401) — Lewis et al., NeurIPS 2020; the grounding pattern behind doc-based answering.
+- [τ-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains](https://arxiv.org/abs/2406.12045): Yao et al. (Sierra), 2024; simulated user + policy + API evaluation, under 50% task success, state-based grading.
+- [𝜏-Bench: Benchmarking AI agents for the real-world](https://sierra.ai/blog/benchmarking-ai-agents): Sierra; the pass^k reliability metric and the ~61%→~25% pass^8 drop.
+- [The Fin AI Engine](https://www.intercom.com/help/en/articles/9929230-the-fin-ai-engine): Intercom; production support-agent pipeline: interpret with account context, safety filters, RAG, grounded drafting.
+- [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents): Anthropic engineering; simplest-pattern-first, the augmented single-agent loop this design defaults to.
+- [Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401): Lewis et al., NeurIPS 2020; the grounding pattern behind doc-based answering.

@@ -17,9 +17,9 @@ The reward model from the last lesson is **not the goal** — it's a stepping st
 
 RLHF is three sequential stages that share one base model.
 
-1. **SFT** — fine-tune the pretrained model on a curated instruction dataset. This is the **reference policy** $\pi_\text{ref}$ for everything that follows.
-2. **Reward model** — train $r_\phi(x, y)$ on chosen-vs-rejected pairs using the Bradley–Terry loss. Initialise from the SFT checkpoint.
-3. **PPO** — treat the LLM as an RL policy. State = prompt + generated prefix, action = next token, reward = $r_\phi(x, y)$ on the full completion. Optimise with [policy gradient](/courses/reinforcement-learning/04-policy-gradient) (PPO clip variant).
+1. **SFT**: fine-tune the pretrained model on a curated instruction dataset. This is the **reference policy** $\pi_\text{ref}$ for everything that follows.
+2. **Reward model**: train $r_\phi(x, y)$ on chosen-vs-rejected pairs using the Bradley–Terry loss. Initialise from the SFT checkpoint.
+3. **PPO**: treat the LLM as an RL policy. State = prompt + generated prefix, action = next token, reward = $r_\phi(x, y)$ on the full completion. Optimise with [policy gradient](/courses/reinforcement-learning/04-policy-gradient) (PPO clip variant).
 
 The RLHF objective adds a **KL leash** to the SFT model:
 
@@ -94,11 +94,11 @@ The reference model is queried but never updated; it's typically the SFT checkpo
 |---|---|---|
 | **Pipeline** | SFT → RM → PPO (3 stages) | SFT → DPO (2 stages) |
 | **Reward model** | Required (separate network) | None (implicit via $\pi_\theta / \pi_\text{ref}$) |
-| **On-policy samples** | Yes — rollouts during training | No — preference pairs are off-policy |
+| **On-policy samples** | Yes: rollouts during training | No: preference pairs are off-policy |
 | **Memory** | Policy + RM + value head + ref | Policy + frozen ref |
 | **Hyperparameters** | $\beta$, PPO clip $\epsilon$, value-loss coef, GAE $\lambda$… | $\beta$ |
 | **Stability** | Notoriously fiddly; needs careful $\beta$ + clip tuning | Stable; closer to standard supervised fine-tuning |
-| **Ceiling** | Sometimes higher — can explore beyond preference data | Bounded by the preference dataset's coverage |
+| **Ceiling** | Sometimes higher: can explore beyond preference data | Bounded by the preference dataset's coverage |
 | **Compute** | 4–10× a fine-tuning run | ≈ 1× a fine-tuning run |
 
 Every row in that table is easy to state and hard to feel. Walk the pipeline below on one prompt with nine candidate answers: fit a reward model on 240 sampled comparisons, watch the KL-regularised optimum form, then turn $\beta$ down until the policy collapses onto a response the reward model only ever *extrapolated* a score for. Then take the same comparisons down the DPO branch and watch it land on the identical formula with a different reward inside it. The **annotation** control is the one to spend time on — it changes only which responses got compared, and each round repairs exactly one of the two pipelines.
@@ -135,7 +135,7 @@ When does each win? **DPO** is the right default — same objective, far less in
 
 ## Related concepts
 
-- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models) — the scalar $r_\phi$ that PPO optimises against, and the Bradley–Terry loss that DPO inherits.
-- [**Policy Gradient**](/courses/reinforcement-learning/04-policy-gradient) — the underlying RL method PPO clips and extends; RLHF is policy-gradient on token sequences with a reward model.
-- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — produces $\pi_\text{ref}$, the reference policy both pipelines hold the new model close to.
-- [**GRPO: Group Relative Policy Optimization**](/wiki/grpo-objective) — the critic-free RLHF objective used to train DeepSeek-R1
+- [**Reward Models**](/courses/fine-tuning-alignment/03-reward-models): the scalar $r_\phi$ that PPO optimises against, and the Bradley–Terry loss that DPO inherits.
+- [**Policy Gradient**](/courses/reinforcement-learning/04-policy-gradient): the underlying RL method PPO clips and extends; RLHF is policy-gradient on token sequences with a reward model.
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning): produces $\pi_\text{ref}$, the reference policy both pipelines hold the new model close to.
+- [**GRPO: Group Relative Policy Optimization**](/wiki/grpo-objective): the critic-free RLHF objective used to train DeepSeek-R1

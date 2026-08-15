@@ -13,9 +13,9 @@ ARIMA is powerful, but it rests on two assumptions that many real-world series v
 
 Three architectural families have proved most useful for time series:
 
-- **LSTMs** (and GRUs) — handle long-range dependencies through gated memory
-- **Temporal Convolutional Networks (TCNs)** — parallelizable dilated convolutions with large receptive fields
-- **Transformer-based models** — attention over arbitrary positions; excel at very long sequences
+- **LSTMs** (and GRUs): handle long-range dependencies through gated memory
+- **Temporal Convolutional Networks (TCNs)**: parallelizable dilated convolutions with large receptive fields
+- **Transformer-based models**: attention over arbitrary positions; excel at very long sequences
 
 All three share the same input representation: a **sliding window** that converts the raw sequence into a supervised learning problem.
 
@@ -174,11 +174,11 @@ class Chomp1d(nn.Module):
 
 Vanilla Transformers (as in [**Attention & Transformers**](/courses/transformers)) apply full self-attention, whose cost scales quadratically with sequence length — impractical for time series with thousands of steps. Several specialised architectures address this:
 
-**Informer** (Zhou et al. 2021) — introduces *ProbSparse* attention that selects the most informative query-key pairs, reducing complexity from $O(L^2)$ to $O(L \log L)$. Designed specifically for long-sequence forecasting.
+**Informer** (Zhou et al. 2021): introduces *ProbSparse* attention that selects the most informative query-key pairs, reducing complexity from $O(L^2)$ to $O(L \log L)$. Designed specifically for long-sequence forecasting.
 
-**PatchTST** (Nie et al. 2023) — divides the time series into non-overlapping patches (similar to ViT image patches) and applies standard Transformer attention over the patch tokens. Reduces the number of attention computations dramatically while preserving local temporal patterns within each patch.
+**PatchTST** (Nie et al. 2023): divides the time series into non-overlapping patches (similar to ViT image patches) and applies standard Transformer attention over the patch tokens. Reduces the number of attention computations dramatically while preserving local temporal patterns within each patch.
 
-**Temporal Fusion Transformer (TFT)** (Lim et al. 2021) — combines multi-head attention with gated residual networks and variable selection networks. The variable selection mechanism provides built-in **interpretability**: for each forecast, it identifies which input features (past values, known covariates) contributed most.
+**Temporal Fusion Transformer (TFT)** (Lim et al. 2021): combines multi-head attention with gated residual networks and variable selection networks. The variable selection mechanism provides built-in **interpretability**: for each forecast, it identifies which input features (past values, known covariates) contributed most.
 
 <ARIMAForecastViz />
 
@@ -355,7 +355,7 @@ print(f"Walk-forward CV MAE (naive baseline): {np.mean(fold_errors):.4f}")
 
 ## Related concepts
 
-- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru) — the gated memory architecture that underpins LSTM forecasting
-- [**Attention & Transformers**](/courses/transformers/01-self-attention) — self-attention mechanism used in Informer and PatchTST
-- [**ARIMA Models**](/courses/time-series/02-arima-models) — the classical baseline that deep learning must beat
-- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks) — the simpler predecessor to LSTM
+- [**LSTM & GRU**](/courses/rnns/03-lstm-and-gru): the gated memory architecture that underpins LSTM forecasting
+- [**Attention & Transformers**](/courses/transformers/01-self-attention): self-attention mechanism used in Informer and PatchTST
+- [**ARIMA Models**](/courses/time-series/02-arima-models): the classical baseline that deep learning must beat
+- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks): the simpler predecessor to LSTM

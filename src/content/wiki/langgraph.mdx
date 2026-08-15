@@ -39,12 +39,12 @@ class AgentState(TypedDict):
 
 Without the `operator.add` reducer each node would *replace* `messages`; with it, every node *appends*. The reducer is how LangGraph accumulates a transcript instead of clobbering it.
 
-**2. Nodes** — plain functions `state -> partial_state_update`. A node reads the current state and returns only the fields it wants to change. Typical nodes: an `agent` node that calls the LLM, and a `tools` node that executes whatever tool the LLM requested.
+**2. Nodes**: plain functions `state -> partial_state_update`. A node reads the current state and returns only the fields it wants to change. Typical nodes: an `agent` node that calls the LLM, and a `tools` node that executes whatever tool the LLM requested.
 
 **3. Edges** — how control flows between nodes:
 
-- **Normal edge** `add_edge("tools", "agent")` — always go from `tools` back to `agent`.
-- **Conditional edge** `add_conditional_edges("agent", route_fn, {...})` — call `route_fn(state)`, which returns a key naming the next node. This is where the agent *decides* whether to call a tool or stop.
+- **Normal edge** `add_edge("tools", "agent")`: always go from `tools` back to `agent`.
+- **Conditional edge** `add_conditional_edges("agent", route_fn, {...})`: call `route_fn(state)`, which returns a key naming the next node. This is where the agent *decides* whether to call a tool or stop.
 - The reserved **`START`** and **`END`** sentinels mark entry and termination.
 
 ## A ReAct agent as a graph
@@ -125,6 +125,6 @@ LangGraph runs in **super-steps** (a Pregel-style message-passing model). At eac
 
 ## Related concepts
 
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the ReAct loop, function calling, and the reliability requirements LangGraph operationalizes
-- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — observability, guardrails, and serving agents in production
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — a retrieval node is a common building block inside an agent graph
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): the ReAct loop, function calling, and the reliability requirements LangGraph operationalizes
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture): observability, guardrails, and serving agents in production
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): a retrieval node is a common building block inside an agent graph

@@ -45,7 +45,7 @@ the **ML project loop**.
 
 <Callout type="tip" title="Interview signal">
 Frame it as **link prediction on a graph**, and note the objective is
-`P(connect AND accept)` — recommending someone who ignores the invite is a
+`P(connect AND accept)`: recommending someone who ignores the invite is a
 failure. This two-sided framing is the differentiator.
 </Callout>
 
@@ -63,7 +63,7 @@ users at both tails.
 
 | Dimension | Target | Consequence |
 |---|---|---|
-| Graph size | Billions of nodes/edges | Can't score all pairs — candidate generation first |
+| Graph size | Billions of nodes/edges | Can't score all pairs: candidate generation first |
 | Latency | < 200 ms | Precomputed embeddings + bounded candidate set |
 | Freshness | New users/edges matter fast | Incremental graph + embedding updates |
 | Sparsity | Most users have few edges | Cold-start handling, side features |
@@ -80,7 +80,7 @@ just supplements it.
 
 **Link prediction**, structured as a funnel like every large recommender:
 
-1. **Candidate generation** *(hypothesis space)* — cheaply propose plausible
+1. **Candidate generation** *(hypothesis space)*: cheaply propose plausible
    connections. The workhorse heuristic: **"friends of friends"** (2nd-degree),
    plus shared-attribute candidates. LinkedIn's production PYMK blends exactly
    these source types — random-walk / n-hop graph sources, embedding-based
@@ -88,7 +88,7 @@ just supplements it.
    two stages, an L0 that emits a few thousand candidates and an L1 that
    calibrates them down to a few hundred
    ([LinkedIn Engineering](https://www.linkedin.com/blog/engineering/recommendations/candidate-generation-in-a-large-scale-graph-recommendation-system-people-you-may-know)).
-2. **Ranking** — score candidates on `P(connect & accept)` with graph + profile
+2. **Ranking**: score candidates on `P(connect & accept)` with graph + profile
    features.
 
 *What was breaking before?* Scoring all node pairs is quadratic and impossible;
@@ -200,7 +200,7 @@ see.
 
 | Choice | Alternative | Why |
 |---|---|---|
-| Candidate gen + rank | Score all pairs | All-pairs is quadratic — impossible at billions |
+| Candidate gen + rank | Score all pairs | All-pairs is quadratic: impossible at billions |
 | GNN embeddings | Profile-only similarity | Graph structure is the dominant signal |
 | Temporal eval split | Random split | Random splits leak future edges → inflated metrics |
 | `P(connect & accept)` | `P(similar)` | An ignored invite is a bad recommendation |
@@ -239,8 +239,8 @@ edges forming after T.
 
 ## References
 
-- [Building a Large-Scale Recommendation System: People You May Know](https://www.linkedin.com/blog/engineering/recommendations/building-a-large-scale-recommendation-system-people-you-may-know) — LinkedIn Engineering; the multi-stage PYMK architecture (L0/L1 ranking) and the >50%-of-graph impact figure.
-- [Candidate Generation in a Large Scale Graph Recommendation System](https://www.linkedin.com/blog/engineering/recommendations/candidate-generation-in-a-large-scale-graph-recommendation-system-people-you-may-know) — LinkedIn Engineering; graph-walk, embedding, and heuristic candidate sources plus online traversal with Gaia.
-- [WTF: The Who to Follow Service at Twitter](https://stanford.edu/~rezab/papers/wtf_overview.pdf) — Gupta et al., WWW 2013; whole-graph-in-memory serving (Cassovary) and random-walk recommendation at production scale.
-- [Supervised Random Walks: Predicting and Recommending Links in Social Networks](https://arxiv.org/abs/1011.4071) — Backstrom & Leskovec, WSDM 2011; learning edge strengths to fuse graph structure with node/edge attributes on the Facebook graph.
-- [Inductive Representation Learning on Large Graphs (GraphSAGE)](https://arxiv.org/abs/1706.02216) — Hamilton et al., NeurIPS 2017; sample-and-aggregate embeddings that generalize to unseen nodes.
+- [Building a Large-Scale Recommendation System: People You May Know](https://www.linkedin.com/blog/engineering/recommendations/building-a-large-scale-recommendation-system-people-you-may-know): LinkedIn Engineering; the multi-stage PYMK architecture (L0/L1 ranking) and the >50%-of-graph impact figure.
+- [Candidate Generation in a Large Scale Graph Recommendation System](https://www.linkedin.com/blog/engineering/recommendations/candidate-generation-in-a-large-scale-graph-recommendation-system-people-you-may-know): LinkedIn Engineering; graph-walk, embedding, and heuristic candidate sources plus online traversal with Gaia.
+- [WTF: The Who to Follow Service at Twitter](https://stanford.edu/~rezab/papers/wtf_overview.pdf): Gupta et al., WWW 2013; whole-graph-in-memory serving (Cassovary) and random-walk recommendation at production scale.
+- [Supervised Random Walks: Predicting and Recommending Links in Social Networks](https://arxiv.org/abs/1011.4071): Backstrom & Leskovec, WSDM 2011; learning edge strengths to fuse graph structure with node/edge attributes on the Facebook graph.
+- [Inductive Representation Learning on Large Graphs (GraphSAGE)](https://arxiv.org/abs/1706.02216): Hamilton et al., NeurIPS 2017; sample-and-aggregate embeddings that generalize to unseen nodes.

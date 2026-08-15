@@ -180,10 +180,10 @@ The closest you get to bit-exact in practice is: **(a)** fix the random seed and
 - **Temperature** $T$ rescales logits: $p_i = \mathrm{softmax}(z_i / T)$. $T \to 0$ is greedy; $T \to \infty$ is uniform.
 - **Top-k** truncates to a fixed count of highest-probability tokens. **Top-p (nucleus)** truncates to the smallest *mass* $\ge p$ — adaptive to the distribution, generally better for open-ended generation.
 - **Repetition control** (penalty, no-repeat-ngram, frequency/presence) patches a known failure mode of sampling. Use sparingly.
-- **Determinism is harder than "temperature 0"** — non-associative float math, dynamic batch sizes, and kernel autotuning all break bit-exactness. The closest production gets is greedy + fixed seed + fixed batch + pinned versions.
+- **Determinism is harder than "temperature 0"**: non-associative float math, dynamic batch sizes, and kernel autotuning all break bit-exactness. The closest production gets is greedy + fixed seed + fixed batch + pinned versions.
 
 ## Related concepts
 
 - [**LLM Model Taxonomy**](/courses/nlp/04-llm-model-taxonomy) — which families even *have* a next-token distribution to decode from (decoder-only and encoder-decoder do; encoder-only does not)
-- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering) — the user-facing introduction to temperature and top-p; this lesson is the deeper treatment
-- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling) — the pretraining that produces the next-token distribution every decoder operates on
+- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering): the user-facing introduction to temperature and top-p; this lesson is the deeper treatment
+- [**Foundation Models & Scaling Laws**](/courses/transformers/05-foundation-models-and-scaling): the pretraining that produces the next-token distribution every decoder operates on

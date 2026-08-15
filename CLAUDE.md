@@ -504,10 +504,32 @@ the punctuation that states the relationship:
 - Before `and` / `but` / `so` / `which` / `because` → **comma**. The dash is
   redundant there.
 
-**Keep** the dash in the structural gloss conventions, where it is a scannable
-separator rather than an interruption: bullet glosses
-(`- [**Title**](/wiki/x) — one-line description`), table cells, headings, and
-`**Term** — definition` labels.
+### Prose rules (the gloss separator)
+
+The `label — description` gloss is written with a **colon**, not an em dash.
+The colon is what the construction means ("here is what this is"), and it keeps
+the dash rare enough that the one-per-sentence rule above stays legible.
+
+```md
+- [**Title**](/wiki/x): one-line description
+- **Term**: definition
+## Section heading: its subtitle
+| **Row label** | value: what it means |
+```
+
+This holds for bullet glosses, paragraph-opening `**Term**:` labels, headings,
+bold label runs (`**Frame 6: the payoff.**`), and table cells.
+
+Two cases keep the dash, because a colon would be wrong rather than merely
+different:
+
+- the description opens with a conjunction (`— and why reflection helps`); a
+  colon in front of `and` is ungrammatical
+- the description already ends in a colon, which the gloss colon would collide
+  with
+
+A bare `—` alone in a table cell is a not-applicable marker, not a gloss. Leave
+it.
 
 ### Styling rules
 

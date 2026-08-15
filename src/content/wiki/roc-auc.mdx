@@ -60,7 +60,7 @@ What to notice as you step:
   to calibration by construction.
 - **Positives move the curve up, negatives move it right.** A perfect ranker
   goes straight up and then straight across; the diagonal is a coin flip.
-- **Step 8 reaches the same AUC by counting pairs** — 5 of the 6
+- **Step 8 reaches the same AUC by counting pairs**: 5 of the 6
   positive–negative pairs are correctly ordered, so AUC = 5/6. That is the
   Wilcoxon–Mann–Whitney equivalence the next section proves.
 - **The last step replicates every negative 100×** without touching the ranking.
@@ -131,14 +131,14 @@ Always tune the threshold on the **validation set**, never on the test set — t
 
 ## Common pitfalls
 
-1. **Reporting only ROC-AUC on imbalanced data** — a 0.95 AUC can coexist with near-baseline PR-AUC. Always report both.
-2. **Treating AUC as calibration** — AUC measures rank ordering. A perfectly calibrated model and a wildly overconfident model can have the same AUC if they rank examples identically.
-3. **Optimizing threshold on the test set** — leaks test data; always use the validation set.
-4. **Multi-class AUC without specifying the averaging scheme** — `sklearn`'s `roc_auc_score` defaults to macro one-vs-rest; document which you used.
-5. **Wide cross-validation variance** — a single train/test split gives a noisy AUC estimate. Report mean ± std across $k$ folds.
+1. **Reporting only ROC-AUC on imbalanced data**: a 0.95 AUC can coexist with near-baseline PR-AUC. Always report both.
+2. **Treating AUC as calibration**: AUC measures rank ordering. A perfectly calibrated model and a wildly overconfident model can have the same AUC if they rank examples identically.
+3. **Optimizing threshold on the test set**: leaks test data; always use the validation set.
+4. **Multi-class AUC without specifying the averaging scheme**: `sklearn`'s `roc_auc_score` defaults to macro one-vs-rest; document which you used.
+5. **Wide cross-validation variance**: a single train/test split gives a noisy AUC estimate. Report mean ± std across $k$ folds.
 
 ## Related concepts
 
-- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics) — precision, recall, F1, confusion matrix
-- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — how to measure metrics without leaking test data
-- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — why AUC ≠ calibration; ECE and reliability diagrams
+- [**Classification Metrics**](/courses/model-evaluation/01-classification-metrics): precision, recall, F1, confusion matrix
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies): how to measure metrics without leaking test data
+- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty): why AUC ≠ calibration; ECE and reliability diagrams

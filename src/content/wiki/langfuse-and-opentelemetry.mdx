@@ -61,13 +61,13 @@ Span names follow `"{operation} {model}"` — e.g. `chat claude-sonnet-5`. Promp
 
 **Langfuse** is an open-source (self-hostable or cloud) LLM engineering platform. Where a generic APM shows you time intervals, Langfuse's data model is LLM-shaped:
 
-- **Trace** — one request/interaction; carries `userId`, `sessionId`, tags, and metadata.
+- **Trace**: one request/interaction; carries `userId`, `sessionId`, tags, and metadata.
 - **Observation** — a node in the trace tree, one of three types:
-  - **Span** — any timed step (retrieval, re-ranking, guardrail check),
-  - **Generation** — an LLM call, with model, parameters, prompt/completion, token usage, and **cost** (computed from model price tables),
-  - **Event** — a point-in-time marker.
-- **Score** — a numeric/categorical/boolean judgment attached to a trace or observation: user feedback (👍/👎), guardrail flags, LLM-as-judge grades, human annotations. Scores are what turn traces from a debugging tool into an **evaluation dataset** — filter to `score < threshold`, inspect the exact resolved context, add the failure to a test set.
-- **Session / User** — group traces into conversations and per-user histories.
+  - **Span**: any timed step (retrieval, re-ranking, guardrail check),
+  - **Generation**: an LLM call, with model, parameters, prompt/completion, token usage, and **cost** (computed from model price tables),
+  - **Event**: a point-in-time marker.
+- **Score**: a numeric/categorical/boolean judgment attached to a trace or observation: user feedback (👍/👎), guardrail flags, LLM-as-judge grades, human annotations. Scores are what turn traces from a debugging tool into an **evaluation dataset** — filter to `score < threshold`, inspect the exact resolved context, add the failure to a test set.
+- **Session / User**: group traces into conversations and per-user histories.
 
 Instrumentation options, in increasing generality: drop-in SDK wrappers for popular clients, an `@observe()` decorator that turns any Python function into a span, framework callbacks (LangChain, LlamaIndex), and (the standards route) a native **OTLP endpoint**: anything that emits OTel spans with GenAI attributes can point at Langfuse, which maps the semantic conventions onto its trace/observation model. Langfuse's own SDK is itself built on OpenTelemetry, so both routes converge.
 
@@ -98,15 +98,15 @@ $$\text{cost}_{\text{req}} = \sum_{\text{generations}} \big(n_{\text{in}}\, p_{\
 
 ## Common mistakes
 
-1. **Instrumenting against one vendor's proprietary SDK only** — you rebuild instrumentation when you switch backends; emit OTel + GenAI conventions and keep the exit door open.
-2. **Tracing only the LLM call** — the bad answer usually originates in retrieval or a tool step; trace the *whole* request tree.
-3. **No scores on traces** — without user feedback / judge scores attached, you can't filter millions of traces down to the interesting failures.
-4. **Forgetting the conventions are still evolving** — the GenAI semconv is marked "in development"; pin instrumentation library versions and expect attribute renames.
+1. **Instrumenting against one vendor's proprietary SDK only**: you rebuild instrumentation when you switch backends; emit OTel + GenAI conventions and keep the exit door open.
+2. **Tracing only the LLM call**: the bad answer usually originates in retrieval or a tool step; trace the *whole* request tree.
+3. **No scores on traces**: without user feedback / judge scores attached, you can't filter millions of traces down to the interesting failures.
+4. **Forgetting the conventions are still evolving**: the GenAI semconv is marked "in development"; pin instrumentation library versions and expect attribute renames.
 
 ## Related concepts
 
-- [**LLM Observability, Tracing & Prompt Management**](/courses/building-with-llms/09-llm-observability-and-prompt-management) — the concepts this stack implements
-- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — classical-ML monitoring that OTel metrics extend
-- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — why tracing is non-negotiable for agent runtimes
-- [**Observability for Agents**](/wiki/agent-observability) — what changes when the traced system is an autonomous agent
-- [**LLM-as-a-Judge**](/wiki/llm-as-judge) — the evaluators whose outputs become scores on traces
+- [**LLM Observability, Tracing & Prompt Management**](/courses/building-with-llms/09-llm-observability-and-prompt-management): the concepts this stack implements
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability): classical-ML monitoring that OTel metrics extend
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents): why tracing is non-negotiable for agent runtimes
+- [**Observability for Agents**](/wiki/agent-observability): what changes when the traced system is an autonomous agent
+- [**LLM-as-a-Judge**](/wiki/llm-as-judge): the evaluators whose outputs become scores on traces

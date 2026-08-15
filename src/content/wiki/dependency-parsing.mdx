@@ -36,9 +36,9 @@ For *"The cat sat on the mat"*:
 - `The`, `the` are determiners (`det`)
 
 A valid dependency tree satisfies:
-1. **Single head** — every word has exactly one parent
-2. **Connected & acyclic** — it forms a tree rooted at a single node
-3. **Projective** (often, but not always) — no crossing edges when words are laid out in order
+1. **Single head**: every word has exactly one parent
+2. **Connected & acyclic**: it forms a tree rooted at a single node
+3. **Projective** (often, but not always): no crossing edges when words are laid out in order
 
 ## Dependency vs. constituency parsing
 
@@ -54,9 +54,9 @@ Dependency parses are flatter and map more directly to "who did what to whom," w
 
 Treats parsing as a sequence of actions over a **stack** and **buffer**, building the tree incrementally — fast ($O(n)$) and the basis of most neural parsers. The **arc-standard** system has three actions:
 
-- **SHIFT** — move the next buffer word onto the stack
-- **LEFT-ARC** — add a dependency edge; the second-top stack item becomes a child of the top; remove it
-- **RIGHT-ARC** — add an edge the other direction; remove the top item
+- **SHIFT**: move the next buffer word onto the stack
+- **LEFT-ARC**: add a dependency edge; the second-top stack item becomes a child of the top; remove it
+- **RIGHT-ARC**: add an edge the other direction; remove the top item
 
 A classifier (originally a SVM/perceptron with hand-crafted features; now a neural network) predicts the next action from the current configuration. Chen & Manning (2014) showed a simple feed-forward network over word/POS/arc embeddings dramatically outperformed feature-engineered parsers — an early NLP deep-learning win.
 
@@ -85,14 +85,14 @@ LAS is the stricter, standard metric. Modern parsers exceed 95% LAS on English n
 
 Even in the LLM era, dependency parsing remains useful for:
 
-- **Information extraction** — subject-verb-object triples for knowledge graphs
-- **Relation extraction** — the dependency path between two entities is a strong feature
-- **Linguistic analysis & low-resource languages** — explicit structure where labeled data is scarce
-- **Interpretability** — probing whether transformer attention heads encode syntactic structure (they partly do — "structural probes" recover dependency trees from BERT embeddings)
+- **Information extraction**: subject-verb-object triples for knowledge graphs
+- **Relation extraction**: the dependency path between two entities is a strong feature
+- **Linguistic analysis & low-resource languages**: explicit structure where labeled data is scarce
+- **Interpretability**: probing whether transformer attention heads encode syntactic structure (they partly do — "structural probes" recover dependency trees from BERT embeddings)
 
 
 ## Related concepts
 
-- [**Text Preprocessing**](/courses/nlp/01-text-preprocessing) — tokenization and the classical NLP pipeline this parsing sits in
-- [**Sequence Models to BERT**](/courses/nlp/03-sequence-models-to-bert) — the neural encoders whose attention heads partly recover dependency structure
-- [**Attention & Transformers**](/courses/transformers/01-self-attention) — "structural probes" test whether attention encodes syntax
+- [**Text Preprocessing**](/courses/nlp/01-text-preprocessing): tokenization and the classical NLP pipeline this parsing sits in
+- [**Sequence Models to BERT**](/courses/nlp/03-sequence-models-to-bert): the neural encoders whose attention heads partly recover dependency structure
+- [**Attention & Transformers**](/courses/transformers/01-self-attention): "structural probes" test whether attention encodes syntax

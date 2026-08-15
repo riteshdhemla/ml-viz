@@ -82,7 +82,7 @@ The single crucial difference is *why* a level needs more than one link per node
 |---|---|---|
 | **M** | max edges per node on layers ≥ 1 (layer 0 uses $M_0 = 2M$) | ↑ recall & degree, ↑ memory & build time |
 | **efConstruction** | beam width while *inserting* (how hard we search for a new node's neighbours) | ↑ graph quality & recall, ↑ build time |
-| **efSearch** (`ef`) | beam width while *querying* | ↑ recall, ↑ query latency — the runtime recall/latency knob |
+| **efSearch** (`ef`) | beam width while *querying* | ↑ recall, ↑ query latency: the runtime recall/latency knob |
 
 Typical defaults: `M = 16`, `efConstruction = 200`, `efSearch = 50–200`. Only `efSearch` is a query-time knob; `M` and `efConstruction` are baked into the index at build.
 
@@ -172,7 +172,7 @@ turns $O(N)$ into roughly $O(\log N)$.
 |---|---|
 | Query | $\approx O(\log N)$ hops, each visiting up to $M$ neighbours × `ef` frontier |
 | Build | $\approx O(N \log N)$ distance computations |
-| Memory | vectors **plus** the graph: $\approx N \cdot (M_0 + \bar{\ell}\,M)$ edge ids — often the dominant cost |
+| Memory | vectors **plus** the graph: $\approx N \cdot (M_0 + \bar{\ell}\,M)$ edge ids: often the dominant cost |
 
 **Reach for HNSW when** the corpus is large, read-heavy, and fits in RAM, and you want very high recall at very low latency without tuning cluster counts. **Look elsewhere when** (a) memory is tight at billion scale — combine with **product quantization** (see the vector-databases wiki) or use IVF-PQ on disk; (b) the corpus churns constantly — HNSW has no true delete (see below); (c) you need exact results — use a flat index.
 
@@ -187,8 +187,8 @@ turns $O(N)$ into roughly $O(\log N)$.
 
 ## Related concepts
 
-- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — where HNSW sits among IVF, PQ, and flat, and the recall/latency framing
-- [**BM25 Ranking**](/wiki/bm25-ranking) — the sparse/keyword retriever HNSW's dense search is fused with in hybrid search
-- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — where the vectors HNSW indexes come from
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the retriever HNSW powers at scale
-- [**K-Means**](/courses/clustering/01-k-means) — the coarse quantizer behind the IVF alternative
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases): where HNSW sits among IVF, PQ, and flat, and the recall/latency framing
+- [**BM25 Ranking**](/wiki/bm25-ranking): the sparse/keyword retriever HNSW's dense search is fused with in hybrid search
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search): where the vectors HNSW indexes come from
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): the retriever HNSW powers at scale
+- [**K-Means**](/courses/clustering/01-k-means): the coarse quantizer behind the IVF alternative

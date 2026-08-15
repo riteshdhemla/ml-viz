@@ -21,8 +21,8 @@ At the same time, interacting with the real world is expensive: every training s
 
 At every step an agent faces a choice:
 
-- **Exploit** — take the action it currently believes is best (maximize short-term reward)
-- **Explore** — try something new to gather information that might lead to better long-term rewards
+- **Exploit**: take the action it currently believes is best (maximize short-term reward)
+- **Explore**: try something new to gather information that might lead to better long-term rewards
 
 Too much exploitation: the agent gets stuck in a local optimum, never discovering better strategies.
 Too much exploration: the agent wastes time on suboptimal actions and accumulates poor rewards.
@@ -31,7 +31,7 @@ The challenge is that the agent doesn't know in advance which arms/actions are g
 
 ---
 
-## ε-greedy — the baseline
+## ε-greedy: the baseline
 
 The simplest strategy, already used throughout [Q-Learning](/courses/reinforcement-learning/02-q-learning): with probability $\epsilon$ take a **random** action; with probability $1-\epsilon$ take the **greedy** (currently best-estimated) action.
 
@@ -197,7 +197,7 @@ With $k = 50$ planning steps per real step, Dyna-Q is 50× more sample-efficient
 
 Modern deep model-based RL learns a **latent space** world model:
 - **RSSM (Recurrent State Space Model)** in Dreamer — encodes observations into compact latent states, learns transitions in latent space, imagines entire trajectories of future states, optimizes policy in imagination
-- **MBPO (Model-Based Policy Optimization)** — generates short rollouts ($h$ steps) from a learned dynamics model, adds them to the replay buffer, trains any model-free algorithm on the mix
+- **MBPO (Model-Based Policy Optimization)**: generates short rollouts ($h$ steps) from a learned dynamics model, adds them to the replay buffer, trains any model-free algorithm on the mix
 
 ### When model-based beats model-free
 
@@ -205,7 +205,7 @@ Modern deep model-based RL learns a **latent space** world model:
 |---|---|---|
 | **Sample efficiency** | Low (millions of steps) | High (hundreds to thousands of steps) |
 | **Final performance** | Often higher (less model bias) | Can suffer from model errors compounding |
-| **Environment realism** | Irrelevant (learns directly) | Critical — model errors compound over long horizons |
+| **Environment realism** | Irrelevant (learns directly) | Critical: model errors compound over long horizons |
 | **Best for** | Simulatable environments (games) | Real-world robotics, drug discovery, limited data |
 
 <Callout type="warning" title="Model errors compound">
@@ -248,6 +248,6 @@ Model-based and exploration methods are complementary:
 
 ## Related concepts
 
-- [**Q-Learning**](/courses/reinforcement-learning/02-q-learning) — the model-free baseline that Dyna-Q accelerates with planning
-- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes) — the model-based vs. model-free distinction in its native setting
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — the posterior-sampling logic behind Thompson Sampling
+- [**Q-Learning**](/courses/reinforcement-learning/02-q-learning): the model-free baseline that Dyna-Q accelerates with planning
+- [**Markov Decision Processes**](/courses/reinforcement-learning/01-markov-decision-processes): the model-based vs. model-free distinction in its native setting
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): the posterior-sampling logic behind Thompson Sampling

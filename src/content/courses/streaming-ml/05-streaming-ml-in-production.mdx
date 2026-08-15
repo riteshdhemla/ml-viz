@@ -19,13 +19,13 @@ This is the site's `daily-demand` problem with its **deployment-feedback loop cl
 
 A production streaming ML system is a pipeline of loosely-coupled stages:
 
-1. **Ingestion — the log.** Events land on a durable, append-only, partitioned log (Apache **Kafka**, Pulsar, Kinesis). The log decouples producers from consumers, buffers bursts, replays history for reprocessing, and gives every consumer its own cursor. It is the backbone everything else reads from.
+1. **Ingestion: the log.** Events land on a durable, append-only, partitioned log (Apache **Kafka**, Pulsar, Kinesis). The log decouples producers from consumers, buffers bursts, replays history for reprocessing, and gives every consumer its own cursor. It is the backbone everything else reads from.
 2. **Stream processing.** A processor (**Flink**, Spark Structured Streaming, Kafka Streams) consumes the log and computes windowed aggregations and features in event time, with the watermark and late-data handling from lesson 1. This is where reservoir samples, HyperLogLog cardinalities, and DGIM-style windowed counts are maintained.
 3. **Feature store.** Computed features are written to an **online store** (a low-latency key-value store like Redis/DynamoDB) for serving, and mirrored to an **offline store** (a warehouse/lake) for training. Keeping these two consistent is the crux of the whole system (below).
 4. **Model serving / online learning.** Either a periodically-retrained model served behind an API, or an online learner that updates in place as labelled events flow past.
 5. **Monitoring & feedback.** Predictions, outcomes, and drift signals flow back onto the log, closing the loop.
 
-## Online/offline parity — the skew trap
+## Online/offline parity: the skew trap
 
 The single most common way streaming ML breaks is **training/serving skew**: a feature is computed one way in the batch training pipeline and a subtly different way in the online serving path, so the model sees inputs at serving time that it never saw in training.
 
@@ -68,10 +68,10 @@ Two defensible reads, both shown above. **Wait** — restrict to cohorts old eno
 
 Because a streaming model faces drift, monitoring is not optional garnish. It is part of the model:
 
-- **Prediction monitoring** — track the distribution of model outputs and input features; a shift in $P(X)$ is the earliest, label-free drift signal.
-- **Performance monitoring** — once labels arrive, track rolling accuracy/AUC and feed the error stream to a detector (ADWIN/DDM from lesson 4).
-- **Adaptation policy** — decide what an alarm triggers: continuous online updates, a windowed retrain, a detect-and-reset, or a human-in-the-loop review.
-- **Shadow & canary** — validate a refreshed model on live traffic before promoting it, so an adaptation that overfits recent noise cannot take down serving.
+- **Prediction monitoring**: track the distribution of model outputs and input features; a shift in $P(X)$ is the earliest, label-free drift signal.
+- **Performance monitoring**: once labels arrive, track rolling accuracy/AUC and feed the error stream to a detector (ADWIN/DDM from lesson 4).
+- **Adaptation policy**: decide what an alarm triggers: continuous online updates, a windowed retrain, a detect-and-reset, or a human-in-the-loop review.
+- **Shadow & canary**: validate a refreshed model on live traffic before promoting it, so an adaptation that overfits recent noise cannot take down serving.
 
 <Callout type="tip" title="Continuous training is the norm">
 Mature streaming ML systems retrain **automatically and continuously** (on a schedule, on a drift trigger, or every example) rather than in occasional manual pushes. The pipeline, not a person, closes the loop from new data to a refreshed model.
@@ -87,6 +87,6 @@ Mature streaming ML systems retrain **automatically and continuously** (on a sch
 
 ## Related concepts
 
-- [**Feature Stores**](/courses/ml-in-practice/17-feature-stores) — online/offline parity and point-in-time joins in depth
-- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability) — the batch counterpart of the monitor-adapt loop
-- [**Concept Drift & Adaptation**](/courses/streaming-ml/04-concept-drift) — the detectors that drive production adaptation
+- [**Feature Stores**](/courses/ml-in-practice/17-feature-stores): online/offline parity and point-in-time joins in depth
+- [**Monitoring & Observability**](/courses/ml-in-practice/10-monitoring-and-observability): the batch counterpart of the monitor-adapt loop
+- [**Concept Drift & Adaptation**](/courses/streaming-ml/04-concept-drift): the detectors that drive production adaptation

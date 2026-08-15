@@ -49,13 +49,13 @@ The $+1$ inside the log keeps IDF non-negative even for very common terms (a ter
 
 ## Reading the two knobs
 
-**$k_1$ — term-frequency saturation.** Look at the fraction: as $f(q_i, d) \to \infty$, the term score approaches its ceiling $\text{IDF}(q_i)\cdot(k_1 + 1)$. Small $k_1$ saturates fast (presence ≈ enough); large $k_1$ keeps rewarding repeats. At $k_1 = 0$ the term frequency drops out entirely and BM25 degenerates to a pure binary IDF score.
+**$k_1$: term-frequency saturation.** Look at the fraction: as $f(q_i, d) \to \infty$, the term score approaches its ceiling $\text{IDF}(q_i)\cdot(k_1 + 1)$. Small $k_1$ saturates fast (presence ≈ enough); large $k_1$ keeps rewarding repeats. At $k_1 = 0$ the term frequency drops out entirely and BM25 degenerates to a pure binary IDF score.
 
 <Callout type="info" title="Why saturation matters">
   The saturation curve is BM25's defining feature. The first occurrence of a rare query term should move the ranking a lot; the twentieth should barely move it. A linear TF (plain TF-IDF) lets keyword-stuffed documents dominate — BM25's diminishing returns make it robust to that.
 </Callout>
 
-**$b$ — length normalization.** The denominator scales $k_1$ by $\left(1 - b + b\,\frac{|d|}{\text{avgdl}}\right)$. At $b = 0$ length is ignored entirely; at $b = 1$ scores are fully normalized by relative length, so a document twice as long needs twice as many matches to score the same. $b = 0.75$ is the standard compromise — penalize length, but not brutally.
+**$b$: length normalization.** The denominator scales $k_1$ by $\left(1 - b + b\,\frac{|d|}{\text{avgdl}}\right)$. At $b = 0$ length is ignored entirely; at $b = 1$ scores are fully normalized by relative length, so a document twice as long needs twice as many matches to score the same. $b = 0.75$ is the standard compromise — penalize length, but not brutally.
 
 ## A worked score
 
@@ -127,6 +127,6 @@ Neither dominates. Embeddings win on synonymy and paraphrase; BM25 wins on preci
 
 ## Related concepts
 
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — BM25 is the classic first-stage retriever, and the sparse half of hybrid RAG
-- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the dense counterpart BM25 is fused with in hybrid search
-- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the dense-retrieval index BM25's inverted index complements
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): BM25 is the classic first-stage retriever, and the sparse half of hybrid RAG
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search): the dense counterpart BM25 is fused with in hybrid search
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases): the dense-retrieval index BM25's inverted index complements

@@ -47,17 +47,17 @@ The trace runs on a Gaussian mixture, whose *optimal* noise predictor is availab
 
 **What to notice:**
 
-- **Frame 2 — the first guess is worthless, and that is fine.** At $t=999$ the clean-image estimate $\hat{x}_0$ sits 1.35 from the nearest mode with responsibilities spread across all three. From pure noise the best possible estimate is near the distribution's mean. What makes the step work is not the guess's quality but that it is re-noised using the *same* $\hat\epsilon$ rather than a fresh draw.
-- **Frame 3 — follow $\hat{x}_0$, not $x$.** The running guess migrates from the distribution mean onto one mode as responsibilities collapse (1.35 → 0.08, max responsibility 0.49 → 1.00). The commitment happens early: by the halfway point the outcome is settled.
-- **Frame 5 — the speedup claim, measured.** Against a 1000-step reference from the *same* starting noise, endpoint error falls 1.651 at 2 steps to 0.027 at 50, monotonically. That is the ODE argument working: a deterministic trajectory integrated on a coarser grid.
+- **Frame 2: the first guess is worthless, and that is fine.** At $t=999$ the clean-image estimate $\hat{x}_0$ sits 1.35 from the nearest mode with responsibilities spread across all three. From pure noise the best possible estimate is near the distribution's mean. What makes the step work is not the guess's quality but that it is re-noised using the *same* $\hat\epsilon$ rather than a fresh draw.
+- **Frame 3: follow $\hat{x}_0$, not $x$.** The running guess migrates from the distribution mean onto one mode as responsibilities collapse (1.35 → 0.08, max responsibility 0.49 → 1.00). The commitment happens early: by the halfway point the outcome is settled.
+- **Frame 5: the speedup claim, measured.** Against a 1000-step reference from the *same* starting noise, endpoint error falls 1.651 at 2 steps to 0.027 at 50, monotonically. That is the ODE argument working: a deterministic trajectory integrated on a coarser grid.
 
 The trace also measures what $\eta$ costs, and it is not sample quality. With a perfect $\epsilon$ both samplers target the right distribution; what $\eta > 0$ destroys is that the endpoint is a *function* of the start. Two $\eta = 1$ runs from an identical starting noise land 2.14 apart at 50 steps. Semantic interpolation and reproducible seeds both depend on $\eta = 0$.
 
 ## Properties of DDIM
 
-- **~20× speedup** — reducing $T=1000$ to $S=50$ steps loses little quality.
-- **Deterministic** — the same starting noise $\mathbf{x}_{\tau_1}$ always produces the same image. This enables **semantic interpolation**: interpolate between two starting noises and the outputs interpolate smoothly.
-- **Same trained model** — DDIM is a *sampling* procedure; it reuses a standard DDPM-trained noise predictor with no retraining.
+- **~20× speedup**: reducing $T=1000$ to $S=50$ steps loses little quality.
+- **Deterministic**: the same starting noise $\mathbf{x}_{\tau_1}$ always produces the same image. This enables **semantic interpolation**: interpolate between two starting noises and the outputs interpolate smoothly.
+- **Same trained model**: DDIM is a *sampling* procedure; it reuses a standard DDPM-trained noise predictor with no retraining.
 
 <Callout type="info" title="The η knob">
   The full DDIM formulation has a parameter $\eta \in [0, 1]$ interpolating between deterministic DDIM ($\eta = 0$, shown above) and stochastic DDPM ($\eta = 1$). Modern samplers (DPM-Solver, UniPC) push the same ODE view further with higher-order solvers, reaching good samples in 10–20 steps.
@@ -65,5 +65,5 @@ The trace also measures what $\eta$ costs, and it is not sample quality. With a 
 
 ## Related concepts
 
-- [**Diffusion Models**](/courses/generative-models/05-diffusion-models) — the forward/reverse processes and training objective
-- [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders) — the ELBO machinery diffusion training inherits
+- [**Diffusion Models**](/courses/generative-models/05-diffusion-models): the forward/reverse processes and training objective
+- [**Variational Autoencoders**](/courses/generative-models/03-variational-autoencoders): the ELBO machinery diffusion training inherits

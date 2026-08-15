@@ -99,14 +99,14 @@ The **variance across passes** estimates **epistemic uncertainty** (model uncert
 
 ## Common mistakes
 
-1. **Leaving dropout active at test time** — `model.eval()` is mandatory in PyTorch; forgetting it gives stochastic, degraded predictions.
-2. **Applying dropout before BatchNorm** — causes variance shift at test time.
-3. **Using $p = 0.5$ everywhere** — near the output layer, high drop rates hurt performance; start lower ($p = 0.2$) and tune.
-4. **Dropout as a substitute for enough data** — dropout reduces overfitting but does not compensate for genuinely insufficient training data or a model that is too large for the task.
-5. **Confusing MC dropout with calibration** — high variance means uncertainty, but a well-calibrated uncertainty requires proper temperature scaling or conformal prediction on top.
+1. **Leaving dropout active at test time**: `model.eval()` is mandatory in PyTorch; forgetting it gives stochastic, degraded predictions.
+2. **Applying dropout before BatchNorm**: causes variance shift at test time.
+3. **Using $p = 0.5$ everywhere**: near the output layer, high drop rates hurt performance; start lower ($p = 0.2$) and tune.
+4. **Dropout as a substitute for enough data**: dropout reduces overfitting but does not compensate for genuinely insufficient training data or a model that is too large for the task.
+5. **Confusing MC dropout with calibration**: high variance means uncertainty, but a well-calibrated uncertainty requires proper temperature scaling or conformal prediction on top.
 
 ## Related concepts
 
-- [**BatchNorm and Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — lesson covering both regularizers in context
-- [**Batch Normalization Algorithm**](/wiki/batchnorm-algorithm) — the full forward/backward pass for BatchNorm
-- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty) — calibration curves, ECE, conformal prediction
+- [**BatchNorm and Dropout**](/courses/neural-networks/05-batchnorm-and-dropout): lesson covering both regularizers in context
+- [**Batch Normalization Algorithm**](/wiki/batchnorm-algorithm): the full forward/backward pass for BatchNorm
+- [**Calibration and Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty): calibration curves, ECE, conformal prediction

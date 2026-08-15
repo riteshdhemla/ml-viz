@@ -78,11 +78,11 @@ stages around it.
 
 Search is a **pipeline of ML slots**:
 
-1. **Query understanding** — spell-correct, tokenize, detect intent/entities,
+1. **Query understanding**: spell-correct, tokenize, detect intent/entities,
    expand synonyms. Framed as tagging + classification.
-2. **Retrieval** *(hypothesis space)* — fetch ~1000 candidates via **hybrid**
+2. **Retrieval** *(hypothesis space)*: fetch ~1000 candidates via **hybrid**
    lexical (BM25 over an inverted index) **+ semantic** (embedding ANN) recall.
-3. **Ranking** *(hypothesis space + objective)* — a **learning-to-rank** model
+3. **Ranking** *(hypothesis space + objective)*: a **learning-to-rank** model
    scores candidates on `P(book | query, item, user)`.
 
 *What was breaking before?* Pure lexical match (BM25) misses semantics ("beach
@@ -135,7 +135,7 @@ that worked.
 
 ## 5. Model *(spine: hypothesis space + objective + optimization)*
 
-**Retrieval — two-tower + inverted index.** A query tower and an item tower
+**Retrieval: two-tower + inverted index.** A query tower and an item tower
 share an embedding space; item embeddings are precomputed and indexed in an ANN
 structure, merged with BM25 candidates. Personalization can ride on the same
 machinery: Airbnb learns listing embeddings from click *sessions* (skip-gram
@@ -144,7 +144,7 @@ uses the user's recent-click embeddings as real-time ranking features — the
 search-and-similar-listings channels they personalize this way drive **99% of
 conversions** ([Grbovic & Cheng, KDD 2018](https://dl.acm.org/doi/10.1145/3219819.3219885)).
 
-**Ranking — learning to rank.** Start with a GBDT — **LambdaMART** is still a
+**Ranking: learning to rank.** Start with a GBDT — **LambdaMART** is still a
 production workhorse and won the Yahoo! Learning to Rank Challenge
 ([Burges, MSR-TR-2010-82](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/))
 — on the query–item features; graduate to a **pairwise/listwise** neural
@@ -247,9 +247,9 @@ the booking label, not clicks, and interleave before trusting offline NDCG.
 
 ## References
 
-- [Real-time Personalization using Embeddings for Search Ranking at Airbnb](https://dl.acm.org/doi/10.1145/3219819.3219885) — Grbovic & Cheng, KDD 2018 (best paper, applied track); session-based listing embeddings, booked-listing global positives, and two-sided host-rejection signals.
-- [Applying Deep Learning To Airbnb Search](https://arxiv.org/abs/1810.09591) — Haldar et al., KDD 2019; the GBDT-plateau-to-neural journey, pipeline-first NN rollout, and candid failed experiments.
-- [Semantic Product Search](https://arxiv.org/abs/1907.00937) — Nigam et al., Amazon, KDD 2019; where lexical matching fails, the three-tier loss over purchased/impressed/random, and the Recall@100 lift.
-- [Embedding-based Retrieval in Facebook Search](https://arxiv.org/abs/2006.11632) — Huang et al., KDD 2020; serving ANN retrieval alongside an inverted index, hard-negative mining, and full-stack tuning.
-- [Unbiased Learning-to-Rank with Biased Feedback](https://www.cs.cornell.edu/~tj/publications/joachims_etal_17a.pdf) — Joachims et al., WSDM 2017; propensity-weighted correction of position bias in click data.
-- [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) — Burges, Microsoft Research TR 2010; the learning-to-rank workhorse family.
+- [Real-time Personalization using Embeddings for Search Ranking at Airbnb](https://dl.acm.org/doi/10.1145/3219819.3219885): Grbovic & Cheng, KDD 2018 (best paper, applied track); session-based listing embeddings, booked-listing global positives, and two-sided host-rejection signals.
+- [Applying Deep Learning To Airbnb Search](https://arxiv.org/abs/1810.09591): Haldar et al., KDD 2019; the GBDT-plateau-to-neural journey, pipeline-first NN rollout, and candid failed experiments.
+- [Semantic Product Search](https://arxiv.org/abs/1907.00937): Nigam et al., Amazon, KDD 2019; where lexical matching fails, the three-tier loss over purchased/impressed/random, and the Recall@100 lift.
+- [Embedding-based Retrieval in Facebook Search](https://arxiv.org/abs/2006.11632): Huang et al., KDD 2020; serving ANN retrieval alongside an inverted index, hard-negative mining, and full-stack tuning.
+- [Unbiased Learning-to-Rank with Biased Feedback](https://www.cs.cornell.edu/~tj/publications/joachims_etal_17a.pdf): Joachims et al., WSDM 2017; propensity-weighted correction of position bias in click data.
+- [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/): Burges, Microsoft Research TR 2010; the learning-to-rank workhorse family.

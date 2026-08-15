@@ -103,7 +103,7 @@ $$
 
 The recurrent cell alone (the part reused at every step) is $HD + H^2 + H = 12 + 16 + 4 = 32$ parameters. Process a length-3 or a length-3000 sequence. It is still these same 32 numbers.
 
-## Worked forward pass — two timesteps by hand
+## Worked forward pass: two timesteps by hand
 
 Let's run the full recurrence with $D=2$ input, $H=2$ hidden, $O=1$ output, and tiny explicit weights:
 
@@ -146,7 +146,7 @@ $$
 
 Notice the $W_{hh}\mathbf{h}_1$ term: $\mathbf{h}_2$ depends on $\mathbf{x}_1$ *through* $\mathbf{h}_1$. That feedback path is the memory channel. The notebook recomputes every number above and asserts they match.
 
-### Worked example — a 1-D hidden state
+### Worked example: a 1-D hidden state
 
 To see memory accumulate over more steps, drop to a scalar: $W_{xh}=0.5$, $W_{hh}=0.9$, $b_h=0$, $h_0=0$, inputs $x = [1, 1, 1]$.
 
@@ -222,9 +222,9 @@ print(h_n.shape)     # (1, 2, 4) — final hidden state only
 **Strengths:** handle variable-length input, model order and context, compact (shared weights), natural fit for streaming/online data.
 
 **Limits:**
-1. **Sequential by nature** — step $t$ needs $\mathbf{h}_{t-1}$, so training cannot parallelize across time.
-2. **Short memory** — vanilla RNNs struggle to connect events far apart (next lesson).
-3. **Vanishing/exploding gradients** — repeated multiplication by $W_{hh}$ during training destabilizes learning.
+1. **Sequential by nature**: step $t$ needs $\mathbf{h}_{t-1}$, so training cannot parallelize across time.
+2. **Short memory**: vanilla RNNs struggle to connect events far apart (next lesson).
+3. **Vanishing/exploding gradients**: repeated multiplication by $W_{hh}$ during training destabilizes learning.
 
 <Callout type="warning" title="Vanilla RNNs forget fast">
   In practice a plain RNN reliably remembers only ~10–20 steps. The "vanishing gradient" problem (covered next) is *the* reason LSTMs and GRUs were invented.
@@ -251,7 +251,7 @@ print(h_n.shape)     # (1, 2, 4) — final hidden state only
 
 ## Related concepts
 
-- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — why long-range memory is hard
-- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the unit unrolled through time
-- [**Self-Attention**](/courses/transformers/01-self-attention) — the mechanism that replaced recurrence
-- [**Inductive Bias & Equivariance**](/wiki/inductive-bias) — the RNN as weight sharing across time, and where its recency bias breaks
+- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient): why long-range memory is hard
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron): the unit unrolled through time
+- [**Self-Attention**](/courses/transformers/01-self-attention): the mechanism that replaced recurrence
+- [**Inductive Bias & Equivariance**](/wiki/inductive-bias): the RNN as weight sharing across time, and where its recency bias breaks

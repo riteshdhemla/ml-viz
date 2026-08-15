@@ -43,9 +43,9 @@ This reframes two very different problems that this course treats together:
 
 Because the stream never ends, most questions are asked over a **window** — a finite slice of recent history. Three window types recur everywhere:
 
-- **Landmark / cumulative** — everything since a fixed start ("all events today"). The window grows without bound.
-- **Sliding window** — the last $N$ elements, or the last $T$ seconds ("clicks in the past 10 minutes"). Old elements *expire* as new ones arrive.
-- **Tumbling window** — fixed, non-overlapping blocks ("one aggregate per minute"). A special case of sliding with hop = size.
+- **Landmark / cumulative**: everything since a fixed start ("all events today"). The window grows without bound.
+- **Sliding window**: the last $N$ elements, or the last $T$ seconds ("clicks in the past 10 minutes"). Old elements *expire* as new ones arrive.
+- **Tumbling window**: fixed, non-overlapping blocks ("one aggregate per minute"). A special case of sliding with hop = size.
 
 Sliding windows are the workhorse of streaming ML: they keep computations bounded *and* naturally emphasise recent behaviour, which matters when the world is changing.
 
@@ -53,8 +53,8 @@ Sliding windows are the workhorse of streaming ML: they keep computations bounde
 
 The single most important subtlety in streaming systems is that there are **two clocks**:
 
-- **Event time** — when the thing actually happened (the timestamp on the record).
-- **Processing time** — when your system got around to observing it.
+- **Event time**: when the thing actually happened (the timestamp on the record).
+- **Processing time**: when your system got around to observing it.
 
 These diverge constantly. A phone goes through a tunnel and buffers; its events arrive minutes late and **out of order**. If you window by processing time, you attribute those events to the wrong bucket and your features silently corrupt.
 
@@ -90,6 +90,6 @@ A common first instinct is to avoid streaming entirely: buffer a few minutes of 
 
 ## Related concepts
 
-- [**Streaming Algorithms & Sketches**](/courses/streaming-ml/02-streaming-algorithms) — the sublinear-memory sketches that answer stream queries
-- [**Online Learning & Regret**](/courses/streaming-ml/03-online-learning) — learning model parameters one example at a time
-- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals) — the batch counterpart to sequential data
+- [**Streaming Algorithms & Sketches**](/courses/streaming-ml/02-streaming-algorithms): the sublinear-memory sketches that answer stream queries
+- [**Online Learning & Regret**](/courses/streaming-ml/03-online-learning): learning model parameters one example at a time
+- [**Time Series Fundamentals**](/courses/time-series/01-time-series-fundamentals): the batch counterpart to sequential data

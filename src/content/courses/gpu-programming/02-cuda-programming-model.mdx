@@ -31,9 +31,9 @@ __global__ void vecAdd(const float* A, const float* B, float* C, int n) {
 
 Threads don't know "which element am I" automatically — you compute it from three built-in variables:
 
-- `threadIdx.x` — the thread's index *within its block*
-- `blockIdx.x` — the block's index *within the grid*
-- `blockDim.x` — the number of threads per block
+- `threadIdx.x`: the thread's index *within its block*
+- `blockIdx.x`: the block's index *within the grid*
+- `blockDim.x`: the number of threads per block
 
 $$
 \boxed{\;i = \text{blockIdx.x} \times \text{blockDim.x} + \text{threadIdx.x}\;}
@@ -106,10 +106,10 @@ Understanding "thread → global index → one element" is what lets you reason 
 
 ## Common mistakes
 
-1. **Forgetting the `if (i < n)` bounds guard** — out-of-bounds access on the last (over-launched) block.
-2. **Re-copying data every call** — paying the host↔device transfer tax instead of keeping data resident.
-3. **Block size not a multiple of 32** — wastes lanes in the final warp of each block.
-4. **Assuming the kernel finished** — launches are async; you must synchronize (or copy results, which synchronizes) before reading on the host.
+1. **Forgetting the `if (i < n)` bounds guard**: out-of-bounds access on the last (over-launched) block.
+2. **Re-copying data every call**: paying the host↔device transfer tax instead of keeping data resident.
+3. **Block size not a multiple of 32**: wastes lanes in the final warp of each block.
+4. **Assuming the kernel finished**: launches are async; you must synchronize (or copy results, which synchronizes) before reading on the host.
 
 ## Key takeaways
 
@@ -120,6 +120,6 @@ Understanding "thread → global index → one element" is what lets you reason 
 
 ## Related concepts
 
-- [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture) — the warps and SMs these threads actually run on
-- [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance) — how the *access pattern* of your indexing decides real speed
-- [**Algorithms from Scratch**](/courses/ml-in-practice/03-algorithms-from-scratch) — the same "express the math, then make it fast" mindset
+- [**GPU Architecture & the Execution Model**](/courses/gpu-programming/01-gpu-architecture): the warps and SMs these threads actually run on
+- [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance): how the *access pattern* of your indexing decides real speed
+- [**Algorithms from Scratch**](/courses/ml-in-practice/03-algorithms-from-scratch): the same "express the math, then make it fast" mindset

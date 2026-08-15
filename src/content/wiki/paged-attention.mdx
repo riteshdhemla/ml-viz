@@ -18,9 +18,9 @@ The KV-cache (not the model weights), usually decides how many requests a GPU ca
 
 Three kinds of waste, mirroring classic memory management:
 
-- **Internal fragmentation** — a request allocated 4096 slots that generates 350 tokens wastes 3746 slots for its entire lifetime.
-- **External fragmentation** — variable-size contiguous slabs leave unusable gaps between allocations; free memory exists but no hole is big enough.
-- **No sharing** — two requests with an identical 5k-token system prompt each store a full private copy of the same K/V tensors.
+- **Internal fragmentation**: a request allocated 4096 slots that generates 350 tokens wastes 3746 slots for its entire lifetime.
+- **External fragmentation**: variable-size contiguous slabs leave unusable gaps between allocations; free memory exists but no hole is big enough.
+- **No sharing**: two requests with an identical 5k-token system prompt each store a full private copy of the same K/V tensors.
 
 The cache is also *append-only and per-token* — a perfect match for paging, because a sequence only ever grows one token at a time at its tail.
 
@@ -96,8 +96,8 @@ A finishes → P2,P4 freed; P0,P1 drop to refcount 1 (B still holds them).
 
 Under load the free list can empty while sequences still need to grow. The scheduler must **preempt** a victim (vLLM picks most-recently-arrived first, so oldest requests finish):
 
-- **Swap** — copy the victim's blocks to CPU RAM, restore later. Cost = PCIe transfer both ways; sane for long sequences.
-- **Recompute** — drop the blocks and re-prefill the victim from its tokens when rescheduled. Counter-intuitively often *cheaper* for short-to-medium sequences, because prefill is compute-bound and fast while PCIe is slow.
+- **Swap**: copy the victim's blocks to CPU RAM, restore later. Cost = PCIe transfer both ways; sane for long sequences.
+- **Recompute**: drop the blocks and re-prefill the victim from its tokens when rescheduled. Counter-intuitively often *cheaper* for short-to-medium sequences, because prefill is compute-bound and fast while PCIe is slow.
 
 Preemption is why a paged server degrades gracefully under overload (tail latency rises) instead of OOM-crashing.
 
@@ -114,11 +114,11 @@ Preemption is why a paged server degrades gracefully under overload (tail latenc
 
 - **Block size trades waste against overhead**: smaller $B$ → less tail slack but bigger block tables and more gather overhead; 16 is the sweet spot vLLM converged on.
 - **Sharing requires *identical* token prefixes** — one differing token (a timestamp in the system prompt, a user ID early in the template) breaks the entire hash chain after it. Put volatile content at the *end* of the prompt.
-- **Watch `gpu_cache_usage` and preemption counters** — a high preemption rate silently converts throughput into recompute work; the fix is more replicas, KV quantization, or shorter contexts.
+- **Watch `gpu_cache_usage` and preemption counters**: a high preemption rate silently converts throughput into recompute work; the fix is more replicas, KV quantization, or shorter contexts.
 
 ## Related concepts
 
-- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference) — where paged cache management and prefix caching sit in the metric→lever map
-- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — the KV-cache size formula and why the cache is the concurrency ceiling
-- [**Continuous Batching**](/wiki/continuous-batching) — the scheduler that decides which sequences occupy the blocks each step
-- [**Memory & Performance in CUDA**](/courses/gpu-programming/03-memory-and-performance) — the HBM bandwidth hierarchy underneath all of this
+- [**Optimizing LLM Inference**](/courses/ml-in-practice/22-optimizing-llm-inference): where paged cache management and prefix caching sit in the metric→lever map
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving): the KV-cache size formula and why the cache is the concurrency ceiling
+- [**Continuous Batching**](/wiki/continuous-batching): the scheduler that decides which sequences occupy the blocks each step
+- [**Memory & Performance in CUDA**](/courses/gpu-programming/03-memory-and-performance): the HBM bandwidth hierarchy underneath all of this

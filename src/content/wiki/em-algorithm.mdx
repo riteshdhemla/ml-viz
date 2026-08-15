@@ -15,9 +15,9 @@ The **Expectation-Maximization (EM) algorithm** handles models with latent varia
 
 For a Gaussian Mixture Model with $K$ components, parameters $\theta = \{\pi_k, \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k\}$, and observed data $\{\mathbf{x}_i\}_{i=1}^n$:
 
-**Step 0 — Initialize** $\boldsymbol{\mu}_k$, $\boldsymbol{\Sigma}_k = I$, $\pi_k = 1/K$ (e.g. pick $K$ random data points as initial means).
+**Step 0: Initialize** $\boldsymbol{\mu}_k$, $\boldsymbol{\Sigma}_k = I$, $\pi_k = 1/K$ (e.g. pick $K$ random data points as initial means).
 
-**Step 1 — E-step.** Compute responsibility of component $k$ for point $i$:
+**Step 1: E-step.** Compute responsibility of component $k$ for point $i$:
 
 $$
 \gamma_{ik} = \frac{\pi_k^{(t)}\,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k^{(t)}, \boldsymbol{\Sigma}_k^{(t)})}{\displaystyle\sum_{j=1}^K \pi_j^{(t)}\,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j^{(t)}, \boldsymbol{\Sigma}_j^{(t)})}
@@ -25,7 +25,7 @@ $$
 
 This is a posterior probability — soft fractional assignment of point $i$ to cluster $k$.
 
-**Step 2 — M-step.** Re-estimate every parameter using the soft assignments as weights:
+**Step 2: M-step.** Re-estimate every parameter using the soft assignments as weights:
 
 $$
 N_k = \sum_{i=1}^n \gamma_{ik}
@@ -43,7 +43,7 @@ $$
 \pi_k^{(t+1)} = \frac{N_k}{n}
 $$
 
-**Step 3 — Check convergence.** Compute the log-likelihood
+**Step 3: Check convergence.** Compute the log-likelihood
 
 $$
 \ell(\theta) = \sum_{i=1}^n \log\sum_{k=1}^K \pi_k\,\mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)
@@ -51,7 +51,7 @@ $$
 
 and stop when $|\ell^{(t+1)} - \ell^{(t)}| < \varepsilon$ (e.g. $10^{-6}$). Otherwise return to Step 1.
 
-## Why EM works — the ELBO and monotonic likelihood
+## Why EM works: the ELBO and monotonic likelihood
 
 The two steps look like heuristics, but they are coordinate ascent on a single objective. Introduce *any* distribution $q(z)$ over the latent variable and apply **Jensen's inequality** ($\log$ is concave):
 
@@ -109,7 +109,7 @@ What to notice as you step:
 
 Data $X = \{1, 2, 4, 5\}$, $K = 2$. Initialize $\mu = (2, 4)$, $\sigma = (1.5, 1.5)$, $\pi = (0.5, 0.5)$.
 
-### E-step — compute responsibilities
+### E-step: compute responsibilities
 
 For a 1D Gaussian: $\mathcal{N}(x \mid \mu, \sigma) = \frac{1}{\sigma\sqrt{2\pi}}\exp\!\bigl(-\frac{(x-\mu)^2}{2\sigma^2}\bigr)$.
 
@@ -140,7 +140,7 @@ Applying the same formula to all points:
 
 By symmetry, the table is perfectly antisymmetric around the midpoint $x = 3$. The effective counts are $N_1 = 0.855 + 0.709 + 0.291 + 0.145 = 2.0$ and $N_2 = 2.0$.
 
-### M-step — re-estimate parameters
+### M-step: re-estimate parameters
 
 $$
 \mu_1' = \frac{0.855(1)+0.709(2)+0.291(4)+0.145(5)}{2.0} = \frac{0.855+1.418+1.164+0.725}{2.0} = \frac{4.162}{2.0} = 2.08
@@ -212,6 +212,6 @@ def em_gmm_1d(X, K=2, max_iter=100, tol=1e-6):
 
 ## Related concepts
 
-- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the model this algorithm fits; the interactive EM visualization lets you step through E/M iterations
-- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models) — the Baum–Welch algorithm is EM applied to sequences
-- [**The EM Algorithm lesson**](/courses/probabilistic-models/02-em-algorithm) — source lesson with the GMM application and code
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models): the model this algorithm fits; the interactive EM visualization lets you step through E/M iterations
+- [**Hidden Markov Models**](/courses/graphical-models/03-hidden-markov-models): the Baum–Welch algorithm is EM applied to sequences
+- [**The EM Algorithm lesson**](/courses/probabilistic-models/02-em-algorithm): source lesson with the GMM application and code

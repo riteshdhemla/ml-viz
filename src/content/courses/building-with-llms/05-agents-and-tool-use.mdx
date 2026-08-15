@@ -37,9 +37,9 @@ This is just **structured output** (from lesson 2) pointed at an action: the sch
 
 The dominant agent pattern is **ReAct** (Reason + Act). The model iterates:
 
-1. **Thought** — reason about the current state and what's needed next.
-2. **Action** — call a tool with arguments.
-3. **Observation** — read the tool's result.
+1. **Thought**: reason about the current state and what's needed next.
+2. **Action**: call a tool with arguments.
+3. **Observation**: read the tool's result.
 4. Repeat until it has enough, then emit a final **Answer**.
 
 ```text
@@ -70,11 +70,11 @@ The context window is finite, so long-running agents need **memory**:
 
 Agents compound errors. If each step is 95% reliable, ten steps are only $0.95^{10} \approx 60\%$ reliable. Make them robust with:
 
-- **Bounded loops** — cap the number of steps so the agent can't spin forever.
-- **Validated tool I/O** — check arguments before executing; handle tool errors gracefully.
-- **Least privilege** — give the agent only the tools (and permissions) it needs.
-- **Human-in-the-loop** — require confirmation for irreversible or costly actions.
-- **Observability** — log every Thought/Action/Observation to debug failures (covered next).
+- **Bounded loops**: cap the number of steps so the agent can't spin forever.
+- **Validated tool I/O**: check arguments before executing; handle tool errors gracefully.
+- **Least privilege**: give the agent only the tools (and permissions) it needs.
+- **Human-in-the-loop**: require confirmation for irreversible or costly actions.
+- **Observability**: log every Thought/Action/Observation to debug failures (covered next).
 
 <Callout type="warning" title="Agents widen the attack surface">
   An agent that browses or reads documents can ingest **malicious instructions** hidden in that content (indirect prompt injection) and then misuse its tools. Treat all tool inputs/outputs as untrusted — we tackle this directly in the next lesson.
@@ -96,10 +96,10 @@ Two open protocols standardize how agents connect to the world so you don't hand
 
 ## Common mistakes
 
-1. **Unbounded loops** — runaway cost and latency.
-2. **Over-trusting tool output** — feeding unvalidated, possibly malicious results straight back to the model.
-3. **Too many tools** — a huge tool list confuses tool selection; keep it tight.
-4. **Using an agent where a fixed chain would do** — needless nondeterminism.
+1. **Unbounded loops**: runaway cost and latency.
+2. **Over-trusting tool output**: feeding unvalidated, possibly malicious results straight back to the model.
+3. **Too many tools**: a huge tool list confuses tool selection; keep it tight.
+4. **Using an agent where a fixed chain would do**: needless nondeterminism.
 
 ## Key takeaways
 
@@ -110,8 +110,8 @@ Two open protocols standardize how agents connect to the world so you don't hand
 
 ## Related concepts
 
-- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the reasoning and the schemas agents are built on
-- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — guardrails, observability, and serving agents in production
-- [**Sub-Agent Types: Sequential, Parallel & Loop**](/wiki/sub-agent-orchestration) — how multiple agents compose into pipelines, fan-out, and bounded loops
-- [**Text-to-SQL**](/wiki/text-to-sql) — an agentic tool-use case study: generate SQL, execute, and self-correct on errors
-- [**The Agentic Project Loop**](/wiki/agentic-project-loop) — where the ReAct loop sits in the wider agent spine, and how the six slots parallel the ML project loop
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought): the reasoning and the schemas agents are built on
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture): guardrails, observability, and serving agents in production
+- [**Sub-Agent Types: Sequential, Parallel & Loop**](/wiki/sub-agent-orchestration): how multiple agents compose into pipelines, fan-out, and bounded loops
+- [**Text-to-SQL**](/wiki/text-to-sql): an agentic tool-use case study: generate SQL, execute, and self-correct on errors
+- [**The Agentic Project Loop**](/wiki/agentic-project-loop): where the ReAct loop sits in the wider agent spine, and how the six slots parallel the ML project loop

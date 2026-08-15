@@ -105,8 +105,8 @@ where $W_s$ is a $1\times1$ convolution that changes channel count and/or applie
 
 Standard convolution mixes channels and spatial structure simultaneously. **Depthwise separable convolution** (MobileNet, 2017) splits this into two steps:
 
-1. **Depthwise convolution** — apply one $K\times K$ filter per input channel independently (no cross-channel mixing)
-2. **Pointwise convolution** — apply $1\times1$ conv to mix channels
+1. **Depthwise convolution**: apply one $K\times K$ filter per input channel independently (no cross-channel mixing)
+2. **Pointwise convolution**: apply $1\times1$ conv to mix channels
 
 **Parameter comparison** for $K=3$, $C$ input and $C$ output channels:
 
@@ -121,9 +121,9 @@ MobileNet-V1 achieves ImageNet accuracy within ~1% of VGG-16 at 8× fewer FLOPs 
 ## EfficientNet: compound scaling
 
 Prior to EfficientNet (2019), architecture improvements came from independently scaling:
-- **Width** (more channels per layer) — more features, more parameters
-- **Depth** (more layers) — more complex functions, harder to train
-- **Resolution** (larger input images) — more detail, more computation
+- **Width** (more channels per layer): more features, more parameters
+- **Depth** (more layers): more complex functions, harder to train
+- **Resolution** (larger input images): more detail, more computation
 
 EfficientNet (Tan & Le, 2019) showed that these three dimensions must be scaled **jointly** in fixed ratios to be efficient. Their **compound scaling rule**:
 
@@ -168,9 +168,9 @@ The progression from AlexNet (2012) to modern networks reveals a consistent set 
 
 ## Common mistakes
 
-1. **Building VGG-style networks** — fully-connected heads with hundreds of millions of parameters overfit heavily and are slow. Use Global Average Pooling + one FC layer instead.
-2. **Forgetting projection shortcuts** — when changing channels or stride at a stage transition, the shortcut must also change dimensions. Without this, the residual addition fails with shape mismatch.
-3. **Removing BatchNorm from residual blocks** — BN is critical for stable residual training. Each conv in the block should be followed by BN, but the *shortcut path* should not have BN (it would shift the identity mapping).
+1. **Building VGG-style networks**: fully-connected heads with hundreds of millions of parameters overfit heavily and are slow. Use Global Average Pooling + one FC layer instead.
+2. **Forgetting projection shortcuts**: when changing channels or stride at a stage transition, the shortcut must also change dimensions. Without this, the residual addition fails with shape mismatch.
+3. **Removing BatchNorm from residual blocks**: BN is critical for stable residual training. Each conv in the block should be followed by BN, but the *shortcut path* should not have BN (it would shift the identity mapping).
 
 ## Key takeaways
 
@@ -182,7 +182,7 @@ The progression from AlexNet (2012) to modern networks reveals a consistent set 
 
 ## Related concepts
 
-- [**Pooling & CNN Architectures**](/courses/cnns/02-pooling-and-architectures) — the foundation these architectures build on
-- [**Transfer Learning**](/courses/cnns/04-transfer-learning) — using pretrained ResNets/EfficientNets for new tasks
-- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — normalization used in every modern block
-- [**GroupNorm & InstanceNorm**](/wiki/groupnorm-and-instancenorm) — the batch-size-independent normalization variants used in modern conv nets
+- [**Pooling & CNN Architectures**](/courses/cnns/02-pooling-and-architectures): the foundation these architectures build on
+- [**Transfer Learning**](/courses/cnns/04-transfer-learning): using pretrained ResNets/EfficientNets for new tasks
+- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout): normalization used in every modern block
+- [**GroupNorm & InstanceNorm**](/wiki/groupnorm-and-instancenorm): the batch-size-independent normalization variants used in modern conv nets

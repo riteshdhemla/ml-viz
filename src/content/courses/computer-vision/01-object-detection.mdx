@@ -17,9 +17,9 @@ A classifier answers *"what is in this image?"*. An object detector answers *"wh
 
 Three tasks live on a spectrum of spatial precision:
 
-- **Image classification** — one label for the whole image (e.g. "cat").
-- **Object localisation** — one label plus one bounding box (single dominant object).
-- **Object detection** — multiple labels, each with its own bounding box and confidence score, for every object instance in the scene.
+- **Image classification**: one label for the whole image (e.g. "cat").
+- **Object localisation**: one label plus one bounding box (single dominant object).
+- **Object detection**: multiple labels, each with its own bounding box and confidence score, for every object instance in the scene.
 
 A bounding box is parameterised as $(x, y, w, h)$, where $(x, y)$ is the box centre and $(w, h)$ are its width and height, usually normalised to the image dimensions so values fall in $[0, 1]$.
 
@@ -86,7 +86,7 @@ Two things are worth pushing on.
 
 The last two never clear any sensible positive threshold, so they are invisible to the detector *regardless of how long you train*. Anchor scales and aspect ratios are a decision about your dataset, not a default to inherit, and this is the failure mode that anchor-free detectors (FCOS, CenterNet) were designed to remove.
 
-## Faster R-CNN — Two-Stage Detection
+## Faster R-CNN: Two-Stage Detection
 
 Faster R-CNN (Ren et al., 2015) is the canonical **two-stage detector**: first propose regions of interest, then classify them.
 
@@ -122,7 +122,7 @@ $\mathcal{L}_{\text{cls}}$ is cross-entropy; $\mathcal{L}_{\text{reg}}$ is smoot
 YOLO predicts two distinct scores per box: an **objectness score** $P(\text{object})$ — does any object exist here at all? — and a set of **class probabilities** $P(\text{class} \mid \text{object})$. The final detection confidence is their product: $P(\text{object}) \times P(\text{class} \mid \text{object})$. Faster R-CNN keeps these roles separated between the RPN (objectness) and the classification head (class probabilities). Conflating the two is a common source of confusion when reading detection papers.
 </Callout>
 
-## YOLO — One-Stage Detection
+## YOLO: One-Stage Detection
 
 **You Only Look Once** (Redmon et al., 2016) collapses the two stages into a single forward pass, making it fast enough for real-time applications.
 
@@ -156,8 +156,8 @@ A fundamental challenge in detection is **scale invariance**: a stop sign close 
 
 **FPN** (Lin et al., 2017) solves this with a two-pathway architecture:
 
-1. **Bottom-up pathway** — the standard backbone forward pass, producing feature maps at strides 4, 8, 16, 32 (denoted C2–C5).
-2. **Top-down pathway** — start from the deepest (most semantic) feature map C5 and upsample 2× at each level, adding lateral connections from the corresponding bottom-up map via $1\times1$ convolutions.
+1. **Bottom-up pathway**: the standard backbone forward pass, producing feature maps at strides 4, 8, 16, 32 (denoted C2–C5).
+2. **Top-down pathway**: start from the deepest (most semantic) feature map C5 and upsample 2× at each level, adding lateral connections from the corresponding bottom-up map via $1\times1$ convolutions.
 
 The result is a pyramid of feature maps P2–P5, each with 256 channels, all enriched with both low-level spatial detail and high-level semantic context. Detection heads run independently at each scale.
 
@@ -169,7 +169,7 @@ After a forward pass, a detector with thousands of anchors will produce thousand
 
 <WikiLink slug="nms-algorithm" title="Non-Maximum Suppression (NMS)" />
 
-## SSD — Single Shot MultiBox Detector
+## SSD: Single Shot MultiBox Detector
 
 SSD (Liu et al., 2016) is a one-stage detector that, like YOLO, avoids explicit region proposals. Unlike YOLO's single output tensor, SSD attaches detection heads directly to **multiple backbone feature maps** at different resolutions (e.g. 38×38, 19×19, 10×10, 5×5, 3×3, 1×1), placing default boxes (anchors) of 6 different aspect ratios at each location.
 
@@ -215,11 +215,11 @@ $$
 
 ## Common Mistakes and Pitfalls
 
-- **Anchors too small for large objects** — always visualise your anchor coverage on a few training images before training. Under-coverage of large objects leads to many missed detections.
-- **Forgetting to normalise bounding box coordinates** — some frameworks expect $(x, y, w, h)$ in pixels; others expect values in $[0, 1]$. Mixing conventions causes boxes to appear wildly wrong.
-- **NMS threshold too aggressive (0.7+) or too lenient (0.3-)** — at 0.7, heavily overlapping duplicates survive; at 0.3, nearby distinct objects are suppressed. 0.45–0.5 is the standard starting point.
-- **Not using multi-scale training** — randomly resizing inputs during training (e.g. between 320 and 608 pixels) dramatically improves robustness to scale at test time.
-- **Ignoring class imbalance in anchors** — in a typical image, 99%+ of anchors are background. Without focal loss (RetinaNet) or hard negative mining (SSD/Faster R-CNN), the background overwhelms the training signal.
+- **Anchors too small for large objects**: always visualise your anchor coverage on a few training images before training. Under-coverage of large objects leads to many missed detections.
+- **Forgetting to normalise bounding box coordinates**: some frameworks expect $(x, y, w, h)$ in pixels; others expect values in $[0, 1]$. Mixing conventions causes boxes to appear wildly wrong.
+- **NMS threshold too aggressive (0.7+) or too lenient (0.3-)**: at 0.7, heavily overlapping duplicates survive; at 0.3, nearby distinct objects are suppressed. 0.45–0.5 is the standard starting point.
+- **Not using multi-scale training**: randomly resizing inputs during training (e.g. between 320 and 608 pixels) dramatically improves robustness to scale at test time.
+- **Ignoring class imbalance in anchors**: in a typical image, 99%+ of anchors are background. Without focal loss (RetinaNet) or hard negative mining (SSD/Faster R-CNN), the background overwhelms the training signal.
 
 ---
 
@@ -234,5 +234,5 @@ $$
 
 ## Related Concepts
 
-- [Convolution Operation](/courses/cnns/01-convolution-operation) — the building block of all detection backbones.
-- [Segmentation](/courses/computer-vision/02-segmentation) — the next step: predicting a class label for every pixel, not just a bounding box.
+- [Convolution Operation](/courses/cnns/01-convolution-operation): the building block of all detection backbones.
+- [Segmentation](/courses/computer-vision/02-segmentation): the next step: predicting a class label for every pixel, not just a bounding box.

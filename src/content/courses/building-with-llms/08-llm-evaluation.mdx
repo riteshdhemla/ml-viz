@@ -17,9 +17,9 @@ An LLM app has no test suite by default. The output is open-ended text, "correct
 
 Pick the cheapest method that actually measures what you care about:
 
-- **Reference-based** — compare output to a gold answer. Cheap and deterministic when a reference exists: exact match / F1 for extraction, **BLEU/ROUGE** for translation/summarisation (surface overlap), embedding similarity for "close enough".
-- **Reference-free** — no gold answer; score a property of the output directly: schema validity, toxicity, **faithfulness** to retrieved context (does the answer follow from the sources?).
-- **Human evaluation** — the gold standard for nuanced quality, but slow and expensive; used to *calibrate* the cheaper automated methods rather than run on every release.
+- **Reference-based**: compare output to a gold answer. Cheap and deterministic when a reference exists: exact match / F1 for extraction, **BLEU/ROUGE** for translation/summarisation (surface overlap), embedding similarity for "close enough".
+- **Reference-free**: no gold answer; score a property of the output directly: schema validity, toxicity, **faithfulness** to retrieved context (does the answer follow from the sources?).
+- **Human evaluation**: the gold standard for nuanced quality, but slow and expensive; used to *calibrate* the cheaper automated methods rather than run on every release.
 
 For free-running text generation, a base **perplexity** $\text{PPL} = \exp\!\big(-\tfrac{1}{N}\sum_i \log p(x_i)\big)$ measures fit to a distribution but says little about task quality — low perplexity text can still be unhelpful. Task metrics matter more than language-modelling metrics.
 
@@ -31,8 +31,8 @@ BLEU/ROUGE score n-gram overlap against a reference and predate LLM-as-a-judge b
 
 When outputs are open-ended and no reference exists, the scalable option is an **LLM-as-a-judge**: prompt a strong model to score or compare outputs against a rubric.
 
-- **Pointwise** — "rate this answer 1–5 on faithfulness." Convenient but poorly calibrated.
-- **Pairwise** — "which answer is better, A or B?" More reliable, because models rank better than they grade. This is how preference leaderboards (e.g. arena-style Elo) are built.
+- **Pointwise**: "rate this answer 1–5 on faithfulness." Convenient but poorly calibrated.
+- **Pairwise**: "which answer is better, A or B?" More reliable, because models rank better than they grade. This is how preference leaderboards (e.g. arena-style Elo) are built.
 
 <Callout type="warning" title="Judges are biased — design around it">
   LLM judges exhibit measurable biases: a **position bias** (favouring the first option), a **verbosity bias** (favouring longer answers), and a **self-preference bias** (favouring outputs from the same model family). Mitigate by swapping A/B order and averaging, controlling for length, and validating the judge against human labels before trusting it. An unvalidated judge is an opinion, not a metric.
@@ -46,8 +46,8 @@ $$\text{score} = \frac{1}{|D|}\sum_{x \in D} \text{metric}\big(\text{system}(x)\
 
 Run it in two places:
 
-- **Offline (pre-deploy)** — gate a release: block the change if the suite score drops or any safety check fails.
-- **Online (post-deploy)** — sample real production traffic, score it continuously, and watch for drift in quality that the offline set didn't capture.
+- **Offline (pre-deploy)**: gate a release: block the change if the suite score drops or any safety check fails.
+- **Online (post-deploy)**: sample real production traffic, score it continuously, and watch for drift in quality that the offline set didn't capture.
 
 <Callout type="tip" title="Curate the eval set from production failures">
   The most valuable eval examples are the ones your system got wrong in production. Build a feedback loop: capture failures and edge cases, add them to the suite, and your evaluation gets *more* discriminating over time, while a static benchmark slowly goes stale.
@@ -59,10 +59,10 @@ Run it in two places:
 
 ## Common mistakes
 
-1. **Shipping on vibes** — a few hand-checked examples instead of a versioned eval suite.
-2. **Trusting an unvalidated judge** — using LLM-as-a-judge scores as ground truth without checking agreement with humans.
-3. **Reference metrics for open-ended tasks** — reporting BLEU/ROUGE for a chatbot, where surface overlap barely correlates with quality.
-4. **Pointwise where pairwise wins** — asking for absolute 1–5 scores when "A vs B" would be far more reliable.
+1. **Shipping on vibes**: a few hand-checked examples instead of a versioned eval suite.
+2. **Trusting an unvalidated judge**: using LLM-as-a-judge scores as ground truth without checking agreement with humans.
+3. **Reference metrics for open-ended tasks**: reporting BLEU/ROUGE for a chatbot, where surface overlap barely correlates with quality.
+4. **Pointwise where pairwise wins**: asking for absolute 1–5 scores when "A vs B" would be far more reliable.
 
 ## Key takeaways
 
@@ -73,7 +73,7 @@ Run it in two places:
 
 ## Related concepts
 
-- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought) — the reasoning and schemas you'll be evaluating
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — where faithfulness-to-context evaluation matters most
-- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture) — where eval gates sit in the production stack
-- [**LLM-as-a-Judge**](/wiki/llm-as-judge) — G-Eval, pairwise/Elo scoring, and the judge biases to defend against
+- [**Chain-of-Thought & Structured Output**](/courses/building-with-llms/02-chain-of-thought): the reasoning and schemas you'll be evaluating
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): where faithfulness-to-context evaluation matters most
+- [**AI-Engineering Architecture**](/courses/building-with-llms/06-ai-engineering-architecture): where eval gates sit in the production stack
+- [**LLM-as-a-Judge**](/wiki/llm-as-judge): G-Eval, pairwise/Elo scoring, and the judge biases to defend against

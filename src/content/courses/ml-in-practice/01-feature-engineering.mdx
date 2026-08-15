@@ -210,7 +210,7 @@ X_test_s  = scaler.transform(X_test)            # transform with training stats
 
 **Temporal leakage** occurs in time-series problems when you use future information to predict the past. A feature like "rolling 7-day average spend" computed using the transaction history *after* the date being predicted contains future data. Always compute time-based features using only data up to the point in time of each row.
 
-## The sklearn Pipeline — the correct pattern
+## The sklearn Pipeline: the correct pattern
 
 A `Pipeline` chains transformers and a final estimator, ensuring that `.fit()` on each transformer is called only on the training fold — not the validation fold. This is the single most effective safeguard against preprocessing leakage.
 
@@ -268,5 +268,5 @@ scores = cross_val_score(full_pipe, X, y, cv=5, scoring='roc_auc')
 
 ## Related concepts
 
-- [**Regularization**](/courses/linear-regression/03-regularization) — L1 and L2 penalties that make linear models robust to high-dimensional feature spaces
-- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies) — train/test splits, k-fold CV, and the mechanics of preventing data leakage
+- [**Regularization**](/courses/linear-regression/03-regularization): L1 and L2 penalties that make linear models robust to high-dimensional feature spaces
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies): train/test splits, k-fold CV, and the mechanics of preventing data leakage

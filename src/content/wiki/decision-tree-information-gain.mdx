@@ -70,19 +70,19 @@ This threshold puts ages 22, 25, 28, 30 left and ages 33, 36, 40, 45, 50, 60 rig
 - **Left** = {22, 25, 28, 30}: labels {0, 0, 0, 0} → 0 approved, 4 denied (pure)
 - **Right** = {33, 36, 40, 45, 50, 60}: labels {1, 1, 0, 1, 1, 1} → 5 approved, 1 denied
 
-**Step 1 — Left child Gini.** Pure node ($p_0 = 1$):
+**Step 1: Left child Gini.** Pure node ($p_0 = 1$):
 
 $$
 \text{Gini}(\text{left}) = 1 - (1^2 + 0^2) = 0
 $$
 
-**Step 2 — Right child Gini.** $p_1 = 5/6 \approx 0.8333$, $p_0 = 1/6 \approx 0.1667$:
+**Step 2: Right child Gini.** $p_1 = 5/6 \approx 0.8333$, $p_0 = 1/6 \approx 0.1667$:
 
 $$
 \text{Gini}(\text{right}) = 1 - (0.8333^2 + 0.1667^2) = 1 - (0.6944 + 0.0278) = 0.2778
 $$
 
-**Step 3 — Weighted child impurity.** Left has $4/10$ of rows, right has $6/10$:
+**Step 3: Weighted child impurity.** Left has $4/10$ of rows, right has $6/10$:
 
 $$
 \frac{4}{10}(0) + \frac{6}{10}(0.2778) = 0.1667
@@ -177,6 +177,6 @@ print(f"Best threshold: {t}, gain: {gain:.4f}")  # 31.5, 0.3333
 
 ## Related concepts
 
-- [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees) — source lesson: pruning, feature importance, sklearn API
-- [**Bagging & Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests) — averaging many trees built with this exact split criterion
-- [**Boosting**](/courses/ensemble-methods/02-boosting) — building trees sequentially to target residuals
+- [**Decision Trees**](/courses/knn-decision-trees/02-decision-trees): source lesson: pruning, feature importance, sklearn API
+- [**Bagging & Random Forests**](/courses/ensemble-methods/01-bagging-and-random-forests): averaging many trees built with this exact split criterion
+- [**Boosting**](/courses/ensemble-methods/02-boosting): building trees sequentially to target residuals

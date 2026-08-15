@@ -43,9 +43,9 @@ Classic CNNs end with fully-connected layers that output a fixed-length class ve
 
 Three variants trade off speed against spatial detail:
 
-- **FCN-32s** — upsamples the final $\frac{H}{32} \times \frac{W}{32}$ feature map back to full resolution in one 32× step. Coarse output.
-- **FCN-16s** — adds a skip connection from the pool4 layer (stride 16), fusing medium-level features before 16× upsampling. Sharper edges.
-- **FCN-8s** — also fuses pool3 (stride 8) before 8× upsampling. Best detail of the three.
+- **FCN-32s**: upsamples the final $\frac{H}{32} \times \frac{W}{32}$ feature map back to full resolution in one 32× step. Coarse output.
+- **FCN-16s**: adds a skip connection from the pool4 layer (stride 16), fusing medium-level features before 16× upsampling. Sharper edges.
+- **FCN-8s**: also fuses pool3 (stride 8) before 8× upsampling. Best detail of the three.
 
 The key insight: **skip connections from earlier (higher-resolution) layers** give the decoder access to fine-grained spatial detail that is lost as the network strides deeper.
 
@@ -143,7 +143,7 @@ SQ measures how well matched segments overlap; RQ measures how well the detector
 
 | Task | Metric | Definition |
 |------|--------|------------|
-| Semantic segmentation | **mIoU** | $\frac{1}{C}\sum_c \frac{TP_c}{TP_c + FP_c + FN_c}$ — IoU per class, macro-averaged |
+| Semantic segmentation | **mIoU** | $\frac{1}{C}\sum_c \frac{TP_c}{TP_c + FP_c + FN_c}$: IoU per class, macro-averaged |
 | Instance segmentation | **AP_mask** | COCO-style AP using mask IoU instead of box IoU, averaged over IoU thresholds 0.5–0.95 |
 | Panoptic segmentation | **PQ** | $SQ \times RQ$ as above |
 
@@ -182,6 +182,6 @@ SQ measures how well matched segments overlap; RQ measures how well the detector
 
 ## Related Concepts
 
-- [Pooling and Architectures](/courses/cnns/02-pooling-and-architectures) — pooling operations and the CNN backbone that underlies FCN and U-Net
-- [Object Detection](/courses/computer-vision/01-object-detection) — bounding-box detection with Faster R-CNN, the foundation of Mask R-CNN
-- [Backbones in Practice](/courses/computer-vision/03-backbones-in-practice) — choosing ResNet, MobileNet, or EfficientNet as the encoder backbone
+- [Pooling and Architectures](/courses/cnns/02-pooling-and-architectures): pooling operations and the CNN backbone that underlies FCN and U-Net
+- [Object Detection](/courses/computer-vision/01-object-detection): bounding-box detection with Faster R-CNN, the foundation of Mask R-CNN
+- [Backbones in Practice](/courses/computer-vision/03-backbones-in-practice): choosing ResNet, MobileNet, or EfficientNet as the encoder backbone

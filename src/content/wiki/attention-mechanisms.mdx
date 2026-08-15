@@ -102,8 +102,8 @@ LLaMA-3, Mistral, Gemma, Falcon, and most modern open-weight LLMs use GQA. $G = 
 
 Standard attention materializes the full $n \times n$ score matrix in GPU HBM (high-bandwidth memory). FlashAttention (Dao et al. 2022) tiles the computation to fit in the much-faster SRAM:
 
-- **No $O(n^2)$ activation memory** — peak memory is $O(n)$.
-- **Identical numerical result** — not an approximation; it recomputes partial softmax statistics on the fly.
+- **No $O(n^2)$ activation memory**: peak memory is $O(n)$.
+- **Identical numerical result**: not an approximation; it recomputes partial softmax statistics on the fly.
 - **2–4× faster** wall-clock on A100 for typical sequence lengths due to reduced HBM bandwidth.
 
 FlashAttention-2 and -3 further optimize for modern tensor core layouts. In PyTorch, `torch.nn.functional.scaled_dot_product_attention` dispatches to FlashAttention automatically when available.
@@ -134,7 +134,7 @@ For very long sequences, $O(n^2)$ is prohibitive even with FlashAttention. Spars
 
 ## Related concepts
 
-- [**Scaled Dot-Product Attention**](/wiki/scaled-dot-product-attention) — the $\sqrt{d_k}$ derivation and a 3-token worked example
-- [**Self-Attention**](/courses/transformers/01-self-attention) — source lesson: QKV intuition and causal masking
-- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention) — lesson: cross-attention, MQA/GQA, RoPE, FlashAttention
-- [**Positional Encodings**](/wiki/positional-encodings) — how tokens know their position in the sequence
+- [**Scaled Dot-Product Attention**](/wiki/scaled-dot-product-attention): the $\sqrt{d_k}$ derivation and a 3-token worked example
+- [**Self-Attention**](/courses/transformers/01-self-attention): source lesson: QKV intuition and causal masking
+- [**Modern Attention Mechanisms**](/courses/transformers/04-modern-attention): lesson: cross-attention, MQA/GQA, RoPE, FlashAttention
+- [**Positional Encodings**](/wiki/positional-encodings): how tokens know their position in the sequence

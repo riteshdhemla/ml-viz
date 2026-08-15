@@ -37,13 +37,13 @@ Notice what the bars do: as you move down the query shapes, the winner changes c
 
 The literature organises the field into three generations ([Gao et al., *Retrieval-Augmented Generation for LLMs: A Survey*](https://arxiv.org/abs/2312.10997)), and it's a useful ladder to place yourself on:
 
-1. **Naive RAG** — retrieve-then-read, one shot. Fixed pipeline, no evaluation of what came back.
-2. **Advanced RAG** — the same shape, but with pre-retrieval and post-retrieval stages bolted on: better chunking, metadata filters, query rewriting, reranking.
-3. **Modular RAG** — the pipeline is decomposed into swappable modules (route, rewrite, retrieve, rerank, grade, generate) that can be reordered, skipped, or looped. Every architecture below the third section is a particular wiring of these modules.
+1. **Naive RAG**: retrieve-then-read, one shot. Fixed pipeline, no evaluation of what came back.
+2. **Advanced RAG**: the same shape, but with pre-retrieval and post-retrieval stages bolted on: better chunking, metadata filters, query rewriting, reranking.
+3. **Modular RAG**: the pipeline is decomposed into swappable modules (route, rewrite, retrieve, rerank, grade, generate) that can be reordered, skipped, or looped. Every architecture below the third section is a particular wiring of these modules.
 
 The families that follow are all modular-RAG wirings. Read each as: *what breaks, what it adds, what it costs.*
 
-## Family 1 — Naive vector RAG
+## Family 1: Naive vector RAG
 
 **Fixes:** the model doesn't know your documents.
 **Adds:** chunk, embed, ANN top-$k$, stuff into prompt.
@@ -55,7 +55,7 @@ This is the right answer far more often than the RAG-architecture discourse impl
   The honest baseline is the thing every "advanced RAG" claim gets measured against. Teams routinely ship GraphRAG or an agentic loop without ever measuring the naive pipeline they skipped, and then can't say what the complexity bought.
 </Callout>
 
-## Family 2 — Hybrid retrieval + reranking
+## Family 2: Hybrid retrieval + reranking
 
 **Fixes:** dense-only retrieval misses rare exact tokens; top-$k$ favours recall over precision.
 **Adds:** BM25 alongside embeddings, rank fusion, then a cross-encoder reranker on the shortlist.
@@ -79,7 +79,7 @@ Rank fusion deliberately ignores the raw scores (BM25 scores and cosine similari
 
 <Exercise id="llm-rag-arch-hybrid" />
 
-## Family 3 — Query-transformation RAG
+## Family 3: Query-transformation RAG
 
 **Fixes:** the user's phrasing is a bad search key.
 **Adds:** an LLM pass that rewrites the query before retrieval.
@@ -87,15 +87,15 @@ Rank fusion deliberately ignores the raw scores (BM25 scores and cosine similari
 
 Three common transforms:
 
-- **Query rewriting / decomposition** — turn "and what about the second one?" into a standalone question using the conversation history, or split a compound question into parts. This is *mandatory* for multi-turn chat: a follow-up like "does that apply to enterprise?" embeds to nothing useful on its own.
-- **HyDE (Hypothetical Document Embeddings)** — ask the LLM to *hallucinate* an answer, then embed the fake answer instead of the question. The intuition: a hypothetical answer looks structurally like the documents you're searching, so it lands closer to them in embedding space than a question does. Helps most when queries and documents are stylistically mismatched (short questions vs dense technical prose).
-- **Multi-query / RAG-Fusion** — generate several paraphrases of the query, retrieve for each, fuse the result lists. Buys recall on vague or multi-faceted queries.
+- **Query rewriting / decomposition**: turn "and what about the second one?" into a standalone question using the conversation history, or split a compound question into parts. This is *mandatory* for multi-turn chat: a follow-up like "does that apply to enterprise?" embeds to nothing useful on its own.
+- **HyDE (Hypothetical Document Embeddings)**: ask the LLM to *hallucinate* an answer, then embed the fake answer instead of the question. The intuition: a hypothetical answer looks structurally like the documents you're searching, so it lands closer to them in embedding space than a question does. Helps most when queries and documents are stylistically mismatched (short questions vs dense technical prose).
+- **Multi-query / RAG-Fusion**: generate several paraphrases of the query, retrieve for each, fuse the result lists. Buys recall on vague or multi-faceted queries.
 
 <Callout type="tip" title="The caveat that gets skipped">
   If the query is already specific, a rewrite adds latency and no signal, and HyDE can actively hurt, because a confidently wrong hypothetical answer drags retrieval toward the wrong region. Query transformation is a fix for a *measured* retrieval failure, not a default layer.
 </Callout>
 
-## Family 4 — Hierarchical / summary-tree RAG
+## Family 4: Hierarchical / summary-tree RAG
 
 **Fixes:** the answer needs a level of abstraction between "one chunk" and "the whole corpus."
 **Adds:** a tree of recursive summaries; retrieval can hit any level.
@@ -105,7 +105,7 @@ Three common transforms:
 
 This is the natural fit for long, structured single documents (a 300-page manual, a 10-K, a research monograph) where the reader's questions span both "what does clause 14.2 say" and "what's the overall risk posture."
 
-## Family 5 — GraphRAG
+## Family 5: GraphRAG
 
 **Fixes:** multi-hop joins and corpus-wide synthesis, neither of which top-$k$ can reach.
 **Adds:** an LLM-extracted knowledge graph plus community summaries over it.
@@ -115,9 +115,9 @@ This is the natural fit for long, structured single documents (a 300-page manual
 
 Query time offers two modes, and picking the wrong one is the most common GraphRAG mistake:
 
-- **Local search** — start from the entities named in the question, fan out to neighbours and their source chunks. For "who reported the outage and what did they say."
-- **Global search** — map-reduce over community reports. For "what are the recurring themes." No amount of top-$k$ over chunks answers this, because the answer is a property of the distribution, not of any passage.
-- **DRIFT search** — a later hybrid that seeds a global-style query with local context, then follows up, to get global coverage at lower cost.
+- **Local search**: start from the entities named in the question, fan out to neighbours and their source chunks. For "who reported the outage and what did they say."
+- **Global search**: map-reduce over community reports. For "what are the recurring themes." No amount of top-$k$ over chunks answers this, because the answer is a property of the distribution, not of any passage.
+- **DRIFT search**: a later hybrid that seeds a global-style query with local context, then follows up, to get global coverage at lower cost.
 
 Walk the whole pipeline below. The four indexing steps are offline and expensive; the two query steps are what they buy you. On local search, click around the graph — the number to watch is how many *communities* a neighbourhood spans, because cross-community links are precisely the ones that never co-occur inside a single chunk.
 
@@ -129,7 +129,7 @@ The production evidence is real: LinkedIn built a knowledge graph over historica
   Indexing a mid-size corpus can mean tens of thousands of LLM calls, and any document edit invalidates part of the graph. Cheaper multi-granular variants exist (KET-RAG, and Microsoft's own dynamic community selection for global search), but if your corpus changes hourly, this family is a poor fit regardless of quality.
 </Callout>
 
-## Family 6 — Self-correcting RAG
+## Family 6: Self-correcting RAG
 
 **Fixes:** the pipeline retrieves garbage and generates from it anyway, confidently.
 **Adds:** an explicit grading step between retrieval and generation, with a fallback action.
@@ -146,7 +146,7 @@ For most teams shipping on an API model, CRAG-style grading is the practical cho
 
 <Exercise id="llm-rag-arch-crag" />
 
-## Family 7 — Agentic RAG
+## Family 7: Agentic RAG
 
 **Fixes:** questions where you can't know what to retrieve until you've seen what you retrieved.
 **Adds:** an LLM agent that plans, searches, reads, and searches again — retrieval as a *tool call in a loop* rather than a fixed pipeline stage.
@@ -168,7 +168,7 @@ The generalisable lesson: **when the corpus has usable structure and the agent c
   An agentic loop can easily run 10–20× the tokens of a one-shot pipeline. Cap the iterations, cache aggressively, and route only the queries that need it (see adaptive RAG above) — otherwise the bill arrives before the quality gains do.
 </Callout>
 
-## Family 8 — Multimodal RAG
+## Family 8: Multimodal RAG
 
 **Fixes:** the answer is in a chart, a table, a scanned page, or a diagram — content that a text-extraction pipeline destroys on the way in.
 **Adds:** retrieval over non-text representations.
@@ -176,11 +176,11 @@ The generalisable lesson: **when the corpus has usable structure and the agent c
 
 Three architectures dominate, in ascending order of fidelity and cost:
 
-1. **Caption-and-index** — run a vision model over each image/table, write a text description, index the text. Simplest; loses everything the caption didn't mention.
-2. **Unified multimodal embeddings** — a single model embeds text and images into one shared space, so a text query retrieves an image directly.
-3. **Page-as-image with late interaction** — ColPali / ColQwen-style: render each page as an image and embed it into *many* token-level vectors, scoring with MaxSim rather than a single dot product. Layout, chart axes, and table structure survive, because nothing was ever converted to text. This is the fit for financial filings, technical manuals, and scanned archives, and it deletes your entire OCR-and-parsing pipeline.
+1. **Caption-and-index**: run a vision model over each image/table, write a text description, index the text. Simplest; loses everything the caption didn't mention.
+2. **Unified multimodal embeddings**: a single model embeds text and images into one shared space, so a text query retrieves an image directly.
+3. **Page-as-image with late interaction**: ColPali / ColQwen-style: render each page as an image and embed it into *many* token-level vectors, scoring with MaxSim rather than a single dot product. Layout, chart axes, and table structure survive, because nothing was ever converted to text. This is the fit for financial filings, technical manuals, and scanned archives, and it deletes your entire OCR-and-parsing pipeline.
 
-## Family 9 — Structured RAG and routing
+## Family 9: Structured RAG and routing
 
 **Fixes:** "how many," "total," "average," "top 5 by revenue" — questions cosine similarity fundamentally cannot answer.
 **Adds:** retrieval against a database instead of a text index — retrieve the *schema*, generate SQL, execute it.
@@ -200,9 +200,9 @@ When the corpus **fits** in the window, loading everything generally beats retri
 
 But that framing hides the economics and the failure mode:
 
-- **Cost and latency** — retrieval sends a few thousand tokens where full-context sends a million. Reported production gaps run to ~93% fewer tokens and ~92% lower latency for equivalent tasks.
-- **Context rot** — accuracy degrades sharply when the relevant passage is buried mid-window (the "lost in the middle" effect). More context is not monotonically better.
-- **Corpus size** — the argument only exists for corpora that fit. Most real ones don't, and never will.
+- **Cost and latency**: retrieval sends a few thousand tokens where full-context sends a million. Reported production gaps run to ~93% fewer tokens and ~92% lower latency for equivalent tasks.
+- **Context rot**: accuracy degrades sharply when the relevant passage is buried mid-window (the "lost in the middle" effect). More context is not monotonically better.
+- **Corpus size**: the argument only exists for corpora that fit. Most real ones don't, and never will.
 
 The 2026 default is neither: **retrieve a generous candidate set, then let a long-context model reason over all of it**, with prompt caching absorbing the repeated prefix. Retrieval becomes coarse filtering rather than precision selection — which, usefully, makes retrieval precision matter less and retrieval *recall* matter more.
 
@@ -234,8 +234,8 @@ A decision procedure, in order:
 
 You cannot compare architectures without splitting the metric, because a bad answer has two possible causes and they need different fixes:
 
-- **Retrieval** — context precision (is what we retrieved relevant?) and context recall (did we get everything needed?), plus recall@k and MRR against labelled relevant chunks.
-- **Generation** — faithfulness (is the answer supported by the retrieved context?) and answer relevance (does it address the question?).
+- **Retrieval**: context precision (is what we retrieved relevant?) and context recall (did we get everything needed?), plus recall@k and MRR against labelled relevant chunks.
+- **Generation**: faithfulness (is the answer supported by the retrieved context?) and answer relevance (does it address the question?).
 
 Low recall with high faithfulness means fix retrieval. High recall with low faithfulness means fix the prompt or the model. Architectures change these two numbers *independently*, which is exactly why an end-to-end score alone can't tell you what to do next.
 
@@ -256,15 +256,15 @@ Build the eval set **per query shape**. An aggregate score over a mixed set will
 - The generations run **naive → advanced → modular**; everything past family 2 is a wiring of modular components.
 - **Hybrid + rerank + contextual chunks** is the best quality-per-complexity upgrade, and where most production systems should start.
 - **GraphRAG** buys multi-hop and corpus-wide synthesis with a heavy, recurring indexing bill; **agentic RAG** buys open-ended research with a heavy per-query bill.
-- **Long context doesn't replace retrieval** — it changes its job from precision selection to coarse, high-recall filtering.
+- **Long context doesn't replace retrieval**: it changes its job from precision selection to coarse, high-recall filtering.
 - Evaluate **retrieval and generation separately, per query shape**, or you can't tell which architecture to add next.
 
 ## References
 
-- [Gao et al., *Retrieval-Augmented Generation for Large Language Models: A Survey*](https://arxiv.org/abs/2312.10997) — the naive / advanced / modular taxonomy
-- [Anthropic, *Introducing Contextual Retrieval*](https://www.anthropic.com/engineering/contextual-retrieval) — contextual embeddings + contextual BM25 + reranking benchmarks
+- [Gao et al., *Retrieval-Augmented Generation for Large Language Models: A Survey*](https://arxiv.org/abs/2312.10997): the naive / advanced / modular taxonomy
+- [Anthropic, *Introducing Contextual Retrieval*](https://www.anthropic.com/engineering/contextual-retrieval): contextual embeddings + contextual BM25 + reranking benchmarks
 - [Edge et al., *From Local to Global: A Graph RAG Approach to Query-Focused Summarization*](https://arxiv.org/abs/2404.16130) and the [Microsoft GraphRAG docs](https://microsoft.github.io/graphrag/)
-- [Xu et al., *Retrieval-Augmented Generation with Knowledge Graphs for Customer Service Question Answering*](https://arxiv.org/abs/2404.17723) — the LinkedIn deployment
+- [Xu et al., *Retrieval-Augmented Generation with Knowledge Graphs for Customer Service Question Answering*](https://arxiv.org/abs/2404.17723): the LinkedIn deployment
 - [Asai et al., *Self-RAG: Learning to Retrieve, Generate and Critique through Self-Reflection*](https://arxiv.org/abs/2310.11511)
 - [Yan et al., *Corrective Retrieval Augmented Generation*](https://arxiv.org/abs/2401.15884)
 - [Sarthi et al., *RAPTOR: Recursive Abstractive Processing for Tree-Organized Retrieval*](https://arxiv.org/abs/2401.18059)
@@ -274,9 +274,9 @@ Build the eval set **per query shape**. An aggregate score over a mixed set will
 
 ## Related concepts
 
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the base pipeline every family here modifies
-- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search) — the retrieval engine underneath families 1–4
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — the loop that agentic RAG runs retrieval inside
-- [**LLM Evaluation**](/courses/building-with-llms/08-llm-evaluation) — how to build the per-query-shape eval set this lesson demands
-- [**Vector Databases & ANN Indexes**](/wiki/vector-databases) — the IVF/HNSW/PQ machinery under the ANN step
-- [**BM25: Lexical Ranking**](/wiki/bm25-ranking) — the sparse half of hybrid retrieval
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): the base pipeline every family here modifies
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search): the retrieval engine underneath families 1–4
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): the loop that agentic RAG runs retrieval inside
+- [**LLM Evaluation**](/courses/building-with-llms/08-llm-evaluation): how to build the per-query-shape eval set this lesson demands
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases): the IVF/HNSW/PQ machinery under the ANN step
+- [**BM25: Lexical Ranking**](/wiki/bm25-ranking): the sparse half of hybrid retrieval

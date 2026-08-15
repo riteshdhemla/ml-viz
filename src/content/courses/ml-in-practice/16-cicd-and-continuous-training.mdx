@@ -25,7 +25,7 @@ Google's widely used framework defines three levels by how much of the ML proces
 
 | Level | Name | What's automated | Retraining cadence |
 |-------|------|------------------|--------------------|
-| **0** | Manual process | Nothing — notebook-driven, manual hand-off to ops | Rare, manual |
+| **0** | Manual process | Nothing: notebook-driven, manual hand-off to ops | Rare, manual |
 | **1** | ML pipeline automation | The *training pipeline* runs automatically with data/model validation; CT enabled | Frequent, on a trigger |
 | **2** | CI/CD pipeline automation | The *pipeline itself* is built, tested, and deployed via CI/CD | Rapid, reliable, multi-pipeline |
 
@@ -41,9 +41,9 @@ Google's widely used framework defines three levels by how much of the ML proces
 
 Each loop gains ML-specific responsibilities beyond standard software practice:
 
-- **CI** — besides unit tests, validate **pipeline components** (does feature code produce the expected schema?), test that the model trains for a few steps, and check that converted/serialised models load.
-- **CD** — deploy the **pipeline** (Level 2) and the **model service**; verify the served model's prediction matches the offline model (no train–serve skew) before flipping traffic.
-- **CT** — run the training pipeline on a **trigger** and gate the result on validation.
+- **CI**: besides unit tests, validate **pipeline components** (does feature code produce the expected schema?), test that the model trains for a few steps, and check that converted/serialised models load.
+- **CD**: deploy the **pipeline** (Level 2) and the **model service**; verify the served model's prediction matches the offline model (no train–serve skew) before flipping traffic.
+- **CT**: run the training pipeline on a **trigger** and gate the result on validation.
 
 A retraining trigger is one of:
 
@@ -63,10 +63,10 @@ Each of those pieces sounds obviously worth having, which is exactly why they ar
 
 ## Common mistakes
 
-1. **Deploying models instead of pipelines** — keeping a human in the training loop forever, so retraining never scales.
-2. **CT without validation gates** — automating retraining but not the check that the new model is actually better.
-3. **Chasing Level 2 prematurely** — paying for CI/CD-of-pipelines automation a stable, slow-moving model doesn't need.
-4. **Skipping the skew check in CD** — promoting a model whose served predictions differ from its offline evaluation.
+1. **Deploying models instead of pipelines**: keeping a human in the training loop forever, so retraining never scales.
+2. **CT without validation gates**: automating retraining but not the check that the new model is actually better.
+3. **Chasing Level 2 prematurely**: paying for CI/CD-of-pipelines automation a stable, slow-moving model doesn't need.
+4. **Skipping the skew check in CD**: promoting a model whose served predictions differ from its offline evaluation.
 
 ## Key takeaways
 
@@ -77,6 +77,6 @@ Each of those pieces sounds obviously worth having, which is exactly why they ar
 
 ## Related concepts
 
-- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking) — the runs and artifacts a pipeline produces and compares
-- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration) — the orchestrators that execute these pipelines
-- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls) — the train–serve skew and drift that CT exists to fight
+- [**Experiment Tracking & Versioning**](/courses/ml-in-practice/07-experiment-tracking): the runs and artifacts a pipeline produces and compares
+- [**MLOps Infrastructure & Orchestration**](/courses/ml-in-practice/11-mlops-infrastructure-and-orchestration): the orchestrators that execute these pipelines
+- [**Deployment Pitfalls**](/courses/ml-in-practice/02-deployment-pitfalls): the train–serve skew and drift that CT exists to fight

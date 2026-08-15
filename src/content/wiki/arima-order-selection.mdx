@@ -13,10 +13,10 @@ The **Box-Jenkins methodology** is a four-phase iterative procedure for fitting 
 
 ## The four phases of the procedure
 
-1. **Identification** — determine $d$ (differencing order) from the ADF test; read $p$ and $q$ from ACF/PACF plots.
-2. **Estimation** — fit the model via maximum likelihood to estimate $\phi_1,\ldots,\phi_p$ and $\theta_1,\ldots,\theta_q$.
-3. **Diagnostics** — check that the residuals are white noise; if not, revise the order and repeat.
-4. **Forecasting** — use the fitted model to generate point forecasts and prediction intervals.
+1. **Identification**: determine $d$ (differencing order) from the ADF test; read $p$ and $q$ from ACF/PACF plots.
+2. **Estimation**: fit the model via maximum likelihood to estimate $\phi_1,\ldots,\phi_p$ and $\theta_1,\ldots,\theta_q$.
+3. **Diagnostics**: check that the residuals are white noise; if not, revise the order and repeat.
+4. **Forecasting**: use the fitted model to generate point forecasts and prediction intervals.
 
 ## Determining the differencing order d with the ADF test
 
@@ -47,8 +47,8 @@ This is step 1b of Phase 1. After differencing $d$ times, inspect the correlogra
 |-----|------|-------|
 | Exponential/sinusoidal decay | Cuts off after lag $p$ | **AR($p$)** |
 | Cuts off after lag $q$ | Exponential/sinusoidal decay | **MA($q$)** |
-| Both decay | Both decay | **ARMA($p$,$q$)** — try small values |
-| All within bands | All within bands | White noise — $d$ was enough |
+| Both decay | Both decay | **ARMA($p$,$q$)**: try small values |
+| All within bands | All within bands | White noise: $d$ was enough |
 
 For **AR($p$)**: look at the lag where the PACF drops inside the $\pm 1.96/\sqrt{T}$ band. That lag is $p$.
 
@@ -133,7 +133,7 @@ Mean of $\Delta y_t$ = 1.83 (average monthly growth); its variance is 11.85, aga
 | ARIMA(0,1,2) | 175.3 | 181.5 | 0.89 ✓ |
 | ARIMA(1,1,0) | 180.7 | 185.3 | 0.83 ✓ |
 
-**Winner: ARIMA(0,1,1)** — lowest AIC and BIC, residuals are white noise.
+**Winner: ARIMA(0,1,1)**: lowest AIC and BIC, residuals are white noise.
 
 Estimated parameters: $\hat\mu = 1.96$ (drift), $\hat\theta_1 = −0.846$, $\hat\sigma = 2.59$.
 
@@ -192,14 +192,14 @@ print(forecast.summary_frame(alpha=0.05)[["mean","mean_ci_lower","mean_ci_upper"
 
 **What to notice:**
 
-- **Frame 2 — choosing $d$ without a hypothesis test.** The variance of $\Delta^d y$ is 436.6, 11.9, 35.2, 120.4 for $d = 0,1,2,3$. The minimum *is* the answer, and the U-shape shows why over-differencing is a real cost rather than a stylistic preference.
-- **Frame 7 — the over-differencing payoff.** Differencing twice triples the variance and pushes $\hat\theta_1$ from $-0.84$ to $-0.99$. That is not coincidence: differencing an already-stationary series applies an MA filter with a **unit root** $\theta = -1$, so the estimator must spend a parameter cancelling a root the analyst introduced, right on the boundary of the parameter space where estimation behaves worst.
-- **Frame 8 — why the margin is 2.00.** Every model that nests ARIMA(0,1,1) comes in at $+1.96$, $+3.92$, $+5.61$ AIC — very close to $2k$ for $k$ redundant parameters. When the extra coefficient is useless the log-likelihood does not move, so the entire gap *is* the penalty term. **AIC can never prefer the simpler nested model by more than 2 per parameter**, which is why a 2-point AIC win is weak evidence and BIC's $\ln T = 3.56$ penalty is the sharper instrument.
+- **Frame 2: choosing $d$ without a hypothesis test.** The variance of $\Delta^d y$ is 436.6, 11.9, 35.2, 120.4 for $d = 0,1,2,3$. The minimum *is* the answer, and the U-shape shows why over-differencing is a real cost rather than a stylistic preference.
+- **Frame 7: the over-differencing payoff.** Differencing twice triples the variance and pushes $\hat\theta_1$ from $-0.84$ to $-0.99$. That is not coincidence: differencing an already-stationary series applies an MA filter with a **unit root** $\theta = -1$, so the estimator must spend a parameter cancelling a root the analyst introduced, right on the boundary of the parameter space where estimation behaves worst.
+- **Frame 8: why the margin is 2.00.** Every model that nests ARIMA(0,1,1) comes in at $+1.96$, $+3.92$, $+5.61$ AIC — very close to $2k$ for $k$ redundant parameters. When the extra coefficient is useless the log-likelihood does not move, so the entire gap *is* the penalty term. **AIC can never prefer the simpler nested model by more than 2 per parameter**, which is why a 2-point AIC win is weak evidence and BIC's $\ln T = 3.56$ penalty is the sharper instrument.
 
 The trace estimates by conditional sum of squares rather than exact MLE, so its absolute AIC values sit about 0.9 below statsmodels'. The ranking is identical across all nine candidates.
 
 ## Related concepts
 
-- [**ACF & PACF: Reading the Correlogram**](/wiki/acf-pacf-interpretation) — step 1b: reading the plots to identify p and q
-- [**ARIMA Models**](/courses/time-series/02-arima-models) — the full lesson with AR/MA model definitions
-- [**Walk-Forward Validation**](/wiki/walk-forward-validation) — evaluating forecast accuracy without data leakage
+- [**ACF & PACF: Reading the Correlogram**](/wiki/acf-pacf-interpretation): step 1b: reading the plots to identify p and q
+- [**ARIMA Models**](/courses/time-series/02-arima-models): the full lesson with AR/MA model definitions
+- [**Walk-Forward Validation**](/wiki/walk-forward-validation): evaluating forecast accuracy without data leakage

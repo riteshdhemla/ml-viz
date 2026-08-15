@@ -27,7 +27,7 @@ $$
 \text{Regret}_T = \sum_{t=1}^{T} f_t(x_t) - \sum_{t=1}^{T} f_t(x^\star).
 $$
 
-## Step 1 — the projection inequality
+## Step 1: the projection inequality
 
 Because Euclidean projection onto a convex set does not increase distances to points already in the set, $\|\Pi_{\mathcal K}(y) - x^\star\| \le \|y - x^\star\|$ for $x^\star \in \mathcal K$. Apply it to $y = x_t - \eta g_t$ and expand the square:
 
@@ -42,7 +42,7 @@ $$
 \langle g_t,\, x_t - x^\star\rangle \;\le\; \frac{\|x_t - x^\star\|^2 - \|x_{t+1} - x^\star\|^2}{2\eta} \;+\; \frac{\eta}{2}\|g_t\|^2. \tag{1}
 $$
 
-## Step 2 — convexity turns loss gaps into inner products
+## Step 2: convexity turns loss gaps into inner products
 
 By the definition of a (sub)gradient of a convex function, $f_t(x^\star) \ge f_t(x_t) + \langle g_t,\, x^\star - x_t\rangle$, i.e.
 
@@ -52,7 +52,7 @@ $$
 
 This is the only place convexity is used, and it is what lets a *first-order* method bound a *function-value* regret.
 
-## Step 3 — sum and telescope
+## Step 3: sum and telescope
 
 Combine (2) and (1) and sum over $t = 1,\dots,T$. The distance terms **telescope**:
 
@@ -101,5 +101,5 @@ so the **average** regret is at most $200/10{,}000 = 0.02$ per round. Compare a 
 
 ## See also
 
-- [Online Learning & Regret](/courses/streaming-ml/03-online-learning) — the lesson this proof supports
-- [Gradient Descent Variants](/courses/optimization-ml/01-gradient-descent-variants) — the batch optimizers behind OGD
+- [Online Learning & Regret](/courses/streaming-ml/03-online-learning): the lesson this proof supports
+- [Gradient Descent Variants](/courses/optimization-ml/01-gradient-descent-variants): the batch optimizers behind OGD

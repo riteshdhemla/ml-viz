@@ -217,7 +217,7 @@ training — the feedback stage closing back into data.
 | Probabilistic (quantiles) | Point forecast | Inventory decisions need service-level quantiles |
 | Direct multi-horizon (MQ-style) | Recursive one-step rollout | No error accumulation; one pass emits all horizons/quantiles |
 | GBDT global (M5 recipe) | Deep global (DeepAR-style) | GBDT wins at moderate scale; deep wins at extreme scale/heterogeneity |
-| Reconciliation | Independent level forecasts | Otherwise totals don't add up — decisions conflict |
+| Reconciliation | Independent level forecasts | Otherwise totals don't add up: decisions conflict |
 | Walk-forward backtest | Random train/test split | Random splits leak the future and overstate accuracy |
 
 ## 10. Interviewer follow-ups
@@ -267,9 +267,9 @@ the frontier at 40k series was boosted trees, not attention.
 
 ## References
 
-- [The history of Amazon's forecasting algorithm](https://www.amazon.science/latest-news/the-history-of-amazons-forecasting-algorithm) — Amazon Science; grounds the SQRF → DeepAR/MQ-RNN → unified-model lineage and the 400M-items-daily scale.
-- [DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks](https://arxiv.org/abs/1704.04110) — Salinas et al. (Amazon), International Journal of Forecasting; grounds global probabilistic models over many related series and the ~15% accuracy gains.
-- [A Multi-Horizon Quantile Recurrent Forecaster](https://arxiv.org/abs/1711.11053) — Wen et al. (Amazon), NeurIPS 2017 Time Series Workshop; grounds direct multi-horizon quantile output, forking-sequences training, cold-starts, and planned event spikes.
-- [M5 accuracy competition: Results, findings, and conclusions](https://www.sciencedirect.com/science/article/pii/S0169207021001874) — Makridakis, Spiliotis & Assimakopoulos, International Journal of Forecasting 2022; grounds the 42,840-series Walmart benchmark and LightGBM's dominance among winners.
-- [The M5 uncertainty competition: Results, findings and conclusions](https://www.sciencedirect.com/science/article/pii/S0169207021001722) — International Journal of Forecasting; grounds quantile/pinball evaluation of probabilistic forecasts at scale.
-- [Predicting the real-time availability of 200 million grocery items](https://tech.instacart.com/predicting-real-time-availability-of-200-million-grocery-items-in-us-canada-stores-61f43a16eafe) — Instacart Engineering (tech-at-instacart); grounds availability modeling and the sales-vs-demand censoring problem at grocery scale.
+- [The history of Amazon's forecasting algorithm](https://www.amazon.science/latest-news/the-history-of-amazons-forecasting-algorithm): Amazon Science; grounds the SQRF → DeepAR/MQ-RNN → unified-model lineage and the 400M-items-daily scale.
+- [DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks](https://arxiv.org/abs/1704.04110): Salinas et al. (Amazon), International Journal of Forecasting; grounds global probabilistic models over many related series and the ~15% accuracy gains.
+- [A Multi-Horizon Quantile Recurrent Forecaster](https://arxiv.org/abs/1711.11053): Wen et al. (Amazon), NeurIPS 2017 Time Series Workshop; grounds direct multi-horizon quantile output, forking-sequences training, cold-starts, and planned event spikes.
+- [M5 accuracy competition: Results, findings, and conclusions](https://www.sciencedirect.com/science/article/pii/S0169207021001874): Makridakis, Spiliotis & Assimakopoulos, International Journal of Forecasting 2022; grounds the 42,840-series Walmart benchmark and LightGBM's dominance among winners.
+- [The M5 uncertainty competition: Results, findings and conclusions](https://www.sciencedirect.com/science/article/pii/S0169207021001722): International Journal of Forecasting; grounds quantile/pinball evaluation of probabilistic forecasts at scale.
+- [Predicting the real-time availability of 200 million grocery items](https://tech.instacart.com/predicting-real-time-availability-of-200-million-grocery-items-in-us-canada-stores-61f43a16eafe): Instacart Engineering (tech-at-instacart); grounds availability modeling and the sales-vs-demand censoring problem at grocery scale.

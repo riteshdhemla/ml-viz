@@ -217,7 +217,7 @@ What to notice:
   the gradient to its *pre-activation*, and those are different quantities. This
   is the mechanism behind dying ReLU: the gradient that would revive the unit is
   precisely the one being switched off.
-- **One dead unit zeroes 5 of the 11 parameter gradients** — the whole second row
+- **One dead unit zeroes 5 of the 11 parameter gradients**: the whole second row
   of $\mathbf{W}_1$, its bias, and the output weight reading from it.
 - **The efficiency claim, counted.** Verifying those 11 gradients by finite
   differences takes 22 forward passes; backprop produces all of them in one
@@ -254,9 +254,9 @@ Solutions:
 
 ## Common mistakes
 
-1. **Forgetting to cache forward-pass activations** — backprop needs them to compute local gradients; without caching, you'd have to recompute the entire forward pass for every parameter.
-2. **Confusing vanishing gradients with the chain rule being wrong** — vanishing gradients are a consequence of multiplying many small terms (< 1) together, not an error in the chain rule itself.
-3. **Applying the chain rule to matrix operations without respecting the transpose** — $\frac{\partial}{\partial W}(Wx)$ involves $x^\top$, not $x$; transposing preserves dimension consistency in the gradient.
+1. **Forgetting to cache forward-pass activations**: backprop needs them to compute local gradients; without caching, you'd have to recompute the entire forward pass for every parameter.
+2. **Confusing vanishing gradients with the chain rule being wrong**: vanishing gradients are a consequence of multiplying many small terms (< 1) together, not an error in the chain rule itself.
+3. **Applying the chain rule to matrix operations without respecting the transpose**: $\frac{\partial}{\partial W}(Wx)$ involves $x^\top$, not $x$; transposing preserves dimension consistency in the gradient.
 
 ## Key takeaways
 
@@ -267,6 +267,6 @@ Solutions:
 
 ## Related concepts
 
-- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients) — the building blocks
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — using the gradients backprop computes
-- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks) — backprop through time (BPTT)
+- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients): the building blocks
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): using the gradients backprop computes
+- [**Recurrent Neural Networks**](/courses/rnns/01-recurrent-neural-networks): backprop through time (BPTT)

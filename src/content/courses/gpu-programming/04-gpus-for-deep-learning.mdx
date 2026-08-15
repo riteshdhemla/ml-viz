@@ -109,10 +109,10 @@ Note what the fusion rows show, too: fusing three element-wise ops moves them fr
 
 ## Common mistakes
 
-1. **Training in FP32 by default** — leaves tensor cores and half your bandwidth on the table; use BF16/FP16 mixed precision.
-2. **Ignoring kernel fusion for element-wise chains** — paying $k$ memory round-trips for ops that should be one; let the compiler fuse, or fuse by hand.
-3. **Awkward matmul dimensions** — shapes that aren't multiples of the tile size can miss tensor cores entirely.
-4. **Serving at batch size 1 and blaming the GPU** — decode is memory-bound; batch to convert idle bandwidth waste into throughput.
+1. **Training in FP32 by default**: leaves tensor cores and half your bandwidth on the table; use BF16/FP16 mixed precision.
+2. **Ignoring kernel fusion for element-wise chains**: paying $k$ memory round-trips for ops that should be one; let the compiler fuse, or fuse by hand.
+3. **Awkward matmul dimensions**: shapes that aren't multiples of the tile size can miss tensor cores entirely.
+4. **Serving at batch size 1 and blaming the GPU**: decode is memory-bound; batch to convert idle bandwidth waste into throughput.
 
 ## Key takeaways
 
@@ -123,6 +123,6 @@ Note what the fusion rows show, too: fusing three element-wise ops moves them fr
 
 ## Related concepts
 
-- [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance) — the roofline and tiling ideas this lesson applies to ML kernels
-- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — the matrix multiplies at the heart of every network
-- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving) — batching, KV-cache, and serving the memory-bound decode
+- [**Memory & Performance Optimization**](/courses/gpu-programming/03-memory-and-performance): the roofline and tiling ideas this lesson applies to ML kernels
+- [**Layers and the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass): the matrix multiplies at the heart of every network
+- [**Inference Optimization & Serving**](/courses/ml-in-practice/12-inference-optimization-and-serving): batching, KV-cache, and serving the memory-bound decode

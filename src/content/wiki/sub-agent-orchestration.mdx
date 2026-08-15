@@ -86,16 +86,16 @@ An LLM-driven orchestrator can sit at any node too — e.g. a router that picks 
 
 ## Common mistakes
 
-1. **Using an LLM router for a fixed pipeline** — paying inference (and accepting mis-routes) to rediscover an order you already knew.
-2. **Parallel branches sharing a mutable state key** — last-writer-wins clobbering that only surfaces under race timing.
-3. **Loops without a runtime cap** — the prompt is a suggestion; the cap is a guarantee.
-4. **Sequential chains with no inter-stage validation** — every stage runs at full cost on garbage input after an early failure.
-5. **Deep nesting without tracing** — a hierarchy of workflow agents is undebuggable unless each sub-agent invocation is a span in [one trace](/wiki/agent-observability).
+1. **Using an LLM router for a fixed pipeline**: paying inference (and accepting mis-routes) to rediscover an order you already knew.
+2. **Parallel branches sharing a mutable state key**: last-writer-wins clobbering that only surfaces under race timing.
+3. **Loops without a runtime cap**: the prompt is a suggestion; the cap is a guarantee.
+4. **Sequential chains with no inter-stage validation**: every stage runs at full cost on garbage input after an early failure.
+5. **Deep nesting without tracing**: a hierarchy of workflow agents is undebuggable unless each sub-agent invocation is a span in [one trace](/wiki/agent-observability).
 
 ## Related concepts
 
-- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns) — voting/role/debate, the *who* that these primitives schedule
-- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents) — orchestration topologies, checkpointing, and budget ceilings
-- [**LangGraph: Agents as State Graphs**](/wiki/langgraph) — a graph runtime where these primitives are nodes and edges
-- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a) — delegation across process and vendor boundaries
-- [**Observability for Agents**](/wiki/agent-observability) — tracing nested sub-agent invocations
+- [**Multi-Agent Cooperation Patterns**](/courses/agent-design-patterns/07-multi-agent-cooperation-patterns): voting/role/debate, the *who* that these primitives schedule
+- [**Deploying Agents in Production**](/courses/agent-design-patterns/11-deploying-agents): orchestration topologies, checkpointing, and budget ceilings
+- [**LangGraph: Agents as State Graphs**](/wiki/langgraph): a graph runtime where these primitives are nodes and edges
+- [**Agent Protocols: MCP & A2A**](/wiki/agent-protocols-mcp-a2a): delegation across process and vendor boundaries
+- [**Observability for Agents**](/wiki/agent-observability): tracing nested sub-agent invocations

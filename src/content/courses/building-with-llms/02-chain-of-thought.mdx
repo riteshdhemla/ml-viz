@@ -43,9 +43,9 @@ A reliability upgrade: sample **several** chains at non-zero temperature, then t
 
 The flip side: your application code needs to *parse* the answer. Three approaches, in increasing order of robustness:
 
-1. **Ask in the prompt** — *"Reply with JSON: `{\"category\": ..., \"confidence\": ...}`"*. Works often, fails unpredictably (stray prose, markdown fences, trailing commas).
-2. **Function calling / tool schemas** — you declare a typed schema; the API returns arguments matching it.
-3. **Constrained decoding** — the decoder is restricted, token by token, to only those tokens that keep the output valid under a JSON schema or grammar. Invalid output becomes *impossible*, not just discouraged.
+1. **Ask in the prompt**: *"Reply with JSON: `{\"category\": ..., \"confidence\": ...}`"*. Works often, fails unpredictably (stray prose, markdown fences, trailing commas).
+2. **Function calling / tool schemas**: you declare a typed schema; the API returns arguments matching it.
+3. **Constrained decoding**: the decoder is restricted, token by token, to only those tokens that keep the output valid under a JSON schema or grammar. Invalid output becomes *impossible*, not just discouraged.
 
 ```python
 # Pydantic-style schema as the contract for structured output
@@ -70,8 +70,8 @@ class TicketLabel(BaseModel):
 ## Common mistakes
 
 1. **Forcing JSON before reasoning** on a hard task — you constrained away the model's room to think.
-2. **Parsing CoT prose with regex** — brittle; use a real structured-output mechanism.
-3. **Using CoT everywhere** — latency and cost with no accuracy gain on simple tasks.
+2. **Parsing CoT prose with regex**: brittle; use a real structured-output mechanism.
+3. **Using CoT everywhere**: latency and cost with no accuracy gain on simple tasks.
 4. **Trusting one sampled chain** on high-stakes reasoning — use self-consistency.
 
 ## Key takeaways
@@ -83,5 +83,5 @@ class TicketLabel(BaseModel):
 
 ## Related concepts
 
-- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering) — the decoding knobs CoT relies on
-- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use) — CoT is the reasoning step inside an agent loop
+- [**Prompt Engineering & In-Context Learning**](/courses/building-with-llms/01-prompt-engineering): the decoding knobs CoT relies on
+- [**Agents & Tool Use**](/courses/building-with-llms/05-agents-and-tool-use): CoT is the reasoning step inside an agent loop

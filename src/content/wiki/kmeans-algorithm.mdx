@@ -19,9 +19,9 @@ The algorithm alternates two steps, each of which provably decreases $J$.
 
 ## The algorithm steps and why each decreases J
 
-**Step 0 — Initialize** $K$ centroids $\boldsymbol{\mu}_1, \ldots, \boldsymbol{\mu}_K$ (random pick from data, or K-Means++).
+**Step 0: Initialize** $K$ centroids $\boldsymbol{\mu}_1, \ldots, \boldsymbol{\mu}_K$ (random pick from data, or K-Means++).
 
-**Step 1 — Assign.** Assign every point to its nearest centroid:
+**Step 1: Assign.** Assign every point to its nearest centroid:
 
 $$
 C_k = \{\mathbf{x}_i : \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2 \le \|\mathbf{x}_i - \boldsymbol{\mu}_j\|^2 \;\forall j \ne k\}
@@ -29,7 +29,7 @@ $$
 
 With centroids fixed, $J$ decomposes into per-point terms; assigning each to the nearest centroid minimizes its term and therefore minimizes $J$ overall.
 
-**Step 2 — Update.** Move each centroid to the mean of its assigned points:
+**Step 2: Update.** Move each centroid to the mean of its assigned points:
 
 $$
 \boldsymbol{\mu}_k = \frac{1}{|C_k|}\sum_{\mathbf{x}_i \in C_k}\mathbf{x}_i
@@ -44,7 +44,7 @@ $$
 
 The mean is the unique minimizer of within-cluster squared distance — that is *why* the update uses the mean.
 
-**Step 3 — Repeat** Steps 1–2 until no point changes cluster (convergence).
+**Step 3: Repeat** Steps 1–2 until no point changes cluster (convergence).
 
 <Callout type="tip" title="Guaranteed convergence, local optimum">
   Both steps only decrease $J$, and there are finitely many possible assignment configurations, so K-Means must terminate. But it converges to a local minimum — different initializations can give different final clusters. Use K-Means++ and `n_init ≥ 10` in practice.
@@ -80,7 +80,7 @@ Points: $A(1,1)$, $B(1.5,2)$, $C(3,4)$, $D(5,7)$, $E(3.5,5)$.
 
 **Initialize:** $\boldsymbol{\mu}_1 = (1,1)$, $\boldsymbol{\mu}_2 = (3.5,5)$.
 
-### Iteration 1 — Assign
+### Iteration 1: Assign
 
 Compute squared Euclidean distance from each point to each centroid (closer one wins):
 
@@ -96,7 +96,7 @@ $C_1 = \{A, B\}$, $C_2 = \{C, D, E\}$.
 
 Objective with *old* centroids: $J = (0 + 1.25) + (1.25 + 6.25 + 0) = 8.75$.
 
-### Iteration 1 — Update
+### Iteration 1: Update
 
 $$
 \boldsymbol{\mu}_1 = \frac{(1,1)+(1.5,2)}{2} = (1.25,\ 1.5)
@@ -115,7 +115,7 @@ $$
 
 $7.46 < 8.75$ — the update step lowered $J$ exactly as the derivation guarantees.
 
-### Iteration 2 — Reassign
+### Iteration 2: Reassign
 
 Check whether any point is closer to the *other* cluster's new centroid:
 
@@ -165,6 +165,6 @@ print("inertia  :", round(inertia, 2))
 
 ## Related concepts
 
-- [**K-Means Clustering**](/courses/clustering/01-k-means) — source lesson: elbow method, silhouette score, K-Means++, limitations
-- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models) — the soft probabilistic version; K-Means is the hard-assignment limit as variance → 0
-- [**Hierarchical Clustering**](/courses/clustering/02-hierarchical-and-dbscan) — an alternative that doesn't require choosing K upfront
+- [**K-Means Clustering**](/courses/clustering/01-k-means): source lesson: elbow method, silhouette score, K-Means++, limitations
+- [**Gaussian Mixture Models**](/courses/probabilistic-models/01-gaussian-mixture-models): the soft probabilistic version; K-Means is the hard-assignment limit as variance → 0
+- [**Hierarchical Clustering**](/courses/clustering/02-hierarchical-and-dbscan): an alternative that doesn't require choosing K upfront

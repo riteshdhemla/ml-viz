@@ -33,7 +33,7 @@ $$
 f(x, y) = x^2 + xy + y^2 - 3x.
 $$
 
-**Step 1 — compute the gradient.** Differentiate with respect to each variable, treating the other as a constant:
+**Step 1: compute the gradient.** Differentiate with respect to each variable, treating the other as a constant:
 
 $$
 \frac{\partial f}{\partial x} = 2x + y - 3,
@@ -43,7 +43,7 @@ $$
 
 So $\nabla f = \begin{bmatrix} 2x + y - 3 \\ x + 2y \end{bmatrix}$.
 
-**Step 2 — set the gradient to zero.** A critical point solves the linear system
+**Step 2: set the gradient to zero.** A critical point solves the linear system
 
 $$
 \begin{cases}
@@ -114,7 +114,7 @@ The curvature in each eigendirection is given by the eigenvalues of $\mathbf{H}$
 - **Negative definite** Hessian ($\lambda_{\max} < 0$): local maximum
 - **Indefinite** Hessian (mixed signs): saddle point
 
-**Step 1 — solve the characteristic equation** $\det(\mathbf{H} - \lambda \mathbf{I}) = 0$:
+**Step 1: solve the characteristic equation** $\det(\mathbf{H} - \lambda \mathbf{I}) = 0$:
 
 $$
 \det\begin{bmatrix} 2 - \lambda & 1 \\ 1 & 2 - \lambda \end{bmatrix}
@@ -279,9 +279,9 @@ At the constrained optimum, $\nabla f = -\lambda \nabla g$ — the gradient of t
 
 ## Common mistakes
 
-1. **Assuming a critical point is a minimum** — a gradient of zero could indicate a saddle point, which are far more common in high-dimensional loss surfaces than local minima.
-2. **Treating a non-convex loss surface as if it has a unique global minimum** — neural network losses are non-convex; there are typically many local minima and saddle points of varying quality.
-3. **Choosing a learning rate without considering curvature** — second-order methods (Newton, L-BFGS) adapt to curvature; SGD doesn't, which is why the optimal learning rate depends on $\lambda_{\max}(\mathbf{H})$.
+1. **Assuming a critical point is a minimum**: a gradient of zero could indicate a saddle point, which are far more common in high-dimensional loss surfaces than local minima.
+2. **Treating a non-convex loss surface as if it has a unique global minimum**: neural network losses are non-convex; there are typically many local minima and saddle points of varying quality.
+3. **Choosing a learning rate without considering curvature**: second-order methods (Newton, L-BFGS) adapt to curvature; SGD doesn't, which is why the optimal learning rate depends on $\lambda_{\max}(\mathbf{H})$.
 
 ## Key takeaways
 
@@ -292,8 +292,8 @@ At the constrained optimum, $\nabla f = -\lambda \nabla g$ — the gradient of t
 
 ## Related concepts
 
-- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients) — the first-order tools
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimizer that navigates these landscapes
-- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors) — eigenvalues of $\mathbf{H}$ classify critical points
-- [**Gradient Descent Optimizers**](/wiki/gradient-descent-optimizers) — momentum, RMSProp, and Adam applied to these landscapes
-- [**The Directional Derivative**](/wiki/directional-derivative) — why the gradient is the direction of steepest ascent, from the dot-product formula
+- [**Derivatives and Gradients**](/courses/calculus-for-ml/01-derivatives-and-gradients): the first-order tools
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the optimizer that navigates these landscapes
+- [**Eigenvalues and Eigenvectors**](/courses/linear-algebra/03-eigenvalues-and-eigenvectors): eigenvalues of $\mathbf{H}$ classify critical points
+- [**Gradient Descent Optimizers**](/wiki/gradient-descent-optimizers): momentum, RMSProp, and Adam applied to these landscapes
+- [**The Directional Derivative**](/wiki/directional-derivative): why the gradient is the direction of steepest ascent, from the dot-product formula

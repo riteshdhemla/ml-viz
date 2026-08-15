@@ -53,16 +53,16 @@ $$
 
 Good init gets you started, but keeping a *very* deep network stable needs structural help:
 
-- **Residual (skip) connections** — $\mathbf{y} = \mathbf{x} + F(\mathbf{x})$. The identity path lets gradients flow directly backward, so signal strength doesn't decay through depth. This is the single change that made 100+ layer networks (ResNets) trainable, and it's in every transformer.
-- **Normalization** — BatchNorm / LayerNorm (previous lesson) re-center and re-scale activations each layer, actively counteracting drift in their statistics and making training robust to the initialization scale.
+- **Residual (skip) connections**: $\mathbf{y} = \mathbf{x} + F(\mathbf{x})$. The identity path lets gradients flow directly backward, so signal strength doesn't decay through depth. This is the single change that made 100+ layer networks (ResNets) trainable, and it's in every transformer.
+- **Normalization**: BatchNorm / LayerNorm (previous lesson) re-center and re-scale activations each layer, actively counteracting drift in their statistics and making training robust to the initialization scale.
 - Together, init + residuals + normalization are why modern architectures train reliably where 1990s-style deep nets simply wouldn't.
 
 ## Learning-rate dynamics
 
 Initialization sets the starting point; the **learning rate schedule** governs the path:
 
-- **Warmup** — start with a tiny learning rate and ramp up over the first few hundred/thousand steps. Early on, weights (and adaptive-optimizer statistics) are unreliable, so a large LR can blow up; warmup avoids that. It's standard for transformers.
-- **Decay** — anneal the LR downward (cosine, step) as training proceeds, so the model takes big steps early and fine steps near a minimum.
+- **Warmup**: start with a tiny learning rate and ramp up over the first few hundred/thousand steps. Early on, weights (and adaptive-optimizer statistics) are unreliable, so a large LR can blow up; warmup avoids that. It's standard for transformers.
+- **Decay**: anneal the LR downward (cosine, step) as training proceeds, so the model takes big steps early and fine steps near a minimum.
 
 <Callout type="tip" title="Init, normalization, and LR interact">
   These knobs aren't independent: BatchNorm makes a network far less sensitive to init scale and permits higher learning rates; warmup compensates for unstable early dynamics. A training failure is often not one bad setting but a bad *combination* — when debugging, suspect the init/normalization/LR interaction, not just one of them.
@@ -90,7 +90,7 @@ Initialization sets the starting point; the **learning rate schedule** governs t
 
 ## Related concepts
 
-- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout) — the normalization that complements good initialization
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimization the learning-rate schedule controls
-- [**BPTT & Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — the same vanishing/exploding signal problem, in depth over time
-- [**Activation Functions**](/wiki/activation-functions) — the nonlinearities whose saturation behaviour initialization must respect
+- [**BatchNorm & Dropout**](/courses/neural-networks/05-batchnorm-and-dropout): the normalization that complements good initialization
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the optimization the learning-rate schedule controls
+- [**BPTT & Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient): the same vanishing/exploding signal problem, in depth over time
+- [**Activation Functions**](/wiki/activation-functions): the nonlinearities whose saturation behaviour initialization must respect

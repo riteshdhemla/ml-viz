@@ -33,7 +33,7 @@ The result is: each decoder position computes a weighted blend of encoder positi
 
 | Stack | Mask | Why |
 |-------|------|-----|
-| Encoder self-attention | None — bidirectional | Needs full context to understand the source |
+| Encoder self-attention | None: bidirectional | Needs full context to understand the source |
 | Decoder self-attention | Causal (lower-triangular) | Autoregressive: can't peek at future targets |
 | Decoder cross-attention | None (over encoder) | All encoder positions are always available |
 
@@ -198,10 +198,10 @@ FlashAttention (Dao et al., 2022) reorders the computation to never store the fu
 
 **What to notice:**
 
-- **Frame 4 — the rescale is the whole trick.** Block 1 contains a score larger than anything seen so far, so the running maximum moves from 0.634 to 0.862. Everything accumulated from block 0 was exponentiated against the *old* maximum and is now wrong by exactly $\exp(m_{\text{old}} - m_{\text{new}}) = 0.7957$. One scalar repairs an arbitrary amount of history — that is what lets a softmax be computed without ever seeing all its inputs.
-- **Frame 5 — a rescale of exactly 1.** The last block's maximum is *below* the running one, so nothing needs correcting. The rescale is not a per-block cost; it fires only when the maximum actually moves.
-- **Frame 6 — "exactly equivalent" is testable, and it passes.** Across all 48 output components the largest difference from standard attention is $2.2\times10^{-16}$, i.e. float64 rounding. FlashAttention is not a fast approximation like sparse or low-rank attention — it computes the same function by a different association of the same arithmetic. **Any output difference is a bug, never a tuning knob.**
-- **Frame 7 — why step 3 says "numerically stable".** Delete the running max and the method is algebraically identical and practically dead: finite at a max score of 704.1, NaN at 751.0. The threshold is not empirical — $\ln(\text{MAX\_FLOAT64}) = 709.78$ falls exactly between those rows. Above it $\exp$ returns Inf, and Inf/Inf is NaN.
+- **Frame 4: the rescale is the whole trick.** Block 1 contains a score larger than anything seen so far, so the running maximum moves from 0.634 to 0.862. Everything accumulated from block 0 was exponentiated against the *old* maximum and is now wrong by exactly $\exp(m_{\text{old}} - m_{\text{new}}) = 0.7957$. One scalar repairs an arbitrary amount of history — that is what lets a softmax be computed without ever seeing all its inputs.
+- **Frame 5: a rescale of exactly 1.** The last block's maximum is *below* the running one, so nothing needs correcting. The rescale is not a per-block cost; it fires only when the maximum actually moves.
+- **Frame 6: "exactly equivalent" is testable, and it passes.** Across all 48 output components the largest difference from standard attention is $2.2\times10^{-16}$, i.e. float64 rounding. FlashAttention is not a fast approximation like sparse or low-rank attention — it computes the same function by a different association of the same arithmetic. **Any output difference is a bug, never a tuning knob.**
+- **Frame 7: why step 3 says "numerically stable".** Delete the running max and the method is algebraically identical and practically dead: finite at a max score of 704.1, NaN at 751.0. The threshold is not empirical — $\ln(\text{MAX\_FLOAT64}) = 709.78$ falls exactly between those rows. Above it $\exp$ returns Inf, and Inf/Inf is NaN.
 
 That last failure is worth remembering because it hides well: trained networks rarely produce scores near 709, so the bug survives review and then surfaces on a long context, an untrained model, or a lower-precision format — as NaN rather than as a slightly wrong number.
 
@@ -304,12 +304,12 @@ print("SwiGLU output shape:", out.shape)  # (3, 4) — same as input
 
 ## Common mistakes
 
-1. **Cross-attention Q/K/V source confusion** — Q comes from the decoder; K and V come from the encoder. Reversing this makes the decoder unable to query the source.
-2. **Forgetting the causal mask in decoder self-attention** — the decoder's self-attention still needs a causal mask; only the cross-attention step attends to the full encoder output without a causal constraint.
-3. **Expecting MQA/GQA to improve quality** — these are inference optimizations. They reduce KV cache size at a small quality cost; they don't improve perplexity and shouldn't be chosen for quality reasons.
-4. **Thinking FlashAttention changes the result** — FlashAttention is numerically identical to standard attention. If outputs differ, it's a precision or implementation bug, not an intentional trade-off.
-5. **Applying RoPE only to Q** — RoPE must be applied to both $Q$ **and** $K$ for the relative-distance property to hold. Rotating only Q breaks the math.
-6. **Confusing SwiGLU's $d_{ff}$** — the SwiGLU FFN uses $d_{ff} \approx \tfrac{8}{3}\,d_{\text{model}}$ (not $4\times$) to match parameter counts with the two-matrix ReLU FFN.
+1. **Cross-attention Q/K/V source confusion**: Q comes from the decoder; K and V come from the encoder. Reversing this makes the decoder unable to query the source.
+2. **Forgetting the causal mask in decoder self-attention**: the decoder's self-attention still needs a causal mask; only the cross-attention step attends to the full encoder output without a causal constraint.
+3. **Expecting MQA/GQA to improve quality**: these are inference optimizations. They reduce KV cache size at a small quality cost; they don't improve perplexity and shouldn't be chosen for quality reasons.
+4. **Thinking FlashAttention changes the result**: FlashAttention is numerically identical to standard attention. If outputs differ, it's a precision or implementation bug, not an intentional trade-off.
+5. **Applying RoPE only to Q**: RoPE must be applied to both $Q$ **and** $K$ for the relative-distance property to hold. Rotating only Q breaks the math.
+6. **Confusing SwiGLU's $d_{ff}$**: the SwiGLU FFN uses $d_{ff} \approx \tfrac{8}{3}\,d_{\text{model}}$ (not $4\times$) to match parameter counts with the two-matrix ReLU FFN.
 
 ## Key takeaways
 
@@ -322,8 +322,8 @@ print("SwiGLU output shape:", out.shape)  # (3, 4) — same as input
 
 ## Related concepts
 
-- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional) — the MHA foundation that MQA/GQA extend
-- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture) — residuals, LayerNorm, encoder/decoder families
-- [**Self-Attention**](/courses/transformers/01-self-attention) — the core QKV mechanism
-- [**Attention Mechanisms**](/wiki/attention-mechanisms) — the full taxonomy: self/cross/causal, MHA/MQA/GQA, and FlashAttention
-- [**Positional Encodings**](/wiki/positional-encodings) — sinusoidal, RoPE, ALiBi, and their length-extrapolation tradeoffs
+- [**Multi-Head Attention & Positional Encoding**](/courses/transformers/02-multi-head-and-positional): the MHA foundation that MQA/GQA extend
+- [**The Transformer Architecture**](/courses/transformers/03-transformer-architecture): residuals, LayerNorm, encoder/decoder families
+- [**Self-Attention**](/courses/transformers/01-self-attention): the core QKV mechanism
+- [**Attention Mechanisms**](/wiki/attention-mechanisms): the full taxonomy: self/cross/causal, MHA/MQA/GQA, and FlashAttention
+- [**Positional Encodings**](/wiki/positional-encodings): sinusoidal, RoPE, ALiBi, and their length-extrapolation tradeoffs

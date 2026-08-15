@@ -56,8 +56,8 @@ That's a **256× reduction** for *one* matrix; multiplied across all attention/M
 
 LoRA has two knobs you actually tune.
 
-- **Rank `r`** — the bottleneck width. Common values: 4, 8, 16, 32, 64. Higher rank = more capacity, more memory, more risk of overfitting on a small dataset.
-- **Alpha `α`** — a scaling factor. The effective update is $(\alpha/r) \cdot BA$, so changing $r$ doesn't silently change the update magnitude. Treat $\alpha$ as a learning-rate-like knob; a common heuristic is $\alpha = 2r$, but many recipes pin $\alpha = 16$ and only sweep $r$.
+- **Rank `r`**: the bottleneck width. Common values: 4, 8, 16, 32, 64. Higher rank = more capacity, more memory, more risk of overfitting on a small dataset.
+- **Alpha `α`**: a scaling factor. The effective update is $(\alpha/r) \cdot BA$, so changing $r$ doesn't silently change the update magnitude. Treat $\alpha$ as a learning-rate-like knob; a common heuristic is $\alpha = 2r$, but many recipes pin $\alpha = 16$ and only sweep $r$.
 
 <Callout type="tip" title="Where to attach adapters">
   In transformers, LoRA is most commonly applied to the **attention query and value projections** (`q_proj`, `v_proj`). Adding it to `k_proj`, `o_proj`, and the MLP `up`/`down`/`gate` projections gives a small extra bump but costs proportionally more parameters. Start with `q_proj` + `v_proj`; only widen if you're capacity-bound.
@@ -67,9 +67,9 @@ LoRA has two knobs you actually tune.
 
 Because a LoRA adapter is a tiny file (often 10–200 MB), you can:
 
-1. **Hot-swap personas or skills** — one base model in GPU memory, dozens of adapters on disk, load one per request.
+1. **Hot-swap personas or skills**: one base model in GPU memory, dozens of adapters on disk, load one per request.
 2. **Ship updates without re-downloading the base.**
-3. **Compose** — some serving stacks support multiple adapters merged with weights at inference time.
+3. **Compose**: some serving stacks support multiple adapters merged with weights at inference time.
 
 This is a structural advantage over full fine-tuning, which gives you a fresh multi-GB checkpoint every time.
 
@@ -78,8 +78,8 @@ This is a structural advantage over full fine-tuning, which gives you a fresh mu
 Even with LoRA, the *frozen* base still has to live in GPU memory. A 65B-parameter model at FP16 is 130 GB — nothing single-GPU fits it. **QLoRA** adds three ingredients on top of LoRA:
 
 1. **4-bit NF4 quantization** of the frozen base. "NF4" (NormalFloat-4) is a quantization scheme designed for the bell-shaped weight distributions you actually see in language models. It has 16 levels placed at the quantiles of a unit normal, not evenly spaced.
-2. **Double quantization** — the per-block quantization *constants* are themselves quantized, saving an extra ~0.4 bits per parameter.
-3. **Paged optimizer state** — Adam state spills to CPU memory under pressure instead of crashing the run.
+2. **Double quantization**: the per-block quantization *constants* are themselves quantized, saving an extra ~0.4 bits per parameter.
+3. **Paged optimizer state**: Adam state spills to CPU memory under pressure instead of crashing the run.
 
 Critically, the **LoRA adapters stay in higher precision** (BF16). Quantization compresses the frozen part; the trainable part is small enough that precision doesn't hurt.
 
@@ -117,6 +117,6 @@ The result: a 65B model becomes fine-tunable on a **single 48 GB GPU**, with qua
 
 ## Related concepts
 
-- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning) — the loss you're still optimising; LoRA only changes *which* parameters move.
-- [**Gradient descent**](/courses/neural-networks/02-gradient-descent) — the optimiser still drives the (now-tiny) trainable subset.
-- [**Regularization**](/courses/linear-regression/03-regularization) — low-rank constraints are themselves a form of inductive bias against overfitting.
+- [**Supervised Fine-Tuning**](/courses/fine-tuning-alignment/01-supervised-fine-tuning): the loss you're still optimising; LoRA only changes *which* parameters move.
+- [**Gradient descent**](/courses/neural-networks/02-gradient-descent): the optimiser still drives the (now-tiny) trainable subset.
+- [**Regularization**](/courses/linear-regression/03-regularization): low-rank constraints are themselves a form of inductive bias against overfitting.

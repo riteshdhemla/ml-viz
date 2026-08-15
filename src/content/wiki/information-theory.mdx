@@ -54,8 +54,8 @@ $$D_\text{KL}(P \| Q) = \sum_x p(x) \log \frac{p(x)}{q(x)} = \mathbb{E}_{x \sim 
 
 | Direction | Definition | Behavior | Used in |
 |-----------|-----------|---------|---------|
-| Forward $D_\text{KL}(P \| Q)$ | Samples from $P$, penalizes $Q \approx 0$ where $P > 0$ | **Mean-seeking** — $Q$ must cover all modes of $P$ | VAE encoder, flow training |
-| Reverse $D_\text{KL}(Q \| P)$ | Samples from $Q$, penalizes $Q > 0$ where $P \approx 0$ | **Mode-seeking** — $Q$ collapses onto one mode of $P$ | Variational inference, RL policy optimization |
+| Forward $D_\text{KL}(P \| Q)$ | Samples from $P$, penalizes $Q \approx 0$ where $P > 0$ | **Mean-seeking**: $Q$ must cover all modes of $P$ | VAE encoder, flow training |
+| Reverse $D_\text{KL}(Q \| P)$ | Samples from $Q$, penalizes $Q > 0$ where $P \approx 0$ | **Mode-seeking**: $Q$ collapses onto one mode of $P$ | Variational inference, RL policy optimization |
 
 In a multimodal $P$, forward KL forces $Q$ to spread mass across all modes (averaging). Reverse KL lets $Q$ be a tight Gaussian locked onto one mode. Neither is "correct" — it depends on what you want the approximate posterior to do.
 
@@ -125,8 +125,8 @@ kl = F.kl_div(q_log, p_log, reduction='batchmean', log_target=True)
 
 ## Related concepts
 
-- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation) — MLE as NLL minimization
-- [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass) — cross-entropy as the output layer's loss
-- [**Softmax and Cross-Entropy**](/wiki/softmax-cross-entropy) — the numerically stable log-softmax derivation
-- [**Probability Distributions**](/wiki/probability-distributions) — the distributions entropy and KL operate on
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — KL divergence in variational inference (ELBO)
+- [**Maximum Likelihood Estimation**](/courses/probability-statistics/03-maximum-likelihood-estimation): MLE as NLL minimization
+- [**Layers & the Forward Pass**](/courses/neural-networks/03-layers-and-forward-pass): cross-entropy as the output layer's loss
+- [**Softmax and Cross-Entropy**](/wiki/softmax-cross-entropy): the numerically stable log-softmax derivation
+- [**Probability Distributions**](/wiki/probability-distributions): the distributions entropy and KL operate on
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): KL divergence in variational inference (ELBO)

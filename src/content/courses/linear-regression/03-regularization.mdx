@@ -66,9 +66,9 @@ Watch it happen. Below, six weights are re-fit at every $\lambda$: three carry r
 
 | Situation | Reach for |
 |-----------|-----------|
-| Many features, most probably irrelevant | Lasso — prunes them |
-| Many correlated, all somewhat relevant | Ridge — shares weight gracefully |
-| Want both behaviors | Elastic Net — a blend: $\alpha\|\mathbf{w}\|_1 + (1-\alpha)\|\mathbf{w}\|_2^2$ |
+| Many features, most probably irrelevant | Lasso: prunes them |
+| Many correlated, all somewhat relevant | Ridge: shares weight gracefully |
+| Want both behaviors | Elastic Net: a blend: $\alpha\|\mathbf{w}\|_1 + (1-\alpha)\|\mathbf{w}\|_2^2$ |
 
 $\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick the one with the best held-out error. Plotting validation error against $\lambda$ reproduces the classic U-shape — underfitting on the right, overfitting on the left, the sweet spot in between. This is the same bias–variance trade-off you'll meet in [the bias–variance lesson](/courses/knn-decision-trees/03-bias-variance), expressed as a single dial.
 
@@ -78,9 +78,9 @@ $\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick th
 
 ## Common mistakes
 
-1. **Regularizing unstandardized features** — the penalty treats all weights alike, so a feature measured in large units gets an unfairly small weight. Standardize first.
-2. **Penalizing the intercept** — the bias term shouldn't pay the complexity tax; exclude it from $\Omega(\mathbf{w})$ (libraries do this by default).
-3. **Tuning $\lambda$ on the test set** — choose $\lambda$ by cross-validation on training data; the test set is touched once, at the end.
+1. **Regularizing unstandardized features**: the penalty treats all weights alike, so a feature measured in large units gets an unfairly small weight. Standardize first.
+2. **Penalizing the intercept**: the bias term shouldn't pay the complexity tax; exclude it from $\Omega(\mathbf{w})$ (libraries do this by default).
+3. **Tuning $\lambda$ on the test set**: choose $\lambda$ by cross-validation on training data; the test set is touched once, at the end.
 
 ## Key takeaways
 
@@ -91,6 +91,6 @@ $\lambda$ itself is chosen by cross-validation: fit at a grid of values, pick th
 
 ## Related concepts
 
-- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — the OLS model these penalties tame
-- [**Bias-Variance Tradeoff**](/courses/knn-decision-trees/03-bias-variance) — the trade-off $\lambda$ dials
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — Ridge is MAP with a Gaussian prior; Lasso, a Laplace prior
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression): the OLS model these penalties tame
+- [**Bias-Variance Tradeoff**](/courses/knn-decision-trees/03-bias-variance): the trade-off $\lambda$ dials
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): Ridge is MAP with a Gaussian prior; Lasso, a Laplace prior

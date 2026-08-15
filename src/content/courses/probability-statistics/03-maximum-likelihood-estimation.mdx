@@ -53,13 +53,13 @@ The recipe for the rest of this lesson is always the same: write $\ell(\theta)$,
 
 <MLEViz />
 
-## Worked derivation 1 — Gaussian mean and variance
+## Worked derivation 1: Gaussian mean and variance
 
 The MLE for a Gaussian follows an 8-step recipe: write the log-likelihood, differentiate with respect to $\mu$ (steps 3–5) and with respect to $\sigma^2 = v$ (steps 6–8), set each derivative to zero, and solve. The results are $\hat{\mu} = \bar{x}$ (sample mean) and $\hat{\sigma}^2 = \frac{1}{n}\sum(x_i-\bar{x})^2$ (biased variance with divisor $n$, not $n-1$). For the full algebraic derivation, a numeric verification on $\mathbf{x} = [2,4,4,4,5,5,7,9]$, and an explanation of the bias, see:
 
 <WikiLink slug="mle-gaussian" title="MLE for the Gaussian" />
 
-## Worked derivation 2 — Bernoulli p
+## Worked derivation 2: Bernoulli p
 
 Model: each $x_i \in \{0, 1\}$ with $x_i \sim \text{Bernoulli}(p)$. A compact way to write the probability of one outcome is
 
@@ -69,31 +69,31 @@ $$
 
 Check it: if $x_i = 1$ this is $p$; if $x_i = 0$ it is $1-p$. 
 
-**Step 1 — log a single term** (the exponents drop down as multipliers):
+**Step 1: log a single term** (the exponents drop down as multipliers):
 
 $$
 \ln p(x_i \mid p) = x_i \ln p + (1 - x_i)\ln(1-p)
 $$
 
-**Step 2 — sum over all points.** Let $k = \sum_i x_i$ be the number of successes:
+**Step 2: sum over all points.** Let $k = \sum_i x_i$ be the number of successes:
 
 $$
 \ell(p) = \sum_{i=1}^n \big[x_i \ln p + (1-x_i)\ln(1-p)\big] = k\ln p + (n-k)\ln(1-p)
 $$
 
-**Step 3 — differentiate**, using $\frac{d}{dp}\ln(1-p) = -\frac{1}{1-p}$:
+**Step 3: differentiate**, using $\frac{d}{dp}\ln(1-p) = -\frac{1}{1-p}$:
 
 $$
 \frac{d\ell}{dp} = \frac{k}{p} - \frac{n-k}{1-p}
 $$
 
-**Step 4 — set to zero** and cross-multiply by $p(1-p)$:
+**Step 4: set to zero** and cross-multiply by $p(1-p)$:
 
 $$
 \frac{k}{p} = \frac{n-k}{1-p} \;\;\Longrightarrow\;\; k(1-p) = (n-k)p
 $$
 
-**Step 5 — expand and solve.** The $kp$ terms cancel:
+**Step 5: expand and solve.** The $kp$ terms cancel:
 
 $$
 k - kp = np - kp \;\;\Longrightarrow\;\; k = np \;\;\Longrightarrow\;\; \boxed{\;\hat{p}_\text{MLE} = \frac{k}{n} = \frac{1}{n}\sum_{i=1}^n x_i\;}
@@ -186,6 +186,6 @@ The information-theoretic view of the same objects — entropy, KL divergence, a
 
 ## Related concepts
 
-- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions) — the distributions MLE fits
-- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference) — adds a prior to MLE
-- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent) — the optimizer that maximizes likelihood in deep models
+- [**Probability Distributions**](/courses/probability-statistics/02-probability-distributions): the distributions MLE fits
+- [**Bayesian Inference**](/courses/probability-statistics/04-bayesian-inference): adds a prior to MLE
+- [**Gradient Descent**](/courses/neural-networks/02-gradient-descent): the optimizer that maximizes likelihood in deep models

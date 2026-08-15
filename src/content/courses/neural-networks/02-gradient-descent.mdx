@@ -177,7 +177,7 @@ The learning rate $\eta$ scales every step. Using the same line-fitting problem,
 
 | $\eta$ | Behavior after 50 steps | Final loss |
 |--------|--------------------------|------------|
-| $0.001$ | Crawls — barely moved ($w \approx 0.87$) | $\approx 9.07$ |
+| $0.001$ | Crawls: barely moved ($w \approx 0.87$) | $\approx 9.07$ |
 | $0.1$ | Converges smoothly to $(2, 1)$ | $\approx 0.0001$ |
 | $0.5$ | **Overshoots and diverges** to NaN | $\infty$ |
 
@@ -200,7 +200,7 @@ In the example above we summed the gradient over **all three** points before eac
 |---------|-------------------|-----------|
 | **Batch** | All ($n$) | Exact gradient, smooth path, slow & memory-heavy |
 | **Stochastic (SGD)** | One | Noisy, cheap, the noise can jump out of shallow minima |
-| **Mini-batch** | 32–512 | Best of both — the practical default |
+| **Mini-batch** | 32–512 | Best of both: the practical default |
 
 The key insight: a mini-batch gradient is an **unbiased estimate** of the full gradient. On average it points the right way; any single step is noisy, but over many steps the noise averages out while each step costs a fraction of the full-batch price. With $n$ examples and batch size $B$, one pass over the data (an **epoch**) does $n/B$ updates instead of just one, so mini-batch SGD makes far more progress per pass.
 
@@ -245,9 +245,9 @@ Watch gradient descent move across a 2D loss surface — small learning rates in
 
 ## Common mistakes
 
-1. **Learning rate too high** — the loss diverges to NaN. If that happens, lower $\eta$ by 10×.
+1. **Learning rate too high**: the loss diverges to NaN. If that happens, lower $\eta$ by 10×.
 2. **Forgetting to shuffle** mini-batches — ordered data biases the gradient and slows convergence.
-3. **Not normalizing inputs** — features on wildly different scales distort the loss surface into ravines.
+3. **Not normalizing inputs**: features on wildly different scales distort the loss surface into ravines.
 
 ## Key takeaways
 
@@ -260,6 +260,6 @@ Watch gradient descent move across a 2D loss surface — small learning rates in
 
 ## Related concepts
 
-- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron) — the unit whose weights we optimize
-- [**Linear Regression**](/courses/linear-regression/01-linear-regression) — minimizing a squared-error loss in closed form vs by descent
-- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient) — what happens when gradients flow through many steps
+- [**What is a Neuron?**](/courses/neural-networks/01-what-is-a-neuron): the unit whose weights we optimize
+- [**Linear Regression**](/courses/linear-regression/01-linear-regression): minimizing a squared-error loss in closed form vs by descent
+- [**BPTT & the Vanishing Gradient**](/courses/rnns/02-bptt-and-vanishing-gradient): what happens when gradients flow through many steps

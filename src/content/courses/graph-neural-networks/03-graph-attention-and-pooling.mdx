@@ -71,10 +71,10 @@ That also fixes the **rate**. Dirichlet energy $E(H) = \sum_{(u,v)\in E}\lVert h
 
 Mitigations:
 
-- **Residual / skip connections** — add the previous layer's representation back, preserving node identity. This is the α slider: APPNP's $H \leftarrow (1-\alpha)PH + \alpha H_0$ has a **nonzero fixed point**, so the energy plateaus instead of decaying. At $\alpha = 0$, $E_{30}/E_0 = 9.6\times10^{-4}$; at $\alpha = 0.1$ it is $1.1\times10^{-1}$ and flat from about layer 10. One term converts geometric decay into a floor.
-- **Jumping knowledge** — combine representations from *all* layers (not just the last) per node.
-- **Fewer layers** — often the simplest, most effective fix.
-- **Normalization** (PairNorm, etc.) — explicitly keep node embeddings from collapsing together.
+- **Residual / skip connections**: add the previous layer's representation back, preserving node identity. This is the α slider: APPNP's $H \leftarrow (1-\alpha)PH + \alpha H_0$ has a **nonzero fixed point**, so the energy plateaus instead of decaying. At $\alpha = 0$, $E_{30}/E_0 = 9.6\times10^{-4}$; at $\alpha = 0.1$ it is $1.1\times10^{-1}$ and flat from about layer 10. One term converts geometric decay into a floor.
+- **Jumping knowledge**: combine representations from *all* layers (not just the last) per node.
+- **Fewer layers**: often the simplest, most effective fix.
+- **Normalization** (PairNorm, etc.): explicitly keep node embeddings from collapsing together.
 
 <Callout type="warning" title="Receptive field vs. over-smoothing — a real tension">
   More layers grow the receptive field (good: reach farther neighbors) but worsen over-smoothing (bad: representations collapse). For long-range tasks this tension is fundamental, and is part of why graph **transformers** (global attention without repeated local averaging) have become popular.
@@ -102,6 +102,6 @@ Mitigations:
 
 ## Related concepts
 
-- [**Graph Convolutions & GraphSAGE**](/courses/graph-neural-networks/02-graph-convolutions) — the fixed-weight aggregation GAT makes learnable
-- [**Self-Attention**](/courses/transformers/01-self-attention) — the attention mechanism GAT restricts to graph edges
-- [**Pooling and Architectures**](/courses/cnns/02-pooling-and-architectures) — the grid analogue of graph readout/pooling
+- [**Graph Convolutions & GraphSAGE**](/courses/graph-neural-networks/02-graph-convolutions): the fixed-weight aggregation GAT makes learnable
+- [**Self-Attention**](/courses/transformers/01-self-attention): the attention mechanism GAT restricts to graph edges
+- [**Pooling and Architectures**](/courses/cnns/02-pooling-and-architectures): the grid analogue of graph readout/pooling

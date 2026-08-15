@@ -112,7 +112,7 @@ UMAP is faster and often better at preserving global structure than t-SNE.
 
 | Property | t-SNE | UMAP |
 |----------|-------|------|
-| Speed | $O(n \log n)$ (Barnes–Hut) | $O(n)$ — 10-100× faster |
+| Speed | $O(n \log n)$ (Barnes–Hut) | $O(n)$: 10-100× faster |
 | Global structure | Poor | Better |
 | Transform new data | No | Yes |
 | Scalability | ~10K points | ~100K+ points |
@@ -176,10 +176,10 @@ X_embedded = pipeline.fit_transform(X_high_dim)
 
 ## Common mistakes
 
-1. **Using t-SNE/UMAP for clustering** — These are visualization tools, not clustering algorithms. Use their output as features for K-Means or DBSCAN, but don't cluster directly on the embedding.
-2. **Interpreting distances literally** — Only local neighborhoods are meaningful. A cluster being "larger" or "farther" doesn't mean anything quantitative.
-3. **Not preprocessing** — Both methods are sensitive to feature scales. Always standardize first. For high-dimensional data, reduce with PCA first.
-4. **Running on the full dataset** — UMAP on 1M+ points is fine, but t-SNE may need subsampling.
+1. **Using t-SNE/UMAP for clustering**: These are visualization tools, not clustering algorithms. Use their output as features for K-Means or DBSCAN, but don't cluster directly on the embedding.
+2. **Interpreting distances literally**: Only local neighborhoods are meaningful. A cluster being "larger" or "farther" doesn't mean anything quantitative.
+3. **Not preprocessing**: Both methods are sensitive to feature scales. Always standardize first. For high-dimensional data, reduce with PCA first.
+4. **Running on the full dataset**: UMAP on 1M+ points is fine, but t-SNE may need subsampling.
 
 ## Key takeaways
 
@@ -190,5 +190,5 @@ X_embedded = pipeline.fit_transform(X_high_dim)
 
 ## Related concepts
 
-- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca) — the linear method to run first
-- [**Hierarchical & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan) — clustering the structure these reveal
+- [**Principal Component Analysis**](/courses/pca-dimensionality/01-pca): the linear method to run first
+- [**Hierarchical & DBSCAN**](/courses/clustering/02-hierarchical-and-dbscan): clustering the structure these reveal

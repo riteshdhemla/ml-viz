@@ -66,7 +66,7 @@ has to shrink billions down to hundreds first — the arithmetic forces a
 
 | Dimension | Target | Consequence for the design |
 |---|---|---|
-| Latency | < 200 ms p99 end-to-end | Rules out scoring billions of items directly — forces a funnel |
+| Latency | < 200 ms p99 end-to-end | Rules out scoring billions of items directly: forces a funnel |
 | Throughput | ~10k feed requests/sec at peak | Ranker must be cheap per item; heavy work goes offline |
 | Freshness | New items rankable within minutes | Streaming feature pipeline, not nightly batch |
 | Candidate pool | Billions of items | Approximate nearest-neighbor retrieval, not brute force |
@@ -85,13 +85,13 @@ every second**
 The feed is not one model — it's a **multi-stage retrieval → ranking** pipeline,
 each stage a different ML slot:
 
-1. **Retrieval** *(hypothesis space)* — from billions of items, cheaply fetch
+1. **Retrieval** *(hypothesis space)*: from billions of items, cheaply fetch
    ~1000 candidates likely to be relevant. Framed as **approximate nearest
    neighbor** search in an embedding space.
-2. **Ranking** *(hypothesis space + objective)* — score those ~1000 candidates
+2. **Ranking** *(hypothesis space + objective)*: score those ~1000 candidates
    with an expensive model predicting `P(engage)`, framed as **learning to
    rank** / pointwise CTR-style prediction with an engagement objective.
-3. **Re-ranking** — apply business logic: diversity, freshness, dedup, policy.
+3. **Re-ranking**: apply business logic: diversity, freshness, dedup, policy.
 
 Production systems make the funnel even deeper. Instagram Explore retrieves
 thousands of candidates from many sources, cuts them to hundreds with a
@@ -145,7 +145,7 @@ cross-attention retrieval is off the table.
 
 ## 5. Model *(spine: hypothesis space + objective + optimization)*
 
-**Retrieval — the two-tower model.** A user tower and an item tower each map to
+**Retrieval: the two-tower model.** A user tower and an item tower each map to
 the same $d$-dimensional space; relevance is a dot product:
 
 $$
@@ -161,7 +161,7 @@ free ([Pinterest Engineering](https://medium.com/pinterest-engineering/pinterest
 
 <MatrixFactorizationViz />
 
-**Ranking — a deep multi-task model.** The ~1000 retrieved candidates go
+**Ranking: a deep multi-task model.** The ~1000 retrieved candidates go
 through a richer model (DLRM-style: sparse ID embeddings + feature crosses +
 MLP, where the embedding tables dominate the parameter count —
 [Naumov et al., 2019](https://arxiv.org/abs/1906.00091)). Production rankers
@@ -293,9 +293,9 @@ information. Check feature parity first.
 
 ## References
 
-- [Scaling the Instagram Explore recommendations system](https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/) — Meta Engineering, 2023; the production multi-stage funnel, Two Towers retrieval, and the 90M-predictions/second serving numbers.
-- [Deep Neural Networks for YouTube Recommendations](https://dl.acm.org/doi/10.1145/2959100.2959190) — Covington et al., RecSys 2016; the canonical candidate-generation → ranking design, the watch-time objective, and the example-age trick.
-- [Twitter's Recommendation Algorithm](https://github.com/twitter/the-algorithm) — X/Twitter open-source release, 2023; the For You heavy ranker's multi-head engagement weights.
-- [Deep Learning Recommendation Model for Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091) — Naumov et al., Meta, 2019; the embedding-table-dominated ranking architecture (DLRM).
-- [The Netflix Recommender System: Algorithms, Business Value, and Innovation](https://dl.acm.org/doi/10.1145/2843948) — Gomez-Uribe & Hunt, ACM TMIS 2016; A/B testing on retention and the business value of personalization.
-- [Pinterest Home Feed Unified Lightweight Scoring: A Two-tower Approach](https://medium.com/pinterest-engineering/pinterest-home-feed-unified-lightweight-scoring-a-two-tower-approach-b3143ac70b55) — Pinterest Engineering, 2021; two-tower training with in-batch negatives and embedding serving.
+- [Scaling the Instagram Explore recommendations system](https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/): Meta Engineering, 2023; the production multi-stage funnel, Two Towers retrieval, and the 90M-predictions/second serving numbers.
+- [Deep Neural Networks for YouTube Recommendations](https://dl.acm.org/doi/10.1145/2959100.2959190): Covington et al., RecSys 2016; the canonical candidate-generation → ranking design, the watch-time objective, and the example-age trick.
+- [Twitter's Recommendation Algorithm](https://github.com/twitter/the-algorithm): X/Twitter open-source release, 2023; the For You heavy ranker's multi-head engagement weights.
+- [Deep Learning Recommendation Model for Personalization and Recommendation Systems](https://arxiv.org/abs/1906.00091): Naumov et al., Meta, 2019; the embedding-table-dominated ranking architecture (DLRM).
+- [The Netflix Recommender System: Algorithms, Business Value, and Innovation](https://dl.acm.org/doi/10.1145/2843948): Gomez-Uribe & Hunt, ACM TMIS 2016; A/B testing on retention and the business value of personalization.
+- [Pinterest Home Feed Unified Lightweight Scoring: A Two-tower Approach](https://medium.com/pinterest-engineering/pinterest-home-feed-unified-lightweight-scoring-a-two-tower-approach-b3143ac70b55): Pinterest Engineering, 2021; two-tower training with in-batch negatives and embedding serving.

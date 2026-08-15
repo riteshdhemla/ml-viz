@@ -16,11 +16,11 @@ Fine-tuning and alignment are the cleanest whole-course showcase of the [ML proj
 
 | Lesson | Slot it changes |
 |---|---|
-| **SFT** (this lesson) | **data** — curate input/output pairs on your distribution |
-| **PEFT / LoRA** | **hypothesis space** — a small low-rank adapter is the trainable model |
-| **Reward models** | **objective** — turn human preference into a scalar to optimize |
-| **RLHF / DPO** | **optimization** — search the policy for high-reward responses |
-| **Merging / quantization / distillation** | **deployment feedback** — make the trained model cheap and serveable |
+| **SFT** (this lesson) | **data**: curate input/output pairs on your distribution |
+| **PEFT / LoRA** | **hypothesis space**: a small low-rank adapter is the trainable model |
+| **Reward models** | **objective**: turn human preference into a scalar to optimize |
+| **RLHF / DPO** | **optimization**: search the policy for high-reward responses |
+| **Merging / quantization / distillation** | **deployment feedback**: make the trained model cheap and serveable |
 
 Read the course with that map in hand and each technique stops being a separate trick — it's a change to one slot of a loop you already know.
 </Callout>
@@ -59,9 +59,9 @@ The prompt tokens are *not* scored; their loss is **masked out**. The model is o
 
 Pretraining sees raw web text. Instruction tuning shows the model what *helpful* looks like by training on examples of (instruction → desired response). High-quality datasets share a few traits:
 
-- **Coverage** — broad task types (summarisation, extraction, rewriting, Q&A, code).
-- **Diversity** — varied phrasings, lengths, and difficulty so the model doesn't overfit to one template.
-- **Cleanliness** — fewer than 10 000 carefully curated examples often outperform millions of noisy ones (the "less is more" finding from LIMA, Alpaca-cleaned, and similar work).
+- **Coverage**: broad task types (summarisation, extraction, rewriting, Q&A, code).
+- **Diversity**: varied phrasings, lengths, and difficulty so the model doesn't overfit to one template.
+- **Cleanliness**: fewer than 10 000 carefully curated examples often outperform millions of noisy ones (the "less is more" finding from LIMA, Alpaca-cleaned, and similar work).
 
 ## Chat templates
 
@@ -85,9 +85,9 @@ Update every weight aggressively on a narrow dataset and the model **forgets** a
 
 **Mitigations:**
 
-- **Small learning rate** ($10^{-5}$ to $10^{-6}$) — much smaller than pretraining.
+- **Small learning rate** ($10^{-5}$ to $10^{-6}$): much smaller than pretraining.
 - **Few epochs** (often just 1–3 passes).
-- **Parameter-efficient methods** — train tiny adapters and freeze the base (next lesson: PEFT, LoRA & QLoRA).
+- **Parameter-efficient methods**: train tiny adapters and freeze the base (next lesson: PEFT, LoRA & QLoRA).
 - **Mix in general-purpose data** so the model keeps its old skills.
 
 <Exercise id="sft-when-to-finetune" />
@@ -113,6 +113,6 @@ Update every weight aggressively on a narrow dataset and the model **forgets** a
 
 ## Related concepts
 
-- [**Gradient descent**](/courses/neural-networks/02-gradient-descent) — the optimiser SFT relies on
-- [**Building with LLMs**](/courses/building-with-llms/01-prompt-engineering) — the cheaper levers (prompting, few-shot) you should try first
-- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation) — the right tool when the gap is *knowledge*, not *behaviour*
+- [**Gradient descent**](/courses/neural-networks/02-gradient-descent): the optimiser SFT relies on
+- [**Building with LLMs**](/courses/building-with-llms/01-prompt-engineering): the cheaper levers (prompting, few-shot) you should try first
+- [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): the right tool when the gap is *knowledge*, not *behaviour*

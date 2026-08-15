@@ -110,7 +110,7 @@ print(f"Total variance explained: {sum(pca.explained_variance_ratio_):.3f}")
 
 Take 4 centered 2D points: $(2,1),\,(1,2),\,(-1,-2),\,(-2,-1)$ (mean is already $\mathbf 0$).
 
-**Step 2 — covariance** $C = \tfrac{1}{n-1}\tilde X^\top \tilde X$ with $n=4$:
+**Step 2: covariance** $C = \tfrac{1}{n-1}\tilde X^\top \tilde X$ with $n=4$:
 
 $$
 \textstyle\sum x_i^2 = 4{+}1{+}1{+}4 = 10,\quad \sum y_i^2 = 10,\quad \sum x_i y_i = 2{+}2{+}2{+}2 = 8
@@ -120,7 +120,7 @@ C = \tfrac{1}{3}\begin{bmatrix} 10 & 8 \\ 8 & 10 \end{bmatrix}
 = \begin{bmatrix} 3.33 & 2.67 \\ 2.67 & 3.33 \end{bmatrix}.
 $$
 
-**Step 3 — eigenvalues** via the characteristic polynomial $\lambda^2 - (\text{tr}\,C)\lambda + \det C = 0$ (same trick as the [eigenvalues lesson](/courses/linear-algebra/03-eigenvalues-and-eigenvectors)). Here $\text{tr}\,C = 6.67$ and $\det C = 3.33^2 - 2.67^2 = 11.11 - 7.11 = 4.0$:
+**Step 3: eigenvalues** via the characteristic polynomial $\lambda^2 - (\text{tr}\,C)\lambda + \det C = 0$ (same trick as the [eigenvalues lesson](/courses/linear-algebra/03-eigenvalues-and-eigenvectors)). Here $\text{tr}\,C = 6.67$ and $\det C = 3.33^2 - 2.67^2 = 11.11 - 7.11 = 4.0$:
 
 $$
 \lambda^2 - 6.67\lambda + 4.0 = 0 \;\Rightarrow\; \lambda_1 = 6.0,\quad \lambda_2 = 0.667.
@@ -217,9 +217,9 @@ Projecting to fewer components and reconstructing (`inverse_transform`) denoises
 
 ## Common mistakes
 
-1. **Not standardizing features** — PCA is sensitive to feature scales. A feature with range [0, 1000] will dominate over [0, 1]. Always standardize.
-2. **Using PCA before train/test split** — Fit PCA on training data only, then transform both train and test. Otherwise you leak information.
-3. **Keeping too many components** — If you keep all components, PCA does nothing. The whole point is reduction.
+1. **Not standardizing features**: PCA is sensitive to feature scales. A feature with range [0, 1000] will dominate over [0, 1]. Always standardize.
+2. **Using PCA before train/test split**: Fit PCA on training data only, then transform both train and test. Otherwise you leak information.
+3. **Keeping too many components**: If you keep all components, PCA does nothing. The whole point is reduction.
 
 ## Key takeaways
 
@@ -230,9 +230,9 @@ Projecting to fewer components and reconstructing (`inverse_transform`) denoises
 
 ## Related concepts
 
-- [**t-SNE & UMAP**](/courses/pca-dimensionality/02-t-sne-and-umap) — non-linear methods for visualization
-- [**PCA in Practice**](/courses/pca-dimensionality/03-pca-in-practice) — choosing k, reconstruction, whitening
-- [**K-Means Clustering**](/courses/clustering/01-k-means) — a common use: reduce, then cluster
-- [**Autoencoders**](/courses/generative-models/02-autoencoders) — the non-linear, learned generalization of PCA
-- [**Factor Analysis**](/wiki/factor-analysis) — the probabilistic latent-variable generalization of PCA (PPCA is the isotropic-noise case)
-- [**Independent Component Analysis**](/wiki/independent-component-analysis) — finds independent (not just uncorrelated) components
+- [**t-SNE & UMAP**](/courses/pca-dimensionality/02-t-sne-and-umap): non-linear methods for visualization
+- [**PCA in Practice**](/courses/pca-dimensionality/03-pca-in-practice): choosing k, reconstruction, whitening
+- [**K-Means Clustering**](/courses/clustering/01-k-means): a common use: reduce, then cluster
+- [**Autoencoders**](/courses/generative-models/02-autoencoders): the non-linear, learned generalization of PCA
+- [**Factor Analysis**](/wiki/factor-analysis): the probabilistic latent-variable generalization of PCA (PPCA is the isotropic-noise case)
+- [**Independent Component Analysis**](/wiki/independent-component-analysis): finds independent (not just uncorrelated) components
