@@ -108,7 +108,10 @@ function auc(y: number[], s: number[]) {
   const p = y.map((v, i) => [s[i], v]).sort((a, b) => a[0] - b[0]);
   let pos = 0;
   let neg = 0;
-  for (const v of y) v ? pos++ : neg++;
+  for (const v of y) {
+    if (v) pos++;
+    else neg++;
+  }
   if (!pos || !neg) return NaN;
   let sum = 0;
   let i = 0;

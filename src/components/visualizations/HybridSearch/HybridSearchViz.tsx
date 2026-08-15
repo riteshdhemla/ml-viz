@@ -247,7 +247,7 @@ const STEPS: GuidedStep[] = [
     title: "Where semantic search fails structurally",
     body: (
       <>
-        Ask for <span className="font-mono">SKU-88421</span> and the dense retriever's top hit is{" "}
+        Ask for <span className="font-mono">SKU-88421</span> and the dense retriever&rsquo;s top hit is{" "}
         <em>&ldquo;Reset your account password&rdquo;</em>. It is not confused — it is <em>incapable</em>: cosine similarity
         between the two SKU documents is <strong>{SKU_COS.toFixed(4)}</strong>.
         <br />
@@ -295,8 +295,6 @@ const STEPS: GuidedStep[] = [
     hint: "Compare hybrid's worst-query bar against dense's. That gap, not the mean, is what fusion is really buying.",
   },
 ];
-
-const W = 560;
 
 export function HybridSearchViz({ className }: { className?: string }) {
   const [qi, setQi] = useState(4);
