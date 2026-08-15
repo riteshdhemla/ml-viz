@@ -770,6 +770,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | HybridSearchViz | `visualizations/HybridSearch/` | building-with-llms/03-embeddings-and-semantic-search | ✅ **guided** |
 | DPDisparityViz | `visualizations/DPDisparity/` | ml-in-practice/15-privacy-and-federated-learning | ✅ **guided** |
 | RetrievalFunnelViz | `visualizations/RetrievalFunnel/` | recommender-systems/03-deep-and-two-tower | ✅ **guided** |
+| PreprocessingPipelineViz | `visualizations/PreprocessingPipeline/` | nlp/01-text-preprocessing | ✅ **guided** |
 
 ## Algorithm Traces Built
 

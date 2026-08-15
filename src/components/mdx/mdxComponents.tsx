@@ -138,6 +138,7 @@ export const mdxComponents: MDXComponents = {
   PoolingViz: viz("PoolingViz"),
   PositionalEncodingViz: viz("PositionalEncodingViz"),
   PreferenceTuningViz: viz("PreferenceTuningViz"),
+  PreprocessingPipelineViz: viz("PreprocessingPipelineViz"),
   ProjectLoopViz: viz("ProjectLoopViz"),
   QTableViz: viz("QTableViz"),
   QuantizationViz: viz("QuantizationViz"),

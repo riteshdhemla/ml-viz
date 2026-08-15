@@ -118,6 +118,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   PoolingViz: dynamic(() => import("@/components/visualizations/Pooling/PoolingViz").then((m) => m.PoolingViz)) as ComponentType<VizProps>,
   PositionalEncodingViz: dynamic(() => import("@/components/visualizations/PositionalEncoding/PositionalEncodingViz").then((m) => m.PositionalEncodingViz)) as ComponentType<VizProps>,
   PreferenceTuningViz: dynamic(() => import("@/components/visualizations/PreferenceTuning/PreferenceTuningViz").then((m) => m.PreferenceTuningViz)) as ComponentType<VizProps>,
+  PreprocessingPipelineViz: dynamic(() => import("@/components/visualizations/PreprocessingPipeline/PreprocessingPipelineViz").then((m) => m.PreprocessingPipelineViz)) as ComponentType<VizProps>,
   ProjectLoopViz: dynamic(() => import("@/components/visualizations/ProjectLoop/ProjectLoopViz").then((m) => m.ProjectLoopViz)) as ComponentType<VizProps>,
   QTableViz: dynamic(() => import("@/components/visualizations/QTable/QTableViz").then((m) => m.QTableViz)) as ComponentType<VizProps>,
   QuantizationViz: dynamic(() => import("@/components/visualizations/Quantization/QuantizationViz").then((m) => m.QuantizationViz)) as ComponentType<VizProps>,
