@@ -4,7 +4,7 @@ description: "SGD, momentum, RMSprop, and Adam — how the optimizer zoo evolved
 order: 1
 type: concept
 spineStages: [optimization]
-estimatedMinutes: 15
+estimatedMinutes: 23
 ---
 
 # Gradient Descent Variants
@@ -38,12 +38,61 @@ With $n$ training examples, the true loss gradient is the average over the whole
 Mini-batch is the practical sweet spot for two reasons:
 
 1. **GPU vectorization.** A GPU executes a batch of $B$ examples in nearly the same wall-clock time as a single example, so you get $B$ gradient samples essentially for free. Below $B \approx 32$ the GPU sits idle; above $B \approx 512$ memory bandwidth becomes the bottleneck.
-2. **Noise is a feature.** The stochasticity in mini-batch gradients acts as implicit regularization: it pushes the optimizer out of sharp minima (which generalize poorly) and toward flat minima (which generalize well).
+2. **Noise is a feature.** The stochasticity in mini-batch gradients acts as implicit regularization: it pushes the optimizer out of sharp minima (which generalize poorly) and toward flat minima (which generalize well). The next section takes that claim apart, because it is the one people repeat without being able to defend.
 
 <Callout type="info" title="Epoch vs. step">
   One **epoch** is one full pass over the training set. With batch size $B$ and
   dataset size $n$, one epoch consists of $\lceil n/B \rceil$ **steps** (parameter
   updates). Most schedules are measured in epochs; most optimizers tune per step.
+</Callout>
+
+### Why the noise is a regularizer
+
+"SGD's noise helps generalization" is easy to say and hard to justify. The justification has two independent halves, and you need both.
+
+**Half one: the noise lets you leave.** A mini-batch gradient is the full gradient plus an error term, and the error shrinks with batch size as
+
+$$
+\sigma_B = \frac{\sigma_1}{\sqrt{B}}
+$$
+
+Treat the resulting update as a discretized diffusion and SGD acquires a stationary distribution over parameters, $p(\theta) \propto \exp\!\left(-2L(\theta)/\eta\sigma_B^2\right)$. The quantity $T = \eta\sigma_B^2$ plays the role of a **temperature**, and the expected time to escape a basin whose walls rise $\Delta L$ above its floor is
+
+$$
+\tau \;\sim\; \exp\!\left(\frac{2\,\Delta L}{\eta\,\sigma_B^2}\right)
+$$
+
+Read what that exponent does. Full-batch gradient descent has $\sigma_B = 0$, so $\tau = \infty$: it converges to whatever basin it started in and stays there forever, by construction. Halving the batch doubles $\sigma_B^2$ and takes an exponential bite out of $\tau$. Small batches are not merely jittery, they are *ergodic* — they keep sampling the landscape instead of committing to the first basin they fall into.
+
+**Half two: the basin you end in matters, and flatness is why.** Escaping is only useful if the destination is better, and on the *training* loss it often isn't. The reason to prefer a flat basin is that the training loss is not the thing you are graded on. Your training set is one finite sample; the test loss is what you'd get from a different one, which puts the valley in a slightly different place. To first order, test loss behaves like the training loss displaced by some $\delta$, and a second-order expansion around a minimum $\theta^\star$ gives
+
+$$
+L_{\text{test}}(\theta^\star) - L_{\text{train}}(\theta^\star) \;\approx\; \tfrac{1}{2}\,\delta^{\top} \nabla^2 L\, \delta
+$$
+
+The generalization gap is proportional to the **curvature** at the solution. Same displacement, same data, same everything: a sharp minimum (large Hessian eigenvalues) converts it into a large loss increase, and a flat one absorbs it. This is why "flat minima generalize better" is a statement about robustness to perturbation, not a mystical property of flatness.
+
+Put the halves together and the mechanism is complete: noise decides *which* minimum you land in, curvature decides *what that costs you on data you have not seen*, and batch size is the dial on the first.
+
+<SGDNoiseViz />
+
+The landscape above is arranged so the greedy answer is the wrong one. The sharp minimum is genuinely **deeper on the training loss** ($-0.2429$ against $-0.2134$) and 16× more curved, so any procedure that only wants low training loss should prefer it. Watch what the batch size does:
+
+- **B = 1024 down to 32:** not one run of 240 escapes. These runs achieve the *best training loss on the chart* and the *worst test loss on the chart*. That inversion is the entire argument for calling the noise a regularizer.
+- **B = 8:** 47% escape, and mean test loss improves from $-0.0195$ to $-0.0955$.
+- **B = 4:** 65% escape — the best test loss in the sweep.
+- **B = 1:** the escape rate stops improving while the training loss keeps degrading. A run that never stops bouncing never settles anywhere.
+
+That last point is the honest limit, and it is why the curve turns back up rather than pointing at "smaller is always better". Noise buys exploration and exploration has a price. It also explains the two facts about large-batch training that otherwise look like folklore: why large-batch runs need **explicit** regularization and learning-rate warm-up to match small-batch generalization, and why the ratio $\eta/B$ (not $\eta$ alone) is the quantity to hold fixed when you scale a batch size up, since it is $\eta\sigma_B^2 \propto \eta/B$ that sets the temperature.
+
+<Callout type="warning" title="Flat minima are not the whole story">
+  The sharpness/generalization link is empirical and has real counterexamples:
+  [Dinh et al. (2017)](https://arxiv.org/abs/1703.04933) showed that for
+  a ReLU network you can rescale one layer up and the next down, leaving the
+  function (and so the test error) completely unchanged while making the minimum
+  arbitrarily sharp by any Hessian-eigenvalue measure. Sharpness is not
+  reparameterization-invariant; test error is. Treat flatness as a useful
+  intuition and a decent predictor, not a theorem.
 </Callout>
 
 ## SGD with momentum
@@ -371,6 +420,10 @@ For schedule shapes beyond these (one-cycle, inverse square root, and how to pic
 </Callout>
 
 <Exercise id="opt-sgd-noise" />
+
+<Exercise id="opt-flat-minima-why" />
+
+<Exercise id="opt-sgd-noise-temperature" />
 <Exercise id="opt-momentum-ema" />
 <Exercise id="opt-adam-bias" />
 

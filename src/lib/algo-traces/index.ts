@@ -2,6 +2,7 @@ import type { AlgoTrace } from "@/types/algo-trace";
 import { adwinTrace } from "./adwin";
 import { arimaOrderTrace } from "./arima-order";
 import { attentionTrace } from "./attention";
+import { autogradTrace } from "./autograd";
 import { bm25Trace } from "./bm25";
 import { backpropGraphTrace } from "./backprop-graph";
 import { batchnormTrace } from "./batchnorm";
@@ -117,6 +118,7 @@ export const allAlgoTraces: AlgoTrace[] = [
   reinforceTrace,
   baggingTrace,
   randomWalkTrace,
+  autogradTrace,
 ];
 
 const byId = new Map(allAlgoTraces.map((t) => [t.id, t]));

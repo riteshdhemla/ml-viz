@@ -4,7 +4,7 @@ description: "Why models generalize — empirical risk minimization, the bias-va
 order: 6
 type: concept
 spineStages: [evaluation]
-estimatedMinutes: 18
+estimatedMinutes: 24
 ---
 
 # Learning Theory & Generalization
@@ -75,25 +75,49 @@ More capacity ($d_{\text{VC}}$) or less data ($n$) loosens the bound. It's the f
 
 ## Double descent: the modern surprise
 
-Classical theory predicts test error should rise once a model is complex enough to interpolate (memorize) the training set. Deep learning violated this. As you keep growing an already-interpolating model **past** the point where it hits zero training error, test error often **falls again** — the **double descent** curve.
+Classical theory predicts test error should rise once a model is complex enough to interpolate (memorize) the training set. Deep learning violated this. As you keep growing an already-interpolating model **past** the point where it hits zero training error, test error often **falls again**: the **double descent** curve.
 
-```text
-test error
-  │   classical U      ┊  modern descent
-  │      ╱‾╲           ┊      ╲___
-  │  ___╱    ╲___      ┊          ‾‾‾───
-  │              ╲    ╱┊
-  │               ╲__╱ ┊  ← interpolation threshold
-  └─────────────────────────────► model capacity
-```
+The visualization below is not a sketch of that claim, it is the experiment. Random-ReLU-feature ridge regression on $n = 40$ noisy points, sweeping the model width $p$ from 1 to 160 and measuring train and test error at every width.
 
-Past the **interpolation threshold**, among the many models that fit the data perfectly, gradient descent tends to find a *smooth, low-norm* one that generalizes well. This is why massively overparameterized networks (which classical bias-variance would predict to overfit catastrophically) generalize fine. It doesn't repeal the bias-variance idea; it shows capacity alone is the wrong axis, and implicit regularization matters.
+<DoubleDescentViz />
+
+Three things happen in order, and the third is the one classical theory does not have a slot for:
+
+1. **The classical U**, up to about $p = 14$. Test error falls as the model gains enough capacity to represent the teacher, then starts to climb as it begins fitting the noise. This is the bias-variance trade-off exactly as the section above describes it.
+2. **The spike at $p \approx n$.** Test error does not just climb, it *explodes* — around 12× the classical best. At $p = n$ there is exactly **one** function in the class that fits all 40 training points, so the model has no choice but to take it, however violently it has to wiggle to pass through 40 noisy targets.
+3. **The second descent.** Past the threshold there are now *infinitely many* interpolating functions, and the fit is free to choose among them. Test error falls again, and keeps falling — ending up roughly a quarter below the classical sweet spot.
+
+### What actually drives it
+
+The `‖w‖` panel is the mechanism rather than a decoration. **The size of the fitted weights peaks at exactly the width where test error peaks**, and decays as the model grows past it. That co-location is the whole explanation:
+
+$$
+\hat{\mathbf{w}} = \arg\min \|\mathbf{w}\| \quad \text{subject to} \quad \Phi\mathbf{w} = \mathbf{y}
+$$
+
+Among the many interpolating solutions, least squares (and gradient descent from a zero initialization, which converges to the same place) picks the one of **minimum norm**. At $p \approx n$ that constraint set has a single element and the minimum is whatever it is. Widening the model *enlarges the set of solutions to choose from*, so the smallest-norm member gets smaller, and a low-norm function is a smooth one. Extra parameters do not buy more fitting, they buy more **choice about how to fit**.
+
+<Callout type="tip" title="Test the explanation instead of trusting it">
+  If the spike really is a near-singular system rather than a deep truth about
+  capacity, then a little explicit regularization should erase it. Click through
+  the λ buttons: the peak drops from ~750 at λ ≈ 0 to 13.9 at $10^{-3}$ to 5.7 at
+  $10^{-2}$, and by λ = 0.1 there is no interior peak left at all — just the
+  ordinary monotone curve. **Double descent is a phenomenon of unregularized
+  interpolation.** A properly regularized model never rides the spike in the
+  first place.
+</Callout>
+
+This is why massively overparameterized networks (which classical bias-variance would predict to overfit catastrophically) generalize fine. It doesn't repeal the bias-variance idea; it shows that raw parameter count is the wrong x-axis. What matters is the norm of the solution your optimizer actually lands on, and **implicit regularization** is what decides that.
 
 <Exercise id="eval-erm" />
 
 <Exercise id="eval-generalization-gap" />
 
 <Exercise id="eval-double-descent" />
+
+<Exercise id="eval-double-descent-mechanism" />
+
+<Exercise id="eval-double-descent-ridge" />
 
 ## Common mistakes
 

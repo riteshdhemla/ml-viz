@@ -1,0 +1,132 @@
+---
+title: "Automatic Differentiation: How Autograd Actually Works"
+description: "What a framework does between your forward pass and your gradients — the tape it records, the topological order it replays, the += that makes fan-out correct, and why activations dominate training memory."
+topics: ["neural-networks"]
+spine: ml
+spineStages: [optimization]
+relatedLessons:
+  - "calculus-for-ml/02-chain-rule-and-backpropagation"
+  - "calculus-for-ml/04-jacobians"
+  - "neural-networks/03-layers-and-forward-pass"
+estimatedMinutes: 16
+---
+
+# Automatic Differentiation: How Autograd Actually Works
+
+Most explanations of backpropagation stop at the chain rule, which is the mathematics. This page is about the **implementation**: the data structure PyTorch, JAX and TensorFlow build while your forward pass runs, and the algorithm they run over it when you call `.backward()`. It sits in the **optimization** slot of the ML loop, and what it replaced was writing derivatives by hand for every architecture you ever wanted to try.
+
+The gap is worth naming, because "backprop is just the chain rule" leaves you unable to answer the questions that actually come up: why activations dominate your memory bill, why `zero_grad()` exists, why a tensor used twice needs no special handling, and what `retain_graph=True` is retaining.
+
+## Four ways to get a derivative
+
+Autodiff is neither symbolic differentiation nor numerical differentiation, and the distinction is the entire reason it works at scale.
+
+| Approach | How | Cost for $\nabla f$, $f:\mathbb{R}^n\to\mathbb{R}$ | Problem |
+|----------|-----|------|---------|
+| **Symbolic** | Manipulate the expression algebraically | — | *Expression swell*: the derivative of a deep composition is exponentially large to write down, and control flow has no symbolic form |
+| **Numerical** | $\dfrac{f(x+h)-f(x-h)}{2h}$ per input | $2n$ forward passes | Too slow ($n \approx 10^9$), and truncation vs. round-off means you never get more than ~8 digits |
+| **Forward-mode AD** | Propagate derivatives *alongside* values | $n$ forward passes | Cost scales with **inputs** |
+| **Reverse-mode AD** | Record values forward, propagate derivatives backward | **1** forward + **1** backward | Must store the intermediates |
+
+The last row is the one deep learning runs on. The cost of reverse mode is independent of the number of parameters, so a single backward pass produces gradients for all $10^9$ of them at roughly 2× the cost of the forward pass.
+
+<Callout type="info" title="The rule for choosing a mode">
+  For $f: \mathbb{R}^n \to \mathbb{R}^m$, forward mode costs $O(n)$ passes and
+  reverse mode costs $O(m)$. Training has $n$ = millions of parameters and
+  $m = 1$ (a scalar loss), so reverse mode wins by a factor of $n$. Flip the
+  shape — one input, many outputs, as in sensitivity analysis or Jacobian-vector
+  products — and forward mode is the right tool. JAX exposes both directly as
+  `jax.grad` / `jax.jvp`, which is why its API distinguishes `jvp` from `vjp`
+  where PyTorch mostly just says `backward`.
+</Callout>
+
+## The tape
+
+A framework never sees your formula. It sees a sequence of operation calls, and it writes each one down as it happens. That record — the **tape**, or the *autograd graph* — is built as a side effect of the forward pass.
+
+Each recorded node stores three things:
+
+1. **The output value**, which the next operation needs.
+2. **References to its input nodes**, which are the edges of the graph.
+3. **A closure that turns an incoming gradient into gradients for those inputs** — the local derivative, with whatever forward values it needs *captured at record time*.
+
+Point 3 is where activation memory comes from. `mul(a, b)` has to remember `a` and `b` to compute its backward, because $\partial(ab)/\partial a = b$. Every op makes its own choice about what to keep: `tanh` keeps its output (since $1 - t^2$ is cheapest from $t$), ReLU keeps only a sign mask, matmul keeps both operands. Those decisions, summed over every layer, are usually a larger number than your parameter count.
+
+<AlgorithmTrace id="autograd-tape" />
+
+What to notice as you step through it:
+
+- **The local derivatives are stored during the forward pass, not computed during the backward one.** The backward pass is a replay, not a derivation.
+- **`w` is used twice, and nothing in the recording treats that as special.** The tape just gets a second edge into the same node.
+- **The topological sort is what makes the second edge safe.** A node's gradient is not final until every consumer has pushed into it.
+- **`parent.g += ...` is load-bearing.** The final frame changes it to `=` and gets 34.3% of the correct gradient back, with no error raised.
+
+## Why the order matters
+
+The backward pass cannot run in any order. Consider the fan-out from the trace: `w` feeds both `a = w·x` and `o = w·h`. Its true gradient is a **sum over paths**:
+
+$$
+\frac{\partial L}{\partial w} = \underbrace{\frac{\partial L}{\partial o}\frac{\partial o}{\partial w}}_{\text{short path}} + \underbrace{\frac{\partial L}{\partial a}\frac{\partial a}{\partial w}}_{\text{long path}}
+$$
+
+If you read `w.grad` after the short path has contributed but before the long one has, you get a number that is well-formed, plausible, and wrong. The invariant a correct implementation must maintain is:
+
+> Never process a node until every node that consumes its output has already been processed.
+
+That is exactly reverse topological order. PyTorch enforces it with a dependency counter — each node knows how many consumers still owe it a contribution, and enters the ready queue when that count hits zero — rather than a depth-first sort, but the guarantee is the same.
+
+The multivariable chain rule is where the sum comes from: for $L$ depending on $w$ through several intermediates $u_i$,
+
+$$
+\frac{\partial L}{\partial w} = \sum_i \frac{\partial L}{\partial u_i}\frac{\partial u_i}{\partial w}
+$$
+
+**Accumulation is that sum, implemented.** This is why weight sharing needs no special support: an RNN reusing $W_h$ across 50 timesteps, or a convolution reusing a kernel across every spatial position, is just a node with 50 (or 50,000) outgoing edges, and `+=` handles it identically to two.
+
+## Define-by-run vs. define-and-run
+
+Two designs, and the trade-off between them explains most of the last decade of framework churn.
+
+| | **Define-by-run** (dynamic) | **Define-and-run** (static) |
+|---|---|---|
+| When the graph is built | While the forward pass executes, every iteration | Once, ahead of time |
+| Examples | PyTorch eager, TF2 eager, Chainer (the original) | TensorFlow 1.x, `torch.compile`, `jax.jit`, ONNX |
+| Control flow | Ordinary Python `if`/`while` — the tape records whichever branch ran | Needs graph-level primitives (`tf.cond`, `lax.scan`) or tracing that bakes one branch in |
+| Debugging | Standard stack traces and breakpoints | Errors surface at graph-execution time, far from the code that caused them |
+| Optimization | Limited: the framework sees one op at a time | Whole-graph: operator fusion, memory planning, dead-code elimination, kernel selection |
+
+Dynamic won on ergonomics, and then the industry got the optimization back by **tracing** dynamic code into a static graph (`torch.compile`, `jax.jit`). That is also where tracing's sharp edge comes from: a traced function records the branch taken *for the shapes and values it was traced with*. Python control flow that depends on tensor *values* is silently frozen into the trace, which is why JAX makes you write `lax.cond` and why `torch.compile` inserts guards and re-compiles when they fail.
+
+## What it costs, and what the API exposes
+
+Every piece of autograd's bookkeeping shows up somewhere in the API you already use.
+
+- **Activation memory.** The tape holds forward values alive until the backward pass consumes them, so memory scales with depth × batch × width, not with parameter count. This is what <WikiLink slug="gradient-checkpointing" title="Gradient Checkpointing" /> trades away, storing a sparse set of checkpoints and recomputing the rest.
+- **`loss.backward()` frees the graph by default.** Once the buffers have been consumed they are released, which is why a second `backward()` on the same graph raises an error and why `retain_graph=True` exists. You need it when one forward pass feeds two losses backwarded separately, as in some GAN and meta-learning setups.
+- **`optimizer.zero_grad()` is required because of `+=`.** The framework's accumulation never resets on its own: it cannot know where one backward pass ends and the next begins. That is a feature — it is how you implement gradient accumulation across micro-batches to simulate a larger batch — but forget it and you are summing this step's gradient onto last step's.
+- **`torch.no_grad()` and `.detach()` stop the recording.** The first suppresses tape-building entirely (inference, and the optimizer's own parameter updates); the second cuts one tensor out of the graph, which is how you stop a gradient flowing into a target network or a frozen encoder.
+- **Only leaf tensors keep `.grad`.** Intermediates get their gradients passed along and then dropped, because keeping them all would double an already-large memory bill. `retain_grad()` opts a specific intermediate back in.
+- **In-place operations can corrupt the backward pass.** If an op stored a tensor for its backward and you overwrite that tensor in place, the replay uses the wrong number. PyTorch version-counts tensors and raises rather than returning a silently wrong gradient.
+
+<Callout type="warning" title="Autodiff is exact, but only of the code you wrote">
+  Reverse-mode AD is not an approximation — it applies exact derivative rules,
+  accurate to floating-point round-off, which is why it beats finite differences
+  on accuracy as well as speed. But it differentiates **the program that ran**,
+  and where your program is not differentiable it will still hand you a number.
+  `relu` at exactly 0, `abs` at 0, and every `round`/`floor`/`argmax` returns a
+  convenient subgradient (usually 0) with no warning. Straight-through estimators
+  and the Gumbel-softmax trick exist precisely to put a *useful* fiction there
+  instead of the default one.
+</Callout>
+
+## Building intuition: implement it once
+
+The notebook for this page builds a working reverse-mode autodiff engine in about 60 lines of NumPy — `Value` objects, operator overloading, topological sort, accumulation — trains a small MLP with it, and checks every gradient against `torch.autograd`. It is the single most useful hour available for making frameworks stop feeling like magic, and it is also the fastest way to internalize why the answer to "what happens in the backward pass?" is a data-structure answer rather than a calculus one.
+
+## Related concepts
+
+- [**Chain Rule and Backpropagation**](/courses/calculus-for-ml/02-chain-rule-and-backpropagation): the mathematics this page implements
+- [**Jacobians & Vector Calculus**](/courses/calculus-for-ml/04-jacobians): VJPs, which are what each node's backward closure actually computes
+- [**Gradient Checkpointing**](/wiki/gradient-checkpointing): trading recomputation for the activation memory the tape holds
+- [**Backpropagation Through Time**](/wiki/bptt-algorithm): the fan-out case at scale, one edge per timestep
+- [**Vanishing Gradient Analysis**](/wiki/vanishing-gradient-analysis): what the repeated multiplication in the backward pass does to deep graphs
