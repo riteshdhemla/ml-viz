@@ -11605,6 +11605,126 @@ const allExercises: Exercise[] = [
       { id: "d", label: "Deployment feedback — a monitoring change", isCorrect: false },
     ],
   },
+  {
+    id: "eval-double-descent-mechanism",
+    type: "multiple-choice",
+    question:
+      "Past the interpolation threshold, test error falls again as you keep adding parameters. What is the extra capacity actually buying, given that training error is already zero and cannot improve?",
+    hint: "Once many functions fit the data perfectly, something has to break the tie. What does least squares (and gradient descent from zero) pick?",
+    explanation:
+      "Below the threshold there is essentially one best fit; at p ≈ n there is exactly one function that interpolates, and the model is forced to take it however wildly it has to wiggle — which is why ‖w‖ and test error peak together right there. Past the threshold there are infinitely many interpolating functions, and least squares (like gradient descent from zero initialization) selects the minimum-norm one. Widening the model enlarges the set to choose from, so the smallest-norm member gets smaller and smoother. Extra parameters do not buy more fitting, they buy more choice about how to fit.",
+    options: [
+      { id: "a", label: "A larger set of interpolating solutions, so the minimum-norm one that gets picked is smoother", isCorrect: true },
+      { id: "b", label: "Lower training error, which keeps improving past the threshold", isCorrect: false },
+      { id: "c", label: "More bias, which cancels out the variance", isCorrect: false },
+      { id: "d", label: "A smaller VC dimension, so the generalization bound tightens", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-double-descent-ridge",
+    type: "multiple-choice",
+    question:
+      "In the random-feature experiment, adding ridge regularization (λ = 0.1) makes the spike at the interpolation threshold disappear entirely, leaving an ordinary monotone curve. What does that tell you about double descent?",
+    hint: "What is numerically special about the design matrix exactly at p = n, and what does adding λ to the diagonal do to it?",
+    explanation:
+      "The spike is a near-singular system, not a deep fact about capacity. At p ≈ n the Gram matrix ΦΦᵀ has a vanishing smallest eigenvalue, so the solve blows up and produces a huge-norm interpolant. Ridge adds λ to the diagonal, bounding the inverse and capping ‖w‖, and the peak drops from ~750 to ~5.7 to nothing as λ grows. Double descent is a phenomenon of *unregularized* interpolation: a properly regularized model never rides the spike in the first place, which is why you rarely see it in well-tuned production models.",
+    options: [
+      { id: "a", label: "It is an artifact of unregularized interpolation through a near-singular system", isCorrect: true },
+      { id: "b", label: "Ridge regression has no effect on the bias-variance trade-off", isCorrect: false },
+      { id: "c", label: "Double descent only occurs in neural networks, never in linear models", isCorrect: false },
+      { id: "d", label: "Regularization increases test error at every model size", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-sgd-noise-temperature",
+    type: "multiple-choice",
+    question:
+      "Modelling SGD as a diffusion gives an expected escape time from a basin of τ ~ exp(2ΔL / ησ_B²), with gradient noise σ_B = σ₁/√B. You double the batch size B and want to keep the exploration behaviour unchanged. What should you do to the learning rate η?",
+    hint: "Find the combination of η and B that appears in the exponent, then hold it fixed.",
+    explanation:
+      "The exponent depends on η·σ_B² = η·σ₁²/B, so the 'temperature' of the diffusion is proportional to η/B. Doubling B halves the temperature, and doubling η restores it — this is the linear scaling rule (Goyal et al., 2017): scale the learning rate linearly with batch size. It is also why very large batches need warm-up and extra explicit regularization: past some point you cannot raise η enough to compensate without destabilizing the early steps.",
+    options: [
+      { id: "a", label: "Double it — hold η/B fixed (the linear scaling rule)", isCorrect: true },
+      { id: "b", label: "Halve it, since larger batches give more reliable gradients", isCorrect: false },
+      { id: "c", label: "Leave it unchanged — η and B are independent knobs", isCorrect: false },
+      { id: "d", label: "Multiply it by √2 — hold η/√B fixed", isCorrect: false },
+    ],
+  },
+  {
+    id: "opt-flat-minima-why",
+    type: "multiple-choice",
+    question:
+      "Why does a flat minimum generalize better than a sharp one of equal training loss? Pick the statement that actually explains the mechanism.",
+    hint: "Write the test loss as the training loss displaced by δ and expand to second order.",
+    explanation:
+      "Your training set is one finite sample; a different sample puts the loss valley in a slightly different place. Expanding to second order, L_test(θ*) − L_train(θ*) ≈ ½ δᵀ∇²L δ, so the generalization gap is proportional to the curvature at the solution. The same displacement barely moves you in a wide basin and throws you up the wall of a narrow one. Note this is an empirical regularity rather than a theorem: Dinh et al. (2017) showed you can rescale a ReLU network's layers to make a minimum arbitrarily sharp without changing the function or its test error at all.",
+    options: [
+      { id: "a", label: "The generalization gap scales with the Hessian, so a displacement between train and test loss costs less where curvature is low", isCorrect: true },
+      { id: "b", label: "Flat minima have lower training loss, so they fit the data better", isCorrect: false },
+      { id: "c", label: "Flat minima are reached faster, so the model has less time to overfit", isCorrect: false },
+      { id: "d", label: "Flat minima have fewer effective parameters, lowering the VC dimension", isCorrect: false },
+    ],
+  },
+  {
+    id: "autograd-accumulate",
+    type: "multiple-choice",
+    question:
+      "In a reverse-mode autodiff engine the backward pass ends with `parent.grad += local(node.grad)`. A colleague argues the `+=` should be `=`, since each node's gradient is computed exactly once. What breaks?",
+    hint: "What happens to a tensor that is used as an input by more than one operation?",
+    explanation:
+      "Any tensor consumed by more than one operation — a fan-out — receives a contribution from each consumer, and its true gradient is the sum over paths: ∂L/∂w = Σᵢ (∂L/∂uᵢ)(∂uᵢ/∂w). The `+=` IS that sum. With `=`, the last write wins and every other path is discarded. This is not an exotic case: it is exactly weight sharing, so every RNN reusing W_h across timesteps and every convolution reusing a kernel across positions depends on it. Worst of all it fails silently — no exception, no NaN, no shape error, just a wrong gradient that trains to a worse model.",
+    options: [
+      { id: "a", label: "Any tensor used by more than one operation loses all but one of its gradient paths", isCorrect: true },
+      { id: "b", label: "Nothing — the two are equivalent, `+=` is just a convention", isCorrect: false },
+      { id: "c", label: "The gradients would be correct but the backward pass would run more slowly", isCorrect: false },
+      { id: "d", label: "It would raise a shape-mismatch error on the first backward pass", isCorrect: false },
+    ],
+  },
+  {
+    id: "autograd-memory",
+    type: "multiple-choice",
+    question:
+      "During training, activation memory is usually the largest consumer of GPU memory — often larger than parameters, gradients and optimizer state combined. Which property of reverse-mode autodiff causes this?",
+    hint: "When is each operation's local derivative rule created, and what values does it need to close over?",
+    explanation:
+      "Each recorded operation stores a closure computing its local derivative, and those closures capture forward values because they need them: ∂(ab)/∂a = b requires b. The tape therefore keeps forward activations alive from the moment they are produced until the backward pass consumes them, so memory scales with depth × batch × width rather than with parameter count. This is exactly what gradient checkpointing trades away — store only √L checkpoints and recompute the rest, cutting activation memory to O(√L) for roughly 30% extra compute — and it is why cutting batch size is the fastest way out of an OOM.",
+    options: [
+      { id: "a", label: "Each op's backward closure captures forward values, so the tape holds activations alive until the backward pass consumes them", isCorrect: true },
+      { id: "b", label: "The framework stores a full copy of the parameters for every layer", isCorrect: false },
+      { id: "c", label: "Reverse mode must build the complete Jacobian matrix before reducing it", isCorrect: false },
+      { id: "d", label: "Gradients are stored in higher precision than the forward pass", isCorrect: false },
+    ],
+  },
+  {
+    id: "autograd-topological-order",
+    type: "multiple-choice",
+    question:
+      "Why must a reverse-mode backward pass visit nodes in reverse topological order rather than any convenient order (say, the order they were created)?",
+    hint: "Think about a node whose output feeds two different downstream operations.",
+    explanation:
+      "A node's gradient is only final once every operation that consumed its output has pushed its contribution in. Reverse topological order guarantees exactly that: every consumer is processed before the node it consumed. Visit a node early and you read a partial sum — well-formed, plausible, and wrong — and the error propagates to everything upstream of it. PyTorch enforces the same invariant with a dependency counter (each node becomes ready when the number of consumers still owing it a contribution hits zero) rather than a depth-first sort.",
+    options: [
+      { id: "a", label: "A node's gradient is not final until every consumer of its output has contributed", isCorrect: true },
+      { id: "b", label: "Reverse topological order is what makes the backward pass cache-friendly", isCorrect: false },
+      { id: "c", label: "Any order works; the topological sort is purely a performance optimization", isCorrect: false },
+      { id: "d", label: "It is required so that the graph can be freed in a single pass afterwards", isCorrect: false },
+    ],
+  },
+  {
+    id: "autograd-mode-choice",
+    type: "multiple-choice",
+    question:
+      "For f: ℝⁿ → ℝᵐ, forward-mode AD costs O(n) passes and reverse-mode costs O(m). Training a neural network has n ≈ 10⁹ parameters and m = 1 (a scalar loss). Which mode, and what is the price you pay for it?",
+    hint: "Reverse mode's advantage is not free — what does it have to keep around that forward mode does not?",
+    explanation:
+      "Reverse mode, by a factor of about 10⁹: one backward pass produces every parameter's gradient, while forward mode would need one pass per parameter. The price is memory. Forward mode propagates derivatives alongside values and needs O(1) storage; reverse mode must record the tape and hold forward activations alive until the backward pass consumes them. That asymmetry is precisely the trade deep learning takes, and it is why activation memory rather than compute is usually what limits model size. Flip the shape (one input, many outputs, as in sensitivity analysis) and forward mode wins.",
+    options: [
+      { id: "a", label: "Reverse mode, paid for with O(ops) memory to store the tape", isCorrect: true },
+      { id: "b", label: "Forward mode, paid for with extra compute per pass", isCorrect: false },
+      { id: "c", label: "Reverse mode, and it has no additional cost over forward mode", isCorrect: false },
+      { id: "d", label: "Forward mode, because m = 1 makes the number of outputs the bottleneck", isCorrect: false },
+    ],
+  },
 ];
 
 export const exercises: Record<string, Exercise> = Object.fromEntries(
