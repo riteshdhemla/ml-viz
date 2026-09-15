@@ -1,0 +1,224 @@
+---
+title: "Matryoshka Embeddings (MRL)"
+description: "How one embedding model ships every dimension at once — the nested loss that front-loads information into the first coordinates, a worked loss trace, the truncate-and-renormalise rule, the adaptive-retrieval cascade, and what the flexibility actually costs."
+topics: ["nlp", "embeddings", "retrieval"]
+relatedLessons:
+  - "nlp/07-training-embedding-models"
+  - "building-with-llms/03-embeddings-and-semantic-search"
+estimatedMinutes: 14
+---
+
+# Matryoshka Embeddings (MRL)
+
+An embedding model normally hands you one number you cannot change: its output dimension. Pick 3072 and every vector in your index costs 12 kB in fp32, every brute-force scan multiplies out 3072 coordinates, and the day you decide 256 would have been enough you re-embed the whole corpus. Pick 256 up front and you have capped quality before you have measured it.
+
+**Matryoshka Representation Learning (MRL)** removes the choice by making one vector contain all the smaller ones. The training objective adds a constraint: *the first $d'$ coordinates must themselves be a usable embedding*, for every $d'$ in a set of nesting granularities. A 3072-dim vector then truncates to 1536, 768, 256, or 64 at query time, no re-embedding and no second model, and the cosine metric keeps meaning what it meant ([Kusupati et al., NeurIPS 2022](https://arxiv.org/abs/2205.13147)).
+
+This is why OpenAI's `text-embedding-3-*` models expose a `dimensions` parameter: on MTEB, a `text-embedding-3-large` vector shortened to **256 dimensions still outperforms an unshortened 1536-dim `ada-002`** ([OpenAI](https://openai.com/index/new-embedding-models-and-api-updates/)). Nomic Embed v1.5 ships the same property open-weights, usable at any dimension from 64 to 768 ([Nomic](https://home.nomic.ai/blog/posts/nomic-embed-matryoshka)).
+
+## Why you cannot just truncate a normal embedding
+
+Nothing in a standard contrastive objective cares *where* in the vector the information sits. InfoNCE only ever sees the full-dimensional dot product, so the encoder is free to spread the signal evenly across all coordinates, and typically does.
+
+Measure it on a toy encoder (the companion notebook at the top of this page builds it from scratch: a linear encoder into 16 dimensions, 16 classes, InfoNCE with in-batch negatives). Take the fraction of squared norm that lives in the first $d'$ coordinates of a unit-normalised embedding:
+
+| Energy in first $d'$ coords | $d' = 2$ | $d' = 4$ | $d' = 8$ |
+|---|---|---|---|
+| Plain InfoNCE (16-dim) | 13.4% | 21.9% | 42.8% |
+| MRL, $\mathcal{M} = \{2,4,8,16\}$ | 36.1% | 62.4% | 94.2% |
+
+The plain model is almost exactly uniform: four of sixteen coordinates hold 21.9% of the energy, which is what "no preference" looks like. Chop it there and you have thrown away four fifths of the representation. The MRL model puts 62.4% into the same four coordinates, because during training those four coordinates were *scored on their own*.
+
+Retrieval recall@1 on a held-out query set follows directly:
+
+| Query dim $d'$ | Plain InfoNCE | MRL |
+|---|---|---|
+| 2 | 0.167 | **0.308** |
+| 4 | 0.489 | **0.819** |
+| 8 | 0.917 | **0.981** |
+| 16 (full) | **0.997** | 0.994 |
+
+Read the last two rows together, because they are the whole trade: MRL gives up 0.3 points at full width and buys 33 points at quarter width.
+
+## The objective
+
+Let $f_\theta(x) \in \mathbb{R}^d$ be the encoder output and $z_{1:m}$ denote its first $m$ coordinates. Fix a set of **nesting granularities** $\mathcal{M}$, conventionally the powers of two up to $d$ (for $d = 768$: $\{8, 16, 32, 64, 128, 256, 512, 768\}$). MRL trains the sum of the *same* loss applied at every granularity:
+
+$$
+\mathcal{L}_{\text{MRL}}(x) \;=\; \sum_{m \in \mathcal{M}} c_m \cdot \mathcal{L}\!\left(\frac{f_\theta(x)_{1:m}}{\lVert f_\theta(x)_{1:m}\rVert}\right)
+$$
+
+Three things are worth pulling out of that formula.
+
+- **It is loss-agnostic.** $\mathcal{L}$ is whatever you already train: InfoNCE, a triplet margin, cosine-similarity regression, softmax classification. MRL is a wrapper, not a replacement, which is why it drops into an existing pipeline in a few lines.
+- **The prefixes share weights.** There is no separate 256-dim head. The gradient from every granularity lands on the same encoder, so coordinate 3 is optimised simultaneously as a member of the 4-dim embedding, the 8-dim embedding, and the full one. That shared pressure is what forces the ordering.
+- **Renormalisation is inside the loss.** $z_{1:m}$ is renormalised before the metric is applied, so the loss at granularity $m$ scores *direction*, not how much norm happened to survive the cut. Inference has to do the same thing (see below), and the reason it has to is that training did.
+
+The weights $c_m$ are almost always all $1$. Weighting the small granularities up trades full-dimension quality for low-dimension quality, and it is the right knob when you know most traffic will be served truncated.
+
+<Callout type="info" title="MRL-E: the cheap variant">
+  The paper's efficient variant, **MRL-E**, shares one set of classifier/head weights across all granularities instead of giving each $m$ its own, cutting the extra parameters to zero at a small accuracy cost. For a bi-encoder trained with InfoNCE there is no head to duplicate in the first place, so the contrastive case is already MRL-E in spirit: the only added cost is recomputing the loss $|\mathcal{M}|$ times on progressively shorter slices.
+</Callout>
+
+## The procedure
+
+Training one step of MRL, in full:
+
+1. **Forward the batch once.** Encode anchors and positives to $Z_a, Z_p \in \mathbb{R}^{B \times d}$. This happens exactly once per step, however large $\mathcal{M}$ is.
+2. **For each $m \in \mathcal{M}$, slice.** Take $Z_a[:, {:}m]$ and $Z_p[:, {:}m]$. No copy of the model, no re-encode.
+3. **Renormalise the slice.** $A = Z_a[:, {:}m] / \lVert \cdot \rVert$, likewise $P$. The prefix of a unit vector is not a unit vector, so skipping this makes the loss a function of surviving norm.
+4. **Score and accumulate.** $S^{(m)} = A P^{\top}$, then $\mathcal{L}_m = -\frac{1}{B}\sum_i \log \frac{\exp(S^{(m)}_{ii}/\tau)}{\sum_j \exp(S^{(m)}_{ij}/\tau)}$. Add $c_m \mathcal{L}_m$ to the running total.
+5. **Backward once on the sum.** The gradient at granularity $m$ touches only the first $m$ coordinates, so coordinate 1 receives gradient from every term and coordinate $d$ from one. That gradient count is the whole mechanism: early coordinates are simply optimised harder than late ones.
+6. **Step.** Nothing else about the optimiser changes.
+
+Cost: the extra forward work is $\sum_m m \approx 2d$ coordinate-columns of similarity instead of $d$, on a $B \times B$ matrix that is tiny next to the encoder. In practice MRL costs a few percent of step time.
+
+## Worked trace: one MRL loss on a 3-pair batch
+
+Take $d = 4$, $\mathcal{M} = \{2, 4\}$, $\tau = 0.2$, and a batch of three anchor/positive pairs. Raw encoder outputs, before any normalisation:
+
+$$
+Z_a = \begin{bmatrix} 0.9 & 0.2 & 0.3 & -0.1 \\ 0.8 & 0.3 & -0.6 & 0.4 \\ 0.1 & -0.3 & 0.9 & 0.2 \end{bmatrix}
+\qquad
+Z_p = \begin{bmatrix} 0.8 & 0.4 & 0.1 & 0.2 \\ 0.85 & 0.2 & -0.5 & 0.5 \\ 0.2 & -0.2 & 0.8 & 0.4 \end{bmatrix}
+$$
+
+Pairs 1 and 2 are the interesting ones: they differ mostly in coordinate 3, which the 2-dim granularity cannot see.
+
+**Granularity $m = 2$.** Slice to the first two coordinates and renormalise. Row 1 of $Z_a$ becomes $(0.9, 0.2)/0.922 = (0.976, 0.217)$; row 2 becomes $(0.8, 0.3)/0.854 = (0.936, 0.351)$. Doing the same to $Z_p$ and forming $S = AP^{\top}$:
+
+| $S^{(2)}$ | $p_1$ | $p_2$ | $p_3$ |
+|---|---|---|---|
+| $a_1$ | 0.970 | **1.000** | 0.537 |
+| $a_2$ | **0.995** | 0.992 | 0.414 |
+| $a_3$ | −0.141 | 0.091 | **0.894** |
+
+Look at the diagonal. For anchor 1 the *negative* $p_2$ scores 1.000 against its own positive's 0.970, and for anchor 2 the negative $p_1$ wins by 0.003. Truncated to two coordinates, pairs 1 and 2 are the same point. Per-row losses at $\tau = 0.2$ are $0.822$, $0.727$, $0.023$, so $\mathcal{L}_2 = 0.5241$.
+
+**Granularity $m = 4$.** Now coordinate 3 is visible, and it is exactly where the two pairs disagree ($+0.3$ against $-0.6$):
+
+| $S^{(4)}$ | $p_1$ | $p_2$ | $p_3$ |
+|---|---|---|---|
+| $a_1$ | **0.901** | 0.552 | 0.372 |
+| $a_2$ | 0.757 | **0.987** | −0.210 |
+| $a_3$ | 0.100 | −0.297 | **0.962** |
+
+Every diagonal entry now dominates its row. Per-row losses are $0.220$, $0.277$, $0.015$, giving $\mathcal{L}_4 = 0.1704$.
+
+**Total:** $\mathcal{L}_{\text{MRL}} = 0.5241 + 0.1704 = 0.6945$.
+
+<Callout type="success" title="The trace's payoff">
+  **75% of the total loss ($0.5241$ of $0.6945$) comes from the 2-dimensional term.** That imbalance is not a defect, it is the entire mechanism. The coarse granularities are the hard ones, so they dominate the gradient, so the optimiser spends its capacity making the first coordinates discriminative. Delete the $m = 2$ term and you are back to plain InfoNCE, which is happy to leave those coordinates as noise.
+</Callout>
+
+## Inference: truncate, then renormalise
+
+The rule is two operations and the second one is the one people skip:
+
+```python
+v = model.encode(text)        # (3072,) unit norm
+v = v[:256]                   # truncate
+v = v / np.linalg.norm(v)     # renormalise — not optional
+```
+
+A prefix of a unit vector has norm below 1, and *by a different amount for every vector*. Skip the renormalisation and your "cosine similarity" becomes a dot product that rewards documents for keeping more of their mass in the prefix, which has nothing to do with relevance.
+
+Concretely, one query and two documents, unit-norm in 4 dimensions:
+
+$$
+q = (0.601,\, 0.601,\, 0.401,\, 0.341), \quad
+d_1 = (0.499,\, 0.499,\, 0.599,\, 0.379), \quad
+d_2 = (0.721,\, 0.360,\, 0.300,\, 0.511)
+$$
+
+| | $\cos(q, d_1)$ | $\cos(q, d_2)$ | winner |
+|---|---|---|---|
+| Full 4 dims | 0.9692 | 0.9444 | $d_1$ |
+| Prefix 2 dims, raw dot | 0.6000 | 0.6500 | $d_2$ ❌ |
+| Prefix 2 dims, renormalised | 1.0000 | 0.9487 | $d_1$ ✓ |
+
+The raw-dot row flips the ranking, and the reason is visible in the prefix norms: $\lVert d_2[{:}2]\rVert = 0.806$ against $\lVert d_1[{:}2]\rVert = 0.706$. Document 2 wins on surviving norm, not on direction. Renormalising divides that advantage out and restores the full-dimension ordering.
+
+<Callout type="warning" title="Truncate the query and the documents at the same $d'$">
+  Both sides of the comparison must be cut at the same granularity, and it must be a granularity the model was trained on. A 200-dim prefix of a model trained on $\{64, 128, 256, \dots\}$ is not *wrong* (quality degrades smoothly between granularities) but it is untested, and the interpolated points are where the quality curve has its dents.
+</Callout>
+
+## Adaptive retrieval: the reason MRL exists
+
+Truncating to save memory is the obvious use. The better one is a **cascade**: shortlist over the whole corpus at low dimension, then rerank the shortlist at full dimension. The shortlist only has to be *recall*-accurate, and low-dimensional embeddings are much better at "is this in the right neighbourhood" than at "which of these two is closer".
+
+For $N = 10{,}000{,}000$ documents, $d = 3072$, shortlist dimension $d' = 256$, shortlist size $K = 100$:
+
+| | Multiplications | |
+|---|---|---|
+| Full exact scan | $N \cdot d = 3.07 \times 10^{10}$ | |
+| Shortlist at 256 | $N \cdot d' = 2.56 \times 10^{9}$ | 99.99% of adaptive cost |
+| Rerank top 100 | $K \cdot d = 3.07 \times 10^{5}$ | rounding error |
+| **Adaptive total** | $\mathbf{2.56 \times 10^{9}}$ | **12.0× cheaper** |
+
+The rerank is free. That is the structural point: once the shortlist is 100 documents instead of 10 million, you can afford *any* scoring function on it, full-dimension cosine being the cheapest thing you might want. The published result is the same shape at larger scale: MRL's shortlist-then-rerank matched baseline mAP@10 on ImageNet-4K at **128× fewer FLOPs and 14× faster wall-clock** ([Kusupati et al.](https://arxiv.org/abs/2205.13147)).
+
+Memory moves by the same factor, and it is usually the binding constraint because the shortlist index wants to live in RAM:
+
+| Index for 10M docs | Size |
+|---|---|
+| 3072-dim, fp32 | 122.9 GB |
+| 256-dim, fp32 | 10.2 GB |
+| 256-dim, int8 | 2.6 GB |
+
+The 256-dim index fits on one machine, the full one does not, and the full vectors can sit on disk or in an object store because you only fetch 100 of them per query.
+
+The toy encoder shows the quality side of the same cascade. Shortlisting at $d' = 4$ and reranking at 16:
+
+| Strategy | recall@1 |
+|---|---|
+| $d' = 4$ only | 0.819 |
+| Shortlist 5 at $d'=4$, rerank at 16 | 0.955 |
+| Shortlist 25 at $d'=4$, rerank at 16 | 0.988 |
+| Full 16-dim exact | 0.994 |
+
+A shortlist of 25 recovers 0.988 of the 0.994 exact ceiling while scanning a quarter of the coordinates. The gap that reranking closes is precisely the "which of these two" question the truncated vector was bad at.
+
+<Callout type="tip" title="MRL composes with ANN, it does not replace it">
+  The cascade above is written as a brute-force scan for clarity, but nothing stops you building an [HNSW](/wiki/hnsw) or IVF index *over the 256-dim prefixes*. You then get both factors: the index turns $O(N)$ into $O(\log N)$ hops, and MRL makes each hop's distance computation 12× cheaper while shrinking the graph's vector store enough to keep it resident. Product quantisation is the other axis again, and the three stack.
+</Callout>
+
+## What it costs, and when to skip it
+
+| | MRL | Train a second small model | PCA the big embeddings |
+|---|---|---|---|
+| Models to maintain | 1 | 2 | 1 |
+| Re-embed to change dim | no | yes | no |
+| Full-dim quality | ~0.3 pt lower (toy run above) | unchanged | unchanged |
+| Low-dim quality | best | comparable | worse: PCA optimises reconstruction, not the retrieval metric |
+| Needs retraining to adopt | yes | yes | no |
+
+PCA is the honest alternative when you cannot retrain, and it is worth knowing *why* it loses. PCA picks the directions of maximum variance in an already-trained space, which is a reconstruction criterion. MRL picks coordinates that maximise the *contrastive* objective at that width. Variance and discriminability are correlated but not the same thing, and the gap shows up exactly on the hard pairs.
+
+Skip MRL when the full embedding already fits comfortably in memory and you serve one fixed dimension. The flexibility is not free, and buying flexibility you do not use costs you the fraction of a point in the first row.
+
+## Common mistakes
+
+1. **Forgetting to renormalise after truncating.** The single most common bug, and it is silent: similarities stay in a plausible range while the ranking quietly drifts toward documents with front-loaded norm. The table above is the failure mode in miniature.
+2. **Truncating a model that was not trained with MRL.** `text-embedding-ada-002` and most pre-2024 embedders are *not* Matryoshka. Chopping their output does something, but see the 21.9%-energy row for how much it throws away. Check the model card before adding a `dimensions` parameter to your client.
+3. **Mixing dimensions inside one index.** Vectors truncated to 256 and vectors kept at 3072 are not comparable, and neither are 256-dim vectors from two different models. This is the ordinary "never mix embedding models" rule with one more axis to get wrong.
+4. **Choosing $d'$ by intuition.** The quality curve has a knee and its location is corpus-specific. Sweep $d'$ against recall@k on your own evaluation set, and do it with the reranking cascade in place, because the knee is at a smaller $d'$ once reranking is covering for the shortlist.
+5. **Assuming truncation is free at query time.** It is free for storage and for the scan. It is *not* free if your ANN index was built over full-dimension vectors: the index has to be rebuilt over the prefixes to see any speedup.
+6. **Using non-trained granularities in production.** Quality between the trained $m$ values degrades smoothly, but "smoothly" is measured, not promised. Stay on the powers of two the model card lists.
+
+## Related concepts
+
+- [**Training Embedding Models**](/courses/nlp/07-training-embedding-models): the contrastive objectives (InfoNCE, triplet) that MRL wraps, plus hard-negative mining and the rest of the embedder recipe
+- [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search): the retrieval engine downstream of the embedder, where the truncated vectors actually get used
+- [**Vector Databases & ANN Indexes**](/wiki/vector-databases): IVF, product quantisation, and the other compression axes MRL stacks with
+- [**HNSW**](/wiki/hnsw): the graph index to build *over* the truncated prefixes, so the two speedups multiply
+- [**SVD & Low-Rank Approximation**](/wiki/svd-low-rank): the PCA-style alternative in the trade-off table, and why a reconstruction criterion is not a retrieval criterion
+
+## References
+
+- [Matryoshka Representation Learning](https://arxiv.org/abs/2205.13147): Kusupati et al., NeurIPS 2022. The original paper: the nested loss, MRL-E, adaptive retrieval, and the 14× retrieval speed-up.
+- [Matryoshka Representation Learning (NeurIPS proceedings)](https://proceedings.neurips.cc/paper_files/paper/2022/file/c32319f4868da7613d78af9993100e42-Paper-Conference.pdf): the camera-ready PDF with the full result tables.
+- [RAIVNLab/MRL](https://github.com/RAIVNLab/MRL): the authors' reference implementation.
+- [New embedding models and API updates](https://openai.com/index/new-embedding-models-and-api-updates/): OpenAI, January 2024. Source of the `dimensions` parameter and the 256-dim-beats-1536-dim MTEB claim.
+- [Unboxing Nomic Embed v1.5](https://home.nomic.ai/blog/posts/nomic-embed-matryoshka): Nomic AI. An open-weights Matryoshka embedder usable from 64 to 768 dimensions.
+- [Matryoshka Embeddings training guide](https://sbert.net/examples/sentence_transformer/training/matryoshka/README.html): `sentence-transformers` documentation for `MatryoshkaLoss`, the practical way to train one.

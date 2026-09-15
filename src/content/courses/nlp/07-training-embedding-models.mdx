@@ -100,6 +100,10 @@ A modern detail worth knowing: many recent embedders (OpenAI `text-embedding-3-*
 
 This is the embedding analogue of progressive JPEG. Use the full vector for highest quality, truncate for cheaper storage and faster ANN search. The training cost is a small loss term per truncation level; the inference flexibility is enormous.
 
+Two details decide whether it works in practice. Truncating a prefix leaves a vector that is **no longer unit-norm**, and by a different amount per vector, so you must renormalise or your cosine similarity silently starts ranking by surviving norm. And the real payoff is not storage but the **cascade**: shortlist the whole corpus at 256 dimensions, then rerank the top 100 at full width, which is an order of magnitude cheaper at essentially unchanged recall. The deep dive derives the nested loss, walks one loss computation by hand, and works the cascade arithmetic:
+
+<WikiLink slug="matryoshka-embeddings" title="Matryoshka Embeddings (MRL)" />
+
 <Exercise id="embeddings-contrastive-loss" />
 
 <Exercise id="embeddings-triplet-margin" />
@@ -129,3 +133,4 @@ This is the embedding analogue of progressive JPEG. Use the full vector for high
 - [**Embeddings & Semantic Search**](/courses/building-with-llms/03-embeddings-and-semantic-search): the downstream consumer: once you have a good embedder, this is the cosine-similarity retrieval engine that powers RAG. This lesson is one level deeper: how the embedder gets trained.
 - [**Topic Modeling with BERTopic**](/courses/nlp/06-topic-modeling-bertopic): Stage 1 of BERTopic *is* the sentence embedder trained here; better embeddings give cleaner topic clusters.
 - [**LLM Model Taxonomy**](/courses/nlp/04-llm-model-taxonomy): the encoder-only branch (BERT, RoBERTa, DeBERTa) is what gets fine-tuned into these sentence embedders.
+- [**Matryoshka Embeddings (MRL)**](/wiki/matryoshka-embeddings): the nested-loss variant of the objectives above, which orders the coordinates so the vector can be truncated at serving time.

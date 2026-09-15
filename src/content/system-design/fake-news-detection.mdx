@@ -1,0 +1,286 @@
+---
+title: "Design a Fake-News & Misinformation Detection System"
+description: "A platform-scale misinformation system where the label you want does not exist — check-worthy claim detection, claim matching against adjudicated fact-checks, evidence retrieval with entailment, and bridging-based crowd annotation, walked through the ML project loop."
+spine: ml
+spineStages: [data, evaluation, feedback]
+company: "Meta / X Community Notes"
+domain: "Trust & Safety"
+scale: "~1B posts/day · claims, not posts · labels are scarce, late and contested · adversarial"
+difficulty: advanced
+relatedLessons:
+  - "ml-in-practice/21-content-moderation"
+  - "recommender-systems/02-matrix-factorization"
+  - "building-with-llms/04-retrieval-augmented-generation"
+estimatedMinutes: 28
+---
+
+# Design a Fake-News & Misinformation Detection System
+
+<SystemDesignMeta
+  track="ML System Design"
+  company="Meta / X Community Notes"
+  scale="~1B posts/day · claims not posts · scarce, late, contested labels"
+  difficulty="advanced"
+/>
+
+Every other detection interview hands you a label. Fraud has chargebacks, spam has user reports, nudity has annotation guidelines an annotator can apply in three seconds. Misinformation hands you **nothing comparable**, because "is this true" is not a property of the text in front of the classifier. It is a property of the world, it often is not settled yet, and the cases that matter most are exactly the ones where two reasonable people read the same post and disagree about the answer.
+
+So this case is not really about a model. It is about what you build when the loop's **data** slot has no label, the **evaluation** slot has no ground truth, and the **feedback** slot is a public political argument. The two reference systems pull in opposite directions and are worth holding in mind throughout: Meta's eight-year third-party fact-checking programme, which it [ended in the US in January 2025](https://about.fb.com/news/2025/01/meta-more-speech-fewer-mistakes/) in favour of [Community Notes](https://about.fb.com/news/2025/03/testing-begins-community-notes-facebook-instagram-threads/), and X's Community Notes, whose [note-ranking algorithm is open source](https://github.com/twitter/communitynotes/blob/main/documentation/under-the-hood/ranking-notes.md) and turns out to be a matrix factorization with one very unusual twist.
+
+The urgency number to have ready: across ~126,000 stories on Twitter from 2006 to 2017, falsehoods were **70% more likely to be retweeted** than true stories, and the truth took **about six times as long** to reach 1,500 people ([Vosoughi, Roy & Aral, *Science*, 2018](https://www.science.org/doi/10.1126/science.aap9559)). Whatever you build has to act inside that six-times gap.
+
+## 1. Clarify the problem
+
+- **Surface and scope.** Public posts on a feed-ranked social platform: text, images, video, and link shares. Out of scope for this design: private messaging (different threat model, discussed in §9), ads (separate, stricter policy pipeline), and spam or bot detection, which is adjacent and reused as a feature.
+- **What the system actually outputs.** Not a verdict. A **routing decision** plus a **distribution decision**: do nothing, attach context, reduce distribution, or remove. Removal is reserved for narrowly enumerated categories with concrete harm (voting-procedure lies, false emergency information, medical claims with a named harm path), never for "false" in general.
+- **Asymmetric costs, and both directions are expensive.** A false negative lets a harmful claim compound through a reshare cascade. A false positive suppresses true speech, becomes a news story about the platform, and hands the adversary a recruiting argument. Fraud's asymmetry is dollars against friction; this one is harm against legitimacy, and legitimacy is what lets the system keep operating at all.
+- **The adversary is unusual.** Sophisticated, coordinated, and *publicly contesting every decision you make*. Unlike a fraudster, they benefit from the argument itself.
+
+<Callout type="warning" title="The framing trap">
+"Build a classifier that predicts true or false from the post" is the answer that fails the interview. There is no feature in the post that carries truth. A model trained end-to-end on post text will learn **style** (sensational punctuation, hedging, emotional valence) or **source identity**, then apply those proxies to text that is stylistically identical but factually correct. Sensationalism is not falsehood, and a system that conflates them is a style filter wearing a truth label.
+</Callout>
+
+<ThinkFirst question="Your PM asks for a model that scores each post 0 to 1 for “is this false”, then auto-removes above 0.9. Name the two failure modes that make that number unshippable, whatever its AUC.">
+**It has no calibration target.** There is no held-out set of posts with true labels for "false", only fact-checks of *claims*, so 0.9 means "resembles things fact-checkers eventually refuted", which is a different and much more biased quantity.
+**And it removes the audit trail.** An enforcement action with a score and no evidence cannot be explained, appealed, or defended. Shift the output from a verdict to **a matched claim plus its evidence**, and the score becomes a routing priority rather than a judgement. Everything downstream gets easier once the artefact is a citation.
+</ThinkFirst>
+
+## 2. Requirements & scale
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Volume | ~1B posts/day in scope | The always-on stage must cost ~1ms, not ~100ms |
+| Time to decision | Minutes for an accelerating post, days for the tail | Two clocks, not one latency budget |
+| Freshness | Claims are novel by construction | Retrieval over a live evidence store, not a frozen classifier |
+| Coverage | 100+ languages, text + image + video | Multimodal and multilingual from day one, not a phase two |
+| Auditability | Every action needs a reason and an appeal | Evidence artefacts, not scores, are the durable output |
+| Failure posture | Fail **open** | Unlike fraud: when the pipeline is down, publish |
+
+**The clock is the first surprise.** Fraud has to answer in 100ms because a customer is waiting at checkout. Nothing is waiting here. What matters is deciding **before the cascade compounds**, and the *Science* result gives the budget: a post that is going to reach 1,500 people does so roughly six times faster when it is false. That argues for two clocks. A cheap always-on pass on every post, and an expensive pass triggered by *velocity*, not by volume.
+
+**Now the arithmetic that forces the architecture.** Suppose 2% of a billion daily posts carry a checkable factual claim, so 20M claim-bearing posts a day. Of those, a small fraction accelerate enough to be worth spending real compute on, say 0.5%, which is **100,000 posts a day, about 1.2 per second** for the expensive evidence pipeline. That is affordable.
+
+The part that is not affordable is adjudication. The professional fact-checking world publishes on the order of a few hundred new verdicts a day, globally, across all languages. Against 100,000 escalations that is a shortfall of roughly **two orders of magnitude**, call it 200:1, and no hiring plan closes it.
+
+<ThinkFirst question="100,000 escalations a day against a few hundred professional verdicts. You cannot hire your way out by a factor of 200. What two architectural decisions does that ratio force before you have chosen a single model?">
+**One adjudication has to cover many posts.** The unit of work becomes the *claim*, not the post: fact-check once, then match every future paraphrase, translation, screenshot and re-upload of that claim to the existing verdict. That makes **claim matching the highest-leverage retrieval problem in the system**, and it is a problem you can actually get labels for.
+**And the annotation supply has to scale with the content.** Professional checkers cannot, so a crowd layer has to, which immediately raises the question the rest of the design has to answer: how do you aggregate ratings from a crowd that disagrees about the underlying politics?
+</ThinkFirst>
+
+## 3. ML problem framing
+
+There is no single model. The truth question decomposes into four sub-problems that each have real labels, plus a crowd layer that produces the public-facing artefact:
+
+| Stage | Task type | Label source | Honest ground truth? |
+|---|---|---|---|
+| 1. Check-worthy claim detection | Binary / span classification | Annotation guidelines | Yes |
+| 2. Claim matching | Dense retrieval + reranking | Fact-check corpora, paraphrase pairs | Yes |
+| 3. Evidence retrieval + entailment | Retrieval + 3-way NLI | [FEVER](https://arxiv.org/abs/1803.05355) and friends | Yes |
+| 4. Coordination detection | Graph classification | Confirmed takedowns | Partly |
+| 5. Note helpfulness | Matrix factorization on ratings | Crowd ratings | It is not a truth label at all |
+
+Read down the "ground truth" column, because it is the design. Every stage that has a real label is a stage where ordinary supervised learning works. The one stage where the label would have to be *truth* is the one stage where no model makes the call: it is resolved by evidence retrieval whose output is a citation, and by a crowd aggregation whose output is "did people who usually disagree both find this note helpful".
+
+**What slot was breaking before?** The **data** slot. First-generation systems trained on `domain ∈ blocklist`, which is a label about *publishers*, not claims. It broke the moment a claim moved to a new domain, and it made the system trivially gameable (register a new domain) and politically fragile (the blocklist is the product). Reframing the label from publisher to claim is the whole move.
+
+<ThinkFirst question="Your training labels come from professional fact-checkers. They choose what to check by looking at what is already spreading. What does that selection rule do to a model trained on their output?">
+It makes the training distribution **conditional on virality**, so the model learns the features of *viral* claims rather than *false* ones, and it is systematically blind to the quiet, slow, locally-targeted falsehood that never crossed a checker's desk. It also imports the checkers' topic priorities as if they were a property of truth. The countermeasure is not a better model: it is deliberately sampling a random slice of claim-bearing posts for adjudication regardless of reach, and accepting that it is expensive precisely because most of it will be boring.
+</ThinkFirst>
+
+## 4. Data & features *(spine: data)*
+
+**Labels, and why each one hurts.**
+
+- **ClaimReview-tagged fact-checks.** The structured schema fact-checkers publish, giving claim text, verdict, and evidence URL. High quality, tiny volume, and heavily skewed toward English and toward politics.
+- **FEVER-style corpora.** 185,445 claims generated by mutating Wikipedia sentences, labelled Supported, Refuted, or NotEnoughInfo *with the evidence sentences attached* ([Thorne et al., 2018](https://arxiv.org/abs/1803.05355)). This is the only label in the system that supervises the reasoning step rather than the verdict. It is also far cleaner than reality, which is worth saying out loud in the interview: at publication, the best system scored **31.87%** when required to produce correct evidence alongside the correct label, against 50.91% when the evidence was ignored. Most of the difficulty lives in the retrieval, not the classification.
+- **Crowd ratings.** High volume, self-selected raters, and openly correlated with politics. §5 explains why that correlation is an asset rather than a defect.
+- **Enforcement and appeal outcomes.** The only label that tells you about your own false positives, and it arrives late and only for users who bothered to appeal.
+
+The two structural defects to name: labels are **late** (a fact-check lands after the viral peak, which is why matching a *past* verdict beats producing a new one) and **contested** (annotator disagreement here is signal about the claim's political valence, not noise to be averaged away). Do not collapse a split annotation to a majority vote and then train on it as if it were clean.
+
+**Features by stage.**
+
+- **Claim detection:** the text itself, plus modality. Nothing about the author. Deliberately.
+- **Claim matching:** multilingual sentence embeddings, so a Spanish paraphrase of an English-adjudicated claim matches. This index is the system's memory and it is enormous, which makes embedding width a first-class cost decision (§6).
+- **Evidence:** a hybrid retriever over a live evidence store, dense for paraphrase and [BM25](/wiki/bm25-ranking) for the names, numbers and dates that dense retrieval reliably loses.
+- **Propagation:** cascade depth, breadth, and velocity; account age; the account-to-account reshare graph. These are **source-agnostic**: they describe how something spread, not whether it is true, which is exactly why they survive contact with the appeals process.
+- **Multimodal:** the single largest real category is not fabricated text, it is the **recycled photograph**: a genuine image from a different event or year, with a new caption. Perceptual hashing plus reverse image search returns the original and its date, and *that* is checkable without anyone deciding what is true.
+
+<Callout type="info" title="The most predictive feature you should refuse to use">
+Source domain predicts fact-check outcomes better than almost anything else in this feature list. Put it in the model anyway and three things happen. It **leaks**: the model stops reading the claim and starts reading the URL, so a true article on a low-reputation site gets flagged and a false one on a reputable site sails through. It **collapses under adversarial pressure**: new domain, clean slate. And it **converts a model into a publisher blocklist**, which is a policy instrument with a governance process, not a hidden weight. Keep source reputation as a separate, documented, auditable ranking signal that a human owns.
+</Callout>
+
+<ThinkFirst question="Two annotators label the same claim and disagree, and you find the disagreement tracks their politics. Averaging them gives 0.5. What have you thrown away, and what would you do with it instead?">
+You have thrown away the **most informative variable in the dataset**. A claim that splits annotators along a viewpoint axis is a different object from a claim they all agree is false, and it needs a different treatment: context rather than enforcement, and a higher evidentiary bar. Keep the per-rater labels with rater identity, model the viewpoint axis explicitly, and use the *spread* as a feature. §5 shows the production system that does exactly this, and makes the viewpoint axis the thing it subtracts out.
+</ThinkFirst>
+
+## 5. Model *(spine: hypothesis space + objective)*
+
+**Baseline first.** URL blocklist plus exact-string matching against published fact-checks. It is genuinely useful (it catches verbatim re-shares, which are a real fraction of the volume), it ships in a week, and it gives every later stage something to beat.
+
+**Stage 1: check-worthiness.** A distilled multilingual encoder (MiniLM or DeBERTa class), two to five million parameters after distillation, answering "does this post contain a verifiable factual claim". It runs on every post, so the budget is ~1–2ms and quantised CPU inference. Tune it for **recall**: a missed claim never reaches any later stage, while a false positive costs one cheap index lookup.
+
+**Stage 2: claim matching.** A bi-encoder over the adjudicated-claim index, then a cross-encoder rerank of the top 100. This is the highest-leverage model in the system, because every hit reuses an adjudication that already exists and skips the entire expensive path.
+
+Scale makes the embedding width a real decision. An index of 100M claim variants at 768 dimensions in fp32 is **307 GB**, which does not sit in RAM on one machine. The same index truncated to 256 dimensions and quantised to int8 is **25.6 GB**, which does, and a shortlist-then-rerank cascade recovers nearly all the quality:
+
+<WikiLink slug="matryoshka-embeddings" title="Matryoshka Embeddings (MRL)" />
+
+<WikiLink slug="hnsw" title="HNSW: Hierarchical Navigable Small World Graphs" />
+
+**Stage 3: evidence retrieval and entailment.** For claims with no match, retrieve evidence from the live store and run a 3-way entailment head: supports, refutes, not enough information. The output that matters is the **evidence set**, not the label. An LLM drafts the human-readable explanation *from the retrieved passages with citations*, and is never the arbiter: it is a summarisation step over retrieved text, which is the one job it is reliable at. NotEnoughInfo has to be a first-class, frequently-predicted outcome rather than a dustbin, and a system that almost never returns it is miscalibrated by construction.
+
+<WikiLink slug="llm-as-judge" title="LLM-as-a-Judge" />
+
+**Stage 4: coordination.** A graph model over the reshare and co-posting network, flagging inauthentic amplification. This is the stage that needs no opinion about truth at all: 400 accounts created in the same week posting the same text within 90 seconds is a claim about *behaviour*, and it is both easier to prove and harder to argue with.
+
+<WikiLink slug="graph-fraud-detection" title="Graph-based fraud detection with GNNs" />
+
+**Stage 5: the crowd layer, and the twist worth the whole interview.**
+
+X's Community Notes scores notes with a matrix factorization over the sparse rater-by-note rating matrix:
+
+$$\hat{r}_{un} = \mu + i_u + i_n + f_u \cdot f_n$$
+
+A global intercept, a rater intercept for how generous rater $u$ is, a **note intercept** $i_n$, and the dot product of latent rater and note factors. A note is shown publicly when $i_n > 0.40$ ([Community Notes documentation](https://github.com/twitter/communitynotes/blob/main/documentation/under-the-hood/ranking-notes.md)).
+
+In a recommender, $f_u \cdot f_n$ **is the product**: the latent factors are what personalise the prediction. Here they are the part you throw away. The factors absorb viewpoint, so whatever agreement is left in $i_n$ is agreement that *did not* come from raters sharing a perspective. The objective encodes this with asymmetric regularization:
+
+$$\sum_{r_{un}} (r_{un} - \hat{r}_{un})^2 + \lambda_i (i_u^2 + i_n^2 + \mu^2) + \lambda_f (\lVert f_u \rVert^2 + \lVert f_n \rVert^2)$$
+
+with $\lambda_i = 0.15$ against $\lambda_f = 0.03$, a deliberate 5× ratio. Penalising the intercepts five times harder than the factors makes the model explain ratings with viewpoint wherever it possibly can, so a high intercept has to be earned against that pressure. That is the **bridging** property: a note scores well only when raters who historically disagreed both found it helpful.
+
+<MatrixFactorizationViz />
+
+The viz above is the standard recommender factorization. Hold the same picture in mind with the sign of the goal flipped: here the low-rank part is the nuisance term, and the residual scalar is the product.
+
+<ThinkFirst question="Bridging-based ranking means a note needs cross-viewpoint agreement to be published. Name the failure mode that design guarantees, and say why it might still be the right trade.">
+It **under-publishes on exactly the contested claims that matter most**. Anything genuinely polarising will not clear the intercept threshold, so the highest-stakes political falsehoods are the ones least likely to get a note, and notes arrive slowly because they wait on ratings from a diverse set. The trade is legitimacy: a system that only speaks when it can bring both sides along is one whose few statements are very hard to dismiss as partisan, and that durability is worth more over time than coverage that gets the whole system delegitimised. It is also why bridging cannot be the *only* layer, and enumerated-harm categories still need centralised enforcement with a fast path.
+</ThinkFirst>
+
+## 6. Serving & scaling
+
+Two clocks, and the funnel between them:
+
+| Stage | Runs on | Per-item budget | Daily volume |
+|---|---|---|---|
+| Check-worthiness | every post | ~2 ms, quantised CPU | 1B |
+| Claim match (ANN over 256-d prefixes) | posts with a claim | ~15 ms | 20M |
+| Cross-encoder rerank of top 100 | candidate matches | ~80 ms | 20M |
+| Virality trigger (streaming) | posts with a claim | continuous | 20M |
+| Evidence retrieval + entailment | accelerating and unmatched | 2–30 s | ~100K |
+| Note drafting and crowd rating | escalated | minutes to hours | ~100K |
+| Professional adjudication | highest-harm queue | hours to days | hundreds |
+
+Stage 1 at 1B/day is about 11,600 posts per second; at 2ms each that is roughly 23 seconds of compute per wall-clock second, so a couple of dozen batched workers. The expensive path at ~1.2 items per second is a rounding error on the same budget. **The funnel is the whole trick**: the cost is concentrated in a stage cheap enough to run on everything, and the stages that cost real money only ever see the tail.
+
+**Caching.** Claim-match results key on a normalised claim fingerprint, not a post id, so the thousandth re-share of an adjudicated claim is a cache hit. This is where the reuse ratio from §2 is actually collected.
+
+**Fail open.** If the pipeline degrades, posts publish. The inverse of fraud, and deliberately: a payments system that fails closed loses revenue, while a speech system that fails closed silently suppresses, which is the more expensive error and the harder one to detect after the fact.
+
+**The breaking-news hole.** For the first hours of a real event there is no evidence to retrieve, and the claim index has nothing to match. Every retrieval-grounded stage returns NotEnoughInfo, correctly. The only honest responses are generic friction (prompt before resharing, surface the recency of the account, hold off on algorithmic amplification) rather than pretending to a verdict the evidence store cannot support.
+
+<ThinkFirst question="You have no ground-truth labels for “true”. Your VP wants one dashboard number for how well the system works. What goes on it, and what does not?">
+Not accuracy, not AUC against a truth label, because that label does not exist. What goes on the dashboard are the quantities you *can* ground: **claim-match recall@k** against held-out paraphrase pairs, **evidence recall** in the FEVER sense, **time from first post to attached context** (the six-times-faster gap from §2 is the target to beat), and the causal outcome, **reshare rate after context is attached**, measured against a holdout. Then the guardrails, which matter more than the headline: appeal-overturn rate, and error-rate parity across viewpoint clusters.
+</ThinkFirst>
+
+## 7. Evaluation *(spine: evaluation)*
+
+**Component metrics, each against a label that genuinely exists.**
+
+| Stage | Metric | Why this one |
+|---|---|---|
+| Check-worthiness | recall at fixed precision | A miss is unrecoverable, a false positive is one index lookup |
+| Claim matching | recall@k, and precision@1 on paraphrase pairs | A wrong match attaches the *wrong* fact-check, which is worse than none |
+| Evidence retrieval | FEVER-style evidence recall | Where the difficulty actually lives (31.87% against 50.91%) |
+| Entailment | 3-way F1, and calibration | NotEnoughInfo has to be predicted, not avoided |
+| Coordination | precision on confirmed takedowns | The only stage with a hard label |
+
+**Calibration outranks discrimination here.** The score is a routing priority feeding a threshold with real consequences, so a 0.7 has to mean 0.7. Fit the reliability curve and correct it explicitly.
+
+<WikiLink slug="platt-scaling-and-isotonic-regression" title="Platt Scaling & Isotonic Regression" />
+
+<ThresholdSweepViz />
+
+Sweeping the escalation threshold makes the shape of the decision concrete. Note that the two errors are not commensurable in this system: the cost of a missed escalation is diffuse and delayed, and the cost of a wrongful label is concentrated, immediate, and public, which is why the operating point sits further toward precision than a naive expected-cost calculation would put it.
+
+**Online evaluation.** The question "did attaching context reduce spread" is causal, so it needs an experiment, and the natural unit is the claim rather than the user, because exposure spills across a social graph. Hold out a random slice of eligible claims, measure reshare rate, click-through to the source, and the survey measure of belief where you can run one. Published work on community fact-checking finds real reductions in the spread of misleading posts, and the effect size is the thing to argue about, not the sign.
+
+**The guardrail that gets the system shut down if you skip it: viewpoint parity.** The crowd layer already gives you a viewpoint coordinate for free, the rater factor $f_u$. Cluster on it, then measure enforcement rate, appeal-overturn rate, and time-to-context **per cluster**. Unequal enforcement rates are not automatically bias (the underlying base rates may genuinely differ) but unequal *overturn* rates are much harder to explain away, because they measure how often you were wrong, not how often you acted.
+
+<ThinkFirst question="Your check-worthiness detector ships and works. It is week two. What has the adversary changed, and which stage of your pipeline stops seeing anything?">
+They stop making **assertions**. The claim moves into an image macro, into a video voiceover, into a screenshot of text, and above all into **implication**: a question, a juxtaposition of two true facts, an unlabelled clip. Stage 1 is a claim detector, and none of those contain a claim to detect, so the whole funnel silently empties from the top while every downstream metric still looks healthy. The monitoring consequence is specific: watch the *rate* of claim-bearing posts as a distribution, not just the accuracy of the classifier on the posts it still catches.
+</ThinkFirst>
+
+## 8. Monitoring & feedback *(spine: feedback)*
+
+- **Watch the funnel's shape, not just its accuracy.** A falling claim-detection rate, a falling claim-match hit rate, or a rising NotEnoughInfo share are all adversary-adaptation alarms that component accuracy will not show you. Run drift detection on the claim-embedding distribution too.
+
+  <WikiLink slug="population-stability-index" title="Population Stability Index (PSI)" />
+
+- **The evidence store is the retraining artefact.** Every adjudication and every published note becomes a matched-claim training pair and an index entry. The system's main form of learning is the index growing, not the weights changing, which is also why it degrades gracefully: yesterday's claims keep matching.
+- **The feedback loop to be afraid of.** Demoting a claim reduces its engagement, which reduces the signal that flagged it, which makes the next model less likely to flag it. Reserve a small unenforced holdout so you keep observing the counterfactual, exactly as fraud reserves a randomised-approval slice.
+- **The crowd layer has its own loop.** Raters self-select, and the rater population drifts. Monitor the distribution of $f_u$ over time: if the factor space collapses toward one pole, the bridging property quietly stops being a constraint and the intercept threshold stops meaning what it meant.
+- **Retraining cadence.** Claim matching monthly, or on drift. Entailment quarterly, because evidence reasoning is stable. The note-ranking factorization refits continuously, because it has to incorporate every new rating.
+
+<ThinkFirst question="WhatsApp capped how widely a heavily-forwarded message can be forwarded, and viral forwards fell about 70% within weeks. No classifier decided anything. What does that result say about where the marginal engineer should be spending?">
+That **friction is a bigger lever than classification**, and it is available on exactly the content the classifier is worst at: encrypted, unseeable, or novel. A rate limit needs no opinion about truth, so it cannot be wrong about a specific claim, cannot be accused of political bias in a specific case, and degrades an entire distribution mechanism rather than playing whack-a-mole with instances. The design lesson generalises past messaging: reshare-friction prompts, removing algorithmic amplification, and demotion are all interventions that scale without needing the label you do not have.
+</ThinkFirst>
+
+## 9. Tradeoffs & alternatives
+
+| Decision | Chosen | Alternative | Why |
+|---|---|---|---|
+| Unit of work | Claim | Post | One adjudication covers every paraphrase, translation and re-upload. The 200:1 ratio in §2 leaves no choice. |
+| Verdict source | Evidence retrieval + crowd bridging | End-to-end truth classifier | The classifier has no label, no audit trail, and learns style. |
+| Aggregation | Bridging (subtract viewpoint) | Majority vote | Majority vote in a polarised rater pool publishes whatever the largest bloc believes. |
+| Annotation supply | Crowd + professional escalation | Professional only | Professional-only is roughly two orders of magnitude short and was [ended in the US by Meta in 2025](https://about.fb.com/news/2025/01/meta-more-speech-fewer-mistakes/). |
+| Action | Context and demotion | Removal | Removal is for enumerated harms. Everywhere else it converts an accuracy problem into a legitimacy problem. |
+| Source reputation | Human-owned ranking signal | Model feature | As a feature it leaks, it is gameable, and it hides a policy decision inside a weight. |
+| Encrypted surfaces | Metadata friction (forward limits) | Content scanning | Scanning breaks the encryption guarantee. Forward limits cut viral forwards ~70% without reading anything. |
+| Failure posture | Fail open | Fail closed | Silent over-suppression is the more expensive error and the harder one to detect. |
+
+## 10. Interviewer follow-ups
+
+<Details summary="A head of state posts a claim your pipeline refutes with strong evidence. What happens?">
+The ML path does not change: match, retrieve, produce evidence. What changes is the action, and that is a policy decision escalated to humans with the evidence attached, not a threshold. Two things are worth saying explicitly. High-reach accounts should be *more* likely to receive context, because reach is the harm multiplier, and the system's own audit trail is what makes that defensible. And carve-outs applied silently are the fastest way to destroy the legitimacy the whole design is optimising for: if newsworthy figures get different treatment, that policy has to be public.
+</Details>
+
+<Details summary="Your enforcement rate is 20% higher on one side of the political spectrum. Is your system biased?">
+Unanswerable from that number alone, and saying so is the correct answer. Enforcement rate confounds the model's behaviour with the true base rate, which may genuinely differ. The measurements that separate them: **appeal-overturn rate per viewpoint cluster** (how often you were *wrong*, which base rates do not excuse), error-rate parity on a stratified audit set labelled by a viewpoint-balanced panel, and a counterfactual probe where the same claim is presented with the political valence swapped. Report all three, and report them publicly, because the alternative is being asked to prove a negative under subpoena.
+</Details>
+
+<Details summary="Satire. A well-known satirical site publishes something your entailment model confidently refutes.">
+It is refuted, correctly: the claim really is false. The error is that "false" was the wrong question. Add an **intent and context layer** ahead of the action decision: publisher-declared satire, satire classifiers, and reader signals (do people share it approvingly or as fact). Then let the action differ by intent. The right outcome is usually context on the re-share that strips the satirical framing, not enforcement on the original. This is the cleanest illustration in the case that a correct entailment label is not a decision.
+</Details>
+
+<Details summary="A claim was true last week and is false today, or vice versa. How does the system not embarrass itself?">
+Adjudications need **validity windows**, not permanent verdicts. Store each with the evidence's as-of date, expire it on a schedule appropriate to the domain (fast for ongoing events, slow for history), and re-run entailment against the current evidence store on expiry. Never serve a cached verdict whose evidence is older than the claim's volatility horizon. Attaching a stale fact-check to a now-true claim is the single most reputationally costly failure mode in the system, because it is simultaneously wrong and confidently sourced.
+</Details>
+
+<Details summary="An adversary generates 10,000 LLM paraphrases of one claim. Does your architecture survive?">
+This is the case the architecture was built for, and it is where the reuse ratio pays. Semantic claim matching is paraphrase-invariant by construction, so all 10,000 land on the same adjudication at cache-hit cost. Two caveats to raise unprompted. Paraphrase pressure will find the edge of the embedding neighbourhood, so the matching threshold needs adversarial evaluation with LLM-generated near-misses, including ones that flip the claim's meaning with a single negation. And 10,000 near-identical posts is itself a loud **coordination** signal, so stage 4 should fire before stage 2 has finished paying for itself.
+</Details>
+
+<Details summary="A deepfake video. Your pipeline is text-first.">
+Split it into three questions with different answers. *Synthesis detection* (is this generated) is an arms race you will lose at the margin and should treat as one signal among several, never as a verdict. *Provenance* (C2PA-style signed capture metadata) is the durable answer, and it is an ecosystem problem rather than a model problem. *Claim extraction from the video* is the part that reuses everything above: transcribe, extract the claim, and it enters the same funnel as text. Meanwhile the highest-volume real-world case is still the cheap one, a genuine video from another event or year, which reverse search and content hashing solve without any synthesis detector at all.
+</Details>
+
+## Key takeaways
+
+- **The label you want does not exist.** Decompose until every model has a real label: check-worthiness, claim matching, evidence retrieval, entailment, coordination. The one question that would need a truth label is answered by evidence and by crowd aggregation, never by a classifier.
+- **The unit of work is the claim, not the post.** Fact-check once, match forever. That reuse is what closes a 200:1 gap between escalations and available adjudications, and it makes claim matching the highest-leverage model in the system.
+- **Bridging inverts matrix factorization.** In a recommender the latent factors are the product; in Community Notes they are the nuisance term, subtracted so the surviving intercept measures cross-viewpoint agreement. The 5× asymmetric regularization ($\lambda_i = 0.15$ against $\lambda_f = 0.03$) is what makes the intercept expensive to earn.
+- **Evaluate what you can ground.** Claim-match recall, evidence recall, time-to-context, and the causal effect on resharing. Then treat appeal-overturn parity across viewpoint clusters as a launch blocker rather than a fairness footnote.
+- **Friction beats classification on the hard surfaces.** WhatsApp cut viral forwards about 70% with a rate limit and no model at all. Interventions that need no opinion about truth are the ones that scale into encrypted, novel and multimodal content.
+- **Fail open.** The expensive error in a speech system is the silent one.
+
+## References
+
+- [The spread of true and false news online](https://www.science.org/doi/10.1126/science.aap9559): Vosoughi, Roy & Aral, *Science*, 2018. The 70%-more-retweeted and six-times-slower-truth findings that set the time budget.
+- [Community Notes: note ranking algorithm](https://github.com/twitter/communitynotes/blob/main/documentation/under-the-hood/ranking-notes.md): X's open-source documentation. Source of the matrix factorization formulation, the $\lambda_i = 0.15$ / $\lambda_f = 0.03$ asymmetry, and the 0.40 intercept threshold.
+- [More Speech and Fewer Mistakes](https://about.fb.com/news/2025/01/meta-more-speech-fewer-mistakes/): Meta, January 2025. The decision to end US third-party fact-checking in favour of Community Notes.
+- [Testing Begins for Community Notes on Facebook, Instagram and Threads](https://about.fb.com/news/2025/03/testing-begins-community-notes-facebook-instagram-threads/): Meta, March 2025. What the replacement actually looks like in production.
+- [FEVER: a large-scale dataset for Fact Extraction and VERification](https://arxiv.org/abs/1803.05355): Thorne et al., NAACL 2018. 185,445 claims with evidence, and the 31.87% / 50.91% result showing the difficulty is in retrieval.
+- [WhatsApp's new limit cuts virality of highly forwarded messages by 70%](https://techcrunch.com/2020/04/27/whatsapps-new-limit-cuts-virality-of-highly-forwarded-messages-by-70): TechCrunch, April 2020. The friction-beats-classification result.
+- [Community-based fact-checking reduces the spread of misleading posts on social media](https://arxiv.org/pdf/2409.08781): empirical evaluation of the causal effect of attaching crowd notes.

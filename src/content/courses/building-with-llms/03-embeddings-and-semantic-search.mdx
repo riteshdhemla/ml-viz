@@ -79,6 +79,10 @@ For how those ANN indexes actually work (IVF, HNSW, product quantization, and tu
 
 <WikiLink slug="hnsw" title="HNSW: Hierarchical Navigable Small World Graphs" />
 
+The other axis is the **width of the vector itself**. A 3072-dimensional index over 10M documents is 123 GB in fp32, which does not fit on one machine; the same corpus at 256 dimensions is 10 GB, which does. **Matryoshka** embedders (OpenAI's `text-embedding-3-*` `dimensions` parameter, Nomic Embed v1.5) are trained so the first $d'$ coordinates are themselves a working embedding, so you truncate at query time instead of re-embedding the corpus. The cascade that buys is the interesting part: shortlist cheaply at 256 dimensions, then rerank the surviving 100 at full width.
+
+<WikiLink slug="matryoshka-embeddings" title="Matryoshka Embeddings (MRL)" />
+
 <Exercise id="llm-embedding-similarity" />
 
 ## Common mistakes
@@ -99,3 +103,4 @@ For how those ANN indexes actually work (IVF, HNSW, product quantization, and tu
 
 - [**Word Embeddings**](/courses/nlp/02-word-embeddings): where the "meaning as vectors" idea began
 - [**Retrieval-Augmented Generation**](/courses/building-with-llms/04-retrieval-augmented-generation): feeding retrieved chunks to an LLM
+- [**Matryoshka Embeddings (MRL)**](/wiki/matryoshka-embeddings): how one model ships every dimension at once, so the index width becomes a serving-time decision
