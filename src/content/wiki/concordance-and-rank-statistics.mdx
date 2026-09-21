@@ -1,0 +1,177 @@
+---
+title: "Concordance: the c-statistic, Somers' D, Gini and Kendall's tau"
+description: "Concordant, discordant and tied pairs from first principles: the c-statistic as AUC without a curve, Somers' D and Gini as rescalings of it, Kendall's tau-a and Goodman–Kruskal gamma as different tie conventions, the O(n log n) rank-sum shortcut, and what binning a score does to each."
+topics: ["model-evaluation"]
+relatedLessons:
+  - "model-evaluation/01-classification-metrics"
+  - "model-evaluation/08-rank-ordering-and-model-comparison"
+estimatedMinutes: 14
+spine: ml
+spineStages: [evaluation]
+---
+
+# Concordance: the c-statistic, Somers' D, Gini and Kendall's tau
+
+A scorecard validation pack, a survival model's summary table and a scikit-learn `roc_auc_score` call are all reporting the same quantity under four different names. The quantity is **concordance**: given one case and one control, how often does the model score the case higher?
+
+Concordance is worth deriving separately from the ROC curve because the pair-counting definition makes three things obvious that the curve hides: what happens to **tied scores**, why **Somers' D and Gini are the same number**, and why **binning a score into grades destroys measurable discrimination**.
+
+## Pairs, not thresholds
+
+Take a binary outcome $y_i \in \{0, 1\}$ and a score $s_i$. Form every pair consisting of one positive $i$ (with $y_i = 1$) and one negative $j$. With $n_+$ positives and $n_-$ negatives there are $n_+ n_-$ such pairs, and each one is exactly one of three things:
+
+| Pair | Condition | Meaning |
+|------|-----------|---------|
+| **Concordant** ($C$) | $s_i > s_j$ | the model ranked the positive above the negative, correctly |
+| **Discordant** ($D$) | $s_i < s_j$ | the model got this pair backwards |
+| **Tied** ($T$) | $s_i = s_j$ | the model expressed no preference |
+
+$C + D + T = n_+ n_-$ by construction. Every statistic on this page is a different way of dividing those three counts.
+
+## The worked example
+
+Eight loan applicants, scored and then observed. Three defaulted (the positives), five repaid.
+
+| Applicant | Score | Outcome |
+|-----------|-------|---------|
+| A | 0.82 | default |
+| B | 0.71 | repaid |
+| C | 0.65 | default |
+| D | 0.65 | repaid |
+| E | 0.50 | default |
+| F | 0.44 | repaid |
+| G | 0.30 | repaid |
+| H | 0.12 | repaid |
+
+There are $3 \times 5 = 15$ pairs. Going default by default:
+
+- **A (0.82)** beats B, D, F, G, H: 5 concordant.
+- **C (0.65)** loses to B (0.71), **ties** with D (0.65), beats F, G, H: 3 concordant, 1 discordant, 1 tied.
+- **E (0.50)** loses to B and D, beats F, G, H: 3 concordant, 2 discordant.
+
+$$
+C = 11, \qquad D = 3, \qquad T = 1, \qquad C + D + T = 15
+$$
+
+<AlgorithmTrace id="concordance-pairs" />
+
+What to notice while stepping through it:
+
+- The counters only ever see **comparisons**, never the scores themselves. Replace every score with its rank and nothing changes.
+- The tie between C and D is the only pair the model refuses to judge, and the four statistics below disagree entirely about what to do with it.
+- The payoff frame changes nothing but the score's *resolution* and three of the four statistics move, one of them in the wrong direction.
+
+## The four statistics
+
+### The c-statistic (= AUC)
+
+Score a tie as half a win, which is the natural convention if you imagine breaking ties by a coin flip:
+
+$$
+c = \frac{C + \tfrac{1}{2} T}{C + D + T} = \frac{11 + 0.5}{15} = 0.7667
+$$
+
+This is identically the area under the ROC curve. The [ROC page](/wiki/roc-auc) derives the same number by sweeping a threshold; the two routes agree because the Wilcoxon–Mann–Whitney statistic *is* the trapezoid area. The advantage of the pair form is interpretive: $c$ is a probability, $P(s_i > s_j) + \tfrac{1}{2}P(s_i = s_j)$ for a random case–control pair, with 0.5 meaning a coin flip and 1.0 meaning perfect separation.
+
+### Somers' D and the Gini coefficient
+
+$$
+D_{xy} = \frac{C - D}{C + D + T} = \frac{11 - 3}{15} = 0.5333
+$$
+
+Ties contribute nothing to the numerator and still count in the denominator, so a tie is scored as neither a win nor a loss. Substituting $C + D + T = n_+n_-$ and $T = n_+n_- - C - D$ into the definition of $c$ gives the identity every credit-risk report leans on:
+
+$$
+D_{xy} = 2c - 1
+$$
+
+Check: $2 \times 0.7667 - 1 = 0.5333$. The **Gini coefficient** quoted for a scorecard is this same $2 \cdot \text{AUC} - 1$, so "Gini 53%", "Somers' D 0.53" and "AUC 0.767" are three ways of saying one thing. The rescaling is useful only because it puts a coin-flip model at 0 instead of 0.5.
+
+<Callout type="warning" title="Two Ginis, unrelated">
+The Gini *coefficient* of a classifier ($2 \cdot \text{AUC} - 1$) has nothing to do with **Gini impurity**, the splitting criterion in a [decision tree](/courses/knn-decision-trees/02-decision-trees). They share a name and an ancestor in the economics literature, nothing else. Say "Gini coefficient" or "Somers' D" when you mean rank quality.
+</Callout>
+
+### Kendall's tau-a
+
+Tau-a uses the same numerator but divides by **all** $\binom{n}{2}$ pairs of observations, including the case–case and control–control pairs that a binary outcome cannot order:
+
+$$
+\tau_a = \frac{C - D}{n(n-1)/2} = \frac{8}{28} = 0.2857
+$$
+
+With binary labels, $\binom{n_+}{2} + \binom{n_-}{2}$ pairs are unorderable by construction, so $\tau_a$ cannot reach 1 even for a perfect model. It is the right statistic for two continuous rankings (a model's score against an expert's ranking, say), and the wrong one for a binary outcome. Reporting it there understates the model dramatically.
+
+### Goodman–Kruskal gamma
+
+$$
+\gamma = \frac{C - D}{C + D} = \frac{8}{14} = 0.5714
+$$
+
+Gamma deletes tied pairs from the denominator entirely. On a continuous score with no ties, $\gamma = D_{xy}$ and the choice is irrelevant. On a coarse score they diverge sharply, and gamma flatters the model.
+
+| Statistic | Formula | Value | Ties count as | Range on binary labels |
+|-----------|---------|-------|---------------|------------------------|
+| **c-statistic (AUC)** | $(C + T/2)/(C+D+T)$ | 0.7667 | half a win | 0.5 to 1 |
+| **Somers' D (Gini)** | $(C - D)/(C+D+T)$ | 0.5333 | nothing | 0 to 1 |
+| **Kendall's tau-a** | $(C - D)/\binom{n}{2}$ | 0.2857 | nothing | 0 to $<1$ |
+| **Goodman–Kruskal γ** | $(C - D)/(C+D)$ | 0.5714 | deleted | 0 to 1 |
+
+## What binning costs
+
+Put the same eight applicants through a three-grade scorecard: High ($\ge 0.65$), Mid ($\ge 0.44$), Low (below). The ordering between grades survives; the ordering *within* a grade is destroyed, so every within-grade pair becomes a tie. Tied pairs go from 1 to 5, and:
+
+| Statistic | Raw scores | Three grades | Direction |
+|-----------|-----------|--------------|-----------|
+| $C / D / T$ | 11 / 3 / 1 | 8 / 2 / 5 | ties ×5 |
+| **c-statistic** | 0.7667 | 0.7000 | falls, correctly |
+| **Somers' D** | 0.5333 | 0.4000 | falls, correctly |
+| **Goodman–Kruskal γ** | 0.5714 | 0.6000 | **rises** |
+
+The c-statistic and Somers' D charge the model for information it threw away. Gamma rewards it, because a pair it refuses to judge is removed from the denominator rather than counted against it. This is not a contrived edge case: risk grades, rounded scores, decile buckets and any tree-based model with few distinct leaf values all produce mass ties.
+
+<Callout type="tip" title="Compute concordance on raw scores">
+Always compute $c$ on the finest score the model produces, before grading or rounding. Then, if you also report the graded version, the gap between the two is a direct measurement of what the grading cost you. Quoting gamma instead hides exactly that gap.
+</Callout>
+
+## The O(n log n) shortcut
+
+The double loop is $O(n_+ n_-)$, which is 25 billion comparisons on a 100k-row test set with 5% positives. The rank-sum identity gives the same answer after a sort. Assign **midranks** $r_i$ to the pooled scores (tied observations share the average of the ranks they span), then:
+
+$$
+c = \frac{R_+ - \frac{n_+(n_+ + 1)}{2}}{n_+ n_-}, \qquad R_+ = \sum_{i:\, y_i = 1} r_i
+$$
+
+**Verifying on the worked example.** Pooled ranks, lowest score first, with C and D sharing ranks 5 and 6 as midrank 5.5:
+
+| Score | 0.12 | 0.30 | 0.44 | 0.50 | 0.65 | 0.65 | 0.71 | 0.82 |
+|-------|------|------|------|------|------|------|------|------|
+| Applicant | H | G | F | E | C/D | C/D | B | A |
+| Rank | 1 | 2 | 3 | 4 | 5.5 | 5.5 | 7 | 8 |
+
+The positives are E (4), C (5.5) and A (8), so $R_+ = 17.5$ and
+
+$$
+c = \frac{17.5 - \frac{3 \cdot 4}{2}}{3 \cdot 5} = \frac{17.5 - 6}{15} = \frac{11.5}{15} = 0.7667
+$$
+
+which matches the pair count exactly. The midrank convention is what makes ties come out as half-wins automatically. Sorting dominates, so the whole computation is $O(n \log n)$ with $O(n)$ memory.
+
+## Concordance beyond binary outcomes
+
+**Harrell's c-index** extends the same counting to survival data, where the outcome is a time and some observations are censored. A pair is **comparable** only if you can tell who failed first: if subject $i$ failed at $t_i$ and subject $j$ was still under observation at $t_i$, the pair counts; if $j$ was censored before $t_i$, it does not. Concordance is then the concordant share of comparable pairs. Everything else carries over, including the tie convention and the interpretation as a probability. Heavy censoring shrinks the comparable set, so a c-index on 20%-observed data rests on far fewer pairs than its confidence interval suggests unless you use an inverse-probability-weighted variant (Uno's c).
+
+## Common mistakes
+
+- **Reporting gamma as "the concordance"**. It is not the c-statistic unless the score has no ties, and it moves the wrong way when they appear.
+- **Computing concordance on binned scores** and comparing it to a competitor's raw-score number. You are comparing resolutions, not models.
+- **Reading a high $c$ as good calibration.** Concordance is invariant to every monotone transform of the score, so a model that ranks perfectly and predicts probabilities 100× too large scores $c = 1$. Discrimination and [calibration](/courses/model-evaluation/07-calibration-and-uncertainty) are separate audits.
+- **Quoting $c$ with no interval.** A c-statistic from 40 positives has a bootstrap standard error around 0.04, so a 0.02 gap between two models is noise until a paired test says otherwise. See [comparing model performance](/wiki/comparing-model-performance) for the paired way to test a difference.
+- **Using tau-a on a binary outcome** and concluding the model is weak, when the unorderable same-class pairs in the denominator cap it well below 1.
+
+## Related concepts
+
+- [**Classification & Regression Metrics**](/courses/model-evaluation/01-classification-metrics): where AUC first appears, alongside the threshold metrics concordance replaces
+- [**Rank Ordering & Model Comparison**](/courses/model-evaluation/08-rank-ordering-and-model-comparison): the lesson this page supports, with the decile table and the significance tests
+- [**ROC Curve and AUC**](/wiki/roc-auc): the same statistic derived by sweeping a threshold, plus PR-AUC for imbalance
+- [**Decile Analysis, Gains and Lift**](/wiki/decile-analysis-and-lift): what happens when you deliberately bin the score, and the statistics that survive it
+- [**Comparing Model Performance**](/wiki/comparing-model-performance): DeLong, McNemar and the paired bootstrap for deciding whether a gap in $c$ is real
