@@ -1,0 +1,151 @@
+---
+title: "Is That Difference Real? DeLong, McNemar and Paired Resampling"
+description: "Statistical tests for model comparison on a shared test set: DeLong's test for correlated AUCs derived from placement values, McNemar's test on the discordant cells, the paired bootstrap and the exact within-subject permutation test, confidence intervals over p-values, and correcting for a leaderboard's worth of comparisons."
+topics: ["model-evaluation"]
+relatedLessons:
+  - "model-evaluation/02-validation-strategies"
+  - "model-evaluation/08-rank-ordering-and-model-comparison"
+estimatedMinutes: 16
+spine: ml
+spineStages: [evaluation]
+---
+
+# Is That Difference Real? DeLong, McNemar and Paired Resampling
+
+Model A scores 0.86 AUC on the test set, model B scores 0.84. Ship A?
+
+Not yet. Both numbers are estimates from one finite sample, and the question is whether a 0.02 gap is bigger than the noise in that sample. The answer depends almost entirely on one fact that gets thrown away constantly: **the two models were evaluated on the same examples**, so their errors are correlated, and a test that ignores the pairing wastes most of the evidence you have.
+
+## The one thing that matters: pairing
+
+If you compare two AUCs as if they came from independent samples, the variance of the difference is $\operatorname{var}(\hat{A}) + \operatorname{var}(\hat{B})$. When the same subjects were scored twice, the correct variance is
+
+$$
+\operatorname{var}(\hat{A} - \hat{B}) = \operatorname{var}(\hat{A}) + \operatorname{var}(\hat{B}) - 2\operatorname{cov}(\hat{A}, \hat{B})
+$$
+
+and that covariance is typically large and positive, because a hard example is hard for both models. The covariance term is free evidence: you already have the paired predictions. Throwing it away is the single most common way a real improvement gets declared "not significant".
+
+## DeLong's test for two correlated AUCs
+
+DeLong, DeLong and Clarke-Pearson (1988) give the covariance in closed form, using the fact that the AUC is a two-sample U-statistic. Define
+
+$$
+\psi(x, y) = \begin{cases} 1 & x > y \\ \tfrac{1}{2} & x = y \\ 0 & x < y \end{cases}
+$$
+
+For model $r$ with $m$ cases and $n$ controls, the **placement values** are
+
+$$
+V_{10}^{r}(p_i) = \frac{1}{n}\sum_{j=1}^{n} \psi(p_i, q_j), \qquad
+V_{01}^{r}(q_j) = \frac{1}{m}\sum_{i=1}^{m} \psi(p_i, q_j)
+$$
+
+$V_{10}(p_i)$ is the fraction of controls that case $i$ beats; $V_{01}(q_j)$ is the fraction of cases that beat control $j$. Both average to the AUC, which is what makes the decomposition work. Let $S_{10}$ and $S_{01}$ be the sample covariance matrices of these vectors across models (over the $m$ cases and the $n$ controls respectively). Then
+
+$$
+S = \frac{S_{10}}{m} + \frac{S_{01}}{n}, \qquad
+z = \frac{\hat{A} - \hat{B}}{\sqrt{S_{AA} + S_{BB} - 2S_{AB}}}
+$$
+
+and $z$ is asymptotically standard normal under the null of equal AUCs.
+
+<AlgorithmTrace id="delong-auc-test" />
+
+The trace runs it on ten subjects, four cases and six controls, scored by both models: $\hat{A} = 19/24 = 0.7917$, $\hat{B} = 14/24 = 0.5833$. What to notice:
+
+- The AUC **decomposes into one placement value per subject**, and those per-subject contributions are what the covariance is computed from.
+- $\operatorname{corr}(\hat{A}, \hat{B}) = 0.921$ here, because both models find the same control (s5) hard.
+- The paired test gives $z = 2.31$, $p = 0.021$. The payoff frame drops the covariance term and the identical 0.208 gap becomes $z = 0.79$, $p = 0.431$. Same data, opposite decision.
+
+<Callout type="warning" title="DeLong compares ranking only">
+A significant DeLong result says model A orders cases better. It says nothing about calibration, nothing about which model is better at your operating threshold, and nothing about cost. A model can win on AUC and lose on every decision you actually make with it.
+</Callout>
+
+## McNemar's test for two classifiers at a fixed threshold
+
+Once you have fixed a threshold, each model either gets an example right or wrong, and the comparison becomes a 2×2 table of **agreement**:
+
+|  | B correct | B wrong |
+|--|-----------|---------|
+| **A correct** | $a$ | $b$ |
+| **A wrong** | $c$ | $d$ |
+
+The cells $a$ and $d$ are examples both models agree on. They carry no information about which is better, and McNemar's test discards them entirely. Only the discordant pairs matter: under the null that the two models are equally accurate, each discordant example is a coin flip, so $b \sim \text{Binomial}(b + c, 0.5)$.
+
+$$
+\chi^2 = \frac{(|b - c| - 1)^2}{b + c} \quad \text{(with continuity correction, 1 df)}
+$$
+
+**Worked example.** On a 400-example test set, A is right and B wrong on $b = 25$, A wrong and B right on $c = 10$, and they agree on the other 365.
+
+$$
+\chi^2 = \frac{(|25 - 10| - 1)^2}{35} = \frac{196}{35} = 5.60 \;\Rightarrow\; p = 0.018
+$$
+
+The exact binomial version, $p = 2 \cdot P(X \le 10 \mid n = 35, p = 0.5) = 0.0167$, agrees closely. Without the continuity correction $\chi^2 = 6.43$ and $p = 0.011$, which is anticonservative on small counts. **Use the exact binomial test whenever $b + c < 25$**, where the $\chi^2$ approximation is unreliable.
+
+Note what the test ignores: 365 of the 400 examples. That is the point. An accuracy difference of 3.75 percentage points is being judged on the 35 examples where the models actually disagree, which is the correct denominator for the question "is A better than B", and the reason McNemar has real power on tests where a two-proportion z-test has almost none.
+
+## Paired bootstrap and permutation: any metric at all
+
+DeLong covers the AUC and McNemar covers accuracy at a threshold. For everything else, precision at $k$, F1, expected cost, NDCG, a bespoke business metric, resample.
+
+**Paired bootstrap.** Resample *examples* (not predictions) with replacement, preserving the pairing, and recompute both metrics on each resample:
+
+1. Draw $n$ example indices with replacement, stratified by class to keep the base rate stable.
+2. Compute $\delta^{(b)} = M_A - M_B$ on that resample, using **the same indices for both models**.
+3. Repeat 2,000 to 10,000 times. The percentile interval of $\{\delta^{(b)}\}$ is the confidence interval for the difference.
+
+**Permutation (randomisation) test.** Under the null that the two models are exchangeable, swapping A's and B's prediction for a given example should change nothing. So: for each example, independently swap the two models' predictions with probability 0.5, recompute the difference, and count how often $|\delta|$ reaches the observed value. This tests exchangeability directly and needs no distributional assumption.
+
+**On the same ten-subject data as the DeLong trace**, all three approaches, plus the unpaired comparison for contrast:
+
+| Method | se of the gap | p-value | Verdict at α = 0.05 |
+|--------|---------------|---------|---------------------|
+| DeLong (paired, asymptotic) | 0.090 | 0.021 | different |
+| Exact permutation (all $2^{10}$ swaps) | — | 0.016 | different |
+| Paired bootstrap (20,000 resamples) | 0.109 | 0.079 | can't tell |
+| Treated as independent samples | 0.265 | 0.431 | can't tell |
+
+The first two agree; the bootstrap is conservative here because with four cases the resampled difference takes only a handful of distinct values and a meaningful share of resamples land exactly at zero. That is a small-sample artefact, and the three paired methods converge as $n$ grows. The last row is the one that is simply wrong, and it is the one people report.
+
+<Callout type="tip" title="Report the interval, not the star">
+"AUC difference 0.021, 95% CI [0.003, 0.039]" tells a reader the effect could be negligible or could be worth shipping. "p = 0.03" tells them almost nothing, and "significant" tells them less. The interval also survives the reader disagreeing with your α.
+</Callout>
+
+## Comparing across cross-validation folds
+
+Fold-level scores are **not independent**: every pair of training folds overlaps in most of its data, so the usual paired t-test on $k$ fold differences has a variance estimate that is badly biased downward and a false-positive rate several times its nominal level.
+
+Two workable options:
+
+- **Nadeau–Bengio corrected resampled t-test**: inflate the variance by the train/test ratio, $\operatorname{var}_{\text{corr}} = \left(\frac{1}{k} + \frac{n_{\text{test}}}{n_{\text{train}}}\right) \hat{\sigma}^2$, then use the usual $t$ statistic. Simple, and much better calibrated than the naive version.
+- **5×2cv paired t-test** (Dietterich, 1998): five replications of 2-fold CV, where within each replication the two folds are disjoint. The statistic uses the first replication's difference over the mean variance of the five, with 5 degrees of freedom.
+
+Whichever you use, a difference that only appears after fold-averaging and is smaller than the fold-to-fold spread is not a difference. See [validation strategies](/courses/model-evaluation/02-validation-strategies) for the splits themselves.
+
+## Many comparisons, one test set
+
+Every test on the same test set spends some of its credibility. Evaluate 20 candidate models at α = 0.05 and you expect one spurious "winner" even if all 20 are identical.
+
+- **Bonferroni**: compare each p-value against $\alpha / m$. Safe, and badly underpowered once $m$ is large.
+- **Holm–Bonferroni**: sort the p-values, compare the smallest against $\alpha/m$, the next against $\alpha/(m-1)$, and stop at the first failure. Uniformly more powerful than Bonferroni, same guarantee.
+- **Benjamini–Hochberg**: controls the false discovery rate instead of the family-wise error rate. The right choice when you are screening many models and can tolerate some false leads.
+- **A held-out final test set** that is scored exactly once, after the winner is chosen on validation data. This is the only real protection against the adaptive overfitting that repeated testing causes, and no correction substitutes for it.
+
+## Common mistakes
+
+- **Two independent-sample tests instead of one paired test.** The single largest source of missed improvements, as the DeLong payoff frame shows.
+- **Bootstrapping the two models separately.** Resample the *examples* once per iteration and score both models on that resample; separate resamples destroy the pairing you are trying to exploit.
+- **Reporting a p-value with no effect size.** Statistical significance at $n = 10^6$ includes differences far too small to act on.
+- **Testing on the set you tuned on.** After 200 hyperparameter evaluations, the test set's p-values are decoration.
+- **Reading "not significant" as "no difference".** It usually means the test set is too small to resolve the gap, which is a statement about your evaluation, not about the models.
+
+## Related concepts
+
+- [**Rank Ordering & Model Comparison**](/courses/model-evaluation/08-rank-ordering-and-model-comparison): the lesson this page supports
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies): the splits these tests run on, and why fold scores are correlated
+- [**The Bootstrap**](/wiki/bootstrap-resampling): the resampling machinery behind the paired interval, including BCa
+- [**Concordance and rank statistics**](/wiki/concordance-and-rank-statistics): the c-statistic whose difference DeLong is testing
+- [**Hypothesis Testing**](/wiki/hypothesis-testing): null distributions, p-values and what they do and do not license

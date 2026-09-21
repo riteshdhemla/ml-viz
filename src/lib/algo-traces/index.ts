@@ -25,8 +25,10 @@ import { isotonicTrace } from "./isotonic";
 import { ivfTrace } from "./ivf";
 import { kmeansTrace } from "./kmeans";
 import { adaboostTrace } from "./adaboost";
+import { concordanceTrace } from "./concordance";
 import { continuousBatchingTrace } from "./continuous-batching";
 import { daggerTrace } from "./dagger";
+import { delongTrace } from "./delong";
 import { dgimTrace } from "./dgim";
 import { gradientBoostingTrace } from "./gradient-boosting";
 import { hierarchicalTrace } from "./hierarchical";
@@ -118,6 +120,8 @@ export const allAlgoTraces: AlgoTrace[] = [
   reinforceTrace,
   baggingTrace,
   randomWalkTrace,
+  concordanceTrace,
+  delongTrace,
   autogradTrace,
 ];
 

@@ -61,6 +61,7 @@ const VIZ: Record<string, ComponentType<VizProps>> = {
   CTCDecodingViz: dynamic(() => import("@/components/visualizations/CTCDecoding/CTCDecodingViz").then((m) => m.CTCDecodingViz)) as ComponentType<VizProps>,
   DecisionBoundaryViz: dynamic(() => import("@/components/visualizations/DecisionBoundary/DecisionBoundaryViz").then((m) => m.DecisionBoundaryViz)) as ComponentType<VizProps>,
   DecisionTreeSplitViz: dynamic(() => import("@/components/visualizations/DecisionTreeSplit/DecisionTreeSplitViz").then((m) => m.DecisionTreeSplitViz)) as ComponentType<VizProps>,
+  DecileLiftViz: dynamic(() => import("@/components/visualizations/DecileLift/DecileLiftViz").then((m) => m.DecileLiftViz)) as ComponentType<VizProps>,
   DecompositionViz: dynamic(() => import("@/components/visualizations/Decomposition/DecompositionViz").then((m) => m.default)) as ComponentType<VizProps>,
   DelayedLabelViz: dynamic(() => import("@/components/visualizations/DelayedLabel/DelayedLabelViz").then((m) => m.DelayedLabelViz)) as ComponentType<VizProps>,
   DendrogramViz: dynamic(() => import("@/components/visualizations/Dendrogram/DendrogramViz").then((m) => m.DendrogramViz)) as ComponentType<VizProps>,

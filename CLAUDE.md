@@ -666,7 +666,7 @@ surface-border   — borders
 - [x] **Reinforcement Learning** — MDPs, Q-Learning, DQN, policy gradient & actor-critic, exploration & model-based RL, PPO→RLHF bridge *(course + 6 lessons + quiz)*
 
 ### Evaluation & Statistical ML
-- [x] **Model Evaluation** — metrics, validation, training techniques, LLM & AI-system eval, learning theory, calibration *(course + 7 lessons + quiz)*
+- [x] **Model Evaluation** — metrics, validation, training techniques, LLM & AI-system eval, learning theory, calibration, rank ordering (concordance/Somers' D, decile & gains tables, KS & lift) and paired significance tests (DeLong, McNemar, bootstrap) *(course + 8 lessons + quiz)*
 - [x] **Bayesian Methods** — Bayesian linear regression, Gaussian processes, Bayesian optimization *(course + 3 lessons + quiz)*
 - [x] **Causal Inference** — confounding, Simpson's paradox, potential outcomes, do-calculus, backdoor adjustment *(course + 2 lessons + quiz)*
 - [x] **Time Series** — stationarity/ACF, ARIMA/SARIMA, deep learning for forecasting, demand forecasting in production *(course + 4 lessons + quiz)*
@@ -816,6 +816,7 @@ primitives live in `src/components/visualizations/viz-kit.tsx` (`VizFrame`,
 | TestTimeComputeViz | `visualizations/TestTimeCompute/` | building-with-llms/07-reasoning-models | ✅ **guided** |
 | DoubleDescentViz | `visualizations/DoubleDescent/` | model-evaluation/06-learning-theory | ✅ |
 | SGDNoiseViz | `visualizations/SGDNoise/` | optimization-ml/01-gradient-descent-variants | ✅ |
+| DecileLiftViz | `visualizations/DecileLift/` | model-evaluation/08-rank-ordering-and-model-comparison (+ wiki/decile-analysis-and-lift) | ✅ |
 
 ## Algorithm Traces Built
 
@@ -877,6 +878,8 @@ and records frames.
 | `bagging-oob` | `algo-traces/bagging.ts` | ensemble-methods/01-bagging-and-random-forests | ✅ |
 | `random-walk-law` | `algo-traces/random-walk.ts` | wiki/random-walk | ✅ |
 | `autograd-tape` | `algo-traces/autograd.ts` | wiki/automatic-differentiation | ✅ |
+| `concordance-pairs` | `algo-traces/concordance.ts` | wiki/concordance-and-rank-statistics | ✅ |
+| `delong-auc-test` | `algo-traces/delong.ts` | wiki/comparing-model-performance | ✅ |
 
 **Queue: see `prompts/algo-trace-checklist.md`** — built from an audit of all
 untraced pages under `src/content`. Rounds 3 and 4 are complete; what remains is

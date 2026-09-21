@@ -1,0 +1,139 @@
+---
+title: "Decile Analysis: Gains, Lift, KS and Rank Ordering"
+description: "The rank-ordering table a model validation pack opens with: equal-count deciles, cumulative gains and capture rate, lift and cumulative lift, the KS statistic as the widest gap between the two cumulative curves, monotonicity breaks, and the Hosmer–Lemeshow goodness-of-fit test computed on the same bins."
+topics: ["model-evaluation"]
+relatedLessons:
+  - "model-evaluation/08-rank-ordering-and-model-comparison"
+estimatedMinutes: 14
+spine: ml
+spineStages: [evaluation]
+---
+
+# Decile Analysis: Gains, Lift, KS and Rank Ordering
+
+A single AUC says the model ranks well. It does not say **where** the risk concentrated, how much of it you capture if you can only action the worst 10% of accounts, or whether the ordering breaks down somewhere in the middle. The decile table answers all three, which is why it is the first exhibit in a scorecard validation pack, a churn model review and a marketing campaign sizing deck.
+
+The construction is mechanical: sort the population by score, cut it into equal-count bins, count the outcomes in each.
+
+## Building the table
+
+1. **Score the validation population** and sort descending by score, riskiest first.
+2. **Cut into $k$ equal-count bins**, usually $k = 10$ (deciles). Equal *count*, not equal score width: each bin holds $N/k$ accounts whatever the score distribution looks like.
+3. **Count outcomes per bin**: $b_i$ bads and $g_i$ goods in bin $i$.
+4. **Accumulate** from the top: $B_i = \sum_{j \le i} b_j$ and $G_i = \sum_{j \le i} g_j$.
+5. **Derive** the four columns below.
+
+$$
+\text{bad rate}_i = \frac{b_i}{n_i}, \qquad
+\text{lift}_i = \frac{b_i / n_i}{B_k / N}, \qquad
+\text{gains}_i = \frac{B_i}{B_k}, \qquad
+\text{KS}_i = \frac{B_i}{B_k} - \frac{G_i}{G_k}
+$$
+
+**Lift** is the bin's bad rate divided by the overall bad rate: "accounts here are 3.7× as likely to go bad as a random account". **Gains** (also called the capture rate) is the cumulative share of all bads caught by targeting down to this bin. **KS** is the gap between the two cumulative curves, and its maximum over bins is *the* KS statistic.
+
+## A worked table
+
+10,000 accounts, 500 bads, a 5.0% base rate.
+
+| Decile | n | bads | bad rate | lift | cum % bads | cum % goods | KS | cum lift |
+|--------|-----|------|----------|------|-----------|-------------|-----|----------|
+| 1 | 1000 | 185 | 18.5% | 3.70 | 37.0% | 8.6% | 0.284 | 3.70 |
+| 2 | 1000 | 110 | 11.0% | 2.20 | 59.0% | 17.9% | 0.411 | 2.95 |
+| **3** | 1000 | 70 | 7.0% | 1.40 | **73.0%** | **27.7%** | **0.453** | 2.43 |
+| 4 | 1000 | 45 | 4.5% | 0.90 | 82.0% | 37.8% | 0.442 | 2.05 |
+| 5 | 1000 | 30 | 3.0% | 0.60 | 88.0% | 48.0% | 0.400 | 1.76 |
+| 6 | 1000 | 22 | 2.2% | 0.44 | 92.4% | 58.3% | 0.341 | 1.54 |
+| 7 | 1000 | 15 | 1.5% | 0.30 | 95.4% | 68.7% | 0.267 | 1.36 |
+| 8 | 1000 | 10 | 1.0% | 0.20 | 97.4% | 79.1% | 0.183 | 1.22 |
+| 9 | 1000 | 8 | 0.8% | 0.16 | 99.0% | 89.5% | 0.095 | 1.10 |
+| 10 | 1000 | 5 | 0.5% | 0.10 | 100.0% | 100.0% | 0.000 | 1.00 |
+
+Reading it out loud, which is what the table is for:
+
+- **Top decile lift is 3.70**: the riskiest 10% of accounts default at 18.5%, against a 5.0% book average.
+- **Capture at 20% is 59.0%**: action the worst two deciles and you touch 59% of all the bads while reviewing a fifth of the book.
+- **KS = 0.453 at decile 3**: the point of maximum separation between bads and goods is the 30% cutoff, where 73.0% of bads and 27.7% of goods sit above the line.
+- **Bad rate is strictly decreasing**: no rank-order break. A decile riskier than the one above it means the score is not monotone in risk there, which is a finding, not a rounding error.
+
+<Callout type="info" title="Where the deciles break, the cutoff usually is">
+The KS decile is a natural candidate cutoff because it maximises (bads caught − goods disturbed), but it is not automatically the *right* one. The right cutoff is where the marginal bad caught is worth the marginal good declined, which needs the cost ratio, not the KS. Use KS to summarise separation, and an expected-cost sweep to choose the threshold.
+</Callout>
+
+## Play with it
+
+<DecileLiftViz />
+
+Three things the viz makes testable:
+
+- **Drag prevalence with separation fixed.** AUC and KS barely move; top-decile lift collapses from 5.20× at a 5% base rate to 3.22× at 25%. Lift is a ratio *to the base rate*, and it carries a hard ceiling of $1/\pi$ at prevalence $\pi$: once a quarter of the book is bad, no bin can lift more than 4×, however good the ranking is. A "5× lift" claim with no prevalence attached means nothing.
+- **Switch between 5, 10 and 20 bins.** The binned KS is always at or below the exact KS computed over every distinct score, because a bin grid can only find the gap at its own cut points. More bins gets closer, at the cost of noisier per-bin rates.
+- **Drag separation toward zero.** Bins stop descending cleanly and rose rank-order breaks appear. On a real model, breaks concentrated in the middle deciles usually mean a feature is non-monotone in risk, and breaks in the bottom deciles usually mean too few bads down there to estimate a rate at all.
+
+## KS, and what it is not
+
+The decile KS is the two-sample [Kolmogorov–Smirnov statistic](/wiki/kolmogorov-smirnov-test) applied to the score distributions of bads and goods, evaluated on a grid of decile boundaries:
+
+$$
+\mathrm{KS} = \max_t \left| F_{\text{bad}}(t) - F_{\text{good}}(t) \right|
+$$
+
+Two cautions travel with it. First, the **binned KS understates** the exact one, so a KS read off a decile table is not comparable to one computed on raw scores. Second, the KS *test's* p-value is not what a scorecard report means by "KS": nobody doubts that bads and goods have different score distributions, so the hypothesis test is vacuous here. The number is being used as a descriptive separation measure on a 0 to 1 scale, and typical banded readings are:
+
+| KS | Reading |
+|----|---------|
+| below 0.20 | weak separation, hard to build a cutoff policy on |
+| 0.20 to 0.40 | typical for a live behavioural or application scorecard |
+| 0.40 to 0.60 | strong |
+| above 0.70 | suspect leakage or a target that is partly an input |
+
+## Gains, Gini and the decile approximation
+
+The cumulative-gains curve plots cum % bads against cum % population; the ROC curve plots cum % bads against cum % goods. On this table the trapezoid area under the decile-grid ROC is 0.788, so the decile-approximated Gini is $2 \times 0.788 - 1 = 0.575$. That is an **approximation from ten points**, not the model's actual AUC. It is usually a little *below* the true pairwise c-statistic, because the grid draws chords across a concave ROC curve and a chord lies under the arc it spans. Report the exact c-statistic from raw scores and treat the table's implied Gini as a cross-check on the arithmetic, not as the headline number.
+
+<Callout type="warning" title="Deciles drift, so fix the cut points">
+Cutting deciles on *today's* score distribution and comparing them to last month's deciles compares two different populations, and a shift in the score distribution looks like a shift in risk. For monitoring, freeze the decile boundaries from the development sample and apply those fixed score cuts to every later period. Then a bin that swells or empties is a real population shift, measurable with [PSI](/wiki/population-stability-index).
+</Callout>
+
+## Hosmer–Lemeshow on the same bins
+
+The table above measures **discrimination**: are the bads at the top? A model can get that right and still have the wrong *level*. The Hosmer–Lemeshow test reuses the same decile structure to check calibration, comparing observed bads per bin against the bads the model's own predicted probabilities expected:
+
+$$
+\hat{C} = \sum_{i=1}^{g} \frac{(O_i - E_i)^2}{E_i (1 - \bar{p}_i)}, \qquad E_i = n_i \bar{p}_i
+$$
+
+where $\bar{p}_i$ is the mean predicted probability in bin $i$. Under the null (the model is calibrated) $\hat{C}$ is approximately $\chi^2$ with $g - 2$ degrees of freedom when the bins come from a model fit on the same data.
+
+**Worked on the table above**, with mean predicted probabilities 0.170, 0.115, 0.074, 0.048, 0.031, 0.021, 0.014, 0.010, 0.007, 0.004:
+
+| Decile | observed | expected | contribution |
+|--------|----------|----------|--------------|
+| 1 | 185 | 170.0 | 1.595 |
+| 2 | 110 | 115.0 | 0.246 |
+| 3 | 70 | 74.0 | 0.234 |
+| 4 | 45 | 48.0 | 0.197 |
+| 5 | 30 | 31.0 | 0.033 |
+| 6 | 22 | 21.0 | 0.049 |
+| 7 | 15 | 14.0 | 0.072 |
+| 8 | 10 | 10.0 | 0.000 |
+| 9 | 8 | 7.0 | 0.144 |
+| 10 | 5 | 4.0 | 0.251 |
+
+$\hat{C} = 2.82$ on 8 degrees of freedom, $p = 0.945$: no evidence of miscalibration. Decile 1 supplies more than half the statistic, which is the useful part of the output. The test's verdict is much less informative than its per-bin residuals, and it has two well-known weaknesses: it is nearly powerless on small samples and rejects almost everything on large ones, and its value depends on the binning choice. Prefer a [calibration curve plus ECE](/courses/model-evaluation/07-calibration-and-uncertainty), and read Hosmer–Lemeshow as a bin-level residual table that happens to come with a p-value.
+
+## Common mistakes
+
+- **Comparing lift across populations with different base rates.** Lift is normalised by prevalence; a campaign list and a whole book will disagree even on an identical model.
+- **Equal-width instead of equal-count bins.** With a skewed score distribution, equal-width bins leave the top "decile" holding 40 accounts and 3 bads, and every rate in it is noise.
+- **Reading a rank-order break at the bottom as a model defect.** With 5 bads in decile 10, the bad rate's standard error is larger than the gap you are worrying about. Check the counts before the story.
+- **Quoting a decile-table Gini as the model's AUC.** It is a ten-point trapezoid approximation to it.
+- **Re-cutting deciles every monitoring period** and reporting the movement as drift in risk. Freeze the development cut points.
+
+## Related concepts
+
+- [**Rank Ordering & Model Comparison**](/courses/model-evaluation/08-rank-ordering-and-model-comparison): the lesson this page supports
+- [**Concordance and rank statistics**](/wiki/concordance-and-rank-statistics): the c-statistic the table's implied Gini is approximating, and what binning does to it
+- [**The Kolmogorov–Smirnov Test**](/wiki/kolmogorov-smirnov-test): the exact two-sample statistic the KS column estimates on a grid
+- [**Population Stability Index**](/wiki/population-stability-index): the companion table for monitoring, on fixed development bins
+- [**Uplift Modeling**](/wiki/uplift-modeling): the Qini curve, which is this construction applied to incremental effect instead of raw outcome

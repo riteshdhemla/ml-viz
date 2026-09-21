@@ -1,0 +1,139 @@
+---
+title: "Rank Ordering & Model Comparison"
+description: "Concordance, decile and gains tables, KS and lift, and the paired statistical tests (DeLong, McNemar, the bootstrap) that decide whether one model is actually better than another."
+order: 8
+type: concept
+spineStages: [evaluation]
+estimatedMinutes: 18
+---
+
+# Rank Ordering & Model Comparison
+
+This lesson stays in the **evaluation** slot of the [ML project loop](/wiki/ml-project-loop), and it fixes two specific things that were breaking in the earlier lessons.
+
+Lesson 1 measured a classifier at **one threshold**: precision, recall, F1 all assume you have already chosen a cutoff. Most production scoring problems have not chosen one yet, and some never will (a collections queue works top-down until the team runs out of hours). Ranking quality has to be measurable before the cutoff exists.
+
+And every metric so far has been a **point estimate with no error bar**. "Model A: 0.86 AUC, model B: 0.84" is two numbers from one finite test set. Whether that gap survives another sample is a question none of the metrics so far can answer, and it is the question a model review actually asks.
+
+## Concordance: quality of ranking, no threshold required
+
+Take one positive and one negative. Does the model score the positive higher? Count over every such pair and you have the whole story:
+
+- **concordant** ($C$): the positive scored higher, the model got this pair right
+- **discordant** ($D$): the negative scored higher, a ranking error
+- **tied** ($T$): equal scores, no preference expressed
+
+On eight loan applicants (3 defaults, 5 repaid) the 15 pairs come out $C = 11$, $D = 3$, $T = 1$, and four familiar statistics fall straight out of those counts:
+
+$$
+c = \frac{C + T/2}{C + D + T} = \frac{11.5}{15} = 0.767, \qquad
+D_{xy} = \frac{C - D}{C + D + T} = \frac{8}{15} = 0.533
+$$
+
+The **c-statistic** is the AUC, computed without drawing a curve or picking a threshold: it is the probability that a random positive outranks a random negative. **Somers' D** is $2c - 1$, and the **Gini coefficient** a credit scorecard reports is the same number again. Three names, one quantity.
+
+The fourth, **Goodman–Kruskal gamma**, divides by $C + D$ and deletes tied pairs. On a continuous score that changes nothing. On a coarse score it flatters the model badly, which is the trap the wiki page below makes concrete: bucket the same eight applicants into three risk grades and $c$ falls from 0.767 to 0.700 while gamma *rises* from 0.571 to 0.600.
+
+<WikiLink slug="concordance-and-rank-statistics" title="Concordance: the c-statistic, Somers' D, Gini and Kendall's tau" />
+
+<Callout type="info" title="Concordance is invariant to monotone transforms">
+Squash the scores through a sigmoid, rescale to 0 to 1000, add 7: the pair counts do not move, so $c$ does not move. That invariance is exactly why a high AUC tells you nothing about whether the predicted probabilities are right. Discrimination and [calibration](/courses/model-evaluation/07-calibration-and-uncertainty) are two separate audits.
+</Callout>
+
+<Exercise id="eval-concordance-c-stat" />
+
+## Where did the risk actually land?
+
+$c = 0.767$ says the ranking is decent. It does not say what you get if you can only action the worst 10% of accounts, which is the question the business is asking. The **decile table** answers it: sort by score, cut into ten equal-count bins, count outcomes per bin.
+
+Four columns do the work:
+
+| Column | Definition | Reads as |
+|--------|-----------|----------|
+| **bad rate** | bads ÷ accounts in bin | how risky this slice is |
+| **lift** | bin bad rate ÷ overall bad rate | how much better than random targeting |
+| **gains** (capture) | cumulative % of all bads down to this bin | what you catch by actioning this far |
+| **KS** | cum % bads − cum % goods | separation, maximised at the best cutoff bin |
+
+<DecileLiftViz />
+
+The slider that teaches the most is **prevalence**. Hold the model fixed and move the base rate from 5% to 25%: AUC and KS barely move, while top-decile lift collapses from 5.20× to 3.22×. Lift is a ratio *to the base rate*, and at prevalence $\pi$ it can never exceed $1/\pi$, because a bin can only hold so many of a plentiful class. Once a quarter of the book is bad, 4× is the arithmetic ceiling no matter how good the ranking is. Anyone quoting "5× lift" without the prevalence it was measured at has quoted nothing.
+
+Two more readings worth having reflexes for:
+
+- **Rank-order breaks**: a decile riskier than the one above it. In the middle deciles that usually means a feature is non-monotone in risk. In the bottom deciles it usually means too few bads to estimate a rate at all, so check counts before writing the finding.
+- **Binned versus exact KS**: a KS read off a ten-row table can only find the gap at the table's own cut points, so it always sits at or below the KS computed over every distinct score. Do not compare one team's binned KS to another's exact one.
+
+<WikiLink slug="decile-analysis-and-lift" title="Decile Analysis: Gains, Lift, KS and Rank Ordering" />
+
+<Exercise id="eval-lift-prevalence" />
+
+## Is the difference real?
+
+Model A scores 0.86, model B scores 0.84. Both numbers come from **one** test set, and both models scored **the same examples**, so their errors are correlated: an example that is hard for A is usually hard for B. That correlation is the whole game.
+
+$$
+\operatorname{var}(\hat{A} - \hat{B}) = \operatorname{var}(\hat{A}) + \operatorname{var}(\hat{B}) - 2\operatorname{cov}(\hat{A}, \hat{B})
+$$
+
+Compare the two AUCs as though they came from independent evaluations and you silently drop the last term, inflating the variance for nothing. You already have the paired predictions; the covariance is free evidence.
+
+**DeLong's test** gives that covariance in closed form for AUCs, by writing each AUC as an average of per-subject *placement values* and taking their sample covariance. On a ten-subject example with $\hat{A} = 0.792$ and $\hat{B} = 0.583$, the two AUC estimates correlate at 0.92, and the paired test returns $z = 2.31$, $p = 0.021$. Treat the same two numbers as independent and the standard error triples: $z = 0.79$, $p = 0.43$, "no evidence of a difference". Identical data, opposite decision.
+
+**McNemar's test** is the fixed-threshold counterpart. Cross-tabulate the two models' correct/wrong verdicts and throw away both cells where they agree, because agreement carries no information about which is better. Only the discordant counts $b$ and $c$ remain, and under the null each discordant example is a coin flip:
+
+$$
+\chi^2 = \frac{(|b - c| - 1)^2}{b + c}
+$$
+
+With $b = 25$ and $c = 10$ out of 400 examples: $\chi^2 = 196/35 = 5.60$, $p = 0.018$. The verdict rests on the 35 examples where the models disagreed, which is the correct denominator, and the reason McNemar finds differences a two-proportion test cannot.
+
+For any other metric (precision at $k$, F1, expected cost, NDCG) use the **paired bootstrap**: resample *examples* with replacement, score both models on the same resample, and read the percentile interval of the difference. Or the **permutation test**: swap the two models' predictions within each example at random and count how often the shuffled gap reaches the observed one.
+
+<WikiLink slug="comparing-model-performance" title="Is That Difference Real? DeLong, McNemar and Paired Resampling" />
+
+<Callout type="warning" title="Report intervals, and remember the test set is finite">
+"AUC difference 0.021, 95% CI [0.003, 0.039]" is a usable sentence. "p = 0.03" is not, and "significant" is less. And every comparison on the same test set spends credibility: twenty candidates at α = 0.05 produce a spurious winner on average even if all twenty are identical. Correct with Holm or Benjamini–Hochberg, and keep a final held-out set you score exactly once.
+</Callout>
+
+<Exercise id="eval-paired-test-choice" />
+
+## A validation pack, end to end
+
+Put together, the four exhibits below are what a model review expects to see, and the order matters: discrimination first, then where it lands, then stability, then whether the comparison holds up.
+
+1. **Discrimination**: c-statistic / Gini with a confidence interval, plus the ROC and PR curves. One number, honestly bounded.
+2. **Rank ordering**: the decile table with lift, gains and KS, and an explicit note on any monotonicity break.
+3. **Calibration**: a reliability curve and ECE, plus Hosmer–Lemeshow read as a per-bin residual table rather than a verdict. A model can rank perfectly and still price everything 2× too high.
+4. **Comparison**: the paired test against the incumbent, with an effect size and an interval, on a test set scored once.
+5. **Stability**: [PSI](/wiki/population-stability-index) on the score and top features against the development sample, on **frozen** development bins.
+
+<Callout type="tip" title="The one-sentence summary you should be able to write">
+"On 14,200 held-out accounts, the new model scores c = 0.847 (95% CI 0.831 to 0.863) against the incumbent's 0.826, a paired DeLong difference of 0.021 (CI 0.009 to 0.033, p = 0.002), captures 61% of bads in the top two deciles against 55%, and is calibrated within 1.2 points of observed in every decile." Every clause of that sentence comes from one of the five exhibits above.
+</Callout>
+
+## Common mistakes
+
+- **Quoting gamma, or a decile-table Gini, as the model's AUC.** One deletes ties, the other is a ten-point trapezoid approximation.
+- **Comparing lift across populations with different base rates.** Lift is normalised by prevalence, so the comparison is meaningless without it.
+- **Computing concordance on binned scores.** You are then measuring your binning, not the model.
+- **Unpaired tests on a shared test set.** Throws away the covariance term and usually the finding with it.
+- **Re-cutting decile boundaries every monitoring period.** A population shift then shows up as a risk change. Freeze the development cut points.
+- **Treating "not significant" as "no difference".** Usually it means the test set is too small to resolve the gap.
+
+## Key takeaways
+
+- **Concordance measures ranking without a threshold.** $c = (C + T/2)/(C+D+T)$ is the AUC; Somers' D and Gini are $2c - 1$; gamma deletes ties and flatters coarse scores.
+- **The decile table says where the risk landed.** Lift, gains and KS answer the operational question that a single AUC cannot, and lift depends on prevalence in a way the other two do not.
+- **Binning costs measurable discrimination**, and the statistics disagree about how to charge for it. Compute on raw scores.
+- **Model comparison is a paired problem.** DeLong for AUCs, McNemar at a fixed threshold, the paired bootstrap or a permutation test for anything else.
+- **Report effect sizes with intervals**, correct for multiple comparisons, and keep one test set you score exactly once.
+
+## Related concepts
+
+- [**Classification & Regression Metrics**](/courses/model-evaluation/01-classification-metrics): the threshold metrics this lesson complements
+- [**Validation Strategies**](/courses/model-evaluation/02-validation-strategies): the splits these tests are run on, and why fold scores are correlated
+- [**Calibration & Uncertainty**](/courses/model-evaluation/07-calibration-and-uncertainty): the audit a high c-statistic does not cover
+- [**Concordance and rank statistics**](/wiki/concordance-and-rank-statistics): pair counting, ties, and the rank-sum shortcut
+- [**Decile Analysis, Gains and Lift**](/wiki/decile-analysis-and-lift): the full table, KS bands and Hosmer–Lemeshow
+- [**Comparing Model Performance**](/wiki/comparing-model-performance): DeLong, McNemar, paired resampling and multiple-comparison corrections

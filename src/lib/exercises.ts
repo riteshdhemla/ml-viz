@@ -10391,6 +10391,81 @@ const allExercises: Exercise[] = [
       { id: "d", label: "It becomes equal to training error", isCorrect: false },
     ],
   },
+  // ── Model Evaluation — rank ordering & model comparison ─────────
+  {
+    id: "eval-concordance-c-stat",
+    type: "multiple-choice",
+    question:
+      "A model scored 5 positives and 5 negatives. Of the 25 positive-negative pairs, 18 are concordant, 5 are discordant and 2 are tied. What is the c-statistic?",
+    hint: "The c-statistic scores a tied pair as half a win, and keeps it in the denominator.",
+    explanation:
+      "c = (C + T/2) / (C + D + T) = (18 + 1) / 25 = 0.760, which is the AUC. The other numbers are the neighbouring statistics: 18/25 = 0.720 drops ties from the numerator entirely, Somers' D = (18 − 5)/25 = 0.520 = 2c − 1, and Goodman–Kruskal gamma = 13/23 = 0.565 deletes ties from the denominator.",
+    options: [
+      { id: "a", label: "0.760", isCorrect: true },
+      { id: "b", label: "0.720", isCorrect: false },
+      { id: "c", label: "0.520", isCorrect: false },
+      { id: "d", label: "0.565", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-lift-prevalence",
+    type: "multiple-choice",
+    question:
+      "A fraud model is deployed unchanged on a riskier segment: the base rate goes from 5% to 25%, and the model's AUC is the same on both. What happens to its top-decile lift?",
+    hint: "Lift is the bin's bad rate divided by the base rate. How many bads can 10% of the population physically hold?",
+    explanation:
+      "It falls, and it has to. Lift is capped at 1/prevalence: a decile holds 10% of accounts, so even if every one of them were fraudulent the bin's rate would be 100% and its lift 1/0.25 = 4× at a 25% base rate. AUC and KS are rank statistics and are untouched by the base rate; lift is a ratio to it, which is why a lift figure is meaningless without the prevalence it was measured at.",
+    options: [
+      { id: "a", label: "It falls — at a 25% base rate no bin can lift more than 4×", isCorrect: true },
+      { id: "b", label: "It is unchanged, because lift is a rank statistic like AUC", isCorrect: false },
+      { id: "c", label: "It rises in proportion to the base rate", isCorrect: false },
+      { id: "d", label: "It falls, but only because AUC falls on imbalanced data", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-paired-test-choice",
+    type: "multiple-choice",
+    question:
+      "Two classifiers were run at a fixed threshold on the same 400-example test set. A is right where B is wrong on 25 examples, B is right where A is wrong on 10, and they agree on the other 365. Which test decides whether A is genuinely more accurate?",
+    hint: "Which examples actually carry information about which model is better?",
+    explanation:
+      "McNemar's test. The 365 agreements say nothing about which model is better, so the test discards them and asks whether 25 out of 35 discordant examples is more one-sided than a coin flip: χ² = (|25 − 10| − 1)²/35 = 5.60, p = 0.018. A two-proportion z-test on the two accuracies ignores the pairing and throws away that power. DeLong is the paired test for AUCs, not for accuracy at a fixed threshold.",
+    options: [
+      { id: "a", label: "McNemar's test on the 35 discordant examples", isCorrect: true },
+      { id: "b", label: "A two-proportion z-test on the two accuracies", isCorrect: false },
+      { id: "c", label: "DeLong's test", isCorrect: false },
+      { id: "d", label: "An independent-samples t-test on per-fold accuracy", isCorrect: false },
+    ],
+  },
+  {
+    id: "eval-quiz-somers-d",
+    type: "slider",
+    question:
+      "A scorecard reports an AUC (c-statistic) of 0.72. What Gini coefficient — equivalently Somers' D — does the validation pack report?",
+    hint: "The two are rescalings of each other, with a coin flip sitting at 0 instead of 0.5.",
+    explanation:
+      "Gini = Somers' D = 2c − 1 = 2(0.72) − 1 = 0.44. The rescaling exists only to put a random model at 0 and a perfect one at 1. 'AUC 0.72', 'Gini 44%' and \"Somers' D 0.44\" are three ways of reporting the same pair count.",
+    min: 0,
+    max: 1,
+    step: 0.01,
+    correctRange: [0.44, 0.44],
+    unit: "",
+  },
+  {
+    id: "eval-quiz-binned-ks",
+    type: "multiple-choice",
+    question:
+      "Team A reports KS = 0.41 from a ten-row decile table. Team B reports KS = 0.44 computed over every distinct score on the same predictions. Which is right?",
+    hint: "What cut points can each calculation search over?",
+    explanation:
+      "Both are correctly computed; they answer slightly different questions. KS is the largest gap between the cumulative bad and good curves, and a decile table can only evaluate that gap at its own ten cut points, so the binned KS is always at or below the exact one. The mistake is comparing a binned KS to an exact one as though the models differed — state which you computed.",
+    options: [
+      { id: "a", label: "Both — a binned KS can only be ≤ the exact KS, since it searches fewer cut points", isCorrect: true },
+      { id: "b", label: "Team A — deciles smooth out sampling noise, giving the truer value", isCorrect: false },
+      { id: "c", label: "Team B — the binned version is simply miscalculated", isCorrect: false },
+      { id: "d", label: "Neither — KS is only defined on the raw ROC curve", isCorrect: false },
+    ],
+  },
   {
     id: "eval-quiz-slot-anchor",
     type: "multiple-choice",
