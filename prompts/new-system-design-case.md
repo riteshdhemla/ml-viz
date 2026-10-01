@@ -69,47 +69,101 @@ Right after the `# H1`, add:
 <SystemDesignMeta track="ML System Design" company="…" scale="…" difficulty="intermediate" />
 ```
 
-Then follow the fixed skeleton for the track. Sections are plain `##` headings;
-annotate deep-dive sections with the spine slot they fill.
+Then follow the fixed skeleton for the track. Each track uses the interview
+framework educative.io teaches for that interview type, so the section headings
+are a contract: `src/lib/system-design-frameworks.ts` defines them, the case
+page renders them as a framework strip under the spine strip, and
+`system-design-integrity.test.ts` fails if a case's `##` headings drift from
+them (same order, same prefixes). Append a spine tag after the prefix where a
+section fills a loop slot, e.g. `## 3. Metrics *(spine: evaluation)*`. Use `###`
+subsections freely inside a step.
 
-### Template 1 — ML System Design (`spine: ml`)
-1. **Clarify the problem** — goal, users/items, what we optimize (name the proxy-metric risk), scope.
-2. **Requirements & scale** — latency, throughput, freshness, availability + a back-of-envelope that *forces* the architecture.
-3. **ML problem framing** — task type; *what slot was breaking before this system?*
-4. **Data & features** *(data)* — labels, features, feature store, training-serving skew, bias.
-5. **Model** *(hypothesis space + objective + optimization)* — baseline → chosen model, loss, cadence.
-6. **Serving & scaling** — latency-budget table, funnel, caching, fallback.
-7. **Evaluation** *(evaluation)* — offline metrics, online A/B, guardrail metrics.
-8. **Monitoring & feedback** *(feedback)* — drift, retraining, cold start.
-9. **Tradeoffs & alternatives** — a table of choice vs. rejected alternative.
-10. **Interviewer follow-ups** — 3–5 curveballs, each in a `<Details summary="…">` with a short model answer.
-11. **Key takeaways** — a short bullet recap.
+### Template 1: ML System Design (`spine: ml`) uses the 7-step ML framework
 
-### Template 2 — Agentic System Design (`spine: agentic`)
-1. **Clarify the task** *(task)* — goal, when it acts vs. escalates, success criteria, scope.
-2. **Requirements & constraints** — latency/cost, autonomy level, accuracy, auditability.
-3. **Context & tools** *(context)* — prompt design, RAG grounding, memory, typed tool schemas (reads vs. gated writes).
-4. **Orchestration** *(orchestration)* — plan→act→observe loop, step budget, reflection, stop conditions, single vs. multi-agent.
-5. **Evaluation** *(evaluation)* — outcome + trajectory, pass@k, tool-selection accuracy, LLM-as-judge.
-6. **Guardrails & safety** *(guardrails)* — permissioned tools, human-in-the-loop, prompt-injection defense (untrusted input!), output filters.
-7. **Operations** *(operations)* — tracing, cost/latency, model tiering, prompt versioning, feedback loop.
-8. **Tradeoffs & alternatives** — a table.
-9. **Interviewer follow-ups** — 3–5 `<Details>` curveballs.
-10. **Key takeaways.**
+From *Grokking the Machine Learning Interview*:
 
-### Template 3 — Generative AI System Design (`track: genai`, usually `spine: ml`)
-1. **Clarify the problem** — what's generated, the quality bar, modality, product surface.
-2. **Requirements & scale** — latency/throughput and **GPU cost** (the defining GenAI constraint); quality vs. cost.
-3. **GenAI problem framing** — model family (diffusion / autoregressive transformer / GAN / flow) + conditioning; *what was the pre-generative baseline?*
-4. **Data & training** *(data / optimization)* — dataset curation, licensing/IP, dedup, pretraining vs. fine-tuning.
-5. **Model & generation** *(hypothesis-space + objective)* — architecture, conditioning (CFG/control), decoding/sampling.
-6. **Serving & scaling** — the GenAI crux: **inference optimization** (batching, KV cache, quantization, distillation, speculative decoding), GPU autoscaling, caching.
-7. **Evaluation** *(evaluation)* — generation quality is hard: FID/CLIPScore (image), perplexity/human-pref/LLM-judge (text), plus safety evals.
-8. **Safety & guardrails** — harmful content, **IP/copyright & memorization**, watermarking/provenance, hallucination, jailbreak defense.
-9. **Feedback & iteration** *(feedback)* — preference data → RLHF/DPO, drift, model updates.
-10. **Tradeoffs & alternatives** — quality vs. latency vs. cost; closed vs. open; fine-tune vs. prompt.
-11. **Interviewer follow-ups** — 3–5 `<Details>` curveballs.
-12. **Key takeaways.**
+1. **`## 1. Problem statement`**: goal, users/items, what we optimize (name the
+   proxy-metric risk), scope; then `### Framing it as an ML problem` with the task
+   type and *what slot was breaking before this system?*
+2. **`## 2. Scale & latency requirements`**: latency, throughput, freshness,
+   availability, plus a back-of-envelope that *forces* the architecture.
+3. **`## 3. Metrics`** *(evaluation)*: offline metrics (iterate), online metrics
+   (ship), guardrail metrics (harm). Metrics come *before* the design here.
+4. **`## 4. Architecture`**: the high-level components and request flow (an ASCII
+   diagram works well), funnel stages, latency-budget table.
+5. **`## 5. Offline model building & evaluation`** *(data + hypothesis space +
+   objective)*: `### Training data generation`, `### Feature engineering`,
+   `### Model training` (baseline → chosen model, loss), `### Offline evaluation`.
+6. **`## 6. Online model execution & evaluation`**: serving inside the budget,
+   fallbacks, shadow/A-B/interleaving.
+7. **`## 7. Iterative model improvement`** *(feedback)*: drift, retraining, cold
+   start, feedback loops.
+
+Then `## Tradeoffs & alternatives` (table), `## Interviewer follow-ups` (3–5
+`<Details summary="…">`), `## Key takeaways`, `## References`.
+
+### Template 2: Agentic System Design (`spine: agentic`) uses RESHADED
+
+From *Grokking the Modern System Design Interview*, adapted to agents:
+
+1. **`## R: Requirements`** *(task)*: **Functional** (goal, when it acts vs.
+   escalates, success criteria, scope) and **Non-functional** (table: latency,
+   cost, autonomy, accuracy, auditability).
+2. **`## E: Estimation`**: a table of stated assumptions → results: tasks/day,
+   model calls and tokens per task, tokens/day, concurrency, latency per task.
+   End with what the numbers force.
+3. **`## S: Storage schema`**: a table of entities (key fields, store): sessions,
+   memory, checkpoints, traces, audit logs, eval cases. Name what is
+   deliberately *not* stored.
+4. **`## H: High-level design`** *(orchestration)*: component diagram and the
+   plan → act → observe loop, single vs. multi-agent.
+5. **`## A: APIs`**: typed tool schemas (a code block), reads vs. gated writes,
+   and what the schemas deliberately leave out (e.g. identity comes from the
+   session, never from a model argument).
+6. **`## D: Detailed design`** *(context + guardrails)*: `### Context
+   engineering`, `### Orchestration details`, `### Guardrails & safety`,
+   `### Operations`.
+7. **`## E: Evaluation`** *(evaluation)*: `### Evaluating the agent` (outcome +
+   trajectory, pass@k / pass^k, LLM-as-judge), `### Does the design meet the
+   requirements?` (walk the non-functional table, name the bottleneck), and
+   `### Tradeoffs & alternatives` (table).
+8. **`## D: Distinctive component`**: the one component that makes *this*
+   system hard and how the design handles it.
+
+Then `## Interviewer follow-ups`, `## Key takeaways`, `## References` (the
+tradeoffs table lives inside E).
+
+### Template 3: Generative AI System Design (`track: genai`) uses SCALED
+
+From *Grokking the Generative AI System Design*:
+
+1. **`## S: System requirements`**: **Functional** (what's generated, the quality
+   bar, modality, product surface) and **Non-functional** (table).
+2. **`## C: Choose the model`** *(hypothesis-space)*: model family (diffusion /
+   autoregressive transformer / GAN / flow) + conditioning, size class,
+   build vs. adapt; *what was the pre-generative baseline?*
+3. **`## A: Acquire & prepare data`** *(data)*: curation, licensing/IP, dedup,
+   captioning, fine-tuning and preference data.
+4. **`## L: Leverage the model`** *(objective + evaluation)*: training and
+   adaptation, generation (decoding, CFG, control), then `### Evaluation`
+   (FID/CLIPScore, perplexity, human preference, LLM-judge, safety evals).
+5. **`## E: Estimate resources`**: a table of stated assumptions → results: GPU
+   time per output, outputs/day, GPU-hours and fleet size, memory, storage.
+   **GPU cost is the defining GenAI constraint**; end with what the numbers
+   force.
+6. **`## D: Design the system`**: `### High-level design` (diagram),
+   `### Serving & scaling` (batching, KV cache, quantization, distillation,
+   speculative decoding, autoscaling), `### Safety & guardrails` (harmful
+   content, IP & memorization, watermarking/provenance, jailbreaks), and a
+   feedback subsection where it applies.
+
+Then `## Tradeoffs & alternatives`, `## Interviewer follow-ups`,
+`## Key takeaways`, `## References`.
+
+**Estimation tables** (RESHADED's E, SCALED's E) must state every assumption
+in its own column, so an interviewer can move one and the reader can redo the
+arithmetic. Derive every result from the stated assumptions or a cited number;
+never present an assumed number as a measured one.
 
 ## 3. Socratic pause-points (required)
 

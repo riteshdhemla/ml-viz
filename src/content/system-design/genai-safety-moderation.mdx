@@ -31,7 +31,10 @@ a **defense-in-depth** pipeline against an **adversarial** user, added to *every
 generation with minimal latency. It reads through the agentic loop's **guardrails**
 and **evaluation** stages.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** prevent a generative model from producing disallowed content (harmful,
   illegal, privacy-violating) and from being manipulated (jailbreaks, prompt
@@ -42,11 +45,53 @@ and **evaluation** stages.
   thresholds differ by category (self-harm vs. mild profanity).
 - **Scope:** the safety layer around any generation model (text/image/audio/video).
 
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Coverage | Block disallowed in + out | Input + output classifiers per modality |
+| Latency | Minimal added latency | Small fast classifiers; parallel checks |
+| Robustness | Resist jailbreaks/injection | Adversarial training; layered defenses |
+| Precision | Don't over-block benign use | Calibrated, per-category thresholds |
+| Auditability | Explain + appeal decisions | Logging, reason codes, human review |
+
 <Callout type="warning" title="Defense-in-depth, not one classifier">
 No single filter is robust against a determined adversary. The design is layers —
 input moderation, a hardened system policy, output moderation, and model-level
 alignment — each catching what the others miss.
 </Callout>
+
+<ThinkFirst question="What actually is a 'moderation classifier' in 2025 — a keyword list, a fine-tuned encoder, or an LLM? What did Llama Guard's design change?">
+The stack moved from blocklists → fine-tuned encoders → **safeguard LLMs**.
+Llama Guard is a Llama-2-7B instruction-tuned to classify both prompts *and*
+responses against a taxonomy that is written into its prompt, so you can
+swap or extend the policy zero-shot without retraining, and get per-category
+verdicts with a rationale. The tradeoff: an LLM judge costs more per call
+than an encoder, which is why production stacks distill or cascade (cheap
+encoder first, LLM safeguard on the uncertain slice).
+</ThinkFirst>
+
+## C: Choose the model
+
+Two kinds of model, at two depths:
+
+- **Moderation classifiers:** fast per-category models — fine-tuned encoders,
+  distilled LLMs, or safeguard LLMs like Llama Guard with prompt-swappable
+  taxonomies ([Inan et al., 2023](https://arxiv.org/abs/2312.06674)) — for
+  input and output, small enough to add little latency. The production choice
+  is a **cascade**: a cheap encoder on everything, the safeguard LLM on the
+  uncertain slice.
+- **Model-level alignment:** RLHF/DPO with a **reward/safety model** so the base
+  model refuses appropriately on its own (the deepest layer). Jailbreaks work
+  by exploiting **competing objectives** (helpfulness vs. safety) and
+  **mismatched generalization** (attacks phrased outside the safety-training
+  distribution) ([Wei et al., 2023](https://arxiv.org/abs/2307.02483)) — name
+  the failure mode before picking the fix.
+
+<RewardModelViz />
+
+A reward/safety model scores outputs for policy compliance — used both to align
+the base model (RLHF) and, distilled, as an output classifier at serving time.
 
 <ThinkFirst question="Before a single classifier can be trained: what does 'unsafe' mean, operationally? Name the artifacts that must exist first.">
 A written **policy taxonomy** — categories and subcategories (sexual content,
@@ -59,15 +104,20 @@ need **active learning** to even find training examples. Policy is the spec;
 the classifier is just its compiler.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+## A: Acquire & prepare data
 
-| Dimension | Target | Consequence |
-|---|---|---|
-| Coverage | Block disallowed in + out | Input + output classifiers per modality |
-| Latency | Minimal added latency | Small fast classifiers; parallel checks |
-| Robustness | Resist jailbreaks/injection | Adversarial training; layered defenses |
-| Precision | Don't over-block benign use | Calibrated, per-category thresholds |
-| Auditability | Explain + appeal decisions | Logging, reason codes, human review |
+- **Policy first:** the taxonomy, labeling instructions, and per-category
+  severity tiers are the spec every dataset is labeled against
+  ([Markov et al., 2022](https://arxiv.org/abs/2208.03274)).
+- **Labels:** human-labeled prompts and responses, with **active learning** to
+  find enough examples of the rare, catastrophic categories.
+- **Synthetic data:** Constitutional Classifiers train on *synthetic*
+  attack/benign data generated from a natural-language constitution, so a
+  policy change regenerates the training set overnight.
+- **Red-team corpora:** every discovered jailbreak becomes a regression test
+  and a training example.
+- **Human review decisions:** uncertain cases and appeals route to reviewers,
+  whose decisions become training labels.
 
 <ThinkFirst question="Your adversary gets unlimited retries against a static defense. What layers would you stack — and what does each catch that the others miss?">
 Input moderation catches obviously disallowed *requests* before you pay for a
@@ -79,13 +129,14 @@ population — that's why stacking works and any single layer loses the arms
 race.
 </ThinkFirst>
 
-## 3. The layered pipeline *(spine: guardrails)*
+## L: Leverage the model *(spine: guardrails + evaluation)*
+
+### The layered pipeline
 
 Around each generation:
 
 1. **Input moderation:** classify the prompt against the taxonomy; block clearly
-   disallowed requests before spending a generation
-   ([Markov et al., 2022](https://arxiv.org/abs/2208.03274)).
+   disallowed requests before spending a generation.
 2. **Hardened system policy:** the model's instructions/policy that user (and
    retrieved) text cannot override — the core **prompt-injection / jailbreak**
    defense.
@@ -95,36 +146,6 @@ Around each generation:
    marks) so generated content is identifiable downstream.
 
 <WikiLink slug="prompt-injection-attacks-and-defenses" title="Prompt injection & jailbreak defenses" />
-
-<ThinkFirst question="What actually is a 'moderation classifier' in 2025 — a keyword list, a fine-tuned encoder, or an LLM? What did Llama Guard's design change?">
-The stack moved from blocklists → fine-tuned encoders → **safeguard LLMs**.
-Llama Guard is a Llama-2-7B instruction-tuned to classify both prompts *and*
-responses against a taxonomy that is written into its prompt, so you can
-swap or extend the policy zero-shot without retraining, and get per-category
-verdicts with a rationale. The tradeoff: an LLM judge costs more per call
-than an encoder, which is why production stacks distill or cascade (cheap
-encoder first, LLM safeguard on the uncertain slice).
-</ThinkFirst>
-
-## 4. The classifiers & alignment
-
-- **Moderation classifiers:** fast per-category models — fine-tuned encoders,
-  distilled LLMs, or safeguard LLMs like Llama Guard with prompt-swappable
-  taxonomies ([Inan et al., 2023](https://arxiv.org/abs/2312.06674)) — for
-  input and output, small enough to add little latency.
-- **Model-level alignment:** RLHF/DPO with a **reward/safety model** so the base
-  model refuses appropriately on its own (the deepest layer). Jailbreaks work
-  by exploiting **competing objectives** (helpfulness vs. safety) and
-  **mismatched generalization** (attacks phrased outside the safety-training
-  distribution) ([Wei et al., 2023](https://arxiv.org/abs/2307.02483)) — name
-  the failure mode before picking the fix.
-- **Human-in-the-loop:** uncertain cases and appeals route to reviewers, whose
-  decisions become training labels.
-
-<RewardModelViz />
-
-A reward/safety model scores outputs for policy compliance — used both to align
-the base model (RLHF) and, distilled, as an output classifier at serving time.
 
 <ThinkFirst question="Safety recall hits 99.9%. Is the system good? What's the other side of the ledger — and what would a production-grade operating point look like, in numbers?">
 **Over-refusal.** Recall alone is trivially maxed by blocking everything — and
@@ -137,7 +158,7 @@ pair of numbers — robustness gained vs. benign traffic lost — is the honest
 way to report any safety system.
 </ThinkFirst>
 
-## 5. Evaluation *(spine: evaluation)*
+### Evaluation *(spine: evaluation)*
 
 - **Safety recall:** fraction of genuinely disallowed content caught (per
   category; high recall on catastrophic categories).
@@ -162,18 +183,22 @@ overhead, and safety that doubles latency gets quietly bypassed by product
 teams. Cheapness is part of the design requirement.
 </ThinkFirst>
 
-## 6. Operations & feedback
+## E: Estimate resources
 
-- **Latency:** run input/output classifiers in parallel with (or overlapped on)
-  generation; keep them small; cache verdicts for identical content.
-- **Red-teaming loop:** continuous adversarial testing feeds new jailbreaks into
-  training — Constitutional Classifiers train on *synthetic* attack/benign data
-  generated from a natural-language constitution, so a policy change regenerates
-  the training set overnight.
-- **Policy versioning & audit:** decisions are logged with reason codes; policy
-  and thresholds are versioned; appeals overturn and relabel.
-- **Monitoring:** track attack-success and over-refusal rates as live dashboards;
-  new evasion patterns trigger targeted retraining.
+The safety layer is priced as overhead on the generation it protects
+(assumptions stated):
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Traffic | 100M generations/day | ~1,160/s on average |
+| Classifier calls | one input + one output check each, encoders on everything | 200M encoder calls/day ≈ 2.3K/s |
+| Cascade | ~5% of checks escalate to a 7B safeguard LLM at ~500 tokens | ~5B safeguard tokens/day |
+| Overhead ceiling | Anthropic's published Constitutional Classifiers cost | ~24% added inference compute |
+| Latency | input check overlaps prompt processing; output checked per streamed chunk | near-zero added time to first token |
+
+The numbers explain the cascade: running the safeguard LLM on every call would
+cost twenty times the escalated slice, while the encoder tier handles the
+volume in milliseconds.
 
 <ThinkFirst question="Provenance marking: a C2PA-signed AI image gets screenshotted, an LLM's watermarked essay gets paraphrased. What survives — and what is watermarking actually for?">
 Screenshots strip signed metadata; heavy paraphrase and re-encoding degrade
@@ -186,7 +211,35 @@ attribution, audit) and raise laundering costs — accountability
 infrastructure, not an unbreakable seal.
 </ThinkFirst>
 
-## 7. Tradeoffs & alternatives
+## D: Design the system
+
+### High-level design
+
+```
+prompt ──► input encoder ─┬─ clear → generate (model aligned with the safety reward model)
+                          ├─ uncertain → safeguard LLM ─► allow / block
+                          └─ disallowed → refuse with reason code
+generation stream ──► output checks per chunk ──► block / regenerate / allow
+allowed output ──► watermark + C2PA ──► user
+decisions + reason codes ──► audit log ──► review queue / appeals ──► labels
+```
+
+### Operations & feedback *(spine: operations)*
+
+- **Latency:** run input/output classifiers in parallel with (or overlapped on)
+  generation; keep them small; cache verdicts for identical content.
+- **Red-teaming loop:** continuous adversarial testing feeds new jailbreaks into
+  training; synthetic constitution-generated data keeps the classifiers in step
+  with policy changes.
+- **Policy versioning & audit:** decisions are logged with reason codes; policy
+  and thresholds are versioned; appeals overturn and relabel.
+- **Monitoring:** track attack-success and over-refusal rates as live dashboards;
+  new evasion patterns trigger targeted retraining.
+- **Provenance:** watermarking (SynthID-style for text, invisible marks for
+  media) plus C2PA metadata on every output, so honest distribution channels
+  can label and audit generated content.
+
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -196,7 +249,7 @@ infrastructure, not an unbreakable seal.
 | Safeguard LLM (swappable taxonomy) | Fixed fine-tuned encoder | Policy changes without retraining; costs more per call |
 | Watermark + provenance | No marking | Downstream accountability & deepfake mitigation |
 
-## 8. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Users jailbreak the model with role-play prompts. How do you respond?">
 Diagnose the failure mode first (competing objectives vs. mismatched

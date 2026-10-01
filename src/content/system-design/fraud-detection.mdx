@@ -32,7 +32,7 @@ feedback** stages carry the weight. The reference production system here is
 and decides in under 100 milliseconds
 ([Stripe](https://stripe.com/guides/primer-on-machine-learning-for-fraud-protection)).
 
-## 1. Clarify the problem
+## 1. Problem statement
 
 - **Goal:** score each transaction for fraud risk in real time and **act** —
   approve, decline, or challenge (step-up auth) — balancing fraud loss against
@@ -45,6 +45,18 @@ and decides in under 100 milliseconds
   against.
 - **Scope:** real-time transaction scoring + feedback loop. Related: chargebacks,
   KYC, account-takeover (mention as adjacent).
+
+### Framing it as an ML problem
+
+**Cost-sensitive binary classification** on a highly imbalanced, non-stationary
+stream. The decision isn't `argmax` — it's a **threshold** (or multiple bands:
+approve / challenge / decline) chosen to minimize expected dollar cost. Anomaly
+detection helps for novel patterns, but supervised learning on labeled
+chargebacks is the core.
+
+*What was breaking before?* Static rules ("decline if amount > X from new
+device") are brittle and gamed instantly; a plain classifier ignores the
+asymmetric costs and the imbalance.
 
 <Callout type="warning" title="Never optimize accuracy">
 At under 0.5% fraud, predicting "never fraud" is 99.5% accurate and useless. The
@@ -61,7 +73,7 @@ call. The architecture is decided by the latency budget before you pick any
 model.
 </ThinkFirst>
 
-## 2. Requirements & scale
+## 2. Scale & latency requirements
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -76,17 +88,68 @@ events per day at 5 million requests per minute** across its products
 ([Building Nubank](https://building.nubank.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/)) —
 this is firmly "streaming infrastructure" territory, not batch scoring.
 
-## 3. ML problem framing
+<ThinkFirst question="The model outputs a risk score. Where do you set the decision threshold — and why is 0.5 the wrong answer?">
+0.5 assumes errors cost the same in both directions; here a missed fraud costs
+the transaction value while a false decline costs a customer. Put the threshold
+where the **expected dollar cost** curve says, and usually not one threshold
+but bands: approve below, step-up challenge in the middle, decline above. The
+threshold is a business decision the model merely parameterizes — Stripe
+exposes exactly this as a merchant-tunable risk-threshold setting.
+</ThinkFirst>
 
-**Cost-sensitive binary classification** on a highly imbalanced, non-stationary
-stream. The decision isn't `argmax` — it's a **threshold** (or multiple bands:
-approve / challenge / decline) chosen to minimize expected dollar cost. Anomaly
-detection helps for novel patterns, but supervised learning on labeled
-chargebacks is the core.
+## 3. Metrics *(spine: evaluation)*
 
-*What was breaking before?* Static rules ("decline if amount > X from new
-device") are brittle and gamed instantly; a plain classifier ignores the
-asymmetric costs and the imbalance.
+- **Offline:** **AUPRC** (not AUROC — it's misleading when positives are rare),
+  precision/recall @ operating threshold, and **dollar-weighted** cost curves.
+- **Threshold selection:** pick the operating point on the cost curve, not a
+  default 0.5 — often multiple thresholds for approve/challenge/decline.
+- **Online:** approval rate, fraud loss (basis points of volume), and
+  false-positive complaints. The north star is total dollar cost: fraud losses
+  plus the revenue lost to false declines.
+- **Guardrail:** the false-block rate on legitimate payments (Radar's ~0.1%
+  benchmark). A model that cuts fraud by blocking good customers has moved the
+  cost, not removed it.
+
+<WikiLink slug="roc-auc" title="ROC-AUC vs PR-AUC — why PR-AUC for rare positives" />
+
+<ThinkFirst question="A new attack pattern starts at 2am. Even Stripe's two-hour retrain leaves a multi-hour exposure window. What system component covers the gap — and what does it cost you?">
+A **rules layer** beside the model: an analyst ships "decline BIN range X from
+country Y" in minutes, no training data required. The cost is entropy — rules
+accumulate, overlap, and silently over-block. Nubank made the rules path a
+first-class product: a declarative policy engine that cut policy deployment
+from 3–5 weeks to 1–2 days and now runs 300+ policies in production. Treat
+rules as a managed system with owners and expiry, not a pile of if-statements.
+</ThinkFirst>
+
+## 4. Architecture
+
+Two paths share one feature definition: a **synchronous scoring path** that
+must finish inside the checkout budget, and an **asynchronous learning path**
+that keeps features and labels fresh.
+
+```
+checkout ──► feature fetch ──► risk model ──► policy engine ──► approve / challenge / decline
+              │   (streaming        (GBDT/DNN)    (rules + score      + reason codes
+              │    aggregates,                     bands)
+              │    graph score)
+event stream ─┴► streaming aggregations ─► online feature store
+chargebacks + review decisions ─► label store ─► training ─► model registry
+```
+
+- **Online feature store:** velocity aggregates and precomputed graph risk
+  scores, served as key-value lookups so the request path never scans history.
+- **Risk model:** a cheap scorer over those features; its output is a score,
+  not a decision.
+- **Policy engine:** a **rules/policy layer** sits alongside the model for
+  known-bad patterns and instant response to emerging attacks — rules ship in
+  minutes while a retrain takes hours. Nubank's version is a dedicated policy
+  engine with a DSL, policy registry, and feature registry, which took policy
+  changes from a 3–5 week engineering task to a 1–2 day analyst task and scaled
+  from ~20 to 300+ live policies
+  ([Building Nubank](https://building.nubank.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/)).
+- **Label pipeline:** chargebacks and human-review decisions flow back as
+  labels; the training job reads the *same* feature definitions the online path
+  serves.
 
 <ThinkFirst question="Your label is “this transaction got a chargeback.” Before building features — what's wrong with that label?">
 It's **late** (chargebacks arrive weeks after the transaction, so recent data
@@ -96,11 +159,20 @@ you *approved*). Each flaw needs its own countermeasure — maturation windows,
 human review as a faster label source, and a bounded randomized-approval slice.
 </ThinkFirst>
 
-## 4. Data & features *(spine: data)*
+## 5. Offline model building & evaluation *(spine: data + hypothesis space + objective)*
+
+### Training data generation
 
 - **Labels:** chargebacks / confirmed fraud — **delayed** (weeks) and **noisy**
   (not all fraud is reported; not all disputes are fraud). Label latency is a
   first-class problem.
+- **Maturation window:** a recent "no chargeback" isn't confirmed-good yet, so
+  transactions only become negatives once their dispute window has largely
+  closed; human-review decisions supply faster, cleaner labels for the
+  ambiguous band.
+
+### Feature engineering
+
 - **Velocity features** are the most predictive — counts/sums over short windows:
   `tx_count_5min`, `distinct_countries_24h`, `device_age`, `merchant_decline_rate`.
   These require a **streaming feature store** answering count/sum/distinct in under 10ms
@@ -134,7 +206,7 @@ answer is "GBDT until your data size and team can pay for the deep-learning
 upgrade, and deep models as feature producers in between."
 </ThinkFirst>
 
-## 5. Model *(spine: hypothesis space + objective)*
+### Model training
 
 - **Baseline:** gradient-boosted trees (XGBoost) on velocity + account features —
   the long-time production default for tabular fraud: strong, fast, interpretable.
@@ -154,48 +226,23 @@ upgrade, and deep models as feature producers in between."
 - **Objective:** class-weighted / focal loss, weights set by **business cost** of
   each error type, not just inverse frequency.
 
-<ThinkFirst question="A new attack pattern starts at 2am. Even Stripe's two-hour retrain leaves a multi-hour exposure window. What system component covers the gap — and what does it cost you?">
-A **rules layer** beside the model: an analyst ships "decline BIN range X from
-country Y" in minutes, no training data required. The cost is entropy — rules
-accumulate, overlap, and silently over-block. Nubank made the rules path a
-first-class product: a declarative policy engine that cut policy deployment
-from 3–5 weeks to 1–2 days and now runs 300+ policies in production. Treat
-rules as a managed system with owners and expiry, not a pile of if-statements.
-</ThinkFirst>
+### Offline evaluation
 
-## 6. Serving & scaling
+Split **by time**, never randomly: the model must be judged on attacks that
+happened after its training window, because that is the only situation it will
+face in production. Report AUPRC and the dollar-cost curve on the out-of-time
+holdout, and pick the candidate's operating bands there before anything ships.
+
+## 6. Online model execution & evaluation
 
 Inline with checkout under 100ms: fetch streaming features + precomputed graph
-score, run the model, map the score to an action band, emit reason codes. A
-**rules/policy layer** sits alongside the model for known-bad patterns and
-instant response to emerging attacks — rules ship in minutes while a retrain
-takes hours. Nubank's version is a dedicated policy engine with a DSL, policy
-registry, and feature registry, which took policy changes from a 3–5 week
-engineering task to a 1–2 day analyst task and scaled from ~20 to 300+ live
-policies
-([Building Nubank](https://building.nubank.com/scaling-fraud-defense-how-nubank-evolved-its-risk-analysis-platform/)).
+score, run the model, map the score to an action band through the policy
+engine, emit reason codes.
 
-<ThinkFirst question="The model outputs a risk score. Where do you set the decision threshold — and why is 0.5 the wrong answer?">
-0.5 assumes errors cost the same in both directions; here a missed fraud costs
-the transaction value while a false decline costs a customer. Put the threshold
-where the **expected dollar cost** curve says, and usually not one threshold
-but bands: approve below, step-up challenge in the middle, decline above. The
-threshold is a business decision the model merely parameterizes — Stripe
-exposes exactly this as a merchant-tunable risk-threshold setting.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline:** **AUPRC** (not AUROC — it's misleading when positives are rare),
-  precision/recall @ operating threshold, and **dollar-weighted** cost curves.
-- **Threshold selection:** pick the operating point on the cost curve, not a
-  default 0.5 — often multiple thresholds for approve/challenge/decline.
-- **Online:** monitor approval rate, fraud loss (basis points of volume), and
-  false-positive complaints; A/B new models on a slice with a shadow period
-  first — Stripe shadow-scores with the new model before it takes over
-  decisions.
-
-<WikiLink slug="roc-auc" title="ROC-AUC vs PR-AUC — why PR-AUC for rare positives" />
+New models never take decisions on day one. Stripe **shadow-scores** with the
+new model before it takes over, comparing its decisions with the live model's
+on the same traffic; the candidate then runs as an A/B on a slice, judged on
+approval rate, fraud loss in basis points, and false-positive complaints.
 
 <ThinkFirst question="Offline AUPRC improved on the holdout, you shipped, and three weeks later fraud losses are climbing. Walk through the two or three most likely explanations.">
 (1) **The adversary moved** — your holdout measured the *old* attack mix; the
@@ -207,7 +254,7 @@ old model used to decline. This is why fraud evaluation is never a one-shot
 offline exercise.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Adversarial drift:** the adversary adapts, so distributions shift by design.
   Monitor feature and score drift; keep a **human review queue** whose decisions
@@ -219,7 +266,7 @@ offline exercise.
   ones never charge back) — correct for this selection bias when retraining,
   including a small, bounded randomized-approval slice in the risky band.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -229,7 +276,7 @@ offline exercise.
 | Supervised + graph-anomaly hybrid | Pure supervised | Unsupervised graph models catch novel MOs before labels exist |
 | Frequent retrains (hours) | Weekly/monthly retrains | The adversary's iteration speed sets yours |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Labels arrive weeks late as chargebacks. How do you train?">
 Treat labels as censored: a recent "no chargeback" isn't confirmed-good yet. Use

@@ -30,7 +30,10 @@ specific subject ("put *my dog* in a spacesuit"). This adds **conditioning on an
 input image + mask** and **lightweight per-user fine-tuning** on top of a diffusion
 base — the interesting system-design twists over plain text-to-image.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** two capabilities — (a) **editing**: inpainting/outpainting/instructed
   edits that change only what's asked while keeping the rest coherent; (b)
@@ -41,13 +44,7 @@ base — the interesting system-design twists over plain text-to-image.
 - **Scope:** conditioning + personalization on a diffusion base + serving/safety.
   Assumes the base text-to-image case as foundation.
 
-<Callout type="tip" title="Interview signal">
-The two hard subproblems are **mask-conditioned generation that stays coherent**
-and **fast, cheap per-user personalization**. Naming personalization as a
-*fine-tuning* problem (not prompting) is the key fork.
-</Callout>
-
-## 2. Requirements & scale
+**Non-functional.**
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -55,6 +52,12 @@ and **fast, cheap per-user personalization**. Naming personalization as a
 | Personalization | Few images, minutes to train | LoRA/textual-inversion, not full fine-tune |
 | Storage | Per-user weights | Tiny LoRA adapters, not full models |
 | Serving | Swap adapters at inference | Adapter hot-loading on shared base |
+
+<Callout type="tip" title="Interview signal">
+The two hard subproblems are **mask-conditioned generation that stays coherent**
+and **fast, cheap per-user personalization**. Naming personalization as a
+*fine-tuning* problem (not prompting) is the key fork.
+</Callout>
 
 <ThinkFirst question="The base model has never seen the user's dog. What are the candidate ways to teach it — and what does each cost in GPU time and storage?">
 Prompting can't do it — no words select a specific unseen subject. The
@@ -67,7 +70,7 @@ megabytes, hot-swap onto a shared base. Rank the fork by fidelity vs.
 GPU-minutes vs. bytes-per-user.
 </ThinkFirst>
 
-## 3. GenAI problem framing
+## C: Choose the model *(spine: hypothesis-space)*
 
 - **Editing:** conditional diffusion where the condition is the **input image +
   mask** (inpainting), or a natural-language instruction — InstructPix2Pix
@@ -79,6 +82,9 @@ GPU-minutes vs. bytes-per-user.
   inversion**, which shows a *single learned embedding vector* can capture a
   concept ([Gal et al., 2022](https://arxiv.org/abs/2208.01618)) — made cheap
   with **LoRA** adapters.
+- **The choice:** one shared latent diffusion base for everyone, with
+  per-user **LoRA adapters** for personalization. DreamBooth-quality binding
+  at a few megabytes per subject.
 
 *Pre-generative baseline?* Manual editing (Photoshop) — powerful but slow/skilled;
 generative editing makes it a prompt.
@@ -93,7 +99,7 @@ factory, then distill into one feed-forward model. The trained editor
 generalizes to real photos it never saw.
 </ThinkFirst>
 
-## 4. Data & training *(spine: data)*
+## A: Acquire & prepare data *(spine: data)*
 
 - **Editing data:** synthesized (image, mask, edit) or instruction-edit pairs;
   masks are randomly generated during training so the model learns arbitrary
@@ -115,7 +121,9 @@ generalizes: every new control type is an *add-on branch* on a frozen base —
 same economics as LoRA, applied to spatial control instead of identity.
 </ThinkFirst>
 
-## 5. Model & generation *(spine: hypothesis-space + optimization)*
+## L: Leverage the model *(spine: optimization + evaluation)*
+
+### Model & generation
 
 - **Base:** a latent diffusion model (shared across users).
 - **Personalization via LoRA:** freeze the base, train low-rank update matrices
@@ -135,6 +143,25 @@ train a tiny low-rank update, store/serve thousands of them cheaply.
 
 <WikiLink slug="ddim-sampling" title="DDIM sampling for diffusion edits" />
 
+<ThinkFirst question="Personalization “worked” — by what measure? Two qualities pull against each other here. Which?">
+**Identity fidelity vs. editability.** Overtrain the adapter and it memorizes
+the training photos — perfect likeness, but every generation is the same pose
+and it ignores prompts. Undertrain and it re-poses beautifully but doesn't look
+like the subject. Both axes must be evaluated explicitly; optimizing likeness
+alone quietly destroys the product's point.
+</ThinkFirst>
+
+### Evaluation
+
+- **Edit quality:** masked-region realism + **background preservation** (did it
+  change only what was asked?), measured by human eval and reference metrics.
+- **Personalization:** **identity/subject fidelity** vs. **prompt editability**
+  (can you still pose it in new scenes?) — the DreamBooth paper's own protocol:
+  DINO/CLIP-image similarity for subject fidelity, CLIP text similarity for
+  prompt fidelity, reported *as a pair* because they trade off.
+- **Overfitting checks:** generations should not reproduce training photos'
+  backgrounds and poses verbatim.
+
 <ThinkFirst question="A million users each have a personalized model. How do you serve that without a million model copies?">
 Notice what personalization actually changed: a few megabytes of low-rank
 deltas. Keep **one** frozen base model resident on the GPUs and **hot-load the
@@ -145,32 +172,20 @@ users at ~5MB each is ~5TB of blob storage, not a million GPU deployments.
 That reframing is the entire economics.
 </ThinkFirst>
 
-## 6. Serving & scaling
+## E: Estimate resources
 
-Shared base model resident on GPUs; **hot-load the user's LoRA adapter** for their
-request (no per-user model copy). Personalization training runs as an async job
-(minutes) → adapter stored keyed to the user. Inpainting requests carry the image
-+ mask; batch where possible, though note adapter-per-request works against
-cross-user batching, so route same-adapter and adapter-free traffic together.
+Two workloads with very different shapes, assumptions stated:
 
-<ThinkFirst question="Personalization “worked” — by what measure? Two qualities pull against each other here. Which?">
-**Identity fidelity vs. editability.** Overtrain the adapter and it memorizes
-the training photos — perfect likeness, but every generation is the same pose
-and it ignores prompts. Undertrain and it re-poses beautifully but doesn't look
-like the subject. Both axes must be evaluated explicitly; optimizing likeness
-alone quietly destroys the product's point.
-</ThinkFirst>
+| Workload | Assumption | Result |
+|---|---|---|
+| Adapter storage | 1M personalized users × ~5 MB LoRA | ~5 TB of blob storage, versus ~5 PB for 1M full multi-GB checkpoints |
+| Personalization training | 20K new subjects/day × ~10 GPU-minutes | ~3,300 GPU-hours/day ≈ 140 GPUs of async training capacity |
+| Edits / generations | 2M requests/day × ~3 s on one GPU | ~1,700 GPU-hours/day ≈ 70 GPUs busy, before peak headroom |
+| Adapter load | ~5 MB fetched per cold request | milliseconds from a warm cache; keep hot adapters resident |
 
-## 7. Evaluation *(spine: evaluation)*
-
-- **Edit quality:** masked-region realism + **background preservation** (did it
-  change only what was asked?), measured by human eval and reference metrics.
-- **Personalization:** **identity/subject fidelity** vs. **prompt editability**
-  (can you still pose it in new scenes?) — the DreamBooth paper's own protocol:
-  DINO/CLIP-image similarity for subject fidelity, CLIP text similarity for
-  prompt fidelity, reported *as a pair* because they trade off.
-- **Overfitting checks:** generations should not reproduce training photos'
-  backgrounds and poses verbatim.
+The numbers say the training queue, not inference, is the bigger GPU bill, and
+that adapters must be cached near the GPUs because a cold fetch on every
+request would cost more than the delta itself.
 
 <ThinkFirst question="Generation abuse starts from a prompt. Editing abuse starts from a real photograph. What does that change about the harm — and about your defenses?">
 There's now a **victim in the input**. Editing a real photo can strip
@@ -182,7 +197,27 @@ the output, and provenance marking matters doubly, because an edited real
 photo is the canonical misinformation artifact.
 </ThinkFirst>
 
-## 8. Safety & guardrails
+## D: Design the system
+
+### High-level design
+
+```
+personalize: user photos ──► consent + face-match checks ──► async LoRA training job
+             ──► adapter (≈5 MB, encrypted) ──► adapter store keyed by user
+edit / generate: image + mask or instruction ──► input-image checks (faces, provenance)
+             ──► router (group by adapter) ──► GPU worker: shared base + hot-loaded LoRA
+             ──► output filters ──► watermark ──► user
+```
+
+### Serving & scaling
+
+Shared base model resident on GPUs; **hot-load the user's LoRA adapter** for their
+request (no per-user model copy). Personalization training runs as an async job
+(minutes) → adapter stored keyed to the user. Inpainting requests carry the image
++ mask; batch where possible, though note adapter-per-request works against
+cross-user batching, so route same-adapter and adapter-free traffic together.
+
+### Safety & guardrails
 
 - **Consent & likeness:** personalization on real people is high-risk — require
   consent, block nonconsensual/celebrity personalization (face-match the
@@ -193,7 +228,7 @@ photo is the canonical misinformation artifact.
 - **Data privacy:** user images and adapters are private, encrypted at rest,
   and deleted on request — the adapter itself encodes the user's subject.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -202,7 +237,7 @@ photo is the canonical misinformation artifact.
 | Mask-conditioned inpainting | Regenerate whole image | Preserves the untouched regions exactly |
 | Textual inversion | LoRA | KBs and even lighter, but usually lower fidelity |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Personalization either doesn't look like the subject or can't be re-posed. Tradeoff?">
 Identity fidelity vs. editability. Over-train and the adapter memorizes the exact

@@ -33,7 +33,8 @@ production CTR systems, and this case leans on them throughout. Walk it through
 the **ML project loop** with the objective and evaluation stages front and
 center.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 - **Goal:** for each candidate ad, predict `P(click)` (and `P(conversion)`) so
   the auction can rank by **expected value** `bid × pCTR`.
@@ -43,23 +44,22 @@ center.
 - **Scope:** the prediction model + how it plugs into the auction. Out of scope:
   the bidding/budget optimizer internals (mention them).
 
+### Framing it as an ML problem
+
+Binary probability estimation under **extreme class imbalance** (CTRs are often
+0.1–5%) and **huge sparse feature spaces** (billions of IDs). Framed as
+**calibrated binary classification** with a logloss objective. The ranking that
+matters is `expected value = bid × pCTR × quality`, computed in the auction.
+
+*What was breaking before?* Rule-based / popularity ad selection ignores
+context and can't price efficiently; a ranker without calibration breaks the
+auction's economics.
+
 <Callout type="tip" title="Interview signal">
 Say "ranking is not enough — the auction needs a *calibrated* probability" in the
 first minute. It separates candidates who've built ad systems from those porting
 a feed-ranking answer.
 </Callout>
-
-## 2. Requirements & scale
-
-| Dimension | Target | Consequence |
-|---|---|---|
-| Latency | < 10 ms for hundreds of candidate ads | Tiny, heavily-optimized model; feature caching |
-| Volume | Billions of predictions/day | Cost per prediction dominates infra spend |
-| Calibration | pCTR ≈ observed CTR across slices | Explicit recalibration + monitoring |
-| Freshness | Adapt to new ads/trends within hours | Online / frequent incremental training |
-
-**Back-of-envelope:** scoring hundreds of ads in under 10ms means a model that's cheap
-per item — wide-and-deep / factorization-based, not a giant transformer per ad.
 
 <ThinkFirst question="Facebook measured what happens when a CTR model trained on one day's data is evaluated on each of the following days. What did the curve look like — and what does it force operationally?">
 Monotonic decay: prediction quality degrades steadily as the gap between
@@ -71,16 +71,67 @@ per-example, in a streaming loop. A weekly batch retrain is not a smaller
 version of this system — it's a different, worse system.
 </ThinkFirst>
 
-## 3. ML problem framing
+## 2. Scale & latency requirements
 
-Binary probability estimation under **extreme class imbalance** (CTRs are often
-0.1–5%) and **huge sparse feature spaces** (billions of IDs). Framed as
-**calibrated binary classification** with a logloss objective. The ranking that
-matters is `expected value = bid × pCTR × quality`, computed in the auction.
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 10 ms for hundreds of candidate ads | Tiny, heavily-optimized model; feature caching |
+| Volume | Billions of predictions/day | Cost per prediction dominates infra spend |
+| Calibration | pCTR ≈ observed CTR across slices | Explicit recalibration + monitoring |
+| Freshness | Adapt to new ads/trends within hours | Online / frequent incremental training |
 
-*What was breaking before?* Rule-based / popularity ad selection ignores
-context and can't price efficiently; a ranker without calibration breaks the
-auction's economics.
+**Back-of-envelope:** scoring hundreds of ads in under 10ms means a model that's cheap
+per item — wide-and-deep / factorization-based, not a giant transformer per ad.
+
+**Freshness:** Facebook showed model quality decays day over day when training
+lags serving, so labels flow into (at least) daily retrains, and the feature
+pipeline is streaming, not nightly
+([He et al., ADKDD 2014](https://dl.acm.org/doi/10.1145/2648584.2648589)).
+
+<ThinkFirst question="Which two offline numbers must you track — and how can one improve while the other silently loses money?">
+**AUC** (ranking) and **calibration** (ECE / reliability curves). They're
+independent: a new model can order ads better *and* systematically overpredict
+probabilities, and since price = bid × pCTR, the calibration regression
+misprices every auction while your AUC dashboard glows green. Track both, per
+segment.
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Offline:** **AUC / logloss** (or Facebook's normalized entropy, logloss
+  relative to always predicting the background CTR) for ranking +
+  **calibration** metrics (ECE, reliability curves). AUC can improve while
+  calibration degrades — track both.
+- **Online:** A/B on revenue *and* advertiser ROI.
+- **Guardrails:** user experience (ad load, relevance) and calibration by
+  segment.
+
+<ThinkFirst question="The model emits pCTR = 0.03 for an ad. What consumes that number next, and what does that imply about the model's real job?">
+The **auction**: ads are ranked by `bid × pCTR`, and the price the winner pays
+is derived from the runner-up's expected value. So the model isn't producing a
+relevance score — it's producing one factor in a *price*. Overestimate pCTR by
+2× and you overcharge the advertiser by 2×; the model's real job is honest
+probabilities, not just correct ordering.
+</ThinkFirst>
+
+## 4. Architecture
+
+```
+ad request ──► candidate ads (targeting + budget filters)
+           ──► feature fetch (user, ad, context; low-latency store)
+           ──► pCTR / pCVR model (batch-score all candidates)
+           ──► calibration layer
+           ──► auction: rank by bid × pCTR × quality, price, pacing
+impressions + clicks + conversions ──► streaming joiner ──► training ──► model push
+```
+
+Prediction feeds the **auction**: ads are ranked by `bid × pCTR` (× quality), and
+the winner pays a price derived from the runner-up (second-price / GSP / VCG).
+Budget pacing throttles delivery so advertisers spend evenly. The **streaming
+joiner** pairs each impression with its click (and later its conversion) so
+fresh labeled examples reach training within hours.
+
+<WikiLink slug="ad-auction-and-bidding" title="Ad auctions — second-price, GSP, VCG" />
 
 <ThinkFirst question="CTR is around 1%, so 99% of your training rows are negatives. What's the standard fix — and its hidden cost?">
 **Negative downsampling** keeps training tractable and balanced, but it
@@ -90,21 +141,23 @@ monotone distortion); here the auction prices on the absolute number, so you
 must analytically correct or **recalibrate** after downsampling.
 </ThinkFirst>
 
-## 4. Data & features *(spine: data)*
+## 5. Offline model building & evaluation *(spine: hypothesis space + objective + optimization)*
+
+### Training data generation
 
 - **Labels:** impressions → click (and click → conversion, delayed). **Delayed
   feedback** is a real problem: a "no click yet" label may flip later.
-- **Features:** user, ad (creative embedding, advertiser, category), context
-  (placement, device, time), and dense **cross features** (user × ad category).
-  ID features are embedded; the embedding tables dominate model size.
 - **Imbalance:** negative downsampling with **calibration correction** to recover
   true probabilities after resampling — Facebook's recipe: downsample negatives
   by rate $w$, then map the model output back with
   $q = p / (p + (1-p)/w)$
   ([He et al., ADKDD 2014](https://dl.acm.org/doi/10.1145/2648584.2648589)).
-- **Freshness:** the same paper showed model quality decays day over day when
-  training lags serving, so labels flow into (at least) daily retrains, and the
-  feature pipeline is streaming, not nightly.
+
+### Feature engineering
+
+- **Features:** user, ad (creative embedding, advertiser, category), context
+  (placement, device, time), and dense **cross features** (user × ad category).
+  ID features are embedded; the embedding tables dominate model size.
 
 <ThinkFirst question="Your feature space is billions of sparse IDs (every user × ad × placement cross). One weight per feature can't fit in serving memory. What are your levers before you reach for a smaller model?">
 Three, all from Google's production playbook: **hashing** IDs into a bounded
@@ -115,7 +168,7 @@ model stays expressive over billions of possible features while materializing
 only the tiny fraction that earns its memory.
 </ThinkFirst>
 
-## 5. Model *(spine: hypothesis space + objective + optimization)*
+### Model training
 
 - **Baseline:** logistic regression with hashed cross features, trained online —
   Google's ads system ran on exactly this, with **FTRL-Proximal** per-coordinate
@@ -138,45 +191,27 @@ only the tiny fraction that earns its memory.
 
 <WikiLink slug="platt-scaling-and-isotonic-regression" title="Calibration — Platt scaling & isotonic regression" />
 
+### Offline evaluation
+
+Score the candidate on the next day's traffic (train on days $1..t$, test on
+$t+1$), report AUC, logloss, and a reliability diagram per slice.
+
 <CalibrationViz />
 
 A reliability diagram like this is *the* artifact you monitor: points on the
 diagonal mean predicted probabilities match observed click rates.
 
-<ThinkFirst question="The model emits pCTR = 0.03 for an ad. What consumes that number next, and what does that imply about the model's real job?">
-The **auction**: ads are ranked by `bid × pCTR`, and the price the winner pays
-is derived from the runner-up's expected value. So the model isn't producing a
-relevance score — it's producing one factor in a *price*. Overestimate pCTR by
-2× and you overcharge the advertiser by 2×; the model's real job is honest
-probabilities, not just correct ordering.
-</ThinkFirst>
-
-## 6. Serving & the auction
-
-Prediction feeds the **auction**: ads are ranked by `bid × pCTR` (× quality), and
-the winner pays a price derived from the runner-up (second-price / GSP / VCG).
-Budget pacing throttles delivery so advertisers spend evenly.
-
-<WikiLink slug="ad-auction-and-bidding" title="Ad auctions — second-price, GSP, VCG" />
+## 6. Online model execution & evaluation
 
 Serving: feature-fetch from a low-latency store, batch-score all candidate ads,
 apply pacing/floor rules, run the auction — all under 10ms.
 
-<ThinkFirst question="Which two offline numbers must you track — and how can one improve while the other silently loses money?">
-**AUC** (ranking) and **calibration** (ECE / reliability curves). They're
-independent: a new model can order ads better *and* systematically overpredict
-probabilities, and since price = bid × pCTR, the calibration regression
-misprices every auction while your AUC dashboard glows green. Track both, per
-segment.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline:** **AUC / logloss** for ranking + **calibration** metrics (ECE,
-  reliability curves). AUC can improve while calibration degrades — track both.
-- **Online:** A/B on revenue *and* advertiser ROI, with guardrails on user
-  experience (ad load, relevance) and calibration by segment.
-- **Counterfactual:** replay/off-policy estimation before spending live traffic.
+- **Counterfactual first:** replay/off-policy estimation before spending live
+  traffic.
+- **Then A/B:** revenue *and* advertiser ROI, with guardrails on ad load,
+  relevance, and calibration by segment. Revenue alone can rise because a
+  miscalibrated model overcharges; ROI is what tells you advertisers will keep
+  bidding.
 
 <ThinkFirst question="Aggregate calibration is perfect: mean pCTR equals observed CTR to the third decimal. Why can the system still be losing money every hour?">
 Because calibration errors can **cancel in aggregate**: overpredicting on video
@@ -188,7 +223,7 @@ aggregate number is a vanity metric. This is why calibration monitoring, not
 AUC monitoring, is the pager-worthy alert.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Calibration drift** by slice (advertiser, placement) is the alarm that
   matters most — it silently distorts pricing.
@@ -197,8 +232,10 @@ AUC monitoring, is the pager-worthy alert.
   distribution explicitly rather than mislabeling them
   ([Chapelle, KDD 2014](https://www.semanticscholar.org/paper/Modeling-delayed-feedback-in-display-advertising-Chapelle/9eed333dcaade2c1dd32590eff6b0c0e670a5674)),
   and backfill labels as conversions arrive. The loop closes into **data**.
+- **Freshness:** retrain at least daily (or update online with FTRL) so the
+  model tracks new ads and campaigns instead of decaying against them.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -207,7 +244,7 @@ AUC monitoring, is the pager-worthy alert.
 | Negative downsampling + recalibration | Train on all negatives | Cheaper; recalibration recovers true probabilities |
 | Logloss objective | Pure AUC optimization | Logloss is a proper score → calibrated; AUC ignores calibration |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="AUC went up but revenue dropped. What happened?">
 Almost always **calibration**: a higher-AUC model that's miscalibrated misprices

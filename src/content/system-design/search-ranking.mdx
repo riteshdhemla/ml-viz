@@ -31,7 +31,8 @@ domain is unusually well documented: Airbnb has published its ranking evolution
 end-to-end, Amazon its semantic retrieval system, and Facebook its
 embedding-based retrieval stack — we'll lean on all three.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 - **What are we searching?** A catalog of listings/products (structured fields +
   text + images), queried by a short, often ambiguous or misspelled query.
@@ -56,34 +57,11 @@ slots with bookings that will bounce off a rejection, which is worse than a
 weaker match that completes.
 </ThinkFirst>
 
-## 2. Requirements & scale
+### Framing it as an ML problem
 
-| Dimension | Target | Consequence |
-|---|---|---|
-| Latency | < 300 ms p99 | Two-stage funnel; ANN + a bounded ranker |
-| Catalog | 100M+ items | Inverted index + embedding index, not scans |
-| Throughput | 10k+ QPS | Cheap retrieval, GPU/optimized ranker on ~1k candidates |
-| Robustness | Typos, synonyms, multilingual | Query understanding + semantic retrieval |
-| Freshness | New/updated items searchable in minutes | Incremental indexing |
-
-<ThinkFirst question="You already have BM25 over an inverted index — a classic search engine. What can't it do, and where exactly does ML enter?">
-Lexical match can't bridge vocabulary ("beach house" vs "oceanfront villa"),
-can't personalize, and doesn't know that relevance ≠ conversion. ML enters in
-three slots: query understanding, a *semantic* retrieval channel alongside
-BM25, and a learned ranker on top — not as a replacement for the index but as
-stages around it.
-</ThinkFirst>
-
-## 3. ML problem framing
-
-Search is a **pipeline of ML slots**:
-
-1. **Query understanding**: spell-correct, tokenize, detect intent/entities,
-   expand synonyms. Framed as tagging + classification.
-2. **Retrieval** *(hypothesis space)*: fetch ~1000 candidates via **hybrid**
-   lexical (BM25 over an inverted index) **+ semantic** (embedding ANN) recall.
-3. **Ranking** *(hypothesis space + objective)*: a **learning-to-rank** model
-   scores candidates on `P(book | query, item, user)`.
+**Learning to rank** with a two-sided target: order candidates by
+`P(book | query, item, user)`, where a booking the host rejects counts against
+the result.
 
 *What was breaking before?* Pure lexical match (BM25) misses semantics ("beach
 house" vs "oceanfront villa") and can't personalize; a single ranker over the
@@ -96,6 +74,59 @@ Search ran on Boolean lexical matching for years before adding embedding-based
 retrieval *alongside* (not instead of) the inverted index
 ([Huang et al., KDD 2020](https://arxiv.org/abs/2006.11632)).
 
+## 2. Scale & latency requirements
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 300 ms p99 | Two-stage funnel; ANN + a bounded ranker |
+| Catalog | 100M+ items | Inverted index + embedding index, not scans |
+| Throughput | 10k+ QPS | Cheap retrieval, GPU/optimized ranker on ~1k candidates |
+| Robustness | Typos, synonyms, multilingual | Query understanding + semantic retrieval |
+| Freshness | New/updated items searchable in minutes | Incremental indexing |
+
+<ThinkFirst question="You have two candidate rankers and limited live traffic. How do you find the better one without burning weeks of A/B tests?">
+**Interleaving**: blend both rankers' results into one list and see whose items
+get clicked — far more statistically sensitive than a traffic-split A/B, so it
+works as a cheap screen. Offline NDCG on de-biased labels filters first;
+interleaving picks the promising challenger; the full A/B on bookings makes the
+final call.
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Offline:** NDCG@k, MRR, MAP on graded relevance; Recall@k for retrieval.
+  Use **interleaving** to compare rankers sensitively before a full A/B.
+- **Online:** the business metric (bookings/purchases per search).
+- **Guardrails:** zero-result rate, latency, query-abandonment.
+- **Human relevance judgments** for a gold set the implicit metrics can't cover.
+
+<ThinkFirst question="You already have BM25 over an inverted index — a classic search engine. What can't it do, and where exactly does ML enter?">
+Lexical match can't bridge vocabulary ("beach house" vs "oceanfront villa"),
+can't personalize, and doesn't know that relevance ≠ conversion. ML enters in
+three slots: query understanding, a *semantic* retrieval channel alongside
+BM25, and a learned ranker on top — not as a replacement for the index but as
+stages around it.
+</ThinkFirst>
+
+## 4. Architecture
+
+Search is a **pipeline of ML slots**:
+
+1. **Query understanding**: spell-correct, tokenize, detect intent/entities,
+   expand synonyms. Framed as tagging + classification.
+2. **Retrieval** *(hypothesis space)*: fetch ~1000 candidates via **hybrid**
+   lexical (BM25 over an inverted index) **+ semantic** (embedding ANN) recall.
+3. **Ranking** *(hypothesis space + objective)*: a **learning-to-rank** model
+   scores candidates on `P(book | query, item, user)`.
+4. **Blend + business rules**: diversity, availability, policy.
+
+| Stage | Budget | How |
+|---|---|---|
+| Query understanding | ~20 ms | Cached, small models |
+| Retrieval (BM25 ∪ ANN) | ~60 ms | Inverted index + HNSW, merged & deduped |
+| Ranking | ~120 ms | GBDT/neural ranker on ~1000 candidates |
+| Blend + business rules | ~30 ms | Diversity, availability, policy |
+
 <ThinkFirst question="You're building the ranker's training set. Clicked items are the positives — what should the negatives be?">
 Not random catalog items: separating "beach house" from a lawnmower is too easy
 and teaches the model nothing. Use **hard negatives** — items shown in the same
@@ -104,13 +135,12 @@ remember the positives are biased by position: the user clicked partly because
 you ranked it first.
 </ThinkFirst>
 
-## 4. Data & features *(spine: data)*
+## 5. Offline model building & evaluation *(spine: data + hypothesis space + objective)*
+
+### Training data generation
 
 - **Labels:** clicks, bookings/purchases, dwell — graded relevance. De-bias with
   **inverse-propensity weighting** or a click model to correct for position.
-- **Features:** query (embedding, length, intent), item (text/image embeddings,
-  price, quality, popularity), query–item (BM25 score, semantic similarity,
-  historical CTR), and user context.
 - **Hard negatives:** sample non-clicked items *shown in the same session* — the
   model must learn to separate close calls, not just random junk. Amazon's
   semantic-search loss makes this explicit with **three tiers** — purchased,
@@ -120,6 +150,21 @@ you ranked it first.
   a propensity and inverse-weight the logged clicks — the counterfactual
   learning-to-rank recipe
   ([Joachims et al., WSDM 2017](https://www.cs.cornell.edu/~tj/publications/joachims_etal_17a.pdf)).
+
+<ThinkFirst question="BM25 scores and embedding cosine similarities live on incomparable scales, and the union of both channels is ~1000 candidates. Who decides the final order — and what role do the retrieval scores still play?">
+The ranker decides; retrieval scores **select, they don't rank**. Naively
+blending a BM25 score with a cosine similarity is arbitrary — the robust
+pattern is to pass both scores in as *features* of the learning-to-rank model,
+which is exactly what Facebook does with its ANN similarity in embedding-based
+retrieval. Retrieval's only job is to make sure the right answer is somewhere
+in the thousand.
+</ThinkFirst>
+
+### Feature engineering
+
+- **Features:** query (embedding, length, intent), item (text/image embeddings,
+  price, quality, popularity), query–item (BM25 score, semantic similarity,
+  historical CTR), and user context.
 
 <WikiLink slug="bm25-ranking" title="BM25 — the lexical retrieval baseline" />
 
@@ -133,7 +178,7 @@ the metric drops you can't tell which broke. Most of their paper is failed
 that worked.
 </ThinkFirst>
 
-## 5. Model *(spine: hypothesis space + objective + optimization)*
+### Model training
 
 **Retrieval: two-tower + inverted index.** A query tower and an item tower
 share an embedding space; item embeddings are precomputed and indexed in an ANN
@@ -153,44 +198,21 @@ retrieval and the ranker each add.
 
 <WikiLink slug="hnsw" title="HNSW — the graph index behind semantic retrieval" />
 
-<ThinkFirst question="BM25 scores and embedding cosine similarities live on incomparable scales, and the union of both channels is ~1000 candidates. Who decides the final order — and what role do the retrieval scores still play?">
-The ranker decides; retrieval scores **select, they don't rank**. Naively
-blending a BM25 score with a cosine similarity is arbitrary — the robust
-pattern is to pass both scores in as *features* of the learning-to-rank model,
-which is exactly what Facebook does with its ANN similarity in embedding-based
-retrieval. Retrieval's only job is to make sure the right answer is somewhere
-in the thousand.
-</ThinkFirst>
+### Offline evaluation
 
-## 6. Serving & scaling
+NDCG@k / MRR on de-biased labels for the ranker and Recall@k for each retrieval
+channel, plus the human-judged gold set for queries too rare for click data.
 
-| Stage | Budget | How |
-|---|---|---|
-| Query understanding | ~20 ms | Cached, small models |
-| Retrieval (BM25 ∪ ANN) | ~60 ms | Inverted index + HNSW, merged & deduped |
-| Ranking | ~120 ms | GBDT/neural ranker on ~1000 candidates |
-| Blend + business rules | ~30 ms | Diversity, availability, policy |
+## 6. Online model execution & evaluation
 
 Cache popular-query results; precompute item embeddings; degrade to BM25-only if
 the ranker times out.
 
 <WikiLink slug="vector-databases" title="Vector databases — serving the ANN index" />
 
-<ThinkFirst question="You have two candidate rankers and limited live traffic. How do you find the better one without burning weeks of A/B tests?">
-**Interleaving**: blend both rankers' results into one list and see whose items
-get clicked — far more statistically sensitive than a traffic-split A/B, so it
-works as a cheap screen. Offline NDCG on de-biased labels filters first;
-interleaving picks the promising challenger; the full A/B on bookings makes the
-final call.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline:** NDCG@k, MRR, MAP on graded relevance; Recall@k for retrieval.
-  Use **interleaving** to compare rankers sensitively before a full A/B.
-- **Online:** A/B on the business metric (bookings/purchases per search), with
-  guardrails: zero-result rate, latency, query-abandonment.
-- **Human relevance judgments** for a gold set the implicit metrics can't cover.
+The promising challenger from interleaving goes to a full A/B on bookings per
+search, with the zero-result, latency, and abandonment guardrails watched
+alongside.
 
 <ThinkFirst question="Bookings — your online metric — lag searches by days to weeks. What signals warn you within hours that search quality regressed, without waiting for any labels?">
 Behavioral proxies that need no labels: **zero-result rate**, **query
@@ -201,14 +223,14 @@ booking numbers move. Alert on these; treat the lagging business metric as the
 verdict, not the alarm.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Drift:** query mix and inventory shift seasonally; monitor zero-result and
   reformulation rates as early warnings.
 - **Retraining:** rankers retrain frequently on fresh click logs; the loop closes
   back into **data**, with debiasing to avoid reinforcing prior exposure.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -217,7 +239,7 @@ verdict, not the alarm.
 | GBDT ranker | Deep listwise ranker first | GBDT is a strong, cheap, interpretable baseline; add depth if it pays |
 | IPS debiasing | Ignore position bias | Ignoring it makes the model relearn its own exposure |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="A user searches an exact product SKU and gets fuzzy semantic matches. Fix?">
 Hybrid retrieval with a lexical exact-match channel that can short-circuit: if a

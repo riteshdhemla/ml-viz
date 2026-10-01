@@ -31,7 +31,10 @@ It's the frontier generative-AI system-design problem — production systems lik
 Sora, Veo, and Runway all converge on the same answer: **tame the temporal +
 compute cost with compression, factorization, and staging**.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** generate a short, coherent video clip from a text prompt (optionally an
   image/first-frame), temporally consistent and prompt-faithful.
@@ -42,13 +45,7 @@ compute cost with compression, factorization, and staging**.
 - **Scope:** the generation pipeline (model + serving + safety). Assumes the
   text-to-image case as the spatial foundation.
 
-<Callout type="tip" title="Interview signal">
-"Video = image generation + temporal consistency, and the cost is dominated by the
-time dimension." Framing temporal coherence and compute/storage as *the* problems
-(not per-frame quality) is the differentiator.
-</Callout>
-
-## 2. Requirements & scale
+**Non-functional.**
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -57,12 +54,11 @@ time dimension." Framing temporal coherence and compute/storage as *the* problem
 | Storage/bandwidth | Videos are huge | Aggressive latent compression; CDN |
 | Latency | Async (not interactive) | Job queue; progress streaming |
 
-**Back-of-envelope:** a 16-second 1080p clip at 16 fps is 256 frames — even a
-single frame equals an entire text-to-image request, and the frames can't be
-made independently. Meta's Movie Gen represents such a clip as ~73K latent
-tokens inside a 30B-parameter transformer
-([Movie Gen team, 2024](https://arxiv.org/abs/2410.13720)) — context lengths
-and model sizes that dictate everything downstream.
+<Callout type="tip" title="Interview signal">
+"Video = image generation + temporal consistency, and the cost is dominated by the
+time dimension." Framing temporal coherence and compute/storage as *the* problems
+(not per-frame quality) is the differentiator.
+</Callout>
 
 <ThinkFirst question="You already have a great text-to-image model. Why not just run it once per frame?">
 Because each frame would be an *independent* sample from the distribution — the
@@ -72,7 +68,7 @@ video models denoise a whole spacetime latent with temporal attention rather
 than looping an image model.
 </ThinkFirst>
 
-## 3. GenAI problem framing
+## C: Choose the model *(spine: hypothesis-space)*
 
 **Spatiotemporal latent diffusion.** Encode the video into a compressed
 **spacetime latent** (compress both spatially and temporally), then run a
@@ -86,6 +82,11 @@ aspect ratios
 independent frames flicker and drift. Joint spacetime modeling is what buys
 coherence.
 
+**Size class.** Frontier systems sit at the top of the scale: Meta's Movie Gen
+is a 30B-parameter flow-matching transformer
+([Movie Gen team, 2024](https://arxiv.org/abs/2410.13720)). A product team
+usually adapts an open or licensed base rather than pretraining one.
+
 <ThinkFirst question="You've scraped a billion web videos. List what must happen before a single training step runs — and identify the preprocessing step that is itself a frontier ML system.">
 Cut raw footage into single-shot clips (scene detection), filter for quality
 (resolution, motion, text overlays, aesthetics), dedup, safety-screen — and
@@ -96,20 +97,15 @@ Diffusion showed that this curation stage matters as much as architecture —
 its recipe cut a ~600M-clip corpus down before high-quality finetuning.
 </ThinkFirst>
 
-## 4. Data & training *(spine: optimization)*
+## A: Acquire & prepare data *(spine: data)*
 
 - **Data:** large video–text corpora; captioning with a VLM is a subsystem, and
   curation is staged. Stable Video Diffusion's recipe is explicit: image
   pretraining → large-scale video pretraining on a curated ~600M-clip dataset →
   high-quality video finetuning, with ablations showing the curation stages
   drive the win ([Blattmann et al., 2023](https://arxiv.org/abs/2311.15127)).
-- **Compute:** training needs **distributed training at scale** — data/tensor/
-  pipeline parallelism, gradient checkpointing, huge clusters. This is where the
-  money goes.
 - **Curation:** dedup, resolution/FPS normalization, cut detection, safety
   filtering of training video.
-
-<WikiLink slug="ddim-sampling" title="Diffusion sampling (extended to video latents)" />
 
 <ThinkFirst question="Full attention over every spacetime patch of a 10-second clip — feasible? Where does the cost go, and what do you factor?">
 Attention is quadratic in tokens, and video multiplies tokens by the frame
@@ -121,41 +117,32 @@ super-resolve spatially and interpolate temporally. Never pay full price in
 one pass.
 </ThinkFirst>
 
-## 5. Model & generation *(spine: hypothesis-space)*
+## L: Leverage the model *(spine: optimization + evaluation)*
+
+### Architecture & training
 
 - **Architecture:** a diffusion transformer over spacetime latent patches;
   smaller models factorize spatial/temporal attention, while the largest (Sora,
   Movie Gen's 30B flow-matching transformer) afford joint attention over the
   full latent — the frontier is exactly where that line sits.
+- **Training:** needs **distributed training at scale** — data/tensor/
+  pipeline parallelism, gradient checkpointing, huge clusters. This is where the
+  money goes.
+
+### Generation
+
 - **Conditioning:** text (and optionally a first frame/image) via
   cross-attention; CFG for adherence.
 - **Staged generation:** generate a low-res/low-FPS clip, then **super-resolve**
   spatially and **interpolate** temporally — cheaper than generating full-res
   directly (Movie Gen generates at 768px and upsamples to 1080p).
 
+<WikiLink slug="ddim-sampling" title="Diffusion sampling (extended to video latents)" />
+
 <DiffusionViz />
 
 The same denoising idea as images, but the model denoises a *spacetime* latent so
 motion and identity stay coherent across frames.
-
-<ThinkFirst question="A 30B-parameter model with a 73K-token context takes minutes to produce 16 seconds of video. Design the request path — and say why 'interactive latency' is the wrong goal.">
-Treat every generation as an **async GPU job**: enqueue, schedule onto a
-multi-GPU worker (a 30B model at that context won't fit a single GPU's
-memory + KV budget), stream progress and a low-res preview, notify on
-completion. Users tolerate minutes for a clip they'll keep; they don't
-tolerate a spinner with no feedback. So the system optimizes **throughput
-per GPU-hour and queue fairness** (priority tiers, preemption), not p50
-latency — the opposite of a chat-serving stack.
-</ThinkFirst>
-
-## 6. Serving & scaling
-
-Inherently **async**: a request is a GPU job (minutes) on a queue with progress
-streaming, not an interactive call. Multi-GPU inference per clip for the largest
-models; autoscale GPU pools by queue depth; priority tiers (draft vs. final
-render). Outputs are large — store in object storage, serve via CDN, transcode
-to delivery formats. Charge per generated second: unit economics are visible in
-this product like almost no other.
 
 <ThinkFirst question="Every individual frame scores beautifully on FID. Is the video good?">
 Not necessarily — per-frame metrics are blind to time. A clip can have
@@ -165,7 +152,7 @@ warp/flicker consistency, motion smoothness, and ultimately human judgment,
 because "does it look real over time" is what viewers actually perceive.
 </ThinkFirst>
 
-## 7. Evaluation *(spine: evaluation)*
+### Evaluation
 
 - **Per-frame quality:** FID/aesthetic scores.
 - **Temporal metrics:** **FVD** (Fréchet Video Distance): an FID analogue
@@ -178,6 +165,60 @@ because "does it look real over time" is what viewers actually perceive.
 - **Human eval** dominates — Movie Gen shipped a human A/B benchmark
   (MovieGenBench) precisely because automated metrics under-measure coherence.
 
+## E: Estimate resources
+
+A 16-second 1080p clip at 16 fps is 256 frames — even a single frame equals an
+entire text-to-image request, and the frames can't be made independently.
+Movie Gen represents such a clip as ~73K latent tokens inside a
+30B-parameter transformer — context lengths and model sizes that dictate
+everything downstream.
+
+Back-of-envelope, assumptions stated:
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Weights | 30B parameters in bf16 (2 bytes each) | ~60 GB before activations: multi-GPU per job |
+| Job cost | 8 GPUs × ~2 min per 16 s clip | ~16 GPU-minutes per clip |
+| Demand | 100K clips/day | ~1.6M GPU-minutes ≈ 26.7K GPU-hours/day |
+| Fleet | 26.7K ÷ 24 | ~1,100 GPUs busy around the clock, before peak headroom |
+| Output size | 16 s at ~8 Mbit/s delivery bitrate | ~16 MB per clip ≈ 1.6 TB/day |
+
+Every row argues for the same three things: staged generation (pay full
+resolution only once), a draft tier that runs fewer steps at low resolution,
+and per-second pricing, because the cost of a clip is visible in a way no
+other product's unit cost is.
+
+<ThinkFirst question="A 30B-parameter model with a 73K-token context takes minutes to produce 16 seconds of video. Design the request path — and say why 'interactive latency' is the wrong goal.">
+Treat every generation as an **async GPU job**: enqueue, schedule onto a
+multi-GPU worker (a 30B model at that context won't fit a single GPU's
+memory + KV budget), stream progress and a low-res preview, notify on
+completion. Users tolerate minutes for a clip they'll keep; they don't
+tolerate a spinner with no feedback. So the system optimizes **throughput
+per GPU-hour and queue fairness** (priority tiers, preemption), not p50
+latency — the opposite of a chat-serving stack.
+</ThinkFirst>
+
+## D: Design the system
+
+### High-level design
+
+```
+prompt (+ optional first frame) ──► input + likeness checks ──► job queue (draft / final tiers)
+   ──► multi-GPU worker: base clip at low res / low FPS
+   ──► spatial super-resolution + temporal interpolation
+   ──► output safety scan (per frame + composed action) ──► watermark + C2PA
+   ──► transcode ──► object storage ──► CDN; progress + preview streamed to the client
+```
+
+### Serving & scaling
+
+Inherently **async**: a request is a GPU job (minutes) on a queue with progress
+streaming, not an interactive call. Multi-GPU inference per clip for the largest
+models; autoscale GPU pools by queue depth; priority tiers (draft vs. final
+render). Outputs are large — store in object storage, serve via CDN, transcode
+to delivery formats. Charge per generated second: unit economics are visible in
+this product like almost no other.
+
 <ThinkFirst question="Deepfake detectors keep losing to better generators. As the platform generating the video, what stronger position can you take than post-hoc detection?">
 **Provenance at generation time.** A detector fights an arms race it loses as
 models improve; the generator, by contrast, can mark every output at the
@@ -188,7 +229,7 @@ distribution channels verifiable and raise the cost of laundering, which is
 the realistic goal. Detection is a fallback, not the plan.
 </ThinkFirst>
 
-## 8. Safety & guardrails
+### Safety & guardrails
 
 - **Deepfakes:** likeness of real people is the top risk — block/consent-gate
   prompts and reference images; watermark and attach C2PA provenance to every
@@ -198,7 +239,7 @@ the realistic goal. Detection is a fallback, not the plan.
   action).
 - **IP:** training-data provenance and memorization monitoring.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -207,7 +248,7 @@ the realistic goal. Detection is a fallback, not the plan.
 | Staged (low-res → SR → interpolate) | Direct full-res generation | Far cheaper for the same output quality |
 | Factorized space/time attention | Full 3D attention | Quadratic cost; full 3D only affordable at frontier scale |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Frames look great individually but the video flickers. Why, and fix?">
 You're effectively generating frames too independently. Strengthen temporal

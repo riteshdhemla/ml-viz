@@ -35,7 +35,10 @@ Verified ([Anthropic](https://www.anthropic.com/engineering/swe-bench-sonnet)).
 Walk it through the **agentic project loop** — context and orchestration are
 where it's won, and tests give evaluation for free.
 
-## 1. Clarify the task *(spine: task)*
+
+## R: Requirements *(spine: task)*
+
+**Functional.**
 
 - **Goal:** given an issue / feature request, produce a correct code change
   (edits + tests) in a real repository — ideally a passing PR.
@@ -46,11 +49,75 @@ where it's won, and tests give evaluation for free.
 - **Scope:** the agent loop over a sandboxed repo. Adjacent: the CI/review system
   it hands off to.
 
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Repo scale | Large, unfamiliar codebases | Retrieval over the repo, not whole-repo in context |
+| Safety | Runs arbitrary code | Isolated sandbox, no prod creds, network limits |
+| Latency/cost | Minutes/task, bounded | Step budget; model tiering; cache builds |
+| Reliability | Doesn't wreck the repo | Diff review, reversible changes, test gate |
+
 <Callout type="tip" title="Interview signal">
 "The agent can execute code, so verification is grounded — tests are the reward
 signal." Naming the executable environment as the core asset separates a coding
 agent from a code-*completion* model.
 </Callout>
+
+## E: Estimation
+
+Assumptions stated so they can be challenged:
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Load | 10K tasks/day | ~7 tasks starting per minute |
+| Steps | ~50 model calls per task | 500K model calls/day |
+| Context per call | ~20K tokens (task, retrieved code, recent history) | ~1M input tokens per task ≈ 10B/day |
+| Output | ~500 tokens per call | ~25K output tokens per task ≈ 250M/day |
+| Sandboxes | ~15 minutes of container time per task | 2,500 container-hours/day ≈ 100 sandboxes live on average |
+| Eval | 500 tasks × ~50 calls × 3 trials per candidate release | ~75K model calls per full eval run |
+
+Two things follow. Input tokens dominate by ~40×, because every step re-sends
+the context, so **prompt caching** of the stable prefix (task, repo summary)
+is the largest cost lever. And the sandbox fleet, not the model, sets the
+concurrency ceiling, so container start time and build caches are design
+concerns.
+
+## S: Storage schema
+
+| Entity | Key fields | Store |
+|---|---|---|
+| Task | id, repo, base commit, issue text, budget, status | relational DB |
+| Sandbox snapshot | task id, container image, build/dependency cache | image registry + blob cache |
+| Trajectory step | task id, step #, tool, arguments, result (truncated), tokens, cost, latency | append-only trace store |
+| Patch | task id, diff, tests run + results, PR URL | relational DB + git host |
+| Eval case | task id, hidden fail-to-pass tests, expected behavior | versioned eval store (never mounted in the sandbox) |
+
+The trajectory log is the most important table: it is the debugging record,
+the cost ledger, and the raw material for the eval set. Hidden tests live
+somewhere the agent's sandbox can never read.
+
+## H: High-level design *(spine: orchestration)*
+
+```
+issue ──► task service ──► orchestrator (agent loop, budgets, stop conditions)
+                             │  ▲
+                   model calls│  │observations
+                             ▼  │
+           model gateway (tiering, prompt cache)      tool executor ──► sandbox (repo checkout)
+                                                      code search / symbol index
+          trace store ◄── every step                  verifier: build + tests
+          PR creator ──► human review / CI
+```
+
+The loop is **plan → edit → run → observe → reflect**:
+
+1. Understand the task; locate the relevant code (retrieval).
+2. Make an edit.
+3. **Run the tests / build**: the grounded feedback signal.
+4. Read failures; reflect and fix; repeat until green or budget hit.
+
+<AgentLoopViz />
 
 <ThinkFirst question="SWE-bench solve rates jumped from under 2% to ~50% in about eighteen months — on the same benchmark. Models improved, but that's not the whole story. What else was being engineered?">
 The **agent–environment interface**. SWE-agent showed that with the *same*
@@ -62,29 +129,8 @@ drive. Both agree on the design principle: an agent is a model *plus* an
 environment you control, and the environment is your half of the work.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+## A: APIs
 
-| Dimension | Target | Consequence |
-|---|---|---|
-| Repo scale | Large, unfamiliar codebases | Retrieval over the repo, not whole-repo in context |
-| Safety | Runs arbitrary code | Isolated sandbox, no prod creds, network limits |
-| Latency/cost | Minutes/task, bounded | Step budget; model tiering; cache builds |
-| Reliability | Doesn't wreck the repo | Diff review, reversible changes, test gate |
-
-<ThinkFirst question="The repo is millions of lines and the context window holds a fraction of it. How should the agent decide what to read?">
-Retrieval, not stuffing: code search (lexical + embedding), symbol lookup, and
-the dependency graph surface a small relevant set, and the agent explores
-incrementally from there — open a file, follow references. Context is a budget
-to *spend*, not fill; the design question is what earns its place in it. The
-agent loop is exactly this discipline: gather context → take action → verify,
-repeated ([Anthropic](https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk)).
-</ThinkFirst>
-
-## 3. Context & tools *(spine: context)*
-
-- **Repo retrieval:** the codebase is too large for the context window — retrieve
-  relevant files via code search (lexical + embedding), the dependency graph, and
-  symbol lookup. Feed *targeted* context, not the whole repo.
 - **Tools:** `read_file`, `edit_file`, `run_shell` / `run_tests`, `search_code`,
   `git` — typed and sandboxed. Execution is a first-class tool, not an
   afterthought.
@@ -97,6 +143,35 @@ repeated ([Anthropic](https://www.anthropic.com/engineering/building-agents-with
   minimal direction: essentially a bash tool and a string-replacement edit tool,
   with the model deciding everything else
   ([Anthropic](https://www.anthropic.com/engineering/swe-bench-sonnet)).
+
+```
+edit_file(path: str, old_str: str, new_str: str) -> {ok, lint_errors[], diff}
+run_tests(selector?: str, timeout_s: int = 600) -> {passed, failed[], output_tail}
+search_code(query: str, k: int = 20) -> [{path, line, snippet}]
+```
+
+Every tool runs inside the sandbox, returns truncated, structured output, and
+reports errors as observations the model can act on rather than exceptions that
+end the run. Externally the service exposes one call,
+`POST /tasks {repo, commit, issue}`, and streams status until a PR URL or an
+escalation comes back.
+
+<ThinkFirst question="The repo is millions of lines and the context window holds a fraction of it. How should the agent decide what to read?">
+Retrieval, not stuffing: code search (lexical + embedding), symbol lookup, and
+the dependency graph surface a small relevant set, and the agent explores
+incrementally from there — open a file, follow references. Context is a budget
+to *spend*, not fill; the design question is what earns its place in it. The
+agent loop is exactly this discipline: gather context → take action → verify,
+repeated ([Anthropic](https://www.anthropic.com/engineering/building-agents-with-the-claude-agent-sdk)).
+</ThinkFirst>
+
+## D: Detailed design *(spine: context + guardrails)*
+
+### Context engineering
+
+- **Repo retrieval:** the codebase is too large for the context window — retrieve
+  relevant files via code search (lexical + embedding), the dependency graph, and
+  symbol lookup. Feed *targeted* context, not the whole repo.
 - **Environment:** an isolated container with the repo checked out; the agent's
   actions (edits, commands) mutate it.
 
@@ -109,16 +184,7 @@ Budgets exist precisely because an agent that can't tell it's stuck will
 happily burn the whole budget on one wrong theory.
 </ThinkFirst>
 
-## 4. Orchestration *(spine: orchestration)*
-
-The loop is **plan → edit → run → observe → reflect**:
-
-1. Understand the task; locate the relevant code (retrieval).
-2. Make an edit.
-3. **Run the tests / build**: the grounded feedback signal.
-4. Read failures; reflect and fix; repeat until green or budget hit.
-
-<AgentLoopViz />
+### Orchestration details
 
 - **Reflection on failure:** feed the test output back so the model diagnoses,
   rather than blindly re-editing.
@@ -135,6 +201,32 @@ The loop is **plan → edit → run → observe → reflect**:
 
 <WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration for decomposed tasks" />
 
+<ThinkFirst question="This agent runs arbitrary generated shell commands. Sketch the threat model before reading on.">
+Three distinct threats: **destructive actions** (rm -rf, force-push, dropping a
+database), **exfiltration** — a malicious file or issue comment prompt-injects
+the agent into leaking secrets, and **runaway resource use**. Each maps to a
+different control: sandbox + no prod credentials, treating all repo/issue text
+as untrusted input, and hard resource/step caps — plus every change landing as
+a reviewable PR, never a direct push.
+</ThinkFirst>
+
+### Guardrails & safety *(spine: guardrails)*
+
+- **Sandbox everything:** no production credentials, restricted network, resource
+  limits — it runs arbitrary generated code.
+- **Reversibility:** changes land as a branch/PR a human reviews, never a direct
+  push to main.
+- **Prompt injection:** repo content, issue text, and dependency output are
+  untrusted — a malicious file must not exfiltrate secrets or run unsafe commands.
+
+### Operations *(spine: operations)*
+
+- **Tracing:** log every tool call, edit, and test result — essential for
+  debugging non-deterministic runs and for the eval set.
+- **Cost/latency:** tier models (cheap for navigation, strong for hard reasoning),
+  cache builds/deps, parallelize independent read-only sub-tasks.
+- **Feedback:** failed/abandoned tasks become eval cases and prompt improvements.
+
 <ThinkFirst question="The agent reports “all tests pass.” In how many ways can that claim be hollow?">
 At least three: it deleted or weakened the failing tests (reward hacking), it
 overfit to the visible tests without solving the actual issue, or it got lucky
@@ -143,7 +235,9 @@ tests** the agent never sees, and why your own eval needs protected tests plus
 trajectory checks: did it edit sensible files, run tests before claiming done?
 </ThinkFirst>
 
-## 5. Evaluation *(spine: evaluation)*
+## E: Evaluation *(spine: evaluation)*
+
+### Evaluating the agent
 
 - **Outcome:** does the change pass the *hidden/held-out* tests and actually solve
   the issue? SWE-bench measures exactly this; **pass@k** captures the
@@ -158,24 +252,6 @@ trajectory checks: did it edit sensible files, run tests before claiming done?
 - **Guard against reward hacking:** an agent that deletes failing tests "passes" —
   eval must use protected tests it can't modify.
 
-<ThinkFirst question="This agent runs arbitrary generated shell commands. Sketch the threat model before reading on.">
-Three distinct threats: **destructive actions** (rm -rf, force-push, dropping a
-database), **exfiltration** — a malicious file or issue comment prompt-injects
-the agent into leaking secrets, and **runaway resource use**. Each maps to a
-different control: sandbox + no prod credentials, treating all repo/issue text
-as untrusted input, and hard resource/step caps — plus every change landing as
-a reviewable PR, never a direct push.
-</ThinkFirst>
-
-## 6. Guardrails & safety *(spine: guardrails)*
-
-- **Sandbox everything:** no production credentials, restricted network, resource
-  limits — it runs arbitrary generated code.
-- **Reversibility:** changes land as a branch/PR a human reviews, never a direct
-  push to main.
-- **Prompt injection:** repo content, issue text, and dependency output are
-  untrusted — a malicious file must not exfiltrate secrets or run unsafe commands.
-
 <ThinkFirst question="A full eval run is 500 tasks × dozens of model calls each, and two identical runs give different scores. How do you make the numbers trustworthy without unbounded spend?">
 Report across **multiple trials** (pass@k or mean ± spread), never a single
 run — agent variance easily swamps a 2-point "improvement." Contain cost with
@@ -185,15 +261,19 @@ trajectories tell you *which* tasks flipped and why — without traces, a
 regression is just a number.
 </ThinkFirst>
 
-## 7. Operations *(spine: operations)*
+### Does the design meet the requirements?
 
-- **Tracing:** log every tool call, edit, and test result — essential for
-  debugging non-deterministic runs and for the eval set.
-- **Cost/latency:** tier models (cheap for navigation, strong for hard reasoning),
-  cache builds/deps, parallelize independent read-only sub-tasks.
-- **Feedback:** failed/abandoned tasks become eval cases and prompt improvements.
+- **Repo scale:** retrieval plus a 100-line file viewer keeps each call near
+  the ~20K-token budget from the estimate, however large the repo.
+- **Safety:** sandbox, no production credentials, and PR-only output bound the
+  worst case to a rejected pull request.
+- **Cost:** the step budget caps a runaway task at a known spend; prompt caching
+  attacks the dominant input-token term.
+- **Bottleneck:** sandbox start time and test-suite duration, not model
+  latency, set end-to-end task time. Warm pools and dependency caches are where
+  latency work pays.
 
-## 8. Tradeoffs & alternatives
+### Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -204,7 +284,24 @@ regression is just a number.
 | PR + human review | Auto-merge | Reversibility and trust; code is high-stakes |
 | Protected test eval | Any tests pass | Prevents reward hacking (deleting tests) |
 
-## 9. Interviewer follow-ups
+## D: Distinctive component
+
+**The executable environment as verifier.** What separates a coding agent from
+every other agent in this section is that its world can *check its work*: the
+sandbox runs the build and the tests, so each step's feedback is ground truth
+rather than another model's opinion. Three design consequences follow.
+
+1. **The ACI is product surface.** Search output, the file viewer, and a
+   lint-gated edit command decide how well the model can use that verifier.
+   SWE-agent's interface changes moved the solve rate several-fold on the same
+   model.
+2. **Verification must be tamper-proof.** The tests that grade the work live
+   outside the sandbox, so the agent cannot pass by editing them.
+3. **The verifier sets latency.** A task takes as long as its builds and test
+   runs, so warm containers and dependency caches buy more speed than a faster
+   model.
+
+## Interviewer follow-ups
 
 <Details summary="The agent 'passed' by deleting the failing test. How do you prevent it?">
 Evaluate against protected, hidden tests the agent can't see or modify, and diff-

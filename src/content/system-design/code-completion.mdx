@@ -30,7 +30,10 @@ execution — just **predict the next span of code, extremely fast, with the rig
 context**. Latency and context assembly are the whole game. Note this is the
 *completion product*; the agentic coding agent is a separate case study.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** suggest the code the developer is about to type — completions that
   get **accepted** and kept, right in the editor as they work.
@@ -43,12 +46,6 @@ context**. Latency and context assembly are the whole game. Note this is the
   ([Chen et al., 2021](https://arxiv.org/abs/2107.03374)).
 - **Scope:** the completion model + context assembly + low-latency serving.
 
-<Callout type="tip" title="Interview signal">
-Two things distinguish this from generic LLM chat: **fill-in-the-middle** (the
-model sees prefix *and* suffix) and a **sub-300ms** budget that dominates every
-design choice. Lead with both.
-</Callout>
-
 <ThinkFirst question="Codex solved only 28.8% of HumanEval problems on the first sample. How can a model that's wrong two times out of three anchor a product used by millions of developers?">
 Because the product isn't "write correct code" — it's "propose code a human
 will vet in one glance." The developer is the verifier: a wrong suggestion
@@ -59,7 +56,7 @@ editor, not benchmark correctness. It also explains why sampling more
 candidates helps: Codex hit 70.2% when allowed 100 samples.
 </ThinkFirst>
 
-## 2. Requirements & scale
+**Non-functional.**
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -73,6 +70,12 @@ acceptance rate sat around **27%**, and acceptance rate, more than any
 persistence metric, was what predicted developers' perceived productivity
 ([Ziegler et al., 2022](https://arxiv.org/abs/2205.06537)).
 
+<Callout type="tip" title="Interview signal">
+Two things distinguish this from generic LLM chat: **fill-in-the-middle** (the
+model sees prefix *and* suffix) and a **sub-300ms** budget that dominates every
+design choice. Lead with both.
+</Callout>
+
 <ThinkFirst question="Your model was trained purely left-to-right. The cursor is inside a function body, with a return statement and three more functions below it. What specifically goes wrong with its completions?">
 The model can't see the suffix, so it completes as if the file ends at the
 cursor: it re-implements the return that already exists below, generates a
@@ -83,7 +86,7 @@ of the cursor, which is a **training-time** change (an infilling objective),
 not a prompting trick.
 </ThinkFirst>
 
-## 3. GenAI problem framing
+## C: Choose the model *(spine: hypothesis-space)*
 
 **Fill-in-the-middle autoregressive generation.** OpenAI showed you get
 infilling almost for free: during pretraining, move a random middle span to the
@@ -94,6 +97,10 @@ training all code models this way by default
 ([Bavarian et al., 2022](https://arxiv.org/abs/2207.14255)). At serving time,
 the product decides *when* to trigger, *how much* to generate, and *whether* to
 show it.
+
+- **Model:** a decoder-only code LLM sized for latency (Codex-class ~12B, far
+  smaller than a chat frontier model) with FIM support. The budget picks the
+  size, not the leaderboard.
 
 *What was the pre-generative baseline?* Rule/AST-based autocomplete
 (IntelliSense) — great for single symbols, useless for multi-line intent.
@@ -108,14 +115,15 @@ code" mode, which is exactly the control GitHub shipped. One layer is never
 enough — memorization survives filtering.
 </ThinkFirst>
 
-## 4. Data & training *(spine: data)*
+## A: Acquire & prepare data *(spine: data)*
 
 - **Data:** large permissively-licensed code corpora; **license filtering** and
   near-dedup are critical (regurgitating GPL code is a real product risk).
-- **FIM training:** documents transformed prefix/suffix/middle with sentinel
-  tokens, mixed at a high FIM rate alongside ordinary left-to-right data.
-- **Fine-tuning:** on high-quality code for the product's languages, weighted by
-  what real telemetry says gets accepted.
+- **FIM transformation:** documents transformed prefix/suffix/middle with
+  sentinel tokens, mixed at a high FIM rate alongside ordinary left-to-right
+  data.
+- **Fine-tuning data:** high-quality code for the product's languages, weighted
+  by what real telemetry says gets accepted.
 
 <ThinkFirst question="The repo has 500k lines; your latency budget affords a few thousand tokens of context. The cursor is mid-file. What goes into the prompt, and in what priority order?">
 Closest-first, cheapest-first: (1) the current file's prefix and suffix around
@@ -128,10 +136,10 @@ the open-tabs trick alone lifted acceptance ~5% relative — cheap context beats
 clever context.
 </ThinkFirst>
 
-## 5. Model & generation *(spine: hypothesis-space + objective)*
+## L: Leverage the model *(spine: objective + evaluation)*
 
-- **Model:** a decoder-only code LLM sized for latency (Codex-class ~12B, far
-  smaller than a chat frontier model) with FIM support.
+### Context assembly & generation
+
 - **Context assembly:** current-file prefix+suffix, plus **neighboring tabs** —
   snippets from other open files matched against the code around the cursor —
   and repo signals (imports, signatures), prioritized into the prompt by a
@@ -145,24 +153,6 @@ clever context.
 Decoding strategy matters: greedy/low-temp for precise completions, with early
 stopping so the suggestion is a clean span, not a runaway block.
 
-<ThinkFirst question="The model would run on nearly every keystroke of millions of developers. What keeps that from being absurdly wasteful?">
-Mostly *not running it*: **debounce** until typing pauses, **cancel** in-flight
-requests the next keystroke supersedes, and **cache** completions for repeated
-contexts. Then make the runs that survive cheap — a small model, KV-cache reuse
-across keystrokes (the prefix barely changes), speculative decoding. The
-generations you never start are the biggest saving.
-</ThinkFirst>
-
-## 6. Serving & scaling
-
-Sub-300ms means: a small model on optimized inference (continuous batching,
-KV-cache reuse — consecutive keystrokes share almost their entire prefix),
-**debouncing** keystrokes, **cancellation** of superseded requests, **caching**
-identical contexts, and speculative decoding for latency. Suggestions are
-generated speculatively and discarded if the user types on.
-
-<WikiLink slug="speculative-decoding" title="Speculative decoding for low-latency completion" />
-
 <ThinkFirst question="What's the north-star metric for a completion product — and how can optimizing it naively make the product worse?">
 **Acceptance rate**: the metric GitHub found actually tracks perceived
 productivity. But it's gameable: a system that spams short, trivial
@@ -173,7 +163,7 @@ frequency, and A/B against task-level outcomes. A quieter system with higher
 retention usually beats a chattier one with higher raw acceptance.
 </ThinkFirst>
 
-## 7. Evaluation *(spine: evaluation)*
+### Evaluation
 
 - **Acceptance rate**: the north star (~27% for Copilot in published data);
   best single predictor of perceived productivity
@@ -189,7 +179,56 @@ retention usually beats a chattier one with higher raw acceptance.
   effect all the proxy metrics approximate.
 - **Latency SLOs:** p50/p95 time-to-suggestion, measured in the editor.
 
-## 8. Safety & guardrails
+## E: Estimate resources
+
+Assumptions stated so the interviewer can move them:
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Users | 1M active developers | — |
+| Requests | ~2,000 completion requests per developer-day after debouncing | 2B/day ≈ 23K requests/s on average |
+| Prompt | ~2K tokens of assembled context | ~4T prefill tokens/day if nothing were reused |
+| Output | ~30 tokens per suggestion | ~60B decode tokens/day |
+| Budget | 300 ms end to end, ~100 ms of it network and editor | ~200 ms for prefill + ~30 decode steps ≈ 5 ms per token |
+
+Two conclusions fall straight out. Prefill dominates the token bill, so
+**KV-cache reuse** across keystrokes (the prefix barely changes) is the largest
+lever. And ~5 ms per decoded token is only reachable with a small model on
+optimized inference, which is why completion models are a fraction of the size
+of chat models.
+
+<ThinkFirst question="The model would run on nearly every keystroke of millions of developers. What keeps that from being absurdly wasteful?">
+Mostly *not running it*: **debounce** until typing pauses, **cancel** in-flight
+requests the next keystroke supersedes, and **cache** completions for repeated
+contexts. Then make the runs that survive cheap — a small model, KV-cache reuse
+across keystrokes (the prefix barely changes), speculative decoding. The
+generations you never start are the biggest saving.
+</ThinkFirst>
+
+## D: Design the system
+
+### High-level design
+
+```
+editor plugin: keystroke ──► debounce ──► context assembly (prefix, suffix, open tabs, symbols)
+   ──► gateway (auth, tenant isolation, cancel superseded requests)
+   ──► inference cluster: FIM model, continuous batching, KV-cache reuse
+   ──► post-filters (public-code match, insecure-pattern scan)
+   ──► ghost text in the editor
+accept / reject / edit-after-accept telemetry ──► acceptance + retention metrics ──► fine-tuning data
+```
+
+### Serving & scaling
+
+Sub-300ms means: a small model on optimized inference (continuous batching,
+KV-cache reuse — consecutive keystrokes share almost their entire prefix),
+**debouncing** keystrokes, **cancellation** of superseded requests, **caching**
+identical contexts, and speculative decoding for latency. Suggestions are
+generated speculatively and discarded if the user types on.
+
+<WikiLink slug="speculative-decoding" title="Speculative decoding for low-latency completion" />
+
+### Safety & guardrails
 
 - **License/IP:** filter training data; detect and suppress verbatim
   regurgitation; offer a "block matching public code" setting.
@@ -198,7 +237,7 @@ retention usually beats a chattier one with higher raw acceptance.
 - **Privacy:** the user's proprietary code context must never leak across
   tenants or into training without consent.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -207,7 +246,7 @@ retention usually beats a chattier one with higher raw acceptance.
 | Neighboring-tab + repo context | Current file only | Measured ~5% relative acceptance lift from open-tab snippets |
 | Debounce + cancel | Complete every keystroke | Cuts cost and wasted generations dramatically |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Why not just use a big chat model for completions?">
 Latency and cost. A frontier model can't reliably return in under 300ms on

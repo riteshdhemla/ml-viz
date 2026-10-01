@@ -33,7 +33,8 @@ hypothetical — it is, to a first approximation, how Instagram Explore,
 YouTube's recommender, and Twitter's For You feed are actually built, and each
 stage is anchored in what those teams have published.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 Before designing anything, pin down scope with the interviewer:
 
@@ -49,6 +50,17 @@ Before designing anything, pin down scope with the interviewer:
 - **What's out of scope?** Ads ranking (a separate auction — see the ad-ranking
   lesson), notifications, and search.
 
+### Framing it as an ML problem
+
+Personalized **learning to rank**: retrieval is framed as **approximate nearest
+neighbor** search in a learned embedding space, and ranking as pointwise
+multi-task prediction of `P(engage)` for each action, combined by a value
+formula.
+
+*What was breaking before?* A single ranker over all items blows the latency
+budget; pure popularity ignores personalization. The funnel (section 4) exists
+to make personalized scoring **tractable** under the budget.
+
 <Callout type="tip" title="Interview signal">
 Naming the objective as *long-term engagement* and immediately flagging the
 proxy-metric risk (CTR → clickbait) is the single highest-signal thing you can
@@ -62,7 +74,7 @@ has to shrink billions down to hundreds first — the arithmetic forces a
 **funnel** before you've picked a single model.
 </ThinkFirst>
 
-## 2. Requirements & scale
+## 2. Scale & latency requirements
 
 | Dimension | Target | Consequence for the design |
 |---|---|---|
@@ -80,17 +92,44 @@ systems extract **65 billion features and make 90 million model predictions
 every second**
 ([Meta Engineering](https://engineering.fb.com/2023/08/09/ml-applications/scaling-instagram-explore-recommendations-system/)).
 
-## 3. ML problem framing
+<ThinkFirst question="Your new ranker lifts offline NDCG by 3%. Do you ship it?">
+Not yet. Offline gains are computed on logged data the *old* model produced —
+position bias, training-serving skew, and proxy-metric mismatch can each fake a
+win. Ship behind an **A/B test** on the real objective (long-term engagement)
+with guardrail metrics, and let that (not NDCG) be the judge.
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Offline:** ranking metrics — NDCG@k, Recall@k for retrieval, AUC/logloss for
+  the ranker. Offline gains are necessary but *not sufficient*.
+- **Online:** the real judge is an **A/B test** on engagement. Netflix runs its
+  recommender A/Bs against **member retention and medium-term engagement** and
+  credits personalization with over **$1B/year** of retained value
+  ([Gomez-Uribe & Hunt, 2016](https://dl.acm.org/doi/10.1145/2843948)) — the
+  online judge is a business metric, not a ranking metric.
+- **Guardrails:** dwell quality, hide rate, creator diversity, latency, so you
+  don't ship a CTR win that quietly harms the ecosystem.
+
+<ThinkFirst question="Retrieval has ~40ms to find 1000 relevant items among billions. What shape must the model take for that to even be possible?">
+User and item can't interact *inside* the model at query time — that would mean
+scoring billions of pairs per request. Encode them **separately**, so item
+embeddings are precomputed and indexed offline, and query-time work collapses
+to one user embedding plus an approximate nearest-neighbor lookup. That
+constraint is exactly why the two-tower architecture exists, and why
+cross-attention retrieval is off the table.
+</ThinkFirst>
+
+## 4. Architecture
 
 The feed is not one model — it's a **multi-stage retrieval → ranking** pipeline,
 each stage a different ML slot:
 
 1. **Retrieval** *(hypothesis space)*: from billions of items, cheaply fetch
-   ~1000 candidates likely to be relevant. Framed as **approximate nearest
-   neighbor** search in an embedding space.
+   ~1000 candidates likely to be relevant, via ANN search over precomputed
+   item embeddings (several sources merged).
 2. **Ranking** *(hypothesis space + objective)*: score those ~1000 candidates
-   with an expensive model predicting `P(engage)`, framed as **learning to
-   rank** / pointwise CTR-style prediction with an engagement objective.
+   with an expensive model predicting `P(engage)`.
 3. **Re-ranking**: apply business logic: diversity, freshness, dedup, policy.
 
 Production systems make the funnel even deeper. Instagram Explore retrieves
@@ -100,9 +139,14 @@ YouTube's classic design narrows millions of videos to hundreds in candidate
 generation and ranks only dozens at the final stage. Each extra stage buys the
 next one a smaller, better pool.
 
-*What was breaking before?* A single ranker over all items blows the latency
-budget; pure popularity ignores personalization. The funnel exists to make
-personalized scoring **tractable** under the budget.
+Latency budget breakdown (of the 200ms):
+
+| Stage | Budget | How |
+|---|---|---|
+| Feature fetch | ~30 ms | Feature store, cached user features |
+| Retrieval (ANN) | ~40 ms | HNSW over precomputed item embeddings; multiple sources merged |
+| Ranking | ~80 ms | Batch-score ~1000 candidates on GPU/optimized CPU |
+| Re-rank + assemble | ~20 ms | Diversity, dedup, policy filters |
 
 <ThinkFirst question="Nobody rates their feed. Where do the training labels come from — and what's the catch?">
 Implicit feedback: impressions, clicks, saves, dwell, hides. Abundant but
@@ -112,11 +156,22 @@ logging policy (propensity weighting, a randomized-exposure slice) or the loop
 feeds on itself.
 </ThinkFirst>
 
-## 4. Data & features *(spine: data)*
+## 5. Offline model building & evaluation *(spine: data + hypothesis space + objective)*
+
+### Training data generation
 
 - **Labels:** implicit feedback — impressions, clicks, saves, long dwell,
   hides. Weight positives by engagement depth; treat impressions-without-action
   as negatives (with care around position bias).
+
+<Callout type="warning" title="Position & popularity bias">
+Logged feedback is biased by what the *old* model showed. Correct for it —
+inverse-propensity weighting, or reserving a small randomized-exposure slice —
+or the model just relearns its own past behavior.
+</Callout>
+
+### Feature engineering
+
 - **Features:** user (long/short-term interest embeddings), item (content
   embedding, age, popularity), and **context** (time, device, session so far).
 - **Feature store:** the *same* pipeline computes features for training and
@@ -128,22 +183,7 @@ feeds on itself.
   "this item is good" from "this item was new when logged" — without it, the
   model implicitly ranks by historical popularity and demotes everything fresh.
 
-<Callout type="warning" title="Position & popularity bias">
-Logged feedback is biased by what the *old* model showed. Correct for it —
-inverse-propensity weighting, or reserving a small randomized-exposure slice —
-or the model just relearns its own past behavior.
-</Callout>
-
-<ThinkFirst question="Retrieval has ~40ms to find 1000 relevant items among billions. What shape must the model take for that to even be possible?">
-User and item can't interact *inside* the model at query time — that would mean
-scoring billions of pairs per request. Encode them **separately**, so item
-embeddings are precomputed and indexed offline, and query-time work collapses
-to one user embedding plus an approximate nearest-neighbor lookup. That
-constraint is exactly why the two-tower architecture exists, and why
-cross-attention retrieval is off the table.
-</ThinkFirst>
-
-## 5. Model *(spine: hypothesis space + objective + optimization)*
+### Model training
 
 **Retrieval: the two-tower model.** A user tower and an item tower each map to
 the same $d$-dimensional space; relevance is a dot product:
@@ -179,6 +219,12 @@ For the retrieval index, the ANN structure itself is worth knowing cold:
 
 <WikiLink slug="hnsw" title="HNSW — the graph index behind fast retrieval" />
 
+### Offline evaluation
+
+Recall@k for retrieval and NDCG@k / AUC / logloss for the ranker, on a
+time-ordered holdout. **Counterfactual** off-policy estimators (IPS) screen
+candidates before they spend A/B traffic.
+
 <ThinkFirst question="Peak traffic, and the heavy ranker breaches its 80ms budget on 5% of requests. What do those users see — an error, a spinner, or something else?">
 Neither. The funnel doubles as a **degradation ladder**: serve the first-stage
 (lightweight) scores without the heavy re-rank, fall back to a
@@ -188,16 +234,7 @@ availability was a requirements-table row, not an afterthought. An empty feed
 costs you the session; a slightly worse feed costs you almost nothing.
 </ThinkFirst>
 
-## 6. Serving & scaling
-
-Latency budget breakdown (of the 200ms):
-
-| Stage | Budget | How |
-|---|---|---|
-| Feature fetch | ~30 ms | Feature store, cached user features |
-| Retrieval (ANN) | ~40 ms | HNSW over precomputed item embeddings; multiple sources merged |
-| Ranking | ~80 ms | Batch-score ~1000 candidates on GPU/optimized CPU |
-| Re-rank + assemble | ~20 ms | Diversity, dedup, policy filters |
+## 6. Online model execution & evaluation
 
 Cache aggressively (user embeddings, item metadata); precompute item embeddings
 in a nightly + streaming hybrid; degrade gracefully to a popularity feed if the
@@ -205,26 +242,9 @@ ranker times out.
 
 <WikiLink slug="vector-databases" title="Vector databases — serving the ANN index" />
 
-<ThinkFirst question="Your new ranker lifts offline NDCG by 3%. Do you ship it?">
-Not yet. Offline gains are computed on logged data the *old* model produced —
-position bias, training-serving skew, and proxy-metric mismatch can each fake a
-win. Ship behind an **A/B test** on the real objective (long-term engagement)
-with guardrail metrics, and let that (not NDCG) be the judge.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline:** ranking metrics — NDCG@k, Recall@k for retrieval, AUC/logloss for
-  the ranker. Offline gains are necessary but *not sufficient*.
-- **Online:** the real judge is an **A/B test** on engagement, with
-  **guardrail metrics** (dwell quality, hide rate, creator diversity, latency)
-  so you don't ship a CTR win that quietly harms the ecosystem. Netflix runs
-  its recommender A/Bs against **member retention and medium-term engagement**
-  and credits personalization with over **$1B/year** of retained value
-  ([Gomez-Uribe & Hunt, 2016](https://dl.acm.org/doi/10.1145/2843948)) — the
-  online judge is a business metric, not a ranking metric.
-- **Counterfactual:** off-policy estimators (IPS) to screen candidates before
-  spending A/B traffic.
+The real judge is an **A/B test** on long-term engagement with the guardrail
+metrics from section 3, so you don't ship a CTR win that quietly harms the
+ecosystem.
 
 <ThinkFirst question="Thought experiment: you freeze everything — no retrains, no embedding refreshes — for 90 days. Offline metrics on the old test set don't move. What actually decays in production, and in what order?">
 Retrieval rots first: items uploaded after the freeze have no learned
@@ -236,7 +256,7 @@ archive of the quarter you froze, which is why retraining cadence is part of
 the architecture, not an ops detail.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Drift:** monitor feature distributions and prediction distributions; user
   interests and item inventory shift constantly.
@@ -247,7 +267,7 @@ the architecture, not an ops detail.
 
 <WikiLink slug="cold-start-problem" title="Cold start — bootstrapping new users & items" />
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why the funnel wins here |
 |---|---|---|
@@ -256,7 +276,7 @@ the architecture, not an ops detail.
 | Implicit feedback | Explicit ratings | Implicit is abundant; explicit is sparse and biased |
 | Daily retrain | Fully online learning | Simpler, more stable; online learning adds infra + failure modes |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="How do you stop the feed from becoming a filter bubble?">
 Add an explicit **diversity** objective in re-ranking (e.g. determinantal point

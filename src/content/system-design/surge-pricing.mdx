@@ -31,7 +31,8 @@ plain prediction problem. The production references are Uber's surge system and
 Lyft's **PrimeTime**, and the best natural experiment in the literature is the
 night Uber's surge briefly *broke*.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 - **Goal:** set a price multiplier per region/time that **balances supply and
   demand** — enough drivers for the riders who want trips — while maximizing a
@@ -53,25 +54,6 @@ conclude "raise prices to reduce demand" naively — that's correlation. You nee
 **causal** elasticity estimation, or you'll chase your own tail.
 </Callout>
 
-<ThinkFirst question="Price is one lever to close a supply-demand gap. Name two others — and why does price usually win at the minutes timescale?">
-The other levers are **repositioning supply** (driver incentives, heatmaps,
-dispatch radius) and **rationing demand** (longer waits, queueing). But
-repositioning takes tens of minutes and incentives leak money, while rationing
-by wait time degrades everyone's experience and (worse) collapses matching
-efficiency. Price acts on *both sides simultaneously and immediately*: it
-sorts riders by willingness to pay and signals drivers toward the gap. The
-others are complements on slower timescales, not substitutes.
-</ThinkFirst>
-
-## 2. Requirements & scale
-
-| Dimension | Target | Consequence |
-|---|---|---|
-| Cadence | Update per region every ~minute | Fast forecasting + optimization loop |
-| Objective | Long-term marketplace health | RL / optimization, not myopic revenue |
-| Stability | No oscillation, bounded changes | Smoothing, rate limits, hysteresis |
-| Fairness | No exploitative or discriminatory pricing | Caps, constraints, audits |
-
 <ThinkFirst question="What predictions does the price decision need — and which of them can never be learned from logged data alone?">
 Three: demand per region/time, supply and how it responds, and **elasticity** —
 how both react to a price change. The first two are forecasting problems logged
@@ -80,7 +62,7 @@ data supports. Elasticity is **causal**: historically, prices were high
 relationship wrong. Only deliberate price experiments can estimate it.
 </ThinkFirst>
 
-## 3. ML problem framing
+### Framing it as an ML problem
 
 Three ML sub-problems feed one **optimization**:
 
@@ -105,18 +87,47 @@ further, and throughput collapses. Surge exists to keep the market out of that
 regime, which is why it's a reliability mechanism before it's a revenue one
 ([EC 2017](https://dl.acm.org/doi/10.1145/3033274.3085098)).
 
-## 4. Data & features *(spine: data)*
+<ThinkFirst question="Price is one lever to close a supply-demand gap. Name two others — and why does price usually win at the minutes timescale?">
+The other levers are **repositioning supply** (driver incentives, heatmaps,
+dispatch radius) and **rationing demand** (longer waits, queueing). But
+repositioning takes tens of minutes and incentives leak money, while rationing
+by wait time degrades everyone's experience and (worse) collapses matching
+efficiency. Price acts on *both sides simultaneously and immediately*: it
+sorts riders by willingness to pay and signals drivers toward the gap. The
+others are complements on slower timescales, not substitutes.
+</ThinkFirst>
 
-- **Labels/signals:** historical requests, completions, cancellations, driver
-  positions, prices offered and outcomes — including *app opens without
-  request*, the cleanest demand-suppression signal you have.
-- **Elasticity data:** the hard part — you need **experimental variation** (price
-  experiments / geo holdouts) to estimate causal response, since observational
-  price–demand correlation is confounded by the conditions that caused the price.
-- **Features:** region, time, events, weather, current supply/demand imbalance,
-  recent conversion at each price.
+## 2. Scale & latency requirements
 
-<WikiLink slug="uplift-modeling" title="Uplift modeling — estimating causal response to a treatment" />
+| Dimension | Target | Consequence |
+|---|---|---|
+| Cadence | Update per region every ~minute | Fast forecasting + optimization loop |
+| Objective | Long-term marketplace health | RL / optimization, not myopic revenue |
+| Stability | No oscillation, bounded changes | Smoothing, rate limits, hysteresis |
+| Fairness | No exploitative or discriminatory pricing | Caps, constraints, audits |
+
+<ThinkFirst question="Why can't you evaluate a pricing policy offline the way you'd evaluate a ranker — and what breaks standard A/B tests too?">
+Offline replay assumes the world would have behaved the same under your new
+prices, but the market *reacts* to price, so logged outcomes don't transfer.
+And standard A/B assumes independent units, while riders and drivers in
+treatment regions spill into control regions (drivers literally drive to the
+higher-paying cell). The fix is **switchback** experiments: toggle the policy
+over time within a region and compare time-region units — the design DoorDash
+uses for exactly this class of marketplace interference
+([DoorDash Engineering](https://careersatdoordash.com/blog/switchback-tests-and-randomized-experimentation-under-network-effects-at-doordash/)).
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Offline is weak here**: you can't replay a market that reacts to your
+  prices. Offline numbers (forecast error, elasticity-model fit on experimental
+  data) qualify components; they don't certify a policy.
+- **Online:** completion rate, wait times, reliability, driver earnings,
+  revenue — balanced, since optimizing one alone degrades the marketplace. The
+  NYE outage numbers (ETAs 3x, 25% unfulfilled) are the canonical picture of
+  what "reliability" means here.
+- **Guardrails:** **fairness** metrics, time spent at the cap, and price
+  volatility per region.
 
 <ThinkFirst question="Your optimizer recomputes each region's price every minute. What failure mode does the naive version hit almost immediately?">
 Oscillation. Price rises → demand dips and supply floods in → the imbalance
@@ -126,7 +137,44 @@ hysteresis, smoothed inputs, and an objective defined over a horizon rather
 than the instantaneous imbalance.
 </ThinkFirst>
 
-## 5. Model & optimization *(spine: objective + optimization)*
+## 4. Architecture
+
+```
+every ~minute, per region:
+  live supply/demand state ──► demand + supply forecasts (short horizon)
+                           ──► elasticity model (from price experiments)
+                           ──► optimizer (long-horizon objective)
+                           ──► constraint layer (caps, emergency rules, fairness)
+                           ──► smoother (rate limits, hysteresis)
+                           ──► published multiplier / upfront price
+outcomes (requests, completions, app opens) + experiment logs ──► retraining
+```
+
+The design is a **control loop**, not a prediction service: the published
+price changes the very state the next iteration reads. That is why the
+constraint layer and smoother are first-class components rather than
+afterthoughts, and why an experimentation system (switchbacks, holdout
+regions) is part of the architecture.
+
+## 5. Offline model building & evaluation *(spine: objective + optimization)*
+
+### Training data generation
+
+- **Labels/signals:** historical requests, completions, cancellations, driver
+  positions, prices offered and outcomes — including *app opens without
+  request*, the cleanest demand-suppression signal you have.
+- **Elasticity data:** the hard part — you need **experimental variation** (price
+  experiments / geo holdouts) to estimate causal response, since observational
+  price–demand correlation is confounded by the conditions that caused the price.
+
+### Feature engineering
+
+- **Features:** region, time, events, weather, current supply/demand imbalance,
+  recent conversion at each price.
+
+<WikiLink slug="uplift-modeling" title="Uplift modeling — estimating causal response to a treatment" />
+
+### Model training
 
 - **Forecasting:** time-series / GBDT models for demand and supply per region;
   Lyft leans on contextual bandits and RL where multiple objectives interact.
@@ -144,6 +192,13 @@ than the instantaneous imbalance.
   direction ([Management Science](https://pubsonline.informs.org/doi/10.1287/mnsc.2021.4058)).
 - **Smoothing:** rate-limit changes and add hysteresis so prices don't flap.
 
+### Offline evaluation
+
+Forecasts are backtested walk-forward; the elasticity model is validated
+against held-out experiment cells; the optimizer is stress-tested in a
+simulator for oscillation and cap behavior. None of this certifies the policy:
+that is the online experiment's job.
+
 <ThinkFirst question="During a storm your optimizer's unconstrained solution is a 4.9x multiplier in one neighborhood. Ship it?">
 No, and not only for PR reasons. Extreme multipliers exploit exactly the
 riders with the fewest alternatives, invite regulatory caps written *for* you
@@ -154,7 +209,7 @@ the imbalance clear partly through wait times. The optimizer proposes; the
 constraint layer disposes.
 </ThinkFirst>
 
-## 6. Serving & scaling
+## 6. Online model execution & evaluation
 
 Per region every minute: pull live supply/demand, forecast the short horizon,
 apply the optimizer + constraints + smoothing, publish the multiplier. Bound the
@@ -163,28 +218,10 @@ action space and cap maximum surge for fairness and PR safety. Publish
 requesting, which is itself part of the mechanism: the MSG data shows riders
 sorting themselves by willingness to pay when the price is visible upfront.
 
-<ThinkFirst question="Why can't you evaluate a pricing policy offline the way you'd evaluate a ranker — and what breaks standard A/B tests too?">
-Offline replay assumes the world would have behaved the same under your new
-prices, but the market *reacts* to price, so logged outcomes don't transfer.
-And standard A/B assumes independent units, while riders and drivers in
-treatment regions spill into control regions (drivers literally drive to the
-higher-paying cell). The fix is **switchback** experiments: toggle the policy
-over time within a region and compare time-region units — the design DoorDash
-uses for exactly this class of marketplace interference
-([DoorDash Engineering](https://careersatdoordash.com/blog/switchback-tests-and-randomized-experimentation-under-network-effects-at-doordash/)).
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline is weak here**: you can't replay a market that reacts to your prices.
-  Rely on **geo/time-based experiments** (switchbacks) as the primary
-  evaluation, randomizing time-region units rather than individual requests,
-  and analyze with cluster-robust errors (naive analysis of switchbacks
-  inflates false positives).
-- **Metrics:** completion rate, wait times, reliability, driver earnings, revenue,
-  and **fairness** metrics — balanced, since optimizing one alone degrades the
-  marketplace. The NYE outage numbers (ETAs 3x, 25% unfulfilled) are the
-  canonical picture of what "reliability" means here.
+Rely on **geo/time-based experiments** (switchbacks) as the primary
+evaluation, randomizing time-region units rather than individual requests,
+and analyze with cluster-robust errors (naive analysis of switchbacks
+inflates false positives).
 
 <ThinkFirst question="The switchback says your new policy wins on completion rate. Two months after full launch, driver hours are quietly declining. What did the experiment miss?">
 Horizon. Switchback windows are hours long, so they capture immediate matching
@@ -196,7 +233,7 @@ You need long-running holdout regions and driver-cohort retention metrics on
 top of switchbacks.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Closed-loop control:** monitor for oscillation, over/under-supply, and
   regions stuck at cap. The price acts on the market, so instability is a live
@@ -207,7 +244,7 @@ top of switchbacks.
 - **Regime shifts:** events and weather change elasticity; keep experiments
   running to refresh causal estimates. The loop closes hard into **data**.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -217,7 +254,7 @@ top of switchbacks.
 | Smoothed, capped prices | Unconstrained optimizer | Oscillation and exploitative spikes destroy trust |
 | Switchback experiments | Standard A/B | Market interference breaks unit-independent A/B assumptions |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Why can't you just fit demand vs. price from historical data?">
 Confounding. Prices were high *because* demand was high (rush hour, events), so

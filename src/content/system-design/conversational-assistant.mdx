@@ -31,7 +31,10 @@ retrieval and memory, streaming responses, keeping it safe, and improving it
 from feedback. It reads through the **agentic loop** (context → orchestration →
 guardrails → operations).
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** a helpful multi-turn assistant answering open-ended questions and
   doing tasks, for a huge user base, safely and affordably.
@@ -40,6 +43,22 @@ guardrails → operations).
 - **Scope:** the product system around the LLM (context, retrieval, memory,
   safety, serving). Base-model training and raw serving infra are adjacent
   (see the LLM inference-serving case).
+
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | Stream first token fast | Streaming; model tiering |
+| Context | Long multi-turn conversations | Summarization/truncation; memory retrieval |
+| Grounding | Reduce hallucination, cite | Optional RAG + tools; groundedness metric |
+| Safety | Block harmful content/misuse | Input/output moderation, jailbreak defense |
+| Cost | Frontier models are expensive | Route easy turns to smaller models; cache |
+
+These aren't ad-hoc: Google's LaMDA formalized dialog quality as
+**sensibleness, specificity, interestingness** plus **safety** and
+**groundedness**: the fraction of external-world claims supported by
+authoritative sources, and showed fine-tuning improves all of them beyond what
+scale alone delivers ([Thoppilan et al., 2022](https://arxiv.org/abs/2201.08239)).
 
 <Callout type="tip" title="Interview signal">
 The model is a given — signal comes from the **context pipeline** (what goes into
@@ -57,21 +76,37 @@ nothing in a pretraining objective says no. The whole product is the machinery
 that fixes these three: alignment, grounding, guardrails.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+## C: Choose the model
 
-| Dimension | Target | Consequence |
-|---|---|---|
-| Latency | Stream first token fast | Streaming; model tiering |
-| Context | Long multi-turn conversations | Summarization/truncation; memory retrieval |
-| Grounding | Reduce hallucination, cite | Optional RAG + tools; groundedness metric |
-| Safety | Block harmful content/misuse | Input/output moderation, jailbreak defense |
-| Cost | Frontier models are expensive | Route easy turns to smaller models; cache |
+- **An aligned base, not a raw one:** an instruction-tuned, preference-tuned
+  chat model. Alignment is what turns a text completer into an assistant; the
+  InstructGPT result (a 1.3B preference-tuned model preferred over raw 175B
+  GPT-3) shows it matters more than raw scale for "does what the user meant"
+  ([Ouyang et al., 2022](https://arxiv.org/abs/2203.02155)).
+- **Harmlessness trained in:** Constitutional AI trains harmlessness from
+  AI-generated critiques and revisions against explicit principles (RLAIF),
+  yielding a **non-evasive** assistant that explains refusals and engages with
+  hard questions instead of stonewalling
+  ([Bai et al., 2022](https://arxiv.org/abs/2212.08073)).
+- **A tier of models, not one:** a small, cheap model for the easy mass of
+  turns and a frontier model for the hard ones, behind a router.
+- **Build vs. buy:** most teams adapt or license the base; the product's
+  engineering lives in the context pipeline, safety, and feedback loop.
 
-These aren't ad-hoc: Google's LaMDA formalized dialog quality as
-**sensibleness, specificity, interestingness** plus **safety** and
-**groundedness**: the fraction of external-world claims supported by
-authoritative sources, and showed fine-tuning improves all of them beyond what
-scale alone delivers ([Thoppilan et al., 2022](https://arxiv.org/abs/2201.08239)).
+## A: Acquire & prepare data
+
+The model arrives pretrained; what this product acquires is everything that
+fills or improves the prompt:
+
+- **Grounding sources:** a web/document index and tool integrations
+  (calculator, code) the assistant can cite.
+- **User memory:** durable facts and preferences, written with consent and
+  stored per user with inspect / correct / delete controls.
+- **Preference data:** thumbs, regenerations, and side-by-side comparisons,
+  the raw material for RLHF/DPO updates.
+- **Safety data:** a policy taxonomy, labeled prompt/response pairs for the
+  safeguard classifiers, and red-team prompt suites that grow with every
+  discovered jailbreak.
 
 <ThinkFirst question="A conversation reaches turn 200; the context window fits 20. What's your strategy — and why is plain truncation wrong?">
 Truncation silently drops the thread — the user's name, the constraint from
@@ -81,7 +116,9 @@ move durable facts into **retrievable memory** pulled in only when relevant.
 The context window is a budget to allocate, not a buffer to overflow.
 </ThinkFirst>
 
-## 3. Context & memory *(spine: context)*
+## L: Leverage the model *(spine: context + evaluation)*
+
+### Context & memory
 
 The heart of the product is **what fills the prompt**:
 
@@ -110,7 +147,7 @@ retrieve less, rank it, and place the critical material near the edges of the
 prompt.
 </ThinkFirst>
 
-## 4. Orchestration *(spine: orchestration)*
+### Orchestration *(spine: orchestration)*
 
 Per turn: assemble context (system prompt + retrieved memory + summarized
 history + grounding), **positioning the most relevant material where the model
@@ -134,7 +171,7 @@ signals (thumbs, regeneration rate) after rollout. No single number; a panel
 of them.
 </ThinkFirst>
 
-## 5. Evaluation *(spine: evaluation)*
+### Evaluation *(spine: evaluation)*
 
 - **Quality:** helpfulness/correctness via **human preference** and
   **LLM-as-a-judge** on curated + live prompts; track win-rate against the
@@ -148,6 +185,33 @@ of them.
 <WikiLink slug="llm-as-judge" title="LLM-as-a-judge for open-ended quality" />
 <WikiLink slug="text-generation-metrics" title="Generation-quality metrics" />
 
+<ThinkFirst question="Frontier-model inference on every turn for 100M users is ruinous. Where does most of the cost saving come from?">
+From admitting most turns are easy: **route** them to a small, cheap model and
+escalate only the hard ones — plus **prefix caching** for the shared system
+prompt and response caching for repeated queries. Model tiering typically
+saves more than any inference optimization, because the cheapest token is one
+a frontier model never generates. The InstructGPT result is the reason tiering
+works at all: a well-tuned small model is genuinely competitive on the easy
+mass of traffic.
+</ThinkFirst>
+
+## E: Estimate resources
+
+Assumptions stated so they can be challenged:
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Traffic | 100M daily users × 10 turns | 1B turns/day ≈ 11.6K turns/s on average |
+| Prompt | ~3K tokens (system prompt, summary, memory, recent turns) | ~3T prefill tokens/day |
+| Shared prefix | ~1K of those tokens are the same system prompt | prefix caching removes ~1T prefill tokens/day |
+| Output | ~400 tokens per reply | ~400B generated tokens/day |
+| Tiering | 70% of turns answered by the small model | frontier load falls to ~120B output tokens/day |
+| Memory store | ~10 KB of durable facts per user | ~1 TB, trivially shardable by user |
+
+The table is the argument for the operations section: caching and routing each
+remove a larger share of the bill than any single kernel optimization, and
+memory is cheap to store but expensive to get wrong.
+
 <ThinkFirst question="Your input filter blocks 99% of harmful requests, yet red-teamers extract harmful output within an hour. What did the single-filter design get wrong?">
 It assumed harm arrives labeled. Jailbreaks smuggle intent past input
 classifiers (role-play, encoding, multi-turn setup), and harm can *emerge* in
@@ -159,18 +223,27 @@ safeguard model on **both** the prompt and the response, not a keyword filter
 on the way in.
 </ThinkFirst>
 
-## 6. Safety & guardrails *(spine: guardrails)*
+## D: Design the system
+
+### High-level design
+
+```
+user turn ──► input safeguard ──► router (small model │ frontier model)
+          ──► context assembly: system prompt (prefix-cached) + summary + memory + retrieval
+          ──► generate (streamed; tool calls loop act → observe)
+          ──► output safeguard + citations ──► user
+memory writer (consented facts) ──► memory store;  thumbs / regenerations ──► preference store
+```
+
+### Safety & guardrails *(spine: guardrails)*
 
 - **Input & output moderation:** a dedicated classifier on both sides of
   generation. Llama Guard is the canonical open pattern — an LLM fine-tuned
   against a safety taxonomy that classifies prompts *and* responses, matching
   or beating purpose-built moderation APIs, with the taxonomy adaptable per
   product ([Inan et al., 2023](https://arxiv.org/abs/2312.06674)).
-- **Alignment in the model:** Constitutional AI trains harmlessness from
-  AI-generated critiques and revisions against explicit principles (RLAIF),
-  yielding a **non-evasive** assistant that explains refusals and engages with
-  hard questions instead of stonewalling
-  ([Bai et al., 2022](https://arxiv.org/abs/2212.08073)).
+- **Alignment in the model:** the Constitutional-AI-style training chosen in
+  section C is a layer of its own, catching what classifiers miss.
 - **Jailbreak/prompt-injection defense:** user text (and any retrieved content)
   is untrusted and must not override the system policy.
 - **Refusal calibration:** over-refusal is a product failure too — measure both
@@ -178,17 +251,7 @@ on the way in.
 
 <WikiLink slug="prompt-injection-attacks-and-defenses" title="Jailbreak & injection defenses" />
 
-<ThinkFirst question="Frontier-model inference on every turn for 100M users is ruinous. Where does most of the cost saving come from?">
-From admitting most turns are easy: **route** them to a small, cheap model and
-escalate only the hard ones — plus **prefix caching** for the shared system
-prompt and response caching for repeated queries. Model tiering typically
-saves more than any inference optimization, because the cheapest token is one
-a frontier model never generates. The InstructGPT result is the reason tiering
-works at all: a well-tuned small model is genuinely competitive on the easy
-mass of traffic.
-</ThinkFirst>
-
-## 7. Operations *(spine: operations)*
+### Operations *(spine: operations)*
 
 - **Serving:** streaming, **model tiering** (small model for easy turns,
   frontier for hard), prompt/prefix caching — heavy overlap with the LLM
@@ -199,7 +262,7 @@ mass of traffic.
   RLHF/DPO alignment and prompt/policy updates — the same human-preference
   machinery that built the assistant keeps improving it.
 
-## 8. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -209,7 +272,7 @@ mass of traffic.
 | Safeguard model on input and output | Input keyword filter | Jailbreaks bypass input-only checks; harm emerges in outputs |
 | Non-evasive refusals (CAI-style) | Blanket refusal | Over-refusal is a failure mode; users need engagement, not evasion |
 
-## 9. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="A conversation exceeds the context window. What happens?">
 Summarize older turns into a running synopsis, keep recent turns verbatim, and

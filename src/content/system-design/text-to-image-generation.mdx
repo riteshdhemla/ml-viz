@@ -31,7 +31,10 @@ model runs a heavy denoising loop), and **safety** (it can generate anything).
 Most of the pipeline is an instance of the ML loop (train a generative model),
 with a serving stage that dominates cost.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** given a text prompt, generate high-quality, prompt-faithful images,
   fast and affordably, at product scale.
@@ -43,22 +46,7 @@ with a serving stage that dominates cost.
   model is in scope conceptually; in practice you'd fine-tune an open base like
   SDXL rather than train from scratch.
 
-<Callout type="tip" title="Interview signal">
-Name the two quality axes early — **aesthetics vs. prompt faithfulness** — and
-that the system is **GPU-bound** at inference. Those two facts drive the model,
-serving, and cost story.
-</Callout>
-
-<ThinkFirst question="Stable Diffusion 1.x runs an ~860M-parameter UNet ~50 times per image. Walk the arithmetic: roughly how long is one image on a modern datacenter GPU, how many images per GPU-hour — and what fleet does 'millions of images/day' imply?">
-Each denoising step is a full forward pass, so time ≈ steps × per-step cost —
-a few seconds per image at 50 steps, i.e. on the order of 1–2K images per
-GPU-hour. Millions of images a day therefore means a fleet of hundreds of
-GPUs running hot. And because cost is *linear in step count*, halving steps
-halves the fleet, which is why step reduction, not model shrinking, is the
-first cost lever every image product pulls.
-</ThinkFirst>
-
-## 2. Requirements & scale
+**Non-functional.**
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -67,55 +55,11 @@ first cost lever every image product pulls.
 | Quality | Aesthetic + prompt-faithful | Strong text encoder + guidance + fine-tuning |
 | Safety | Block harmful/IP-infringing output | Input + output filters, dataset curation |
 
-**Back-of-envelope:** a diffusion model runs *N* denoising steps, each a full
-UNet/transformer forward pass on a GPU. Total cost is
-$N \times \text{cost}(\text{step})$, so the whole cost story is "how do we cut
-$N$, shrink each step, and pack GPUs", which is why **latent** diffusion
-(denoise a compressed representation) and step-distilled samplers matter so
-much.
-
-## 3. GenAI problem framing
-
-**Conditional generative modeling.** The dominant family is the **latent
-diffusion model**: an autoencoder compresses images into a latent space and a
-diffusion model learns to denoise latents conditioned on a text embedding
-([Rombach et al., 2022](https://arxiv.org/abs/2112.10752)). At sampling time,
-**classifier-free guidance (CFG)** extrapolates away from the unconditional
-prediction,
-
-$$\hat{\epsilon} = \epsilon_{\text{uncond}} + w\,(\epsilon_{\text{cond}} - \epsilon_{\text{uncond}}),$$
-
-trading diversity for prompt adherence as the guidance scale $w$ (typically
-5–8) rises ([Ho & Salimans, 2022](https://arxiv.org/abs/2207.12598)).
-
-*What was the pre-generative baseline?* Retrieval (search a stock library) or GANs
-— GANs are fast but unstable and mode-collapse-prone; diffusion won on quality and
-controllability.
-
-<ThinkFirst question="For a generative model, what does the training data determine beyond output quality?">
-Everything the model *can* and *can't* be made to do. Curation — dedup,
-aesthetic filtering, NSFW/CSAM removal, caption quality — is simultaneously the
-quality lever, the first safety layer (a model can't easily generate what it
-never learned), and the legal exposure (training-data provenance and IP). For
-generative systems, dataset curation isn't preprocessing; it's product design.
-</ThinkFirst>
-
-## 4. Data & training *(spine: data)*
-
-- **Data:** web-scale image–text pairs — LAION-5B is the canonical open corpus:
-  5.85B CLIP-filtered pairs, shipped with NSFW, watermark, and toxicity
-  detection scores precisely so trainers can filter
-  ([Schuhmann et al., 2022](https://arxiv.org/abs/2210.08402)). **Curation is
-  the product**: dedup, aesthetic filtering, CSAM removal, and caption quality
-  gate what the model can do, and what it *can't* be made to do.
-- **IP/licensing:** training-data provenance is a legal and ethical minefield;
-  document sources and honor opt-outs (Stability and others now run artist
-  opt-out programs).
-- **Fine-tuning:** start from an open base, then fine-tune / LoRA for style,
-  brand, or safety; aesthetic fine-tuning on a small curated set moves human
-  preference more than architecture changes.
-
-<WikiLink slug="ddim-sampling" title="DDIM — fast deterministic diffusion sampling" />
+<Callout type="tip" title="Interview signal">
+Name the two quality axes early — **aesthetics vs. prompt faithfulness** — and
+that the system is **GPU-bound** at inference. Those two facts drive the model,
+serving, and cost story.
+</Callout>
 
 <ThinkFirst question="Stable Diffusion's autoencoder maps a 512×512×3 image to a 64×64×4 latent. Compute the reduction factor — and name what you risk losing by denoising there instead of in pixel space.">
 786K values down to 16K — a ~48× reduction that every one of the ~50
@@ -126,7 +70,18 @@ legible text, faces, hands — becomes the signature failure mode, and decoder
 upgrades ship as quality wins on their own.
 </ThinkFirst>
 
-## 5. Model & generation *(spine: hypothesis-space + objective)*
+## C: Choose the model *(spine: hypothesis-space)*
+
+**Conditional generative modeling.** The dominant family is the **latent
+diffusion model**: an autoencoder compresses images into a latent space and a
+diffusion model learns to denoise latents conditioned on a text embedding
+([Rombach et al., 2022](https://arxiv.org/abs/2112.10752)).
+
+*What was the pre-generative baseline?* Retrieval (search a stock library) or GANs
+— GANs are fast but unstable and mode-collapse-prone; diffusion won on quality and
+controllability.
+
+The components to choose:
 
 - **Text encoder:** prompt faithfulness lives or dies here. Imagen showed that
   scaling a frozen T5-XXL text encoder improved both fidelity and image–text
@@ -134,17 +89,112 @@ upgrades ship as quality wins on their own.
   ([Saharia et al., 2022](https://arxiv.org/abs/2205.11487)); SDXL runs two
   text encoders (CLIP ViT-L + OpenCLIP ViT-bigG) feeding a 2.6B-parameter UNet
   ([Podell et al., 2023](https://arxiv.org/abs/2307.01952)).
-- **Denoiser:** a UNet or diffusion transformer over latents, trained with the
-  denoising (noise-prediction) objective.
+- **Denoiser:** a UNet or diffusion transformer over latents.
+- **Build vs. adapt:** start from an open base (SDXL-class) and fine-tune;
+  pretraining from scratch is a research-lab budget, not a product decision.
+
+<ThinkFirst question="For a generative model, what does the training data determine beyond output quality?">
+Everything the model *can* and *can't* be made to do. Curation — dedup,
+aesthetic filtering, NSFW/CSAM removal, caption quality — is simultaneously the
+quality lever, the first safety layer (a model can't easily generate what it
+never learned), and the legal exposure (training-data provenance and IP). For
+generative systems, dataset curation isn't preprocessing; it's product design.
+</ThinkFirst>
+
+## A: Acquire & prepare data *(spine: data)*
+
+- **Data:** web-scale image–text pairs — LAION-5B is the canonical open corpus:
+  5.85B CLIP-filtered pairs, shipped with NSFW, watermark, and toxicity
+  detection scores precisely so trainers can filter
+  ([Schuhmann et al., 2022](https://arxiv.org/abs/2210.08402)). **Curation is
+  the product**: dedup, aesthetic filtering, CSAM removal, and caption quality
+  gate what the model can do, and what it *can't* be made to do.
+- **IP/licensing:** training-data provenance is a legal and ethical minefield;
+  document sources and honor opt-outs (Stability and others now run artist
+  opt-out programs).
+- **Fine-tuning sets:** a small, curated aesthetic set (plus style, brand, or
+  safety sets) for the adaptation step.
+
+## L: Leverage the model *(spine: objective + evaluation)*
+
+### Training & adaptation
+
+- **Objective:** the denoising (noise-prediction) objective over latents.
+- **Fine-tuning:** start from an open base, then fine-tune / LoRA for style,
+  brand, or safety; aesthetic fine-tuning on a small curated set moves human
+  preference more than architecture changes.
+
+### Generation
+
+At sampling time, **classifier-free guidance (CFG)** extrapolates away from the
+unconditional prediction,
+
+$$\hat{\epsilon} = \epsilon_{\text{uncond}} + w\,(\epsilon_{\text{cond}} - \epsilon_{\text{uncond}}),$$
+
+trading diversity for prompt adherence as the guidance scale $w$ (typically
+5–8) rises ([Ho & Salimans, 2022](https://arxiv.org/abs/2207.12598)).
+
 - **Sampling:** DDIM/DPM-Solver at 20–50 steps + CFG for adherence; **step
   distillation** collapses this — adversarial diffusion distillation (SDXL
   Turbo) samples in 1–4 steps at near-teacher quality
   ([Sauer et al., 2023](https://arxiv.org/abs/2311.17042)).
 
+<WikiLink slug="ddim-sampling" title="DDIM — fast deterministic diffusion sampling" />
+
 <DiffusionViz />
 
 Diffusion learns to reverse a gradual noising process — generation is running that
 reverse chain from pure noise, guided by the text embedding.
+
+<ThinkFirst question="FID improved on the new checkpoint. Ship it? What do FID and CLIPScore each actually measure — and what do both miss?">
+FID measures **distributional realism** (do generated images statistically
+resemble real ones); CLIPScore measures **prompt adherence**. Neither measures
+what users buy: aesthetic taste. Both can improve while humans prefer the old
+model, so automated metrics screen checkpoints, and **human preference A/B**
+makes the ship call.
+</ThinkFirst>
+
+### Evaluation
+
+- **Automated:** **FID** (distributional realism) and **CLIPScore** (prompt
+  adherence) — necessary but weakly correlated with human taste; run them on a
+  fixed prompt suite spanning composition, counting, text rendering, and style.
+- **Human preference:** side-by-side A/B on aesthetics + adherence is the real
+  judge; collect preference data continuously from user picks and upscales.
+- **Safety evals:** red-team prompt suites for harmful/IP-infringing
+  generations, tracked per policy category.
+
+<ThinkFirst question="Stable Diffusion 1.x runs an ~860M-parameter UNet ~50 times per image. Walk the arithmetic: roughly how long is one image on a modern datacenter GPU, how many images per GPU-hour — and what fleet does 'millions of images/day' imply?">
+Each denoising step is a full forward pass, so time ≈ steps × per-step cost —
+a few seconds per image at 50 steps, i.e. on the order of 1–2K images per
+GPU-hour. Millions of images a day therefore means a fleet of hundreds of
+GPUs running hot. And because cost is *linear in step count*, halving steps
+halves the fleet, which is why step reduction, not model shrinking, is the
+first cost lever every image product pulls.
+</ThinkFirst>
+
+## E: Estimate resources
+
+A diffusion model runs *N* denoising steps, each a full UNet/transformer
+forward pass on a GPU. Total cost is $N \times \text{cost}(\text{step})$, so
+the whole cost story is "how do we cut $N$, shrink each step, and pack GPUs",
+which is why **latent** diffusion (denoise a compressed representation) and
+step-distilled samplers matter so much.
+
+Back-of-envelope, with the assumptions stated so they can be challenged:
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Demand | 5M images/day | ~58 images/s on average |
+| Throughput | ~3 s/image at 50 steps on one GPU | ~1,200 images per GPU-hour |
+| Compute | 5M ÷ 1,200 | ~4,200 GPU-hours/day ≈ 175 GPUs busy around the clock |
+| Peak | ~2–3× the daily average | ~350–525 GPUs provisioned |
+| Distilled sampler | 4 steps instead of 50 | ~12× fewer GPU-hours on the draft tier |
+| Storage | ~1 MB per delivered image | ~5 TB/day of outputs before retention policy |
+
+The table makes the design argument on its own: step count is the dominant
+term, so a distilled draft tier is worth more than any serving trick, and
+outputs need a retention policy, not just a bucket.
 
 <ThinkFirst question="One image costs 20–50 denoising steps, each a full forward pass on a GPU. Enumerate the cost levers before reading on — and estimate what each is worth.">
 Attack each factor of the product: **fewer steps** (distillation gets 50 →
@@ -155,7 +205,19 @@ text-encoder embeddings, seeds for variants — is the bonus lever product
 teams forget. Note the levers multiply, and step count dominates.
 </ThinkFirst>
 
-## 6. Serving & scaling
+## D: Design the system
+
+### High-level design
+
+```
+prompt ──► input filter ──► text encoder (embedding cache)
+       ──► job queue (priority tiers: interactive draft / batch upscale)
+       ──► GPU denoiser workers (batched, N steps) ──► VAE decode
+       ──► output safety classifier ──► watermark + C2PA ──► object store / CDN
+user picks + upscales ──► preference store ──► fine-tuning
+```
+
+### Serving & scaling
 
 The crux. Per request: encode prompt → run *N* denoising steps on GPU → decode
 latent → safety-check → return. Optimize by:
@@ -168,24 +230,6 @@ latent → safety-check → return. Optimize by:
   exactly this split.
 - **Caching** text-encoder embeddings and identical prompt+seed results.
 
-<ThinkFirst question="FID improved on the new checkpoint. Ship it? What do FID and CLIPScore each actually measure — and what do both miss?">
-FID measures **distributional realism** (do generated images statistically
-resemble real ones); CLIPScore measures **prompt adherence**. Neither measures
-what users buy: aesthetic taste. Both can improve while humans prefer the old
-model, so automated metrics screen checkpoints, and **human preference A/B**
-makes the ship call.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Automated:** **FID** (distributional realism) and **CLIPScore** (prompt
-  adherence) — necessary but weakly correlated with human taste; run them on a
-  fixed prompt suite spanning composition, counting, text rendering, and style.
-- **Human preference:** side-by-side A/B on aesthetics + adherence is the real
-  judge; collect preference data continuously from user picks and upscales.
-- **Safety evals:** red-team prompt suites for harmful/IP-infringing
-  generations, tracked per policy category.
-
 <ThinkFirst question="A generation comes back with a stock-photo watermark ghosted into the corner. The model has no retrieval component. What happened — and which training-time decision most reduces it?">
 The model **memorized**. Diffusion models trained on billions of web images
 can emit near-copies of training examples — Carlini et al. extracted over a
@@ -196,7 +240,7 @@ mitigation, and extraction-style audits belong in your eval suite. This is
 an IP and privacy exposure, not a curiosity.
 </ThinkFirst>
 
-## 8. Safety & guardrails
+### Safety & guardrails
 
 - **Input filtering:** classify prompts and block clearly disallowed requests
   before spending a generation.
@@ -210,7 +254,7 @@ an IP and privacy exposure, not a curiosity.
 - **Memorization/IP:** dedup training data and monitor for training-image
   regurgitation ([Carlini et al., 2023](https://arxiv.org/abs/2301.13188)).
 
-## 9. Feedback & iteration *(spine: feedback)*
+### Feedback & iteration *(spine: feedback)*
 
 - **Preference data** from user picks/upscales feeds fine-tuning (RLHF-style
   alignment for aesthetics/safety) — the pick-one-of-four UI is a preference
@@ -218,7 +262,7 @@ an IP and privacy exposure, not a curiosity.
 - **Drift:** prompt trends shift; monitor rejection/safety-filter rates and
   refresh models.
 
-## 10. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -227,7 +271,7 @@ an IP and privacy exposure, not a curiosity.
 | Distilled 1–4-step sampling | Full 50-step sampling | ~10–25× less GPU per image at slight quality loss |
 | Fine-tune open base | Train from scratch | Orders of magnitude cheaper; base models are strong |
 
-## 11. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Images look great but ignore half the prompt. How do you improve adherence?">
 Prompt faithfulness is driven by the text encoder, the captions, and guidance.

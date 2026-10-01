@@ -33,7 +33,10 @@ isn't finding options — it's the **transaction**: matching intent to the right
 choice and executing an **irreversible, monetary** action safely. Walk it through
 the **agentic project loop**, with guardrails and confirmation front and center.
 
-## 1. Clarify the task *(spine: task)*
+
+## R: Requirements *(spine: task)*
+
+**Functional.**
 
 - **Goal:** understand a shopping/booking intent (with constraints and
   preferences), find and compare options, and **complete the transaction**.
@@ -44,14 +47,7 @@ the **agentic project loop**, with guardrails and confirmation front and center.
 - **Scope:** intent → search → compare → transact. Adjacent: the vendor APIs and
   payment rails.
 
-<Callout type="warning" title="It spends real money">
-The dominant design force is that actions are **irreversible and monetary**. The
-model may *propose* a purchase; a guardrail + (usually) the user must **authorize**
-it. Authorization lives in code and human approval, never in the model's judgment
-alone.
-</Callout>
-
-## 2. Requirements & constraints
+**Non-functional.**
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -59,6 +55,40 @@ alone.
 | Safety | No unauthorized/ wrong purchases | HITL confirmation, spend limits, idempotency |
 | Coverage | Multiple vendors | Tool/connector per vendor; normalize results |
 | Trust | Transparent choices | Show comparison + reasoning before buying |
+
+<Callout type="warning" title="It spends real money">
+The dominant design force is that actions are **irreversible and monetary**. The
+model may *propose* a purchase; a guardrail + (usually) the user must **authorize**
+it. Authorization lives in code and human approval, never in the model's judgment
+alone.
+</Callout>
+
+<ThinkFirst question="Six weeks later a user disputes the charge: “I never approved this hotel.” What settles it — and what did you have to record at booking time?">
+The **audit trail**: the stated intent and constraints, the options shown, the
+exact terms presented ($X, these dates, this cancellation policy), the user's
+explicit confirmation of *those terms*, and the vendor's order confirmation —
+all timestamped. Agentic payments make this structural: a payment token bound
+to one merchant and cart total *is* evidence of what was authorized. Without
+that record, every dispute is your word against the user's, and chargebacks
+will decide against you.
+</ThinkFirst>
+
+## E: Estimation
+
+Assumptions stated so they can be challenged:
+
+| Quantity | Assumption | Result |
+|---|---|---|
+| Sessions | 200K shopping/booking sessions/day | ~2.3/s on average |
+| Vendor calls | ~30 searches and detail fetches per session | 6M vendor calls/day ≈ 70/s, bursty |
+| Model calls | ~20 per session at ~6K input tokens | ~24B input tokens/day |
+| Conversion | ~10% of sessions end in a purchase | ~20K transactions/day |
+| Search latency | vendors queried in parallel at 1–3 s each | ~3 s per comparison round, not the sum |
+
+The economics are unusual: the expensive and slow parts are the vendors, not
+the model, and the rare event (the transaction) carries all the risk. So the
+design spends its rigor on the 20K purchases and its caching on the 6M
+searches, within the freshness limits that prices allow.
 
 <ThinkFirst question="“Book me a flight under $400, morning departure, aisle seat if possible.” What must the agent carry through the whole session for the final purchase to be right?">
 A **structured preference state** — hard constraints (budget, dates) versus
@@ -68,34 +98,30 @@ transaction is checked against it. Agents that keep constraints only in the
 conversation blur "under $400" into "around $400" by turn six.
 </ThinkFirst>
 
-## 3. Context & tools *(spine: context)*
+## S: Storage schema
 
-- **Tools:** `search_inventory(vendor, query)`, `get_details`, `add_to_cart`,
-  `checkout(payment)`, `book` — typed, permissioned, often one connector per
-  vendor. Payment is the most sensitive tool.
-- **Payment rails built for agents:** the
-  [Agentic Commerce Protocol](https://stripe.com/blog/developing-an-open-standard-for-agentic-commerce)
-  (Stripe + OpenAI) has the agent pass the merchant a **Shared Payment Token**
-  scoped to *one merchant and one cart total* — the agent never holds raw card
-  credentials, and the merchant stays the merchant of record. Design your payment
-  tool the same way: delegated, scoped authorization, not a card number in the
-  prompt.
-- **Preference state:** a structured record of the user's constraints and
-  priorities, carried across the session so comparisons honor them.
-- **Grounding:** prices/availability must be fetched live (they change); never
-  transact on stale/hallucinated details.
+| Entity | Key fields | Store |
+|---|---|---|
+| Preference state | session id, hard constraints (budget, dates), soft preferences (seat, loyalty), version | session store, versioned on every change |
+| Option snapshot | vendor, item id, price, terms, cancellation policy, fetched_at | short-TTL cache; copied into the approval when chosen |
+| Approval | session id, exact terms approved, user id, timestamp, channel | append-only audit store |
+| Transaction | idempotency key, scoped payment token ref, vendor order id, status | transactional DB |
+| Audit trail | intent, options shown, approval, vendor confirmation, all timestamped | append-only, retained through the chargeback window |
 
-<WikiLink slug="agent-protocols-mcp-a2a" title="Tool/agent protocols (MCP) for vendor integration" />
+The approval record is the contract: it stores the *terms*, not a pointer to
+a listing that can change, so both the pre-charge check and a later dispute
+compare against the same frozen numbers.
 
-<ThinkFirst question="A network timeout hits mid-checkout. Did the booking go through? What makes a retry safe rather than hopeful?">
-You don't know — that's the point. A naive retry risks a **double booking**;
-not retrying risks no booking. The fix is transactional discipline:
-**idempotency keys** so the vendor deduplicates repeated requests, plus a
-status query before any retry. The safety lives in the transaction layer, not
-in the model being careful.
-</ThinkFirst>
+## H: High-level design *(spine: orchestration)*
 
-## 4. Orchestration *(spine: orchestration)*
+```
+user ──► orchestrator (understand → search → compare → confirm → transact)
+   ├─► preference state store (hard vs. soft constraints)
+   ├─► vendor connectors (ACP / MCP / vendor APIs; GUI fallback) ──► live price + availability
+   ├─► comparison + recommendation ──► confirmation UI ──► user approves exact terms
+   └─► transaction service: terms check ──► scoped payment token ──► vendor ──► order confirmation
+every step ──► trace;  approvals + transactions ──► audit store
+```
 
 **Understand → search → compare → confirm → transact:**
 
@@ -112,24 +138,67 @@ in the model being careful.
   [Instant Checkout](https://openai.com/index/buy-it-in-chatgpt/) the user
   explicitly confirms each order and the *merchant* still accepts or declines it
   — two checks outside the model. Your design should have the same shape.
-- **Idempotency:** guard against double-booking on retries/timeouts.
 
-<ThinkFirst question="You can't A/B-test real purchases on real cards. What does the eval set for a money-spending agent actually look like?">
-A **sandboxed scenario suite**: replayed or mocked vendor APIs with known
-inventory, test-mode payment rails, and scripted complications — price changes
-at checkout, sold-out fallbacks, ambiguous constraints, injected upsells in
-listings. Score constraint adherence as a *strict binary* per scenario, and
-hold safety metrics (unauthorized transactions, double bookings) to **zero**,
-not to an average. Outcome quality can be judged; safety must be asserted.
+<ThinkFirst question="Merchants are adopting agent checkout APIs (ACP-style). When is driving the vendor's website GUI still the right call — and what does it cost you?">
+Only for the **long tail with no API** — coverage is the one thing GUI
+automation buys. The costs are steep: no idempotency keys, no scoped payment
+tokens (the agent must handle raw credentials or hand off to the user), no
+machine-readable order confirmation, and checkout flows that break when the
+site changes. That's why the industry built protocols —
+[Stripe and OpenAI's ACP](https://stripe.com/newsroom/news/stripe-openai-instant-checkout)
+exists precisely so agents can transact without screen-driving checkout pages.
+Treat GUI checkout as a bridge, not an architecture.
 </ThinkFirst>
 
-## 5. Evaluation *(spine: evaluation)*
+## A: APIs
 
-- **Task success:** did it book the right thing, honoring all constraints, at a
-  good price? (outcome eval on realistic scenarios)
-- **Constraint adherence:** did it violate budget/date/policy? — a strict check.
-- **Trajectory:** efficient search, correct comparison, no unnecessary steps.
-- **Safety:** zero unauthorized transactions, zero double-bookings.
+- **Tools:** `search_inventory(vendor, query)`, `get_details`, `add_to_cart`,
+  `checkout(payment)`, `book` — typed, permissioned, often one connector per
+  vendor. Payment is the most sensitive tool.
+- **Payment rails built for agents:** the
+  [Agentic Commerce Protocol](https://stripe.com/blog/developing-an-open-standard-for-agentic-commerce)
+  (Stripe + OpenAI) has the agent pass the merchant a **Shared Payment Token**
+  scoped to *one merchant and one cart total* — the agent never holds raw card
+  credentials, and the merchant stays the merchant of record. Design your payment
+  tool the same way: delegated, scoped authorization, not a card number in the
+  prompt.
+
+```
+search_inventory(vendor: str, query: Query) -> Option[]               # read
+get_details(vendor: str, item_id: str) -> OptionDetail                # read, always live
+request_approval(option: OptionDetail) -> ApprovalId | Declined       # human gate
+checkout(approval_id: str, idempotency_key: str) -> OrderConfirmation # write
+```
+
+Note that `checkout` takes an **approval id**, not a price or a card: the
+transaction service looks up the approved terms itself, so the model cannot
+pass a different amount than the user agreed to.
+
+<WikiLink slug="agent-protocols-mcp-a2a" title="Tool/agent protocols (MCP) for vendor integration" />
+
+<ThinkFirst question="A network timeout hits mid-checkout. Did the booking go through? What makes a retry safe rather than hopeful?">
+You don't know — that's the point. A naive retry risks a **double booking**;
+not retrying risks no booking. The fix is transactional discipline:
+**idempotency keys** so the vendor deduplicates repeated requests, plus a
+status query before any retry. The safety lives in the transaction layer, not
+in the model being careful.
+</ThinkFirst>
+
+## D: Detailed design *(spine: context + guardrails)*
+
+### Context engineering *(spine: context)*
+
+- **Preference state:** a structured record of the user's constraints and
+  priorities, carried across the session so comparisons honor them.
+- **Grounding:** prices/availability must be fetched live (they change); never
+  transact on stale/hallucinated details.
+
+### Orchestration details
+
+- **Ask before assuming:** ambiguous constraints become a question, not a
+  guess, because the cost of a wrong assumption lands at checkout.
+- **Idempotency:** guard against double-booking on retries/timeouts; query
+  order status before any retry.
 
 <ThinkFirst question="The user approved a $380 fare. At checkout the vendor returns $412. What's the rule — and the principle behind it?">
 Pause and re-confirm. The user authorized *specific terms*, not the general
@@ -140,7 +209,7 @@ authorized purchase into an unauthorized one. It's the same idea as scoping a
 payment token to one cart total: authorization binds to terms, not to intent.
 </ThinkFirst>
 
-## 6. Guardrails & safety *(spine: guardrails)*
+### Guardrails & safety *(spine: guardrails)*
 
 - **Human-in-the-loop confirmation** before any payment/booking (or bounded
   pre-authorization: "book up to $400 without asking").
@@ -156,17 +225,7 @@ payment token to one cart total: authorization binds to terms, not to intent.
 
 <WikiLink slug="prompt-injection-attacks-and-defenses" title="Injection defense on vendor content" />
 
-<ThinkFirst question="Six weeks later a user disputes the charge: “I never approved this hotel.” What settles it — and what did you have to record at booking time?">
-The **audit trail**: the stated intent and constraints, the options shown, the
-exact terms presented ($X, these dates, this cancellation policy), the user's
-explicit confirmation of *those terms*, and the vendor's order confirmation —
-all timestamped. Agentic payments make this structural: a payment token bound
-to one merchant and cart total *is* evidence of what was authorized. Without
-that record, every dispute is your word against the user's, and chargebacks
-will decide against you.
-</ThinkFirst>
-
-## 7. Operations *(spine: operations)*
+### Operations *(spine: operations)*
 
 - **Tracing:** log intent, options considered, the approved terms, and the
   transaction — an audit trail for disputes and chargebacks.
@@ -175,18 +234,37 @@ will decide against you.
 - **Feedback:** wrong bookings and abandoned carts become eval cases and
   preference-handling improvements.
 
-<ThinkFirst question="Merchants are adopting agent checkout APIs (ACP-style). When is driving the vendor's website GUI still the right call — and what does it cost you?">
-Only for the **long tail with no API** — coverage is the one thing GUI
-automation buys. The costs are steep: no idempotency keys, no scoped payment
-tokens (the agent must handle raw credentials or hand off to the user), no
-machine-readable order confirmation, and checkout flows that break when the
-site changes. That's why the industry built protocols —
-[Stripe and OpenAI's ACP](https://stripe.com/newsroom/news/stripe-openai-instant-checkout)
-exists precisely so agents can transact without screen-driving checkout pages.
-Treat GUI checkout as a bridge, not an architecture.
+<ThinkFirst question="You can't A/B-test real purchases on real cards. What does the eval set for a money-spending agent actually look like?">
+A **sandboxed scenario suite**: replayed or mocked vendor APIs with known
+inventory, test-mode payment rails, and scripted complications — price changes
+at checkout, sold-out fallbacks, ambiguous constraints, injected upsells in
+listings. Score constraint adherence as a *strict binary* per scenario, and
+hold safety metrics (unauthorized transactions, double bookings) to **zero**,
+not to an average. Outcome quality can be judged; safety must be asserted.
 </ThinkFirst>
 
-## 8. Tradeoffs & alternatives
+## E: Evaluation *(spine: evaluation)*
+
+### Evaluating the agent
+
+- **Task success:** did it book the right thing, honoring all constraints, at a
+  good price? (outcome eval on realistic scenarios)
+- **Constraint adherence:** did it violate budget/date/policy? — a strict check.
+- **Trajectory:** efficient search, correct comparison, no unnecessary steps.
+- **Safety:** zero unauthorized transactions, zero double-bookings.
+
+### Does the design meet the requirements?
+
+- **Correctness:** the preference state is checked at comparison time and
+  again, in code, against the approved terms before charging.
+- **Safety:** approval-bound checkout, scoped payment tokens, rail-level spend
+  limits, and idempotency keys each block a different failure.
+- **Trust:** the user sees the comparison and approves exact terms; the
+  audit trail can reproduce what they saw.
+- **Bottleneck:** vendor latency and rate limits. Parallel fan-out and a
+  short-TTL cache handle search; checkout always re-fetches live.
+
+### Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -196,7 +274,21 @@ Treat GUI checkout as a bridge, not an architecture.
 | Live price/availability fetch | Trust cached details | Prices change; transacting on stale data is a real loss |
 | Idempotent transactions | Naive retries | Prevents costly double-bookings on timeouts |
 
-## 9. Interviewer follow-ups
+## D: Distinctive component
+
+**Authorization bound to terms.** Most agents gate *actions*; a commerce agent
+must gate *terms*. Approval of "this hotel" is worthless if the price, dates,
+or cancellation policy can change between the click and the charge. The
+design binds authorization to the exact terms at three layers:
+
+1. **The approval record** freezes the terms the user saw.
+2. **The transaction service** re-checks live terms against that record
+   immediately before charging and re-asks on any mismatch.
+3. **The payment rail** enforces the same bound: a token scoped to one merchant
+   and one cart total (ACP), or network-level spend limits (Visa Intelligent
+   Commerce), holds even if everything above it is compromised.
+
+## Interviewer follow-ups
 
 <Details summary="The price changed between recommendation and checkout. What happens?">
 Re-verify before charging: if the final price/terms differ from what the user

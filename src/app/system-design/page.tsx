@@ -24,19 +24,19 @@ const TRACKS: { id: SystemDesignTrack; label: string; blurb: string }[] = [
     id: "ml",
     label: "ML System Design",
     blurb:
-      "Ranking, retrieval, detection, and forecasting systems — walked through the ML project loop.",
+      "Ranking, retrieval, detection, and forecasting systems — structured with the 7-step ML framework (problem, scale, metrics, architecture, offline build, online execution, iteration).",
   },
   {
     id: "agentic",
     label: "Agentic System Design",
     blurb:
-      "LLM agents, tools, and orchestration — walked through the agentic project loop.",
+      "LLM agents, tools, and orchestration — structured with RESHADED (requirements, estimation, storage, high-level design, APIs, detailed design, evaluation, distinctive component).",
   },
   {
     id: "genai",
     label: "Generative AI System Design",
     blurb:
-      "Image, text, code, video & audio generation — model training, inference serving, and safety.",
+      "Image, text, code, video & audio generation — structured with SCALED (system requirements, choose the model, acquire data, leverage the model, estimate resources, design the system).",
   },
 ];
 
@@ -95,8 +95,9 @@ export default function SystemDesignIndexPage() {
         <p className="mt-2 text-slate-400 max-w-2xl">
           Interview-style walkthroughs of real ML, agentic, and generative-AI
           systems. Each one clarifies requirements, estimates scale, designs the
-          system, and reasons through the tradeoffs — structured as a walk through
-          the project loop.
+          system, and reasons through the tradeoffs. Each track follows the
+          interview framework educative.io teaches for it, so every case in a
+          track has the same shape.
         </p>
 
         {cases.length === 0 && (

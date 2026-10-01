@@ -9,6 +9,7 @@ import { getNotebookUrl } from "@/lib/utils";
 import { absoluteUrl } from "@/lib/site";
 import { buildDeepDivePrompt, extractHeadings } from "@/lib/ai-deep-dive";
 import { SpineNav } from "@/components/lessons/SpineNav";
+import { FrameworkStrip } from "@/components/system-design/FrameworkStrip";
 
 export interface ReferencedLesson {
   href: string;
@@ -71,6 +72,10 @@ export function SystemDesignLayout({ meta, source, relatedLessons }: Props) {
       {/* Content */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-12">
         <SpineNav spine={meta.spine} stageIds={meta.spineStages} />
+        <FrameworkStrip
+          track={resolvedTrack}
+          tight={Boolean(meta.spine && meta.spineStages?.length)}
+        />
         <article className="prose-lesson">
           <MdxContent source={source} />
         </article>

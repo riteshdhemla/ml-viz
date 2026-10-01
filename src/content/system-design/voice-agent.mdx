@@ -30,7 +30,10 @@ speak** loop must stream and overlap. Everything else (tools, guardrails) is
 standard; the differentiator is the real-time pipeline. Walk it through the
 **agentic project loop**.
 
-## 1. Clarify the task *(spine: task)*
+
+## R: Requirements *(spine: task)*
+
+**Functional.**
 
 - **Goal:** hold a natural spoken conversation that accomplishes a goal (book an
   appointment, answer a question, take an order), possibly calling tools.
@@ -39,6 +42,15 @@ standard; the differentiator is the real-time pipeline. Walk it through the
 - **Modality bridge:** audio in → text reasoning → audio out, each stage streamed.
 - **Scope:** the real-time voice pipeline + agent loop. Reuses tool-use/guardrail
   patterns from the support agent.
+
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Turn latency | ~500 ms p50, < 800 ms p95 | Stream + overlap ASR/LLM/TTS; speak first tokens early |
+| Turn-taking | Detect end-of-speech, allow barge-in | VAD, endpointing, interruptible TTS |
+| Robustness | Noise, accents, disfluency | Strong streaming ASR; tolerate partial transcripts |
+| Scale | Many concurrent calls | Efficient serving; telephony integration |
 
 <Callout type="tip" title="Interview signal">
 "Latency is the constraint that shapes everything — I'll stream and overlap ASR,
@@ -56,14 +68,19 @@ number itself dictates a streaming, overlapped pipeline before you've chosen a
 single model.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+## E: Estimation
 
-| Dimension | Target | Consequence |
+**Load**, assumptions stated:
+
+| Quantity | Assumption | Result |
 |---|---|---|
-| Turn latency | ~500 ms p50, < 800 ms p95 | Stream + overlap ASR/LLM/TTS; speak first tokens early |
-| Turn-taking | Detect end-of-speech, allow barge-in | VAD, endpointing, interruptible TTS |
-| Robustness | Noise, accents, disfluency | Strong streaming ASR; tolerate partial transcripts |
-| Scale | Many concurrent calls | Efficient serving; telephony integration |
+| Calls | 500K calls/day × ~4 minutes | ~33K call-hours/day ≈ 1,400 concurrent on average, ~4,000 at peak |
+| Streams | one streaming ASR + one TTS session per live call | ~4,000 of each at peak, held open for the whole call |
+| Turns | ~12 agent turns per call at ~3K tokens of context | ~36K tokens per call ≈ 18B tokens/day |
+
+Unlike a chat system, capacity is measured in **concurrent sessions**, not
+requests: every live call pins an ASR stream, a TTS stream, and a slot in the
+LLM's batch for minutes at a time.
 
 <ThinkFirst question="Add up a sequential pipeline: full ASR (~300ms after end of speech) → LLM response (~1–2s) → TTS synthesis (~300ms). Does it fit the 800ms budget — and if not, where does the time come back from?">
 It doesn't — sequential is 2–3× over budget before network. The time comes
@@ -75,18 +92,31 @@ end-to-end is achievable with today's components (sub-300ms streaming ASR,
 [~75ms TTS inference](https://elevenlabs.io/blog/meet-flash)).
 </ThinkFirst>
 
-## 3. Context & tools *(spine: context)*
+**The overlapped latency budget**, from the moment the caller stops talking to
+the first audible syllable:
 
-- **Pipeline components:** streaming **ASR** (speech→text), the **LLM** (reasoning
-  + tool calls), streaming **TTS** (text→speech), and a **VAD/endpointer** for
-  turn boundaries. Whisper-class models set the robustness bar for ASR —
-  [trained on 680k hours of weakly supervised audio](https://arxiv.org/abs/2212.04356)
-  precisely to survive accents, noise, and jargon.
-- **Tools:** the same typed function calls as a text agent (lookup, book, etc.),
-  invoked mid-conversation.
-- **Context:** conversation history + task state; kept compact for latency.
+| Stage | Budget | How |
+|---|---|---|
+| Endpointing | ~200 ms | VAD + end-of-turn model decides the caller is done |
+| ASR finalization | ~100 ms | partials already streamed; only the last words remain |
+| LLM time to first token | ~250 ms | small/fast model, prefix-cached system prompt |
+| TTS time to first audio | ~100 ms | streaming synthesis of the first sentence |
+| Network + telephony | ~100 ms | co-located regions |
+| **Total** | **~750 ms** | inside the p95 target, with almost no slack |
 
-<WikiLink slug="continuous-batching" title="Continuous batching — high-throughput LLM serving" />
+## S: Storage schema
+
+| Entity | Key fields | Store |
+|---|---|---|
+| Call | id, caller, SIP/channel ids, start/end, outcome, AI-disclosure + recording consent | relational DB |
+| Turn | call id, final transcript, ASR confidence, agent text, per-stage latencies, barge-in flag | trace store (one span per turn) |
+| Task state | call id, slots (date, name, amount), filled/confirmed flags | in-memory session store, checkpointed |
+| Tool call | call id, tool, arguments, result, authorization decision | append-only audit log |
+| Audio | call id, recording refs | blob storage, retention set by consent and policy |
+
+**Task state is structured, not left in the transcript.** Each slot carries a
+`confirmed` flag, which is what lets the agent confirm only the high-stakes
+slots and know which ones are already settled.
 
 <ThinkFirst question="OpenAI's Realtime API processes audio in and out through one speech-to-speech model — no transcripts in the loop. Why would you still choose the three-stage cascade for a production phone agent?">
 Speech-to-speech wins on latency and naturalness — [one model, no pipeline
@@ -99,40 +129,63 @@ pays for its milliseconds; for expressive consumer voice, speech-to-speech
 increasingly wins.
 </ThinkFirst>
 
-## 4. Orchestration *(spine: orchestration)*
+## H: High-level design *(spine: orchestration)*
+
+```
+caller audio (SIP / WebRTC) ──► VAD + endpointer ──► streaming ASR (partials → final)
+   ──► agent: LLM over transcript + task state ──► tool calls (filler line while waiting)
+   ──► streamed tokens ──► sentence splitter ──► streaming TTS ──► caller
+caller speaks while agent audio plays ──► barge-in: stop TTS, flush queue, re-listen
+every turn ──► per-stage latency span;  every tool call ──► audit log
+```
 
 The loop is **listen → understand → act/speak**, but **streamed and overlapped**:
 
 - ASR emits partial transcripts as the user speaks; the endpointer decides when
-  the turn ends — tune it too eager and you interrupt callers, too lazy and every
-  turn feels sluggish. Endpointing is the most underrated latency component.
+  the turn ends.
 - The LLM begins reasoning on the (near-)final transcript and **streams tokens**;
   TTS starts speaking the first sentence *before* the full response is generated.
+
+## A: APIs
+
+The service is an **event stream**, not request/response:
+
+```
+inbound:   audio_frame(pcm)
+emitted:   partial_transcript(text) · end_of_turn(transcript, confidence)
+           agent_text_delta(text) · audio_chunk(pcm) · barge_in() · tool_call(name, args)
+tools:     the same typed functions as a text agent (lookup_booking, create_booking, ...)
+           say_filler(phrase)    # covers tool latency with "let me check that"
+           transfer_to_human(reason)
+```
+
+- **Tools:** the same typed function calls as a text agent (lookup, book, etc.),
+  invoked mid-conversation, with the same permission checks.
+- **Events, not polling:** `barge_in` must reach the TTS stream within tens of
+  milliseconds, so every stage subscribes to the event bus rather than waiting
+  for a response.
+
+## D: Detailed design *(spine: context + guardrails)*
+
+### Pipeline components & context *(spine: context)*
+
+- **Pipeline components:** streaming **ASR** (speech→text), the **LLM** (reasoning
+  + tool calls), streaming **TTS** (text→speech), and a **VAD/endpointer** for
+  turn boundaries. Whisper-class models set the robustness bar for ASR —
+  [trained on 680k hours of weakly supervised audio](https://arxiv.org/abs/2212.04356)
+  precisely to survive accents, noise, and jargon.
+- **Context:** conversation history + task state; kept compact for latency.
+
+<WikiLink slug="continuous-batching" title="Continuous batching — high-throughput LLM serving" />
+
+### Orchestration details
+
+- **Endpointing:** tune it too eager and you interrupt callers, too lazy and
+  every turn feels sluggish. Endpointing is the most underrated latency
+  component.
 - **Barge-in:** if the user starts talking, immediately stop TTS, flush the
   queued audio, and re-listen — interruption handling is core, not an edge case.
-- Tool calls happen mid-turn; fill dead air with a brief "let me check that."
-
-<ThinkFirst question="Which single number best predicts whether the agent feels responsive — total response time, or something else?">
-**Time-to-first-audio.** Users perceive the pause before the agent *starts*
-speaking, not how long the full answer takes — a response that begins in 400ms
-and talks for ten seconds feels snappy; one that starts after two seconds feels
-broken regardless of length. This is why every serious stack streams TTS by
-sentence and why vendors publish time-to-first-audio, not completion time.
-Optimize and monitor the start, not the total.
-</ThinkFirst>
-
-## 5. Evaluation *(spine: evaluation)*
-
-- **Latency:** p50/p95 turn latency and time-to-first-audio — the primary metric,
-  broken down per stage (endpointing, ASR final, LLM first token, TTS first byte).
-- **ASR quality:** word error rate on *your* domain audio (accents, noise,
-  jargon) — benchmark WER and production WER routinely diverge.
-- **Task success:** did the call accomplish its goal? (booking completed, question
-  answered) — outcome eval on transcripts.
-- **Conversation quality:** interruption handling, naturalness, no talking over the
-  user — often human-rated.
-
-<WikiLink slug="text-generation-metrics" title="Generation & conversation quality metrics" />
+- **Tool calls** happen mid-turn; fill dead air with a brief "let me check that."
 
 <ThinkFirst question="ASR might mis-hear a payment amount or an address. Confirm every detail with the user, then?">
 No — every confirmation costs a full slow turn and makes the agent feel
@@ -142,7 +195,7 @@ confidence, and let low-stakes details flow. Safety spent uniformly is latency
 wasted; spend it where an error actually hurts.
 </ThinkFirst>
 
-## 6. Guardrails & safety *(spine: guardrails)*
+### Guardrails & safety *(spine: guardrails)*
 
 - **Same action guardrails** as any tool-using agent: permissioned tools, HITL for
   risky actions, injection defense on transcribed content.
@@ -160,7 +213,7 @@ in the end-to-end number. Voice is a distributed system with a 800ms SLO; you
 operate it like one.
 </ThinkFirst>
 
-## 7. Operations *(spine: operations)*
+### Operations *(spine: operations)*
 
 - **Serving:** low-latency, high-concurrency inference — **continuous batching**,
   optimized ASR/TTS, and often speculative decoding to cut LLM latency.
@@ -172,7 +225,44 @@ operate it like one.
 
 <WikiLink slug="paged-attention" title="PagedAttention — efficient LLM memory for concurrent calls" />
 
-## 8. Tradeoffs & alternatives
+<ThinkFirst question="Which single number best predicts whether the agent feels responsive — total response time, or something else?">
+**Time-to-first-audio.** Users perceive the pause before the agent *starts*
+speaking, not how long the full answer takes — a response that begins in 400ms
+and talks for ten seconds feels snappy; one that starts after two seconds feels
+broken regardless of length. This is why every serious stack streams TTS by
+sentence and why vendors publish time-to-first-audio, not completion time.
+Optimize and monitor the start, not the total.
+</ThinkFirst>
+
+## E: Evaluation *(spine: evaluation)*
+
+### Evaluating the agent
+
+- **Latency:** p50/p95 turn latency and time-to-first-audio — the primary metric,
+  broken down per stage (endpointing, ASR final, LLM first token, TTS first byte).
+- **ASR quality:** word error rate on *your* domain audio (accents, noise,
+  jargon) — benchmark WER and production WER routinely diverge.
+- **Task success:** did the call accomplish its goal? (booking completed, question
+  answered) — outcome eval on transcripts.
+- **Conversation quality:** interruption handling, naturalness, no talking over the
+  user — often human-rated.
+
+<WikiLink slug="text-generation-metrics" title="Generation & conversation quality metrics" />
+
+### Does the design meet the requirements?
+
+- **Turn latency:** the overlapped budget lands near 750 ms, inside p95 but with
+  little slack, so any new stage (a guardrail model, a second LLM call) must
+  run in parallel or pay for itself elsewhere.
+- **Turn-taking:** the endpointer and the `barge_in` event path are the two
+  components that make the agent feel conversational.
+- **Robustness:** confidence-triggered confirmation on high-stakes slots
+  contains the cost of ASR errors.
+- **Bottleneck:** tool calls. A slow backend lookup cannot be streamed, so
+  filler speech and pre-fetching likely lookups at the start of a call keep it
+  from breaking the budget.
+
+### Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -181,7 +271,25 @@ operate it like one.
 | Speak first tokens early | Wait for full response | Time-to-first-audio dominates perceived latency |
 | Confirm only high-stakes slots | Confirm everything | Every confirmation adds a slow turn |
 
-## 9. Interviewer follow-ups
+## D: Distinctive component
+
+**The turn-taking controller.** Text agents get a clean "user pressed enter"
+signal. A voice agent has to decide when a turn has ended from audio alone,
+and has to stop talking the instant the caller interrupts. That controller,
+the endpointer plus the barge-in path, is what makes the system feel human or
+robotic, independent of how good the LLM is.
+
+1. **Endpointing** trades the ~200 ms it spends waiting against the risk of
+   cutting the caller off mid-thought; it is tuned per use case and measured as
+   its own latency stage.
+2. **Barge-in** must stop TTS, flush queued audio, and hand the turn back within
+   tens of milliseconds, which is why the pipeline is an event bus rather than
+   a chain of requests.
+3. **Speaking early** is what turns an LLM that takes seconds to finish into an
+   agent that answers in well under one: the first sentence plays while the
+   rest is still being generated.
+
+## Interviewer follow-ups
 
 <Details summary="The user interrupts mid-sentence. What happens?">
 Barge-in handling: VAD detects incoming speech, TTS stops immediately and flushes

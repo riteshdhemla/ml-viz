@@ -32,7 +32,8 @@ graph** ([LinkedIn Engineering](https://www.linkedin.com/blog/engineering/recomm
 Twitter and Facebook have both published their versions too. Walk it through
 the **ML project loop**.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 - **Goal:** recommend people a user is likely to connect with *and* who will
   accept — a two-sided outcome, not just similarity.
@@ -42,6 +43,20 @@ the **ML project loop**.
   and avoid degenerate feedback (only recommending the already-popular).
 - **Scope:** candidate generation + ranking over the graph. Adjacent: the graph
   storage/serving infra.
+
+### Framing it as an ML problem
+
+**Link prediction**: score `P(connect & accept)` for a (member, candidate)
+pair, served through a candidate-generation → ranking funnel like every large
+recommender.
+
+*What was breaking before?* Scoring all node pairs is quadratic and impossible;
+pure profile similarity ignores the graph structure that actually predicts
+connection. Twitter's original Who-to-Follow service is a useful data point for
+how far structure alone goes: it held the **entire follow graph in memory on a
+single server** (Cassovary) and ranked by random-walk algorithms (personalized
+PageRank/SALSA), creating millions of follows per day
+([Gupta et al., WWW 2013](https://stanford.edu/~rezab/papers/wtf_overview.pdf)).
 
 <Callout type="tip" title="Interview signal">
 Frame it as **link prediction on a graph**, and note the objective is
@@ -59,7 +74,7 @@ and training. Any design that assumes an "average" member is wrong for the
 users at both tails.
 </ThinkFirst>
 
-## 2. Requirements & scale
+## 2. Scale & latency requirements
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -67,6 +82,24 @@ users at both tails.
 | Latency | < 200 ms | Precomputed embeddings + bounded candidate set |
 | Freshness | New users/edges matter fast | Incremental graph + embedding updates |
 | Sparsity | Most users have few edges | Cold-start handling, side features |
+
+<ThinkFirst question="You hold out 10% of edges at random for the test set. Why are your metrics about to look better than they should?">
+Because edges aren't independent in time: a random holdout trains the model on
+edges that formed *after* the ones it's tested on, and the surrounding graph
+context effectively gives the answer away. The honest protocol is a **temporal
+split** — train on the graph up to time T, predict which edges form after T —
+which is also the deployment reality.
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Offline:** ranking metrics (AUC, Recall@k, MAP) on held-out future edges —
+  a **temporal split** (predict edges that form *next*), never random, to avoid
+  leaking the future.
+- **Online:** invite send rate, **acceptance rate** (the key two-sided metric),
+  and long-term network growth / engagement.
+- **Guardrails:** complaints and blocks, plus exposure concentration (the share
+  of impressions the most-connected members absorb).
 
 <ThinkFirst question="Scoring every user pair is quadratic in a billion nodes — a non-starter. What cheap structural heuristic generates most of the good candidates?">
 **Friends of friends.** The overwhelming majority of new connections form
@@ -76,9 +109,9 @@ billions to hundreds, and everything fancier (embeddings, shared attributes)
 just supplements it.
 </ThinkFirst>
 
-## 3. ML problem framing
+## 4. Architecture
 
-**Link prediction**, structured as a funnel like every large recommender:
+A funnel, like every large recommender:
 
 1. **Candidate generation** *(hypothesis space)*: cheaply propose plausible
    connections. The workhorse heuristic: **"friends of friends"** (2nd-degree),
@@ -90,19 +123,21 @@ just supplements it.
    ([LinkedIn Engineering](https://www.linkedin.com/blog/engineering/recommendations/candidate-generation-in-a-large-scale-graph-recommendation-system-people-you-may-know)).
 2. **Ranking**: score candidates on `P(connect & accept)` with graph + profile
    features.
+3. **Filtering**: guardrail filters (blocked, sensitive) before the top-k is
+   returned.
 
-*What was breaking before?* Scoring all node pairs is quadratic and impossible;
-pure profile similarity ignores the graph structure that actually predicts
-connection. Twitter's original Who-to-Follow service is a useful data point for
-how far structure alone goes: it held the **entire follow graph in memory on a
-single server** (Cassovary) and ranked by random-walk algorithms (personalized
-PageRank/SALSA), creating millions of follows per day
-([Gupta et al., WWW 2013](https://stanford.edu/~rezab/papers/wtf_overview.pdf)).
+Offline, a batch graph job computes node embeddings and 2nd-degree candidate
+lists; online, the request path fetches those, adds fresh features, and ranks.
 
-## 4. Data & features *(spine: data)*
+## 5. Offline model building & evaluation *(spine: data + hypothesis space + objective)*
+
+### Training data generation
 
 - **Labels:** sent invites, **accepted** invites (positive), ignored/declined
   (hard negatives), impressions without action (weak negatives).
+
+### Feature engineering
+
 - **Graph features:** number of mutual connections (the single strongest
   feature), common neighbors / Adamic-Adar, shared communities, path distance.
   The classic way to fuse structure with attributes is **supervised random
@@ -123,7 +158,7 @@ beat. If your GNN doesn't clear it, the GNN isn't learning graph structure —
 it's overhead.
 </ThinkFirst>
 
-## 5. Model *(spine: hypothesis space + objective)*
+### Model training
 
 - **Baseline:** logistic/GBDT on graph features (mutual-connection count alone is
   remarkably strong) — the benchmark to beat.
@@ -141,6 +176,12 @@ Message passing is the heart of the GNN: each node's representation is built fro
 its neighbors', so two users embedded near each other share graph context — the
 essence of "you may know them."
 
+### Offline evaluation
+
+Temporal split: build the graph up to time T, score Recall@k and MAP on the
+edges that form after T, and slice by member degree so the sparse and hub
+tails are measured separately.
+
 <ThinkFirst question="GraphSAGE learns an aggregator function over sampled neighborhoods instead of an embedding per node. Why is that distinction — not the accuracy — the reason it's the production choice here?">
 Because the graph won't sit still. A per-node ("transductive") embedding table
 is stale the moment a member joins or an edge forms, and refreshing it means
@@ -151,31 +192,17 @@ cheap forward pass, not retraining. Neighborhood *sampling* is the second half:
 it bounds compute per node, which is what makes hubs tractable.
 </ThinkFirst>
 
-## 6. Serving & scaling
+## 6. Online model execution & evaluation
 
-Offline: compute node embeddings + candidate lists (2nd-degree neighborhoods) in
-a batch graph job. Online: fetch the user's candidates, rank with the model +
-fresh features, apply guardrail filters (blocked, sensitive), return the top-k
-under 200ms. Update embeddings incrementally as the graph evolves. Candidate
-generation itself can go online too: LinkedIn moved part of PYMK's graph work to
-**online traversal** (its Gaia service) so freshly formed edges surface without
-waiting for the next batch job.
+Online: fetch the user's candidates, rank with the model + fresh features,
+apply guardrail filters (blocked, sensitive), return the top-k under 200ms.
+Update embeddings incrementally as the graph evolves. Candidate generation
+itself can go online too: LinkedIn moved part of PYMK's graph work to **online
+traversal** (its Gaia service) so freshly formed edges surface without waiting
+for the next batch job.
 
-<ThinkFirst question="You hold out 10% of edges at random for the test set. Why are your metrics about to look better than they should?">
-Because edges aren't independent in time: a random holdout trains the model on
-edges that formed *after* the ones it's tested on, and the surrounding graph
-context effectively gives the answer away. The honest protocol is a **temporal
-split** — train on the graph up to time T, predict which edges form after T —
-which is also the deployment reality.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline:** ranking metrics (AUC, Recall@k, MAP) on held-out future edges —
-  a **temporal split** (predict edges that form *next*), never random, to avoid
-  leaking the future.
-- **Online:** invite send rate, **acceptance rate** (the key two-sided metric),
-  and long-term network growth / engagement, with guardrails on complaints.
+A/B tests read invite send rate and **acceptance rate** together, since a model
+can raise sends by recommending people who never accept.
 
 <ThinkFirst question="Your A/B test wins: invites +8%, acceptance rate flat. Six months later, is the network better — and what could this launch have quietly made worse?">
 Not necessarily better. Impressions concentrate on high-degree nodes (they
@@ -188,7 +215,7 @@ new-member connection rates — the six-month metrics your two-week A/B can't
 see.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Evolving graph:** the graph changes constantly; embeddings and candidates
   must refresh, or recommendations go stale.
@@ -196,7 +223,7 @@ see.
   (rich-get-richer) and against revealing sensitive connections; monitor
   diversity and complaint signals.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -205,7 +232,7 @@ see.
 | Temporal eval split | Random split | Random splits leak future edges → inflated metrics |
 | `P(connect & accept)` | `P(similar)` | An ignored invite is a bad recommendation |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="A brand-new user has no connections. What do you recommend?">
 Fall back on side features — imported contacts, shared email domain/employer/

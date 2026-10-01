@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import matter from "gray-matter";
 import { SPINE_IDS, isValidStage } from "@/lib/spine";
+import { getFramework } from "@/lib/system-design-frameworks";
 
 const ROOT = process.cwd();
 const SYSTEM_DESIGN_DIR = path.join(ROOT, "src/content/system-design");
@@ -84,6 +85,33 @@ describe("system-design cases", () => {
       }
     }
     expect(problems).toEqual([]);
+  });
+
+  it.each(cases.map((c) => [c.file, c] as const))(
+    "%s follows its track's interview framework skeleton",
+    (_name, c) => {
+      const fw = getFramework(c.data.track ?? c.data.spine);
+      expect(fw, `${c.file} has no framework for its track`).toBeDefined();
+      // Only top-level sections; fenced code is stripped so a `## ` inside a
+      // code block can never count as a heading.
+      const body = c.content.replace(/```[\s\S]*?```/g, "");
+      const headings = [...body.matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
+      const expected = [...fw!.steps.map((s) => s.heading), ...fw!.tail];
+      expect(headings.length, `${c.file} headings: ${headings.join(" | ")}`).toBe(expected.length);
+      expected.forEach((prefix, i) => {
+        expect(
+          headings[i]?.startsWith(prefix),
+          `${c.file}: section ${i + 1} is "${headings[i]}", expected "${prefix}…"`
+        ).toBe(true);
+      });
+    }
+  );
+
+  it("every case threads at least 3 <ThinkFirst> pause-points", () => {
+    const thin = cases
+      .map((c) => [c.file, (c.content.match(/<ThinkFirst\s/g) ?? []).length] as const)
+      .filter(([, n]) => n < 3);
+    expect(thin).toEqual([]);
   });
 
   it("every relatedLessons entry resolves to an existing lesson", () => {

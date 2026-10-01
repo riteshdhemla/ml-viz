@@ -34,7 +34,8 @@ measurably lifted engagement in live A/Bs
 ([Jing et al., KDD 2015](https://arxiv.org/abs/1505.07647)). Walk it through
 the **ML project loop**.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 - **Goal:** given a query image (often a messy real-world photo), return visually
   similar catalog items, ideally shoppable.
@@ -51,25 +52,6 @@ The core question is "what does *similar* mean, and how do I get labels for it?"
 different mining strategies. Pin this before choosing a loss.
 </Callout>
 
-<ThinkFirst question="One surface needs exact-product matches ('buy this lamp'), another needs style-similar browsing, a third needs shop-the-look. Three embeddings or one — and what changes at the data level?">
-Pinterest tried both and consolidated: separate specialized embeddings became
-an operational tax (three models to train, serve, and keep consistent), so they
-moved to **one unified embedding trained multi-task** across all three
-objectives, which matched or beat the specialists because the tasks share
-signal. The data-level consequence: each task contributes its own labeled pairs
-(engagement for browse, human-verified exact matches for shop), and the
-sampling mix across tasks becomes a first-class tuning knob.
-</ThinkFirst>
-
-## 2. Requirements & scale
-
-| Dimension | Target | Consequence |
-|---|---|---|
-| Latency | < 300 ms | Precomputed embeddings + ANN, not pairwise compare |
-| Catalog | Billions of images | HNSW / IVF-PQ index, quantized embeddings |
-| Robustness | Real-world photos (lighting, angle, clutter) | Heavy augmentation; detect-then-crop |
-| Freshness | New products searchable in minutes | Incremental embedding + index updates |
-
 <ThinkFirst question="There's no text query — the photo is the query. What does the whole system reduce to, and what single artifact caps its quality?">
 It reduces to **learning a distance**: map every image to a vector such that
 "similar" means "nearby," then nearest-neighbor search does the rest. That
@@ -78,7 +60,7 @@ quality, and no amount of index engineering can recover similarity the
 embedding failed to encode.
 </ThinkFirst>
 
-## 3. ML problem framing
+### Framing it as an ML problem
 
 **Metric / representation learning**: train an encoder so that similar images map
 to nearby vectors, then do **approximate nearest neighbor** retrieval + a
@@ -89,15 +71,66 @@ re-ranking pass. Retrieval quality is bounded by embedding quality — the model
 express "this specific mid-century chair"); pairwise image comparison at query
 time is computationally impossible at billions of items.
 
-## 4. Data & features *(spine: data)*
+<ThinkFirst question="A billion 512-dimensional float32 embeddings — roughly how much memory is that, and what does the number force?">
+512 × 4 bytes × 10⁹ ≈ **2 TB** — too much to hold in RAM on a serving node,
+before you've even built an index. That's why billion-scale ANN pairs a graph
+or inverted-list index with **product quantization**, compressing each vector
+~30–60× at a small recall cost, with an exact re-rank on the shortlist.
+</ThinkFirst>
 
-- **Labels / pairs:** positive pairs from the same product (different photos,
-  angles), user co-engagement (clicked-together items), and human similarity
-  judgments. Negatives from **hard-negative mining** (visually close but wrong).
-- **Self-supervision:** augmentations (crop, color, rotate) generate positive
-  pairs cheaply — powerful when labels are scarce.
-- **Multimodal:** vision-language encoders let text and image share a space
-  (search by photo, refine by words).
+## 2. Scale & latency requirements
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Latency | < 300 ms | Precomputed embeddings + ANN, not pairwise compare |
+| Catalog | Billions of images | HNSW / IVF-PQ index, quantized embeddings |
+| Robustness | Real-world photos (lighting, angle, clutter) | Heavy augmentation; detect-then-crop |
+| Freshness | New products searchable in minutes | Incremental embedding + index updates |
+
+<ThinkFirst question="You need an offline eval set for 'similar'. Clicks are abundant — why can't you just use click-through on results as ground truth, and what do you use instead?">
+Clicks conflate similarity with salience, position, and price — users click the
+eye-catching or cheap result, not the most similar one, and you only observe
+clicks on what the *current* embedding retrieved (selection bias). The honest
+setup layers three sources: **human side-by-side judgments** on a gold set for
+fine-grained similarity, **known exact-match pairs** (same product, different
+photos) for objective recall, and engagement as a *directional* online signal —
+never the offline ground truth.
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Offline:** Recall@k / precision@k against similarity ground truth; mAP for
+  retrieval. Embedding quality probes (does the space cluster products sensibly?).
+- **Online:** click-through and purchase rate on visual-search results.
+- **Guardrails:** zero/low-result rate, latency, and index freshness.
+- **Human eval:** side-by-side similarity judgments the implicit metrics miss.
+
+<ThinkFirst question="eBay's catalog isn't a catalog — it's live listings that end, sell out, and appear by the million daily. What breaks in your beautifully precomputed index, and what's the redesign?">
+Staleness in both directions: results pointing at ended listings (visible
+breakage users punish immediately) and new inventory that's invisible until
+the next index build. A nightly rebuild can't keep up, so the eBay-style
+answer is a **streaming ingest path** — embed new listings on arrival, append
+to the index, tombstone dead ones and filter them at query time — with
+periodic full rebuilds to compact and retrain quantizers. Index freshness
+becomes a monitored SLA, just like latency.
+</ThinkFirst>
+
+## 4. Architecture
+
+```
+query photo ──► detector (category + object box) ──► crop ──► encoder ──► query embedding
+            ──► ANN search (IVF-PQ / HNSW) ──► top-k ──► re-ranker ──► availability filters
+catalog: batch embed + quantize + build index (periodic, compacting)
+       + streaming ingest (embed on arrival, append; tombstone ended listings)
+```
+
+Offline: embed the whole catalog, quantize (PQ), build an ANN index — the
+IVF+PQ compressed-domain search popularized by Faiss is the standard recipe at
+billions of vectors ([Johnson et al., 2017](https://arxiv.org/abs/1702.08734)).
+A streaming ingest path keeps the index fresh between rebuilds. The online path
+runs one encoder pass per query; everything else is lookup.
+
+<WikiLink slug="hnsw" title="HNSW — the graph index for billion-scale ANN" />
 
 <ThinkFirst question="For contrastive training, which examples matter more — the positives or the negatives?">
 The negatives — specifically the **hard** ones. Random negatives (a shoe vs. a
@@ -107,9 +140,34 @@ wrong (the same chair in a different style). Hard-negative mining is where the
 metric actually gets learned.
 </ThinkFirst>
 
+## 5. Offline model building & evaluation *(spine: data + hypothesis space + objective)*
+
+### Training data generation
+
+- **Labels / pairs:** positive pairs from the same product (different photos,
+  angles), user co-engagement (clicked-together items), and human similarity
+  judgments. Negatives from **hard-negative mining** (visually close but wrong).
+- **Self-supervision:** augmentations (crop, color, rotate) generate positive
+  pairs cheaply — powerful when labels are scarce.
+
+### Feature engineering
+
+- **Multimodal:** vision-language encoders let text and image share a space
+  (search by photo, refine by words).
+
 <WikiLink slug="vector-databases" title="Vector databases — storing & serving embeddings" />
 
-## 5. Model *(spine: hypothesis space + objective)*
+<ThinkFirst question="One surface needs exact-product matches ('buy this lamp'), another needs style-similar browsing, a third needs shop-the-look. Three embeddings or one — and what changes at the data level?">
+Pinterest tried both and consolidated: separate specialized embeddings became
+an operational tax (three models to train, serve, and keep consistent), so they
+moved to **one unified embedding trained multi-task** across all three
+objectives, which matched or beat the specialists because the tasks share
+signal. The data-level consequence: each task contributes its own labeled pairs
+(engagement for browse, human-verified exact matches for shop), and the
+sampling mix across tasks becomes a first-class tuning knob.
+</ThinkFirst>
+
+### Model training
 
 - **Encoder:** a CNN/ViT backbone fine-tuned with a **contrastive / triplet**
   loss (metric learning), or a self-supervised (SimCLR/DINO-style) then fine-tuned
@@ -133,18 +191,14 @@ metric actually gets learned.
 A shared image–text embedding space (CLIP-style) is what lets a photo query and a
 catalog image land near each other, and enables "find this, but in blue."
 
-<ThinkFirst question="A billion 512-dimensional float32 embeddings — roughly how much memory is that, and what does the number force?">
-512 × 4 bytes × 10⁹ ≈ **2 TB** — too much to hold in RAM on a serving node,
-before you've even built an index. That's why billion-scale ANN pairs a graph
-or inverted-list index with **product quantization**, compressing each vector
-~30–60× at a small recall cost, with an exact re-rank on the shortlist.
-</ThinkFirst>
+### Offline evaluation
 
-## 6. Serving & scaling
+Recall@k on known exact-match pairs, mAP and precision@k against the
+human-judged gold set, measured *after* quantization so the index's recall
+cost is counted.
 
-Offline: embed the whole catalog, quantize (PQ), build an ANN index — the
-IVF+PQ compressed-domain search popularized by Faiss is the standard recipe at
-billions of vectors ([Johnson et al., 2017](https://arxiv.org/abs/1702.08734)).
+## 6. Online model execution & evaluation
+
 Online: detect the object → crop → embed the query once → ANN search → re-rank
 → availability/business filters, all under 300ms. The detect-then-search step
 is production practice, not a nicety: Alibaba's Pailitao runs **category
@@ -153,44 +207,20 @@ user photos are cluttered scenes, not catalog shots
 ([Zhang et al., KDD 2018](https://dl.acm.org/doi/10.1145/3219819.3219820)).
 Update the index incrementally as inventory changes.
 
-<WikiLink slug="hnsw" title="HNSW — the graph index for billion-scale ANN" />
+A/B tests read click-through and purchase rate on visual-search results, with
+zero/low-result rate and latency as guardrails; engagement is a directional
+signal here, never the offline ground truth.
 
-<ThinkFirst question="You need an offline eval set for 'similar'. Clicks are abundant — why can't you just use click-through on results as ground truth, and what do you use instead?">
-Clicks conflate similarity with salience, position, and price — users click the
-eye-catching or cheap result, not the most similar one, and you only observe
-clicks on what the *current* embedding retrieved (selection bias). The honest
-setup layers three sources: **human side-by-side judgments** on a gold set for
-fine-grained similarity, **known exact-match pairs** (same product, different
-photos) for objective recall, and engagement as a *directional* online signal —
-never the offline ground truth.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Offline:** Recall@k / precision@k against similarity ground truth; mAP for
-  retrieval. Embedding quality probes (does the space cluster products sensibly?).
-- **Online:** click-through and purchase rate on visual-search results, plus
-  zero/low-result rate.
-- **Human eval:** side-by-side similarity judgments the implicit metrics miss.
-
-<ThinkFirst question="eBay's catalog isn't a catalog — it's live listings that end, sell out, and appear by the million daily. What breaks in your beautifully precomputed index, and what's the redesign?">
-Staleness in both directions: results pointing at ended listings (visible
-breakage users punish immediately) and new inventory that's invisible until
-the next index build. A nightly rebuild can't keep up, so the eBay-style
-answer is a **streaming ingest path** — embed new listings on arrival, append
-to the index, tombstone dead ones and filter them at query time — with
-periodic full rebuilds to compact and retrain quantizers. Index freshness
-becomes a monitored SLA, just like latency.
-</ThinkFirst>
-
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Distribution shift:** new product styles, seasonal inventory, and camera
   trends shift the query and catalog distributions; re-embed and retrain.
 - **Feedback loop:** engagement on returned items becomes new positive pairs,
   improving the embedding over time.
+- **Index freshness:** monitored as an SLA alongside latency, with periodic
+  full rebuilds to compact the index and retrain quantizers.
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -199,7 +229,7 @@ becomes a monitored SLA, just like latency.
 | Quantized ANN (PQ) | Exact NN | Exact search is infeasible at billions of vectors |
 | Contrastive fine-tune | Frozen pretrained encoder | Domain fine-tuning sharply improves in-catalog similarity |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="The query photo has a couch, a rug, and a lamp. What do you return?">
 Detect objects first, let the user pick (or default to the most salient), then

@@ -30,7 +30,10 @@ structure** (a song has verses and choruses, not just local coherence), and
 **copyright** is uniquely fraught (styles, voices, melodies). The dominant trick is
 generating in a **compressed audio-token / latent space**, not raw waveform.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** generate music or audio (song, sound effect, voice) from a text
   prompt (and optionally lyrics/reference), coherent over minutes.
@@ -39,6 +42,15 @@ generating in a **compressed audio-token / latent space**, not raw waveform.
 - **Copyright:** generating in the style/voice of real artists is the defining
   legal risk.
 - **Scope:** the generation pipeline (model + serving + safety).
+
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Duration | Minutes of coherent audio | Long-range modeling; hierarchical generation |
+| Resolution | High sample rate | Model compressed tokens/latents, not raw samples |
+| Latency | Streamable | Chunked/streaming synthesis |
+| Copyright | No artist/voice cloning without consent | Style/voice filters, provenance |
 
 <Callout type="tip" title="Interview signal">
 Raw waveforms are far too long to model directly — name the **neural audio codec /
@@ -54,22 +66,7 @@ or latent sequence (tens to hundreds of steps per second, not tens of
 thousands of samples), generate in that space, and decode back to waveform.
 </ThinkFirst>
 
-## 2. Requirements & scale
-
-| Dimension | Target | Consequence |
-|---|---|---|
-| Duration | Minutes of coherent audio | Long-range modeling; hierarchical generation |
-| Resolution | High sample rate | Model compressed tokens/latents, not raw samples |
-| Latency | Streamable | Chunked/streaming synthesis |
-| Copyright | No artist/voice cloning without consent | Style/voice filters, provenance |
-
-**Back-of-envelope on compression:** EnCodec-style codecs turn 32kHz music into
-~50 token-steps per second via residual vector quantization — MusicGen models
-4 parallel codebooks at that rate, so a 3-minute song is ~9K steps instead of
-16M samples ([Copet et al., 2023](https://arxiv.org/abs/2306.05284)). That
-~1000× reduction is the entire feasibility argument.
-
-## 3. GenAI problem framing
+## C: Choose the model *(spine: hypothesis-space)*
 
 Two dominant families:
 
@@ -88,6 +85,10 @@ Two dominant families:
 *Pre-generative baseline?* Sample libraries + rule-based composition — no
 open-ended text control. Generative models turn a prompt into novel audio.
 
+The choice between the families is a latency choice as much as a quality one
+(see section E): autoregressive token models can stream, diffusion renders a
+whole window at once.
+
 <ThinkFirst question="Which do you train first — the generator or the codec? And why does codec quality put a hard ceiling on the whole product?">
 **Codec first.** The codec defines the vocabulary the generator writes in:
 every generation is decoded through it, so the product can never sound better
@@ -97,7 +98,7 @@ plus adversarial (spectrogram-discriminator) losses before any generative
 training, and why a codec upgrade is a whole-catalog quality upgrade.
 </ThinkFirst>
 
-## 4. Data & training *(spine: data)*
+## A: Acquire & prepare data *(spine: data)*
 
 - **Data:** licensed music/audio with text/metadata; captioning and
   genre/instrument tagging are subsystems (MusicLM released MusicCaps — 5.5K
@@ -119,7 +120,9 @@ conditioned on them — plus long context and explicit form conditioning
 split.
 </ThinkFirst>
 
-## 5. Model & generation *(spine: hypothesis-space)*
+## L: Leverage the model *(spine: objective + evaluation)*
+
+### Model & generation
 
 - **Codec:** RVQ-based neural codec turns waveform into a short multi-codebook
   token sequence (the key to tractable length).
@@ -136,6 +139,27 @@ Whether autoregressive or diffusion, the win is the same as images/video:
 **generate in a compressed representation**, then decode — never model raw signal
 directly.
 
+<ThinkFirst question="No clicks, no ground truth, and taste is subjective. A new checkpoint lands — how do you decide it's actually better?">
+Screen automatically, decide with humans. FAD and CLAP-style text–audio
+alignment on a fixed prompt suite (e.g. MusicCaps) catch regressions cheaply;
+then **pairwise human preference** on musicality, structure, and prompt
+adherence makes the call — MusicLM's evaluation used exactly this
+metric-plus-listener protocol, and for voice, MOS naturalness panels. The
+structural failure mode (songs that drift over minutes) only shows up if you
+evaluate *full-length* outputs, so don't A/B on 10-second clips.
+</ThinkFirst>
+
+### Evaluation
+
+- **Automated:** Fréchet Audio Distance (FAD), prompt–audio alignment (CLAP
+  score), and objective quality proxies.
+- **Human eval** dominates: musicality, structure, prompt adherence, and (for
+  voice) naturalness (MOS).
+- **Structure checks:** does a 2-minute song hold together, or drift/repeat?
+  Evaluate at full product length, not clip length.
+- **Regurgitation audits:** search generations against the training catalog
+  (melody/audio fingerprinting) for memorized material.
+
 <ThinkFirst question="Two products: a sound-effects tool that should respond in about a second, and a full-song generator where users happily wait a minute. Map each to the two model families — what's the time-to-first-audio of each?">
 Autoregressive token models decode **causally**, so you can stream: decode
 the first chunk of tokens, vocode, start playback while generation continues
@@ -147,35 +171,26 @@ effects/stems and batch song rendering; AR tokens suit streaming playback
 and interactive voice.
 </ThinkFirst>
 
-## 6. Serving & scaling
+## E: Estimate resources
 
-Generation is a GPU job; support **streaming** by generating and decoding in
-chunks so playback starts before the full track is done (AR models stream
-natively; diffusion models render segments). Cache the codec/vocoder; batch
-generation requests; store outputs in object storage + CDN. Voice synthesis
-(TTS) is the latency-critical sibling — light causal vocoders make it
-near-real-time.
+**Compression first.** EnCodec-style codecs turn 32kHz music into ~50
+token-steps per second via residual vector quantization — MusicGen models 4
+parallel codebooks at that rate, so a 3-minute song is ~9K steps instead of
+16M samples ([Copet et al., 2023](https://arxiv.org/abs/2306.05284)). That
+~1000× reduction is the entire feasibility argument.
 
-<ThinkFirst question="No clicks, no ground truth, and taste is subjective. A new checkpoint lands — how do you decide it's actually better?">
-Screen automatically, decide with humans. FAD and CLAP-style text–audio
-alignment on a fixed prompt suite (e.g. MusicCaps) catch regressions cheaply;
-then **pairwise human preference** on musicality, structure, and prompt
-adherence makes the call — MusicLM's evaluation used exactly this
-metric-plus-listener protocol, and for voice, MOS naturalness panels. The
-structural failure mode (songs that drift over minutes) only shows up if you
-evaluate *full-length* outputs, so don't A/B on 10-second clips.
-</ThinkFirst>
+**Then the fleet**, assumptions stated:
 
-## 7. Evaluation *(spine: evaluation)*
+| Quantity | Assumption | Result |
+|---|---|---|
+| Render speed | Stable Audio: 95 s of audio in ~8 s on one A100 | ~450 tracks per GPU-hour |
+| Demand | 1M tracks/day of ~95 s | ~2,200 GPU-hours/day ≈ 93 GPUs busy around the clock |
+| Raw output | 95 s × 44.1kHz × 2 channels × 2 bytes | ~16.8 MB per WAV |
+| Delivered output | 320 kbit/s compressed | ~3.8 MB per track ≈ 3.8 TB/day |
 
-- **Automated:** Fréchet Audio Distance (FAD), prompt–audio alignment (CLAP
-  score), and objective quality proxies.
-- **Human eval** dominates: musicality, structure, prompt adherence, and (for
-  voice) naturalness (MOS).
-- **Structure checks:** does a 2-minute song hold together, or drift/repeat?
-  Evaluate at full product length, not clip length.
-- **Regurgitation audits:** search generations against the training catalog
-  (melody/audio fingerprinting) for memorized material.
+Generation is cheap next to video; the expensive surfaces are the
+latency-critical ones (voice, streaming playback), where GPUs must be held warm
+rather than packed with batch jobs.
 
 <ThinkFirst question="What's the abuse case unique to audio generation — the one that's worse here than in any other modality?">
 **Voice cloning.** A convincing synthetic voice enables fraud (fake calls from
@@ -185,7 +200,27 @@ consent gates on voice reference, voice-likeness detection on outputs, and
 watermarking are hard requirements, ahead of general content filtering.
 </ThinkFirst>
 
-## 8. Safety & guardrails
+## D: Design the system
+
+### High-level design
+
+```
+prompt (+ lyrics / melody / voice reference) ──► prompt + consent checks
+   ──► generator (AR tokens, streamed │ latent diffusion, windowed)
+   ──► codec decoder / vocoder ──► chunks streamed to the player
+   ──► output checks (voice likeness, fingerprint match) ──► watermark ──► object storage + CDN
+```
+
+### Serving & scaling
+
+Generation is a GPU job; support **streaming** by generating and decoding in
+chunks so playback starts before the full track is done (AR models stream
+natively; diffusion models render segments). Cache the codec/vocoder; batch
+generation requests; store outputs in object storage + CDN. Voice synthesis
+(TTS) is the latency-critical sibling — light causal vocoders make it
+near-real-time.
+
+### Safety & guardrails
 
 - **Voice cloning:** synthesizing a real person's voice without consent is the
   top abuse — consent gates, voice-likeness detection, watermarking. Meta's
@@ -196,7 +231,7 @@ watermarking are hard requirements, ahead of general content filtering.
   melodic/verbatim regurgitation of training tracks via fingerprinting.
 - **Provenance:** watermark generated audio (inaudible + signed metadata).
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -205,7 +240,7 @@ watermarking are hard requirements, ahead of general content filtering.
 | AR tokens (streamable) | Latent diffusion (whole-window) | Sub-second first audio vs. faster batch rendering |
 | Licensed data + opt-outs | Scrape everything | Copyright exposure is existential here |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Why not model the raw audio waveform directly?">
 A 3-minute song is ~16M samples — sequence lengths are intractable and local

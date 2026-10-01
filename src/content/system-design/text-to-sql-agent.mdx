@@ -34,7 +34,10 @@ inside its internal query tool
 The design win is **grounding in the schema** and **validating by execution**
 with a self-correction loop. Walk it through the **agentic project loop**.
 
-## 1. Clarify the task *(spine: task)*
+
+## R: Requirements *(spine: task)*
+
+**Functional.**
 
 - **Goal:** convert a natural-language question into correct SQL over a warehouse,
   run it, and return the answer (often with a chart/explanation).
@@ -43,6 +46,15 @@ with a self-correction loop. Walk it through the **agentic project loop**.
 - **Read-only by default:** analytics queries; writes/DDL are out of scope or
   heavily gated.
 - **Scope:** NL → SQL → execute → answer. Adjacent: BI/visualization layer.
+
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Schema size | Hundreds/thousands of tables | Schema retrieval, not whole-schema in prompt |
+| Correctness | Right answer, not just valid SQL | Execution + self-correction + verification |
+| Safety | No destructive queries, cost control | Read-only role, row/scan limits, sandboxing |
+| Latency | Interactive (seconds) | Bounded correction loop; cache schema |
 
 <Callout type="tip" title="Interview signal">
 "A query that runs isn't a query that's *correct*." Emphasizing execution
@@ -60,14 +72,23 @@ language in a messy, underdocumented schema, which is why metadata and
 schema retrieval, not the model, dominate this design.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+## E: Estimation
 
-| Dimension | Target | Consequence |
+Assumptions stated so they can be challenged:
+
+| Quantity | Assumption | Result |
 |---|---|---|
-| Schema size | Hundreds/thousands of tables | Schema retrieval, not whole-schema in prompt |
-| Correctness | Right answer, not just valid SQL | Execution + self-correction + verification |
-| Safety | No destructive queries, cost control | Read-only role, row/scan limits, sandboxing |
-| Latency | Interactive (seconds) | Bounded correction loop; cache schema |
+| Schema | 2,000 tables × ~50 columns | ~100K columns; metadata index well under 1 GB |
+| Load | 5K analysts × ~20 questions/day | 100K questions/day ≈ 1.2/s, ~5/s at peak |
+| Context per call | ~5 retrieved tables × ~40 columns × ~30 tokens + ~2K of examples | ~8–10K tokens |
+| Calls per question | generate + up to 2 corrections | ~3 calls ≈ 30K tokens per question ≈ 3B tokens/day |
+| Executions | up to 3 per question, each `EXPLAIN`ed first | ~300K warehouse queries/day, each under a scan cap |
+| Latency | ~2 s per model call + query runtime | ~10–20 s worst case: interactive only if corrections are bounded |
+
+The model bill is modest. The two costs that bite are **warehouse spend**
+(300K agent-written queries a day, any of which could scan a fact table) and
+**latency** of the correction loop, which is why each execution is preceded by
+a cheap `EXPLAIN` and the loop is capped.
 
 <ThinkFirst question="The warehouse has 2,000 tables. What goes in the prompt — and what's the single biggest lever on SQL quality?">
 Retrieve, don't dump: embed table/column descriptions and pull only the
@@ -80,24 +101,20 @@ over table metadata. A model can't guess that revenue lives in
 `fct_orders.gmv_net` unless something tells it.
 </ThinkFirst>
 
-## 3. Context & tools *(spine: context)*
+## S: Storage schema
 
-- **Schema retrieval:** the schema is too big for the prompt — retrieve the
-  relevant tables/columns via embeddings over table/column descriptions, plus
-  documented **joins**, keys, and example queries. Good metadata (descriptions,
-  synonyms, value samples — Pinterest also injects low-cardinality column
-  *values* so filters match real data) is the single biggest quality lever.
-- **Domain scoping:** Uber's QueryGPT organizes context into **workspaces** —
-  curated bundles of tables + vetted SQL samples per business domain (Mobility,
-  Ads, …) — plus an intent agent that routes each question to the right
-  workspace before generation ([Uber](https://www.uber.com/blog/query-gpt/)).
-  Scoping first, generating second.
-- **Tools:** `search_schema`, `run_sql` (read-only, sandboxed), `get_sample_rows`,
-  `explain_query`. Execution is the verification tool.
-- **Few-shot / semantic layer:** curated example NL↔SQL pairs and a metrics/
-  semantic layer keep business definitions consistent ("revenue" means one thing).
+| Entity | Key fields | Store |
+|---|---|---|
+| Column metadata | table, column, type, description, synonyms, sampled low-cardinality values, PII tag, embedding | metadata catalog + vector index |
+| Join graph | table pairs, join keys, cardinality | metadata catalog |
+| Workspace | business domain, member tables, vetted SQL examples | metadata catalog |
+| NL↔SQL example | question, SQL, verified by, source (curated or accepted in production), embedding | example store + vector index |
+| Query log | user, question, each SQL attempt, DB errors, result hash, bytes scanned, feedback | trace store |
+| Eval case | question, gold SQL, database states to check against | versioned eval store |
 
-<WikiLink slug="text-to-sql" title="Text-to-SQL — schema grounding & self-correction" />
+The catalog is the product's real asset: every column description, synonym,
+and accepted query written here raises accuracy for every future question,
+with no model change.
 
 <ThinkFirst question="The model generates plausible SQL on the first try maybe 70% of the time. What system structure turns that into a reliable product?">
 A **loop, not a shot**: execute the query (or `EXPLAIN` it), feed errors and
@@ -110,7 +127,18 @@ observe → fix pattern as a coding agent; the environment's feedback does the
 work the single-shot model can't.
 </ThinkFirst>
 
-## 4. Orchestration *(spine: orchestration)*
+## H: High-level design *(spine: orchestration)*
+
+```
+question ──► intent router ──► domain workspace
+   ──► schema retrieval (tables, columns, joins, values) + similar NL↔SQL examples
+   ──► generate: schema linking → query sketch → SQL
+   ──► EXPLAIN (cost + validity) ──► run_sql on read-only role with caps
+   ──► sanity checks on the result ──┬─ ok → answer + chart + the SQL itself
+                                     ├─ error / suspicious → feed back, regenerate (≤ 2×)
+                                     └─ ambiguous → ask a clarifying question
+every attempt ──► query log;  accepted queries ──► example store
+```
 
 **Generate → execute → observe → self-correct:**
 
@@ -129,31 +157,42 @@ The execution result is the grounded feedback that turns a plausible query into 
 correct one — the same reflection loop as a coding agent, with the database as the
 environment.
 
-<ThinkFirst question="Two ways to score generated SQL against a gold query: exact string match, or “both return the same result set.” Each has a characteristic false negative or false positive. Name them.">
-Exact match **fails correct queries**: infinitely many SQL strings compute the
-same answer (join order, aliases, equivalent predicates), so it undercounts
-real accuracy. Execution match **passes wrong queries**: a query can return
-the gold result *on this database instance* by coincidence — wrong filter, but
-no rows happened to hit it. That's why benchmarks moved to execution accuracy,
-ideally checked across multiple database states, and why "runs-but-wrong"
-needs its own production metric.
-</ThinkFirst>
+## A: APIs
 
-## 5. Evaluation *(spine: evaluation)*
+- **Tools:** `search_schema`, `run_sql` (read-only, sandboxed), `get_sample_rows`,
+  `explain_query`. Execution is the verification tool.
 
-- **Execution accuracy:** does the generated query return the *same result set* as
-  a gold query? The standard metric on Spider — 200 databases across 138
-  domains, built to force cross-schema generalization
-  ([Yu et al.](https://arxiv.org/abs/1809.08887)), and BIRD, its
-  large-and-dirty successor where GPT-4 managed 54.89% against a 92.96% human
-  baseline.
-- **Your schema is the benchmark that matters:** build an in-house eval set of
-  real questions with verified gold queries; public leaderboard gains don't
-  transfer automatically (Pinterest's benchmark-vs-production gap).
-- **Robustness:** ambiguity handling, correct joins, and value grounding (e.g.
-  "California" vs "CA"). **pass@k** reflects the self-correction retries.
-- Guard against **plausible-but-wrong**: track cases that run but return wrong
-  numbers — the most dangerous failure.
+```
+search_schema(question: str, workspace?: str) -> [{table, columns[], joins[], description}]
+get_sample_rows(table: str, n: int = 5) -> Row[]          # masked PII columns
+explain_query(sql: str) -> {valid, est_bytes_scanned, plan}
+run_sql(sql: str) -> {columns, rows (capped), bytes_scanned}   # read-only role, timeout, scan cap
+ask_clarification(question: str, options: str[]) -> UserChoice
+```
+
+Externally, `POST /ask {question} -> {answer, sql, result, chart, caveats}`.
+Returning the **SQL itself** alongside the number is deliberate: analysts can
+check the joins and filters, which is the only practical defense against a
+query that runs but answers a different question.
+
+## D: Detailed design *(spine: context + guardrails)*
+
+### Context engineering *(spine: context)*
+
+- **Schema retrieval:** the schema is too big for the prompt — retrieve the
+  relevant tables/columns via embeddings over table/column descriptions, plus
+  documented **joins**, keys, and example queries. Good metadata (descriptions,
+  synonyms, value samples — Pinterest also injects low-cardinality column
+  *values* so filters match real data) is the single biggest quality lever.
+- **Domain scoping:** Uber's QueryGPT organizes context into **workspaces** —
+  curated bundles of tables + vetted SQL samples per business domain (Mobility,
+  Ads, …) — plus an intent agent that routes each question to the right
+  workspace before generation ([Uber](https://www.uber.com/blog/query-gpt/)).
+  Scoping first, generating second.
+- **Few-shot / semantic layer:** curated example NL↔SQL pairs and a metrics/
+  semantic layer keep business definitions consistent ("revenue" means one thing).
+
+<WikiLink slug="text-to-sql" title="Text-to-SQL — schema grounding & self-correction" />
 
 <ThinkFirst question="What stops this agent from dropping a table or scanning the entire warehouse — and where must that control live?">
 At the **database boundary**, not in the prompt: a read-only role that
@@ -162,7 +201,7 @@ guards. Asking the model nicely to "write safe, efficient SQL" is a wish;
 a restricted DB user is a guarantee.
 </ThinkFirst>
 
-## 6. Guardrails & safety *(spine: guardrails)*
+### Guardrails & safety *(spine: guardrails)*
 
 - **Read-only role + limits:** a restricted DB user, row/scan/cost caps, statement
   timeouts — the agent can't drop tables or run away with warehouse spend.
@@ -180,7 +219,7 @@ flywheel is operational: every accepted or corrected query in production is a
 labeled example that improves retrieval and few-shots on *your* schema.
 </ThinkFirst>
 
-## 7. Operations *(spine: operations)*
+### Operations *(spine: operations)*
 
 - **Tracing:** log question → retrieved schema → SQL → result → corrections.
 - **Cost control:** monitor and cap query cost; cache schema embeddings and hot
@@ -189,7 +228,48 @@ labeled example that improves retrieval and few-shots on *your* schema.
   cases, steadily improving accuracy on *your* schema — the highest-leverage
   loop in the whole system.
 
-## 8. Tradeoffs & alternatives
+<ThinkFirst question="Two ways to score generated SQL against a gold query: exact string match, or “both return the same result set.” Each has a characteristic false negative or false positive. Name them.">
+Exact match **fails correct queries**: infinitely many SQL strings compute the
+same answer (join order, aliases, equivalent predicates), so it undercounts
+real accuracy. Execution match **passes wrong queries**: a query can return
+the gold result *on this database instance* by coincidence — wrong filter, but
+no rows happened to hit it. That's why benchmarks moved to execution accuracy,
+ideally checked across multiple database states, and why "runs-but-wrong"
+needs its own production metric.
+</ThinkFirst>
+
+## E: Evaluation *(spine: evaluation)*
+
+### Evaluating the agent
+
+- **Execution accuracy:** does the generated query return the *same result set* as
+  a gold query? The standard metric on Spider — 200 databases across 138
+  domains, built to force cross-schema generalization
+  ([Yu et al.](https://arxiv.org/abs/1809.08887)), and BIRD, its
+  large-and-dirty successor where GPT-4 managed 54.89% against a 92.96% human
+  baseline.
+- **Your schema is the benchmark that matters:** build an in-house eval set of
+  real questions with verified gold queries; public leaderboard gains don't
+  transfer automatically (Pinterest's benchmark-vs-production gap).
+- **Robustness:** ambiguity handling, correct joins, and value grounding (e.g.
+  "California" vs "CA"). **pass@k** reflects the self-correction retries.
+- Guard against **plausible-but-wrong**: track cases that run but return wrong
+  numbers — the most dangerous failure.
+
+### Does the design meet the requirements?
+
+- **Schema size:** workspaces plus retrieval keep each prompt to a handful of
+  tables, whatever the warehouse holds.
+- **Correctness:** execution feedback fixes errors that fail loudly; returning
+  the SQL and checking results against several database states in eval target
+  the ones that fail quietly.
+- **Safety:** the read-only role, scan caps, and `EXPLAIN`-first execution are
+  enforced by the database, not by the model.
+- **Bottleneck:** the correction loop's latency. Two retries is the cap; past it
+  the agent asks a clarifying question, which is usually what the failure was
+  signaling anyway.
+
+### Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -199,7 +279,25 @@ labeled example that improves retrieval and few-shots on *your* schema.
 | Read-only + limits | Full DB access | Analytics is read-only; caps prevent cost/destruction |
 | In-house eval set | Public benchmark scores | Benchmark gains don't transfer to your messy schema (the BIRD lesson) |
 
-## 9. Interviewer follow-ups
+## D: Distinctive component
+
+**The schema-grounding layer.** The thirty-point gap between Spider and BIRD is
+not a SQL-writing gap; it is the distance between a clean toy schema and a real
+warehouse. The distinctive component is everything that closes it without
+touching the model:
+
+1. **A metadata catalog** with human-written descriptions, synonyms, sampled
+   values, and documented joins, so `fct_orders.gmv_net` is findable from the
+   word "revenue".
+2. **Domain workspaces** that shrink 2,000 tables to the few dozen a question
+   could plausibly need.
+3. **A semantic layer** that fixes what business terms mean, so two analysts
+   asking for "revenue" get the same definition.
+4. **A flywheel:** every accepted query becomes a retrievable example. That is
+   why Uber's QueryGPT improved over 20+ iterations that were mostly context
+   and routing changes rather than model swaps.
+
+## Interviewer follow-ups
 
 <Details summary="The SQL runs and returns a number, but it's wrong. How do you catch it?">
 Execution validity ≠ correctness. Mitigate with a semantic/metrics layer (so

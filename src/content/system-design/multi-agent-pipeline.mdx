@@ -33,7 +33,10 @@ This is the interview about **orchestration topology**: how to decompose,
 delegate, run in parallel, and aggregate — *without* the complexity spiraling.
 Walk it through the **agentic project loop**.
 
-## 1. Clarify the task *(spine: task)*
+
+## R: Requirements *(spine: task)*
+
+**Functional.**
 
 - **Goal:** complete a complex, multi-part task by coordinating specialized agents
   (e.g. researcher + writer + editor + fact-checker).
@@ -43,6 +46,15 @@ Walk it through the **agentic project loop**.
 - **Success:** the aggregate output is correct and coherent — coordination
   overhead paid for itself.
 - **Scope:** the orchestration layer. Each worker reuses single-agent patterns.
+
+**Non-functional.**
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Decomposition | Clean subtask boundaries | Planner/orchestrator design |
+| Parallelism | Independent subtasks concurrent | Fan-out/fan-in orchestration |
+| Coherence | Aggregated output is consistent | Aggregation + conflict resolution |
+| Cost/latency | Bounded despite many agents | Budgets per agent; avoid chatter loops |
 
 <Callout type="warning" title="Multi-agent is a cost, not a default">
 More agents = more latency, cost, and failure surface. Cognition's engineering
@@ -62,14 +74,47 @@ low-value, or write-heavy task fails one of those conditions and belongs to a
 single agent.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+## E: Estimation
 
-| Dimension | Target | Consequence |
+Assumptions stated so they can be challenged:
+
+| Quantity | Assumption | Result |
 |---|---|---|
-| Decomposition | Clean subtask boundaries | Planner/orchestrator design |
-| Parallelism | Independent subtasks concurrent | Fan-out/fan-in orchestration |
-| Coherence | Aggregated output is consistent | Aggregation + conflict resolution |
-| Cost/latency | Bounded despite many agents | Budgets per agent; avoid chatter loops |
+| Run shape | lead (~10 calls × 15K tokens) + 4 workers (~20 calls × 8K tokens each) | ~800K tokens per run |
+| Load | 20K runs/day | ~16B tokens/day |
+| Latency, sequential | 4 workers × ~4 minutes | ~16 minutes |
+| Latency, parallel | slowest worker ~4 min + ~2 min of lead planning and aggregation | ~6 minutes |
+| Concurrency | 20K runs × 6 minutes | ~2,000 run-hours/day ≈ 85 runs live, ~400 agent loops in flight |
+
+Parallelism buys wall-clock time, not tokens: the parallel run costs the same
+~800K tokens as the sequential one. That is the quantitative form of the
+callout above. Fan out only when a faster answer, or a better one from more
+total reasoning, is worth the bill.
+
+<ThinkFirst question="Should every worker agent see the full task context and every other worker's output?">
+No — shared-everything multiplies cost, dilutes attention, and lets one agent's
+mistake contaminate the rest. Give each worker a **scoped context** (just its
+subtask and inputs), coordinate through a **shared artifact store** rather than
+chatty messages, and define **structured interface contracts** so the
+orchestrator aggregates typed results instead of parsing prose. (This is also
+Cognition's core objection to naive multi-agent: implicit decisions hide in
+context that other agents never see.)
+</ThinkFirst>
+
+## S: Storage schema
+
+| Entity | Key fields | Store |
+|---|---|---|
+| Run | id, task, plan, total budget, status, checkpoint pointer | durable workflow store |
+| Subtask | run id, role, objective, input artifact refs, output schema, budget, spend, status | durable workflow store |
+| Artifact | run id, producing agent, schema version, typed content, validation status | shared artifact store (the blackboard) |
+| Trace span | run id, agent id, parent span, tool calls, tokens, wall time | trace store |
+| Checkpoint | run id, completed subtasks, artifact refs, orchestrator state | durable workflow store |
+
+Agents coordinate **only through artifacts**: a worker reads its declared
+inputs and writes one typed output. There is deliberately no free-form
+message table, because unbounded agent-to-agent chatter is the failure this
+schema exists to prevent.
 
 <ThinkFirst question="You've decided the task genuinely needs multiple agents. What are the candidate ways to wire them together — and what property of the task picks between them?">
 Three basic topologies: **orchestrator–worker** (a planner delegates and
@@ -82,7 +127,7 @@ quality-bound — picks the wiring; picking a topology for its novelty is how
 complexity spirals.
 </ThinkFirst>
 
-## 3. Orchestration topology *(spine: orchestration)*
+## H: High-level design *(spine: orchestration)*
 
 The core design decision is the **topology**:
 
@@ -96,8 +141,49 @@ The core design decision is the **topology**:
 - **Debate / review:** a generator and a critic iterate — good for quality-critical
   output.
 
+```
+task ──► orchestrator: plan subtasks + budgets ──► checkpoint
+     ──► fan-out: worker A │ worker B │ worker C   (scoped context + scoped tools each)
+              └──── typed artifacts ──► artifact store
+     ──► orchestrator: validate artifacts, resolve conflicts, verify, replan if gaps
+     ──► final output
+one trace per run, one span per agent
+```
+
 <WikiLink slug="sub-agent-orchestration" title="Sub-agent orchestration patterns" />
 <WikiLink slug="langgraph" title="LangGraph — modeling agent workflows as graphs" />
+
+## A: APIs
+
+The APIs that matter are the contracts *between* agents:
+
+```
+delegate(role: str, objective: str, inputs: ArtifactRef[],
+         output_schema: Schema, tools: str[], budget: Budget) -> SubtaskId
+write_artifact(subtask_id: str, content: <output_schema>) -> ArtifactRef   # validated on write
+read_artifact(ref: ArtifactRef) -> Artifact
+```
+
+- **Interface contracts:** structured inputs/outputs between agents so aggregation
+  is reliable, not free-text guessing. `write_artifact` rejects content that
+  does not match the declared schema, so a malformed worker output fails at
+  the boundary instead of inside the aggregate.
+- **Tools are scoped per role:** `delegate` names the tools a worker may use, so
+  a researcher cannot write and an editor cannot browse.
+- **Budgets are part of the call:** every subtask carries its own token and
+  step cap.
+
+## D: Detailed design *(spine: context + guardrails)*
+
+### Context isolation *(spine: context)*
+
+- **Scoped context per worker:** each agent gets only what it needs — isolation
+  keeps contexts small (latency/cost) and prevents cross-contamination.
+- **Shared artifacts:** a common workspace/blackboard for results — workers write
+  outputs to the store and the orchestrator reads them, rather than agents
+  flooding each other with messages.
+
+### Orchestration details
 
 The orchestrator: plans → fans out subtasks (parallel where independent) → each
 worker runs its own agent loop with a scoped context and tools → orchestrator
@@ -106,52 +192,6 @@ gaps remain. Delegation quality is the make-or-break skill: Anthropic found
 early orchestrators gave vague instructions ("research the semiconductor
 shortage") and got duplicated, drifting workers — each subtask needs an
 objective, an output format, and boundaries.
-
-<ThinkFirst question="Should every worker agent see the full task context and every other worker's output?">
-No — shared-everything multiplies cost, dilutes attention, and lets one agent's
-mistake contaminate the rest. Give each worker a **scoped context** (just its
-subtask and inputs), coordinate through a **shared artifact store** rather than
-chatty messages, and define **structured interface contracts** so the
-orchestrator aggregates typed results instead of parsing prose. (This is also
-Cognition's core objection to naive multi-agent: implicit decisions hide in
-context that other agents never see.)
-</ThinkFirst>
-
-## 4. Context isolation *(spine: context)*
-
-- **Scoped context per worker:** each agent gets only what it needs — isolation
-  keeps contexts small (latency/cost) and prevents cross-contamination.
-- **Shared artifacts:** a common workspace/blackboard for results — workers write
-  outputs to the store and the orchestrator reads them, rather than agents
-  flooding each other with messages.
-- **Interface contracts:** structured inputs/outputs between agents so aggregation
-  is reliable, not free-text guessing.
-
-<ThinkFirst question="Researchers annotated 1,600+ real multi-agent traces to build a failure taxonomy (MAST). The failures clustered in three places — none of them “the model wasn't smart enough.” Guess the three, and what they imply your evaluation must measure.">
-The [MAST taxonomy](https://arxiv.org/abs/2503.13657) found 14 failure modes
-in three clusters: **system design flaws** (bad specs, role violations),
-**inter-agent misalignment** (workers ignoring each other, withholding or
-duplicating work), and **task verification failures** (no one checks the
-result). The implication: evaluating only the final output misses most of the
-causes. You need trajectory-level eval — was the decomposition sensible, did
-handoffs preserve intent, did verification actually run — with errors
-attributed to the responsible agent.
-</ThinkFirst>
-
-## 5. Evaluation *(spine: evaluation)*
-
-- **End-to-end outcome:** is the final aggregate correct and coherent? (This is
-  what matters — not any single agent's local success.)
-- **Per-agent + trajectory:** which worker failed, was decomposition sensible,
-  did agents loop or chatter unproductively? Most multi-agent failures are
-  coordination failures, so this is where the signal lives.
-- **Attribution:** trace errors to the responsible agent — essential for
-  debugging a distributed system.
-
-<WikiLink slug="agent-metrics-taxonomy" title="Agent metrics — outcome vs. trajectory across agents" />
-
-A generator–critic setup can improve quality, but beware groupthink and endless
-agreement — independent verification beats agents rubber-stamping each other.
 
 <ThinkFirst question="What are the two signature failure modes unique to multi-agent systems — the ones a single agent can't have?">
 **Error propagation**: one worker's hallucination flows through aggregation
@@ -162,7 +202,7 @@ prices). The countermeasures are structural: validate outputs at the
 aggregation boundary, and cap inter-agent turns and total spend.
 </ThinkFirst>
 
-## 6. Guardrails & safety *(spine: guardrails)*
+### Guardrails & safety *(spine: guardrails)*
 
 - **Error propagation:** one worker's mistake can poison the aggregate — validate
   worker outputs before they're consumed downstream.
@@ -181,7 +221,7 @@ spend a query instead of an investigation, and exposes the critical path that
 actually determines latency.
 </ThinkFirst>
 
-## 7. Operations *(spine: operations)*
+### Operations *(spine: operations)*
 
 - **Distributed tracing:** a unified trace across all agents (who did what, when,
   cost) — the only way to debug and to see the critical path.
@@ -194,7 +234,46 @@ actually determines latency.
 
 <WikiLink slug="agent-observability" title="Agent observability & tracing" />
 
-## 8. Tradeoffs & alternatives
+<ThinkFirst question="Researchers annotated 1,600+ real multi-agent traces to build a failure taxonomy (MAST). The failures clustered in three places — none of them “the model wasn't smart enough.” Guess the three, and what they imply your evaluation must measure.">
+The [MAST taxonomy](https://arxiv.org/abs/2503.13657) found 14 failure modes
+in three clusters: **system design flaws** (bad specs, role violations),
+**inter-agent misalignment** (workers ignoring each other, withholding or
+duplicating work), and **task verification failures** (no one checks the
+result). The implication: evaluating only the final output misses most of the
+causes. You need trajectory-level eval — was the decomposition sensible, did
+handoffs preserve intent, did verification actually run — with errors
+attributed to the responsible agent.
+</ThinkFirst>
+
+## E: Evaluation *(spine: evaluation)*
+
+### Evaluating the system
+
+- **End-to-end outcome:** is the final aggregate correct and coherent? (This is
+  what matters — not any single agent's local success.)
+- **Per-agent + trajectory:** which worker failed, was decomposition sensible,
+  did agents loop or chatter unproductively? Most multi-agent failures are
+  coordination failures, so this is where the signal lives.
+- **Attribution:** trace errors to the responsible agent — essential for
+  debugging a distributed system.
+
+<WikiLink slug="agent-metrics-taxonomy" title="Agent metrics — outcome vs. trajectory across agents" />
+
+A generator–critic setup can improve quality, but beware groupthink and endless
+agreement — independent verification beats agents rubber-stamping each other.
+
+### Does the design meet the requirements?
+
+- **Decomposition:** delegation carries objective, schema, tools, and budget, the
+  four things vague delegation leaves out.
+- **Coherence:** schema validation at write time and conflict resolution at
+  aggregation stop one worker's error from becoming the answer.
+- **Cost/latency:** per-subtask budgets bound spend; parallel fan-out bounds
+  latency by the slowest worker, not the sum.
+- **Bottleneck:** the orchestrator. Every artifact passes through it, so its
+  context must hold summaries and references rather than full worker outputs.
+
+### Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -203,7 +282,22 @@ actually determines latency.
 | Scoped per-agent context | Shared everything | Isolation controls cost and cross-contamination |
 | Structured interfaces | Free-text handoffs | Reliable aggregation; fewer coordination errors |
 
-## 9. Interviewer follow-ups
+## D: Distinctive component
+
+**The aggregation boundary.** In a single agent, a wrong intermediate result
+is visible in one context and can be caught by the same loop. In a multi-agent
+system it is produced in one context and consumed in another, which is how
+errors get laundered into confident final output. The distinctive component
+is therefore the boundary where worker outputs enter the orchestrator:
+
+1. **Schema validation on write**, so malformed outputs never enter the store.
+2. **Cross-checks on read**: the orchestrator compares overlapping claims across
+   workers and sends contradictions back as new subtasks instead of picking one.
+3. **An independent verifier** (a checker role with its own context) for the
+   final aggregate, which addresses MAST's "no one checks the result" cluster
+   directly.
+
+## Interviewer follow-ups
 
 <Details summary="When is multi-agent actually worth it over one agent with tools?">
 When subtasks are genuinely parallel (fan-out speeds things up), require distinct

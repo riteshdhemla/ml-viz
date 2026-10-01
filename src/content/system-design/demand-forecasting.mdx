@@ -33,7 +33,8 @@ deep model
 ([Amazon Science](https://www.amazon.science/latest-news/the-history-of-amazons-forecasting-algorithm)).
 Walk it through the **ML project loop**.
 
-## 1. Clarify the problem
+
+## 1. Problem statement
 
 - **Goal:** forecast demand per item/location over multiple horizons (next day →
   next quarter) to drive ordering, staffing, and logistics.
@@ -52,16 +53,6 @@ Naming probabilistic + hierarchical forecasting immediately signals you've done
 this in production, not just fit an ARIMA to one series.
 </Callout>
 
-## 2. Requirements & scale
-
-| Dimension | Target | Consequence |
-|---|---|---|
-| Series count | Millions (item × location) | Global models, not one model per series |
-| Horizons | Multi-horizon (1d … 1q) | Direct multi-horizon or recursive strategy |
-| Coherence | Forecasts reconcile across hierarchy | Reconciliation step (MinT / top-down) |
-| Output | Quantiles / full distribution | Quantile loss or probabilistic models |
-| Events | Holidays, promos, weather | Event features / covariates |
-
 <ThinkFirst question="Millions of item × store series. Would you fit one model per series? What breaks — and what's the alternative?">
 Per-series models break three ways: the fitting itself doesn't scale, sparse
 and new items have too little history to fit anything, and independent
@@ -72,7 +63,7 @@ This is exactly the DeepAR insight: train a single autoregressive network on
 the whole panel of related series.
 </ThinkFirst>
 
-## 3. ML problem framing
+### Framing it as an ML problem
 
 **Probabilistic, multi-horizon, hierarchical time-series forecasting.** The modern
 answer is a **global model** trained across *all* series (sharing statistical
@@ -88,6 +79,62 @@ moving averages ignore promotions, seasonality, and events; and the
 feature-engineered SQRF still needed humans to hand-craft features per product
 line.
 
+<ThinkFirst question="Forecasts for 400 million items — do you need a real-time serving stack like the fraud or ETA systems? What is the binding constraint instead?">
+No — demand forecasts feed *planning* decisions (orders, staffing) made on
+daily/weekly cadences, so this is a **batch** system: the binding constraints
+are throughput (scoring millions of series nightly), **coherence** across the
+hierarchy, and backfill correctness when covariates change. Spending your
+complexity budget on a sub-100ms serving path here is solving the wrong
+problem — a classic interview differentiator between this case and ETA.
+</ThinkFirst>
+
+## 2. Scale & latency requirements
+
+| Dimension | Target | Consequence |
+|---|---|---|
+| Series count | Millions (item × location) | Global models, not one model per series |
+| Latency | Batch: forecasts ready before the nightly ordering run | Throughput, not per-request latency, is the budget |
+| Horizons | Multi-horizon (1d … 1q) | Direct multi-horizon or recursive strategy |
+| Coherence | Forecasts reconcile across hierarchy | Reconciliation step (MinT / top-down) |
+| Output | Quantiles / full distribution | Quantile loss or probabilistic models |
+| Events | Holidays, promos, weather | Event features / covariates |
+
+<ThinkFirst question="How would you construct the train/test split — and why does the split you'd use for tabular ML overstate accuracy here?">
+A random split leaks the future: the model trains on observations *after* the
+ones it's tested on, so seasonality and trends are effectively given away.
+Time series demands **walk-forward** (rolling-origin) backtesting — train up to
+time T, forecast beyond it, roll forward, repeat, and probabilistic outputs
+need pinball loss and coverage checks, not just MAPE. The M5 competition's
+companion **uncertainty track** scored exactly this: quantile forecasts under
+pinball loss.
+</ThinkFirst>
+
+## 3. Metrics *(spine: evaluation)*
+
+- **Point + probabilistic:** WMAPE / MASE for point accuracy; **pinball
+  (quantile) loss** and coverage for the distribution.
+- **Backtesting protocol:** rolling-origin / **walk-forward** validation — never
+  a random split; time leakage is the classic bug.
+- **Business:** service level achieved vs. inventory cost — the forecast is a
+  means, not the end.
+
+<WikiLink slug="walk-forward-validation" title="Walk-forward validation for time series" />
+
+## 4. Architecture
+
+```
+sales + inventory + price/promo calendar + weather ──► demand-correction (stockout masking)
+   ──► feature pipeline (lags, calendar, covariates) ──► global model training (scheduled)
+   ──► batch inference: every series × horizon × quantile
+   ──► hierarchical reconciliation (MinT / top-down)
+   ──► forecast store ──► inventory optimizer / staffing / planners (overrides logged)
+```
+
+The whole pipeline is a scheduled batch job. The two components that would be
+missing from a generic ML pipeline are the **demand-correction** step before
+training (sales are not demand) and the **reconciliation** step after
+inference (independent forecasts don't add up).
+
 <ThinkFirst question="Your training target is historical sales. When is “sales” not “demand” — and what does the model learn if you ignore the difference?">
 Whenever you **stocked out**: sales flatline at inventory, not at what
 customers wanted. Train on raw sales and the model learns suppressed demand as
@@ -98,13 +145,18 @@ Instacart the same problem appears one level down: predicting real-time
 sales say nothing when the shelf was empty.
 </ThinkFirst>
 
-## 4. Data & features *(spine: data)*
+## 5. Offline model building & evaluation *(spine: data + hypothesis space + objective)*
+
+### Training data generation
 
 - **Target:** historical demand (careful: *sales* ≠ *demand* when you stock out —
   censored demand is a real bias). Instacart runs a dedicated **availability
   model** (XGBoost over item, time, and shopper-scan features) to estimate what
   was actually on shelves
   ([Instacart Engineering](https://tech.instacart.com/predicting-real-time-availability-of-200-million-grocery-items-in-us-canada-stores-61f43a16eafe)).
+
+### Feature engineering
+
 - **Covariates:** price, promotions, holidays, weather, day-of-week/seasonality,
   product metadata, and cross-series signals. Future-known covariates (promo
   calendar, holidays) are what separate a forecaster from an extrapolator.
@@ -123,7 +175,7 @@ seasonal-naive and ETS baselines running forever — in forecasting, fancy
 models embarrassingly often fail to beat them, and you need to know when.
 </ThinkFirst>
 
-## 5. Model *(spine: hypothesis space + objective)*
+### Model training
 
 - **Baseline:** classical (ARIMA/ETS) per series and seasonal-naive — the
   benchmark every fancy model must beat (often it doesn't, by much).
@@ -147,16 +199,13 @@ deep global models is sharing strength across millions of series and covariates.
 
 <WikiLink slug="hierarchical-forecasting" title="Hierarchical forecasting & reconciliation (MinT)" />
 
-<ThinkFirst question="Forecasts for 400 million items — do you need a real-time serving stack like the fraud or ETA systems? What is the binding constraint instead?">
-No — demand forecasts feed *planning* decisions (orders, staffing) made on
-daily/weekly cadences, so this is a **batch** system: the binding constraints
-are throughput (scoring millions of series nightly), **coherence** across the
-hierarchy, and backfill correctness when covariates change. Spending your
-complexity budget on a sub-100ms serving path here is solving the wrong
-problem — a classic interview differentiator between this case and ETA.
-</ThinkFirst>
+### Offline evaluation
 
-## 6. Serving & scaling
+Walk-forward backtests over several origins (including at least one holiday
+season and one promo-heavy period), scored by WMAPE/MASE and pinball loss per
+segment, with seasonal-naive and ETS on the same leaderboard.
+
+## 6. Online model execution & evaluation
 
 Mostly **batch**: retrain and generate forecasts on a schedule (nightly/weekly),
 write quantiles to a store the inventory optimizer reads. Real-time isn't the
@@ -166,26 +215,9 @@ architectures (MQ-RNN-style) help operationally too: one forward pass per
 series emits every horizon and quantile, instead of error-accumulating
 recursive rollouts.
 
-<ThinkFirst question="How would you construct the train/test split — and why does the split you'd use for tabular ML overstate accuracy here?">
-A random split leaks the future: the model trains on observations *after* the
-ones it's tested on, so seasonality and trends are effectively given away.
-Time series demands **walk-forward** (rolling-origin) backtesting — train up to
-time T, forecast beyond it, roll forward, repeat, and probabilistic outputs
-need pinball loss and coverage checks, not just MAPE. The M5 competition's
-companion **uncertainty track** scored exactly this: quantile forecasts under
-pinball loss.
-</ThinkFirst>
-
-## 7. Evaluation *(spine: evaluation)*
-
-- **Point + probabilistic:** WMAPE / MASE for point accuracy; **pinball
-  (quantile) loss** and coverage for the distribution.
-- **Backtesting:** rolling-origin / **walk-forward** validation — never a random
-  split; time leakage is the classic bug.
-- **Business:** service level achieved vs. inventory cost — the forecast is a
-  means, not the end.
-
-<WikiLink slug="walk-forward-validation" title="Walk-forward validation for time series" />
+"Online" evaluation here means **the business outcome**: a new model is rolled
+out to a subset of stores or categories and judged on service level achieved
+versus inventory cost, because forecast accuracy is only a means to that end.
 
 <ThinkFirst question="Backtested P90 coverage was perfect at launch. Three months in, stockouts are up although the dashboards look fine. How might the system be eating its own tail?">
 Through the **censoring loop**: the model under-forecasts somewhere → the
@@ -197,7 +229,7 @@ aware demand correction (or masking censored periods) before data re-enters
 training — the feedback stage closing back into data.
 </ThinkFirst>
 
-## 8. Monitoring & feedback *(spine: feedback)*
+## 7. Iterative model improvement *(spine: feedback)*
 
 - **Drift & regime change:** demand shifts with trends, competitors, and shocks;
   monitor error by segment (new items, promoted items, high-velocity SKUs) and
@@ -209,7 +241,7 @@ training — the feedback stage closing back into data.
   can't know; log overrides and score them against actuals, or the model gets
   blamed for human edits (and vice versa).
 
-## 9. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -220,7 +252,7 @@ training — the feedback stage closing back into data.
 | Reconciliation | Independent level forecasts | Otherwise totals don't add up: decisions conflict |
 | Walk-forward backtest | Random train/test split | Random splits leak the future and overstate accuracy |
 
-## 10. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Store forecasts don't sum to the regional forecast. Problem?">
 Yes — incoherence breaks downstream planning (regional buyers and store managers

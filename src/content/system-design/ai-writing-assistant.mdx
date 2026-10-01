@@ -31,7 +31,10 @@ system-design work is **control** (tone, style, brand voice, format),
 quality from **human preference**. It reads through the ML loop's objective →
 evaluation → feedback stages.
 
-## 1. Clarify the problem
+
+## S: System requirements
+
+**Functional.**
 
 - **Goal:** help users produce high-quality long-form text in a **controlled**
   style/format, grounded in provided facts/sources, efficiently.
@@ -57,7 +60,7 @@ which is why the requirements table below is about control, grounding,
 coherence, and preference, and never mentions raw fluency.
 </ThinkFirst>
 
-## 2. Requirements & constraints
+**Non-functional.**
 
 | Dimension | Target | Consequence |
 |---|---|---|
@@ -77,10 +80,11 @@ big autoregressive LLM. One model serves both badly; real products tier:
 small specialized editors on the hot path, a large model for drafting.
 </ThinkFirst>
 
-## 3. GenAI problem framing
+## C: Choose the model *(spine: hypothesis-space)*
 
 **Controllable, grounded long-form generation** on top of a base LLM — but
-"writing assistance" is a *family* of tasks along the edit↔generate spectrum:
+"writing assistance" is a *family* of tasks along the edit↔generate spectrum,
+and each end wants a different model:
 
 - **Correction/editing:** local, latency-critical; Grammarly frames it as
   tagging, not rewriting — a BERT-class encoder predicts token-level edit
@@ -91,13 +95,25 @@ small specialized editors on the hot path, a large model for drafting.
   matches much larger general LLMs while being **~60× smaller**
   ([Raheja et al., 2023](https://arxiv.org/abs/2305.09857)) — task-specific
   tuning beats scale for a fixed task menu.
-- **Drafting:** open-ended long-form generation, where control comes from (a)
-  **structured prompting** (system prompt + style exemplars), (b) optional
-  **fine-tuning** on a brand's corpus, and (c) **decoding** choices; grounding
-  from RAG over the user's sources.
+- **Drafting:** open-ended long-form generation on a strong
+  instruction-tuned base, where control comes from (a) **structured prompting**
+  (system prompt + style exemplars), (b) optional **fine-tuning** on a brand's
+  corpus, and (c) **decoding** choices; grounding from RAG over the user's
+  sources.
 
 *Pre-generative baseline?* Templates + human writers — inflexible or slow.
 Generative writing adapts to any prompt while (ideally) staying on-brand.
+
+## A: Acquire & prepare data *(spine: data)*
+
+- **Customer material:** each tenant's sources and brand guidelines, chunked
+  and indexed for retrieval; the brand's past published copy doubles as the
+  fine-tuning corpus for a voice adapter.
+- **Task data:** instruction–edit pairs for the revision menu (CoEdIT's 82K
+  examples are the reference scale for this).
+- **Preference data:** product exhaust (drafts vs. what users shipped,
+  regenerations, thumbs), which becomes the largest and most valuable dataset
+  the product owns. Tenant data stays tenant-scoped unless the customer opts in.
 
 <ThinkFirst question="Ask a strong model for a 2,000-word article in a single generation. What specifically degrades as it writes — and what structure fixes it?">
 Three failure modes compound: **drift** (by paragraph twelve the piece has
@@ -110,7 +126,9 @@ prior sections, then a revision pass. The outline is also the product's
 steering wheel — users edit it before committing to prose.
 </ThinkFirst>
 
-## 4. Model & generation *(spine: objective)*
+## L: Leverage the model *(spine: objective + evaluation)*
+
+### Adaptation & generation
 
 - **Base + light adaptation:** a strong instruction-tuned base; a **LoRA
   adapter** per brand where prompting isn't reliable enough — low-rank updates
@@ -134,7 +152,7 @@ fine-tuned on the brand's corpus bakes the voice in. Format guarantees come
 from constrained decoding, not hope.
 </ThinkFirst>
 
-## 5. Grounding & control
+### Grounding & control
 
 - **RAG:** retrieve the user's provided sources/brand guidelines into context;
   generate with citations; verify claims are supported. Retrieval-augmented
@@ -156,7 +174,7 @@ supported by the provided sources), and the bluntest product signal of all —
 beautiful draft that gets 80% rewritten failed.
 </ThinkFirst>
 
-## 6. Evaluation *(spine: evaluation)*
+### Evaluation
 
 - **Human preference / LLM-as-judge:** the primary signal for quality, tone
   adherence, and helpfulness; track win-rate vs. the previous version.
@@ -169,6 +187,23 @@ beautiful draft that gets 80% rewritten failed.
 
 <WikiLink slug="llm-as-judge" title="LLM-as-a-judge for writing quality" />
 
+## E: Estimate resources
+
+The two ends of the spectrum produce two very different loads (assumptions
+stated):
+
+| Path | Assumption | Result |
+|---|---|---|
+| Inline editing | 10M daily users × ~200 checked sentences | 2B small-model calls/day ≈ 23K/s on average; must answer in tens of ms |
+| Drafting: output | 1M drafts/day × ~2,700 tokens (≈2,000 words) | ~2.7B generated tokens/day |
+| Drafting: input | ~8K tokens of sources, guidelines, and outline per draft | ~8B prompt tokens/day, much of it cacheable per tenant |
+| Brand adapters | 50K brands × a few MB per LoRA | ~0.25 TB, hot-loaded onto a shared base |
+
+The inline path wins on request count and loses on tokens, so it gets a small
+specialized model on cheap hardware; the drafting path is token-heavy but
+latency-tolerant, so it gets the large model, streaming, and prompt caching
+for the per-tenant material that repeats across requests.
+
 <ThinkFirst question="You have 100k sessions where users accepted, rejected, or edited drafts. How do you turn that exhaust into a better model — and what bias lurks in it?">
 Edits are implicit preference pairs: the draft the model produced vs. the
 version the user shipped — exactly the (rejected, chosen) format preference
@@ -180,7 +215,27 @@ audit the data, or the model converges to the taste of your most patient
 customers.
 </ThinkFirst>
 
-## 7. Feedback & operations *(spine: feedback)*
+## D: Design the system
+
+### High-level design
+
+```
+inline path:  keystrokes ──► small edit-tagging model ──► suggestions (tens of ms)
+draft path:   brief + tenant sources ──► retrieval (tenant index) ──► outline (user edits it)
+              ──► section-by-section generation (base + brand LoRA, streamed)
+              ──► faithfulness + plagiarism + content checks ──► draft
+feedback:     edits / regenerations / thumbs ──► preference store ──► DPO tuning
+```
+
+### Serving & guardrails
+
+- **Serving:** streaming for responsiveness; model tiering (fast editor models
+  on the inline path, a large model for drafts); caching of retrieved brand
+  material.
+- **Guardrails:** plagiarism/verbatim-source checks, disallowed-content filters,
+  and disclosure that content is AI-assisted.
+
+### Feedback loop *(spine: feedback)*
 
 - **Preference loop:** edits, regenerations, and thumbs become preference
   pairs. The InstructGPT result is the existence proof for how far this goes:
@@ -189,13 +244,8 @@ customers.
   data beats two orders of magnitude of scale for "does what the user meant."
   **DPO** delivers most of this with a simple classification loss instead of a
   full RLHF pipeline ([Rafailov et al., 2023](https://arxiv.org/abs/2305.18290)).
-- **Serving:** streaming for responsiveness; model tiering (fast editor models
-  on the inline path, a large model for drafts); caching of retrieved brand
-  material.
-- **Guardrails:** plagiarism/verbatim-source checks, disallowed-content filters,
-  and disclosure that content is AI-assisted.
 
-## 8. Tradeoffs & alternatives
+## Tradeoffs & alternatives
 
 | Choice | Alternative | Why |
 |---|---|---|
@@ -205,7 +255,7 @@ customers.
 | RAG grounding | Rely on parametric knowledge | Faithfulness, freshness, citeability |
 | DPO on product data | Full RLHF pipeline | Same preference signal, far simpler to train and operate |
 
-## 9. Interviewer follow-ups
+## Interviewer follow-ups
 
 <Details summary="Output is fluent but off-brand. How do you enforce voice?">
 Layer control: brand-voice exemplars and explicit style constraints in the

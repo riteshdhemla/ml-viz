@@ -430,7 +430,16 @@ still `spine: ml`). Routing, search, sitemap, `SpineNav`, and the related-lesson
 footer are wired automatically from `src/content/system-design/{slug}.mdx`.
 
 1. Follow **`prompts/new-system-design-case.md`** — it has the frontmatter
-   schema and the fixed section skeleton per track.
+   schema and the fixed section skeleton per track. Each track uses the
+   educative.io interview framework for its interview type: **ML** → the
+   7-step ML framework (problem → scale & latency → metrics → architecture →
+   offline build → online execution → iteration), **GenAI** → **SCALED**
+   (System requirements, Choose the model, Acquire data, Leverage the model,
+   Estimate resources, Design the system), **Agentic** → **RESHADED**
+   (Requirements, Estimation, Storage schema, High-level design, APIs,
+   Detailed design, Evaluation, Distinctive component). The `##` heading
+   prefixes live in `src/lib/system-design-frameworks.ts`; `FrameworkStrip`
+   renders them on every case page, and the integrity test enforces them.
 2. **Write Socratically.** Every case threads 3+ `<ThinkFirst question="…">`
    blocks (registered in `mdxComponents.tsx`) at its key decision points —
    the question stays visible, the model answer is collapsed until the reader
@@ -444,7 +453,9 @@ footer are wired automatically from `src/content/system-design/{slug}.mdx`.
    string props only — `blockJS: true`).
 4. Integrity rules enforced by `src/lib/__tests__/system-design-integrity.test.ts`:
    valid resolved track, `spineStages` (1–3) require a declared spine, every
-   `relatedLessons` entry and `<WikiLink>` must resolve. Notebooks are optional.
+   `relatedLessons` entry and `<WikiLink>` must resolve, the `##` headings match
+   the track's framework skeleton in order, and every case has 3+ `<ThinkFirst>`
+   blocks. Notebooks are optional.
 
 ### The spine & the concept graph
 
